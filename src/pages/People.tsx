@@ -143,6 +143,16 @@ import {
   scaleClosedSessionsToTargetHours,
   toDayEditorSession,
 } from '../lib/peopleHoursProportionalScale'
+import {
+  buildPeopleHoursPendingByCellMap,
+  pendingByCellKey,
+  personPendingExcessHours,
+  summarizePeopleHoursPendingByCell,
+  workDateHasAnyPendingExcess,
+  type PeopleHoursPendingCellEntry,
+} from '../lib/peopleHoursPendingByCell'
+import { PeopleHoursPendingCellPopover } from '../components/people/PeopleHoursPendingCellPopover'
+import { PeopleHoursBulkApprovePendingModal } from '../components/people/PeopleHoursBulkApprovePendingModal'
 import type { DayEditorSession } from '../lib/myTimeDayTimeline'
 import { PayStubDeleteIcon } from '../components/pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../components/pay/PayStubPaidNoteIcon'
@@ -789,6 +799,12 @@ export default function People() {
   })
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
+  /** People → Hours: anchor + entry for the inline pending sessions popover. */
+  const [pendingCellPopover, setPendingCellPopover] = useState<{
+    anchorEl: HTMLElement
+    entry: PeopleHoursPendingCellEntry
+  } | null>(null)
+  const [bulkApprovePendingOpen, setBulkApprovePendingOpen] = useState(false)
   const [editingUserNote, setEditingUserNote] = useState<{ id: string; name: string; notes: string; phone: string } | null>(null)
   const [userNoteSaving, setUserNoteSaving] = useState(false)
   const [authUserRole, setAuthUserRole] = useState<string | null>(null)
@@ -7941,6 +7957,48 @@ export default function People() {
     return counts
   }, [pendingClockSessions])
 
+  /** People → Hours: per-cell pending closed sessions where pending hours > saved people_hours. Drives the amber badge, column dot, person row total badge, and roll-up pill. */
+  const peopleHoursPendingByCellMap = useMemo(
+    () =>
+      buildPeopleHoursPendingByCellMap({
+        pendingClockSessions,
+        peopleHours,
+        peopleNames: showPeopleForHours,
+        workDates: hoursDays,
+        users,
+        isSalaryOnly: (name) => !canEditHours(name),
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pendingClockSessions, peopleHours, showPeopleForHours, hoursDays, users, payConfig],
+  )
+  const peopleHoursPendingSummary = useMemo(
+    () => summarizePeopleHoursPendingByCell(peopleHoursPendingByCellMap),
+    [peopleHoursPendingByCellMap],
+  )
+
+  /** Refresh / dismiss the per-cell pending popover when the underlying data changes (post-approve / post-reject). */
+  useEffect(() => {
+    if (!pendingCellPopover) return
+    const key = pendingByCellKey(
+      pendingCellPopover.entry.personName,
+      pendingCellPopover.entry.workDate,
+    )
+    const next = peopleHoursPendingByCellMap.get(key)
+    if (!next) {
+      setPendingCellPopover(null)
+      return
+    }
+    if (next !== pendingCellPopover.entry) {
+      setPendingCellPopover((prev) => (prev ? { ...prev, entry: next } : prev))
+    }
+  }, [peopleHoursPendingByCellMap, pendingCellPopover])
+  /** Close bulk approve modal when nothing is pending anymore. */
+  useEffect(() => {
+    if (bulkApprovePendingOpen && peopleHoursPendingSummary.totalSessions === 0) {
+      setBulkApprovePendingOpen(false)
+    }
+  }, [bulkApprovePendingOpen, peopleHoursPendingSummary.totalSessions])
+
   const { jobHighlightPeople, jobHighlightCells } = useMemo(() => {
     const people = new Set<string>()
     const cells = new Set<string>()
@@ -11057,6 +11115,56 @@ export default function People() {
                   No one in this list has that job on crew assignments this week.
                 </p>
               ) : null}
+              {peopleHoursPendingSummary.totalSessions > 0 && (canAccessHours || canAccessPay) ? (
+                <div
+                  role="status"
+                  style={{
+                    marginBottom: '0.5rem',
+                    padding: '0.45rem 0.6rem',
+                    border: '1px solid #f59e0b',
+                    background: '#fef3c7',
+                    color: '#92400e',
+                    borderRadius: 6,
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    fontSize: '0.8125rem',
+                    lineHeight: 1.35,
+                  }}
+                >
+                  <span aria-hidden style={{ fontSize: '0.95rem', lineHeight: 1 }}>⚠</span>
+                  <span style={{ flex: '1 1 auto', minWidth: 0 }}>
+                    <strong>Pending: {peopleHoursPendingSummary.peopleCount}</strong>{' '}
+                    {peopleHoursPendingSummary.peopleCount === 1 ? 'person' : 'people'} ·{' '}
+                    <strong>{peopleHoursPendingSummary.totalDiffHours.toFixed(2)} h</strong> not yet in payroll
+                    {peopleHoursPendingSummary.workDates.length > 0 ? (
+                      <>
+                        {' '}across{' '}
+                        {peopleHoursPendingSummary.workDates.length}{' '}
+                        {peopleHoursPendingSummary.workDates.length === 1 ? 'day' : 'days'}
+                      </>
+                    ) : null}
+                    .
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBulkApprovePendingOpen(true)}
+                    style={{
+                      padding: '0.25rem 0.6rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      border: '1px solid #b45309',
+                      background: '#b45309',
+                      color: 'white',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Review &amp; approve
+                  </button>
+                </div>
+              ) : null}
               <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
                 <colgroup>
@@ -11087,22 +11195,48 @@ export default function People() {
                     >
                       Person
                     </th>
-                    {hoursDays.map((d) => (
-                      <th
-                        key={d}
-                        id={`people-hours-col-${d}`}
-                        style={{
-                          padding: '0.5rem 0.5rem',
-                          textAlign: 'right',
-                          borderBottom: '1px solid #e5e7eb',
-                          ...(hoursFlashWorkDate === d
-                            ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
-                            : {}),
-                        }}
-                      >
-                        {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
-                      </th>
-                    ))}
+                    {hoursDays.map((d) => {
+                      const dayHasPending = workDateHasAnyPendingExcess(peopleHoursPendingByCellMap, d)
+                      return (
+                        <th
+                          key={d}
+                          id={`people-hours-col-${d}`}
+                          style={{
+                            padding: '0.5rem 0.5rem',
+                            textAlign: 'right',
+                            borderBottom: '1px solid #e5e7eb',
+                            ...(hoursFlashWorkDate === d
+                              ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
+                              : {}),
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              justifyContent: 'flex-end',
+                            }}
+                          >
+                            {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
+                            {dayHasPending ? (
+                              <span
+                                aria-label="Some people have pending hours on this day not yet in payroll"
+                                title="Some people have pending hours on this day not yet in payroll"
+                                style={{
+                                  display: 'inline-block',
+                                  width: 7,
+                                  height: 7,
+                                  borderRadius: '50%',
+                                  background: '#f59e0b',
+                                  boxShadow: '0 0 0 1px rgba(146,64,14,0.35)',
+                                }}
+                              />
+                            ) : null}
+                          </span>
+                        </th>
+                      )
+                    })}
                     <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>HH:MM:SS</th>
                     <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Decimal</th>
                   </tr>
@@ -11189,6 +11323,8 @@ export default function People() {
                           const gridDisplayHrs = getHoursGridDisplayHours(personName, d)
                           const hoursRowUser = users.find((x) => (x.name ?? '').trim() === personName.trim())
                           const showMyTimeCorner = gridDisplayHrs > 0 && !!hoursRowUser?.id
+                          const pendingEntry = peopleHoursPendingByCellMap.get(pendingByCellKey(personName, d))
+                          const showPendingBadge = !!pendingEntry && (canAccessHours || canAccessPay)
                           return (
                             <td
                               key={d}
@@ -11196,7 +11332,7 @@ export default function People() {
                               style={{
                                 padding: '0.35rem 0.5rem',
                                 textAlign: canEdit ? 'right' : 'center',
-                                ...(showMyTimeCorner ? { position: 'relative' } : {}),
+                                ...(showMyTimeCorner || showPendingBadge ? { position: 'relative' } : {}),
                                 ...(missingJob && {
                                   background: 'rgba(254, 242, 242, 0.9)',
                                   boxShadow: 'inset 0 0 0 1px rgba(252, 165, 165, 0.45)',
@@ -11206,6 +11342,13 @@ export default function People() {
                                   ? {
                                       backgroundColor: 'rgba(219, 234, 254, 0.35)',
                                       boxShadow: 'inset 0 0 0 2px rgba(59, 130, 246, 0.25)',
+                                    }
+                                  : {}),
+                                ...(showPendingBadge && !missingJob
+                                  ? {
+                                      backgroundColor: 'rgba(254, 243, 199, 0.55)',
+                                      boxShadow: 'inset 0 0 0 1px rgba(245, 158, 11, 0.55)',
+                                      borderRadius: 8,
                                     }
                                   : {}),
                                 ...(hoursFlashWorkDate === d
@@ -11319,15 +11462,81 @@ export default function People() {
                                   </button>
                                 </div>
                               ) : null}
+                              {showPendingBadge && pendingEntry ? (
+                                <button
+                                  type="button"
+                                  aria-label={`${pendingEntry.count} pending session${pendingEntry.count === 1 ? '' : 's'} for ${personName} on ${d} — adds ${pendingEntry.diffHours.toFixed(2)} hours to payroll. Click to review and approve.`}
+                                  title={`+${pendingEntry.diffHours.toFixed(2)} h pending — click to approve`}
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    const target = e.currentTarget
+                                    setPendingCellPopover((prev) => {
+                                      if (
+                                        prev &&
+                                        prev.entry.personName === pendingEntry.personName &&
+                                        prev.entry.workDate === pendingEntry.workDate
+                                      ) {
+                                        return null
+                                      }
+                                      return { anchorEl: target, entry: pendingEntry }
+                                    })
+                                  }}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  style={{
+                                    position: 'absolute',
+                                    top: 2,
+                                    right: 2,
+                                    zIndex: 7,
+                                    height: 16,
+                                    padding: '0 5px',
+                                    border: '1px solid rgba(217,119,6,0.55)',
+                                    background: '#fbbf24',
+                                    color: '#78350f',
+                                    borderRadius: 9999,
+                                    fontSize: '0.7rem',
+                                    fontWeight: 700,
+                                    lineHeight: 1,
+                                    cursor: 'pointer',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 2,
+                                    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                                  }}
+                                >
+                                  <span aria-hidden>!</span>
+                                  {pendingEntry.count}
+                                </button>
+                              ) : null}
                             </td>
                           )
                         })}
-                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                          {decimalToHms(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)) || '-'}
-                        </td>
-                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
-                          {(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)).toFixed(2)}
-                        </td>
+                        {(() => {
+                          const personPendingHours = personPendingExcessHours(peopleHoursPendingByCellMap, personName)
+                          return (
+                            <>
+                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
+                                {decimalToHms(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)) || '-'}
+                                {personPendingHours > 0 ? (
+                                  <div
+                                    style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: '#92400e',
+                                      lineHeight: 1.1,
+                                      marginTop: 1,
+                                    }}
+                                    title={`${personPendingHours.toFixed(2)} h on this row are pending and not yet in payroll`}
+                                  >
+                                    +{personPendingHours.toFixed(2)} pending
+                                  </div>
+                                ) : null}
+                              </td>
+                              <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>
+                                {(hoursDays.reduce((s, d) => s + getHoursGridDisplayHours(personName, d), 0)).toFixed(2)}
+                              </td>
+                            </>
+                          )
+                        })()}
                       </tr>
                     )
                   })}
@@ -16393,6 +16602,42 @@ export default function People() {
           showToast={showToast}
         />
       )}
+
+      {pendingCellPopover ? (
+        <PeopleHoursPendingCellPopover
+          entry={pendingCellPopover.entry}
+          anchorEl={pendingCellPopover.anchorEl}
+          authUserId={authUser?.id ?? null}
+          canApprove={canAccessHours || canAccessPay}
+          canReject={canAccessHours || canAccessPay}
+          onClose={() => setPendingCellPopover(null)}
+          onChanged={() => {
+            loadAllClockSessionsRef.current?.()
+            loadPeopleHoursRef.current?.()
+          }}
+          onError={(message) => setError(message)}
+          onShowToast={(message, variant) => showToast?.(message, variant)}
+          onOpenInMyTime={() =>
+            openHoursMyTimeForGridCell(
+              pendingCellPopover.entry.personName,
+              pendingCellPopover.entry.workDate,
+            )
+          }
+        />
+      ) : null}
+
+      {bulkApprovePendingOpen ? (
+        <PeopleHoursBulkApprovePendingModal
+          pendingByCellMap={peopleHoursPendingByCellMap}
+          onClose={() => setBulkApprovePendingOpen(false)}
+          onApproved={() => {
+            loadAllClockSessionsRef.current?.()
+            loadPeopleHoursRef.current?.()
+          }}
+          onError={(message) => setError(message)}
+          onShowToast={(message, variant) => showToast?.(message, variant)}
+        />
+      ) : null}
 
       {editClockSession && (
         <ClockSessionEditSplitModal

@@ -125,6 +125,16 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### May 2026
 
+#### May 15, 2026
+
+**`20260515102040_bid_estimators_tab.sql`**
+- **Purpose**: **Bids → Estimators tab** (`?tab=estimators`, viewable by **all roles**). Creates:
+  - **`bid_estimators_extra_users(user_id PK → public.users, added_at, added_by)`** — org-wide augmentation list for the estimators column set. RLS: authenticated read; **dev / master_technician / assistant** insert/delete (inline role check, not `is_dev_or_master_or_assistant()` which now also matches `primary`).
+  - **`list_bid_estimators_window_hours(p_user_ids UUID[], p_start_date DATE, p_end_date DATE)`** **SECURITY DEFINER STABLE** → `(user_id, bid_id, work_date, hours NUMERIC)` per-day decimal hours per (user, bid). Filters: **`bid_id IS NOT NULL`**, **`rejected_at IS NULL`**, **`revoked_at IS NULL`**, window-bounded, clamped `COALESCE(clocked_out_at, now())`.
+  - **`list_bid_estimators_all_time_hours(p_bid_ids UUID[])`** **SECURITY DEFINER STABLE** → `(bid_id, hours NUMERIC)` lifetime team clock hours per bid (denominator for the per-day cell percentages). Same session filter semantics.
+- **Impact**: **[`BidsEstimatorsTab.tsx`](src/components/bids/BidsEstimatorsTab.tsx)** + **[`BidsEstimatorsExtraUsersModal.tsx`](src/components/bids/BidsEstimatorsExtraUsersModal.tsx)**; pure helpers **[`bidEstimatorsTab.ts`](src/lib/bidEstimatorsTab.ts)** (14 tests). **[`Bids.tsx`](src/pages/Bids.tsx)** wires the tab right of **Bid Costs** in all four primary-tab layout branches. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.531**. `npm run gen-types:linked` after apply.
+- **Category**: Bids / Pivot / RLS / SECURITY DEFINER RPCs
+
 #### May 11, 2026
 
 **`20260511015410_bids_working_board_archive.sql`**

@@ -436,7 +436,7 @@ export function DashboardMyTimeDayEditorModal({
       if (!session.clocked_out_at) return
       if (isDraftPeopleHoursSessionId(session.id)) {
         showToast(
-          'This block is not in the database yet (draft from People Hours). Close the editor to discard it, or save with Close.',
+          'This block isn\u2019t saved yet \u2014 Close will save it as a pending session that can be approved or rejected from People \u2192 Hours.',
           'info',
         )
         return
@@ -2190,7 +2190,15 @@ export function DashboardMyTimeDayEditorModal({
       initialJobBidBySessionIdRef.current,
       currentJobBid,
     )
-    const dirty = [...new Set([...splitDirty, ...jobBidDirty])]
+    /**
+     * Draft clusters (People → Hours manual entry seed) are NOT in the database yet —
+     * they must persist on Close even when nothing was edited. Without this, typing a value
+     * into an empty grid cell and hitting Close silently throws away the draft session.
+     */
+    const draftClusterIds = sessionClusters
+      .filter((c) => c.some((s) => isDraftPeopleHoursSessionId(s.id)))
+      .map((c) => sessionClusterId(c))
+    const dirty = [...new Set([...splitDirty, ...jobBidDirty, ...draftClusterIds])]
     const effectiveDirty =
       dirty.length === 0 &&
       peopleHoursGridProportionalSeed &&

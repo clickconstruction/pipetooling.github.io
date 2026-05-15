@@ -259,6 +259,39 @@ export type Database = {
           },
         ]
       }
+      bid_estimators_extra_users: {
+        Row: {
+          added_at: string
+          added_by: string | null
+          user_id: string
+        }
+        Insert: {
+          added_at?: string
+          added_by?: string | null
+          user_id: string
+        }
+        Update: {
+          added_at?: string
+          added_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_estimators_extra_users_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_estimators_extra_users_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_pricing_assignments: {
         Row: {
           bid_id: string
@@ -9317,6 +9350,10 @@ export type Database = {
         Args: { p_job_book_entry_id: string; p_job_id: string }
         Returns: Json
       }
+      apply_agreed_write_down_to_billed_invoice: {
+        Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
+        Returns: Json
+      }
       apply_mercury_bank_payment_allocations: {
         Args: {
           p_allocations: Json
@@ -9324,14 +9361,6 @@ export type Database = {
           p_note: string
           p_paid_on: string
           p_payment_type: string
-        }
-        Returns: Json
-      }
-      apply_agreed_write_down_to_billed_invoice: {
-        Args: {
-          p_invoice_id: string
-          p_new_amount: number
-          p_note: string
         }
         Returns: Json
       }
@@ -9938,6 +9967,22 @@ export type Database = {
           status: string
         }[]
       }
+      list_bid_estimators_all_time_hours: {
+        Args: { p_bid_ids: string[] }
+        Returns: {
+          bid_id: string
+          hours: number
+        }[]
+      }
+      list_bid_estimators_window_hours: {
+        Args: { p_end_date: string; p_start_date: string; p_user_ids: string[] }
+        Returns: {
+          bid_id: string
+          hours: number
+          user_id: string
+          work_date: string
+        }[]
+      }
       list_feedback_peer_candidates: {
         Args: never
         Returns: {
@@ -10533,10 +10578,6 @@ export type Database = {
           service_type_name: string
         }[]
       }
-      set_mercury_transaction_ar_returned: {
-        Args: { p_mercury_transaction_id: string; p_returned: boolean }
-        Returns: undefined
-      }
       service_apply_agreed_write_down_from_stripe: {
         Args: {
           p_actor_user_id: string
@@ -10546,6 +10587,10 @@ export type Database = {
           p_stripe_credit_note_id: string
         }
         Returns: Json
+      }
+      set_mercury_transaction_ar_returned: {
+        Args: { p_mercury_transaction_id: string; p_returned: boolean }
+        Returns: undefined
       }
       split_job_ledger_fixtures_to_new_job: {
         Args: {

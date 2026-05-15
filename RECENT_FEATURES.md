@@ -12,11 +12,20 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.530+ (reverse chronological)"
+version_range: "v2.533+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.533)"
+    line: ~1795
+    description: "People → Hours: visible amber 'n pending' badge on grid cells where pending closed clock sessions sum to more than `people_hours` (so payroll currently undercounts that day). Click opens a popover listing the pending sessions with per-row reject and a one-click 'Approve all (n)' that calls `approve_clock_sessions`. Week-strip roll-up banner 'Pending: N people · H h not yet in payroll' with bulk Review & approve modal. Day-column header dot + person row total `+X.XX pending` annotation. Helpers in `src/lib/peopleHoursPendingByCell.ts` (6 unit tests). Also: fix `DashboardMyTimeDayEditorModal` so a draft session created by typing into an empty People → Hours cell now persists on Close even when no job/bid is assigned and no other edits were made (`draftClusterIds` always merged into `effectiveDirty`)."
+  - name: "Latest Version (v2.532)"
+    line: ~1810
+    description: "Bid Board → Bid Value column: red filled-circle `$` button replaces the em-dash when a bid is in 'Not yet won or lost' (sent + outcome not won/lost/started_or_complete) AND `bid_value` is empty; click opens Edit Bid pre-filled and auto-scrolls to the Bid Value field, selects its contents, and flashes it with an amber outline so the user can type a value immediately. Predicate `shouldShowEmptyBidValueAlert` covered by 12 unit tests (sent gates, terminal-outcome gates, null/0/negative/NaN/string variants)."
+  - name: "Latest Version (v2.531)"
+    line: ~1810
+    description: "Bids → Estimators tab (everyone): days × estimators pivot of clock_sessions linked to bids over the last 30 days; each cell stacks bid chips with that estimator's that-day hours as a % of the bid's lifetime team clock time; columns = users with role 'estimator' plus an org-wide augmentation list `bid_estimators_extra_users` (dev / master_technician / assistant can edit via Manage columns); two SECURITY DEFINER RPCs `list_bid_estimators_window_hours` + `list_bid_estimators_all_time_hours` so non pay-access roles can read the pivot; bid chips open the existing Bid Preview modal; Cost mode toggle (dev only) appends `{bidValue × pct}k | {bidValue}k` per chip with red 'no bid value' when missing"
   - name: "Latest Version (v2.530)"
-    line: ~1785
+    line: ~1801
     description: "Dead-code cleanup: delete 5 orphan files (CustomPayReportsModal, ReceivablesSection, useMyMercuryTallyNotesByTxId, estimateCustomerEmail, useJobScheduleBlocks) — 761 lines / ~33 KB removed; current-state docs scrubbed (AGENTS, AI_CONTEXT, PROJECT_DOCUMENTATION); historical RECENT_FEATURES entries preserved; build green"
   - name: "Latest Version (v2.529)"
     line: ~1815
@@ -1784,6 +1793,76 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.533)
+
+**Date**: 2026-05-15
+
+### People → Hours — pending hours visible in the grid + draft sessions persist on Close
+
+Two related fixes for the long-standing class of bugs where new times entered on **People → Hours** silently failed to add to the **Draft Payroll** total: the grid now exposes the pending vs approved gap (so an operator can never run payroll on phantom hours without seeing the gap first), and the **My Time** modal opened from an empty cell now actually persists the draft it builds even when the operator just closes the modal without touching anything else.
+
+- **Why payroll was undercounting** — **`people_hours`** is the source of truth for **`DraftPayrollModal`**'s **Cash Due** column. Closed clock sessions that have not been approved yet do **not** contribute to **`people_hours`** until a pay-access user runs **`approve_clock_sessions`**. The Hours grid masked the gap by displaying **`max(people_hours, sumClosedPendingClockHoursForPersonDate)`** so the cell always *showed* the right number, but payroll read **`people_hours`** alone and could be off by hours per person per day.
+- **Pending badge on the cell** — Each grid cell now renders a small amber **`! n`** pill in the top-right corner whenever pending closed clock sessions for that person+day sum to **more** than the saved **`people_hours`** value. The cell also gets a soft amber background tint (**`rgba(254, 243, 199, 0.55)`**) and a **`1px`** inset amber outline so the cell stands out without changing the displayed hour value. **`title`** / **`aria-label`** read e.g. `+2.50 h pending — click to approve`. The badge is gated on **`canAccessHours || canAccessPay`** so subcontractors / helpers / estimators / primary do not see it.
+- **Inline popover** — Clicking the badge opens **[`PeopleHoursPendingCellPopover.tsx`](src/components/people/PeopleHoursPendingCellPopover.tsx)** anchored to the cell (portal into **`document.body`**, repositions on resize / scroll). The popover lists every pending session for that person+day with **`HH:MM – HH:MM (X.XXh)`** time + the job/bid label (via the shared **`shortJobOrBidLabelFromEmbeds`** helper that honors trade-specific ledger prefixes from **`service_types.ledger_*_prefix`** — **v2.432**), with per-row **✕** reject (two-click confirm) and a footer **Approve all (n)** button. Approve all calls **`approveClockSessions(entry.sessionIds)`** ([`src/lib/approveClockSessions.ts`](src/lib/approveClockSessions.ts)) which in turn invokes the existing **`approve_clock_sessions`** RPC — same path as the Pending Sessions section, so crew jobs / crew bids stay in sync. **View in My Time** opens the existing **`DashboardMyTimeDayEditorModal`** for that person+day for callers that prefer to inspect time on a timeline before approving. Per-row reject writes **`rejected_at`** + **`rejected_by`** directly via **`supabase.from('clock_sessions').update(...)`**; on success the popover closes if no sessions remain.
+- **Week-strip roll-up banner** — Above the Hours grid, a single amber banner now surfaces the org-wide gap when any visible cell has pending > saved: **`⚠ Pending: N people · H h not yet in payroll across K days. Review & approve`**. The **Review & approve** button opens **[`PeopleHoursBulkApprovePendingModal.tsx`](src/components/people/PeopleHoursBulkApprovePendingModal.tsx)** which lists every affected person/day with **`+H.HH h`** delta and runs **`approve_clock_sessions`** against every session id at once. The banner only renders when **`canAccessHours || canAccessPay`** and there is at least one pending session in scope.
+- **Day column header + person row total** — Each visible day column header now gets a small amber dot next to the date when **any** person on that day has pending excess (**`workDateHasAnyPendingExcess`**). Each person row's right-most total cell gets a muted **`+X.XX pending`** subline below the **`HH:MM:SS`** total when that person has any pending excess (**`personPendingExcessHours`**). Both indicators give an at-a-glance scan target without forcing the operator to look at every cell.
+- **Pure helper module** — All gap detection lives in **[`src/lib/peopleHoursPendingByCell.ts`](src/lib/peopleHoursPendingByCell.ts)**: **`buildPeopleHoursPendingByCellMap`** folds **`pendingClockSessions`** + **`peopleHours`** + roster + visible day window into a `Map<personName|workDate, {count, pendingHours, peopleHoursValue, diffHours, sessionIds, sessions}>` (only emits keys where **`pendingHours > peopleHoursValue + 1e-9`** so equality / off-by-rounding never produces noise). **`summarizePeopleHoursPendingByCell`** aggregates for the banner; **`workDateHasAnyPendingExcess`** / **`personPendingExcessHours`** drive the column / row indicators. Salary-only people are skipped via the caller-provided **`isSalaryOnly`** predicate so the badge does not appear on non-editable salary rows. Closed sessions only (`clocked_out_at` non-null), excluding rejected / revoked. **6 unit tests** in **[`src/lib/peopleHoursPendingByCell.test.ts`](src/lib/peopleHoursPendingByCell.test.ts)** cover empty input, salary-only skip, exact-equality skip, the canonical excess case, multi-day summary, and exclusion of rejected / revoked rows.
+- **Draft on Close — silent loss fix** — Typing a value into an **empty** Hours grid cell builds a **draft** clock session in **`peopleHoursManualDraftSession.ts`** (8:00 AM **`America/Chicago`** on **`work_date`**, closed span for the entered duration, `draft:people-hours:` id prefix) and opens **`DashboardMyTimeDayEditorModal`** with that draft already loaded. Previously, **`requestClose`** computed **`effectiveDirty`** from **`splitDirty`** + **`jobBidDirty`** only — so if the operator typed the value, looked at the timeline, and hit **Close** without splitting / assigning a job, **`effectiveDirty.length === 0`** and the modal called **`onClose()`** without ever running **`persistDirtyChangesAsync`**. The draft was thrown away. Worse, the People grid had already speculatively run **`saveHours(..., 0)`** in some branches to keep approve from double-counting, so the **`people_hours`** row could end up at **0** with no clock session to back it up.
+- **Fix in `DashboardMyTimeDayEditorModal.tsx`** ([`src/components/DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)) — **`requestClose`** now collects every cluster id whose sessions include an **`isDraftPeopleHoursSessionId`** member into **`draftClusterIds`** and merges them into **`dirty`** before the **`effectiveDirty`** fallback runs:
+  ```ts
+  const draftClusterIds = sessionClusters
+    .filter((c) => c.some((s) => isDraftPeopleHoursSessionId(s.id)))
+    .map((c) => sessionClusterId(c))
+  const dirty = [...new Set([...splitDirty, ...jobBidDirty, ...draftClusterIds])]
+  ```
+  A draft cluster is, by definition, not in the database yet, so it must always be persisted on save. **`persistDirtyChangesAsync`** then **`INSERT`**s a real **`clock_sessions`** row (status: pending, closed) which immediately surfaces in the new **`! n`** badge on the same Hours grid cell, ready for one-click approve. The job/bid is optional and can be left blank — the modal no longer requires a job assignment to make Close persist the draft.
+- **Toast copy** — When the operator clicks the per-session **Edit** for a draft row inside the modal, the existing toast no longer says *"Close the editor to discard it"* — it now reads `This block isn't saved yet — Close will save it as a pending session that can be approved or rejected from People → Hours.` so the new behavior is discoverable from the modal itself.
+- **Why no NCNS path here** — The manual-blur draft path passes **`allowNcnsFromMyTime={false}`** (existing behavior) so the **NCNS** button is hidden. Opening My Time from the clock strip / pending session row still allows NCNS per role rules.
+- **Files** — new **[`src/lib/peopleHoursPendingByCell.ts`](src/lib/peopleHoursPendingByCell.ts)** + **[`src/lib/peopleHoursPendingByCell.test.ts`](src/lib/peopleHoursPendingByCell.test.ts)**; new **[`src/components/people/PeopleHoursPendingCellPopover.tsx`](src/components/people/PeopleHoursPendingCellPopover.tsx)**; new **[`src/components/people/PeopleHoursBulkApprovePendingModal.tsx`](src/components/people/PeopleHoursBulkApprovePendingModal.tsx)**; **[`src/pages/People.tsx`](src/pages/People.tsx)** wiring (memoized **`peopleHoursPendingByCellMap`** + **`peopleHoursPendingSummary`**, badge / banner / dot / row annotation, popover + bulk modal render); **[`src/components/DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)** **`draftClusterIds`** in **`requestClose`** + toast copy. No DB / RLS / Edge / migration / type changes — everything routes through the existing **`approve_clock_sessions`** RPC and **`clock_sessions`** **`INSERT`**.
+
+---
+
+## Latest Updates (v2.532)
+
+**Date**: 2026-05-15
+
+### Bid Board → Bid Value column — red `$` alert for missing values on sent bids
+
+- **Trigger** — a bid is sent (**`bid_date_sent`** non-empty) AND its **`outcome`** is **not** **`won`** / **`lost`** / **`started_or_complete`** (same gate as the existing **`submissionPending`** / **`bidCostsPending`** "Not yet won or lost" sections) AND **`bid_value`** is empty (**`null`**, **`0`**, negative, **`NaN`**, or unparseable string). When all three hold, the bid's **Bid Value** cell on the **Bid Board** renders a small red filled-circle button with a white **`$`** glyph in place of the usual **`—`** em-dash from **`formatBidValueShort(null)`**.
+- **Click** — calls **`openEditBid(bid, { focus: 'bidValue' })`** (which sets **`setBidFormOpen(true)`** + pre-fills all the inline state from the bid + records the pending focus target). The existing **`pendingBidFormFocus`** effect then runs after the modal mounts: it looks up **`bid-form-bid-value`** by id, calls **`focus()`** + **`select()`**, scrolls it into view (**`block: 'center'`** — works inside the modal's overflow container), and applies a transient **`#d97706`** outline + **`#fffbeb`** background that auto-clears after **1.6s** so the field is unmistakable. The focus union is extended to **`'projectName' | 'gcBuilder' | 'bidValue' | null`**. **`e.stopPropagation()`** on the button so it doesn't bubble to any row-level handler.
+- **Accessibility** — **`title`** and **`aria-label`** both read `Bid sent without a value. Click to edit and add a bid value.` Button is keyboard-focusable; pressing **Enter**/**Space** opens Edit Bid the same way.
+- **Visual** — **`#dc2626`** circle (same red as the "no bid value" chip on the Estimators tab Cost mode, **v2.531**), 18×18 px, white **`$`** glyph at **`fontWeight: 700`**. Fits inside the existing tight **`fontSize: 0.6875rem`** Bid Board row layout.
+- **Pure predicate** — **[`shouldShowEmptyBidValueAlert`](src/lib/bidBoardEmptyBidValueAlert.ts)** owns the rule, isolating it from the **`Bids.tsx`** render path so the same icon can be dropped onto other bid surfaces later (Submission & Followup, Working board) without duplicating logic. **12** unit tests in **[`bidBoardEmptyBidValueAlert.test.ts`](src/lib/bidBoardEmptyBidValueAlert.test.ts)** cover: canonical positive case, missing sent date, each terminal outcome, non-terminal outcome strings, positive number, zero, negative, **`NaN`**, empty string, whitespace, unparseable string, parseable string. Test suite total: **469** passing.
+- **Files** — new **[`src/lib/bidBoardEmptyBidValueAlert.ts`](src/lib/bidBoardEmptyBidValueAlert.ts)** + **`.test.ts`**; **[`Bids.tsx`](src/pages/Bids.tsx)** import, **`<td>`** branch in **`renderBidBoardTableRow`**, plus **`pendingBidFormFocus`** union + effect extension; **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** adds **`id="bid-form-bid-value"`** + **`htmlFor`** on the label. No DB / RLS / Edge / type changes.
+
+---
+
+## Latest Updates (v2.531)
+
+**Date**: 2026-05-15
+
+### Bids → Estimators tab — days × estimators clock-session pivot
+
+- **New tab** — **Bids** primary row, immediately to the right of **Bid Costs**. Visible to **all** roles (Bid Costs remains dev-only). Tab id `estimators`; URL `?tab=estimators`. See [`src/pages/Bids.tsx`](src/pages/Bids.tsx) (added to `BIDS_TABS`, `activeTab` union, tab-button render in all four primary-tab layout branches).
+- **Pivot** — Rows are the last **30** days (most recent at top, **America/Chicago** wall date via **`calendarYmdInAppTzFromIso`**). Columns are users that should appear as estimators:
+  - **Always included** — every non-archived user with **`role = 'estimator'`** (and name ≠ `delete`).
+  - **Also included** — any user added to **`bid_estimators_extra_users`** (org-wide augmentation list). Dev / master_technician / assistant edit this list via the **Manage columns** button on the tab; the modal lists candidates (non-archived, non-helpers, non-estimator) with a checkbox each. See **[`BidsEstimatorsExtraUsersModal.tsx`](src/components/bids/BidsEstimatorsExtraUsersModal.tsx)**.
+- **Cell content** — Each day cell stacks one line per bid the user clocked into that day:
+  - **`B{n}`** chip (clickable) → opens the existing **Bid Preview** modal via **`useBidPreview()`**. Label uses **`formatBidLedgerNumberLabel(resolveBidLedgerPrefix(serviceTypeId, ledgerPrefixMap), bid_number)`** so trade-specific prefixes from **`service_types.ledger_bid_prefix`** (v2.432) are honored.
+  - **`— N%`** — `N = userHoursThatDay / bidAllTimeHours × 100`, rounded to integer. Denominator is the bid's **lifetime** team clock time across the entire company (matches "how much of this bid's total effort did this estimator contribute on this day"). Tooltip shows full hours: `B123 · Project — 2.0h of 25.0h total (8%)`.
+  - Per-day per-user entries sorted by hoursOnDay desc, then bid id (stable).
+- **Today's row** highlighted with a warm background (`#fffbeb`) to make it scannable.
+- **Session filter** — Excludes **rejected** and **revoked** sessions (matches the existing `bidBoardWeeklyEstimatorLaborCost.ts` semantics); includes **pending** and **approved**. Open sessions (`clocked_out_at IS NULL`) clip at **`now()`** so an actively-running clock contributes correctly.
+- **Server-side aggregation** — Two **SECURITY DEFINER** RPCs in migration **[`20260515102040_bid_estimators_tab.sql`](supabase/migrations/20260515102040_bid_estimators_tab.sql)** expose only the aggregated numbers, so non pay-access roles (estimator, primary, helpers, subcontractor, superintendent) can read the pivot without unlocking direct `clock_sessions` SELECT on other users' rows:
+  - **`list_bid_estimators_window_hours(p_user_ids uuid[], p_start_date date, p_end_date date)`** → per `(user_id, bid_id, work_date)` decimal hours inside the visible window.
+  - **`list_bid_estimators_all_time_hours(p_bid_ids uuid[])`** → lifetime decimal hours per bid (denominator).
+- **Pure helpers** — **[`src/lib/bidEstimatorsTab.ts`](src/lib/bidEstimatorsTab.ts)** owns the window-day list, the pivot folding logic, % formatting, and hours formatting. Covered by 14 unit tests in **[`bidEstimatorsTab.test.ts`](src/lib/bidEstimatorsTab.test.ts)**.
+- **Schema** — Migration **`20260515102040_bid_estimators_tab.sql`** also creates **`bid_estimators_extra_users(user_id PK, added_at, added_by)`** with RLS: authenticated read; dev / master_technician / assistant insert/delete (inlined role check — `is_dev_or_master_or_assistant()` was redefined to include `'primary'` historically, so this table's policy keeps `primary` out intentionally).
+- **Why this denominator** — Captured the user's intent ("what % of the total time that was spent on a bid by everyone's total session that session represented"): the % shows each estimator's share of the bid's overall effort on a per-day basis. Useful for reading contribution density at a glance — a 40% chip on Tuesday for Estimator A on Bid B means A drove ~40% of all the time ever spent on Bid B during that single day.
+- **Files** — Tab UI **[`BidsEstimatorsTab.tsx`](src/components/bids/BidsEstimatorsTab.tsx)** (table render + RPC fetch + bid label fetch); column-manager **[`BidsEstimatorsExtraUsersModal.tsx`](src/components/bids/BidsEstimatorsExtraUsersModal.tsx)**; pure lib **[`bidEstimatorsTab.ts`](src/lib/bidEstimatorsTab.ts)**; migration **[`20260515102040_bid_estimators_tab.sql`](supabase/migrations/20260515102040_bid_estimators_tab.sql)**; **[`Bids.tsx`](src/pages/Bids.tsx)** wiring.
+
 ---
 
 ## Latest Updates (v2.530)

@@ -8,6 +8,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../lib/supabase'
 import { loadJsPDF } from '../lib/loadJsPDF'
 import { compareBidsForBidBoardDueDate } from '../lib/compareBidsForBidBoardDueDate'
+import { shouldShowEmptyBidValueAlert } from '../lib/bidBoardEmptyBidValueAlert'
 import {
   buildOutcomeChangeBidNoteBody,
   normalizedOutcomePayload,
@@ -61,6 +62,7 @@ import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from '../component
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { BidWorkingBoardArchivedModal } from '../components/bids/BidWorkingBoardArchivedModal'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
+import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { BidSubmissionFollowupExpandableDetails } from '../components/bids/BidSubmissionFollowupExpandableDetails'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 import { Database } from '../types/database'
@@ -1383,7 +1385,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1472,7 +1474,7 @@ export default function Bids() {
   bidsForBoardUnreadRef.current = bids
   const [staffOutcomeDrilldown, setStaffOutcomeDrilldown] = useState<StaffOutcomeDrilldownState | null>(null)
   const [bidFormOpen, setBidFormOpen] = useState(false)
-  const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | null>(null)
+  const [pendingBidFormFocus, setPendingBidFormFocus] = useState<'projectName' | 'gcBuilder' | 'bidValue' | null>(null)
   const [editingBid, setEditingBid] = useState<BidWithBuilder | null>(null)
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null)
   const [viewingGcBuilder, setViewingGcBuilder] = useState<GcBuilder | null>(null)
@@ -2258,11 +2260,35 @@ export default function Bids() {
     if (!bidFormOpen || !pendingBidFormFocus) return
     const which = pendingBidFormFocus
     const timeoutId = window.setTimeout(() => {
-      const elId = which === 'projectName' ? 'bid-form-project-name' : 'bid-form-gc-builder'
+      const elId =
+        which === 'projectName'
+          ? 'bid-form-project-name'
+          : which === 'bidValue'
+            ? 'bid-form-bid-value'
+            : 'bid-form-gc-builder'
       const el = document.getElementById(elId)
       if (el instanceof HTMLElement) {
         el.focus()
+        if (el instanceof HTMLInputElement) {
+          el.select()
+        }
         el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        // Brief amber highlight so the user's eye lands on the field after the
+        // modal opens. Restore prior inline styles after ~1.6s.
+        const prevOutline = el.style.outline
+        const prevOutlineOffset = el.style.outlineOffset
+        const prevBackground = el.style.background
+        const prevTransition = el.style.transition
+        el.style.transition = 'background-color 0.3s ease, outline-color 0.3s ease'
+        el.style.outline = '2px solid #d97706'
+        el.style.outlineOffset = '2px'
+        el.style.background = '#fffbeb'
+        window.setTimeout(() => {
+          el.style.outline = prevOutline
+          el.style.outlineOffset = prevOutlineOffset
+          el.style.background = prevBackground
+          el.style.transition = prevTransition
+        }, 1600)
       }
       setPendingBidFormFocus(null)
     }, 50)
@@ -7881,7 +7907,7 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -8929,7 +8955,7 @@ export default function Bids() {
     setError(null)
   }
 
-  function openEditBid(bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' }) {
+  function openEditBid(bid: BidWithBuilder, opts?: { focus?: 'projectName' | 'gcBuilder' | 'bidValue' }) {
     clearBidDateSentAttestationFlow()
     setEditingBid(bid)
     setDriveLink(bid.drive_link ?? '')
@@ -9889,6 +9915,26 @@ export default function Bids() {
       </button>
     ) : null
 
+  const bidsEstimatorsTabButton = (
+    <button
+      type="button"
+      onClick={() => {
+        setActiveTab('estimators')
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'estimators')
+          return next
+        })
+      }}
+      style={{
+        ...tabStyle(activeTab === 'estimators'),
+        ...bidsPrimaryTabMobileBidCostsRowStyle,
+      }}
+    >
+      Estimators
+    </button>
+  )
+
   const submissionUnsent = filteredBidsForSubmission.filter(
     (b) => bidEligibleForWorkingBoardArchive(b) && !b.working_board_archived_at,
   )
@@ -10650,7 +10696,37 @@ export default function Bids() {
           })()}
         </td>
         <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
-          {formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)}
+          {shouldShowEmptyBidValueAlert(bid) ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                openEditBid(bid, { focus: 'bidValue' })
+              }}
+              title="Bid sent without a value. Click to edit and add a bid value."
+              aria-label="Bid sent without a value. Click to edit and add a bid value."
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 18,
+                height: 18,
+                padding: 0,
+                border: 'none',
+                background: '#dc2626',
+                color: '#fff',
+                borderRadius: 999,
+                cursor: 'pointer',
+                fontSize: '0.6875rem',
+                fontWeight: 700,
+                lineHeight: 1,
+              }}
+            >
+              <span aria-hidden>$</span>
+            </button>
+          ) : (
+            formatBidValueShort(bid.bid_value != null ? Number(bid.bid_value) : null)
+          )}
         </td>
         <td style={{ padding: '0.0625rem', textAlign: 'center', fontSize: '0.6875rem', lineHeight: 1.35 }}>
           {(() => {
@@ -11234,6 +11310,7 @@ export default function Bids() {
                   {bidsWorkingTabButton}
                 </div>
                 {bidsBidCostsTabButton}
+                {bidsEstimatorsTabButton}
               </>
             ) : (
               <>
@@ -11267,6 +11344,7 @@ export default function Bids() {
                 </button>
                 {bidsWorkingTabButton}
                 {bidsBidCostsTabButton}
+                {bidsEstimatorsTabButton}
               </>
             )}
           </div>
@@ -11343,6 +11421,7 @@ export default function Bids() {
                       {bidsWorkingTabButton}
                     </div>
                     {bidsBidCostsTabButton}
+                    {bidsEstimatorsTabButton}
                   </>
                 ) : (
                   <>
@@ -11376,6 +11455,7 @@ export default function Bids() {
                     </button>
                     {bidsWorkingTabButton}
                     {bidsBidCostsTabButton}
+                    {bidsEstimatorsTabButton}
                   </>
                 )}
               </>
@@ -12714,6 +12794,19 @@ export default function Bids() {
             </div>
           ))}
         </div>
+      )}
+
+      {/* Estimators Tab - viewable by everyone */}
+      {activeTab === 'estimators' && (
+        <BidsEstimatorsTab
+          active={activeTab === 'estimators'}
+          viewerRole={myRole}
+          onOpenBidPreview={(bidId) => {
+            const b = bids.find((x) => x.id === bidId)
+            if (b) bidPreview?.openBidPreviewFromBid(b)
+            else void bidPreview?.openBidPreview(bidId)
+          }}
+        />
       )}
 
       {/* Counts Tab */}
