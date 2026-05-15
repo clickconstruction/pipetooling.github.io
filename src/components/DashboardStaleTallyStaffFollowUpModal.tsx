@@ -505,6 +505,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
         usersOptions={[]}
         tallySelfService
         tallyActAsUserId={allocRow?.target_user_id ?? null}
+        tallyActAsDisplayName={allocRow?.target_name?.trim() ? allocRow.target_name.trim() : null}
         nicknameByDebitCard={nicknameByDebitCard}
         nicknameByAccount={nicknameByAccount}
         recentPersonPicksStorageKey={null}

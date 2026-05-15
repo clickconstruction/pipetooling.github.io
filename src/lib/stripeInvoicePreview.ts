@@ -1,3 +1,28 @@
+/** Maps preview line to DB fixture or single-line modes (override / fallback). Edge `preview-stripe-invoice` / `invoice_preview`. */
+export type StripeInvoiceLineSource =
+  | { kind: 'fixture'; jobs_ledger_fixture_id: string }
+  | { kind: 'single_line' }
+
+export type StripeInvoicePreviewLine = {
+  description: string
+  amount: number
+  quantity?: number | null
+  source?: StripeInvoiceLineSource
+}
+
+function parseStripeLineSource(raw: unknown): StripeInvoiceLineSource | undefined {
+  if (raw == null || typeof raw !== 'object') return undefined
+  const s = raw as Record<string, unknown>
+  if (s.kind === 'fixture' && typeof s.jobs_ledger_fixture_id === 'string') {
+    const id = s.jobs_ledger_fixture_id.trim()
+    if (id.length > 0) return { kind: 'fixture', jobs_ledger_fixture_id: id }
+  }
+  if (s.kind === 'single_line') {
+    return { kind: 'single_line' }
+  }
+  return undefined
+}
+
 /** Line items + totals for UI (amounts in cents). Same shape as Edge `invoice_preview`. */
 export type StripeInvoiceLinesSnapshot = {
   currency: string
@@ -12,7 +37,7 @@ export type StripeInvoiceLinesSnapshot = {
   due_date?: number | null
   /** Customer-facing “From” name (business profile / account). */
   seller_name?: string | null
-  lines: Array<{ description: string; amount: number; quantity?: number | null }>
+  lines: StripeInvoicePreviewLine[]
   /** Finalized Stripe invoice number (no # prefix). */
   invoice_number?: string | null
   customer_name?: string | null
@@ -34,7 +59,7 @@ export function parseStripeInvoiceLinesSnapshot(raw: unknown): StripeInvoiceLine
   if (typeof total !== 'number' || Number.isNaN(total)) return null
   if (typeof amount_due !== 'number' || Number.isNaN(amount_due)) return null
   if (!Array.isArray(o.lines)) return null
-  const lines: Array<{ description: string; amount: number; quantity?: number | null }> = []
+  const lines: StripeInvoicePreviewLine[] = []
   for (const item of o.lines) {
     if (item == null || typeof item !== 'object') return null
     const li = item as Record<string, unknown>
@@ -48,8 +73,10 @@ export function parseStripeInvoiceLinesSnapshot(raw: unknown): StripeInvoiceLine
         : typeof qRaw === 'number' && !Number.isNaN(qRaw)
           ? qRaw
           : null
-    const row: { description: string; amount: number; quantity?: number | null } = { description: desc, amount: amt }
+    const row: StripeInvoicePreviewLine = { description: desc, amount: amt }
     if (quantity !== undefined) row.quantity = quantity
+    const source = parseStripeLineSource(li.source)
+    if (source !== undefined) row.source = source
     lines.push(row)
   }
   const ap = o.amount_paid

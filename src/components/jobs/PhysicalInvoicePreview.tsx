@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
 import type { PhysicalInvoiceDocument } from '../../lib/physicalInvoiceDocument'
+import { mergeBillCustomerInvoiceDescriptionIssueChrome } from '../../lib/billCustomerInvoiceDescriptionIssueChrome'
+import { anyLineSegmentsStartWithLowercase } from '../../lib/invoiceLineDescriptionLeadingLowercase'
 
 const metaLabel: CSSProperties = {
   padding: '0.15rem 0.75rem 0.15rem 0',
@@ -64,14 +66,44 @@ const lineItemsSectionTitleTh: CSSProperties = {
   textAlign: 'left',
 }
 
+/** Bill Customer preview only: matches lowercase-leading-line hint (not on customer PDF). */
+const proseLowercaseIssueShell: CSSProperties = {
+  background: '#fef2f2',
+  border: '1px solid #f87171',
+  borderRadius: 4,
+  padding: '0.35rem 0.5rem',
+}
+
+function lineItemDescriptionCellIfFlagged(base: CSSProperties, flagged: boolean): CSSProperties {
+  return mergeBillCustomerInvoiceDescriptionIssueChrome(base, flagged)
+}
+
+const physicalLineDescClickableStyle: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  font: 'inherit',
+  color: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
+  whiteSpace: 'pre-wrap',
+}
+
 function LineItemsTable({
   title,
   rows,
   mergeTitleIntoHeader = false,
+  emphasizeIssues = false,
+  onRowDescriptionClick,
 }: {
   title: string
   rows: Array<{ description: string; qty: number; unitPrice: number; amount: number }>
   mergeTitleIntoHeader?: boolean
+  emphasizeIssues?: boolean
+  onRowDescriptionClick?: (rowIndex: number) => void
 }) {
   if (!rows.length) return null
   return (
@@ -91,18 +123,35 @@ function LineItemsTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${title}-${i}`}>
-              <td style={lineItemDescCell}>{r.description}</td>
-              <td style={lineItemNumCell}>{r.qty}</td>
-              <td style={lineItemNumCell}>
-                {r.unitPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-              </td>
-              <td style={lineItemNumCell}>
-                {r.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-              </td>
-            </tr>
-          ))}
+          {rows.map((r, i) => {
+            const flagged = emphasizeIssues && anyLineSegmentsStartWithLowercase(r.description)
+            const clickable = Boolean(onRowDescriptionClick)
+            return (
+              <tr key={`${title}-${i}`}>
+                <td style={lineItemDescriptionCellIfFlagged(lineItemDescCell, flagged)}>
+                  {clickable ? (
+                    <button
+                      type="button"
+                      aria-label={`Edit ${title} line description`}
+                      onClick={() => onRowDescriptionClick?.(i)}
+                      style={physicalLineDescClickableStyle}
+                    >
+                      {r.description}
+                    </button>
+                  ) : (
+                    r.description
+                  )}
+                </td>
+                <td style={lineItemNumCell}>{r.qty}</td>
+                <td style={lineItemNumCell}>
+                  {r.unitPrice.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                </td>
+                <td style={lineItemNumCell}>
+                  {r.amount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>
@@ -112,17 +161,30 @@ function LineItemsTable({
 export function PhysicalInvoicePreview({
   document: d,
   hideIssuerContact = false,
+  emphasizeLowercaseLeadingDescriptions = false,
+  detailedServiceLineDescriptionClick,
+  detailedMaterialLineDescriptionClick,
 }: {
   document: PhysicalInvoiceDocument
-  /** Bill Customer Physical: omit issuer company name + issuer address/phone/email in detailed layout only. */
+  /** Bill Customer Physical detailed layout: click service line description to edit fixture. */
+  detailedServiceLineDescriptionClick?: (rowIndex: number) => void
+  /** Bill Customer Physical detailed layout: click material line description to edit material. */
+  detailedMaterialLineDescriptionClick?: (rowIndex: number) => void
+  /** Omit issuer company name + issuer address/phone/email in detailed layout only. */
   hideIssuerContact?: boolean
+  /** Bill Customer only: tint rows / prose that match lowercase-leading invoice line hint (not in PDF). */
+  emphasizeLowercaseLeadingDescriptions?: boolean
 }) {
+  const emphasize = emphasizeLowercaseLeadingDescriptions
+
   if (d.layout === 'detailed') {
     const issuer = (d.issuer.companyName ?? '').trim()
     const taglineTrim = (d.issuer.tagline ?? '').trim()
     const licenseTrim = (d.issuer.licenseLine ?? '').trim()
     const hasIssuerTail = Boolean(taglineTrim || licenseTrim)
     const hasLegal = Boolean(d.footer.trim())
+    const narrativeNeedsIssueEmphasis =
+      emphasize && d.narrativeTitle.trim().length > 0 && anyLineSegmentsStartWithLowercase(d.narrativeTitle)
     return (
       <div
         style={{
@@ -151,7 +213,15 @@ export function PhysicalInvoicePreview({
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 160px', minWidth: 0 }}>
             {d.narrativeTitle.trim() ? (
-              <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
+              <div
+                style={{
+                  fontSize: '0.875rem',
+                  color: '#111827',
+                  whiteSpace: 'pre-wrap',
+                  lineHeight: 1.35,
+                  ...(narrativeNeedsIssueEmphasis ? proseLowercaseIssueShell : {}),
+                }}
+              >
                 {d.narrativeTitle}
               </div>
             ) : null}
@@ -247,8 +317,19 @@ export function PhysicalInvoicePreview({
           </div>
         ) : null}
 
-        <LineItemsTable title="Services" rows={d.serviceLines} mergeTitleIntoHeader />
-        <LineItemsTable title="Materials" rows={d.materialLines} />
+        <LineItemsTable
+          title="Services"
+          rows={d.serviceLines}
+          mergeTitleIntoHeader
+          emphasizeIssues={emphasize}
+          onRowDescriptionClick={detailedServiceLineDescriptionClick}
+        />
+        <LineItemsTable
+          title="Materials"
+          rows={d.materialLines}
+          emphasizeIssues={emphasize}
+          onRowDescriptionClick={detailedMaterialLineDescriptionClick}
+        />
 
         <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#111827' }}>
           <strong>Subtotal:</strong> {d.subtotalFormatted}
@@ -386,7 +467,15 @@ export function PhysicalInvoicePreview({
       {d.lineDescription.trim() ? (
         <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #e5e7eb' }}>
           <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Description</div>
-          <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
+          <div
+            style={{
+              fontSize: '0.875rem',
+              color: '#111827',
+              whiteSpace: 'pre-wrap',
+              lineHeight: 1.35,
+              ...(emphasize && anyLineSegmentsStartWithLowercase(d.lineDescription) ? proseLowercaseIssueShell : {}),
+            }}
+          >
             {d.lineDescription}
           </div>
         </div>

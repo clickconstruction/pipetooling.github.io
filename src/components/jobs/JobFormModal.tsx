@@ -37,6 +37,7 @@ import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billin
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { prepareBilledInvoicesBeforeJobRevertToReadyToBill } from '../../lib/voidStripeInvoiceForRevert'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { findInvoiceWithJobFromJobs } from '../../lib/invoiceWithJobFromJobList'
 import { setReturnEditJobFromStages } from '../../lib/returnEditJobFromStages'
 import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
 import { invoiceCreatedCalendarDayOffset } from '../../lib/invoiceCreatedRelative'
@@ -68,6 +69,7 @@ import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { laborItemsSubtotal } from '../../lib/peopleLaborJobItemLineCost'
 import {
+  buildFixtureStripeLineDescriptionForStripe,
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
 } from '../../lib/stripeInvoiceLineDescription'
@@ -616,7 +618,14 @@ export default function JobFormModal({
     const jobId = editingIdRef.current
     if (!jobId) return
     void fetchJobWithDetailsById(jobId).then((found) => {
-      if (found) setEditing(found)
+      if (found) {
+        setEditing(found)
+        setBillViewInvoice((prev) => {
+          if (!prev) return null
+          const merged = findInvoiceWithJobFromJobs([found], prev.id)
+          return merged ?? prev
+        })
+      }
     })
   }, [])
 
@@ -753,6 +762,25 @@ export default function JobFormModal({
   ])
   /** User opened "Add scope or notes" for this fixture row id (persists while row exists). */
   const [fixtureScopeExpandedById, setFixtureScopeExpandedById] = useState<Record<string, boolean>>({})
+  const [stripeFixturePreviewRowId, setStripeFixturePreviewRowId] = useState<string | null>(null)
+  const stripeFixturePreviewRow = useMemo(
+    () =>
+      stripeFixturePreviewRowId
+        ? fixtures.find((f) => f.id === stripeFixturePreviewRowId) ?? null
+        : null,
+    [fixtures, stripeFixturePreviewRowId],
+  )
+  useEffect(() => {
+    if (!stripeFixturePreviewRowId) return
+    const onKeyDown = (ev: WindowEventMap['keydown']) => {
+      if (ev.key === 'Escape') {
+        ev.preventDefault()
+        setStripeFixturePreviewRowId(null)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [stripeFixturePreviewRowId])
   const jobTotalBidDollars = useMemo(() => revenueDollarsFromFixtures(fixtures), [fixtures])
   const [teamMemberIds, setTeamMemberIds] = useState<string[]>([])
   const newJobImportBlockedByContent = useMemo(() => {
@@ -2560,6 +2588,7 @@ export default function JobFormModal({
       delete next[id]
       return next
     })
+    setStripeFixturePreviewRowId((cur) => (cur === id ? null : cur))
     setFixtures((prev) => (prev.length <= 1 ? prev : prev.filter((r) => r.id !== id)))
   }
 
@@ -4208,15 +4237,43 @@ export default function JobFormModal({
                           {scopeExpanded ? (
                             <>
                               <div
-                                id={stripeLenDescId}
-                                aria-live="polite"
                                 style={{
-                                  fontSize: '0.75rem',
-                                  color: stripeLineOverLimit ? '#d97706' : '#6b7280',
+                                  display: 'flex',
+                                  flexWrap: 'wrap',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'baseline',
+                                  gap: '0.5rem',
                                   marginBottom: 6,
                                 }}
                               >
-                                ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
+                                <div
+                                  id={stripeLenDescId}
+                                  aria-live="polite"
+                                  style={{
+                                    fontSize: '0.75rem',
+                                    color: stripeLineOverLimit ? '#d97706' : '#6b7280',
+                                  }}
+                                >
+                                  ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
+                                </div>
+                                <button
+                                  type="button"
+                                  aria-haspopup="dialog"
+                                  aria-controls="stripe-fixture-line-preview-dialog"
+                                  onClick={() => setStripeFixturePreviewRowId(row.id)}
+                                  style={{
+                                    padding: '0.25rem 0',
+                                    border: 'none',
+                                    background: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8125rem',
+                                    color: '#2563eb',
+                                    textDecoration: 'underline',
+                                    textUnderlineOffset: '2px',
+                                  }}
+                                >
+                                  Stripe preview
+                                </button>
                               </div>
                               <label htmlFor={descFieldId} style={FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN}>
                                 Optional scope or notes for this line
@@ -4248,30 +4305,51 @@ export default function JobFormModal({
                               style={{
                                 display: 'flex',
                                 flexWrap: 'wrap',
+                                justifyContent: 'space-between',
                                 alignItems: 'baseline',
                                 gap: '0.35rem',
                                 marginBottom: 4,
                                 fontSize: '0.75rem',
                               }}
                             >
-                              <span
-                                id={stripeLenDescId}
-                                aria-live="polite"
-                                style={{ color: stripeLineOverLimit ? '#d97706' : '#6b7280' }}
-                              >
-                                ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
-                              </span>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.35rem' }}>
+                                <span
+                                  id={stripeLenDescId}
+                                  aria-live="polite"
+                                  style={{ color: stripeLineOverLimit ? '#d97706' : '#6b7280' }}
+                                >
+                                  ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
+                                </span>
+                                <button
+                                  type="button"
+                                  aria-expanded={false}
+                                  aria-controls={descFieldId}
+                                  aria-describedby={stripeLenDescId}
+                                  onClick={() =>
+                                    setFixtureScopeExpandedById((prev) => ({
+                                      ...prev,
+                                      [row.id]: true,
+                                    }))
+                                  }
+                                  style={{
+                                    padding: '0.25rem 0',
+                                    border: 'none',
+                                    background: 'none',
+                                    cursor: 'pointer',
+                                    fontSize: '0.8125rem',
+                                    color: '#2563eb',
+                                    textDecoration: 'underline',
+                                    textUnderlineOffset: '2px',
+                                  }}
+                                >
+                                  Add scope or notes
+                                </button>
+                              </div>
                               <button
                                 type="button"
-                                aria-expanded={false}
-                                aria-controls={descFieldId}
-                                aria-describedby={stripeLenDescId}
-                                onClick={() =>
-                                  setFixtureScopeExpandedById((prev) => ({
-                                    ...prev,
-                                    [row.id]: true,
-                                  }))
-                                }
+                                aria-haspopup="dialog"
+                                aria-controls="stripe-fixture-line-preview-dialog"
+                                onClick={() => setStripeFixturePreviewRowId(row.id)}
                                 style={{
                                   padding: '0.25rem 0',
                                   border: 'none',
@@ -4283,7 +4361,7 @@ export default function JobFormModal({
                                   textUnderlineOffset: '2px',
                                 }}
                               >
-                                Add scope or notes
+                                Stripe preview
                               </button>
                             </div>
                           )}
@@ -6025,6 +6103,98 @@ export default function JobFormModal({
           </div>
         </div>
       )}
+      {stripeFixturePreviewRow && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
+          }}
+          onClick={() => setStripeFixturePreviewRowId(null)}
+        >
+          <div
+            id="stripe-fixture-line-preview-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="stripe-fixture-line-preview-title"
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: 320,
+              maxWidth: 560,
+              maxHeight: '90vh',
+              overflow: 'auto',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2
+              id="stripe-fixture-line-preview-title"
+              style={{
+                margin: '0 0 0.75rem',
+                fontSize: '1.125rem',
+                fontWeight: 600,
+                color: '#111827',
+                textAlign: 'center',
+              }}
+            >
+              Stripe line description (this row)
+            </h2>
+            <div
+              style={{
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                fontSize: '0.875rem',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                padding: '0.75rem',
+                background: '#f9fafb',
+                borderRadius: 6,
+                border: '1px solid #e5e7eb',
+                color: '#111827',
+                marginBottom: '1rem',
+              }}
+            >
+              {buildFixtureStripeLineDescriptionForStripe(
+                stripeFixturePreviewRow.name,
+                stripeFixturePreviewRow.line_description,
+              )}
+            </div>
+            <p
+              style={{
+                margin: '0 0 1rem',
+                fontSize: '0.8125rem',
+                color: '#6b7280',
+                lineHeight: 1.5,
+                textAlign: 'center',
+              }}
+            >
+              &quot;line item&quot; - &quot;scope notes&quot;
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setStripeFixturePreviewRowId(null)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  background: '#2563eb',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {unlinkMercuryConfirmRowId && (
         <div
           style={{
@@ -6598,6 +6768,9 @@ export default function JobFormModal({
         onAfterOobUnwindSuccess={() => {
           const jobId = editingIdRef.current
           if (jobId) refreshEditingJobAndHydratePayments(jobId)
+        }}
+        onAfterVoidStripeInvoiceSuccess={() => {
+          void onSavedRef.current?.()
         }}
         onClose={() => {
           const jobId = editing?.id ?? null

@@ -13,6 +13,7 @@ import {
   stripeInvoiceFooterFromStripe,
 } from '../_shared/stripeInvoiceMemoFromStripe.ts'
 import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
+import { stripeInvoiceLinesDataForFixtureOrderDisplay } from '../_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -197,7 +198,7 @@ serve(async (req) => {
     const stripe = new Stripe(stripeSecret, { apiVersion: '2024-06-20' })
     const inv = await stripe.invoices.retrieve(stripeInvoiceId, { expand: ['customer'] })
     const listed = await stripe.invoices.listLineItems(stripeInvoiceId, { limit: 100 })
-    const lines = linesPayloadFromLineItems(listed.data)
+    const lines = linesPayloadFromLineItems(stripeInvoiceLinesDataForFixtureOrderDisplay(listed.data))
 
     const num = inv.number
     const cname = inv.customer_name

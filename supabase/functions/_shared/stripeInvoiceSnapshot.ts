@@ -1,4 +1,5 @@
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
+import { stripeInvoiceLinesDataForFixtureOrderDisplay } from './stripeInvoiceLinesForFixtureOrderDisplay.ts'
 
 /** Plain JSON shape aligned with app `StripeInvoiceLinesSnapshot` (amounts in cents). */
 export function stripeInvoiceToPreviewPayload(inv: Stripe.Invoice): {
@@ -11,7 +12,7 @@ export function stripeInvoiceToPreviewPayload(inv: Stripe.Invoice): {
   customer_name: string | null
   customer_email: string | null
 } {
-  const rawLines = inv.lines?.data ?? []
+  const rawLines = stripeInvoiceLinesDataForFixtureOrderDisplay(inv.lines?.data ?? [])
   const lines = rawLines.map((li) => ({
     description: li.description ?? '',
     amount: typeof li.amount === 'number' ? li.amount : 0,

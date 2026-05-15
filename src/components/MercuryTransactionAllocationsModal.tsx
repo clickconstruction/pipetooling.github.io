@@ -76,6 +76,8 @@ export type MercuryTransactionAllocationsModalProps = {
    * (linked card must belong to them).
    */
   tallyActAsUserId?: string | null
+  /** Display name for schedule/clock subsection titles when staff assign for that user (ignored if not acting as another person). */
+  tallyActAsDisplayName?: string | null
 }
 
 type SplitMode = 'dollars' | 'percent'
@@ -121,6 +123,12 @@ function dispatchScheduledJobToSearchRow(d: DispatchScheduledJobForAssign): JobS
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
+}
+
+/** English possessive for tally headings: "Alex" → "Alex's". */
+function tallySchedulePossessiveName(displayName: string): string {
+  const t = displayName.trim()
+  return t === '' ? '' : `${t}'s`
 }
 
 function lineDisplayDollars(ln: SplitLine, displayTotal: number): number | null {
@@ -283,6 +291,7 @@ export function MercuryTransactionAllocationsModal({
   recentPersonPicksStorageKey,
   tallySelfService = false,
   tallyActAsUserId = null,
+  tallyActAsDisplayName = null,
 }: MercuryTransactionAllocationsModalProps) {
   const { showToast } = useToastContext()
   const { user: authUser } = useAuth()
@@ -310,40 +319,69 @@ export function MercuryTransactionAllocationsModal({
     tallySelfService && transaction?.posted_at && (tallyActAsUserId ?? authUser?.id),
   )
 
+  const scheduleForOtherPerson = Boolean(
+    tallyActAsUserId && authUser?.id && tallyActAsUserId !== authUser.id,
+  )
+
+  const tallyOtherPossessive = scheduleForOtherPerson
+    ? tallySchedulePossessiveName(tallyActAsDisplayName ?? '')
+    : ''
+  const tallyUseTheirFallback = scheduleForOtherPerson && tallyOtherPossessive === ''
+
   const tallyScheduleHeadings = useMemo(() => {
     if (!transaction?.posted_at) {
       return {
-        scheduleTitle: 'Jobs on my schedule',
-        scheduleDateLine: null as string | null,
-        clockSessionsTitle: 'Clock sessions that day',
+        scheduleTitle: scheduleForOtherPerson
+          ? tallyUseTheirFallback
+            ? 'Jobs on their schedule'
+            : `Jobs on ${tallyOtherPossessive} schedule`
+          : 'Jobs on my schedule',
+        clockSessionsTitle: scheduleForOtherPerson
+          ? tallyUseTheirFallback
+            ? 'Their clock sessions that day'
+            : `${tallyOtherPossessive} clock sessions that day`
+          : 'Clock sessions that day',
       }
     }
     const ms = new Date(transaction.posted_at).getTime()
     if (!Number.isFinite(ms)) {
       return {
-        scheduleTitle: 'Jobs on my schedule',
-        scheduleDateLine: null,
-        clockSessionsTitle: 'Clock sessions that day',
+        scheduleTitle: scheduleForOtherPerson
+          ? tallyUseTheirFallback
+            ? 'Jobs on their schedule'
+            : `Jobs on ${tallyOtherPossessive} schedule`
+          : 'Jobs on my schedule',
+        clockSessionsTitle: scheduleForOtherPerson
+          ? tallyUseTheirFallback
+            ? 'Their clock sessions that day'
+            : `${tallyOtherPossessive} clock sessions that day`
+          : 'Clock sessions that day',
       }
     }
     const postedYmd = denverCalendarDayKey(ms)
     const todayYmd = denverCalendarDayKey(Date.now())
     const isToday = postedYmd === todayYmd
-    const dateLine = isToday
-      ? null
-      : new Intl.DateTimeFormat('en-US', {
-          timeZone: APP_CALENDAR_TZ,
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-        }).format(new Date(ms))
+    if (scheduleForOtherPerson) {
+      if (tallyUseTheirFallback) {
+        return {
+          scheduleTitle: isToday ? 'Jobs on their schedule' : 'Jobs on their schedule that day',
+          clockSessionsTitle: isToday ? 'Their clock sessions today' : 'Their clock sessions that day',
+        }
+      }
+      return {
+        scheduleTitle: isToday
+          ? `Jobs on ${tallyOtherPossessive} schedule`
+          : `Jobs on ${tallyOtherPossessive} schedule that day`,
+        clockSessionsTitle: isToday
+          ? `${tallyOtherPossessive} clock sessions today`
+          : `${tallyOtherPossessive} clock sessions that day`,
+      }
+    }
     return {
       scheduleTitle: isToday ? 'Jobs on my schedule' : 'Jobs on my schedule that day',
-      scheduleDateLine: dateLine,
       clockSessionsTitle: isToday ? 'Clock sessions today' : 'Clock sessions that day',
     }
-  }, [transaction?.posted_at])
+  }, [transaction?.posted_at, scheduleForOtherPerson, tallyUseTheirFallback, tallyOtherPossessive])
 
   // Re-seed only when the modal opens or the transaction / user identity changes — not when the parent
   // passes new object/array refs for the same row (e.g. stale tally follow-up rebuilds `transaction` each render).
@@ -372,8 +410,7 @@ export function MercuryTransactionAllocationsModal({
     if (!open) return
     const t = setTimeout(() => {
       const q = jobSearch.trim()
-      const staffTallyAsUser = Boolean(tallySelfService && tallyActAsUserId)
-      if (q.length < 2 && !staffTallyAsUser) {
+      if (q.length <= 2) {
         setJobResults([])
         setJobSearchLoading(false)
         return
@@ -899,6 +936,67 @@ export function MercuryTransactionAllocationsModal({
           </table>
         </div>
 
+        <div style={{ marginBottom: '1rem' }}>
+        <input
+          type="text"
+          value={jobSearch}
+          onChange={(e) => setJobSearch(e.target.value)}
+          placeholder="Transaction's Job Assignment (to search type 3+ characters)"
+          aria-label="Search jobs for transaction assignment"
+          style={{ width: '100%', padding: '8px 10px', marginBottom: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
+        />
+        {lines.length === 0 ? (
+          <div
+            style={{
+              fontSize: '0.8125rem',
+              marginBottom: '0.5rem',
+              color: '#6b7280',
+              textAlign: 'center',
+            }}
+          >
+            Adding multiple jobs splits the cost across those jobs. This happens rarely.
+          </div>
+        ) : null}
+        {jobSearch.trim().length > 2 && jobSearchLoading ? (
+          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.35rem' }}>Searching…</div>
+        ) : null}
+        {jobSearch.trim().length > 2 && jobResults.length > 0 ? (
+          <div
+            style={{
+              maxHeight: 140,
+              overflow: 'auto',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+              marginBottom: 0,
+              fontSize: '0.8125rem',
+            }}
+          >
+            {jobResults.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => addJobLine(r)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '0.45rem 0.65rem',
+                  border: 'none',
+                  borderBottom: '1px solid #f3f4f6',
+                  background: 'white',
+                  cursor: 'pointer',
+                }}
+              >
+                <span style={{ fontWeight: 600 }}>
+                  {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id ?? null, r.hcp_number, r.job_name)}
+                </span>
+                <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        </div>
+
         {!tallySelfService && showAttributionHint ? (
           <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
             Legacy person (roster): <strong>{legacyPersonDisplayName}</strong>. Pick a user below to replace with a login, or remove attribution.
@@ -999,14 +1097,17 @@ export function MercuryTransactionAllocationsModal({
             ) : null}
 
             <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#475569',
+                  marginBottom: '0.35rem',
+                  textAlign: 'center',
+                }}
+              >
                 {tallyScheduleHeadings.scheduleTitle}
               </div>
-              {tallyScheduleHeadings.scheduleDateLine ? (
-                <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: '0.35rem', fontWeight: 500 }}>
-                  {tallyScheduleHeadings.scheduleDateLine}
-                </div>
-              ) : null}
               {staffDayScheduleJobs.length === 0 && !staffDayContextLoading ? (
                 <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>None on schedule</div>
               ) : (
@@ -1051,7 +1152,15 @@ export function MercuryTransactionAllocationsModal({
             </div>
 
             <div style={{ marginBottom: '0.25rem' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#475569', marginBottom: '0.35rem' }}>
+              <div
+                style={{
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
+                  color: '#475569',
+                  marginBottom: '0.35rem',
+                  textAlign: 'center',
+                }}
+              >
                 {tallyScheduleHeadings.clockSessionsTitle}
               </div>
               {staffDaySessionJobs.length === 0 && staffDaySessionBids.length === 0 && !staffDayContextLoading ? (
@@ -1103,53 +1212,6 @@ export function MercuryTransactionAllocationsModal({
             </div>
           </div>
         ) : null}
-
-        <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem', textAlign: 'center' }}>
-          Transaction's Job Assignment
-        </div>
-        <input
-          type="text"
-          value={jobSearch}
-          onChange={(e) => setJobSearch(e.target.value)}
-          placeholder="Search jobs (type 2+ characters)…"
-          style={{ width: '100%', padding: '8px 10px', marginBottom: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
-        />
-        {jobSearchLoading && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.35rem' }}>Searching…</div>}
-        {jobResults.length > 0 && (
-          <div
-            style={{
-              maxHeight: 140,
-              overflow: 'auto',
-              border: '1px solid #e5e7eb',
-              borderRadius: 4,
-              marginBottom: '0.75rem',
-              fontSize: '0.8125rem',
-            }}
-          >
-            {jobResults.map((r) => (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => addJobLine(r)}
-                style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '0.45rem 0.65rem',
-                  border: 'none',
-                  borderBottom: '1px solid #f3f4f6',
-                  background: 'white',
-                  cursor: 'pointer',
-                }}
-              >
-                <span style={{ fontWeight: 600 }}>
-                  {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id ?? null, r.hcp_number, r.job_name)}
-                </span>
-                <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
-              </button>
-            ))}
-          </div>
-        )}
 
         {lines.map((ln) => {
           const dd = lineDisplayDollars(ln, displayTotal)
@@ -1265,10 +1327,16 @@ export function MercuryTransactionAllocationsModal({
           )
         })}
 
-        <div style={{ fontSize: '0.8125rem', marginBottom: '1rem', color: lines.length > 0 ? (canSave ? '#059669' : '#b45309') : '#6b7280' }}>
-          {lines.length === 0 ? (
-            'Adding multiple jobs splits the cost across those jobs. This happens rarely.'
-          ) : displayTotal <= 0 ? (
+        {lines.length > 0 ? (
+        <div
+          style={{
+            fontSize: '0.8125rem',
+            marginBottom: '1rem',
+            color: displayTotal <= 0 ? '#6b7280' : canSave ? '#059669' : '#b45309',
+            textAlign: 'start',
+          }}
+        >
+          {displayTotal <= 0 ? (
             'Zero charge — remove job lines or adjust the transaction in Mercury.'
           ) : (
             <>
@@ -1277,6 +1345,7 @@ export function MercuryTransactionAllocationsModal({
             </>
           )}
         </div>
+        ) : null}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
           <button

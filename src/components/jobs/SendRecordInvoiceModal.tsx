@@ -9,7 +9,11 @@ import {
 } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import type { StripeInvoiceLinesSnapshot, StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
+import type {
+  StripeInvoiceLinesSnapshot,
+  StripeInvoiceLineSource,
+  StripeInvoicePreviewSuccess,
+} from '../../lib/stripeInvoicePreview'
 import {
   parseStripeInvoiceLinesSnapshot,
   parseStripeInvoicePreviewResponse,
@@ -37,6 +41,14 @@ import { StripeInvoicePreviewMeta } from './StripeInvoicePreviewMeta'
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import { PhysicalInvoicePreview } from './PhysicalInvoicePreview'
+import BillCustomerPreviewLineEditModal, {
+  type BillCustomerLineEditSession,
+} from './BillCustomerPreviewLineEditModal'
+import {
+  billableFixtureRefsInOrder,
+  billableMaterialRefsInOrder,
+  physicalPreviewRowsAreDbBacked,
+} from '../../lib/billCustomerPreviewLineRefs'
 import {
   buildPhysicalInvoiceDocument,
   buildPhysicalInvoiceEmailBodies,
@@ -68,6 +80,7 @@ import {
   type BillCustomerMemoPreset,
 } from '../../lib/billCustomerMemoPresets'
 import { fetchPhysicalInvoiceIssuerFromAppSettings } from '../../lib/physicalInvoiceIssuer'
+import { invoiceDescriptionsNeedLowercaseLeadingHint } from '../../lib/invoiceLineDescriptionLeadingLowercase'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
 
@@ -75,6 +88,19 @@ export type { JobBillingContext }
 export type { SendRecordInvoicePayload }
 
 type BillCustomerMainTab = 'stripe' | 'housecallpro' | 'physical'
+
+/** Shared copy shown above Create Stripe invoice / Send email when line wording hits the lowercase-leading check. */
+const BILL_CUSTOMER_LEADING_LOWERCASE_HINT =
+  'Some line wording starts with a lowercase letter. For many customers this invoice may be their main impression of your company—double-check if that is intentional.'
+
+const BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID = 'bill-customer-leading-lowercase-hint'
+
+const billCustomerLeadingLowercaseHintParagraphStyle: CSSProperties = {
+  margin: '0 0 0.5rem',
+  fontSize: '0.8125rem',
+  color: '#b45309',
+  lineHeight: 1.35,
+}
 
 function billCustomerTopTabButtonStyle(active: boolean): CSSProperties {
   return {
@@ -409,6 +435,11 @@ export default function SendRecordInvoiceModal({
     }
     await onAfterOobUnwindSuccessRef.current?.()
   }, [job?.id])
+
+  const handleAfterVoidStripeInvoiceSuccess = useCallback(async () => {
+    await onSuccess()
+    onClose()
+  }, [onSuccess, onClose])
 
   const activeStripeFooterPreset = stripeInvoiceFooterActivePreset(stripeInvoiceFooter)
   const physicalFooterPresets = useMemo(() => listPhysicalInvoiceFooterPresets(), [open, physicalFooterPresetsGeneration])
@@ -962,6 +993,152 @@ export default function SendRecordInvoiceModal({
       setStripeSubmitting(false)
     }
   }
+
+  const lineLeadingLowercaseHint = useMemo(() => {
+    if (!open || !job) return false
+
+    const trimmedOverride = stripeLineDescription.trim()
+    const descs: string[] = trimmedOverride
+      ? [trimmedOverride]
+      : [defaultStripeLineDescriptionFromJob(job)]
+
+    if (tab === 'stripe' && stripePreview?.lines?.length) {
+      for (const line of stripePreview.lines) {
+        descs.push(line.description)
+      }
+    }
+
+    if (tab === 'physical' && jobLedgerHasCustomerForBilling(job.customer_id)) {
+      const amt = Number(billAmountStr)
+      const previewInvId = kind === 'invoice' ? invoice?.id ?? null : ensuredInvoice?.id ?? null
+      const physDoc = buildPhysicalInvoiceDocument({
+        job: jobContextForPhysicalDoc(job, billCustomerJobDetails),
+        amountDollars: amt,
+        lineDescription: trimmedOverride,
+        physicalLineOnBillRaw: stripeLineDescription.trim(),
+        memo: externalNote,
+        footer: physicalInvoiceFooter,
+        invoiceDateYmd: sentDate.trim(),
+        dueDateYmd: stripeDueDate.trim(),
+        detailFromJob: buildPhysicalInvoiceDetailFromJob(
+          billCustomerJobDetails,
+          kind === 'invoice' ? 'invoice' : 'job',
+          previewInvId,
+        ),
+      })
+      if (physDoc) {
+        if (physDoc.lineDescription.trim()) descs.push(physDoc.lineDescription)
+        for (const row of physDoc.serviceLines) descs.push(row.description)
+        for (const row of physDoc.materialLines) descs.push(row.description)
+      }
+    }
+
+    return invoiceDescriptionsNeedLowercaseLeadingHint(descs)
+  }, [
+    open,
+    job,
+    tab,
+    stripeLineDescription,
+    stripePreview,
+    billAmountStr,
+    billCustomerJobDetails,
+    externalNote,
+    physicalInvoiceFooter,
+    sentDate,
+    stripeDueDate,
+    kind,
+    invoice?.id,
+    ensuredInvoice?.id,
+  ])
+
+  const physicalFixtureEditRefs = useMemo(
+    () => billableFixtureRefsInOrder(billCustomerJobDetails?.fixtures),
+    [billCustomerJobDetails?.fixtures],
+  )
+
+  const physicalMaterialEditRefs = useMemo(
+    () => billableMaterialRefsInOrder(billCustomerJobDetails?.materials),
+    [billCustomerJobDetails?.materials],
+  )
+
+  const physicalPreviewDbBacked = useMemo(() => {
+    const amt = Number(billAmountStr)
+    return physicalPreviewRowsAreDbBacked(
+      billCustomerJobDetails?.fixtures,
+      billCustomerJobDetails?.materials,
+      amt,
+    )
+  }, [billCustomerJobDetails?.fixtures, billCustomerJobDetails?.materials, billAmountStr])
+
+  const [lineEditSession, setLineEditSession] = useState<BillCustomerLineEditSession | null>(null)
+
+  useEffect(() => {
+    if (!open) setLineEditSession(null)
+  }, [open])
+
+  const refreshBillCustomerJobDetails = useCallback(async () => {
+    if (!job?.id) return
+    const fresh = await fetchJobWithDetailsById(job.id)
+    setBillCustomerJobDetails(fresh)
+    setStripeFixtureMultiLineAvailable(jobHasBillableStripeSpecificWorkFixtures(fresh?.fixtures))
+  }, [job?.id])
+
+  const handleStripePreviewLineClick = useCallback(
+    ({ source }: { lineIndex: number; source: StripeInvoiceLineSource | undefined }) => {
+      if (!job) return
+      if (source?.kind === 'fixture') {
+        const row = billCustomerJobDetails?.fixtures?.find((f) => f.id === source.jobs_ledger_fixture_id)
+        if (!row) return
+        setLineEditSession({
+          mode: 'fixture',
+          jobId: job.id,
+          fixtureId: row.id,
+          initialName: row.name,
+          initialLineDescription: row.line_description ?? '',
+        })
+        return
+      }
+      if (source?.kind === 'single_line' && stripeLineDescription.trim() !== '') {
+        setLineEditSession({
+          mode: 'stripe_override',
+          initialLineDescription: stripeLineDescription.trim(),
+        })
+      }
+    },
+    [job, billCustomerJobDetails?.fixtures, stripeLineDescription],
+  )
+
+  const openPhysicalServiceLineEdit = useCallback(
+    (rowIndex: number) => {
+      if (!job || !physicalPreviewDbBacked) return
+      const ref = physicalFixtureEditRefs[rowIndex]
+      if (!ref) return
+      setLineEditSession({
+        mode: 'fixture',
+        jobId: job.id,
+        fixtureId: ref.id,
+        initialName: ref.name,
+        initialLineDescription: ref.line_description ?? '',
+      })
+    },
+    [job, physicalPreviewDbBacked, physicalFixtureEditRefs],
+  )
+
+  const openPhysicalMaterialLineEdit = useCallback(
+    (rowIndex: number) => {
+      if (!job || !physicalPreviewDbBacked) return
+      const ref = physicalMaterialEditRefs[rowIndex]
+      if (!ref) return
+      setLineEditSession({
+        mode: 'material',
+        jobId: job.id,
+        materialId: ref.id,
+        initialDescription: ref.description ?? '',
+        amountDollars: ref.amount,
+      })
+    },
+    [job, physicalPreviewDbBacked, physicalMaterialEditRefs],
+  )
 
   if (!open || !job) return null
 
@@ -1614,13 +1791,40 @@ export default function SendRecordInvoiceModal({
               </div>
             </div>
             {physicalDocPreview ? (
-              <PhysicalInvoicePreview document={physicalDocPreview} hideIssuerContact />
+              <PhysicalInvoicePreview
+                document={physicalDocPreview}
+                hideIssuerContact
+                emphasizeLowercaseLeadingDescriptions
+                detailedServiceLineDescriptionClick={
+                  physicalPreviewDbBacked ? openPhysicalServiceLineEdit : undefined
+                }
+                detailedMaterialLineDescriptionClick={
+                  physicalPreviewDbBacked && authRole !== 'superintendent'
+                    ? openPhysicalMaterialLineEdit
+                    : undefined
+                }
+              />
             ) : (
               <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
                 Enter a valid bill amount and dates to preview the PDF.
               </p>
             )}
             {physicalError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{physicalError}</p>}
+            {lineLeadingLowercaseHint ? (
+              <p
+                id={BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID}
+                role="status"
+                aria-live="polite"
+                style={{
+                  ...billCustomerLeadingLowercaseHintParagraphStyle,
+                  marginBottom: '0.5rem',
+                  marginTop: physicalError ? '0.35rem' : 0,
+                  textAlign: 'center',
+                }}
+              >
+                {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
+              </p>
+            ) : null}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
               <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
                 Cancel
@@ -1628,6 +1832,7 @@ export default function SendRecordInvoiceModal({
               <button
                 type="button"
                 disabled={!physicalSendReady || busy}
+                aria-describedby={lineLeadingLowercaseHint ? BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID : undefined}
                 onClick={() => void submitPhysicalInvoiceEmail()}
                 style={{
                   padding: '0.5rem 1rem',
@@ -1664,16 +1869,10 @@ export default function SendRecordInvoiceModal({
                 <HostedStripeBillPanel
                   invoice={stripeSuccessInvoice}
                   onAfterOobUnwindSuccess={handleHostedStripeOobUnwindSuccess}
+                  onAfterVoidStripeInvoiceSuccess={handleAfterVoidStripeInvoiceSuccess}
+                  viewBillOnClose={onClose}
+                  voidConfirmOverlayZIndex={overlayZIndex + 1}
                 />
-                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Done
-                  </button>
-                </div>
               </>
             ) : stripeResult ? (
               <>
@@ -2079,16 +2278,33 @@ export default function SendRecordInvoiceModal({
                       kind === 'job' && ensureLoading
                         ? 'Preparing billing line…'
                         : kind === 'job' && !ensureLoading && ensureError
-                          ? 'Fix the billing line error above, then edit due date from Preview when ready.'
+                          ? 'Fix the billing line error above, then edit due date in What the customer will see when ready.'
                           : null
                     }
                     onEditDueDate={() => {
                       setDraftDueYmd(stripeDueDate)
                       setEditDueDateOpen(true)
                     }}
+                    emphasizeLowercaseLeadingDescriptions
+                    onLineDescriptionClick={handleStripePreviewLineClick}
+                    stripeLineOverrideActive={stripeLineDescription.trim() !== ''}
                   />
                 ) : null}
                 {stripeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.5rem' }}>{stripeError}</p>}
+                {lineLeadingLowercaseHint ? (
+                  <p
+                    id={BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID}
+                    role="status"
+                    aria-live="polite"
+                    style={{
+                      ...billCustomerLeadingLowercaseHintParagraphStyle,
+                      marginBottom: '0.5rem',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {BILL_CUSTOMER_LEADING_LOWERCASE_HINT}
+                  </p>
+                ) : null}
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
                   <button
                     type="button"
@@ -2100,6 +2316,7 @@ export default function SendRecordInvoiceModal({
                   <button
                     type="button"
                     disabled={!outsideReady || busy}
+                    aria-describedby={lineLeadingLowercaseHint ? BILL_CUSTOMER_LEADING_LOWERCASE_HINT_EL_ID : undefined}
                     onClick={() => void submitStripeInvoice()}
                     style={{
                       padding: '0.5rem 1rem',
@@ -2209,6 +2426,20 @@ export default function SendRecordInvoiceModal({
         </div>
       </div>
     ) : null}
+    <BillCustomerPreviewLineEditModal
+      open={lineEditSession != null}
+      session={lineEditSession}
+      onClose={() => setLineEditSession(null)}
+      zIndex={overlayZIndex + 30}
+      materialEditDisabled={authRole === 'superintendent'}
+      materialEditDisabledReason="Superintendents cannot edit materials from Bill Customer. Use Edit Job or ask office staff."
+      onFixtureSaved={refreshBillCustomerJobDetails}
+      onMaterialSaved={refreshBillCustomerJobDetails}
+      onStripeOverrideSaved={async (text) => {
+        setStripeLineDescription(text)
+        await refreshBillCustomerJobDetails()
+      }}
+    />
     </Fragment>
   )
 }

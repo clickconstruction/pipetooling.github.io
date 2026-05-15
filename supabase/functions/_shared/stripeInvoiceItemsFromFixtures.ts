@@ -4,6 +4,7 @@ import {
 } from './stripeLineDescription.ts'
 
 export type JobFixtureForStripe = {
+  id: string
   name: string
   count: number
   line_unit_price: number | null
@@ -11,7 +12,16 @@ export type JobFixtureForStripe = {
   sequence_order: number
 }
 
-export type StripeInvoiceLineItem = { amount: number; description: string }
+/** Client/Edge JSON: maps preview line to DB row or single-line modes (override / fallback). */
+export type StripeInvoiceLineSource =
+  | { kind: 'fixture'; jobs_ledger_fixture_id: string }
+  | { kind: 'single_line' }
+
+export type StripeInvoiceLineItem = {
+  amount: number
+  description: string
+  source?: StripeInvoiceLineSource
+}
 
 function clampLineDescription(text: string): string {
   const t = text.trim()
@@ -93,7 +103,13 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
   if (overrideTrim.length > 0) {
     return {
       ok: true,
-      items: [{ amount: targetAmountCents, description: singleLine.lineDesc }],
+      items: [
+        {
+          amount: targetAmountCents,
+          description: singleLine.lineDesc,
+          source: { kind: 'single_line' },
+        },
+      ],
     }
   }
 
@@ -111,7 +127,13 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
   if (billable.length === 0) {
     return {
       ok: true,
-      items: [{ amount: targetAmountCents, description: singleLine.lineDesc }],
+      items: [
+        {
+          amount: targetAmountCents,
+          description: singleLine.lineDesc,
+          source: { kind: 'single_line' },
+        },
+      ],
     }
   }
 
@@ -120,7 +142,13 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
   if (sumRaw <= 0) {
     return {
       ok: true,
-      items: [{ amount: targetAmountCents, description: singleLine.lineDesc }],
+      items: [
+        {
+          amount: targetAmountCents,
+          description: singleLine.lineDesc,
+          source: { kind: 'single_line' },
+        },
+      ],
     }
   }
 
@@ -134,6 +162,7 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
     items.push({
       amount: amt,
       description: fixtureStripeDescription(billable[i]),
+      source: { kind: 'fixture', jobs_ledger_fixture_id: billable[i].id },
     })
   }
 
@@ -147,9 +176,17 @@ export function buildStripeInvoiceItemsFromFixtures(params: {
   if (items.length === 0 || sumItems !== targetAmountCents) {
     return {
       ok: true,
-      items: [{ amount: targetAmountCents, description: singleLine.lineDesc }],
+      items: [
+        {
+          amount: targetAmountCents,
+          description: singleLine.lineDesc,
+          source: { kind: 'single_line' },
+        },
+      ],
     }
   }
 
+  // Return order matches billable Specific Work: `sequence_order` ascending (same as Physical services).
+  // Proportional penny drift is applied to the last row above (last ascending billable line).
   return { ok: true, items }
 }

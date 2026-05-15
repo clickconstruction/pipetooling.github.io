@@ -302,7 +302,7 @@ serve(async (req) => {
 
     const { data: fixturesRows, error: fixturesErr } = await admin
       .from('jobs_ledger_fixtures')
-      .select('name, count, line_unit_price, line_description, sequence_order')
+      .select('id, name, count, line_unit_price, line_description, sequence_order')
       .eq('job_id', invRow.job_id)
       .order('sequence_order', { ascending: true })
 
@@ -313,6 +313,7 @@ serve(async (req) => {
 
     const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
       fixtures: (fixturesRows ?? []) as {
+        id: string
         name: string
         count: number
         line_unit_price: number | null
@@ -375,7 +376,14 @@ serve(async (req) => {
       return jsonResponse({ error: 'Stripe did not return hosted_invoice_url' }, 500)
     }
 
-    const invoice_preview = await stripeInvoiceSnapshotForResponse(stripe, finalized)
+    const invoice_previewRaw = await stripeInvoiceSnapshotForResponse(stripe, finalized)
+    const invoice_preview = {
+      ...invoice_previewRaw,
+      lines: invoice_previewRaw.lines.map((li, i) => ({
+        ...li,
+        source: lineItemsBuilt.items[i]?.source,
+      })),
+    }
 
     const memoTrimmed = memo?.trim() || null
     const patch: Record<string, unknown> = {

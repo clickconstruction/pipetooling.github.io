@@ -7,16 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-11
+last_updated: 2026-05-15
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.524+ (reverse chronological)"
+version_range: "v2.528+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.528)"
+    line: ~1773
+    description: "Stripe staff UI: multi-line reverse lines.data/listLineItems via stripeInvoiceLinesDataForFixtureOrderDisplay for invoice.stripe.com parity"
+  - name: "Latest Version (v2.527)"
+    line: ~1796
+    description: "Stripe multi-line: invoice_items in sequence_order asc (remove creation reverse); matches Physical + Bill Customer"
+  - name: "Latest Version (v2.526)"
+    line: ~1790
+    description: "Stripe multi-line ordering investigation; get-stripe-invoice-details uses shared line-list helper"
+  - name: "Latest Version (v2.525)"
+    line: ~1802
+    description: "Bill Customer Stripe preview + invoice_preview: sequence_order-aligned invoice_items (v2.525); v2.528 multi-line reverse on staff lines payloads for invoice.stripe.com parity"
   - name: "Latest Version (v2.524)"
-    line: ~1762
+    line: ~1780
     description: "Edit Job — Outstanding billing Discount (RPC + Stripe credit note Edge)"
   - name: "Latest Version (v2.523)"
     line: ~1756
@@ -1577,6 +1589,10 @@ when_to_read:
 **New:** [v2.276 — DetailJobModal: three dates, pipeline, 640px layout, notes chrome](#latest-updates-v2276)
 **New:** [v2.273 — DetailJobModal: Scheduled block weekday in title](#latest-updates-v2273)
 **New:** [v2.272 — DetailJobModal: Customer panel beside Address/schedule](#latest-updates-v2272)
+**New:** [v2.528 — Stripe staff UI: **`stripeInvoiceLinesDataForFixtureOrderDisplay`** multi-line **`reverse`** — Bill Customer preview / **`get-stripe-invoice-details`** / **`invoice_preview`** match **invoice.stripe.com** row order when Stripe API line arrays invert](#latest-updates-v2528)
+**New:** [v2.527 — Stripe multi-line: **`buildStripeInvoiceItemsFromFixtures`** emits **`invoice_items`** in **`sequence_order`** ascending (drops creation **`items.reverse()`**); matches **Physical** and hosted Stripe amount lines](#latest-updates-v2527)
+**New:** [v2.526 — Stripe multi-line: **`get-stripe-invoice-details`** **`listLineItems`** + shared **`stripeInvoiceLinesDataForFixtureOrderDisplay`** (**v2.528** multi-line **`reverse`** for hosted parity)](#latest-updates-v2526)
+**New:** [v2.525 — Bill Customer: Stripe preview + **invoice_preview** line order matches **Specific Work** (`sequence_order`; `stripeInvoiceLinesForFixtureOrderDisplay`)](#latest-updates-v2525)
 **New:** [v2.271 — DetailJobModal: Address + schedule row responsive grid](#latest-updates-v2271)
 **New:** [v2.270 — Schedule Dispatch hub: block title opens Detail Job modal](#latest-updates-v2270)
 **New:** [v2.269 — Schedule Dispatch: + copy menu portal (no overflow clip)](#latest-updates-v2269)
@@ -1760,6 +1776,47 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.528)
+
+**Date**: 2026-05-15
+
+### Stripe — staff previews: line list matches hosted invoice
+
+- **`stripeInvoiceLinesDataForFixtureOrderDisplay`** ([**`stripeInvoiceLinesForFixtureOrderDisplay.ts`**](supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)) — **`invoice_items`** still follow **`sequence_order`** ascending ([**`stripeInvoiceItemsFromFixtures.ts`**](supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts) — **v2.527**), but Stripe **`lines.data`** / **`listLineItems`** arrays for **multi-line** invoices can disagree with hosted **invoice.stripe.com** top-to-bottom order. For **more than one** line, the helper returns **`[...data].reverse()`** (shallow copy) so **`preview-stripe-invoice`**, **`stripeInvoiceSnapshot`** (**`invoice_preview`** JSON), and **`get-stripe-invoice-details`** match the customer-facing Stripe page. Single-line unchanged.
+
+---
+
+## Latest Updates (v2.527)
+
+**Date**: 2026-05-15
+
+### Stripe — multi-line: creation order matches Specific Work ascending
+
+- **`buildStripeInvoiceItemsFromFixtures`** ([**`stripeInvoiceItemsFromFixtures.ts`**](supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)) — Multi-line **`invoice_items`** are returned in **`jobs_ledger_fixtures`** **`sequence_order`** ascending (same top-to-bottom as Edit Job **Specific Work** and **Physical** services). Removed the previous multi-line **`items.reverse()`** after proportional allocation; penny drift remains on the **last** ascending billable line (**`create-stripe-invoice`** / **`preview-stripe-invoice`** unchanged aside from item order). Staff-facing **line arrays** vs **hosted** display parity: **v2.528**.
+- **Out of scope** — Existing finalized Stripe invoices unchanged; **`line_description` override** paths stay single-line.
+
+---
+
+## Latest Updates (v2.526)
+
+**Date**: 2026-05-15
+
+### Stripe — multi-line invoices (ordering / preview plumbing)
+
+- **`get-stripe-invoice-details`** ([**`get-stripe-invoice-details/index.ts`**](supabase/functions/get-stripe-invoice-details/index.ts)) — **`listLineItems`** passed through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** before building response **`lines`**. Bill Customer preview uses the same helper on **`preview-stripe-invoice`** / snapshot paths. Creation **`sequence_order`**: **v2.527**; hosted UI parity for line arrays: **v2.528**.
+
+---
+
+## Latest Updates (v2.525)
+
+**Date**: 2026-05-15
+
+### Bill Customer (+ invoice summary) — Stripe line order matches Specific Work
+
+- Edge **`preview-stripe-invoice`** and shared **`stripeInvoiceToPreviewPayload`** (**[`stripeInvoiceSnapshot.ts`](supabase/functions/_shared/stripeInvoiceSnapshot.ts)**) route multi-line Stripe **`lines.data`** through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** (**[`stripeInvoiceLinesForFixtureOrderDisplay.ts`](supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)**) for a single normalization point (**v2.527** emission vs **v2.528** hosted-array alignment). Single-line invoices unchanged.
+
 ---
 
 ## Latest Updates (v2.524)
@@ -4324,7 +4381,7 @@ On working-job cards (**`list_assigned_jobs_for_dashboard`** and the superintend
 
 ### **Stripe** lines from job **Specific Work**; Edit Job **Stripe length** hint; **Bill Customer** defaults
 
-- **Edge** — **[`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts)** and **[`preview-stripe-invoice`](supabase/functions/preview-stripe-invoice/index.ts)** load **`jobs_ledger_fixtures`** for the invoice’s job. With **billable** rows (non-empty trimmed **`name`**, **`count × line_unit_price` > 0**) and **no** non-empty body **`line_description`** (Bill Customer “Line on bill” override), they create **one** Stripe invoice line per fixture row (ordered by **`sequence_order`**), descriptions from **`name`** + optional **` — `** + trimmed **`line_description`** (scope), cent amounts **scaled proportionally** to **`amount_dollars`** when the bill is below the fixture subtotal. Shared builder: [`stripeInvoiceItemsFromFixtures.ts`](supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts). Non-empty body **`line_description`** forces the legacy **single** Stripe line for the full amount.
+- **Edge** — **[`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts)** and **[`preview-stripe-invoice`](supabase/functions/preview-stripe-invoice/index.ts)** load **`jobs_ledger_fixtures`** for the invoice’s job. With **billable** rows (non-empty trimmed **`name`**, **`count × line_unit_price` > 0**) and **no** non-empty body **`line_description`** (Bill Customer “Line on bill” override), they create **one** Stripe invoice line per fixture row (ordered by **`sequence_order`**), descriptions from **`name`** + optional **` — `** + trimmed **`line_description`** (scope), cent amounts **scaled proportionally** to **`amount_dollars`** when the bill is below the fixture subtotal. Shared builder: [`stripeInvoiceItemsFromFixtures.ts`](supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts). Responses that surface **`lines`** to staff (**`preview-stripe-invoice`**, **`invoice_preview`**, **`get-stripe-invoice-details`**) normalize **multi-line** Stripe **`lines.data`** / **`listLineItems`** with [`stripeInvoiceLinesDataForFixtureOrderDisplay`](supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts) (**v2.528**). Non-empty body **`line_description`** forces the legacy **single** Stripe line for the full amount.
 - **Bill Customer** ([`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)) — **Line on bill** starts **empty** after fixtures load when the job has billable Specific Work so preview/create omit the override and use multi-line items; otherwise the default line text is restored. Hint when billable: custom text replaces separate Stripe lines from Specific Work; leave blank for one line per row.
 - **Edit Job** ([`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)) — Under each Specific Work line: **`(n / 500) · name and optional scope for Stripe`** using [`stripeInvoiceFixtureLineLength`](src/lib/stripeInvoiceLineDescription.ts) (same trim + separator rule as Edge); **warning** color when **n > 500**. Visible **Description** label removed; **Add scope or notes** discloses the scope **`textarea`** with a visually hidden label + **`aria-describedby`** to the length line.
 

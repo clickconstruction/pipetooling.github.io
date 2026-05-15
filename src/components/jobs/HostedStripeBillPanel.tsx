@@ -17,6 +17,13 @@ import {
 import { StripeInvoiceSharePanel } from './StripeInvoiceSharePanel'
 import { StripeInvoiceSendFromStripeButton } from './StripeInvoiceSendFromStripeButton'
 import UnwindStripeOobPaymentModal from './UnwindStripeOobPaymentModal'
+import {
+  ensureLedgerInvoiceRemovedAfterStripeSendBack,
+  invokeVoidStripeInvoiceForRevert,
+  invoiceNeedsStripeVoidForRevert,
+  stripeModeForBillingFromRole,
+} from '../../lib/voidStripeInvoiceForRevert'
+import { syncJobToReadyToBillIfNoBilledInvoicesRemain } from '../../lib/syncJobToReadyToBillIfNoBilledInvoicesRemain'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -152,12 +159,26 @@ export function HostedStripeBillPanel({
   invoice,
   onAfterStripeDetailsLoaded,
   onAfterOobUnwindSuccess,
+  onAfterVoidStripeInvoiceSuccess,
+  voidConfirmOverlayZIndex = 120,
+  viewBillOnClose,
 }: {
   invoice: InvoiceWithJobForBillView
   /** Runs after a successful `get-stripe-invoice-details` (server backfill has returned). */
   onAfterStripeDetailsLoaded?: () => void
-  /** After Undo out-of-band payment succeeds (Stripe + DB revert); not called on ordinary invoice loads. */
+  /** After Undo out-of-band payment succeeds (Stripe + DB revert); not passed on ordinary invoice loads. */
   onAfterOobUnwindSuccess?: () => void | Promise<void>
+  /**
+   * When set (e.g. View bill modal), staff can void/remove an unpaid hosted Stripe bill via
+   * `void-stripe-invoice-for-revert` and this runs after success so the parent can close and refresh.
+   */
+  onAfterVoidStripeInvoiceSuccess?: () => void | Promise<void>
+  /**
+   * `position:fixed` overlay z-index for the void confirmation layer; should be greater than the parent modal (e.g. `overlayZIndex + 1` from View bill).
+   */
+  voidConfirmOverlayZIndex?: number
+  /** View bill: footer row with Close on the right, Void Stripe on the left when eligible. */
+  viewBillOnClose?: () => void
 }) {
   const { role: authRole } = useAuth()
   const stripeModeForBilling = authRole === 'dev' ? getBillingStripeModePref() : 'live'
@@ -166,12 +187,18 @@ export function HostedStripeBillPanel({
   onLoadedRef.current = onAfterStripeDetailsLoaded
   const onOobUnwindRef = useRef(onAfterOobUnwindSuccess)
   onOobUnwindRef.current = onAfterOobUnwindSuccess
+  const onVoidSuccessRef = useRef(onAfterVoidStripeInvoiceSuccess)
+  onVoidSuccessRef.current = onAfterVoidStripeInvoiceSuccess
 
   const [stripeDetail, setStripeDetail] = useState<StripeInvoiceDetailsSuccess | null>(null)
   const [stripeLoading, setStripeLoading] = useState(false)
   const [stripeError, setStripeError] = useState<string | null>(null)
   const [stripeDetailsGeneration, setStripeDetailsGeneration] = useState(0)
   const [unwindOobOpen, setUnwindOobOpen] = useState(false)
+  const [voidConfirmOpen, setVoidConfirmOpen] = useState(false)
+  const [voidConfirmChecked, setVoidConfirmChecked] = useState(false)
+  const [voidConfirmBusy, setVoidConfirmBusy] = useState(false)
+  const [voidConfirmError, setVoidConfirmError] = useState<string | null>(null)
 
   const inv = invoice
   const job = invoice.job
@@ -192,6 +219,30 @@ export function HostedStripeBillPanel({
       authRole === 'master_technician' ||
       authRole === 'assistant' ||
       authRole === 'primary')
+
+  const canRoleVoidStripeHosted =
+    authRole === 'dev' ||
+    authRole === 'master_technician' ||
+    authRole === 'assistant' ||
+    authRole === 'primary'
+
+  const voidStripeHostedFooterEligible =
+    typeof onAfterVoidStripeInvoiceSuccess === 'function' &&
+    canRoleVoidStripeHosted &&
+    inv.status === 'billed' &&
+    invoiceNeedsStripeVoidForRevert(inv) &&
+    isStripeHosted &&
+    applied <= 0
+
+  const showVoidStripeHostedButton =
+    voidStripeHostedFooterEligible &&
+    stripeDetail != null &&
+    !stripeError &&
+    !stripeLoading &&
+    stripeDetail.amount_paid <= 0
+
+  const showVoidStripeHostedDisabledWhileLoading =
+    voidStripeHostedFooterEligible && stripeLoading && !stripeError
 
   useEffect(() => {
     if (!isStripeHosted) {
@@ -576,6 +627,141 @@ export function HostedStripeBillPanel({
               await onOobUnwindRef.current?.()
             }}
           />
+          {voidConfirmOpen ? (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.45)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: voidConfirmOverlayZIndex,
+              }}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  padding: '1.25rem',
+                  borderRadius: 8,
+                  minWidth: 360,
+                  maxWidth: 440,
+                  maxHeight: '90vh',
+                  overflow: 'auto',
+                  margin: '0.75rem',
+                }}
+              >
+                <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.15rem', lineHeight: 1.35 }}>Void Stripe invoice?</h2>
+                <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.45, marginBottom: '0.85rem' }}>
+                  <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem' }}>
+                    <li style={{ marginBottom: '0.35rem' }}>
+                      Stripe will delete a draft invoice or void an open unpaid invoice so this hosted link cannot be paid.
+                    </li>
+                    <li style={{ marginBottom: '0.35rem' }}>PipeTooling will remove this billed line.</li>
+                    <li>
+                      If this is the last billed invoice on the job, the job moves back to <strong>Ready to Bill</strong>.
+                    </li>
+                  </ul>
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: '#92400e' }}>
+                    Paid Stripe invoices or invoices with recorded payments here cannot be voided this way; fix them in Stripe
+                    or unlink payments first.
+                  </p>
+                </div>
+                {voidConfirmError ? (
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b45309', lineHeight: 1.4 }}>{voidConfirmError}</p>
+                ) : null}
+                <label
+                  style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '1rem' }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={voidConfirmChecked}
+                    onChange={(e) => setVoidConfirmChecked(e.target.checked)}
+                    style={{ marginTop: 4 }}
+                  />
+                  <span style={{ fontSize: '0.875rem' }}>
+                    I understand this bill line will be removed and the job may return to Ready to Bill.
+                  </span>
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    disabled={voidConfirmBusy}
+                    onClick={() => {
+                      if (voidConfirmBusy) return
+                      setVoidConfirmOpen(false)
+                      setVoidConfirmChecked(false)
+                      setVoidConfirmError(null)
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: '1px solid #d1d5db',
+                      background: 'white',
+                      borderRadius: 4,
+                      cursor: voidConfirmBusy ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!voidConfirmChecked || voidConfirmBusy}
+                    onClick={() => {
+                      void (async () => {
+                        if (!voidConfirmChecked || voidConfirmBusy) return
+                        setVoidConfirmBusy(true)
+                        setVoidConfirmError(null)
+                        try {
+                          const token = await getAccessTokenForEdgeFunctions()
+                          if (!token) {
+                            setVoidConfirmError('Not signed in')
+                            return
+                          }
+                          const r = await invokeVoidStripeInvoiceForRevert({
+                            invoiceId: inv.id,
+                            stripeModeForBilling: stripeModeForBillingFromRole(authRole),
+                            accessToken: token,
+                          })
+                          if (!r.ok) {
+                            setVoidConfirmError(r.message)
+                            return
+                          }
+                          const cleaned = await ensureLedgerInvoiceRemovedAfterStripeSendBack(inv.id)
+                          if (!cleaned.ok) {
+                            setVoidConfirmError(cleaned.message)
+                            return
+                          }
+                          const sync = await syncJobToReadyToBillIfNoBilledInvoicesRemain(supabase, job.id)
+                          if (!sync.ok) {
+                            setVoidConfirmError(sync.message)
+                            return
+                          }
+                          setVoidConfirmOpen(false)
+                          setVoidConfirmChecked(false)
+                          await onVoidSuccessRef.current?.()
+                        } finally {
+                          setVoidConfirmBusy(false)
+                        }
+                      })()
+                    }}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: !voidConfirmChecked || voidConfirmBusy ? '#9ca3af' : '#ca8a04',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 4,
+                      cursor: !voidConfirmChecked || voidConfirmBusy ? 'not-allowed' : 'pointer',
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {voidConfirmBusy ? '…' : 'Void invoice'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
         </>
       ) : (
         <div
@@ -638,6 +824,79 @@ export function HostedStripeBillPanel({
         >
           <div>Applied in PipeTooling: ${formatMoney(applied)}</div>
           <div>Open on invoice (app): ${formatMoney(invoiceRemaining)}</div>
+        </div>
+      ) : null}
+
+      {viewBillOnClose ? (
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.75rem',
+            marginTop: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
+          <div style={{ flex: '1 1 auto', minWidth: '8rem' }}>
+            {showVoidStripeHostedButton ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setVoidConfirmChecked(false)
+                  setVoidConfirmError(null)
+                  setVoidConfirmOpen(true)
+                }}
+                style={{
+                  padding: '0.4rem 0.65rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  color: '#92400e',
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Void Stripe invoice…
+              </button>
+            ) : showVoidStripeHostedDisabledWhileLoading ? (
+              <button
+                type="button"
+                disabled
+                aria-busy="true"
+                title="Loading invoice…"
+                style={{
+                  padding: '0.4rem 0.65rem',
+                  fontSize: '0.8125rem',
+                  fontWeight: 500,
+                  color: '#92400e',
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  borderRadius: 6,
+                  cursor: 'not-allowed',
+                  opacity: 0.75,
+                }}
+              >
+                Void Stripe invoice…
+              </button>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={viewBillOnClose}
+            style={{
+              flexShrink: 0,
+              padding: '0.5rem 1rem',
+              border: '1px solid #d1d5db',
+              background: 'white',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+            }}
+          >
+            Close
+          </button>
         </div>
       ) : null}
     </>

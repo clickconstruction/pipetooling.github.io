@@ -44,6 +44,7 @@ import StagesAlertJobListModal from '../components/jobs/StagesAlertJobListModal'
 import JobBookIcon from '../components/icons/JobBookIcon'
 import BilledPaymentConfirmationModal from '../components/jobs/BilledPaymentConfirmationModal'
 import BilledBillViewModal from '../components/jobs/BilledBillViewModal'
+import { findInvoiceWithJobFromJobs } from '../lib/invoiceWithJobFromJobList'
 import LienToolingPrefillModal from '../components/jobs/LienToolingPrefillModal'
 import AiaG702G703Modal from '../components/jobs/AiaG702G703Modal'
 import {
@@ -14312,7 +14313,22 @@ ${totalsHtml}
         invoice={viewBillInvoice}
         onClose={() => {
           setViewBillInvoice(null)
-          void loadJobs()
+        }}
+        onAfterVoidStripeInvoiceSuccess={() => {
+          scheduleLoadJobsAfterMutation()
+        }}
+        onAfterStripeDetailsLoaded={() => {
+          void (async () => {
+            let list = await runFetchJobs(customerFilterForFetch)
+            // `runFetchJobs` can return undefined when a coalesced fetch is already in flight; retry once.
+            if (list == null) list = await runFetchJobs(customerFilterForFetch)
+            if (list == null) return
+            setViewBillInvoice((prev) => {
+              if (!prev) return null
+              const merged = findInvoiceWithJobFromJobs(list, prev.id)
+              return merged ?? prev
+            })
+          })()
         }}
       />
       <LienToolingPrefillModal

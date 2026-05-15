@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
@@ -12,6 +12,7 @@ export default function BilledBillViewModal({
   onClose,
   onAfterStripeDetailsLoaded,
   onAfterOobUnwindSuccess,
+  onAfterVoidStripeInvoiceSuccess,
   overlayZIndex = 60,
 }: {
   invoice: InvoiceWithJobForBillView | null
@@ -19,10 +20,20 @@ export default function BilledBillViewModal({
   /** After `get-stripe-invoice-details` succeeds (memo backfill committed server-side). */
   onAfterStripeDetailsLoaded?: () => void
   onAfterOobUnwindSuccess?: () => void | Promise<void>
+  /**
+   * After hosted Stripe void/remove succeeds; runs before `onClose` (e.g. refresh Stages cache).
+   */
+  onAfterVoidStripeInvoiceSuccess?: () => void | Promise<void>
   overlayZIndex?: number
 }) {
   const { role } = useAuth()
   const [aiaOpen, setAiaOpen] = useState(false)
+
+  const handleVoidStripeSuccess = useCallback(async () => {
+    await onAfterVoidStripeInvoiceSuccess?.()
+    onClose()
+  }, [onAfterVoidStripeInvoiceSuccess, onClose])
+
   const inv = invoice
   const job = inv?.job
   const subtitle = job ? `${job.hcp_number ?? '—'} · ${job.job_name ?? '—'}` : '—'
@@ -121,24 +132,10 @@ export default function BilledBillViewModal({
           invoice={invoice}
           onAfterStripeDetailsLoaded={onAfterStripeDetailsLoaded}
           onAfterOobUnwindSuccess={onAfterOobUnwindSuccess}
+          onAfterVoidStripeInvoiceSuccess={handleVoidStripeSuccess}
+          voidConfirmOverlayZIndex={overlayZIndex + 1}
+          viewBillOnClose={onClose}
         />
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-            }}
-          >
-            Close
-          </button>
-        </div>
 
         <AiaG702G703Modal
           open={aiaOpen}

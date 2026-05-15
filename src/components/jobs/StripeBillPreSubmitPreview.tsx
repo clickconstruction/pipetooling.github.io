@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react'
-import type { StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
+import { mergeBillCustomerInvoiceDescriptionIssueChrome } from '../../lib/billCustomerInvoiceDescriptionIssueChrome'
+import { anyLineSegmentsStartWithLowercase } from '../../lib/invoiceLineDescriptionLeadingLowercase'
+import type { StripeInvoiceLineSource, StripeInvoicePreviewSuccess } from '../../lib/stripeInvoicePreview'
 import { formatStripeCents } from '../../lib/stripeInvoicePreview'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 
@@ -21,6 +23,12 @@ export type StripeBillPreSubmitPreviewProps = {
   previewIdleHint?: string | null
   /** Opens Bill Customer “Edit Due Date” dialog (e.g. from SendRecordInvoiceModal). */
   onEditDueDate?: () => void
+  /** Bill Customer preview only: tint line copy that matches lowercase-leading hint (not on hosted invoice). */
+  emphasizeLowercaseLeadingDescriptions?: boolean
+  /** Bill Customer: open nested editor for fixture text or Line-on-bill override. */
+  onLineDescriptionClick?: (args: { lineIndex: number; source: StripeInvoiceLineSource | undefined }) => void
+  /** True when Bill Customer "Line on bill" (`stripeLineDescription`) is non-empty — enables `single_line` row edit. */
+  stripeLineOverrideActive?: boolean
 }
 
 const metaLabel: CSSProperties = {
@@ -92,14 +100,50 @@ const dueDateEditButtonStyle: CSSProperties = {
   textUnderlineOffset: '2px',
 }
 
+function stripePreviewLineDescriptionIsEditable(
+  source: StripeInvoiceLineSource | undefined,
+  stripeLineOverrideActive: boolean,
+): boolean {
+  if (source?.kind === 'fixture') return true
+  if (source?.kind === 'single_line' && stripeLineOverrideActive) return true
+  return false
+}
+
+const stripeLineDescriptionClickableStyle: CSSProperties = {
+  display: 'block',
+  width: '100%',
+  margin: 0,
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  font: 'inherit',
+  color: 'inherit',
+  textAlign: 'left',
+  cursor: 'pointer',
+  whiteSpace: 'pre-wrap',
+}
+
 export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
   const sp = p.stripePreview
   const showDraftLine = !sp && (p.stripePreviewError != null || (!p.stripePreviewLoading && !p.stripePreviewError))
+  const emphasize = Boolean(p.emphasizeLowercaseLeadingDescriptions)
 
   const toName = sp?.customer_name?.trim() || p.customerName?.trim() || '—'
   const toEmail = sp?.customer_email?.trim() || p.customerEmail?.trim() || ''
   const amountRemaining = sp != null ? (sp.amount_remaining ?? Math.max(0, sp.total - (sp.amount_paid ?? 0))) : 0
   const amountPaid = sp?.amount_paid ?? 0
+
+  const draftLineDescriptionIssue =
+    showDraftLine && emphasize && anyLineSegmentsStartWithLowercase(p.localLineDescription)
+  const draftLineRowStyle = mergeBillCustomerInvoiceDescriptionIssueChrome(
+    {
+      marginTop: '0.35rem',
+      fontSize: '0.72rem',
+      color: '#6b7280',
+      ...(draftLineDescriptionIssue ? { padding: '0.35rem 0.45rem' } : {}),
+    },
+    draftLineDescriptionIssue
+  )
 
   return (
     <div style={{ marginBottom: '1rem', fontSize: '0.8125rem' }}>
@@ -110,12 +154,15 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
           fontSize: '0.875rem',
           color: '#111827',
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: 'center',
+          justifyContent: 'center',
           gap: '0.5rem',
           flexWrap: 'wrap',
+          width: '100%',
+          textAlign: 'center',
         }}
       >
-        Preview
+        What the customer will see:
         {p.stripePreviewLoading && sp ? (
           <span style={{ fontWeight: 400, fontSize: '0.75rem', color: '#6b7280' }}>Updating…</span>
         ) : null}
@@ -238,7 +285,18 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                 No line items returned from Stripe.
               </p>
             ) : (
-              sp.lines.map((line, i) => (
+              sp.lines.map((line, i) => {
+                const flagged = emphasize && anyLineSegmentsStartWithLowercase(line.description)
+                const leftBase: CSSProperties = {
+                  flex: '1 1 auto',
+                  minWidth: 0,
+                  ...(flagged ? { padding: '0.35rem 0.45rem' } : {}),
+                }
+                const leftColumnStyle = mergeBillCustomerInvoiceDescriptionIssueChrome(leftBase, flagged)
+                const lineEditable =
+                  Boolean(p.onLineDescriptionClick) &&
+                  stripePreviewLineDescriptionIsEditable(line.source, Boolean(p.stripeLineOverrideActive))
+                return (
                 <div
                   key={i}
                   style={{
@@ -251,10 +309,25 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                     borderBottom: i < sp.lines.length - 1 ? '1px solid #e5e7eb' : 'none',
                   }}
                 >
-                  <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                    <div style={{ color: '#111827', marginBottom: '0.2rem' }}>
-                      {line.description.trim() || '—'}
-                    </div>
+                  <div style={leftColumnStyle}>
+                    {lineEditable ? (
+                      <button
+                        type="button"
+                        aria-label="Edit line description"
+                        onClick={() =>
+                          p.onLineDescriptionClick?.({ lineIndex: i, source: line.source })
+                        }
+                        style={stripeLineDescriptionClickableStyle}
+                      >
+                        <span style={{ color: '#111827', marginBottom: '0.2rem', display: 'block' }}>
+                          {line.description.trim() || '—'}
+                        </span>
+                      </button>
+                    ) : (
+                      <div style={{ color: '#111827', marginBottom: '0.2rem', whiteSpace: 'pre-wrap' }}>
+                        {line.description.trim() || '—'}
+                      </div>
+                    )}
                     <div style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
                       Qty {displayLineQuantity(line.quantity ?? null)}
                     </div>
@@ -271,7 +344,8 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                     {formatStripeCents(line.amount, sp.currency)}
                   </div>
                 </div>
-              ))
+                )
+              })
             )}
             <div
               style={{
@@ -309,7 +383,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
       ) : null}
 
       {showDraftLine ? (
-        <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#6b7280' }}>
+        <div style={draftLineRowStyle}>
           Draft line: {p.localLineDescription}
         </div>
       ) : null}

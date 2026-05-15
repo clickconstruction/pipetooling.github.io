@@ -11,6 +11,7 @@ import { isMissingStripeCustomerError } from '../_shared/stripeStaleCustomer.ts'
 import { buildStripeInvoiceItemsFromFixtures } from '../_shared/stripeInvoiceItemsFromFixtures.ts'
 import { stripeSellerDisplayName } from '../_shared/stripeSellerDisplayName.ts'
 import { buildPipetoolingStripeInvoiceNumber } from '../_shared/pipetoolingStripeInvoiceNumber.ts'
+import { stripeInvoiceLinesDataForFixtureOrderDisplay } from '../_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -184,7 +185,7 @@ serve(async (req) => {
 
     const { data: fixturesRows, error: fixturesErr } = await admin
       .from('jobs_ledger_fixtures')
-      .select('name, count, line_unit_price, line_description, sequence_order')
+      .select('id, name, count, line_unit_price, line_description, sequence_order')
       .eq('job_id', invRow.job_id)
       .order('sequence_order', { ascending: true })
 
@@ -195,6 +196,7 @@ serve(async (req) => {
 
     const lineItemsBuilt = buildStripeInvoiceItemsFromFixtures({
       fixtures: (fixturesRows ?? []) as {
+        id: string
         name: string
         count: number
         line_unit_price: number | null
@@ -284,12 +286,13 @@ serve(async (req) => {
       }
     }
 
-    const rawLines = preview.lines?.data ?? []
-    const lines = rawLines.map((li) => ({
+    const rawLines = stripeInvoiceLinesDataForFixtureOrderDisplay(preview.lines?.data ?? [])
+    const lines = rawLines.map((li, i) => ({
       description: li.description ?? '',
       amount: typeof li.amount === 'number' && !Number.isNaN(li.amount) ? li.amount : 0,
       quantity:
         typeof li.quantity === 'number' && !Number.isNaN(li.quantity) ? li.quantity : null,
+      source: lineItemsBuilt.items[i]?.source,
     }))
 
     const amount_paid =
