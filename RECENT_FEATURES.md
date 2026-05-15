@@ -17,7 +17,7 @@ version_range: "v2.529+ (reverse chronological)"
 key_sections:
   - name: "Latest Version (v2.529)"
     line: ~1782
-    description: "Salary sync — re-apply latest body (drift repair); approved-but-open continuous + split rows now close at t_end (no longer fall through to 23:59 EOD); degenerate split (segment B = A) remap; indexed (1..N) salary_schedule fragment close at t_end"
+    description: "Salary sync — re-apply latest body (drift repair) + tail consolidation (20270601000000); approved-but-open continuous + split rows now close at t_end (no longer fall through to 23:59 EOD); degenerate split (segment B = A) remap; indexed (1..N) salary_schedule fragment close at t_end"
   - name: "Latest Version (v2.528)"
     line: ~1773
     description: "Stripe staff UI: multi-line reverse lines.data/listLineItems via stripeInvoiceLinesDataForFixtureOrderDisplay for invoice.stripe.com parity"
@@ -1592,7 +1592,7 @@ when_to_read:
 **New:** [v2.276 — DetailJobModal: three dates, pipeline, 640px layout, notes chrome](#latest-updates-v2276)
 **New:** [v2.273 — DetailJobModal: Scheduled block weekday in title](#latest-updates-v2273)
 **New:** [v2.272 — DetailJobModal: Customer panel beside Address/schedule](#latest-updates-v2272)
-**New:** [v2.529 — Salary sync — drift repair + approved-but-open close at **`t_end`**: re-apply latest body of **`salary_sync_one_user_clock_sessions`** (had been recorded as applied but the live body was older); continuous canonical + indexed (1..N) **`salary_schedule`** fragments and split slots **1**/**2** close at **`t_end`** / **`t_end2`** when **`p_now`** has passed — including approved-but-open rows (rejected / revoked never modified); degenerate split template (**`segment_b_start_local = segment_a_start_local`**) remap of slot 2 to **`t_start := t_end`**](#latest-updates-v2529)
+**New:** [v2.529 — Salary sync — drift repair + approved-but-open close at **`t_end`**: re-apply latest body of **`salary_sync_one_user_clock_sessions`** (had been recorded as applied but the live body was older); continuous canonical + indexed (1..N) **`salary_schedule`** fragments and split slots **1**/**2** close at **`t_end`** / **`t_end2`** when **`p_now`** has passed — including approved-but-open rows (rejected / revoked never modified); degenerate split template (**`segment_b_start_local = segment_a_start_local`**) remap of slot 2 to **`t_start := t_end`**; **tail** **`20270601000000`** with the same body so fresh **`supabase db reset`** lands on this body](#latest-updates-v2529)
 **New:** [v2.528 — Stripe staff UI: **`stripeInvoiceLinesDataForFixtureOrderDisplay`** multi-line **`reverse`** — Bill Customer preview / **`get-stripe-invoice-details`** / **`invoice_preview`** match **invoice.stripe.com** row order when Stripe API line arrays invert](#latest-updates-v2528)
 **New:** [v2.527 — Stripe multi-line: **`buildStripeInvoiceItemsFromFixtures`** emits **`invoice_items`** in **`sequence_order`** ascending (drops creation **`items.reverse()`**); matches **Physical** and hosted Stripe amount lines](#latest-updates-v2527)
 **New:** [v2.526 — Stripe multi-line: **`get-stripe-invoice-details`** **`listLineItems`** + shared **`stripeInvoiceLinesDataForFixtureOrderDisplay`** (**v2.528** multi-line **`reverse`** for hosted parity)](#latest-updates-v2526)
@@ -1789,6 +1789,7 @@ when_to_read:
 ### Salary sync — drift repair + approved-but-open rows close at `t_end`
 
 - **Drift repair** — Migrations **`20270408153000`**, **`20270408162000`**, **`20270410130200`**, **`20270421130000`**, **`20270421140000`**, **`20270516120000`** were recorded in **`supabase_migrations.schema_migrations`** but the live **`salary_sync_one_user_clock_sessions`** body was an older version (no degenerate split-B remap, no indexed-fragment close at **`t_end`**, no work-date-or-clock-in-tz-date split overlap). Migration **[`20260515092032_salary_sync_close_at_t_end_including_approved_open.sql`](supabase/migrations/20260515092032_salary_sync_close_at_t_end_including_approved_open.sql)** **`CREATE OR REPLACE`**s the function with the latest body.
+- **Tail consolidation** — Migration **[`20270601000000_salary_sync_consolidated_tail.sql`](supabase/migrations/20270601000000_salary_sync_consolidated_tail.sql)** is **identical** to **`20260515092032`** but timestamped after every other salary migration. Without it, a future **`supabase db reset`** would replay the six `2027*` salary files **after** the 2026 drift-repair file and silently regress the function body to **`20270516120000`**'s snapshot (close, but missing the approved-but-open product change). With the tail in place, fresh-DB rebuilds always land on the same body the linked DB has. No-op on the linked DB beyond a single idempotent `CREATE OR REPLACE FUNCTION`.
 - **Continuous mode** — When **`p_now ≥ t_end`**, the function now closes:
   - the **canonical** **`salary_segment_index IS NULL`** row, **and**
   - any open **indexed** (**`salary_segment_index 1..N`** from My Time splits) **`salary_schedule`** rows where **`clocked_in_at < t_end`**

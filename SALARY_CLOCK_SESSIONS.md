@@ -7,7 +7,7 @@
 
 ## What this subsystem does
 
-Salaried users get **auto materialized** `clock_sessions` rows with `origin = 'salary_schedule'` from their **workday template** (and optional **per-day override**). Authoritative implementation is **`salary_sync_one_user_clock_sessions`** (latest cumulative replace: **`20260515092032`**, which subsumes the prior `20270421140000` + `20270516120000` plus the product change to close approved-but-open rows at `t_end` — see migration index below).
+Salaried users get **auto materialized** `clock_sessions` rows with `origin = 'salary_schedule'` from their **workday template** (and optional **per-day override**). Authoritative implementation is **`salary_sync_one_user_clock_sessions`** (latest cumulative replace: **`20260515092032`** with identical-body **tail** **`20270601000000`** so a fresh **`supabase db reset`** lands on the same body — see migration index below).
 
 **High level**
 
@@ -127,6 +127,7 @@ Week editability uses **America/Chicago** (current week for single session; this
 - **`supabase db push --linked`** and **`supabase migration list --linked`** work **without Docker**.
 - **`supabase db pull`** / **`supabase db diff --linked`** use a **shadow** Postgres (Docker). If you do not use Docker, treat **`supabase/migrations/`** as source of truth and use **Dashboard SQL** or **Supabase MCP `execute_sql`** for one-off verification.
 - If remote **`supabase_migrations.schema_migrations`** drifts from local filenames, the CLI will suggest **`supabase migration repair`**; see [`MIGRATIONS.md`](./MIGRATIONS.md).
+- **Tail migration** **`20270601000000`** exists so that any fresh build (e.g. **`supabase db reset`** against a Docker shadow, or a brand-new project) lands on the same `salary_sync_one_user_clock_sessions` body as the linked DB. It is identical to **`20260515092032`**; if you change the function in the future, write a **new tail** with a timestamp later than every other salary migration rather than editing either of these two files.
 
 ---
 
@@ -154,6 +155,7 @@ When My Time **merges** multiple `clock_sessions` rows into **one** visual segme
 | `20270421140000` | Degenerate split template (**`segment_b_start_local = segment_a_start_local`**): remap slot 2 window to start at slot 1 `t_end`, recompute `t_end2` |
 | `20270516120000` | **Continuous + split fragments**: when `p_now ≥ t_end`, open indexed `salary_schedule` rows close at `t_end`; top-of-file **What this subsystem does** updated for shipped body |
 | **`20260515092032`** | **Drift repair + product change.** Re-applies the latest function body (`20270408153000` + `20270408162000` + `20270410130200` + `20270421130000` + `20270421140000` + `20270516120000` had been recorded in `schema_migrations` but the live function body was older). **Product change**: continuous canonical NULL row, continuous indexed (1..N) fragments, and split slot 1 / slot 2 close branches now ignore `approved_at`; only `rejected_at` and `revoked_at` are terminal for sync. Approved-but-open rows close at `t_end` / `t_end2` instead of falling through to the 23:59 CT `auto_clock_out_open_sessions_eod` safety net. |
+| **`20270601000000`** | **Tail consolidation.** Identical body to **`20260515092032`** but with a year-2027 timestamp so it sorts **after** every other salary migration. Without it, a fresh **`supabase db reset`** would run `20260515092032` first, then re-run the older 2027 salary files in order, ending with **`20270516120000`**'s body (missing the approved-but-open product change). With this tail, fresh-DB rebuilds always end at the same body the linked DB has. No-op on the linked DB beyond a single `CREATE OR REPLACE FUNCTION` that produces the same body (idempotent). Keep its body in lock-step with `20260515092032` if either is updated; better yet, write a new tail. |
 
 ---
 
