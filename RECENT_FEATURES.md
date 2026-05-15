@@ -12,9 +12,12 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.528+ (reverse chronological)"
+version_range: "v2.529+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.529)"
+    line: ~1782
+    description: "Salary sync — re-apply latest body (drift repair); approved-but-open continuous + split rows now close at t_end (no longer fall through to 23:59 EOD); degenerate split (segment B = A) remap; indexed (1..N) salary_schedule fragment close at t_end"
   - name: "Latest Version (v2.528)"
     line: ~1773
     description: "Stripe staff UI: multi-line reverse lines.data/listLineItems via stripeInvoiceLinesDataForFixtureOrderDisplay for invoice.stripe.com parity"
@@ -1589,6 +1592,7 @@ when_to_read:
 **New:** [v2.276 — DetailJobModal: three dates, pipeline, 640px layout, notes chrome](#latest-updates-v2276)
 **New:** [v2.273 — DetailJobModal: Scheduled block weekday in title](#latest-updates-v2273)
 **New:** [v2.272 — DetailJobModal: Customer panel beside Address/schedule](#latest-updates-v2272)
+**New:** [v2.529 — Salary sync — drift repair + approved-but-open close at **`t_end`**: re-apply latest body of **`salary_sync_one_user_clock_sessions`** (had been recorded as applied but the live body was older); continuous canonical + indexed (1..N) **`salary_schedule`** fragments and split slots **1**/**2** close at **`t_end`** / **`t_end2`** when **`p_now`** has passed — including approved-but-open rows (rejected / revoked never modified); degenerate split template (**`segment_b_start_local = segment_a_start_local`**) remap of slot 2 to **`t_start := t_end`**](#latest-updates-v2529)
 **New:** [v2.528 — Stripe staff UI: **`stripeInvoiceLinesDataForFixtureOrderDisplay`** multi-line **`reverse`** — Bill Customer preview / **`get-stripe-invoice-details`** / **`invoice_preview`** match **invoice.stripe.com** row order when Stripe API line arrays invert](#latest-updates-v2528)
 **New:** [v2.527 — Stripe multi-line: **`buildStripeInvoiceItemsFromFixtures`** emits **`invoice_items`** in **`sequence_order`** ascending (drops creation **`items.reverse()`**); matches **Physical** and hosted Stripe amount lines](#latest-updates-v2527)
 **New:** [v2.526 — Stripe multi-line: **`get-stripe-invoice-details`** **`listLineItems`** + shared **`stripeInvoiceLinesDataForFixtureOrderDisplay`** (**v2.528** multi-line **`reverse`** for hosted parity)](#latest-updates-v2526)
@@ -1776,6 +1780,25 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.529)
+
+**Date**: 2026-05-15
+
+### Salary sync — drift repair + approved-but-open rows close at `t_end`
+
+- **Drift repair** — Migrations **`20270408153000`**, **`20270408162000`**, **`20270410130200`**, **`20270421130000`**, **`20270421140000`**, **`20270516120000`** were recorded in **`supabase_migrations.schema_migrations`** but the live **`salary_sync_one_user_clock_sessions`** body was an older version (no degenerate split-B remap, no indexed-fragment close at **`t_end`**, no work-date-or-clock-in-tz-date split overlap). Migration **[`20260515092032_salary_sync_close_at_t_end_including_approved_open.sql`](supabase/migrations/20260515092032_salary_sync_close_at_t_end_including_approved_open.sql)** **`CREATE OR REPLACE`**s the function with the latest body.
+- **Continuous mode** — When **`p_now ≥ t_end`**, the function now closes:
+  - the **canonical** **`salary_segment_index IS NULL`** row, **and**
+  - any open **indexed** (**`salary_segment_index 1..N`** from My Time splits) **`salary_schedule`** rows where **`clocked_in_at < t_end`**
+  
+  Both branches set **`clocked_out_at = t_end`** when the row is open and **`rejected_at IS NULL AND revoked_at IS NULL`** (the previous body’s extra **`approved_at IS NULL`** filter is removed). Approving an open salary row no longer prevents sync from closing it at the template end; rows that were previously stuck open until the **23:59 CT** **`auto_clock_out_open_sessions_eod`** safety net (inflating one row to ~16 h) are now closed at the correct **`t_end`**.
+- **Split mode** — Slot **1** and slot **2** canonical close branches use the same gate (**`rejected_at IS NULL AND revoked_at IS NULL`**); approved-but-open rows close at **`t_end`** / **`t_end2`**. Half-open overlap on canonical INSERT continues to use **`(work_date = p_work_date OR (clocked_in_at AT TIME ZONE tz)::date = p_work_date)`** (matches **`20270408153000`** intent). **Degenerate** templates where **`segment_b_start_local = segment_a_start_local`** now remap **`t_start2 := t_end`** (and recompute **`t_end2`** from **`segment_b_duration_minutes`**) so the slot-1 row’s window does not block slot-2 INSERT — restores both slots for users with **`8:00 → 8:00`** split layouts (matches **`20270421140000`** intent).
+- **Final flags** — Rejected and revoked rows are still untouched; only those two states are terminal for sync.
+- **Cron path** unchanged — pg_cron **`sync-salary-sessions`** every **5 minutes** → Edge **`sync-salary-sessions`** → **`sync_salary_clock_sessions_for_day`** loops every templated user for **`d-1`** and **`d`** in **America/Chicago**. EOD safety net **`auto_clock_out_open_sessions_eod`** at **23:59 CT** is unchanged but now rarely needed for salary rows.
+- **Related** — **`SALARY_CLOCK_SESSIONS.md`** (Continuous template mode + Split template mode + Migration index updated).
+
 ---
 
 ## Latest Updates (v2.528)

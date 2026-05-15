@@ -7,14 +7,15 @@
 
 ## What this subsystem does
 
-Salaried users get **auto materialized** `clock_sessions` rows with `origin = 'salary_schedule'` from their **workday template** (and optional **per-day override**). Authoritative implementation is **`salary_sync_one_user_clock_sessions`** (latest cumulative replace: **`20270421140000`**, **`20270516120000`** for continuous indexed fragments—see migrations list below).
+Salaried users get **auto materialized** `clock_sessions` rows with `origin = 'salary_schedule'` from their **workday template** (and optional **per-day override**). Authoritative implementation is **`salary_sync_one_user_clock_sessions`** (latest cumulative replace: **`20260515092032`**, which subsumes the prior `20270421140000` + `20270516120000` plus the product change to close approved-but-open rows at `t_end` — see migration index below).
 
 **High level**
 
 - **`salary_schedule` canonical rows**: For **continuous** templates, sync maintains a **single NULL**-index row per **`work_date`** when present; **split** templates (`mode = split`) maintain up to **two canonical** indexed rows (**`salary_segment_index` 1 then 2**). Rows **close** when **`p_now`** has passed each template block end (**`t_end`** / **`t_end2`**) (**half-open** slot math; **split-mode INSERT** guarded by overlap **`NOT EXISTS`**).
 - **`user_punch`**: Ordinary punches are **not** force-closed at template boundaries by the current deployed body (older **`20260404050204`** “mass-close everyone” wording is stale).
-- My Time **may split** a **continuous** `salary_schedule` parent into multiple **indexed** `salary_schedule` rows (**`1..N`**). Sync **still skips** inserting a duplicate NULL-index row (**`20270402100000`**) — and **`20270516120000`** closes **open** indexed fragments at **continuous** **`t_end`** once **`p_now ≥ t_end`** (see **[Continuous template mode](#continuous-template-mode)**).
+- My Time **may split** a **continuous** `salary_schedule` parent into multiple **indexed** `salary_schedule` rows (**`1..N`**). Sync **still skips** inserting a duplicate NULL-index row (**`20270402100000`**) — and **`20260515092032`** closes **open** indexed fragments at **continuous** **`t_end`** once **`p_now ≥ t_end`**, including approved-but-open ones (see **[Continuous template mode](#continuous-template-mode)**).
 - **Catch-up**: after **`t_end`**, if no canonical **`salary_schedule`** row covers the continuous slot yet (and **`20270402100000`** does not forbid it), INSERT a **closed** **`[t_start, t_end]`** row—or slot 1/slot 2 parallels in split mode—as in the migration SQL.
+- **Approved-but-open rows**: As of **`20260515092032`**, sync closes approved-but-open `salary_schedule` rows at **`t_end`** / **`t_end2`** alongside non-approved ones. Approval is **not** a terminal state for sync; only **`rejected_at`** and **`revoked_at`** stop sync from modifying a row. Earlier bodies returned early on any of the three flags, which left approved rows hanging until the **23:59 CT** **`auto_clock_out_open_sessions_eod`** safety net (inflating an 8 h day to ~16 h).
 
 ---
 
@@ -50,19 +51,21 @@ Resolution order for calendar display: **time off → weekend exclusion (when te
 ## Continuous template mode
 
 - Single window `[t_start, t_end)`.
-- **After `t_end`:** the **NULL-index** canonical row (if present and editable) is closed at **`t_end`** when **`p_now ≥ t_end`**. **Indexed** fragments from splitting the continuous row are also closed here (**`20270516120000`**). If no NULL-index row exists **and** there are **no** pending indexed `salary_schedule` splits for the day, **catch-up** inserts one closed row `[t_start, t_end]` (when **`NOT EXISTS`** does not forbid it).
+- **After `t_end`:** the **NULL-index** canonical row (if present and editable) is closed at **`t_end`** when **`p_now ≥ t_end`**. **Indexed** fragments from splitting the continuous row are also closed here (**`20260515092032`**, supersedes `20270516120000`). If no NULL-index row exists **and** there are **no** pending indexed `salary_schedule` splits for the day, **catch-up** inserts one closed row `[t_start, t_end]` (when **`NOT EXISTS`** does not forbid it).
 - **Inside the window:** if nothing is open, **INSERT** or **UPDATE** (reopen) the single NULL-index row (`approved_at` must be null to reopen).
 - **Indexed pending `salary_schedule` rows** (non-final, `salary_segment_index` not null): **no** NULL-index catch-up or open — preserves continuous days that were **split** into multiple `salary_schedule` segments without duplicating a day-start row.
-- **Closing those fragments at `t_end`:** when **`p_now ≥ continuous t_end`**, sync sets **`clocked_out_at = t_end`** on **open** (**`clocked_out_at IS NULL`**) **`salary_schedule`** rows that have **`salary_segment_index IS NOT NULL`** for that user/day, only when **`approved_at` / rejected / revoked** are unset and **`clocked_in_at < t_end`** (`20270516120000`). Rows with non-null **`clocked_out_at`** are left unchanged (no clamp past the template end).
+- **Closing those fragments at `t_end`:** when **`p_now ≥ continuous t_end`**, sync sets **`clocked_out_at = t_end`** on **open** (**`clocked_out_at IS NULL`**) **`salary_schedule`** rows that have **`salary_segment_index IS NOT NULL`** for that user/day. **Approved-but-open** rows are included; only **`rejected_at`** / **`revoked_at`** stop the close. Predicate (**`20260515092032`**): **`clocked_in_at < t_end AND clocked_out_at IS NULL AND rejected_at IS NULL AND revoked_at IS NULL`**. Rows with non-null **`clocked_out_at`** are left unchanged (no clamp past the template end).
+- **Canonical NULL row close** also ignores **`approved_at`** as of **`20260515092032`**: if the row is open and **`p_now ≥ t_end`**, set **`clocked_out_at = t_end`** unless the row is **rejected** or **revoked** (then RETURN early, leaving the row alone).
 
 ---
 
 ## Split template mode (two canonical slots)
 
 - Slot **1**: `[t_start, t_end)`. Slot **2**: `[t_start2, t_end2)`.
-- **Closes**: each canonical **slot row** (**`salary_schedule`**, **`salary_segment_index` 1 or 2**) is set to **`clocked_out_at = t_end`** / **`t_end2`** when **`p_now`** has passed that slot end (**non-final**, open rows only—for **slot semantics** compare migration **`20270421140000`**).
+- **Closes**: each canonical **slot row** (**`salary_schedule`**, **`salary_segment_index` 1 or 2**) is set to **`clocked_out_at = t_end`** / **`t_end2`** when **`p_now`** has passed that slot end. Predicate (**`20260515092032`**): row is **not rejected** and **not revoked** (approval is allowed) and **`clocked_out_at IS NULL`**.
 - **Catch-up** closed rows for slot 1 / 2 if missing after the respective end.
 - **Opens** when inside each window and **no** session is open on that day; uses `salary_segment_index` **1** or **2** and segment B job/bid when `use_split_focus`.
+- **Degenerate templates** where **`segment_b_start_local = segment_a_start_local`**: slot 2 window is **remapped** to start at slot 1’s **`t_end`** and end at **`t_end + segment_b_duration_minutes`**, so the slot-1 canonical row’s window does not block the slot-2 INSERT via half-open overlap (**`20260515092032`**, supersedes `20270421140000`). Without this remap, an `8:00 → 8:00` template produces only slot 1 (the user is credited 0 hours from slot 2 once slot 1 closes).
 
 Split-mode **NOT EXISTS** overlap checks for canonical slots **1** / **2** treat a session as on the sync day when **`work_date`** matches **`p_work_date`** **or** the **clock-in** civil date in the effective template timezone matches **`p_work_date`** (`20270408153000` — avoids a duplicate empty slot **1** when **`work_date`** and sync day disagree at a boundary).
 
@@ -111,10 +114,11 @@ Week editability uses **America/Chicago** (current week for single session; this
 ## Staging verification (after deploy)
 
 - Continuous: mid-block first tick opens; end tick mass-closes at `t_end`; late cron inserts fully closed day.
-- Split: gap between blocks; second block opens when no open; ends mass-close.
+- Continuous + My Time split: any open indexed (`salary_segment_index 1..N`) `salary_schedule` rows close at `t_end` once `p_now ≥ t_end` — including approved-but-open ones.
+- Split: gap between blocks; second block opens when no open; ends mass-close. Degenerate templates (`segment_b_start_local = segment_a_start_local`) remap slot 2 to start at slot 1 `t_end`.
 - Manual `user_punch` during a salary day overlaps template windows per **half-open overlap** guards (split-slot INSERT rules); punches are **not** automatically rewritten to **`t_end`** here.
 - PTO / no template / excluded weekend: non-final `salary_schedule` deleted, then opens closed at `p_now`.
-- **Payroll**: confirm impact when an **approved** session was still open and sync sets **`clocked_out_at`** (product allows this).
+- **Payroll**: as of **`20260515092032`**, sync **does** set `clocked_out_at` on approved-but-open salary rows once `p_now ≥ t_end` / `t_end2`. Reviewing pay reports after deploy is recommended.
 
 ---
 
@@ -145,11 +149,15 @@ When My Time **merges** multiple `clock_sessions` rows into **one** visual segme
 | `20270408153000` | Split sync: slot **1** / **2** overlap **NOT EXISTS** uses **`work_date`** **or** **clock-in date in template `tz`** vs `p_work_date` |
 | `20270408162000` | Same split overlap math, documented as **half-open** (`clocked_in_at < t_close AND t_open < coalesce(out, now)`); boundary matrix in SQL |
 | `20260404050204` | Historical **boundary sync** narrative (**mass-close all origins** at block end, PTO path mass-close at `p_now`); **later** cumulative replaces (**`20270421140000`**) implement **canonical + half-open overlap** behavior without **user_punch** mass-close—read current SQL, not this heading alone |
+| `20270410130200` | Continuous catch-up `NOT EXISTS` on indexed splits drops `approved_at IS NULL` filter (block NULL-index INSERT once any non-rejected/non-revoked indexed row exists) |
+| `20270421130000` | `cs` alias shadowing inside split-overlap subqueries — rename to `sess` |
+| `20270421140000` | Degenerate split template (**`segment_b_start_local = segment_a_start_local`**): remap slot 2 window to start at slot 1 `t_end`, recompute `t_end2` |
 | `20270516120000` | **Continuous + split fragments**: when `p_now ≥ t_end`, open indexed `salary_schedule` rows close at `t_end`; top-of-file **What this subsystem does** updated for shipped body |
+| **`20260515092032`** | **Drift repair + product change.** Re-applies the latest function body (`20270408153000` + `20270408162000` + `20270410130200` + `20270421130000` + `20270421140000` + `20270516120000` had been recorded in `schema_migrations` but the live function body was older). **Product change**: continuous canonical NULL row, continuous indexed (1..N) fragments, and split slot 1 / slot 2 close branches now ignore `approved_at`; only `rejected_at` and `revoked_at` are terminal for sync. Approved-but-open rows close at `t_end` / `t_end2` instead of falling through to the 23:59 CT `auto_clock_out_open_sessions_eod` safety net. |
 
 ---
 
 ## See also
 
-- [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — v2.419 continuous-split close at `t_end`; v2.249 split overlap TZ; historical v2.228 / v2.229 notes
+- [`RECENT_FEATURES.md`](./RECENT_FEATURES.md) — **v2.529** drift repair + approved-but-open close at `t_end`; v2.419 continuous-split close at `t_end`; v2.249 split overlap TZ; historical v2.228 / v2.229 notes
 - [`GLOSSARY.md`](./GLOSSARY.md) — Clock Sessions
