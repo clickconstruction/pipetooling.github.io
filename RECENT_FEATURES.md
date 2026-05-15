@@ -12,11 +12,14 @@ estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.529+ (reverse chronological)"
+version_range: "v2.530+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.530)"
+    line: ~1785
+    description: "Dead-code cleanup: delete 5 orphan files (CustomPayReportsModal, ReceivablesSection, useMyMercuryTallyNotesByTxId, estimateCustomerEmail, useJobScheduleBlocks) — 761 lines / ~33 KB removed; current-state docs scrubbed (AGENTS, AI_CONTEXT, PROJECT_DOCUMENTATION); historical RECENT_FEATURES entries preserved; build green"
   - name: "Latest Version (v2.529)"
-    line: ~1782
+    line: ~1815
     description: "Salary sync — re-apply latest body (drift repair) + tail consolidation (20270601000000); approved-but-open continuous + split rows now close at t_end (no longer fall through to 23:59 EOD); degenerate split (segment B = A) remap; indexed (1..N) salary_schedule fragment close at t_end"
   - name: "Latest Version (v2.528)"
     line: ~1773
@@ -1592,6 +1595,7 @@ when_to_read:
 **New:** [v2.276 — DetailJobModal: three dates, pipeline, 640px layout, notes chrome](#latest-updates-v2276)
 **New:** [v2.273 — DetailJobModal: Scheduled block weekday in title](#latest-updates-v2273)
 **New:** [v2.272 — DetailJobModal: Customer panel beside Address/schedule](#latest-updates-v2272)
+**New:** [v2.530 — Dead-code cleanup: delete 5 orphan source files (**`CustomPayReportsModal.tsx`** / **`ReceivablesSection.tsx`** / **`useMyMercuryTallyNotesByTxId.ts`** / **`estimateCustomerEmail.ts`** / **`useJobScheduleBlocks.ts`**) — 761 lines / ~33 KB removed; current-state docs scrubbed (**`AGENTS.md`**, **`AI_CONTEXT.md`**, **`PROJECT_DOCUMENTATION.md`**); historical **`RECENT_FEATURES.md`** entries preserved as accurate changelog; build green](#latest-updates-v2530)
 **New:** [v2.529 — Salary sync — drift repair + approved-but-open close at **`t_end`**: re-apply latest body of **`salary_sync_one_user_clock_sessions`** (had been recorded as applied but the live body was older); continuous canonical + indexed (1..N) **`salary_schedule`** fragments and split slots **1**/**2** close at **`t_end`** / **`t_end2`** when **`p_now`** has passed — including approved-but-open rows (rejected / revoked never modified); degenerate split template (**`segment_b_start_local = segment_a_start_local`**) remap of slot 2 to **`t_start := t_end`**; **tail** **`20270601000000`** with the same body so fresh **`supabase db reset`** lands on this body](#latest-updates-v2529)
 **New:** [v2.528 — Stripe staff UI: **`stripeInvoiceLinesDataForFixtureOrderDisplay`** multi-line **`reverse`** — Bill Customer preview / **`get-stripe-invoice-details`** / **`invoice_preview`** match **invoice.stripe.com** row order when Stripe API line arrays invert](#latest-updates-v2528)
 **New:** [v2.527 — Stripe multi-line: **`buildStripeInvoiceItemsFromFixtures`** emits **`invoice_items`** in **`sequence_order`** ascending (drops creation **`items.reverse()`**); matches **Physical** and hosted Stripe amount lines](#latest-updates-v2527)
@@ -1780,6 +1784,29 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.530)
+
+**Date**: 2026-05-15
+
+### Dead-code cleanup — remove 5 orphan source files
+
+- **Deleted** — five source files with **zero** external imports (verified by combined `from '...'` + `lazy(() => import('...'))` + `import('...')` scan across `src/`):
+  - **[`src/components/pay/CustomPayReportsModal.tsx`](#)** (366 lines / 14 KB) — bulk pay-report modal that the Payroll toolbar used to open. Superseded by **`DraftPayrollModal.tsx`** during **v2.514**'s Draft Payroll work; the modal was unhooked from **`People.tsx`** but the file remained on disk. No tests, no remaining call sites, no Edge Function references.
+  - **[`src/components/quickfill/ReceivablesSection.tsx`](#)** (306 lines / 16 KB) — original `jobs_receivables` UI block on Quickfill (history: v2.81 introduced it; later versions removed it from the page render — *"ReceivablesSection removed from Quickfill"* in the v2.81 entry of this file). The **`jobs_receivables`** table itself is still queried from **`Settings.tsx`** and typed in **`database.ts`**, so only the section component is removed.
+  - **[`src/hooks/useMyMercuryTallyNotesByTxId.ts`](#)** (59 lines / 1.8 KB) — loaded the current user's **`mercury_tally_transaction_notes`** for a list of transaction IDs. Banking moved to org-wide **`mercury_transaction_org_notes`** (**v2.475**+) and the per-user tally hook was never wired in.
+  - **[`src/lib/estimateCustomerEmail.ts`](#)** (17 lines / 0.6 KB) — explicitly self-documented as *"Legacy static estimate email helpers (unused by app after v2.234). Kept for reference."* Send path uses **`estimateCustomerExperience.ts`** + **`app_settings`** / overrides / snapshot. The Edge Function shared file at **`supabase/functions/_shared/estimateCustomerEmail.ts`** is independent and untouched.
+  - **[`src/hooks/useJobScheduleBlocks.ts`](#)** (13 lines / 0.4 KB) — pure re-export shim from **`../lib/jobScheduleBlocks`**; header comment already recommended *"prefer importing from `../lib/jobScheduleBlocks` for tree-shaking."* Every consumer already does.
+- **Total** — 761 lines / ~33 KB of source removed. No test files referenced the deleted modules. No bundle change (orphan files weren't imported, so they weren't in any chunk); savings are source-tree only.
+- **Docs scrubbed** — current-state mentions removed from:
+  - **[`AGENTS.md`](AGENTS.md)** — People Payroll table row (drop *"Generate Custom Pay Report / `CustomPayReportsModal`"* parenthetical + file-list entry); People roster row (drop dangling **`ReceivablesSection.tsx`** entry).
+  - **[`AI_CONTEXT.md`](AI_CONTEXT.md)** — People Payroll table row (drop *"toolbar Generate Custom Pay Report (`CustomPayReportsModal`, bulk View)"* + file-list entry).
+  - **[`PROJECT_DOCUMENTATION.md`](PROJECT_DOCUMENTATION.md)** — Payroll tab paragraph (drop *"Toolbar: Generate Custom Pay Report opens [CustomPayReportsModal] …"* opening clause; rewrite empty-state copy line to point at **Draft Payroll** only; drop trailing *"row View is not shown — use Generate Custom Pay Report for bulk View"*).
+- **Historical entries preserved** — **`RECENT_FEATURES.md`** mentions inside historical version sections (**v2.81**, **v2.233**, **v2.252**, **v2.330**, **v2.345**, etc.) are intentionally **left intact**. The changelog is a chronological record; rewriting prior entries would misrepresent what was true at the time.
+- **Verification** — `tsc -b && vite build` → exit 0; build time / chunk inventory unchanged from pre-cleanup run earlier in the session.
+- **Scan tooling** — One-shot bash scan over `src/{lib,components,hooks,contexts}` (617 candidate files) using `grep -RIE "(from |import\()['\"]([^'\"]*/)?STEM(\.types?)?['\"]"`. False-positive class noted: barrel `index.ts` files matched by folder path (e.g. **`src/components/clock-sessions/index.ts`**) require a manual second look — not deleted.
+
 ---
 
 ## Latest Updates (v2.529)

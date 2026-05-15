@@ -11,10 +11,16 @@ import {
   NoteCardFloatingEditButton,
 } from '../shared/NoteCardFloatingEditButton'
 import { submitNoteOnEnterKeyDown } from '../../lib/noteComposerTextareaKeyDown'
-import type { Database } from '../../types/database'
+import {
+  SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR,
+  SELECT_CUSTOMER_CONTACTS_WITH_CREATOR,
+  noteByLineFromEmbed,
+  type BidSubmissionEntryWithCreator,
+  type CustomerContactWithCreatorRow,
+} from '../../lib/noteCreatorDisplay'
 
-export type BidSubmissionEntry = Database['public']['Tables']['bids_submission_entries']['Row']
-export type CustomerContactRow = Database['public']['Tables']['customer_contacts']['Row']
+export type BidSubmissionEntry = BidSubmissionEntryWithCreator
+export type CustomerContactRow = CustomerContactWithCreatorRow
 
 export type UnifiedNoteRow =
   | {
@@ -307,6 +313,7 @@ function BidUnifiedEntryRow({
             </span>
           ) : null}
           <span>{entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}</span>
+          <span style={{ color: '#6b7280' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
         </div>
       </div>
     </article>
@@ -508,6 +515,7 @@ function CustomerUnifiedEntryRow({
             </span>
           ) : null}
           <span>{entry.contact_date ? formatCompactNoteDateTime(entry.contact_date) : '—'}</span>
+          <span style={{ color: '#6b7280' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
         </div>
       </div>
     </article>
@@ -877,7 +885,7 @@ export function UnifiedBidCustomerNotes({
     try {
       const data = await withSupabaseRetry(
         async () =>
-          supabase.from('bids_submission_entries').select('*').eq('bid_id', bidId).order('occurred_at', { ascending: false }),
+          supabase.from('bids_submission_entries').select(SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR).eq('bid_id', bidId).order('occurred_at', { ascending: false }),
         'load bid submission entries unified'
       )
       bidRows = (data as BidSubmissionEntry[] | null) ?? []
@@ -888,7 +896,7 @@ export function UnifiedBidCustomerNotes({
       try {
         const data = await withSupabaseRetry(
           async () =>
-            supabase.from('customer_contacts').select('*').eq('customer_id', customerId).order('contact_date', { ascending: false }),
+            supabase.from('customer_contacts').select(SELECT_CUSTOMER_CONTACTS_WITH_CREATOR).eq('customer_id', customerId).order('contact_date', { ascending: false }),
           'load customer contacts unified'
         )
         customerRows = (data as CustomerContactRow[] | null) ?? []

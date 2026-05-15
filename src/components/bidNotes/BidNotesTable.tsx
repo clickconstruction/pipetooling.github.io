@@ -11,9 +11,13 @@ import {
   NoteCardFloatingEditButton,
 } from '../shared/NoteCardFloatingEditButton'
 import { submitNoteOnEnterKeyDown } from '../../lib/noteComposerTextareaKeyDown'
-import type { Database } from '../../types/database'
+import {
+  SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR,
+  noteByLineFromEmbed,
+  type BidSubmissionEntryWithCreator,
+} from '../../lib/noteCreatorDisplay'
 
-export type BidSubmissionEntry = Database['public']['Tables']['bids_submission_entries']['Row']
+export type BidSubmissionEntry = BidSubmissionEntryWithCreator
 
 function useBidSubmissionEntries(bidId: string | null, onLoadError?: (message: string) => void) {
   const [entries, setEntries] = useState<BidSubmissionEntry[]>([])
@@ -24,7 +28,7 @@ function useBidSubmissionEntries(bidId: string | null, onLoadError?: (message: s
   const fetchEntries = useCallback(async (id: string) => {
     const data = await withSupabaseRetry(
       async () =>
-        supabase.from('bids_submission_entries').select('*').eq('bid_id', id).order('occurred_at', { ascending: false }),
+        supabase.from('bids_submission_entries').select(SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR).eq('bid_id', id).order('occurred_at', { ascending: false }),
       'load bid submission entries'
     )
     return (data as BidSubmissionEntry[] | null) ?? []
@@ -269,6 +273,7 @@ function BidNotesEntryRow({
             </span>
           ) : null}
           <span>{entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}</span>
+          <span style={{ color: '#6b7280' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
         </div>
       </div>
     </article>

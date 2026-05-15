@@ -17,6 +17,7 @@ import { fetchBidBoardNotesUnreadCounts } from '../lib/bidBoardNotesUnreadCounts
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { formatCompactNoteDateTime } from '../utils/dateUtils'
+import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from '../lib/noteCreatorDisplay'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { addExpandedPartsToPO, expandTemplate, getTemplatePartsPreview } from '../lib/materialPOUtils'
 import {
@@ -6585,7 +6586,7 @@ export default function Bids() {
     // Load all submission entries for the bids
     const { data: submissionEntries } = await supabase
       .from('bids_submission_entries')
-      .select('*')
+      .select(SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR)
       .order('occurred_at', { ascending: false })
     
     // Group entries by bid_id and take latest 3
@@ -6627,6 +6628,7 @@ export default function Bids() {
               <span class="submission-label">Contact Method:</span> ${escapeHtml(entry.contact_method ?? '—')}
               <span class="submission-label">Notes:</span> ${escapeHtml(entry.notes ?? '—')}
               <span class="submission-label">Time:</span> ${entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}
+              <span class="submission-label">Author:</span> ${escapeHtml(noteByLineFromEmbed(entry.created_by_user))}
             </div>
           `).join('')}
         </div>
@@ -6804,7 +6806,7 @@ export default function Bids() {
     // Load submission entries
     const { data: submissionEntries } = await supabase
       .from('bids_submission_entries')
-      .select('*')
+      .select(SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR)
       .order('occurred_at', { ascending: false })
     
     const entriesByBid = new Map<string, BidSubmissionEntry[]>()
@@ -6878,6 +6880,7 @@ export default function Bids() {
         push(`  ${idx + 1}. Contact Method: ${entry.contact_method ?? '—'}`)
         push(`     Notes: ${entry.notes ?? '—'}`)
         push(`     Time: ${entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}`)
+        push(`     ${noteByLineFromEmbed(entry.created_by_user)}`)
         y += lineHeight * 0.2
       })
       

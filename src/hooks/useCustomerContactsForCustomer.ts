@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import type { Database } from '../types/database'
+import { SELECT_CUSTOMER_CONTACTS_WITH_CREATOR, type CustomerContactWithCreatorRow } from '../lib/noteCreatorDisplay'
 
-export type CustomerContactRow = Database['public']['Tables']['customer_contacts']['Row']
+export type CustomerContactRow = CustomerContactWithCreatorRow
 
 export function useCustomerContactsForCustomer(customerId: string | null, onLoadError?: (message: string) => void) {
   const [entries, setEntries] = useState<CustomerContactRow[]>([])
@@ -14,7 +14,7 @@ export function useCustomerContactsForCustomer(customerId: string | null, onLoad
   const fetchEntries = useCallback(async (id: string) => {
     const data = await withSupabaseRetry(
       async () =>
-        supabase.from('customer_contacts').select('*').eq('customer_id', id).order('contact_date', { ascending: false }),
+        supabase.from('customer_contacts').select(SELECT_CUSTOMER_CONTACTS_WITH_CREATOR).eq('customer_id', id).order('contact_date', { ascending: false }),
       'load customer contacts for customer'
     )
     return (data as CustomerContactRow[] | null) ?? []

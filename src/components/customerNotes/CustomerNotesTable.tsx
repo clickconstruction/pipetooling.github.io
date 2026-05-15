@@ -11,6 +11,7 @@ import {
 } from '../shared/NoteCardFloatingEditButton'
 import { submitNoteOnEnterKeyDown } from '../../lib/noteComposerTextareaKeyDown'
 import { formatCompactNoteDateTime } from '../../utils/dateUtils'
+import { noteByLineFromEmbed } from '../../lib/noteCreatorDisplay'
 
 export type { CustomerContactRow }
 
@@ -208,6 +209,7 @@ function CustomerNotesEntryRow({
             </span>
           ) : null}
           <span>{entry.contact_date ? formatCompactNoteDateTime(entry.contact_date) : '—'}</span>
+          <span style={{ color: '#6b7280' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
         </div>
       </div>
     </article>
