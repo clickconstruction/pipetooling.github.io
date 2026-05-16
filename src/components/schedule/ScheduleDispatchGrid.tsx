@@ -13,9 +13,14 @@ import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNot
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
 import type { JobScheduleBlockRow, ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
 import {
-  scheduleBlockActionIconButtonStyle,
+  userTimeOffCellKey,
+  type UserTimeOffCellInfo,
+} from '../../lib/userTimeOffByCell'
+import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
+import {
   scheduleBlockActionLinkedIconButtonStyle,
   scheduleBlockActionTextButtonStyle,
+  scheduleBlockControlPlateBackgroundStyle,
   scheduleBlockLinkedControlPlateStyle,
 } from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
@@ -38,10 +43,11 @@ function cellKey(assigneeUserId: string, workDate: string): string {
 }
 
 const scheduleGridSalarySuffix: CSSProperties = {
-  marginLeft: '0.15rem',
+  display: 'block',
   fontSize: '0.68rem',
   color: '#9ca3af',
   fontWeight: 400,
+  lineHeight: 1.1,
 }
 
 export type ScheduleDispatchCardPlacementMode = { sourceBlockId: string; variant: 'linked' | 'unlinked' }
@@ -214,22 +220,21 @@ function ScheduleDispatchBlockCard({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 20,
-                height: 20,
+                width: 16,
+                height: 16,
+                minWidth: 16,
+                minHeight: 16,
                 boxSizing: 'border-box',
                 padding: 0,
                 color: '#1d4ed8',
-                background: 'transparent',
-                border: 'none',
-                borderRadius: 4,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 margin: 0,
-                ...(linkPeerCount > 1 ? { marginLeft: -4 } : {}),
-                ...scheduleBlockActionIconButtonStyle,
+                ...scheduleBlockControlPlateBackgroundStyle,
+                ...scheduleBlockActionLinkedIconButtonStyle,
               }}
             >
-              <ScheduleDispatchBlockNoteIcon size={12} />
+              <ScheduleDispatchBlockNoteIcon size={10} />
             </button>
           ) : null}
         </div>
@@ -339,6 +344,8 @@ function ScheduleDispatchCell({
   onEditBlock,
   onDeleteBlock,
   onRequestEditBlockNote,
+  timeOffInfo,
+  onRequestUndoNotComingIn,
 }: {
   assigneeUserId: string
   workDate: string
@@ -357,9 +364,12 @@ function ScheduleDispatchCell({
   onEditBlock: (b: JobScheduleBlockRow) => void
   onDeleteBlock: (id: string) => void
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  timeOffInfo?: UserTimeOffCellInfo | null
+  onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
 }) {
+  const cellHasTimeOff = timeOffInfo != null
   const droppableId = scheduleDispatchCellDroppableId(workDate, assigneeUserId)
-  const { isOver, setNodeRef } = useDroppable({ id: droppableId })
+  const { isOver, setNodeRef } = useDroppable({ id: droppableId, disabled: cellHasTimeOff })
   const idleBg = scheduleDispatchDayColumnCellIdleBg(workDate, {
     scheduleTodayYmd,
     columnFocusDayYmd,
@@ -375,25 +385,73 @@ function ScheduleDispatchCell({
   } else if (placementPickingActive && !linkedWrongDay) {
     cellBg = isOver ? '#c7d2fe' : '#eef2ff'
   }
+  // Time-off cells aren't valid placement targets — gray them out the same
+  // way `linked wrong day` cells do during the placement flow.
+  if (cellHasTimeOff && placementPickingActive) {
+    cellBg = '#f3f4f6'
+  }
+  const placementPickingTargetable = placementPickingActive && !cellHasTimeOff
 
   return (
     <td
       ref={setNodeRef}
       onClick={() => {
-        if (!placementPickingActive) return
+        if (!placementPickingTargetable) return
         onCardPlacementCellPick(assigneeUserId, workDate)
       }}
       style={{
+        position: 'relative',
+        isolation: 'isolate',
         verticalAlign: 'top',
         minWidth: 132,
         maxWidth: 200,
         padding: 6,
         border: '1px solid #e5e7eb',
         background: cellBg,
-        cursor: placementPickingActive ? 'pointer' : undefined,
+        cursor: placementPickingTargetable ? 'pointer' : undefined,
       }}
     >
-      <div style={{ minHeight: 48 }}>
+      <div style={{ minHeight: 48, position: 'relative' }}>
+        {timeOffInfo && blocks.length === 0 ? (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <span style={{ pointerEvents: 'auto' }}>
+              <ScheduleDispatchTimeOffChip
+                info={timeOffInfo}
+                onClick={
+                  canEdit &&
+                  onRequestUndoNotComingIn &&
+                  timeOffInfo.variant === 'not_coming_in'
+                    ? () => onRequestUndoNotComingIn(assigneeUserId, workDate)
+                    : undefined
+                }
+                interactiveTitle="Click to mark as coming in"
+              />
+            </span>
+          </div>
+        ) : timeOffInfo ? (
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+            <ScheduleDispatchTimeOffChip
+              info={timeOffInfo}
+              onClick={
+                canEdit &&
+                onRequestUndoNotComingIn &&
+                timeOffInfo.variant === 'not_coming_in'
+                  ? () => onRequestUndoNotComingIn(assigneeUserId, workDate)
+                  : undefined
+              }
+              interactiveTitle="Click to mark as coming in"
+            />
+          </div>
+        ) : null}
         {blocks.map((b) => {
           const g = b.shared_block_group_id
           const linkPeerCount = g ? groupMemberCountByGroupId.get(g) ?? 0 : 0
@@ -414,7 +472,7 @@ function ScheduleDispatchCell({
           )
         })}
       </div>
-      {canEdit ? (
+      {canEdit && !cellHasTimeOff ? (
         <div
           style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 4 }}
           onClick={(e) => e.stopPropagation()}
@@ -474,6 +532,10 @@ export type ScheduleDispatchGridProps = {
   canAddUserToJobRoster?: boolean
   onAddUserToJobRoster?: (userId: string) => void
   addToJobBusyUserId?: string | null
+  /** Map keyed by `userTimeOffCellKey(userId, workDate)` → time-off info to render as a chip on the cell. */
+  userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
+  /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
+  onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
 }
 
 export function ScheduleDispatchGrid({
@@ -506,6 +568,8 @@ export function ScheduleDispatchGrid({
   canAddUserToJobRoster = false,
   onAddUserToJobRoster,
   addToJobBusyUserId = null,
+  userTimeOffByCell,
+  onRequestUndoNotComingIn,
 }: ScheduleDispatchGridProps) {
   const isMobile = useIsMobile()
   const scrollRootRef = useRef<HTMLDivElement>(null)
@@ -523,7 +587,7 @@ export function ScheduleDispatchGrid({
   })
 
   return (
-    <div ref={scrollRootRef} style={{ width: '100%', overflowX: 'auto' }}>
+    <>
       <ScheduleDispatchWeekNav
         weekStart={weekStart}
         onWeekShift={onWeekShift}
@@ -535,6 +599,15 @@ export function ScheduleDispatchGrid({
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
 
+      <div
+        ref={scrollRootRef}
+        style={{
+          width: 'auto',
+          overflowX: 'auto',
+          marginLeft: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
+          marginRight: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
+        }}
+      >
       <table style={{ borderCollapse: 'collapse', width: 'max-content', minWidth: '100%', fontSize: '0.8125rem' }}>
         <thead>
           <tr>
@@ -544,12 +617,17 @@ export function ScheduleDispatchGrid({
                 left: 0,
                 zIndex: 2,
                 background: isMobile ? 'transparent' : '#f3f4f6',
-                border: '1px solid #e5e7eb',
+                borderTop: '1px solid #e5e7eb',
+                borderRight: '1px solid #e5e7eb',
+                borderBottom: '1px solid #e5e7eb',
                 padding: '0.5rem',
                 textAlign: 'left',
                 width: '1%',
                 minWidth: 0,
                 whiteSpace: 'nowrap',
+                boxShadow: isMobile
+                  ? undefined
+                  : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
               }}
             >
               {isMobile ? <span style={scheduleDispatchMobileNamePill}>Team member</span> : 'Team member'}
@@ -600,12 +678,17 @@ export function ScheduleDispatchGrid({
                     left: 0,
                     zIndex: 1,
                     background: isMobile ? 'transparent' : '#fff',
-                    border: '1px solid #e5e7eb',
+                    borderTop: '1px solid #e5e7eb',
+                    borderRight: '1px solid #e5e7eb',
+                    borderBottom: '1px solid #e5e7eb',
                     padding: '0.5rem',
                     fontWeight: 500,
                     verticalAlign: 'top',
                     width: '1%',
                     minWidth: 0,
+                    boxShadow: isMobile
+                      ? undefined
+                      : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
                   }}
                 >
                   <div style={{ lineHeight: 1.25 }}>
@@ -618,7 +701,7 @@ export function ScheduleDispatchGrid({
                             aria-label="Salaried (Pay settings)"
                             style={scheduleGridSalarySuffix}
                           >
-                            {' '}(s)
+                            (s)
                           </span>
                         ) : null}
                       </span>
@@ -631,7 +714,7 @@ export function ScheduleDispatchGrid({
                             aria-label="Salaried (Pay settings)"
                             style={scheduleGridSalarySuffix}
                           >
-                            {' '}(s)
+                            (s)
                           </span>
                         ) : null}
                       </span>
@@ -684,6 +767,10 @@ export function ScheduleDispatchGrid({
                     onEditBlock={onEditBlock}
                     onDeleteBlock={onDeleteBlock}
                     onRequestEditBlockNote={onRequestEditBlockNote}
+                    timeOffInfo={
+                      userTimeOffByCell?.get(userTimeOffCellKey(m.user_id, dk)) ?? null
+                    }
+                    onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                   />
                 ))}
               </tr>
@@ -691,7 +778,8 @@ export function ScheduleDispatchGrid({
           )}
         </tbody>
       </table>
-    </div>
+      </div>
+    </>
   )
 }
 

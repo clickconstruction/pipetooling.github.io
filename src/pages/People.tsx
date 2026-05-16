@@ -29,7 +29,7 @@ import { normalizeCustomerAttachmentUrl } from '../lib/estimateCustomerAttachmen
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { buildCrewMapFromJobsAndBidRows, type MergedCrewMapRow } from '../utils/crewAssignments'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
-import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../utils/dateUtils'
+import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, referenceDateForWorkDateYmd, ymdAddDays } from '../utils/dateUtils'
 
 function formatOverheadTabWorkDateLabel(workDateYmd: string): string {
   const d = referenceDateForWorkDateYmd(workDateYmd)
@@ -116,6 +116,7 @@ import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthP
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
 import { PeopleHoursDashboardClockStrip } from '../components/people/PeopleHoursDashboardClockStrip'
@@ -162,11 +163,13 @@ import {
   aggregateOtherJobsLaborByPerson,
   aggregateOverheadDetailByPerson,
   aggregateOverheadDetailByPersonTotalScope,
+  approvedClosedSessionHours,
   buildOtherJobsLaborByDay,
   buildOverheadDailyLabor,
   buildOverheadWageLookup,
   filterOverheadDetailLines,
   mergeOverheadDayTableRows,
+  overheadBucketForSession,
   overheadFactorTotalOverOtherJobs,
   type OverheadClockSessionRow,
   type OverheadDetailScope,
@@ -852,6 +855,23 @@ export default function People() {
     Map<string, OverheadPartsDetailLine[]>
   >(() => new Map())
   const [overheadOfficePartsLoading, setOverheadOfficePartsLoading] = useState(false)
+  const [overheadAvgDailyCost, setOverheadAvgDailyCost] = useState<{
+    avg7: number | null
+    avg30: number | null
+    avg90: number | null
+    per100_7: number | null
+    per100_30: number | null
+    per100_90: number | null
+    loading: boolean
+  }>({
+    avg7: null,
+    avg30: null,
+    avg90: null,
+    per100_7: null,
+    per100_30: null,
+    per100_90: null,
+    loading: false,
+  })
   const [overheadOtherJobsSessions, setOverheadOtherJobsSessions] = useState<OverheadClockSessionRow[]>([])
   const [overheadOtherJobsSessionsLoading, setOverheadOtherJobsSessionsLoading] = useState(false)
   const [overheadOtherJobsPartsUsdByDay, setOverheadOtherJobsPartsUsdByDay] = useState<Map<string, number>>(
@@ -1327,6 +1347,13 @@ export default function People() {
   type ReviewPeriod = 'today' | 'yesterday' | 'last_week' | 'last_two_weeks' | 'last_month'
   const [selectedReviewPersonIndex, setSelectedReviewPersonIndex] = useState(0)
   const [reviewPeriod, setReviewPeriod] = useState<ReviewPeriod>('last_week')
+  const [viewportHeight, setViewportHeight] = useState<number>(typeof window === 'undefined' ? 800 : window.innerHeight)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onResize = () => setViewportHeight(window.innerHeight)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [reviewLoading, setReviewLoading] = useState(false)
   type ReviewLaborJob = {
     source: 'labor'
@@ -1338,7 +1365,9 @@ export default function People() {
     job_number: string | null
     job_id: string | null
     job_name: string
+    service_type_id: string | null
     laborCost: number
+    driveCost: number
     partsCost: number
     totalBill: number
     valueCreated: number
@@ -1348,12 +1377,14 @@ export default function People() {
     allocatedRevenueBeforeOverhead: number
     allocatedPartsCost: number
     subLaborCost: number
-    otherTeammatesLabor: number
+    totalLaborOnJob: number
+    totalDriveCostOnJob: number
     totalJobHours: number
     userTotalHoursOnJob: number
     userTotalContributionToBill: number
     userTotalContributionToRevenue: number
     userTotalLaborOnJob: number
+    userTotalDriveCostOnJob: number
   }
   type ReviewCrewJob = {
     source: 'crew'
@@ -1362,10 +1393,12 @@ export default function People() {
     hcp_number: string
     job_name: string
     job_address: string
+    service_type_id: string | null
     viaLead: string | null
     crewMemberNames?: string[]
     hours: number
     laborCost: number
+    driveCost: number
     partsCost: number
     totalBill: number
     valueCreated: number
@@ -1375,12 +1408,14 @@ export default function People() {
     allocatedRevenueBeforeOverhead: number
     allocatedPartsCost: number
     subLaborCost: number
-    otherTeammatesLabor: number
+    totalLaborOnJob: number
+    totalDriveCostOnJob: number
     totalJobHours: number
     userTotalHoursOnJob: number
     userTotalContributionToBill: number
     userTotalContributionToRevenue: number
     userTotalLaborOnJob: number
+    userTotalDriveCostOnJob: number
   }
   const [reviewLaborJobs, setReviewLaborJobs] = useState<ReviewLaborJob[]>([])
   const [reviewCrewJobs, setReviewCrewJobs] = useState<ReviewCrewJob[]>([])
@@ -1394,6 +1429,57 @@ export default function People() {
   const [reviewTasksOutstanding, setReviewTasksOutstanding] = useState<ReviewTask[]>([])
   const [reviewJobsWorkedCollapsed, setReviewJobsWorkedCollapsed] = useState(false)
   const [reviewJobExpandedKey, setReviewJobExpandedKey] = useState<string | null>(null)
+  type ReviewLaborContributor = {
+    personName: string
+    hours: number
+    laborCost: number
+    subLaborCost: number
+    crewLaborCost: number
+  }
+  const [reviewLaborByJobAndPerson, setReviewLaborByJobAndPerson] = useState<Record<string, ReviewLaborContributor[]>>({})
+  const [reviewOverheadRates, setReviewOverheadRates] = useState<{
+    ratePerHour: number | null
+    ratePerRevenueDecimal: number | null
+    ratePerLaborDollar: number | null
+    loading: boolean
+    windowStart: string | null
+    windowEnd: string | null
+    officeLabor90d: number | null
+    bidLabor90d: number | null
+    officeParts90d: number | null
+    invoices90d: number | null
+    fieldHours90d: number | null
+    fieldLaborUsd90d: number | null
+  }>({
+    ratePerHour: null,
+    ratePerRevenueDecimal: null,
+    ratePerLaborDollar: null,
+    loading: false,
+    windowStart: null,
+    windowEnd: null,
+    officeLabor90d: null,
+    bidLabor90d: null,
+    officeParts90d: null,
+    invoices90d: null,
+    fieldHours90d: null,
+    fieldLaborUsd90d: null,
+  })
+  const [teamSummaryHtml, setTeamSummaryHtml] = useState<string | null>(null)
+  const [teamSummaryLoading, setTeamSummaryLoading] = useState<boolean>(false)
+  const [teamSummaryError, setTeamSummaryError] = useState<string | null>(null)
+  const [teamSummaryIframeHeight, setTeamSummaryIframeHeight] = useState<number>(120)
+  const teamSummaryReqIdRef = useRef(0)
+  type ReviewLaborBreakdownContext = {
+    mode: 'labor' | 'profit'
+    jobId: string | null
+    jobName: string
+    jobAddress: string
+    jobNumberLabel: string
+    totalLaborOnJob: number
+    revenueBeforeOverhead: number
+    userPersonName: string
+  }
+  const [reviewLaborBreakdownContext, setReviewLaborBreakdownContext] = useState<ReviewLaborBreakdownContext | null>(null)
   const [reviewHoursPayCollapsed, setReviewHoursPayCollapsed] = useState(false)
   const [reviewOnlyPaidInFull, setReviewOnlyPaidInFull] = useState(false)
   const loadCrewJobsRef = useRef<() => void>()
@@ -6171,10 +6257,179 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab === 'review' && isDev) {
-      const t = setTimeout(() => loadPayConfig(), 80)
+      const t = setTimeout(() => {
+        void loadPayConfig()
+        void loadArchivedUserNames()
+      }, 80)
       return () => clearTimeout(t)
     }
   }, [activeTab, isDev])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const onMessage = (e: MessageEvent) => {
+      const data = e.data as { type?: string; height?: number } | null
+      if (!data || data.type !== 'team-summary-resize' || typeof data.height !== 'number') return
+      const maxH = Math.max(320, Math.floor(window.innerHeight * 0.85))
+      setTeamSummaryIframeHeight(Math.min(maxH, Math.max(60, data.height + 2)))
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
+
+  useEffect(() => {
+    if (activeTab !== 'review' || !isDev || !authUser?.id) return
+    let cancelled = false
+    setReviewOverheadRates((prev) => ({ ...prev, loading: true }))
+    void (async () => {
+      try {
+        const today = new Date().toLocaleDateString('en-CA')
+        const start = ymdAddDays(today, -89)
+        const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+        let overheadQ = supabase
+          .from('clock_sessions')
+          .select(
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+          )
+          .gte('work_date', start)
+          .lte('work_date', today)
+        if (officeJobLedgerId) {
+          overheadQ = overheadQ.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`)
+        } else {
+          overheadQ = overheadQ.not('bid_id', 'is', null)
+        }
+        let fieldQ = supabase
+          .from('clock_sessions')
+          .select(
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+          )
+          .gte('work_date', start)
+          .lte('work_date', today)
+          .not('job_ledger_id', 'is', null)
+        if (officeJobLedgerId) fieldQ = fieldQ.neq('job_ledger_id', officeJobLedgerId)
+        const startIsoLow = `${start}T00:00:00-00:00`
+        const endIsoHigh = `${ymdAddDays(today, 1)}T00:00:00-00:00`
+        const [overheadSessionsRes, fieldSessionsRes, partsRes, invoiceRowsRes] = await Promise.all([
+          withSupabaseRetry(async () => overheadQ, 'load review 90d overhead sessions') as Promise<
+            OverheadClockSessionRow[] | null
+          >,
+          withSupabaseRetry(async () => fieldQ, 'load review 90d field sessions') as Promise<
+            OverheadClockSessionRow[] | null
+          >,
+          officeJobLedgerId
+            ? fetchOverheadOfficePartsByDay({
+                officeJobLedgerId,
+                startYmd: start,
+                endYmd: today,
+              }).then((r) => r.partsUsdByDay)
+            : Promise.resolve(new Map<string, number>()),
+          withSupabaseRetry(
+            async () =>
+              supabase
+                .from('jobs_ledger_invoices')
+                .select('amount, sent_to_customer_at')
+                .gte('sent_to_customer_at', startIsoLow)
+                .lt('sent_to_customer_at', endIsoHigh),
+            'load review 90d invoices',
+          ) as Promise<Array<{ amount: number | null; sent_to_customer_at: string | null }> | null>,
+        ])
+        if (cancelled) return
+        const cfgRows = await withSupabaseRetry(
+          async () =>
+            supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
+          'load review 90d pay config',
+        )
+        if (cancelled) return
+        const cfgList = (cfgRows ?? []) as Array<{
+          person_name: string
+          hourly_wage: number | null
+          is_salary: boolean | null
+        }>
+        const wageMap = buildOverheadWageLookup(
+          cfgList.map((r) => ({ person_name: r.person_name, hourly_wage: r.hourly_wage ?? null })),
+        )
+        const overheadLabor = buildOverheadDailyLabor({
+          sessions: (overheadSessionsRes ?? []) as OverheadClockSessionRow[],
+          officeJobLedgerId,
+          wageByNormalizedName: wageMap,
+        })
+        const merged = mergeOverheadDayTableRows(overheadLabor.byDay, partsRes, new Map(), new Map(), new Map())
+        let overheadTotal = 0
+        for (const row of merged) overheadTotal += row.totalUsd
+        let officeLabor90d = 0
+        let bidLabor90d = 0
+        for (const row of overheadLabor.byDay) {
+          officeLabor90d += row.officeLaborUsd
+          bidLabor90d += row.bidLaborUsd
+        }
+        let officeParts90d = 0
+        for (const v of partsRes.values()) officeParts90d += v
+        const fieldSessions = (fieldSessionsRes ?? []) as OverheadClockSessionRow[]
+        const wageByName = new Map<string, number>()
+        for (const r of cfgList) {
+          if (r.hourly_wage != null) wageByName.set(r.person_name.trim().toLowerCase(), Number(r.hourly_wage))
+        }
+        let fieldHours = 0
+        let fieldLaborUsd = 0
+        for (const s of fieldSessions) {
+          if (s.rejected_at || s.revoked_at) continue
+          if (s.approved_at == null) continue
+          if (!s.clocked_in_at || !s.clocked_out_at) continue
+          const t0 = new Date(s.clocked_in_at).getTime()
+          const t1 = new Date(s.clocked_out_at).getTime()
+          if (!Number.isFinite(t0) || !Number.isFinite(t1) || t1 <= t0) continue
+          const hrs = (t1 - t0) / 3_600_000
+          fieldHours += hrs
+          const userName = ((s as unknown as { users?: { name?: string | null } }).users?.name ?? '').trim().toLowerCase()
+          const wage = userName ? wageByName.get(userName) ?? 0 : 0
+          fieldLaborUsd += hrs * wage
+        }
+        const invoiceRows = (invoiceRowsRes ?? []) as Array<{
+          amount: number | null
+          sent_to_customer_at: string | null
+        }>
+        let revenueTotal = 0
+        for (const r of invoiceRows) {
+          if (!r.sent_to_customer_at) continue
+          revenueTotal += Number(r.amount ?? 0)
+        }
+        setReviewOverheadRates({
+          ratePerHour: fieldHours > 0 ? overheadTotal / fieldHours : null,
+          ratePerRevenueDecimal: revenueTotal > 0 ? overheadTotal / revenueTotal : null,
+          ratePerLaborDollar: fieldLaborUsd > 0 ? overheadTotal / fieldLaborUsd : null,
+          loading: false,
+          windowStart: start,
+          windowEnd: today,
+          officeLabor90d,
+          bidLabor90d,
+          officeParts90d,
+          invoices90d: revenueTotal,
+          fieldHours90d: fieldHours,
+          fieldLaborUsd90d: fieldLaborUsd,
+        })
+      } catch {
+        if (!cancelled) {
+          setReviewOverheadRates({
+            ratePerHour: null,
+            ratePerRevenueDecimal: null,
+            ratePerLaborDollar: null,
+            loading: false,
+            windowStart: null,
+            windowEnd: null,
+            officeLabor90d: null,
+            bidLabor90d: null,
+            officeParts90d: null,
+            invoices90d: null,
+            fieldHours90d: null,
+            fieldLaborUsd90d: null,
+          })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, isDev, authUser?.id])
 
   useEffect(() => {
     if (activeTab !== 'overhead' || !canAccessOverheadTab) return
@@ -6374,6 +6629,117 @@ export default function People() {
     overheadDateStart,
     overheadDateEnd,
   ])
+
+  useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab || !authUser?.id) return
+    let cancelled = false
+    setOverheadAvgDailyCost((prev) => ({ ...prev, loading: true }))
+    void (async () => {
+      try {
+        const today = new Date().toLocaleDateString('en-CA')
+        const start = ymdAddDays(today, -89)
+        let q = supabase
+          .from('clock_sessions')
+          .select(
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+          )
+          .gte('work_date', start)
+          .lte('work_date', today)
+        if (overheadOfficeJobLedgerId) {
+          q = q.or(`job_ledger_id.eq.${overheadOfficeJobLedgerId},bid_id.not.is.null`)
+        } else {
+          q = q.not('bid_id', 'is', null)
+        }
+        const sessionsRes = (await withSupabaseRetry(async () => q, 'load overhead 90d sessions')) as
+          | OverheadClockSessionRow[]
+          | null
+        const sessions = (sessionsRes ?? []) as OverheadClockSessionRow[]
+        let partsByDay: Map<string, number> = new Map()
+        if (overheadOfficeJobLedgerId) {
+          const r = await fetchOverheadOfficePartsByDay({
+            officeJobLedgerId: overheadOfficeJobLedgerId,
+            startYmd: start,
+            endYmd: today,
+          })
+          partsByDay = r.partsUsdByDay
+        }
+        if (cancelled) return
+        const wageMap = buildOverheadWageLookup(
+          Object.values(payConfig).map((r) => ({
+            person_name: r.person_name,
+            hourly_wage: r.hourly_wage ?? null,
+          })),
+        )
+        const labor = buildOverheadDailyLabor({
+          sessions,
+          officeJobLedgerId: overheadOfficeJobLedgerId,
+          wageByNormalizedName: wageMap,
+        })
+        const merged = mergeOverheadDayTableRows(labor.byDay, partsByDay, new Map(), new Map(), new Map())
+        const totalsByDay = new Map<string, number>()
+        for (const row of merged) totalsByDay.set(row.work_date, row.totalUsd)
+        const startIsoLow = `${start}T00:00:00-00:00`
+        const endIsoHigh = `${ymdAddDays(today, 1)}T00:00:00-00:00`
+        const invoiceRowsRes = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('jobs_ledger_invoices')
+              .select('amount, sent_to_customer_at')
+              .gte('sent_to_customer_at', startIsoLow)
+              .lt('sent_to_customer_at', endIsoHigh),
+          'load overhead 90d revenue invoices',
+        )
+        const invoiceRows = (invoiceRowsRes ?? []) as Array<{
+          amount: number | null
+          sent_to_customer_at: string | null
+        }>
+        if (cancelled) return
+        const revenueByDay = new Map<string, number>()
+        for (const r of invoiceRows) {
+          if (!r.sent_to_customer_at) continue
+          const ymd = calendarYmdInAppTzFromIso(r.sent_to_customer_at)
+          revenueByDay.set(ymd, (revenueByDay.get(ymd) ?? 0) + Number(r.amount ?? 0))
+        }
+        const sumWindow = (n: number) => {
+          let cost = 0
+          let revenue = 0
+          for (let i = 0; i < n; i++) {
+            const ymd = ymdAddDays(today, -i)
+            cost += totalsByDay.get(ymd) ?? 0
+            revenue += revenueByDay.get(ymd) ?? 0
+          }
+          return { avg: cost / n, per100: revenue > 0 ? (cost / revenue) * 100 : null }
+        }
+        const w7 = sumWindow(7)
+        const w30 = sumWindow(30)
+        const w90 = sumWindow(90)
+        setOverheadAvgDailyCost({
+          avg7: w7.avg,
+          avg30: w30.avg,
+          avg90: w90.avg,
+          per100_7: w7.per100,
+          per100_30: w30.per100,
+          per100_90: w90.per100,
+          loading: false,
+        })
+      } catch {
+        if (!cancelled) {
+          setOverheadAvgDailyCost({
+            avg7: null,
+            avg30: null,
+            avg90: null,
+            per100_7: null,
+            per100_30: null,
+            per100_90: null,
+            loading: false,
+          })
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, canAccessOverheadTab, authUser?.id, overheadOfficeJobLedgerId, payConfig])
 
   useEffect(() => {
     if (!overheadJobPickerOpen) {
@@ -6976,13 +7342,56 @@ export default function People() {
           })
         : [...showPeopleForMatrixBase].sort((a, b) => a.localeCompare(b))
 
+  // Names that exist only as `people` rows (External Subs / Helpers / etc.) and
+  // do not have a matching internal `users` account. Used to keep External-only
+  // entries out of the Review tab person list, which is meant for employees.
+  const externalOnlyPayConfigNamesLower = useMemo(() => {
+    const out = new Set<string>()
+    if (users.length === 0 && people.length === 0) return out
+    const userNamesLower = new Set(
+      users.map((u) => (u.name ?? '').trim().toLowerCase()).filter(Boolean),
+    )
+    for (const p of people) {
+      const key = (p.name ?? '').trim().toLowerCase()
+      if (key && !userNamesLower.has(key)) out.add(key)
+    }
+    return out
+  }, [users, people])
+
   const showPeopleForReview = useMemo(
     () =>
       [...Object.keys(payConfig)]
         .filter((n) => !archivedUserNames.has(n.trim()))
+        .filter((n) => !externalOnlyPayConfigNamesLower.has(n.trim().toLowerCase()))
         .sort((a, b) => a.localeCompare(b)),
-    [payConfig, archivedUserNames]
+    [payConfig, archivedUserNames, externalOnlyPayConfigNamesLower]
   )
+
+  useEffect(() => {
+    if (activeTab !== 'review' || !isDev) return
+    if (showPeopleForReview.length === 0) {
+      teamSummaryReqIdRef.current += 1
+      setTeamSummaryHtml(null)
+      setTeamSummaryError(null)
+      setTeamSummaryLoading(false)
+      return
+    }
+    if (Object.keys(payConfig).length === 0) return
+    const t = window.setTimeout(() => {
+      openTeamSummaryWindow('inline')
+    }, 200)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    activeTab,
+    isDev,
+    reviewPeriod,
+    reviewOnlyPaidInFull,
+    payConfig,
+    showPeopleForReview,
+    reviewOverheadRates.ratePerHour,
+    reviewOverheadRates.loading,
+  ])
 
   const ledgerFilteredPayStubs = useMemo(() => {
     const q = ledgerPersonSearch.trim().toLowerCase()
@@ -7109,6 +7518,17 @@ export default function People() {
     return `${day} ${month}/${dayNum}`
   }
 
+  function formatHrsLabel(hours: number): string {
+    if (!Number.isFinite(hours) || hours <= 0) return ''
+    const isWhole = Math.abs(hours - Math.round(hours)) < 0.005
+    if (isWhole) {
+      const n = Math.round(hours)
+      return `${n}${n === 1 ? 'hr' : 'hrs'}`
+    }
+    const rounded = hours.toFixed(2)
+    return `${rounded.startsWith('0.') ? rounded.slice(1) : rounded}hrs`
+  }
+
   function getReviewPeriodPay(personName: string): number {
     const [start, end] = getReviewDateRange()
     const days = getDaysInRange(start, end)
@@ -7145,6 +7565,8 @@ export default function People() {
       setReviewReports([])
       setReviewTasks([])
       setReviewTasksOutstanding([])
+      setReviewLaborByJobAndPerson({})
+      setReviewLaborBreakdownContext(null)
     }
 
     const userId = users.find((u) => u.name === personName)?.id ?? null
@@ -7155,13 +7577,13 @@ export default function People() {
 
     const [laborRes, allLaborResForCostAllTime, personLaborResAllTime, crewRes, allCrewResForCostAllTime, hoursRes, reportsRes, tasksRes, outstandingTasksRes, settingsRes, tallyRes, allHoursRes, allHoursResAllTime] = await Promise.all([
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', start).lte('job_date', end),
-      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').gte('job_date', lookbackStart),
-      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart),
+      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart),
+      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart),
       supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
       supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart),
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
-      supabase.rpc('list_reports_with_job_info'),
-      userId
+      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.rpc('list_reports_with_job_info'),
+      userId && !forTeamSummary
         ? supabase
             .from('checklist_instances')
             .select('id, checklist_item_id, scheduled_date, completed_at, checklist_items(title, links), checklist_instance_assignees!inner(user_id)')
@@ -7185,7 +7607,7 @@ export default function People() {
     ])
 
     const laborRows = (laborRes.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
-    const allLaborRowsForCostAllTime = (allLaborResForCostAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
+    const allLaborRowsForCostAllTime = (allLaborResForCostAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }>
     const personLaborRowsAllTime = (personLaborResAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
     const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
     const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
@@ -7231,6 +7653,7 @@ export default function People() {
     }
 
     const laborCostByHcp = new Map<string, number>()
+    const driveCostByHcp = new Map<string, number>()
     for (const r of allLaborRowsForCostAllTime) {
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
@@ -7241,6 +7664,7 @@ export default function People() {
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
       const laborCost = totalHrs * rate + driveCost
       laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
+      if (driveCost > 0) driveCostByHcp.set(hcp, (driveCostByHcp.get(hcp) ?? 0) + driveCost)
     }
 
     const crewByDatePerson: Record<string, CrewJobRow> = {}
@@ -7344,8 +7768,52 @@ export default function People() {
       if (hcp) jobIdByHcp.set(hcp, j.id)
     }
 
+    const laborByJobAndPerson = new Map<string, Map<string, { hours: number; subLaborCost: number; crewLaborCost: number }>>()
+    const upsertContrib = (jobId: string, personName: string, hours: number, subCost: number, crewCost: number) => {
+      let perJob = laborByJobAndPerson.get(jobId)
+      if (!perJob) {
+        perJob = new Map()
+        laborByJobAndPerson.set(jobId, perJob)
+      }
+      const existing = perJob.get(personName) ?? { hours: 0, subLaborCost: 0, crewLaborCost: 0 }
+      existing.hours += hours
+      existing.subLaborCost += subCost
+      existing.crewLaborCost += crewCost
+      perJob.set(personName, existing)
+    }
+    for (const r of allLaborRowsForCostAllTime) {
+      const hcp = (r.job_number ?? '').trim().toLowerCase()
+      if (!hcp) continue
+      const jobId = jobIdByHcp.get(hcp)
+      if (!jobId) continue
+      const items = itemsByJob.get(r.id) ?? []
+      const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+      const rate = r.labor_rate ?? 0
+      const miles = Number(r.distance_miles) || 0
+      const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
+      const cost = hrs * rate + driveCost
+      const who = (r.assigned_to_name ?? '').trim() || '(Unassigned)'
+      upsertContrib(jobId, who, hrs, cost, 0)
+    }
+    for (const r of allCrewRowsForCostAllTime) {
+      const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
+      const assignments = row
+        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        : []
+      const cfg = payConfig[r.person_name]
+      const day = new Date(r.work_date + 'T12:00:00').getDay()
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const rate = cfg?.hourly_wage ?? 0
+      for (const a of assignments) {
+        const pctHrs = hours * (a.pct / 100)
+        const cost = pctHrs * rate
+        upsertContrib(a.job_id, r.person_name, pctHrs, 0, cost)
+      }
+    }
+
     const personLaborCostByJobId = new Map<string, number>()
     const personCrewLaborByJobId = new Map<string, number>()
+    const personDriveCostByJobId = new Map<string, number>()
     for (const r of personLaborRowsAllTime) {
       const hcp = (r.job_number ?? '').trim().toLowerCase()
       if (!hcp) continue
@@ -7358,6 +7826,7 @@ export default function People() {
       const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
       const laborCost = totalHrs * rate + driveCost
       personLaborCostByJobId.set(jobId, (personLaborCostByJobId.get(jobId) ?? 0) + laborCost)
+      if (driveCost > 0) personDriveCostByJobId.set(jobId, (personDriveCostByJobId.get(jobId) ?? 0) + driveCost)
     }
     for (const r of allCrewRowsForCostAllTime) {
       if (r.person_name !== personName) continue
@@ -7449,7 +7918,9 @@ export default function People() {
         job_number: r.job_number,
         job_id: jobId,
         job_name: job?.job_name ?? '—',
+        service_type_id: job?.service_type_id ?? null,
         laborCost,
+        driveCost,
         partsCost,
         totalBill,
         valueCreated,
@@ -7459,18 +7930,20 @@ export default function People() {
         allocatedRevenueBeforeOverhead: 0,
         allocatedPartsCost: 0,
         subLaborCost: Math.max(0, (hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0) - laborCost),
-        otherTeammatesLabor: jobId ? Math.max(0, (teamLaborCostByJobId.get(jobId) ?? 0) - (personCrewLaborByJobId.get(jobId) ?? 0)) : 0,
+        totalLaborOnJob: totalJobLabor,
+        totalDriveCostOnJob: hcp ? (driveCostByHcp.get(hcp) ?? 0) : 0,
         totalJobHours: 0,
         userTotalHoursOnJob: 0,
         userTotalContributionToBill: 0,
         userTotalContributionToRevenue: 0,
         userTotalLaborOnJob: 0,
+        userTotalDriveCostOnJob: jobId ? (personDriveCostByJobId.get(jobId) ?? 0) : 0,
       }
     })
 
-    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null }> = {}
+    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }> = {}
     for (const j of crewJobsLedger) {
-      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue, pct_complete: j.pct_complete }
+      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue, pct_complete: j.pct_complete, service_type_id: j.service_type_id ?? null }
     }
     const crewJobsWithLeadFiltered = usePaidOnly
       ? crewJobsWithLead.filter((c) => jobsById.has(c.job_id))
@@ -7496,10 +7969,12 @@ export default function People() {
         hcp_number: j?.hcp_number ?? '—',
         job_name: j?.job_name ?? '—',
         job_address: j?.job_address ?? '—',
+        service_type_id: j?.service_type_id ?? null,
         viaLead: c.viaLead,
         crewMemberNames: c.viaLead === null ? (crewMembersByDateAndLead.get(`${c.work_date}:${personName}`) ?? []) : undefined,
         hours,
         laborCost,
+        driveCost: 0,
         partsCost,
         totalBill,
         valueCreated,
@@ -7509,12 +7984,14 @@ export default function People() {
         allocatedRevenueBeforeOverhead: 0,
         allocatedPartsCost: 0,
         subLaborCost: hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0,
-        otherTeammatesLabor: Math.max(0, (teamLaborCostByJobId.get(c.job_id) ?? 0) - laborCost),
+        totalLaborOnJob: totalJobLabor,
+        totalDriveCostOnJob: hcp ? (driveCostByHcp.get(hcp) ?? 0) : 0,
         totalJobHours: 0,
         userTotalHoursOnJob: 0,
         userTotalContributionToBill: 0,
         userTotalContributionToRevenue: 0,
         userTotalLaborOnJob: 0,
+        userTotalDriveCostOnJob: personDriveCostByJobId.get(c.job_id) ?? 0,
       }
     })
 
@@ -7574,9 +8051,9 @@ export default function People() {
     })()
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
-      (laborHcps.length > 0 || crewJobIds.size > 0) ? supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd) : { data: [] },
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
-      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
+      forTeamSummary || !(laborHcps.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd),
+      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
+      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
     ])
     const allLaborRows = (allLaborRes.data ?? []) as Array<{ id: string; job_number: string | null; job_date: string | null }>
     const allCrewRows = (allCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
@@ -7647,7 +8124,7 @@ export default function People() {
       }
     }
 
-    const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number }>()
+    const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number }>()
     const laborJobIdsSeen = new Set<string>()
     for (const r of laborRows) {
       const hcp = (r.job_number ?? '').trim().toLowerCase()
@@ -7657,26 +8134,26 @@ export default function People() {
       const job = jobsById.get(jobId)
       const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
       const teamLaborCost = teamLaborCostByJobId.get(jobId) ?? 0
-      const laborCost = subLaborCost + teamLaborCost
+      const totalLaborOnJob = subLaborCost + teamLaborCost
       const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
       const totalBill = job?.revenue != null ? Number(job.revenue) : 0
       const pctComplete = job?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
-      const revenueBeforeOverhead = valueCreated - partsCost - laborCost
-      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead })
+      const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
     }
     for (const jobId of crewJobIds) {
       if (allocationJobsMap.has(jobId)) continue
       const j = jobsById.get(jobId)
       const hcp = (j?.hcp_number ?? '').trim().toLowerCase()
       const subLaborCost = hcp ? (laborCostByHcp.get(hcp) ?? 0) : 0
-      const laborCost = subLaborCost + (teamLaborCostByJobId.get(jobId) ?? 0)
+      const totalLaborOnJob = subLaborCost + (teamLaborCostByJobId.get(jobId) ?? 0)
       const partsCost = (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0)
       const totalBill = j?.revenue != null ? Number(j.revenue) : 0
       const pctComplete = j?.pct_complete ?? null
       const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
-      const revenueBeforeOverhead = valueCreated - partsCost - laborCost
-      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead })
+      const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
     }
 
     const costOnJobInPeriod = new Map<string, number>()
@@ -7687,57 +8164,13 @@ export default function People() {
       costOnJobInPeriod.set(j.job_id, (costOnJobInPeriod.get(j.job_id) ?? 0) + j.laborCost)
     }
 
-    const personLaborFromLaborJobsByJobId = new Map<string, number>()
-    for (const j of laborJobs) {
-      if (j.job_id) personLaborFromLaborJobsByJobId.set(j.job_id, (personLaborFromLaborJobsByJobId.get(j.job_id) ?? 0) + j.laborCost)
-    }
-    const allocationLaborByJobId = new Map<string, number>()
-    for (const [jobId, teamCost] of teamLaborCostByJobId) {
-      allocationLaborByJobId.set(jobId, (personLaborFromLaborJobsByJobId.get(jobId) ?? 0) + teamCost)
-    }
-    for (const jobId of personLaborFromLaborJobsByJobId.keys()) {
-      if (!allocationLaborByJobId.has(jobId)) allocationLaborByJobId.set(jobId, personLaborFromLaborJobsByJobId.get(jobId) ?? 0)
-    }
-
     let allocatedRevenue = 0
     let allocatedProfit = 0
-    for (const [jobId, { valueCreated, revenueBeforeOverhead }] of allocationJobsMap) {
-      const allocationLabor = allocationLaborByJobId.get(jobId) ?? 0
+    for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob }] of allocationJobsMap) {
       const costInPeriod = costOnJobInPeriod.get(jobId) ?? 0
-      const ratio = allocationLabor > 0 ? costInPeriod / allocationLabor : (costInPeriod > 0 ? 1 : 0)
+      const ratio = totalLaborOnJob > 0 ? costInPeriod / totalLaborOnJob : (costInPeriod > 0 ? 1 : 0)
       allocatedRevenue += valueCreated * ratio
       allocatedProfit += revenueBeforeOverhead * ratio
-    }
-
-    for (const j of laborJobs) {
-      j.totalJobHours = j.job_id ? (totalHoursOnJob.get(j.job_id) ?? 0) : 0
-      j.userTotalHoursOnJob = j.job_id ? (personHoursOnJobAllTime.get(j.job_id) ?? 0) : 0
-      const totalHrsAllTime = j.job_id ? (totalHoursOnJob.get(j.job_id) ?? 0) : 0
-      j.userTotalContributionToBill = totalHrsAllTime > 0 ? j.valueCreated * (j.userTotalHoursOnJob / totalHrsAllTime) : (j.userTotalHoursOnJob > 0 ? j.valueCreated : 0)
-      j.userTotalLaborOnJob = j.job_id ? (personLaborCostByJobId.get(j.job_id) ?? 0) : 0
-      const hoursRatio = totalHrsAllTime > 0 ? j.hours / totalHrsAllTime : (j.hours > 0 ? 1 : 0)
-      const allocationLabor = j.job_id ? (allocationLaborByJobId.get(j.job_id) ?? 0) : 0
-      const costRatio = allocationLabor > 0 ? j.laborCost / allocationLabor : (j.laborCost > 0 ? 1 : 0)
-      const revenueCostRatio = allocationLabor > 0 ? j.userTotalLaborOnJob / allocationLabor : (j.userTotalLaborOnJob > 0 ? 1 : 0)
-      j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
-      j.allocatedTotalBill = j.valueCreated * hoursRatio
-      j.allocatedRevenueBeforeOverhead = j.revenueBeforeOverhead * costRatio
-      j.allocatedPartsCost = j.partsCost * costRatio
-    }
-    for (const j of crewJobs) {
-      j.totalJobHours = totalHoursOnJob.get(j.job_id) ?? 0
-      j.userTotalHoursOnJob = personHoursOnJobAllTime.get(j.job_id) ?? 0
-      const totalHrsAllTime = totalHoursOnJob.get(j.job_id) ?? 0
-      j.userTotalContributionToBill = totalHrsAllTime > 0 ? j.valueCreated * (j.userTotalHoursOnJob / totalHrsAllTime) : (j.userTotalHoursOnJob > 0 ? j.valueCreated : 0)
-      j.userTotalLaborOnJob = personLaborCostByJobId.get(j.job_id) ?? 0
-      const hoursRatio = totalHrsAllTime > 0 ? j.hours / totalHrsAllTime : (j.hours > 0 ? 1 : 0)
-      const allocationLabor = allocationLaborByJobId.get(j.job_id) ?? 0
-      const costRatio = allocationLabor > 0 ? j.laborCost / allocationLabor : (j.laborCost > 0 ? 1 : 0)
-      const revenueCostRatio = allocationLabor > 0 ? j.userTotalLaborOnJob / allocationLabor : (j.userTotalLaborOnJob > 0 ? 1 : 0)
-      j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
-      j.allocatedTotalBill = j.valueCreated * hoursRatio
-      j.allocatedRevenueBeforeOverhead = j.revenueBeforeOverhead * costRatio
-      j.allocatedPartsCost = j.partsCost * costRatio
     }
 
     if (forTeamSummary) {
@@ -7750,6 +8183,34 @@ export default function People() {
         }),
       }
     }
+
+    for (const j of laborJobs) {
+      j.totalJobHours = j.job_id ? (totalHoursOnJob.get(j.job_id) ?? 0) : 0
+      j.userTotalHoursOnJob = j.job_id ? (personHoursOnJobAllTime.get(j.job_id) ?? 0) : 0
+      j.userTotalLaborOnJob = j.job_id ? (personLaborCostByJobId.get(j.job_id) ?? 0) : 0
+      const denominator = j.totalLaborOnJob
+      const costRatio = denominator > 0 ? j.laborCost / denominator : (j.laborCost > 0 ? 1 : 0)
+      const revenueCostRatio = denominator > 0 ? j.userTotalLaborOnJob / denominator : (j.userTotalLaborOnJob > 0 ? 1 : 0)
+      j.userTotalContributionToBill = j.valueCreated * revenueCostRatio
+      j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
+      j.allocatedTotalBill = j.valueCreated * costRatio
+      j.allocatedRevenueBeforeOverhead = j.revenueBeforeOverhead * costRatio
+      j.allocatedPartsCost = j.partsCost * costRatio
+    }
+    for (const j of crewJobs) {
+      j.totalJobHours = totalHoursOnJob.get(j.job_id) ?? 0
+      j.userTotalHoursOnJob = personHoursOnJobAllTime.get(j.job_id) ?? 0
+      j.userTotalLaborOnJob = personLaborCostByJobId.get(j.job_id) ?? 0
+      const denominator = j.totalLaborOnJob
+      const costRatio = denominator > 0 ? j.laborCost / denominator : (j.laborCost > 0 ? 1 : 0)
+      const revenueCostRatio = denominator > 0 ? j.userTotalLaborOnJob / denominator : (j.userTotalLaborOnJob > 0 ? 1 : 0)
+      j.userTotalContributionToBill = j.valueCreated * revenueCostRatio
+      j.userTotalContributionToRevenue = j.revenueBeforeOverhead * revenueCostRatio
+      j.allocatedTotalBill = j.valueCreated * costRatio
+      j.allocatedRevenueBeforeOverhead = j.revenueBeforeOverhead * costRatio
+      j.allocatedPartsCost = j.partsCost * costRatio
+    }
+
     setReviewLaborJobs(laborJobs)
     setReviewCrewJobs(crewJobs)
     setReviewAllocatedRevenue(allocatedRevenue)
@@ -7758,6 +8219,22 @@ export default function People() {
     setReviewReports(reports.map((r) => ({ id: r.id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at })))
     setReviewTasks(tasks)
     setReviewTasksOutstanding(outstandingTasks)
+    const breakdownByJob: Record<string, ReviewLaborContributor[]> = {}
+    for (const [jobId, perJob] of laborByJobAndPerson.entries()) {
+      const rows: ReviewLaborContributor[] = []
+      for (const [personName, agg] of perJob.entries()) {
+        rows.push({
+          personName,
+          hours: agg.hours,
+          laborCost: agg.subLaborCost + agg.crewLaborCost,
+          subLaborCost: agg.subLaborCost,
+          crewLaborCost: agg.crewLaborCost,
+        })
+      }
+      rows.sort((a, b) => b.laborCost - a.laborCost || b.hours - a.hours || a.personName.localeCompare(b.personName))
+      breakdownByJob[jobId] = rows
+    }
+    setReviewLaborByJobAndPerson(breakdownByJob)
     setReviewLoading(false)
   }
 
@@ -7769,38 +8246,585 @@ export default function People() {
     if (personName) void loadReviewData(personName, false, reviewOnlyPaidInFull)
   }, [activeTab, selectedReviewPersonIndex, reviewPeriod, reviewOnlyPaidInFull, showPeopleForReview, users])
 
-  type TeamSummaryRow = { personName: string; profit: number; revPerHour: number; profitPerHour: number; totalHours: number }
+  type HoursBreakdown = {
+    source: 'salary' | 'hourly' | 'unknown'
+    onlyPaidJobs: boolean
+    dailyRows: Array<{
+      date: string
+      hours: number
+      crewAllocations: Array<{ hcp: string; pct: number; hours: number }>
+    }>
+    subLaborRows: Array<{ hcp: string; date: string; hours: number }>
+    totals: {
+      daily: number
+      crew: number
+      subLabor: number
+      totalHours: number
+    }
+  }
+  type GrossRevenueBreakdown = {
+    jobs: Array<{
+      jobId: string
+      hcp: string
+      jobName: string
+      totalBill: number
+      pctComplete: number
+      pctCompleteSource: 'set' | 'assumed'
+      valueCreated: number
+      totalLaborOnJob: number
+      costInPeriod: number
+      ratio: number
+      allocatedRevenue: number
+    }>
+    total: number
+  }
+  type NetRevenueBreakdown = {
+    jobs: Array<{
+      jobId: string
+      hcp: string
+      jobName: string
+      valueCreated: number
+      partsCost: number
+      totalLaborOnJob: number
+      revenueBeforeOverhead: number
+      costInPeriod: number
+      ratio: number
+      allocatedNet: number
+    }>
+    total: number
+  }
+  type ProfitAfterOverheadBreakdown = {
+    jobs: Array<{
+      jobId: string
+      hcp: string
+      jobName: string
+      allocatedNet: number
+      hoursInPeriod: number
+    }>
+    totalNet: number
+    totalHours: number
+    unaccountedHours: number
+  }
+  type TeamSummaryRow = { personName: string; profit: number; gross: number; revPerHour: number; profitPerHour: number; totalHours: number; overheadHours: number; officeHours: number; bidHours: number; fieldHours: number; hoursBreakdown: HoursBreakdown; grossBreakdown: GrossRevenueBreakdown; netBreakdown: NetRevenueBreakdown; profitBreakdown: ProfitAfterOverheadBreakdown }
+
+  /**
+   * Tier 3 — shared dataset fetched once for the whole team.
+   * Replaces N × `loadReviewData()` round-trips with one set of queries that
+   * covers every person in `showPeopleForReview`. Per-person numbers are then
+   * derived from this union purely in JS by `derivePersonTeamSummary()`.
+   */
+  type TeamLedgerRow = { id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }
+  type TeamLaborItem = { count: number; hrs_per_unit: number; is_fixed: boolean }
+  type TeamPeriodLaborRow = { id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }
+  type TeamReviewUnion = {
+    periodLaborRows: TeamPeriodLaborRow[]
+    periodCrewRows: Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    periodHoursRows: Array<{ person_name: string; work_date: string; hours: number }>
+    mileageCost: number
+    timePerMile: number
+    jobsById: Map<string, TeamLedgerRow>
+    jobIdByHcp: Map<string, string>
+    laborItemsByJobId: Map<string, TeamLaborItem[]>
+    laborCostByHcp: Map<string, number>
+    teamLaborCostByJobId: Map<string, number>
+    partsCostByJobId: Map<string, number>
+    invoiceAmountByJob: Record<string, number>
+    billedMaterialsByJobId: Map<string, number>
+    hoursMap: Record<string, number>
+    crewByDatePerson: Record<string, CrewJobRow>
+    overheadHoursByPerson: Record<string, { office: number; bid: number }>
+    officeJobLedgerId: string | null
+  }
+
+  async function loadTeamReviewUnion(
+    start: string,
+    end: string,
+    onlyPaidJobs: boolean,
+    payConfigSnapshot: Record<string, PayConfigRow>,
+  ): Promise<TeamReviewUnion> {
+    const twoYearsAgo = new Date()
+    twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+    const lookbackStart = twoYearsAgo.toLocaleDateString('en-CA')
+
+    const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+
+    const overheadSessionsFetchPromise = (async () => {
+      let q = supabase
+        .from('clock_sessions')
+        .select(
+          'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+        )
+        .gte('work_date', start)
+        .lte('work_date', end)
+      if (officeJobLedgerId) {
+        q = q.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`)
+      } else {
+        q = q.not('bid_id', 'is', null)
+      }
+      const res = await q
+      return (res.data ?? []) as unknown as OverheadClockSessionRow[]
+    })()
+
+    const [
+      periodLaborRes,
+      allTimeLaborRes,
+      periodCrewRes,
+      allTimeCrewRes,
+      periodHoursRes,
+      allTimeHoursRes,
+      settingsRes,
+      tallyRes,
+      overheadSessions,
+    ] = await Promise.all([
+      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', start).lte('job_date', end),
+      supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart),
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart),
+      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart),
+      supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
+      supabase.rpc('list_tally_parts_with_po'),
+      overheadSessionsFetchPromise,
+    ])
+
+    const overheadHoursByPerson: Record<string, { office: number; bid: number }> = {}
+    for (const s of overheadSessions) {
+      if (s.rejected_at || s.revoked_at) continue
+      if (s.approved_at == null) continue
+      const bucket = overheadBucketForSession(officeJobLedgerId, s.job_ledger_id, s.bid_id)
+      if (bucket == null) continue
+      const hrs = approvedClosedSessionHours(s)
+      if (hrs == null || hrs <= 0) continue
+      const name = (s.users?.name ?? '').trim()
+      if (!name) continue
+      const cur = overheadHoursByPerson[name] ?? { office: 0, bid: 0 }
+      if (bucket === 'office') cur.office += hrs
+      else cur.bid += hrs
+      overheadHoursByPerson[name] = cur
+    }
+
+    const periodLaborRows = (periodLaborRes.data ?? []) as TeamPeriodLaborRow[]
+    const allTimeLaborRows = (allTimeLaborRes.data ?? []) as TeamPeriodLaborRow[]
+    const periodCrewRows = (periodCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const allTimeCrewRows = (allTimeCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const periodHoursRows = (periodHoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
+    const allTimeHoursRows = (allTimeHoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
+    const settingsRows = (settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>
+    const tallyParts = (tallyRes.data ?? []) as Array<{ job_id: string; part_id: string | null; price_at_time: number | null; fixture_cost: number | null; quantity: number }>
+
+    const mileageCost = settingsRows.find((r) => r.key === 'drive_mileage_cost')?.value_num ?? 0.70
+    const timePerMile = settingsRows.find((r) => r.key === 'drive_time_per_mile')?.value_num ?? 0.02
+
+    const partsCostByJobId = new Map<string, number>()
+    for (const r of tallyParts) {
+      const cost = r.part_id == null
+        ? Number(r.fixture_cost ?? 0) * Number(r.quantity)
+        : Number(r.price_at_time ?? 0) * Number(r.quantity)
+      partsCostByJobId.set(r.job_id, (partsCostByJobId.get(r.job_id) ?? 0) + cost)
+    }
+
+    const hoursMap: Record<string, number> = {}
+    for (const h of periodHoursRows) {
+      hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
+    }
+    const hoursMapAllTime: Record<string, number> = {}
+    for (const h of allTimeHoursRows) {
+      hoursMapAllTime[`${h.person_name}:${h.work_date}`] = h.hours
+    }
+
+    // Items for all-time labor jobs (for laborCostByHcp lifetime calc).
+    const allTimeLaborJobIds = allTimeLaborRows.map((r) => r.id)
+    const laborItemsRes = allTimeLaborJobIds.length > 0
+      ? await supabase.from('people_labor_job_items').select('job_id, count, hrs_per_unit, is_fixed').in('job_id', allTimeLaborJobIds)
+      : { data: [] }
+    const laborItems = (laborItemsRes.data ?? []) as Array<{ job_id: string; count: number; hrs_per_unit: number; is_fixed: boolean }>
+    const laborItemsByJobId = new Map<string, TeamLaborItem[]>()
+    for (const i of laborItems) {
+      const list = laborItemsByJobId.get(i.job_id) ?? []
+      list.push({ count: i.count, hrs_per_unit: i.hrs_per_unit, is_fixed: i.is_fixed })
+      laborItemsByJobId.set(i.job_id, list)
+    }
+
+    // Lifetime sub-labor cost per HCP (all assignees).
+    const laborCostByHcp = new Map<string, number>()
+    for (const r of allTimeLaborRows) {
+      const hcp = (r.job_number ?? '').trim().toLowerCase()
+      if (!hcp) continue
+      const items = laborItemsByJobId.get(r.id) ?? []
+      const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+      const rate = r.labor_rate ?? 0
+      const miles = Number(r.distance_miles) || 0
+      const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
+      const laborCost = totalHrs * rate + driveCost
+      laborCostByHcp.set(hcp, (laborCostByHcp.get(hcp) ?? 0) + laborCost)
+    }
+
+    const crewByDatePerson: Record<string, CrewJobRow> = {}
+    for (const r of periodCrewRows) {
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
+        crew_lead_person_name: r.crew_lead_person_name,
+        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+      }
+    }
+    const crewByDatePersonAllTime: Record<string, CrewJobRow> = {}
+    for (const r of allTimeCrewRows) {
+      crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`] = {
+        crew_lead_person_name: r.crew_lead_person_name,
+        job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
+      }
+    }
+
+    // Lifetime crew labor cost per job (all crew members).
+    const teamLaborCostByJobId = new Map<string, number>()
+    for (const r of allTimeCrewRows) {
+      const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
+      const assignments = row
+        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        : []
+      const cfg = payConfigSnapshot[r.person_name]
+      const day = new Date(r.work_date + 'T12:00:00').getDay()
+      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const rate = cfg?.hourly_wage ?? 0
+      for (const a of assignments) {
+        const pctHrs = hours * (a.pct / 100)
+        const cost = pctHrs * rate
+        teamLaborCostByJobId.set(a.job_id, (teamLaborCostByJobId.get(a.job_id) ?? 0) + cost)
+      }
+    }
+
+    // Union of HCPs / jobIds across the whole team for the period.
+    const unionLaborHcps = [...new Set(periodLaborRows.filter((r) => (r.job_number ?? '').trim()).map((r) => (r.job_number ?? '').trim().toLowerCase()))]
+    const unionCrewJobIds = new Set<string>()
+    for (const r of periodCrewRows) {
+      const row = crewByDatePerson[`${r.work_date}:${r.person_name}`]
+      const assignments = row
+        ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        : []
+      for (const a of assignments) {
+        unionCrewJobIds.add(a.job_id)
+      }
+    }
+
+    const allJobIds = [...unionCrewJobIds]
+    const [crewJobsRes, laborJobsRes] = await Promise.all([
+      allJobIds.length > 0
+        ? onlyPaidJobs
+          ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
+          : supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: allJobIds })
+        : { data: [] },
+      unionLaborHcps.length > 0
+        ? onlyPaidJobs
+          ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: unionLaborHcps })
+          : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: unionLaborHcps })
+        : { data: [] },
+    ])
+    const crewJobsLedger = (crewJobsRes.data ?? []) as TeamLedgerRow[]
+    const laborJobsLedger = (laborJobsRes.data ?? []) as TeamLedgerRow[]
+    const jobsById = new Map<string, TeamLedgerRow>()
+    const jobIdByHcp = new Map<string, string>()
+    for (const j of crewJobsLedger) {
+      jobsById.set(j.id, j)
+      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
+      if (hcp) jobIdByHcp.set(hcp, j.id)
+    }
+    for (const j of laborJobsLedger) {
+      if (!jobsById.has(j.id)) jobsById.set(j.id, j)
+      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
+      if (hcp) jobIdByHcp.set(hcp, j.id)
+    }
+
+    const jobIds = Array.from(jobsById.keys())
+    const [invoiceRes, materialsRes] = await Promise.all([
+      jobIds.length > 0 ? supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds }) : Promise.resolve({ data: [] }),
+      jobIds.length > 0 ? supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', jobIds) : Promise.resolve({ data: [] }),
+    ])
+    const invoiceAmountByJob: Record<string, number> = {}
+    for (const row of (invoiceRes.data ?? []) as Array<{ job_id: string; invoice_amount: number | null }>) {
+      invoiceAmountByJob[row.job_id] = Number(row.invoice_amount ?? 0)
+    }
+    const billedMaterialsByJobId = new Map<string, number>()
+    for (const row of (materialsRes.data ?? []) as Array<{ job_id: string; amount: number }>) {
+      billedMaterialsByJobId.set(row.job_id, (billedMaterialsByJobId.get(row.job_id) ?? 0) + Number(row.amount ?? 0))
+    }
+
+    return {
+      periodLaborRows,
+      periodCrewRows,
+      periodHoursRows,
+      mileageCost,
+      timePerMile,
+      jobsById,
+      jobIdByHcp,
+      laborItemsByJobId,
+      laborCostByHcp,
+      teamLaborCostByJobId,
+      partsCostByJobId,
+      invoiceAmountByJob,
+      billedMaterialsByJobId,
+      hoursMap,
+      crewByDatePerson,
+      overheadHoursByPerson,
+      officeJobLedgerId,
+    }
+  }
+
+  /**
+   * Pure per-person derivation. Mirrors the allocation math at the bottom of
+   * `loadReviewData` (allocationJobsMap × costOnJobInPeriod, cost-based ratio).
+   */
+  function derivePersonTeamSummary(
+    union: TeamReviewUnion,
+    personName: string,
+    payConfigSnapshot: Record<string, PayConfigRow>,
+    onlyPaidJobs: boolean,
+    days: string[],
+  ): TeamSummaryRow {
+    const cfg = payConfigSnapshot[personName]
+
+    const personPeriodLaborRows = union.periodLaborRows.filter((r) => r.assigned_to_name === personName)
+    const laborRowsFiltered = onlyPaidJobs
+      ? personPeriodLaborRows.filter((r) => {
+          const hcp = (r.job_number ?? '').trim().toLowerCase()
+          return hcp && union.jobIdByHcp.has(hcp)
+        })
+      : personPeriodLaborRows
+
+    const laborJobs = laborRowsFiltered.map((r) => {
+      const items = union.laborItemsByJobId.get(r.id) ?? []
+      const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+      const rate = r.labor_rate ?? 0
+      const miles = Number(r.distance_miles) || 0
+      const driveCost = miles > 0 && rate > 0 ? miles * union.mileageCost + miles * union.timePerMile * rate : miles > 0 ? miles * union.mileageCost : 0
+      const laborCost = totalHrs * rate + driveCost
+      const hcp = (r.job_number ?? '').trim().toLowerCase()
+      const jobId = hcp ? union.jobIdByHcp.get(hcp) ?? null : null
+      return { jobId, hours: totalHrs, laborCost }
+    })
+
+    const crewJobIds = new Set<string>()
+    const crewJobsWithLead: Array<{ work_date: string; job_id: string; pct: number }> = []
+    for (const r of union.periodCrewRows) {
+      if (r.person_name !== personName) continue
+      const row = union.crewByDatePerson[`${r.work_date}:${r.person_name}`]
+      const assignments = row
+        ? (row.crew_lead_person_name ? (union.crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
+        : []
+      for (const a of assignments) {
+        crewJobIds.add(a.job_id)
+        crewJobsWithLead.push({ work_date: r.work_date, job_id: a.job_id, pct: a.pct })
+      }
+    }
+    const crewJobsWithLeadFiltered = onlyPaidJobs
+      ? crewJobsWithLead.filter((c) => union.jobsById.has(c.job_id))
+      : crewJobsWithLead
+
+    const crewJobs = crewJobsWithLeadFiltered.map((c) => {
+      const day = new Date(c.work_date + 'T12:00:00').getDay()
+      const dayHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (union.hoursMap[`${personName}:${c.work_date}`] ?? 0)
+      const hours = dayHours * (c.pct / 100)
+      const laborCost = hours * (cfg?.hourly_wage ?? 0)
+      return { jobId: c.job_id, hours, laborCost }
+    })
+
+    const allocationJobsMap = new Map<string, { valueCreated: number; revenueBeforeOverhead: number; totalLaborOnJob: number }>()
+    const laborJobIdsSeen = new Set<string>()
+    for (const r of laborRowsFiltered) {
+      const hcp = (r.job_number ?? '').trim().toLowerCase()
+      const jobId = hcp ? union.jobIdByHcp.get(hcp) ?? null : null
+      if (!jobId || laborJobIdsSeen.has(jobId)) continue
+      laborJobIdsSeen.add(jobId)
+      const job = union.jobsById.get(jobId)
+      const subLaborCost = hcp ? (union.laborCostByHcp.get(hcp) ?? 0) : 0
+      const teamLaborCost = union.teamLaborCostByJobId.get(jobId) ?? 0
+      const totalLaborOnJob = subLaborCost + teamLaborCost
+      const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0)
+      const totalBill = job?.revenue != null ? Number(job.revenue) : 0
+      const pctComplete = job?.pct_complete ?? null
+      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
+    }
+    for (const jobId of crewJobIds) {
+      if (allocationJobsMap.has(jobId)) continue
+      const j = union.jobsById.get(jobId)
+      const hcp = (j?.hcp_number ?? '').trim().toLowerCase()
+      const subLaborCost = hcp ? (union.laborCostByHcp.get(hcp) ?? 0) : 0
+      const totalLaborOnJob = subLaborCost + (union.teamLaborCostByJobId.get(jobId) ?? 0)
+      const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0)
+      const totalBill = j?.revenue != null ? Number(j.revenue) : 0
+      const pctComplete = j?.pct_complete ?? null
+      const valueCreated = totalBill * ((pctComplete ?? 100) / 100)
+      const revenueBeforeOverhead = valueCreated - partsCost - totalLaborOnJob
+      allocationJobsMap.set(jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob })
+    }
+
+    const costOnJobInPeriod = new Map<string, number>()
+    for (const j of laborJobs) {
+      if (j.jobId) costOnJobInPeriod.set(j.jobId, (costOnJobInPeriod.get(j.jobId) ?? 0) + j.laborCost)
+    }
+    for (const j of crewJobs) {
+      costOnJobInPeriod.set(j.jobId, (costOnJobInPeriod.get(j.jobId) ?? 0) + j.laborCost)
+    }
+
+    let allocatedRevenue = 0
+    let allocatedProfit = 0
+    const grossBreakdownJobs: GrossRevenueBreakdown['jobs'] = []
+    const netBreakdownJobs: NetRevenueBreakdown['jobs'] = []
+    for (const [jobId, { valueCreated, revenueBeforeOverhead, totalLaborOnJob }] of allocationJobsMap) {
+      const costInPeriod = costOnJobInPeriod.get(jobId) ?? 0
+      const ratio = totalLaborOnJob > 0 ? costInPeriod / totalLaborOnJob : (costInPeriod > 0 ? 1 : 0)
+      const jobAllocated = valueCreated * ratio
+      const jobAllocatedNet = revenueBeforeOverhead * ratio
+      allocatedRevenue += jobAllocated
+      allocatedProfit += jobAllocatedNet
+
+      const job = union.jobsById.get(jobId)
+      const hcp = (job?.hcp_number ?? '').trim().toUpperCase() || 'Unknown'
+      const jobName = job?.job_name ?? ''
+      const totalBill = job?.revenue != null ? Number(job.revenue) : 0
+      const pctRaw = job?.pct_complete
+      const partsCost = (union.partsCostByJobId.get(jobId) ?? 0) + (union.invoiceAmountByJob[jobId] ?? 0) + (union.billedMaterialsByJobId.get(jobId) ?? 0)
+      grossBreakdownJobs.push({
+        jobId,
+        hcp,
+        jobName,
+        totalBill,
+        pctComplete: pctRaw ?? 100,
+        pctCompleteSource: pctRaw == null ? 'assumed' : 'set',
+        valueCreated,
+        totalLaborOnJob,
+        costInPeriod,
+        ratio,
+        allocatedRevenue: jobAllocated,
+      })
+      netBreakdownJobs.push({
+        jobId,
+        hcp,
+        jobName,
+        valueCreated,
+        partsCost,
+        totalLaborOnJob,
+        revenueBeforeOverhead,
+        costInPeriod,
+        ratio,
+        allocatedNet: jobAllocatedNet,
+      })
+    }
+    grossBreakdownJobs.sort((a, b) => b.allocatedRevenue - a.allocatedRevenue)
+    netBreakdownJobs.sort((a, b) => b.allocatedNet - a.allocatedNet)
+    const grossBreakdown: GrossRevenueBreakdown = { jobs: grossBreakdownJobs, total: allocatedRevenue }
+    const netBreakdown: NetRevenueBreakdown = { jobs: netBreakdownJobs, total: allocatedProfit }
+
+    const hoursOnJobInPeriod = new Map<string, number>()
+    for (const j of laborJobs) {
+      if (j.jobId) hoursOnJobInPeriod.set(j.jobId, (hoursOnJobInPeriod.get(j.jobId) ?? 0) + j.hours)
+    }
+    for (const j of crewJobs) {
+      hoursOnJobInPeriod.set(j.jobId, (hoursOnJobInPeriod.get(j.jobId) ?? 0) + j.hours)
+    }
+
+    const personHoursRows = union.periodHoursRows.filter((r) => r.person_name === personName)
+    const getHoursForDay = (d: string) => {
+      if (!cfg) return 0
+      const dayOfWeek = new Date(d + 'T12:00:00').getDay()
+      return cfg.is_salary
+        ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
+        : (personHoursRows.find((h) => h.work_date === d)?.hours ?? 0)
+    }
+    const totalHoursPaidJobs = laborJobs.reduce((s, j) => s + j.hours, 0) + crewJobs.reduce((s, j) => s + j.hours, 0)
+    const totalHours = onlyPaidJobs
+      ? totalHoursPaidJobs
+      : days.reduce((s, d) => s + getHoursForDay(d), 0)
+
+    const profitBreakdownJobs: ProfitAfterOverheadBreakdown['jobs'] = netBreakdownJobs.map((j) => ({
+      jobId: j.jobId,
+      hcp: j.hcp,
+      jobName: j.jobName,
+      allocatedNet: j.allocatedNet,
+      hoursInPeriod: hoursOnJobInPeriod.get(j.jobId) ?? 0,
+    }))
+    const allocatedHoursTotal = profitBreakdownJobs.reduce((s, j) => s + j.hoursInPeriod, 0)
+    const profitBreakdown: ProfitAfterOverheadBreakdown = {
+      jobs: profitBreakdownJobs,
+      totalNet: allocatedProfit,
+      totalHours,
+      unaccountedHours: Math.max(0, totalHours - allocatedHoursTotal),
+    }
+
+    const crewByDateForPerson = new Map<string, Array<{ hcp: string; pct: number; hours: number }>>()
+    for (const c of crewJobsWithLeadFiltered) {
+      const j = union.jobsById.get(c.job_id)
+      const hcp = (j?.hcp_number ?? '').trim().toUpperCase() || 'Unknown'
+      const dayOfWeek = new Date(c.work_date + 'T12:00:00').getDay()
+      const dayHours = cfg?.is_salary
+        ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
+        : (union.hoursMap[`${personName}:${c.work_date}`] ?? 0)
+      const hours = dayHours * (c.pct / 100)
+      const list = crewByDateForPerson.get(c.work_date) ?? []
+      list.push({ hcp, pct: c.pct, hours })
+      crewByDateForPerson.set(c.work_date, list)
+    }
+    const dailyRowsBreakdown: HoursBreakdown['dailyRows'] = []
+    for (const d of days) {
+      const h = getHoursForDay(d)
+      const allocs = crewByDateForPerson.get(d) ?? []
+      if (h > 0 || allocs.length > 0) {
+        dailyRowsBreakdown.push({ date: d, hours: h, crewAllocations: allocs })
+      }
+    }
+    const subLaborRowsBreakdown: HoursBreakdown['subLaborRows'] = []
+    for (const r of laborRowsFiltered) {
+      const items = union.laborItemsByJobId.get(r.id) ?? []
+      const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+      const hcp = (r.job_number ?? '').trim().toUpperCase() || 'Unknown'
+      if (totalHrs > 0) {
+        subLaborRowsBreakdown.push({ hcp, date: r.job_date ?? '', hours: totalHrs })
+      }
+    }
+    const dailyTotal = dailyRowsBreakdown.reduce((s, r) => s + r.hours, 0)
+    const crewTotal = crewJobs.reduce((s, j) => s + j.hours, 0)
+    const subLaborTotal = subLaborRowsBreakdown.reduce((s, r) => s + r.hours, 0)
+    const hoursBreakdown: HoursBreakdown = {
+      source: !cfg ? 'unknown' : (cfg.is_salary ? 'salary' : 'hourly'),
+      onlyPaidJobs,
+      dailyRows: dailyRowsBreakdown,
+      subLaborRows: subLaborRowsBreakdown,
+      totals: { daily: dailyTotal, crew: crewTotal, subLabor: subLaborTotal, totalHours },
+    }
+
+    const overheadBuckets = union.overheadHoursByPerson[personName] ?? { office: 0, bid: 0 }
+    const officeHours = overheadBuckets.office
+    const bidHours = overheadBuckets.bid
+    const overheadHours = officeHours + bidHours
+    const fieldHours = onlyPaidJobs
+      ? totalHours
+      : Math.max(0, totalHours - overheadHours)
+
+    return {
+      personName,
+      profit: allocatedProfit,
+      gross: allocatedRevenue,
+      revPerHour: totalHours > 0 ? allocatedRevenue / totalHours : 0,
+      profitPerHour: totalHours > 0 ? allocatedProfit / totalHours : 0,
+      totalHours,
+      overheadHours,
+      officeHours,
+      bidHours,
+      fieldHours,
+      hoursBreakdown,
+      grossBreakdown,
+      netBreakdown,
+      profitBreakdown,
+    }
+  }
 
   async function loadTeamSummaryData(): Promise<TeamSummaryRow[]> {
     const [start, end] = getReviewDateRange()
     const days = getDaysInRange(start, end)
-    const rows: TeamSummaryRow[] = []
-    for (const personName of showPeopleForReview) {
-      const result = await loadReviewData(personName, true, reviewOnlyPaidInFull)
-      if (!result) continue
-      const cfg = payConfig[personName]
-      const getHoursForDay = (d: string) => {
-        if (!cfg) return 0
-        const dayOfWeek = new Date(d + 'T12:00:00').getDay()
-        return cfg.is_salary
-          ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
-          : (result.hoursRows.find((h) => h.work_date === d)?.hours ?? 0)
-      }
-      const totalHours =
-        reviewOnlyPaidInFull && result.totalHoursPaidJobs !== undefined
-          ? result.totalHoursPaidJobs
-          : days.reduce((s, d) => s + getHoursForDay(d), 0)
-      const revPerHour = totalHours > 0 ? result.allocatedRevenue / totalHours : 0
-      const profitPerHour = totalHours > 0 ? result.allocatedProfit / totalHours : 0
-      rows.push({
-        personName,
-        profit: result.allocatedProfit,
-        revPerHour,
-        profitPerHour,
-        totalHours,
-      })
-    }
-    return rows
+    const union = await loadTeamReviewUnion(start, end, reviewOnlyPaidInFull, payConfig)
+    return showPeopleForReview.map((personName) =>
+      derivePersonTeamSummary(union, personName, payConfig, reviewOnlyPaidInFull, days)
+    )
   }
 
   function getReviewPeriodLabel(): string {
@@ -7815,70 +8839,855 @@ export default function People() {
     return `${labels[reviewPeriod]} (${start} – ${end})`
   }
 
-  function openTeamSummaryWindow() {
+  function openTeamSummaryWindow(target: 'popup' | 'inline' = 'popup') {
+    const isEmbedded = target === 'inline'
     if (showPeopleForReview.length === 0) {
-      showToast('No people in pay config. Add people in People pay config (Hours tab) first.', 'warning')
+      if (isEmbedded) {
+        teamSummaryReqIdRef.current += 1
+        setTeamSummaryHtml(null)
+        setTeamSummaryError(null)
+        setTeamSummaryLoading(false)
+      } else {
+        showToast('No people in pay config. Add people in People pay config (Hours tab) first.', 'warning')
+      }
       return
     }
-    const win = window.open('', '_blank')
-    if (!win) {
-      showToast('Popup blocked. Allow popups to open Team Summary.', 'warning')
-      return
+    let win: Window | null = null
+    let reqId = 0
+    if (isEmbedded) {
+      reqId = ++teamSummaryReqIdRef.current
+      setTeamSummaryLoading(true)
+      setTeamSummaryError(null)
+    } else {
+      win = window.open('', '_blank')
+      if (!win) {
+        showToast('Popup blocked. Allow popups to open Team Summary.', 'warning')
+        return
+      }
+      const loadingHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary</title></head><body style="font-family:sans-serif;margin:1in;"><p>Loading Team Summary…</p></body></html>'
+      win.document.write(loadingHtml)
+      win.document.close()
+      win.focus()
+      showToast('Loading Team Summary…', 'info')
     }
-    const loadingHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary</title></head><body style="font-family:sans-serif;margin:1in;"><p>Loading Team Summary…</p></body></html>'
-    win.document.write(loadingHtml)
-    win.document.close()
-    win.focus()
-    showToast('Loading Team Summary…', 'info')
+    const overheadRate = reviewOverheadRates.ratePerHour
+    const overheadRateLoading = reviewOverheadRates.loading
+    const overheadDecomp = {
+      ratePerHour: reviewOverheadRates.ratePerHour,
+      ratePerRevenueDecimal: reviewOverheadRates.ratePerRevenueDecimal,
+      ratePerLaborDollar: reviewOverheadRates.ratePerLaborDollar,
+      windowStart: reviewOverheadRates.windowStart,
+      windowEnd: reviewOverheadRates.windowEnd,
+      officeLabor90d: reviewOverheadRates.officeLabor90d,
+      bidLabor90d: reviewOverheadRates.bidLabor90d,
+      officeParts90d: reviewOverheadRates.officeParts90d,
+      invoices90d: reviewOverheadRates.invoices90d,
+      fieldHours90d: reviewOverheadRates.fieldHours90d,
+      fieldLaborUsd90d: reviewOverheadRates.fieldLaborUsd90d,
+    }
     loadTeamSummaryData()
       .then((rows) => {
+        if (isEmbedded && reqId !== teamSummaryReqIdRef.current) return
         try {
           const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-          const tableRows = rows.map(
-            (r) =>
-              `<tr>
-  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb;">${escapeHtml(r.personName)}</td>
-  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right;">$${Math.round(r.profit).toLocaleString('en-US', { maximumFractionDigits: 0 })}</td>
-  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right;">${r.totalHours > 0 ? `$${Math.round(r.revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
-  <td style="padding: 0.5rem 0.75rem; border-bottom: 1px solid #e5e7eb; text-align: right;">${r.totalHours > 0 ? `$${Math.round(r.profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
-</tr>`
+          const fmtMoney = (n: number) => `${n < 0 ? '-$' : '$'}${Math.round(Math.abs(n)).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+          const fmtHours = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1, minimumFractionDigits: 0 })
+          const negStyle = (n: number) => (n < 0 ? ' color:#b91c1c;' : '')
+          type DisplayRow = TeamSummaryRow & {
+            profitAfterOverhead: number | null
+            profitPerHourAfterOverhead: number | null
+          }
+          const enriched: DisplayRow[] = rows.map((r) => {
+            const profitAfterOverhead = overheadRate != null ? r.profit - r.totalHours * overheadRate : null
+            const profitPerHourAfterOverhead =
+              profitAfterOverhead != null && r.totalHours > 0 ? profitAfterOverhead / r.totalHours : null
+            return { ...r, profitAfterOverhead, profitPerHourAfterOverhead }
+          })
+          const sortedRows = [...enriched].sort((a, b) => b.profit - a.profit || a.personName.localeCompare(b.personName))
+
+          const totals = sortedRows.reduce(
+            (acc, r) => {
+              acc.hours += r.totalHours
+              acc.overheadHours += r.overheadHours
+              acc.fieldHours += r.fieldHours
+              acc.gross += r.gross
+              acc.net += r.profit
+              if (r.profitAfterOverhead != null) {
+                acc.profit = (acc.profit ?? 0) + r.profitAfterOverhead
+              }
+              return acc
+            },
+            { hours: 0, overheadHours: 0, fieldHours: 0, gross: 0, net: 0, profit: null as number | null }
           )
+          const teamGrossPerHr = totals.hours > 0 ? totals.gross / totals.hours : 0
+          const teamNetPerHr = totals.hours > 0 ? totals.net / totals.hours : 0
+          const teamProfitPerHr =
+            totals.profit != null && totals.hours > 0 ? totals.profit / totals.hours : null
+
+          const cellMoney = (n: number) =>
+            `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums;${negStyle(n)}">${fmtMoney(n)}</td>`
+          const cellMoneyOrDash = (n: number | null) =>
+            n == null
+              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
+              : cellMoney(n)
+          const cellHoursClickable = (n: number, idx: number) =>
+            `<td class="click-cell" data-idx="${idx}" data-type="hours" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;" title="Click for breakdown">${fmtHours(n)}</td>`
+          const cellGrossClickable = (n: number, idx: number) =>
+            `<td class="click-cell" data-idx="${idx}" data-type="gross" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
+          const cellNetClickable = (n: number, idx: number) =>
+            `<td class="click-cell" data-idx="${idx}" data-type="net" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
+          const cellProfitClickableOrDash = (n: number | null, idx: number) =>
+            n == null
+              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
+              : `<td class="click-cell" data-idx="${idx}" data-type="profit" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
+          const cellGrossPerHrClickable = (n: number, idx: number) =>
+            `<td class="click-cell" data-idx="${idx}" data-type="rev_per_hr" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
+          const cellNetPerHrClickable = (n: number, idx: number) =>
+            `<td class="click-cell" data-idx="${idx}" data-type="net_per_hr" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
+          const cellProfitPerHrClickableOrDash = (n: number | null, idx: number) =>
+            n == null
+              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
+              : `<td class="click-cell" data-idx="${idx}" data-type="profit_per_hr" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
+          const cellHours = (n: number) =>
+            `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums;">${fmtHours(n)}</td>`
+          const cellName = (s: string) =>
+            `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb;">${escapeHtml(s)}</td>`
+
+          const cellOverheadHoursClickable = (n: number, idx: number) =>
+            n > 0
+              ? `<td class="click-cell" data-idx="${idx}" data-type="overhead_hours" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;" title="Click for office vs bid breakdown">${fmtHours(n)}</td>`
+              : `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
+          const cellFieldHours = (n: number) =>
+            n > 0
+              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums;">${fmtHours(n)}</td>`
+              : `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
+
+          const tableRows = sortedRows.map(
+            (r, i) =>
+              `<tr>${cellName(r.personName)}${cellHoursClickable(r.totalHours, i)}${cellOverheadHoursClickable(r.overheadHours, i)}${cellFieldHours(r.fieldHours)}${cellGrossClickable(r.gross, i)}${cellNetClickable(r.profit, i)}${cellProfitClickableOrDash(r.profitAfterOverhead, i)}${r.totalHours > 0 ? cellGrossPerHrClickable(r.revPerHour, i) : cellMoneyOrDash(null)}${r.totalHours > 0 ? cellNetPerHrClickable(r.profitPerHour, i) : cellMoneyOrDash(null)}${r.totalHours > 0 ? cellProfitPerHrClickableOrDash(r.profitPerHourAfterOverhead, i) : cellMoneyOrDash(null)}</tr>`
+          )
+
+          const footerRow = `<tr style="font-weight: 600; background: #f9fafb;">
+  <td style="padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb;">Team total (${sortedRows.length})</td>
+  ${cellHours(totals.hours)}
+  ${cellHours(totals.overheadHours)}
+  ${cellHours(totals.fieldHours)}
+  ${cellMoney(totals.gross)}
+  ${cellMoney(totals.net)}
+  ${cellMoneyOrDash(totals.profit)}
+  ${totals.hours > 0 ? cellMoney(teamGrossPerHr) : cellMoneyOrDash(null)}
+  ${totals.hours > 0 ? cellMoney(teamNetPerHr) : cellMoneyOrDash(null)}
+  ${totals.hours > 0 ? cellMoneyOrDash(teamProfitPerHr) : cellMoneyOrDash(null)}
+</tr>`
+
+          const overheadMetaText = overheadRateLoading
+            ? 'Overhead Method A: loading…'
+            : overheadRate == null
+              ? 'Overhead Method A: unavailable'
+              : `Overhead Method A: $${overheadRate.toFixed(2)}/hr (rolling 90-day rate)`
+          const overheadMetaClickable = !overheadRateLoading && overheadRate != null
+          const overheadMetaHtml = overheadMetaClickable
+            ? `<button type="button" id="overhead-meta-btn" class="meta-sub-btn" title="Click for rate decomposition">${escapeHtml(overheadMetaText)} <span aria-hidden="true">&#9432;</span></button>`
+            : escapeHtml(overheadMetaText)
+
+          const breakdownsPayload = sortedRows.map((r) => ({
+            name: r.personName,
+            hb: r.hoursBreakdown,
+            gb: r.grossBreakdown,
+            nb: r.netBreakdown,
+            pb: r.profitBreakdown,
+            overheadHours: r.overheadHours,
+            officeHours: r.officeHours,
+            bidHours: r.bidHours,
+            fieldHours: r.fieldHours,
+          }))
+          const breakdownsJson = JSON.stringify(breakdownsPayload).replace(/</g, '\\u003c')
+          const overheadRateJson = overheadRate == null ? 'null' : String(overheadRate)
+          const overheadDecompJson = JSON.stringify(overheadDecomp).replace(/</g, '\\u003c')
+
+          const embeddedResizeScript = isEmbedded
+            ? `<script>(function(){
+              if (window.parent === window) return;
+              var lastH = 0;
+              function postH(h){ var r = Math.ceil(h); if (r === lastH) return; lastH = r; try { parent.postMessage({ type: 'team-summary-resize', height: r }, '*'); } catch(e) {} }
+              function reportHeight(){
+                var modal = document.getElementById('modal');
+                var open = modal && modal.classList.contains('open');
+                var bodyH = document.documentElement.scrollHeight || document.body.scrollHeight || 0;
+                if (open) { postH(Math.max(bodyH, modal.offsetHeight + 100)); } else { postH(bodyH); }
+              }
+              reportHeight();
+              if (typeof ResizeObserver === 'function') { try { new ResizeObserver(reportHeight).observe(document.body); } catch(e) {} }
+              window.addEventListener('load', reportHeight);
+              setTimeout(reportHeight, 100); setTimeout(reportHeight, 500);
+              var m = document.getElementById('modal');
+              if (m && typeof MutationObserver === 'function') { try { new MutationObserver(reportHeight).observe(m, { attributes: true, attributeFilter: ['class'] }); } catch(e) {} }
+            })();</script>`
+            : ''
           const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary</title><style>
-      body { font-family: sans-serif; margin: 1in; }
-      h1 { margin-bottom: 0.5rem; }
-      .meta { color: #6b7280; margin-bottom: 1rem; }
-      table { width: 100%; border-collapse: collapse; }
-      th, td { border: 1px solid #e5e7eb; }
-      th { padding: 0.5rem 0.75rem; text-align: left; background: #f9fafb; font-weight: 600; }
-      th:nth-child(2), th:nth-child(3), th:nth-child(4) { text-align: right; }
-      @media print { body { margin: 0.5in; } }
+      html, body { background: transparent; }
+      body { font-family: sans-serif; margin: ${isEmbedded ? '0' : '1in'}; }
+      h1 { margin-bottom: 0.25rem;${isEmbedded ? ' display: none;' : ''} }
+      .meta { color: #6b7280; margin-bottom: 0.25rem;${isEmbedded ? ' font-size: 0.85rem;' : ''} }
+      .meta-sub { color: #6b7280; margin-bottom: 1rem;${isEmbedded ? ' font-size: 0.85rem;' : ' font-size: 0.9rem;'} }
+      .meta-sub-btn { background: none; border: 0; padding: 0; color: #2563eb; cursor: pointer; font: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
+      .meta-sub-btn:hover { color: #1d4ed8; }
+      table { width: auto; border-collapse: collapse; table-layout: auto; }
+      th, td { border: 1px solid #e5e7eb; white-space: nowrap; }
+      th { padding: 0.5rem 0.75rem; text-align: left; background: #f9fafb; font-weight: 600; vertical-align: bottom; }
+      th.num { text-align: center; }
+      tfoot td { border-top: 2px solid #d1d5db; }
+      .click-cell:hover { background: #eff6ff; }
+      .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; z-index: 9; }
+      .modal-backdrop.open { display: block; }
+      .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 1rem 1.5rem 1.5rem; max-width: 90vw; max-height: 85vh; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.25); display: none; z-index: 10; min-width: 400px; }
+      .modal.open { display: block; }
+      .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; gap: 1rem; }
+      .modal-header h2 { margin: 0; font-size: 1.1rem; }
+      .modal-close { background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; color: #6b7280; padding: 0.25rem 0.5rem; border-radius: 4px; }
+      .modal-close:hover { background: #f3f4f6; color: #111827; }
+      .modal h3 { margin-top: 1.25rem; margin-bottom: 0.5rem; font-size: 0.95rem; color: #374151; }
+      .modal table { width: 100%; }
+      .modal th, .modal td { padding: 0.35rem 0.6rem; white-space: normal; }
+      .modal td.num, .modal th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .modal .caption { color: #6b7280; font-size: 0.85rem; margin-top: 1rem; }
+      @media print { body { margin: 0.5in; } .click-cell { color: inherit !important; text-decoration: none !important; cursor: default !important; } .modal-backdrop, .modal { display: none !important; } }
     </style></head><body>
       <h1>Team Summary</h1>
-      <div class="meta">${escapeHtml(getReviewPeriodLabel())}</div>
+      <div class="meta">${escapeHtml(getReviewPeriodLabel())} &middot; ${sortedRows.length} ${sortedRows.length === 1 ? 'person' : 'people'}</div>
+      <div class="meta-sub">${overheadMetaHtml}</div>
       <table>
-        <thead><tr><th>Name</th><th>Period Profit</th><th>Rev/MH</th><th>Profit/MH</th></tr></thead>
+        <thead><tr>
+          <th>Name</th>
+          <th class="num">Hours</th>
+          <th class="num">Overhead<br>hrs</th>
+          <th class="num">Field<br>hrs</th>
+          <th class="num">Gross<br>Revenue</th>
+          <th class="num">Net<br>Revenue</th>
+          <th class="num">Profit<br>(after overhead)</th>
+          <th class="num">Gross<br>Revenue/hr</th>
+          <th class="num">Net<br>Revenue/hr</th>
+          <th class="num">Profit/hr<br>(after overhead)</th>
+        </tr></thead>
         <tbody>${tableRows.join('\n')}</tbody>
+        <tfoot>${footerRow}</tfoot>
       </table>
+      <div class="modal-backdrop" id="modal-backdrop"></div>
+      <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-header">
+          <h2 id="modal-title"></h2>
+          <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+        </div>
+        <div id="modal-body"></div>
+      </div>
+      <script>(function(){
+        var breakdowns = ${breakdownsJson};
+        var overheadRate = ${overheadRateJson};
+        var overheadDecomp = ${overheadDecompJson};
+        function escH(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+        function fmtH(n){ return (Math.round(n*10)/10).toFixed(1); }
+        function fmtPct(n){ return Math.round(n) + '%'; }
+        function fmtPct1(n){ return (Math.round(n*10)/10).toFixed(1) + '%'; }
+        function fmtMoney(n){ return (n < 0 ? '-$' : '$') + Math.round(Math.abs(n)).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+        function buildHoursBody(hb){
+          var srcLabel = hb.source === 'salary' ? 'Salaried (8 hrs/weekday)' : hb.source === 'hourly' ? 'Hourly (from people_hours / clock sessions)' : 'Unknown (no pay config row)';
+          var modeLabel = hb.onlyPaidJobs ? 'Only paid jobs (sub labor + crew assignments)' : 'All days in period (clocked / salary)';
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div><strong>Source:</strong> ' + escH(srcLabel) + '</div>';
+          html += '<div><strong>Counting mode:</strong> ' + escH(modeLabel) + '</div>';
+          html += '<div style="margin-top:0.5rem;font-size:1.05rem;"><strong>Total: ' + fmtH(hb.totals.totalHours) + ' hrs</strong></div>';
+          html += '</div>';
+          if (hb.onlyPaidJobs) {
+            var hasCrew = hb.dailyRows.some(function(d){ return d.crewAllocations.length > 0; });
+            if (hasCrew) {
+              html += '<h3>Crew jobs (per day)</h3>';
+              html += '<table><thead><tr><th>Date</th><th class="num">Day hrs</th><th>Job allocations</th><th class="num">Hrs counted</th></tr></thead><tbody>';
+              for (var i=0; i<hb.dailyRows.length; i++) {
+                var d = hb.dailyRows[i];
+                if (d.crewAllocations.length === 0) continue;
+                var allocStr = d.crewAllocations.map(function(a){ return escH(a.hcp) + ' (' + fmtPct(a.pct) + ')'; }).join(', ');
+                var counted = d.crewAllocations.reduce(function(s,a){ return s + a.hours; }, 0);
+                html += '<tr><td>' + escH(d.date) + '</td><td class="num">' + fmtH(d.hours) + '</td><td>' + allocStr + '</td><td class="num">' + fmtH(counted) + '</td></tr>';
+              }
+              html += '</tbody><tfoot><tr><td colspan="3" style="text-align:right;font-weight:600;">Crew subtotal</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.crew) + '</td></tr></tfoot></table>';
+            }
+            if (hb.subLaborRows.length > 0) {
+              html += '<h3>Sub labor jobs</h3>';
+              html += '<table><thead><tr><th>Date</th><th>HCP</th><th class="num">Hours</th></tr></thead><tbody>';
+              var sub = hb.subLaborRows.slice().sort(function(a,b){ return (a.date || '').localeCompare(b.date || ''); });
+              for (var k=0; k<sub.length; k++) {
+                var s = sub[k];
+                html += '<tr><td>' + escH(s.date) + '</td><td>' + escH(s.hcp) + '</td><td class="num">' + fmtH(s.hours) + '</td></tr>';
+              }
+              html += '</tbody><tfoot><tr><td colspan="2" style="text-align:right;font-weight:600;">Sub labor subtotal</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.subLabor) + '</td></tr></tfoot></table>';
+            }
+            html += '<p class="caption">Total = crew (' + fmtH(hb.totals.crew) + ') + sub labor (' + fmtH(hb.totals.subLabor) + ') = ' + fmtH(hb.totals.totalHours) + ' hrs.</p>';
+          } else {
+            if (hb.dailyRows.length > 0) {
+              html += '<h3>Daily hours</h3>';
+              html += '<table><thead><tr><th>Date</th><th class="num">Hours</th><th>Crew jobs (per day)</th></tr></thead><tbody>';
+              for (var i2=0; i2<hb.dailyRows.length; i2++) {
+                var d2 = hb.dailyRows[i2];
+                var allocStr2 = d2.crewAllocations.length > 0
+                  ? d2.crewAllocations.map(function(a){ return escH(a.hcp) + ' (' + fmtPct(a.pct) + ')'; }).join(', ')
+                  : '<span style="color:#9ca3af;">—</span>';
+                html += '<tr><td>' + escH(d2.date) + '</td><td class="num">' + fmtH(d2.hours) + '</td><td>' + allocStr2 + '</td></tr>';
+              }
+              html += '</tbody><tfoot><tr><td style="text-align:right;font-weight:600;">Total</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.daily) + '</td><td></td></tr></tfoot></table>';
+            } else {
+              html += '<p class="caption">No daily hours recorded in this period.</p>';
+            }
+            if (hb.subLaborRows.length > 0) {
+              html += '<h3 style="margin-top:1.5rem;">Sub labor jobs (informational — not counted in this mode)</h3>';
+              html += '<table><thead><tr><th>Date</th><th>HCP</th><th class="num">Hours</th></tr></thead><tbody>';
+              var sub2 = hb.subLaborRows.slice().sort(function(a,b){ return (a.date || '').localeCompare(b.date || ''); });
+              for (var k2=0; k2<sub2.length; k2++) {
+                var s2 = sub2[k2];
+                html += '<tr><td>' + escH(s2.date) + '</td><td>' + escH(s2.hcp) + '</td><td class="num">' + fmtH(s2.hours) + '</td></tr>';
+              }
+              html += '</tbody><tfoot><tr><td colspan="2" style="text-align:right;font-weight:600;">Sub labor subtotal</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.subLabor) + '</td></tr></tfoot></table>';
+            }
+            html += '<p class="caption">Total = sum of daily hours = ' + fmtH(hb.totals.totalHours) + ' hrs. (Sub labor hours are not added in this mode — toggle "Only paid jobs" in Review to count them.)</p>';
+          }
+          return html;
+        }
+        function buildGrossBody(gb) {
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div style="margin-bottom:0.5rem;">Gross Revenue is each job\\'s <strong>Value Created</strong> (Total Bill &times; % Complete) multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</div>';
+          html += '<div style="font-size:1.05rem;"><strong>Total: ' + fmtMoney(gb.total) + '</strong></div>';
+          html += '</div>';
+          if (!gb.jobs || gb.jobs.length === 0) {
+            html += '<p class="caption">No jobs contributed to revenue in this period.</p>';
+            return html;
+          }
+          html += '<table>';
+          html += '<thead><tr>';
+          html += '<th class="num">HCP</th>';
+          html += '<th>Job</th>';
+          html += '<th class="num">Total Bill</th>';
+          html += '<th class="num">% Complete</th>';
+          html += '<th class="num">Value Created</th>';
+          html += '<th class="num">Your cost<br>(period)</th>';
+          html += '<th class="num">Total labor<br>(lifetime)</th>';
+          html += '<th class="num">Share</th>';
+          html += '<th class="num">Allocated</th>';
+          html += '</tr></thead><tbody>';
+          for (var i = 0; i < gb.jobs.length; i++) {
+            var j = gb.jobs[i];
+            var pctSuffix = j.pctCompleteSource === 'assumed' ? ' (assumed)' : '';
+            html += '<tr>';
+            html += '<td class="num">' + escH(j.hcp) + '</td>';
+            html += '<td>' + escH(j.jobName || '—') + '</td>';
+            html += '<td class="num">' + fmtMoney(j.totalBill) + '</td>';
+            html += '<td class="num">' + fmtPct(j.pctComplete) + escH(pctSuffix) + '</td>';
+            html += '<td class="num">' + fmtMoney(j.valueCreated) + '</td>';
+            html += '<td class="num">' + fmtMoney(j.costInPeriod) + '</td>';
+            html += '<td class="num">' + fmtMoney(j.totalLaborOnJob) + '</td>';
+            html += '<td class="num">' + fmtPct1(j.ratio * 100) + '</td>';
+            html += '<td class="num">' + fmtMoney(j.allocatedRevenue) + '</td>';
+            html += '</tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr><td colspan="8" style="text-align:right;font-weight:600;">Total</td><td class="num" style="font-weight:600;">' + fmtMoney(gb.total) + '</td></tr></tfoot>';
+          html += '</table>';
+          html += '<p class="caption">Allocated = Value Created &times; (Your cost &divide; Total labor). Sorted by allocated revenue.</p>';
+          return html;
+        }
+        function buildNetBody(nb) {
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div style="margin-bottom:0.5rem;">Net Revenue is each job\\'s <strong>Net Revenue (before overhead)</strong> &mdash; Value Created minus parts and total labor &mdash; multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</div>';
+          html += '<div style="font-size:1.05rem;"><strong>Total: ' + fmtMoney(nb.total) + '</strong></div>';
+          html += '</div>';
+          if (!nb.jobs || nb.jobs.length === 0) {
+            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
+            return html;
+          }
+          html += '<table>';
+          html += '<thead><tr>';
+          html += '<th class="num">HCP</th>';
+          html += '<th>Job</th>';
+          html += '<th class="num">Value<br>Created</th>';
+          html += '<th class="num">&minus; Parts</th>';
+          html += '<th class="num">&minus; Total<br>labor</th>';
+          html += '<th class="num">= Net Rev<br>(job)</th>';
+          html += '<th class="num">Your cost<br>(period)</th>';
+          html += '<th class="num">Share</th>';
+          html += '<th class="num">Allocated</th>';
+          html += '</tr></thead><tbody>';
+          for (var i = 0; i < nb.jobs.length; i++) {
+            var j = nb.jobs[i];
+            html += '<tr>';
+            html += '<td class="num">' + escH(j.hcp) + '</td>';
+            html += '<td>' + escH(j.jobName || '—') + '</td>';
+            html += '<td class="num">' + fmtMoney(j.valueCreated) + '</td>';
+            html += '<td class="num">' + fmtMoney(j.partsCost) + '</td>';
+            html += '<td class="num">' + fmtMoney(j.totalLaborOnJob) + '</td>';
+            html += '<td class="num"' + (j.revenueBeforeOverhead < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(j.revenueBeforeOverhead) + '</td>';
+            html += '<td class="num">' + fmtMoney(j.costInPeriod) + '</td>';
+            html += '<td class="num">' + fmtPct1(j.ratio * 100) + '</td>';
+            html += '<td class="num"' + (j.allocatedNet < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(j.allocatedNet) + '</td>';
+            html += '</tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr><td colspan="8" style="text-align:right;font-weight:600;">Total</td><td class="num"' + (nb.total < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoney(nb.total) + '</td></tr></tfoot>';
+          html += '</table>';
+          html += '<p class="caption">Allocated = Net Rev (job) &times; (Your cost &divide; Total labor). Net Rev (job) = Value Created &minus; Parts &minus; Total labor. Sorted by allocated net.</p>';
+          return html;
+        }
+        function buildProfitBody(pb) {
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          if (overheadRate == null) {
+            html += '<div style="margin-bottom:0.5rem;color:#b91c1c;">Overhead rate is unavailable. Open the Review tab and let the rate finish loading, then reopen Team Summary.</div>';
+            html += '<div style="font-size:1.05rem;"><strong>Net Revenue: ' + fmtMoney(pb.totalNet) + '</strong></div>';
+            return html;
+          }
+          var totalOverhead = pb.totalHours * overheadRate;
+          var totalProfit = pb.totalNet - totalOverhead;
+          html += '<div style="margin-bottom:0.5rem;">Profit (after overhead) = Net Revenue &minus; (your hours &times; overhead rate). Method A allocates overhead per labor hour at the org-wide rolling 90-day rate.</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + '/hr</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(pb.totalNet) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(pb.totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
+          html += '<div style="font-size:1.05rem;"><strong>Profit (after overhead): <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></strong></div>';
+          html += '</div>';
+          if (!pb.jobs || pb.jobs.length === 0) {
+            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
+            return html;
+          }
+          var rows = pb.jobs.map(function(j){
+            var oh = j.hoursInPeriod * overheadRate;
+            var profit = j.allocatedNet - oh;
+            return { hcp: j.hcp, jobName: j.jobName, allocatedNet: j.allocatedNet, hoursInPeriod: j.hoursInPeriod, overhead: oh, profit: profit };
+          });
+          rows.sort(function(a, b){ return b.profit - a.profit; });
+          html += '<table>';
+          html += '<thead><tr>';
+          html += '<th class="num">HCP</th>';
+          html += '<th>Job</th>';
+          html += '<th class="num">Net Rev<br>(allocated)</th>';
+          html += '<th class="num">Your hours<br>(period)</th>';
+          html += '<th class="num">&minus; Overhead<br>(hrs &times; rate)</th>';
+          html += '<th class="num">= Profit<br>(after overhead)</th>';
+          html += '</tr></thead><tbody>';
+          for (var i = 0; i < rows.length; i++) {
+            var r = rows[i];
+            html += '<tr>';
+            html += '<td class="num">' + escH(r.hcp) + '</td>';
+            html += '<td>' + escH(r.jobName || '—') + '</td>';
+            html += '<td class="num"' + (r.allocatedNet < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(r.allocatedNet) + '</td>';
+            html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
+            html += '<td class="num">' + fmtMoney(r.overhead) + '</td>';
+            html += '<td class="num"' + (r.profit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(r.profit) + '</td>';
+            html += '</tr>';
+          }
+          if (pb.unaccountedHours > 0.01) {
+            var unOh = pb.unaccountedHours * overheadRate;
+            html += '<tr style="background:#fff7ed;">';
+            html += '<td class="num">&mdash;</td>';
+            html += '<td><em>Unallocated hours</em><div style="color:#6b7280;font-size:0.8rem;">Hours worked in the period that were not tied to a job, but still incur overhead.</div></td>';
+            html += '<td class="num">' + fmtMoney(0) + '</td>';
+            html += '<td class="num">' + fmtH(pb.unaccountedHours) + '</td>';
+            html += '<td class="num">' + fmtMoney(unOh) + '</td>';
+            html += '<td class="num" style="color:#b91c1c;">' + fmtMoney(-unOh) + '</td>';
+            html += '</tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr>';
+          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtMoney(pb.totalNet) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtH(pb.totalHours) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtMoney(totalOverhead) + '</td>';
+          html += '<td class="num"' + (totalProfit < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoney(totalProfit) + '</td>';
+          html += '</tr></tfoot>';
+          html += '</table>';
+          html += '<p class="caption">Overhead per job = your hours on that job &times; rate. Profit (job) = Allocated Net Rev &minus; Overhead. Sorted by profit.</p>';
+          return html;
+        }
+        function fmtMoneyPerHr(n) { return fmtMoney(n) + '/hr'; }
+        function buildGrossPerHourBody(entry) {
+          var gb = entry.gb;
+          var pb = entry.pb;
+          var totalHours = pb.totalHours;
+          var totalGross = gb.total;
+          var rate = totalHours > 0 ? totalGross / totalHours : 0;
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div style="margin-bottom:0.5rem;">Gross Revenue/hr is your <strong>total Gross Revenue</strong> divided by your <strong>total hours</strong> in the period. Per-job rates show how much each job paid per hour you spent on it.</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Gross Revenue:</strong> ' + fmtMoney(totalGross) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
+          html += '<div style="font-size:1.05rem;"><strong>Gross Revenue/hr: ' + fmtMoneyPerHr(rate) + '</strong></div>';
+          html += '</div>';
+          if (!gb.jobs || gb.jobs.length === 0) {
+            html += '<p class="caption">No jobs contributed to revenue in this period.</p>';
+            return html;
+          }
+          var hoursByJob = {};
+          for (var i = 0; i < pb.jobs.length; i++) hoursByJob[pb.jobs[i].jobId] = pb.jobs[i].hoursInPeriod;
+          var rows = gb.jobs.map(function(j){
+            var h = hoursByJob[j.jobId] || 0;
+            var perHr = h > 0 ? j.allocatedRevenue / h : null;
+            return { hcp: j.hcp, jobName: j.jobName, allocatedRevenue: j.allocatedRevenue, hoursInPeriod: h, perHr: perHr };
+          });
+          rows.sort(function(a, b){ return (b.perHr == null ? -1 : b.perHr) - (a.perHr == null ? -1 : a.perHr); });
+          html += '<table>';
+          html += '<thead><tr>';
+          html += '<th class="num">HCP</th>';
+          html += '<th>Job</th>';
+          html += '<th class="num">Allocated<br>Gross Rev</th>';
+          html += '<th class="num">Your hours<br>(period)</th>';
+          html += '<th class="num">$/hr<br>(this job)</th>';
+          html += '</tr></thead><tbody>';
+          for (var k = 0; k < rows.length; k++) {
+            var r = rows[k];
+            html += '<tr>';
+            html += '<td class="num">' + escH(r.hcp) + '</td>';
+            html += '<td>' + escH(r.jobName || '—') + '</td>';
+            html += '<td class="num">' + fmtMoney(r.allocatedRevenue) + '</td>';
+            html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
+            html += '<td class="num">' + (r.perHr == null ? '<span style="color:#9ca3af;">—</span>' : fmtMoneyPerHr(r.perHr)) + '</td>';
+            html += '</tr>';
+          }
+          if (pb.unaccountedHours > 0.01) {
+            html += '<tr style="background:#fff7ed;">';
+            html += '<td class="num">&mdash;</td>';
+            html += '<td><em>Unallocated hours</em><div style="color:#6b7280;font-size:0.8rem;">Hours worked in the period that weren\\'t tied to a job &mdash; they dilute the headline rate but contribute no revenue.</div></td>';
+            html += '<td class="num">' + fmtMoney(0) + '</td>';
+            html += '<td class="num">' + fmtH(pb.unaccountedHours) + '</td>';
+            html += '<td class="num"><span style="color:#9ca3af;">&mdash;</span></td>';
+            html += '</tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr>';
+          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtMoney(totalGross) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtH(totalHours) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtMoneyPerHr(rate) + '</td>';
+          html += '</tr></tfoot>';
+          html += '</table>';
+          html += '<p class="caption">Headline rate = Total Gross Revenue &divide; Total hours (including any unallocated hours). Per-job rate = Allocated Gross &divide; Your hours on that job. Sorted by per-job rate.</p>';
+          return html;
+        }
+        function buildNetPerHourBody(entry) {
+          var nb = entry.nb;
+          var pb = entry.pb;
+          var totalHours = pb.totalHours;
+          var totalNet = nb.total;
+          var rate = totalHours > 0 ? totalNet / totalHours : 0;
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div style="margin-bottom:0.5rem;">Net Revenue/hr is your <strong>total Net Revenue (before overhead)</strong> divided by your <strong>total hours</strong> in the period. Per-job rates show how much each job kept (after parts and labor) per hour you spent on it.</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(totalNet) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
+          html += '<div style="font-size:1.05rem;"><strong>Net Revenue/hr: <span' + (rate < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoneyPerHr(rate) + '</span></strong></div>';
+          html += '</div>';
+          if (!nb.jobs || nb.jobs.length === 0) {
+            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
+            return html;
+          }
+          var hoursByJob = {};
+          for (var i = 0; i < pb.jobs.length; i++) hoursByJob[pb.jobs[i].jobId] = pb.jobs[i].hoursInPeriod;
+          var rows = nb.jobs.map(function(j){
+            var h = hoursByJob[j.jobId] || 0;
+            var perHr = h > 0 ? j.allocatedNet / h : null;
+            return { hcp: j.hcp, jobName: j.jobName, allocatedNet: j.allocatedNet, hoursInPeriod: h, perHr: perHr };
+          });
+          rows.sort(function(a, b){ return (b.perHr == null ? -Infinity : b.perHr) - (a.perHr == null ? -Infinity : a.perHr); });
+          html += '<table>';
+          html += '<thead><tr>';
+          html += '<th class="num">HCP</th>';
+          html += '<th>Job</th>';
+          html += '<th class="num">Allocated<br>Net Rev</th>';
+          html += '<th class="num">Your hours<br>(period)</th>';
+          html += '<th class="num">$/hr<br>(this job)</th>';
+          html += '</tr></thead><tbody>';
+          for (var k = 0; k < rows.length; k++) {
+            var r = rows[k];
+            html += '<tr>';
+            html += '<td class="num">' + escH(r.hcp) + '</td>';
+            html += '<td>' + escH(r.jobName || '—') + '</td>';
+            html += '<td class="num"' + (r.allocatedNet < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(r.allocatedNet) + '</td>';
+            html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
+            html += '<td class="num"' + (r.perHr != null && r.perHr < 0 ? ' style="color:#b91c1c;"' : '') + '>' + (r.perHr == null ? '<span style="color:#9ca3af;">—</span>' : fmtMoneyPerHr(r.perHr)) + '</td>';
+            html += '</tr>';
+          }
+          if (pb.unaccountedHours > 0.01) {
+            html += '<tr style="background:#fff7ed;">';
+            html += '<td class="num">&mdash;</td>';
+            html += '<td><em>Unallocated hours</em><div style="color:#6b7280;font-size:0.8rem;">Hours worked in the period that weren\\'t tied to a job &mdash; they dilute the headline rate but contribute no net revenue.</div></td>';
+            html += '<td class="num">' + fmtMoney(0) + '</td>';
+            html += '<td class="num">' + fmtH(pb.unaccountedHours) + '</td>';
+            html += '<td class="num"><span style="color:#9ca3af;">&mdash;</span></td>';
+            html += '</tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr>';
+          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total</td>';
+          html += '<td class="num"' + (totalNet < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoney(totalNet) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtH(totalHours) + '</td>';
+          html += '<td class="num"' + (rate < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoneyPerHr(rate) + '</td>';
+          html += '</tr></tfoot>';
+          html += '</table>';
+          html += '<p class="caption">Headline rate = Total Net Revenue &divide; Total hours (including any unallocated hours). Per-job rate = Allocated Net &divide; Your hours on that job. Sorted by per-job rate.</p>';
+          return html;
+        }
+        function buildProfitPerHourBody(entry) {
+          var nb = entry.nb;
+          var pb = entry.pb;
+          var totalHours = pb.totalHours;
+          var totalNet = nb.total;
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          if (overheadRate == null) {
+            html += '<div style="margin-bottom:0.5rem;color:#b91c1c;">Overhead rate is unavailable. Open the Review tab and let the rate finish loading, then reopen Team Summary.</div>';
+            html += '<div><strong>Net Revenue:</strong> ' + fmtMoney(totalNet) + '</div>';
+            html += '<div><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
+            return html;
+          }
+          var totalOverhead = totalHours * overheadRate;
+          var totalProfit = totalNet - totalOverhead;
+          var rate = totalHours > 0 ? totalProfit / totalHours : 0;
+          html += '<div style="margin-bottom:0.5rem;">Profit/hr (after overhead) is your <strong>Profit (after overhead)</strong> divided by your <strong>total hours</strong>. Per-job rates show each job\\'s Net Rev/hr minus the flat overhead drag of $' + overheadRate.toFixed(2) + '/hr.</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + '/hr</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(totalNet) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Profit (after overhead):</strong> <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></div>';
+          html += '<div style="font-size:1.05rem;"><strong>Profit/hr (after overhead): <span' + (rate < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoneyPerHr(rate) + '</span></strong></div>';
+          html += '</div>';
+          if (!nb.jobs || nb.jobs.length === 0) {
+            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
+            return html;
+          }
+          var hoursByJob = {};
+          for (var i = 0; i < pb.jobs.length; i++) hoursByJob[pb.jobs[i].jobId] = pb.jobs[i].hoursInPeriod;
+          var rows = nb.jobs.map(function(j){
+            var h = hoursByJob[j.jobId] || 0;
+            var netPerHr = h > 0 ? j.allocatedNet / h : null;
+            var profitPerHr = netPerHr == null ? null : netPerHr - overheadRate;
+            return { hcp: j.hcp, jobName: j.jobName, allocatedNet: j.allocatedNet, hoursInPeriod: h, netPerHr: netPerHr, profitPerHr: profitPerHr };
+          });
+          rows.sort(function(a, b){ return (b.profitPerHr == null ? -Infinity : b.profitPerHr) - (a.profitPerHr == null ? -Infinity : a.profitPerHr); });
+          html += '<table>';
+          html += '<thead><tr>';
+          html += '<th class="num">HCP</th>';
+          html += '<th>Job</th>';
+          html += '<th class="num">Net Rev/hr<br>(this job)</th>';
+          html += '<th class="num">&minus; Overhead<br>rate</th>';
+          html += '<th class="num">= Profit/hr<br>(this job)</th>';
+          html += '<th class="num">Your hours<br>(period)</th>';
+          html += '</tr></thead><tbody>';
+          for (var k = 0; k < rows.length; k++) {
+            var r = rows[k];
+            html += '<tr>';
+            html += '<td class="num">' + escH(r.hcp) + '</td>';
+            html += '<td>' + escH(r.jobName || '—') + '</td>';
+            html += '<td class="num"' + (r.netPerHr != null && r.netPerHr < 0 ? ' style="color:#b91c1c;"' : '') + '>' + (r.netPerHr == null ? '<span style="color:#9ca3af;">—</span>' : fmtMoneyPerHr(r.netPerHr)) + '</td>';
+            html += '<td class="num">' + (r.hoursInPeriod > 0 ? '$' + overheadRate.toFixed(2) + '/hr' : '<span style="color:#9ca3af;">—</span>') + '</td>';
+            html += '<td class="num"' + (r.profitPerHr != null && r.profitPerHr < 0 ? ' style="color:#b91c1c;"' : '') + '>' + (r.profitPerHr == null ? '<span style="color:#9ca3af;">—</span>' : fmtMoneyPerHr(r.profitPerHr)) + '</td>';
+            html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
+            html += '</tr>';
+          }
+          if (pb.unaccountedHours > 0.01) {
+            html += '<tr style="background:#fff7ed;">';
+            html += '<td class="num">&mdash;</td>';
+            html += '<td><em>Unallocated hours</em><div style="color:#6b7280;font-size:0.8rem;">Hours worked in the period that weren\\'t tied to a job &mdash; they earn no net revenue but still incur overhead.</div></td>';
+            html += '<td class="num">' + fmtMoneyPerHr(0) + '</td>';
+            html += '<td class="num">$' + overheadRate.toFixed(2) + '/hr</td>';
+            html += '<td class="num" style="color:#b91c1c;">' + fmtMoneyPerHr(-overheadRate) + '</td>';
+            html += '<td class="num">' + fmtH(pb.unaccountedHours) + '</td>';
+            html += '</tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr>';
+          html += '<td colspan="4" style="text-align:right;font-weight:600;">Headline rate</td>';
+          html += '<td class="num"' + (rate < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoneyPerHr(rate) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtH(totalHours) + '</td>';
+          html += '</tr></tfoot>';
+          html += '</table>';
+          html += '<p class="caption">Per-job: Profit/hr = (Allocated Net &divide; Your hours) &minus; Overhead rate. Headline rate = (Net Revenue &minus; Total overhead) &divide; Total hours, where total overhead = Total hours &times; rate. Sorted by per-job profit/hr.</p>';
+          return html;
+        }
+        function buildOverheadHoursBody(entry) {
+          var officeHrs = entry.officeHours || 0;
+          var bidHrs = entry.bidHours || 0;
+          var totalOverhead = officeHrs + bidHrs;
+          var totalWork = (entry.hb && entry.hb.totals && entry.hb.totals.totalHours) || 0;
+          var fieldHrs = entry.fieldHours || 0;
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div style="margin-bottom:0.5rem;">Overhead hours are approved clock sessions on the configured Office job or on any bid &mdash; the same buckets that feed the rolling 90-day overhead rate.</div>';
+          html += '<div style="font-size:1.05rem;"><strong>Overhead total: ' + fmtH(totalOverhead) + ' hrs</strong></div>';
+          html += '</div>';
+          html += '<table>';
+          html += '<thead><tr><th>Bucket</th><th class="num">Hours</th><th class="num">Share of overhead</th></tr></thead>';
+          html += '<tbody>';
+          html += '<tr><td>Office (configured office job)</td><td class="num">' + fmtH(officeHrs) + '</td><td class="num">' + (totalOverhead > 0 ? fmtPct1((officeHrs / totalOverhead) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '<tr><td>Bid (any bid_id)</td><td class="num">' + fmtH(bidHrs) + '</td><td class="num">' + (totalOverhead > 0 ? fmtPct1((bidHrs / totalOverhead) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '</tbody>';
+          html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total overhead</td><td class="num" style="font-weight:600;">' + fmtH(totalOverhead) + '</td><td></td></tr></tfoot>';
+          html += '</table>';
+          html += '<h3>Where overhead fits in this person\\'s work</h3>';
+          html += '<table>';
+          html += '<thead><tr><th>Bucket</th><th class="num">Hours</th><th class="num">Share of total work</th></tr></thead>';
+          html += '<tbody>';
+          html += '<tr><td>Overhead (office + bid)</td><td class="num">' + fmtH(totalOverhead) + '</td><td class="num">' + (totalWork > 0 ? fmtPct1((totalOverhead / totalWork) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '<tr><td>Field (residual)</td><td class="num">' + fmtH(fieldHrs) + '</td><td class="num">' + (totalWork > 0 ? fmtPct1((fieldHrs / totalWork) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '</tbody>';
+          html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total work</td><td class="num" style="font-weight:600;">' + fmtH(totalWork) + '</td><td></td></tr></tfoot>';
+          html += '</table>';
+          html += '<p class="caption">Field hrs = Total work hrs &minus; Overhead hrs. For salaried people, total work is their weekday salary days (8 hrs/weekday); for hourly, it is people_hours / clock sessions.</p>';
+          return html;
+        }
+        function buildOverheadRateBody() {
+          var d = overheadDecomp || {};
+          var officeLabor = d.officeLabor90d || 0;
+          var bidLabor = d.bidLabor90d || 0;
+          var officeParts = d.officeParts90d || 0;
+          var fieldHours = d.fieldHours90d || 0;
+          var fieldLaborUsd = d.fieldLaborUsd90d || 0;
+          var invoices = d.invoices90d || 0;
+          var totalOverhead = officeLabor + bidLabor + officeParts;
+          var ratePerHour = d.ratePerHour;
+          var ratePerLaborDollar = d.ratePerLaborDollar;
+          var ratePerRevenueDecimal = d.ratePerRevenueDecimal;
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div style="margin-bottom:0.5rem;">Rolling 90-day overhead rate. Method A allocates organizational overhead to every field labor hour so the team summary can deduct an "expected" overhead from each person\\'s share.</div>';
+          if (d.windowStart && d.windowEnd) {
+            html += '<div style="margin-bottom:0.25rem;"><strong>Window:</strong> ' + escH(d.windowStart) + ' &rarr; ' + escH(d.windowEnd) + '</div>';
+          }
+          html += '<div style="font-size:1.05rem;"><strong>Rate:</strong> ' + (ratePerHour == null ? '<span style="color:#9ca3af;">unavailable</span>' : '$' + Number(ratePerHour).toFixed(2) + '/field hour') + '</div>';
+          html += '</div>';
+          html += '<h3>Numerator &mdash; overhead $ pool (90d)</h3>';
+          html += '<table>';
+          html += '<thead><tr><th>Component</th><th class="num">$ (90d)</th><th class="num">Share</th></tr></thead><tbody>';
+          var components = [
+            { label: 'Office labor (approved clock to office job)', value: officeLabor },
+            { label: 'Bid labor (approved clock to any bid)', value: bidLabor },
+            { label: 'Office parts (Tally on office job)', value: officeParts }
+          ];
+          for (var i = 0; i < components.length; i++) {
+            var c = components[i];
+            var share = totalOverhead > 0 ? (c.value / totalOverhead) * 100 : 0;
+            html += '<tr><td>' + escH(c.label) + '</td><td class="num">' + fmtMoney(c.value) + '</td><td class="num">' + (totalOverhead > 0 ? fmtPct1(share) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total overhead</td><td class="num" style="font-weight:600;">' + fmtMoney(totalOverhead) + '</td><td></td></tr></tfoot>';
+          html += '</table>';
+          html += '<h3>Denominator &mdash; field labor (90d)</h3>';
+          html += '<table>';
+          html += '<thead><tr><th>Measure</th><th class="num">Value</th></tr></thead><tbody>';
+          html += '<tr><td>Field hours (approved clock on non-office, non-bid jobs)</td><td class="num">' + fmtH(fieldHours) + ' hrs</td></tr>';
+          html += '<tr><td>Field labor $ (same sessions &times; wage)</td><td class="num">' + fmtMoney(fieldLaborUsd) + '</td></tr>';
+          html += '</tbody></table>';
+          html += '<h3>Resulting rates</h3>';
+          html += '<table>';
+          html += '<thead><tr><th>Rate</th><th class="num">Value</th><th>How it is used</th></tr></thead><tbody>';
+          html += '<tr><td>Method A &mdash; per field hour</td><td class="num">' + (ratePerHour == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerHour).toFixed(2) + '/hr') + '</td><td>Used to deduct overhead from each person in the Team Summary (Profit after overhead = Net &minus; hours &times; rate).</td></tr>';
+          html += '<tr><td>Method B &mdash; per field labor $</td><td class="num">' + (ratePerLaborDollar == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerLaborDollar).toFixed(2) + ' / $1 labor') + '</td><td>Reference only: ratio of overhead pool to field labor dollars.</td></tr>';
+          html += '<tr><td>Method C &mdash; per revenue $ (invoices sent)</td><td class="num">' + (ratePerRevenueDecimal == null ? '<span style="color:#9ca3af;">&mdash;</span>' : (Number(ratePerRevenueDecimal) * 100).toFixed(1) + '% of revenue') + '</td><td>Reference only: invoices sent in window = ' + fmtMoney(invoices) + '.</td></tr>';
+          html += '</tbody></table>';
+          html += '<p class="caption">Method A is the headline rate. Sessions used: approved, not revoked, not rejected, with a clock-out. Wages come from <code>people_pay_config.hourly_wage</code>. Office job is the one configured in People &rarr; Overhead settings.</p>';
+          return html;
+        }
+        function openModal(idx, type) {
+          var entry = breakdowns[idx];
+          if (!entry && type !== 'overhead_rate') return;
+          var title = '';
+          var body = '';
+          if (type === 'hours') {
+            title = 'Hours breakdown \\u2014 ' + entry.name;
+            body = buildHoursBody(entry.hb);
+          } else if (type === 'overhead_hours') {
+            title = 'Overhead hours breakdown \\u2014 ' + entry.name;
+            body = buildOverheadHoursBody(entry);
+          } else if (type === 'gross') {
+            title = 'Gross Revenue breakdown \\u2014 ' + entry.name;
+            body = buildGrossBody(entry.gb);
+          } else if (type === 'net') {
+            title = 'Net Revenue breakdown \\u2014 ' + entry.name;
+            body = buildNetBody(entry.nb);
+          } else if (type === 'profit') {
+            title = 'Profit (after overhead) breakdown \\u2014 ' + entry.name;
+            body = buildProfitBody(entry.pb);
+          } else if (type === 'rev_per_hr') {
+            title = 'Gross Revenue/hr breakdown \\u2014 ' + entry.name;
+            body = buildGrossPerHourBody(entry);
+          } else if (type === 'net_per_hr') {
+            title = 'Net Revenue/hr breakdown \\u2014 ' + entry.name;
+            body = buildNetPerHourBody(entry);
+          } else if (type === 'profit_per_hr') {
+            title = 'Profit/hr (after overhead) breakdown \\u2014 ' + entry.name;
+            body = buildProfitPerHourBody(entry);
+          } else if (type === 'overhead_rate') {
+            title = 'Overhead rate decomposition (rolling 90 days)';
+            body = buildOverheadRateBody();
+          } else {
+            return;
+          }
+          document.getElementById('modal-title').textContent = title;
+          document.getElementById('modal-body').innerHTML = body;
+          document.getElementById('modal-backdrop').classList.add('open');
+          document.getElementById('modal').classList.add('open');
+        }
+        function closeModal() {
+          document.getElementById('modal-backdrop').classList.remove('open');
+          document.getElementById('modal').classList.remove('open');
+        }
+        document.querySelectorAll('.click-cell').forEach(function(cell){
+          cell.addEventListener('click', function(){
+            var idx = parseInt(cell.getAttribute('data-idx') || '-1', 10);
+            var type = cell.getAttribute('data-type') || '';
+            if (idx >= 0) openModal(idx, type);
+          });
+        });
+        var overheadMetaBtn = document.getElementById('overhead-meta-btn');
+        if (overheadMetaBtn) {
+          overheadMetaBtn.addEventListener('click', function(){ openModal(-1, 'overhead_rate'); });
+        }
+        document.getElementById('modal-backdrop').addEventListener('click', closeModal);
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal(); });
+      })();</script>
+      ${embeddedResizeScript}
     </body></html>`
-          win.document.open()
-          win.document.write(html)
-          win.document.close()
-          win.focus()
+          if (isEmbedded) {
+            setTeamSummaryHtml(html)
+            setTeamSummaryLoading(false)
+          } else if (win) {
+            win.document.open()
+            win.document.write(html)
+            win.document.close()
+            win.focus()
+          }
         } catch (writeErr) {
           console.error('Team Summary write error:', writeErr)
-          showToast('Failed to display Team Summary. The window may have been closed.', 'error')
+          if (isEmbedded) {
+            setTeamSummaryError('Failed to build Team Summary')
+            setTeamSummaryLoading(false)
+          } else {
+            showToast('Failed to display Team Summary. The window may have been closed.', 'error')
+          }
         }
       })
       .catch((err) => {
+        if (isEmbedded && reqId !== teamSummaryReqIdRef.current) return
         console.error('Team Summary load error:', err)
         const errMsg = err instanceof Error ? err.message : 'Failed to load Team Summary'
-        showToast(errMsg, 'error')
-        try {
-          win.document.open()
-          win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary - Error</title></head><body style="font-family:sans-serif;margin:1in;"><h1>Error</h1><p>${String(errMsg).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p></body></html>`)
-          win.document.close()
-        } catch {
-          win.close()
+        if (isEmbedded) {
+          setTeamSummaryError(errMsg)
+          setTeamSummaryLoading(false)
+        } else if (win) {
+          showToast(errMsg, 'error')
+          try {
+            win.document.open()
+            win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Team Summary - Error</title></head><body style="font-family:sans-serif;margin:1in;"><h1>Error</h1><p>${String(errMsg).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p></body></html>`)
+            win.document.close()
+          } catch {
+            win.close()
+          }
         }
       })
   }
@@ -8997,6 +10806,79 @@ export default function People() {
 
       {activeTab === 'overhead' && canAccessOverheadTab ? (
         <div style={{ marginBottom: '2rem' }}>
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'baseline',
+                gap: '0.75rem 1.25rem',
+                padding: '0.5rem 0.75rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
+                background: '#fafafa',
+                fontSize: '0.875rem',
+                flex: '1 1 auto',
+              }}
+              title="Trailing-window average overhead cost per calendar day. Recent days (last few) may underreport because clock sessions need approval before they count."
+              aria-label="Average daily cost of overhead"
+            >
+              <strong style={{ color: '#111827' }}>Average daily cost of overhead</strong>
+              {(() => {
+                const fmt = (v: number | null) => {
+                  if (overheadAvgDailyCost.loading) return '…'
+                  if (v == null) return '—'
+                  return `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                }
+                return (
+                  <>
+                    <span><span style={{ color: '#6b7280' }}>7-day:</span> {fmt(overheadAvgDailyCost.avg7)}</span>
+                    <span><span style={{ color: '#6b7280' }}>30-day:</span> {fmt(overheadAvgDailyCost.avg30)}</span>
+                    <span><span style={{ color: '#6b7280' }}>90-day:</span> {fmt(overheadAvgDailyCost.avg90)}</span>
+                  </>
+                )
+              })()}
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'baseline',
+                gap: '0.75rem 1.25rem',
+                padding: '0.5rem 0.75rem',
+                border: '1px solid #e5e7eb',
+                borderRadius: 6,
+                background: '#fafafa',
+                fontSize: '0.875rem',
+                flex: '1 1 auto',
+              }}
+              title="For each window: total Office Total ($) divided by total revenue billed (jobs_ledger_invoices.amount with sent_to_customer_at in window), expressed as dollars of overhead per $100 of revenue. Returns — when revenue is $0 in the window."
+              aria-label="Average overhead per $100 in revenue"
+            >
+              <strong style={{ color: '#111827' }}>Average overhead per $100 in revenue</strong>
+              {(() => {
+                const fmt = (v: number | null) => {
+                  if (overheadAvgDailyCost.loading) return '…'
+                  if (v == null) return '—'
+                  return `$${v.toFixed(2)}`
+                }
+                return (
+                  <>
+                    <span><span style={{ color: '#6b7280' }}>7-day:</span> {fmt(overheadAvgDailyCost.per100_7)}</span>
+                    <span><span style={{ color: '#6b7280' }}>30-day:</span> {fmt(overheadAvgDailyCost.per100_30)}</span>
+                    <span><span style={{ color: '#6b7280' }}>90-day:</span> {fmt(overheadAvgDailyCost.per100_90)}</span>
+                  </>
+                )
+              })()}
+            </div>
+          </div>
           <div
             style={{
               display: 'flex',
@@ -15265,25 +17147,6 @@ export default function People() {
       {activeTab === 'review' && isDev && (
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setSelectedReviewPersonIndex((i) => Math.max(0, i - 1))}
-              disabled={showPeopleForReview.length === 0 || selectedReviewPersonIndex <= 0}
-              style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: selectedReviewPersonIndex <= 0 ? 'not-allowed' : 'pointer', opacity: selectedReviewPersonIndex <= 0 ? 0.6 : 1 }}
-            >
-              ← Prev
-            </button>
-            <span style={{ fontWeight: 500 }}>
-              Person: <strong>{showPeopleForReview[selectedReviewPersonIndex] ?? '—'}</strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => setSelectedReviewPersonIndex((i) => Math.min(showPeopleForReview.length - 1, i + 1))}
-              disabled={showPeopleForReview.length === 0 || selectedReviewPersonIndex >= showPeopleForReview.length - 1}
-              style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: selectedReviewPersonIndex >= showPeopleForReview.length - 1 ? 'not-allowed' : 'pointer', opacity: selectedReviewPersonIndex >= showPeopleForReview.length - 1 ? 0.6 : 1 }}
-            >
-              Next →
-            </button>
             <select
               value={reviewPeriod}
               onChange={(e) => setReviewPeriod(e.target.value as ReviewPeriod)}
@@ -15295,23 +17158,6 @@ export default function People() {
               <option value="last_two_weeks">Last two weeks</option>
               <option value="last_month">Last month</option>
             </select>
-            <button
-              type="button"
-              onClick={openTeamSummaryWindow}
-              disabled={showPeopleForReview.length === 0}
-              style={{
-                padding: '0.5rem 1rem',
-                border: '1px solid #3b82f6',
-                borderRadius: 6,
-                background: '#3b82f6',
-                color: '#fff',
-                fontWeight: 500,
-                cursor: showPeopleForReview.length === 0 ? 'not-allowed' : 'pointer',
-                opacity: showPeopleForReview.length === 0 ? 0.6 : 1,
-              }}
-            >
-              Team Summary
-            </button>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
               <input
                 type="checkbox"
@@ -15321,6 +17167,111 @@ export default function People() {
               Only Count Jobs Marked Paid in Full
             </label>
           </div>
+
+          {showPeopleForReview.length > 0 && (
+            <div style={{ marginBottom: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+                <h2 style={{ margin: 0, fontSize: '1.05rem', color: '#374151' }}>Team Summary</h2>
+                <button
+                  type="button"
+                  onClick={() => openTeamSummaryWindow('popup')}
+                  disabled={teamSummaryLoading && !teamSummaryHtml}
+                  style={{
+                    padding: '0.25rem 0.6rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    background: '#fff',
+                    fontSize: '0.8rem',
+                    color: '#374151',
+                    cursor: teamSummaryLoading && !teamSummaryHtml ? 'not-allowed' : 'pointer',
+                  }}
+                  title="Open this summary in a new window for printing"
+                >
+                  Open in print view
+                </button>
+              </div>
+              {teamSummaryError ? (
+                <p style={{ color: '#b91c1c', padding: '0.75rem 1rem', margin: 0, border: '1px solid #fca5a5', borderRadius: 6, background: '#fef2f2' }}>
+                  {teamSummaryError}
+                </p>
+              ) : (
+                <div style={{ position: 'relative' }}>
+                  {teamSummaryHtml ? (
+                    <iframe
+                      title="Team Summary"
+                      srcDoc={teamSummaryHtml}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        height: teamSummaryIframeHeight,
+                        border: 0,
+                        background: 'transparent',
+                        transition: 'height 0.15s ease-out',
+                      }}
+                    />
+                  ) : (
+                    <div style={{ padding: '0.5rem 0', color: '#6b7280', fontSize: '0.85rem' }}>
+                      {teamSummaryLoading ? 'Loading Team Summary…' : 'Team Summary will appear here.'}
+                    </div>
+                  )}
+                  {teamSummaryLoading && teamSummaryHtml ? (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: 4,
+                        right: 4,
+                        fontSize: '0.75rem',
+                        color: '#6b7280',
+                        background: 'rgba(255,255,255,0.85)',
+                        padding: '0.15rem 0.4rem',
+                        borderRadius: 4,
+                      }}
+                    >
+                      Refreshing…
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          )}
+
+          {showPeopleForReview.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setSelectedReviewPersonIndex((i) => Math.max(0, i - 1))}
+                disabled={showPeopleForReview.length === 0 || selectedReviewPersonIndex <= 0}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: selectedReviewPersonIndex <= 0 ? 'not-allowed' : 'pointer', opacity: selectedReviewPersonIndex <= 0 ? 0.6 : 1 }}
+              >
+                ← Prev
+              </button>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontWeight: 500 }}>Person:</span>
+                <div style={{ minWidth: 200 }}>
+                  <SearchableSelect
+                    value={showPeopleForReview[selectedReviewPersonIndex] ?? ''}
+                    onChange={(name) => {
+                      if (!name) return
+                      const idx = showPeopleForReview.indexOf(name)
+                      if (idx >= 0) setSelectedReviewPersonIndex(idx)
+                    }}
+                    options={showPeopleForReview.map((n) => ({ value: n, label: n }))}
+                    placeholder="Select person…"
+                    listAriaLabel="Pick person to review"
+                    listMaxHeightPx={Math.max(200, viewportHeight - 240)}
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReviewPersonIndex((i) => Math.min(showPeopleForReview.length - 1, i + 1))}
+                disabled={showPeopleForReview.length === 0 || selectedReviewPersonIndex >= showPeopleForReview.length - 1}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: selectedReviewPersonIndex >= showPeopleForReview.length - 1 ? 'not-allowed' : 'pointer', opacity: selectedReviewPersonIndex >= showPeopleForReview.length - 1 ? 0.6 : 1 }}
+              >
+                Next →
+              </button>
+            </div>
+          )}
 
           {showPeopleForReview.length === 0 ? (
             <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>No people in pay config. Add people in People pay config (Hours tab) first.</p>
@@ -15348,17 +17299,46 @@ export default function People() {
                 const revPerHour = totalHours > 0 ? totalRevenue / totalHours : 0
                 const profitPerHour = totalHours > 0 ? totalProfit / totalHours : 0
                 return (
-                  <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Profit for this period:</span>
+                  <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: '1rem', display: 'inline-grid', gridTemplateColumns: 'max-content max-content', rowGap: '0.5rem', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>Gross Revenue this period:</span>
+                      <span
+                        title="Sum across every job worked in this period of: (job Value Created) × (this user's labor cost on the job in this period ÷ the job's lifetime labor cost by everyone). 'Value Created' = job total bill × % progress — the gross revenue the job has earned to date. Allocation is cost-based, the same rule the expanded panel uses for the per-job 'Gross Revenue/hr' line."
+                        aria-label="Gross Revenue earned this period, allocated by labor cost share"
+                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                        </svg>
+                      </span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong>{`$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>Net Revenue (before overhead) this period:</span>
+                      <span
+                        title="Sum across every job worked in this period of: (job Net Revenue before overhead) × (this user's labor cost on the job in this period ÷ the job's lifetime labor cost by everyone). 'Net Revenue (before overhead)' = Value Created − parts − subs − total field labor on the job, before deducting org-wide overhead. Allocation is cost-based, the same rule the expanded panel uses for the per-job 'Net Revenue on Job' line. To see overhead applied, expand any row and look at the Profit section (methods A/B/C)."
+                        aria-label="Net Revenue (before overhead) this period, allocated by labor cost share"
+                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                        </svg>
+                      </span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{`$${Math.round(totalProfit).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Revenue per Man Hour Delivered:</span>
-                      <strong>{totalHours > 0 ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>Profit (after overhead, Method A) this period:</span>
                       <span
-                        title="Revenue allocated by (hours in period ÷ total job hours) × job bill, summed ÷ Total Hours"
-                        aria-label="Proportional allocation: revenue attributed to period work ÷ total hours"
+                        title={(() => {
+                          const r = reviewOverheadRates.ratePerHour
+                          if (r == null) return "Profit (after overhead, Method A — per labor hour) = Net Revenue (before overhead) this period − (this user's hours in the period × overhead rate $/hr). 90-day overhead rate is loading or unavailable. Method A assumes overhead scales with TIME in the field; see the per-job Profit section for methods B (per $ revenue) and C (per direct labor $)."
+                          return `Profit (after overhead, Method A — per labor hour) = Net Revenue (before overhead) this period − (this user's hours in the period × overhead rate $/hr). 90-day overhead rate: $${r.toFixed(2)}/hr. Method A assumes overhead scales with TIME in the field; see the per-job Profit section for methods B (per $ revenue) and C (per direct labor $).`
+                        })()}
+                        aria-label="Profit this period after deducting Method A overhead"
                         style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
@@ -15366,18 +17346,69 @@ export default function People() {
                         </svg>
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Profit per Man Hour Delivered:</span>
-                      <strong>{totalHours > 0 ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong>{(() => {
+                        if (reviewOverheadRates.loading) return '…'
+                        const r = reviewOverheadRates.ratePerHour
+                        if (r == null) return '—'
+                        const profit = totalProfit - (totalHours * r)
+                        return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profit).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                      })()}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>Gross Revenue/hr:</span>
                       <span
-                        title="Profit allocated by (hours in period ÷ total job hours) × job profit, summed ÷ Total Hours"
-                        aria-label="Proportional allocation: profit attributed to period work ÷ total hours"
+                        title="Gross Revenue this period ÷ this user's hours in the period. Period equivalent of the per-job 'Gross Revenue/hr' line: each job's Value Created is allocated to the user by labor cost share, summed across the period, then averaged per hour worked."
+                        aria-label="Gross Revenue per hour, period average"
                         style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                         </svg>
                       </span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong>{totalHours > 0 ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>Net Revenue/hr (before overhead):</span>
+                      <span
+                        title="Net Revenue (before overhead) this period ÷ this user's hours in the period. Period equivalent of the per-job 'Net Revenue/hr' line: each job's Net Revenue (before overhead) is allocated to the user by labor cost share, summed across the period, then averaged per hour worked. Does not deduct org-wide overhead."
+                        aria-label="Net Revenue per hour before overhead, period average"
+                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                        </svg>
+                      </span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong>{totalHours > 0 ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>Profit/hr (after overhead, Method A):</span>
+                      <span
+                        title={(() => {
+                          const r = reviewOverheadRates.ratePerHour
+                          if (r == null) return "Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr (before overhead) − overhead rate $/hr. 90-day overhead rate is loading or unavailable. Method A assumes overhead scales with TIME in the field."
+                          return `Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr (before overhead) − overhead rate. 90-day overhead rate: $${r.toFixed(2)}/hr. Method A assumes overhead scales with TIME in the field; see the per-job Profit section for methods B (per $ revenue) and C (per direct labor $).`
+                        })()}
+                        aria-label="Profit per hour after Method A overhead, period average"
+                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+                        </svg>
+                      </span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong>{(() => {
+                        if (reviewOverheadRates.loading) return '…'
+                        const r = reviewOverheadRates.ratePerHour
+                        if (r == null || totalHours <= 0) return '—'
+                        const v = profitPerHour - r
+                        return <span style={{ color: v < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                      })()}</strong>
                     </div>
                   </div>
                 )
@@ -15400,13 +17431,13 @@ export default function People() {
                     {reviewJobsWorkedCollapsed ? (
                       <div style={{ display: 'flex', gap: '2rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4, background: '#f9fafb' }}>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Labor / Labor:</span>
+                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Labor / total job labor:</span>
                           <span style={{ fontWeight: 600 }}>{(() => {
                             const totalThisLabor = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.laborCost, 0)
                             const totalLaborByJob = new Map<string, number>()
                             for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
                               if (j.job_id) {
-                                totalLaborByJob.set(j.job_id, j.otherTeammatesLabor)
+                                totalLaborByJob.set(j.job_id, j.totalLaborOnJob)
                               }
                             }
                             const totalLabor = [...totalLaborByJob.values()].reduce((s, v) => s + v, 0)
@@ -15416,7 +17447,7 @@ export default function People() {
                           })()}</span>
                         </div>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Revenue / Total:</span>
+                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Profit / Net Revenue (before overhead):</span>
                           {(() => {
                             const totalRevenue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedRevenueBeforeOverhead, 0)
                             const revenueBeforeOverheadByJob = new Map<string, number>()
@@ -15431,7 +17462,7 @@ export default function People() {
                           })()}
                         </div>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Value / Total:</span>
+                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Revenue / Value Created:</span>
                           {(() => {
                             const totalThisValue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
                             const totalValueByJob = new Map<string, number>()
@@ -15451,13 +17482,74 @@ export default function People() {
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead style={{ background: '#f9fafb' }}>
                             <tr>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Source</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job Name / Job Address</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP# / Date</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Labor / Labor</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Revenue / Total</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>This Value / Total</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>User on Job Rev/hr / User on Job Profit/hr</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                                <div style={{ fontWeight: 600 }}>HCP #</div>
+                                <div style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400 }}>Date</div>
+                              </th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                                <div style={{ fontWeight: 600 }}>Job Name</div>
+                                <div style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400 }}>Job Address</div>
+                              </th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                                <div
+                                  style={{ fontWeight: 600, cursor: 'help' }}
+                                  title="dollars this person earned on this day for this job"
+                                  aria-label="dollars this person earned on this day for this job"
+                                >
+                                  This Labor
+                                </div>
+                                <div
+                                  style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400, cursor: 'help' }}
+                                  title="lifetime labor cost on the whole job by everyone, including this person"
+                                  aria-label="lifetime labor cost on the whole job by everyone, including this person"
+                                >
+                                  total job labor
+                                </div>
+                              </th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                                <div
+                                  style={{ fontWeight: 600, cursor: 'help' }}
+                                  title="this person's share of profit on this row, allocated by labor share (revenue minus parts and labor, before overhead)"
+                                  aria-label="this person's share of profit on this row, allocated by labor share (revenue minus parts and labor, before overhead)"
+                                >
+                                  This Profit
+                                </div>
+                                <div
+                                  style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400, cursor: 'help' }}
+                                  title="lifetime net revenue on the whole job, before overhead (value created minus parts and labor)"
+                                  aria-label="lifetime net revenue on the whole job, before overhead (value created minus parts and labor)"
+                                >
+                                  Net Revenue (before overhead)
+                                </div>
+                              </th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                                <div
+                                  style={{ fontWeight: 600, cursor: 'help' }}
+                                  title="your share of the job's earned revenue, allocated by labor cost: this row's labor cost ÷ everyone's labor cost on the job, all time"
+                                  aria-label="your share of the job's earned revenue, allocated by labor cost: this row's labor cost ÷ everyone's labor cost on the job, all time"
+                                >
+                                  This Revenue
+                                </div>
+                                <div
+                                  style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400, cursor: 'help' }}
+                                  title="the whole job's value created: total bill × % complete (treated as 100% when the ledger has no value set)"
+                                  aria-label="the whole job's value created: total bill times percent complete"
+                                >
+                                  Value Created
+                                </div>
+                              </th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                                <div
+                                  style={{ fontWeight: 600, cursor: 'help' }}
+                                  title="Revenue/hr is your share of the job's earned revenue divided by your hours on this row. Profit/hr is your share of the job's profit divided by your hours on this row. Both shares are allocated by labor cost: this row's labor cost ÷ everyone's labor cost on the job."
+                                  aria-label="Revenue per hour and profit per hour"
+                                >
+                                  Revenue/hr
+                                </div>
+                                <div style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400 }}>
+                                  Profit/hr
+                                </div>
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
@@ -15467,7 +17559,12 @@ export default function People() {
                               const revPerHour = j.hours > 0 ? j.allocatedTotalBill / j.hours : null
                               const profitPerHour = j.hours > 0 ? j.allocatedRevenueBeforeOverhead / j.hours : null
                               const revProfitStr = revPerHour != null && profitPerHour != null
-                                ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })} / $${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                                ? (
+                                  <>
+                                    <div>$<strong>{Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
+                                    <div style={{ color: profitPerHour < 0 ? '#b91c1c' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                  </>
+                                )
                                 : '—'
                               return (
                                 <Fragment key={key}>
@@ -15476,26 +17573,81 @@ export default function People() {
                                     style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
                                   >
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '0.75em', color: '#6b7280' }}>{expanded ? '▾' : '▸'}</span>
-                                        <span style={{ fontWeight: 600 }}>Sub Labor</span>
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '0.75em', color: '#6b7280', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
+                                        <div>
+                                          <div style={{ fontWeight: 600 }}>{(j.job_number ?? '').trim() ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number) : '—'}</div>
+                                          <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{formatDateWithDay(j.job_date)}</div>
+                                        </div>
                                       </div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.job_name}</div>
                                       <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{stripAddressZipState(j.address) || '—'}</div>
                                     </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
-                                      <div style={{ fontWeight: 600 }}>{j.job_number ?? '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{formatDateWithDay(j.job_date)}</div>
+                                    <td
+                                      style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', cursor: j.job_id && j.totalLaborOnJob > 0 ? 'pointer' : undefined }}
+                                      onClick={(e) => {
+                                        if (!j.job_id || j.totalLaborOnJob <= 0) return
+                                        e.stopPropagation()
+                                        const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
+                                        const numberLabel = j.job_number
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number)
+                                          : ''
+                                        setReviewLaborBreakdownContext({
+                                          mode: 'labor',
+                                          jobId: j.job_id,
+                                          jobName: j.job_name,
+                                          jobAddress: j.address,
+                                          jobNumberLabel: numberLabel,
+                                          totalLaborOnJob: j.totalLaborOnJob,
+                                          revenueBeforeOverhead: j.revenueBeforeOverhead,
+                                          userPersonName: personName,
+                                        })
+                                      }}
+                                      title={j.job_id && j.totalLaborOnJob > 0 ? 'See everyone who contributed labor to this job' : undefined}
+                                    >
+                                      <div style={{ fontWeight: 600 }}>{(() => {
+                                        if (j.laborCost <= 0) return '—'
+                                        const dollars = `$${Math.round(j.laborCost).toLocaleString('en-US')}`
+                                        const hrs = formatHrsLabel(j.hours)
+                                        return hrs ? `${dollars} / ${hrs}` : dollars
+                                      })()}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                        if (j.totalLaborOnJob === 0) return '—'
+                                        const pct = Math.round((j.laborCost / j.totalLaborOnJob) * 100)
+                                        return `${pct}% of $${Math.round(j.totalLaborOnJob).toLocaleString('en-US')}`
+                                      })()}</div>
                                     </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
-                                      <div style={{ fontWeight: 600 }}>{j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.otherTeammatesLabor > 0 ? `$${formatCurrency(j.otherTeammatesLabor)}` : '—'}</div>
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
+                                    <td
+                                      style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', cursor: j.job_id && j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? 'pointer' : undefined }}
+                                      onClick={(e) => {
+                                        if (!j.job_id || j.revenueBeforeOverhead === 0 || j.totalLaborOnJob <= 0) return
+                                        e.stopPropagation()
+                                        const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
+                                        const numberLabel = j.job_number
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number)
+                                          : ''
+                                        setReviewLaborBreakdownContext({
+                                          mode: 'profit',
+                                          jobId: j.job_id,
+                                          jobName: j.job_name,
+                                          jobAddress: j.address,
+                                          jobNumberLabel: numberLabel,
+                                          totalLaborOnJob: j.totalLaborOnJob,
+                                          revenueBeforeOverhead: j.revenueBeforeOverhead,
+                                          userPersonName: personName,
+                                        })
+                                      }}
+                                      title={j.job_id && j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
+                                    >
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                        if (j.revenueBeforeOverhead === 0) return '—'
+                                        const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
+                                        if (pct === 100) return `${pct}%`
+                                        return `${pct}% of ${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
+                                      })()}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
@@ -15507,83 +17659,235 @@ export default function People() {
                                   </tr>
                                   {expanded && (
                                     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                      <td colSpan={7} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
+                                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem 2rem', maxWidth: 600 }}>
-                                          <span style={{ color: '#6b7280' }}>Total Bill</span>
+                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Gross Revenue/hr`}</span>
+                                          <span>{(() => {
+                                            const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToBill / j.userTotalHoursOnJob : null
+                                            return v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
+                                          })()}</span>
+                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue/hr`}</span>
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            {(() => {
+                                              const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
+                                              return <span style={{ color: v != null && v < 0 ? '#b91c1c' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                            })()}
+                                            <span
+                                              title="Both Revenue/hr and Profit/hr are allocated by labor cost: this user's lifetime labor cost on the job ÷ everyone's lifetime labor cost on the job. So a person paid above the blended crew average is credited with a larger share of both the job's revenue and its profit per hour, and someone paid below it gets a smaller share of both. Because both shares use the same allocation rule, the per-user Revenue/hr ÷ Profit/hr ratio for a given job is constant (= valueCreated ÷ profit, the inverse of the job's profit margin)."
+                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
+                                            </span>
+                                          </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title={(() => {
+                                              const r = reviewOverheadRates.ratePerHour
+                                              if (r == null) return "Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr − overhead rate ($/hr). Loading or no overhead data yet."
+                                              return `Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr − overhead rate. 90-day overhead rate: $${r.toFixed(2)}/hr.`
+                                            })()}
+                                          >{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Profit/hr`}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerHour
+                                            if (r == null) return '—'
+                                            const netRevPerHr = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
+                                            if (netRevPerHr == null) return '—'
+                                            const profitPerHr = netRevPerHr - r
+                                            return <span style={{ color: profitPerHr < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                                          })()}</span>
+                                          <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Gross Revenue</span>
+                                          <span style={{ color: '#6b7280' }}>Job Gross Revenue (total bill)</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Job Progress</span>
-                                          <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (null)'}</span>
-                                          <span style={{ color: '#6b7280' }}>Progress Revenue</span>
+                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'Job'
+                                            return `${numLabel} Progress`
+                                          })()}</span>
+                                          <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (assumed)'}</span>
+                                          <span style={{ color: '#6b7280' }}>Value Created (revenue * progress)</span>
                                           <span>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Contribution to Bill</span>
-                                          <span style={{ color: '#b91c1c' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Contribution this Day</span>
-                                          <span style={{ textDecoration: 'underline', color: '#b91c1c' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s % of Value Created`}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{j.valueCreated > 0 && j.userTotalContributionToBill > 0 ? `${Math.round((j.userTotalContributionToBill / j.valueCreated) * 100)}%` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s share of Value Created`}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Value Created this day`}</span>
+                                          <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
-                                          <span style={{ color: '#6b7280' }}>Total Labor on Job</span>
+                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'this job'
+                                            return `Total Labor on ${numLabel}`
+                                          })()}</span>
                                           <span>{(() => {
-                                            const totalLaborDollars = j.otherTeammatesLabor
+                                            const totalLaborDollars = j.totalLaborOnJob
                                             const laborStr = totalLaborDollars > 0 ? `$${formatCurrency(totalLaborDollars)}` : null
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor:</span>
+                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor</span>
                                           <span>{(() => {
-                                            const teamsLaborDollars = Math.max(0, j.otherTeammatesLabor - j.userTotalLaborOnJob)
+                                            const teamsLaborDollars = Math.max(0, j.totalLaborOnJob - j.userTotalLaborOnJob)
                                             const laborStr = teamsLaborDollars > 0 ? `$${formatCurrency(teamsLaborDollars)}` : null
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             const hoursStr = teammatesHours > 0 ? `${teammatesHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Total labor on Job</span>
-                                          <span>{(() => {
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                            const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'this job'
+                                            return `${name}'s labor on ${numLabel}`
+                                          })()}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{(() => {
                                             const laborStr = j.userTotalLaborOnJob > 0 ? `$${formatCurrency(j.userTotalLaborOnJob)}` : null
                                             const hoursStr = j.userTotalHoursOnJob > 0 ? `${j.userTotalHoursOnJob.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Labor this Day</span>
-                                          <span style={{ textDecoration: 'underline' }}>{(() => {
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                            const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'this job'
+                                            return `${name}'s labor on ${numLabel} this day`
+                                          })()}</span>
+                                          <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{(() => {
                                             const laborStr = j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : null
                                             const hoursStr = j.hours > 0 ? `${j.hours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>Users Labor Rate</span>
-                                          <span>{j.hours > 0 ? `$${formatCurrency(j.laborCost / j.hours)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Teammates Avg Labor Rate</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }} title="Hourly wage only — drive cost (mileage + drive-time pay) is excluded from this rate.">{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Labor Rate`}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{j.hours > 0 ? `$${formatCurrency(Math.max(0, j.laborCost - j.driveCost) / j.hours)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280' }} title="Average hourly wage of everyone else on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
-                                            return teammatesHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor - j.userTotalLaborOnJob) / teammatesHours)}` : '—'
+                                            const teammatesLabor = (j.totalLaborOnJob - j.totalDriveCostOnJob) - (j.userTotalLaborOnJob - j.userTotalDriveCostOnJob)
+                                            return teammatesHours > 0 ? `$${formatCurrency(Math.max(0, teammatesLabor) / teammatesHours)}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Job Avg Labor Rate</span>
-                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / j.totalJobHours)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280' }} title="Average hourly wage across everyone on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Job Avg Labor Rate</span>
+                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency(Math.max(0, j.totalLaborOnJob - j.totalDriveCostOnJob) / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ color: '#6b7280' }}>Parts:</span>
                                           <span>{j.partsCost > 0 ? `$${formatCurrency(j.partsCost)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Subs:</span>
                                           <span>{j.subLaborCost > 0 ? `$${formatCurrency(j.subLaborCost)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
-                                          <span style={{ color: '#6b7280' }}>Total Revenue Before Overhead</span>
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Net Revenue</span>
+                                          <span style={{ color: '#6b7280' }}>Net Revenue (before overhead)</span>
                                           <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Contribution to Revenue</span>
-                                          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Revenue this Day</span>
-                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
+                                          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
+                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>User on Job Rev/hr</span>
-                                          <span>{revPerHour != null ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>User on Job Profit/hr</span>
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            <span style={{ color: profitPerHour != null && profitPerHour < 0 ? '#b91c1c' : undefined }}>{profitPerHour != null ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
+                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            A. Overhead by labor hours
                                             <span
-                                              title="User on Job Rev/hr < User on Job Profit/hr when the user's cost per hour is higher than the blended crew average. They work fewer hours but have a larger share of labor cost, so: Their bill share (by hours) is relatively small. Their profit share (by cost) is relatively large. User on Job Rev/hr and User on Job Profit/hr use different allocation rules (hours vs. cost). User on Job Rev/hr can be lower than User on Job Profit/hr when the user's cost per hour is high enough that their profit share (by cost) per hour exceeds their bill share (by hours) per hour."
+                                              title={(() => {
+                                                const r = reviewOverheadRates.ratePerHour
+                                                const guidance = "Best when overhead scales with TIME in the field — office staff, software seats, insurance, vehicles, PMs, dispatch — costs that exist as long as the crew is on the clock, regardless of who is working or how big the deal is. Two crews of equal size on equal-length jobs absorb equal overhead. Misleading when a job is short on hours but big in revenue or labor dollars (specialist work that bills high per hour, or material/parts-heavy jobs that move a lot of money in little field time) — those jobs look more profitable than they really are because they dodge their share of office burden."
+                                                if (r == null) return `Method A — Per labor hour. Rate: 90-day total overhead $ ÷ 90-day team field hours. Loading or no data yet. ${guidance}`
+                                                return `Method A — Per labor hour. 90-day rate: $${r.toFixed(2)}/hr. Job overhead = job lifetime field hours × rate. ${guidance}`
+                                              })()}
                                               style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title="Profit (Method A) = Net Revenue (before overhead) − this method's overhead amount."
+                                          >Profit</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerHour
+                                            if (r == null || j.totalJobHours <= 0) return '—'
+                                            return `$${formatCurrency(j.totalJobHours * r)}`
+                                          })()}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerHour
+                                            if (r == null || j.totalJobHours <= 0) return '—'
+                                            const profit = j.revenueBeforeOverhead - (j.totalJobHours * r)
+                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                          })()}</span>
+                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            B. Overhead by revenue
+                                            <span
+                                              title={(() => {
+                                                const r = reviewOverheadRates.ratePerRevenueDecimal
+                                                const guidance = "Best when overhead scales with SALES — executive comp, sales & marketing, bonding capacity, %-of-revenue insurance (GL/GR), financing — back-office costs that grow as the company books bigger work. High-revenue jobs absorb proportionally more burden, which keeps the implied gross margin honest: a 25%-margin job carries 25% more overhead than a $10 smaller one. Misleading when a job is high-revenue but low-effort (parts/material passthrough, change orders, fixed-fee design fees) — it gets charged overhead it did not really consume, making genuinely good jobs look thin and making low-margin jobs look terminal."
+                                                if (r == null) return `Method B — Per $ revenue. Rate: 90-day total overhead $ ÷ 90-day billed revenue $. Loading or no data yet. ${guidance}`
+                                                return `Method B — Per $ revenue. 90-day rate: ${(r * 100).toFixed(1)}% (i.e. $${(r * 100).toFixed(2)} per $100 of revenue). Job overhead = Value Created × rate. ${guidance}`
+                                              })()}
+                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
+                                            </span>
+                                          </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title="Profit (Method B) = Net Revenue (before overhead) − this method's overhead amount."
+                                          >Profit</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerRevenueDecimal
+                                            if (r == null || j.valueCreated <= 0) return '—'
+                                            return `$${formatCurrency(j.valueCreated * r)}`
+                                          })()}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerRevenueDecimal
+                                            if (r == null || j.valueCreated <= 0) return '—'
+                                            const profit = j.revenueBeforeOverhead - (j.valueCreated * r)
+                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                          })()}</span>
+                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            C. Overhead by direct labor cost
+                                            <span
+                                              title={(() => {
+                                                const r = reviewOverheadRates.ratePerLaborDollar
+                                                const guidance = "Best when overhead scales with LABOR — supervision, dispatch, PPE, payroll burden (workers comp, FICA match, benefits), training, vehicle wear, jobsite supplies — costs driven by people in the field, not hours on the clock or dollars on the invoice. This is the classic trade-contractor burden rate: higher-paid crews carry more overhead because they consume more back-office support (HR, scheduling, insurance, AR/AP touchpoints). Misleading when a job is mostly parts, materials, or sub passthrough with thin direct labor — that job dodges nearly all overhead even though it consumed PM time, dispatch, AR/AP, and warehouse handling. Distorts further when one job has a wide labor-rate spread (apprentice + senior on the same ticket)."
+                                                if (r == null) return `Method C — Per direct labor $. Rate: 90-day total overhead $ ÷ 90-day direct field labor $. Loading or no data yet. ${guidance}`
+                                                return `Method C — Per direct labor $. 90-day rate: ${r.toFixed(2)}× direct labor (every $1 of field labor carries $${r.toFixed(2)} of overhead). Job overhead = total job labor × rate. ${guidance}`
+                                              })()}
+                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
+                                            </span>
+                                          </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title="Profit (Method C) = Net Revenue (before overhead) − this method's overhead amount."
+                                          >Profit</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerLaborDollar
+                                            if (r == null || j.totalLaborOnJob <= 0) return '—'
+                                            return `$${formatCurrency(j.totalLaborOnJob * r)}`
+                                          })()}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerLaborDollar
+                                            if (r == null || j.totalLaborOnJob <= 0) return '—'
+                                            const profit = j.revenueBeforeOverhead - (j.totalLaborOnJob * r)
+                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                          })()}</span>
                                         </div>
                                       </td>
                                     </tr>
@@ -15597,7 +17901,12 @@ export default function People() {
                               const revPerHour = j.hours > 0 ? j.allocatedTotalBill / j.hours : null
                               const profitPerHour = j.hours > 0 ? j.allocatedRevenueBeforeOverhead / j.hours : null
                               const revProfitStr = revPerHour != null && profitPerHour != null
-                                ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })} / $${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                                ? (
+                                  <>
+                                    <div>$<strong>{Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
+                                    <div style={{ color: profitPerHour < 0 ? '#b91c1c' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                  </>
+                                )
                                 : '—'
                               return (
                                 <Fragment key={key}>
@@ -15606,33 +17915,90 @@ export default function People() {
                                     style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
                                   >
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '0.75em', color: '#6b7280' }}>{expanded ? '▾' : '▸'}</span>
+                                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                                        <span style={{ fontSize: '0.75em', color: '#6b7280', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
                                         <div>
-                                          <div style={{ fontWeight: 600 }}>{j.viaLead ? `Crew: ${j.viaLead}` : 'Crew Lead'}</div>
-                                          {!j.viaLead && (j.crewMemberNames ?? []).length > 0 && (
-                                            <div style={{ fontSize: '0.8em', color: '#6b7280', marginTop: '0.15rem' }}>
-                                              {j.crewMemberNames!.join(', ')}
-                                            </div>
-                                          )}
+                                          <div style={{ fontWeight: 600 }}>{(j.hcp_number ?? '').trim() && j.hcp_number !== '—' ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number) : '—'}</div>
+                                          <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{formatDateWithDay(j.work_date)}</div>
                                         </div>
                                       </div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.job_name}</div>
                                       <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{stripAddressZipState(j.job_address) || '—'}</div>
+                                      {j.viaLead ? (
+                                        <div style={{ fontSize: '0.8em', color: '#6b7280', marginTop: '0.15rem' }}>
+                                          with {j.viaLead}
+                                        </div>
+                                      ) : (j.crewMemberNames ?? []).length > 0 ? (
+                                        <div style={{ fontSize: '0.8em', color: '#6b7280', marginTop: '0.15rem' }}>
+                                          with {j.crewMemberNames!.join(', ')}
+                                        </div>
+                                      ) : null}
                                     </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
-                                      <div style={{ fontWeight: 600 }}>{j.hcp_number}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{formatDateWithDay(j.work_date)}</div>
+                                    <td
+                                      style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', cursor: j.totalLaborOnJob > 0 ? 'pointer' : undefined }}
+                                      onClick={(e) => {
+                                        if (j.totalLaborOnJob <= 0) return
+                                        e.stopPropagation()
+                                        const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
+                                        const numberLabel = (j.hcp_number ?? '').trim() && j.hcp_number !== '—'
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number)
+                                          : ''
+                                        setReviewLaborBreakdownContext({
+                                          mode: 'labor',
+                                          jobId: j.job_id,
+                                          jobName: j.job_name,
+                                          jobAddress: j.job_address,
+                                          jobNumberLabel: numberLabel,
+                                          totalLaborOnJob: j.totalLaborOnJob,
+                                          revenueBeforeOverhead: j.revenueBeforeOverhead,
+                                          userPersonName: personName,
+                                        })
+                                      }}
+                                      title={j.totalLaborOnJob > 0 ? 'See everyone who contributed labor to this job' : undefined}
+                                    >
+                                      <div style={{ fontWeight: 600 }}>{(() => {
+                                        if (j.laborCost <= 0) return '—'
+                                        const dollars = `$${Math.round(j.laborCost).toLocaleString('en-US')}`
+                                        const hrs = formatHrsLabel(j.hours)
+                                        return hrs ? `${dollars} / ${hrs}` : dollars
+                                      })()}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                        if (j.totalLaborOnJob === 0) return '—'
+                                        const pct = Math.round((j.laborCost / j.totalLaborOnJob) * 100)
+                                        return `${pct}% of $${Math.round(j.totalLaborOnJob).toLocaleString('en-US')}`
+                                      })()}</div>
                                     </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
-                                      <div style={{ fontWeight: 600 }}>{j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.otherTeammatesLabor > 0 ? `$${formatCurrency(j.otherTeammatesLabor)}` : '—'}</div>
-                                    </td>
-                                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
+                                    <td
+                                      style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', cursor: j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? 'pointer' : undefined }}
+                                      onClick={(e) => {
+                                        if (j.revenueBeforeOverhead === 0 || j.totalLaborOnJob <= 0) return
+                                        e.stopPropagation()
+                                        const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
+                                        const numberLabel = (j.hcp_number ?? '').trim() && j.hcp_number !== '—'
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number)
+                                          : ''
+                                        setReviewLaborBreakdownContext({
+                                          mode: 'profit',
+                                          jobId: j.job_id,
+                                          jobName: j.job_name,
+                                          jobAddress: j.job_address,
+                                          jobNumberLabel: numberLabel,
+                                          totalLaborOnJob: j.totalLaborOnJob,
+                                          revenueBeforeOverhead: j.revenueBeforeOverhead,
+                                          userPersonName: personName,
+                                        })
+                                      }}
+                                      title={j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
+                                    >
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                        if (j.revenueBeforeOverhead === 0) return '—'
+                                        const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
+                                        if (pct === 100) return `${pct}%`
+                                        return `${pct}% of ${Math.round(j.revenueBeforeOverhead).toLocaleString('en-US')}`
+                                      })()}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
@@ -15644,83 +18010,235 @@ export default function People() {
                                   </tr>
                                   {expanded && (
                                     <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                      <td colSpan={7} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
+                                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem 2rem', maxWidth: 600 }}>
-                                          <span style={{ color: '#6b7280' }}>Total Bill</span>
+                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Gross Revenue/hr`}</span>
+                                          <span>{(() => {
+                                            const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToBill / j.userTotalHoursOnJob : null
+                                            return v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
+                                          })()}</span>
+                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue/hr`}</span>
+                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            {(() => {
+                                              const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
+                                              return <span style={{ color: v != null && v < 0 ? '#b91c1c' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                            })()}
+                                            <span
+                                              title="Both Revenue/hr and Profit/hr are allocated by labor cost: this user's lifetime labor cost on the job ÷ everyone's lifetime labor cost on the job. So a person paid above the blended crew average is credited with a larger share of both the job's revenue and its profit per hour, and someone paid below it gets a smaller share of both. Because both shares use the same allocation rule, the per-user Revenue/hr ÷ Profit/hr ratio for a given job is constant (= valueCreated ÷ profit, the inverse of the job's profit margin)."
+                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
+                                            </span>
+                                          </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title={(() => {
+                                              const r = reviewOverheadRates.ratePerHour
+                                              if (r == null) return "Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr − overhead rate ($/hr). Loading or no overhead data yet."
+                                              return `Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr − overhead rate. 90-day overhead rate: $${r.toFixed(2)}/hr.`
+                                            })()}
+                                          >{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Profit/hr`}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerHour
+                                            if (r == null) return '—'
+                                            const netRevPerHr = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
+                                            if (netRevPerHr == null) return '—'
+                                            const profitPerHr = netRevPerHr - r
+                                            return <span style={{ color: profitPerHr < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                                          })()}</span>
+                                          <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Gross Revenue</span>
+                                          <span style={{ color: '#6b7280' }}>Job Gross Revenue (total bill)</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Job Progress</span>
-                                          <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (null)'}</span>
-                                          <span style={{ color: '#6b7280' }}>Progress Revenue</span>
+                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'Job'
+                                            return `${numLabel} Progress`
+                                          })()}</span>
+                                          <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (assumed)'}</span>
+                                          <span style={{ color: '#6b7280' }}>Value Created (revenue * progress)</span>
                                           <span>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Contribution to Bill</span>
-                                          <span style={{ color: '#b91c1c' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Contribution this Day</span>
-                                          <span style={{ textDecoration: 'underline', color: '#b91c1c' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s % of Value Created`}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{j.valueCreated > 0 && j.userTotalContributionToBill > 0 ? `${Math.round((j.userTotalContributionToBill / j.valueCreated) * 100)}%` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s share of Value Created`}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Value Created this day`}</span>
+                                          <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
-                                          <span style={{ color: '#6b7280' }}>Total Labor on Job</span>
+                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'this job'
+                                            return `Total Labor on ${numLabel}`
+                                          })()}</span>
                                           <span>{(() => {
-                                            const totalLaborDollars = j.otherTeammatesLabor
+                                            const totalLaborDollars = j.totalLaborOnJob
                                             const laborStr = totalLaborDollars > 0 ? `$${formatCurrency(totalLaborDollars)}` : null
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor:</span>
+                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor</span>
                                           <span>{(() => {
-                                            const teamsLaborDollars = Math.max(0, j.otherTeammatesLabor - j.userTotalLaborOnJob)
+                                            const teamsLaborDollars = Math.max(0, j.totalLaborOnJob - j.userTotalLaborOnJob)
                                             const laborStr = teamsLaborDollars > 0 ? `$${formatCurrency(teamsLaborDollars)}` : null
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             const hoursStr = teammatesHours > 0 ? `${teammatesHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Total labor on Job</span>
-                                          <span>{(() => {
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                            const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'this job'
+                                            return `${name}'s labor on ${numLabel}`
+                                          })()}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{(() => {
                                             const laborStr = j.userTotalLaborOnJob > 0 ? `$${formatCurrency(j.userTotalLaborOnJob)}` : null
                                             const hoursStr = j.userTotalHoursOnJob > 0 ? `${j.userTotalHoursOnJob.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Labor this Day</span>
-                                          <span style={{ textDecoration: 'underline' }}>{(() => {
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                            const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
+                                            const numFields = j as { job_number?: string | null; hcp_number?: string | null }
+                                            const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
+                                            const numLabel = rawNum && rawNum !== '—'
+                                              ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), rawNum)
+                                              : 'this job'
+                                            return `${name}'s labor on ${numLabel} this day`
+                                          })()}</span>
+                                          <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{(() => {
                                             const laborStr = j.laborCost > 0 ? `$${formatCurrency(j.laborCost)}` : null
                                             const hoursStr = j.hours > 0 ? `${j.hours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>Users Labor Rate</span>
-                                          <span>{j.hours > 0 ? `$${formatCurrency(j.laborCost / j.hours)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Teammates Avg Labor Rate</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }} title="Hourly wage only — drive cost (mileage + drive-time pay) is excluded from this rate.">{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Labor Rate`}</span>
+                                          <span style={{ paddingLeft: '1rem' }}>{j.hours > 0 ? `$${formatCurrency(Math.max(0, j.laborCost - j.driveCost) / j.hours)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280' }} title="Average hourly wage of everyone else on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
-                                            return teammatesHours > 0 ? `$${formatCurrency((j.otherTeammatesLabor - j.userTotalLaborOnJob) / teammatesHours)}` : '—'
+                                            const teammatesLabor = (j.totalLaborOnJob - j.totalDriveCostOnJob) - (j.userTotalLaborOnJob - j.userTotalDriveCostOnJob)
+                                            return teammatesHours > 0 ? `$${formatCurrency(Math.max(0, teammatesLabor) / teammatesHours)}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Job Avg Labor Rate</span>
-                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency(j.otherTeammatesLabor / j.totalJobHours)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280' }} title="Average hourly wage across everyone on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Job Avg Labor Rate</span>
+                                          <span>{j.totalJobHours > 0 ? `$${formatCurrency(Math.max(0, j.totalLaborOnJob - j.totalDriveCostOnJob) / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ color: '#6b7280' }}>Parts:</span>
                                           <span>{j.partsCost > 0 ? `$${formatCurrency(j.partsCost)}` : '—'}</span>
                                           <span style={{ color: '#6b7280' }}>Subs:</span>
                                           <span>{j.subLaborCost > 0 ? `$${formatCurrency(j.subLaborCost)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
-                                          <span style={{ color: '#6b7280' }}>Total Revenue Before Overhead</span>
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Net Revenue</span>
+                                          <span style={{ color: '#6b7280' }}>Net Revenue (before overhead)</span>
                                           <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Contribution to Revenue</span>
-                                          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Users Revenue this Day</span>
-                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
+                                          <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
+                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
+                                          <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>User on Job Rev/hr</span>
-                                          <span>{revPerHour != null ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>User on Job Profit/hr</span>
-                                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
-                                            <span style={{ color: profitPerHour != null && profitPerHour < 0 ? '#b91c1c' : undefined }}>{profitPerHour != null ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                          <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
+                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            A. Overhead by labor hours
                                             <span
-                                              title="User on Job Rev/hr < User on Job Profit/hr when the user's cost per hour is higher than the blended crew average. They work fewer hours but have a larger share of labor cost, so: Their bill share (by hours) is relatively small. Their profit share (by cost) is relatively large. User on Job Rev/hr and User on Job Profit/hr use different allocation rules (hours vs. cost). User on Job Rev/hr can be lower than User on Job Profit/hr when the user's cost per hour is high enough that their profit share (by cost) per hour exceeds their bill share (by hours) per hour."
+                                              title={(() => {
+                                                const r = reviewOverheadRates.ratePerHour
+                                                const guidance = "Best when overhead scales with TIME in the field — office staff, software seats, insurance, vehicles, PMs, dispatch — costs that exist as long as the crew is on the clock, regardless of who is working or how big the deal is. Two crews of equal size on equal-length jobs absorb equal overhead. Misleading when a job is short on hours but big in revenue or labor dollars (specialist work that bills high per hour, or material/parts-heavy jobs that move a lot of money in little field time) — those jobs look more profitable than they really are because they dodge their share of office burden."
+                                                if (r == null) return `Method A — Per labor hour. Rate: 90-day total overhead $ ÷ 90-day team field hours. Loading or no data yet. ${guidance}`
+                                                return `Method A — Per labor hour. 90-day rate: $${r.toFixed(2)}/hr. Job overhead = job lifetime field hours × rate. ${guidance}`
+                                              })()}
                                               style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title="Profit (Method A) = Net Revenue (before overhead) − this method's overhead amount."
+                                          >Profit</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerHour
+                                            if (r == null || j.totalJobHours <= 0) return '—'
+                                            return `$${formatCurrency(j.totalJobHours * r)}`
+                                          })()}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerHour
+                                            if (r == null || j.totalJobHours <= 0) return '—'
+                                            const profit = j.revenueBeforeOverhead - (j.totalJobHours * r)
+                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                          })()}</span>
+                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            B. Overhead by revenue
+                                            <span
+                                              title={(() => {
+                                                const r = reviewOverheadRates.ratePerRevenueDecimal
+                                                const guidance = "Best when overhead scales with SALES — executive comp, sales & marketing, bonding capacity, %-of-revenue insurance (GL/GR), financing — back-office costs that grow as the company books bigger work. High-revenue jobs absorb proportionally more burden, which keeps the implied gross margin honest: a 25%-margin job carries 25% more overhead than a $10 smaller one. Misleading when a job is high-revenue but low-effort (parts/material passthrough, change orders, fixed-fee design fees) — it gets charged overhead it did not really consume, making genuinely good jobs look thin and making low-margin jobs look terminal."
+                                                if (r == null) return `Method B — Per $ revenue. Rate: 90-day total overhead $ ÷ 90-day billed revenue $. Loading or no data yet. ${guidance}`
+                                                return `Method B — Per $ revenue. 90-day rate: ${(r * 100).toFixed(1)}% (i.e. $${(r * 100).toFixed(2)} per $100 of revenue). Job overhead = Value Created × rate. ${guidance}`
+                                              })()}
+                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
+                                            </span>
+                                          </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title="Profit (Method B) = Net Revenue (before overhead) − this method's overhead amount."
+                                          >Profit</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerRevenueDecimal
+                                            if (r == null || j.valueCreated <= 0) return '—'
+                                            return `$${formatCurrency(j.valueCreated * r)}`
+                                          })()}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerRevenueDecimal
+                                            if (r == null || j.valueCreated <= 0) return '—'
+                                            const profit = j.revenueBeforeOverhead - (j.valueCreated * r)
+                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                          })()}</span>
+                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                            C. Overhead by direct labor cost
+                                            <span
+                                              title={(() => {
+                                                const r = reviewOverheadRates.ratePerLaborDollar
+                                                const guidance = "Best when overhead scales with LABOR — supervision, dispatch, PPE, payroll burden (workers comp, FICA match, benefits), training, vehicle wear, jobsite supplies — costs driven by people in the field, not hours on the clock or dollars on the invoice. This is the classic trade-contractor burden rate: higher-paid crews carry more overhead because they consume more back-office support (HR, scheduling, insurance, AR/AP touchpoints). Misleading when a job is mostly parts, materials, or sub passthrough with thin direct labor — that job dodges nearly all overhead even though it consumed PM time, dispatch, AR/AP, and warehouse handling. Distorts further when one job has a wide labor-rate spread (apprentice + senior on the same ticket)."
+                                                if (r == null) return `Method C — Per direct labor $. Rate: 90-day total overhead $ ÷ 90-day direct field labor $. Loading or no data yet. ${guidance}`
+                                                return `Method C — Per direct labor $. 90-day rate: ${r.toFixed(2)}× direct labor (every $1 of field labor carries $${r.toFixed(2)} of overhead). Job overhead = total job labor × rate. ${guidance}`
+                                              })()}
+                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                            >
+                                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
+                                            </span>
+                                          </span>
+                                          <span
+                                            style={{ color: '#6b7280' }}
+                                            title="Profit (Method C) = Net Revenue (before overhead) − this method's overhead amount."
+                                          >Profit</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerLaborDollar
+                                            if (r == null || j.totalLaborOnJob <= 0) return '—'
+                                            return `$${formatCurrency(j.totalLaborOnJob * r)}`
+                                          })()}</span>
+                                          <span>{(() => {
+                                            if (reviewOverheadRates.loading) return '…'
+                                            const r = reviewOverheadRates.ratePerLaborDollar
+                                            if (r == null || j.totalLaborOnJob <= 0) return '—'
+                                            const profit = j.revenueBeforeOverhead - (j.totalLaborOnJob * r)
+                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                          })()}</span>
                                         </div>
                                       </td>
                                     </tr>
@@ -15731,7 +18249,7 @@ export default function People() {
                           </tbody>
                           <tfoot style={{ background: '#f9fafb', fontWeight: 600, borderTop: '2px solid #e5e7eb' }}>
                             <tr>
-                              <td colSpan={3} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>Totals</td>
+                              <td colSpan={2} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>Totals</td>
                               <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>
                                 <div style={{ fontWeight: 600 }}>{(() => {
                                   const totalThisLabor = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.laborCost, 0)
@@ -15740,7 +18258,7 @@ export default function People() {
                                 <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
                                   const totalLaborByJob = new Map<string, number>()
                                   for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
-                                    if (j.job_id) totalLaborByJob.set(j.job_id, j.otherTeammatesLabor)
+                                    if (j.job_id) totalLaborByJob.set(j.job_id, j.totalLaborOnJob)
                                   }
                                   const totalLabor = [...totalLaborByJob.values()].reduce((s, v) => s + v, 0)
                                   return totalLabor > 0 ? `$${Math.round(totalLabor).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
@@ -15784,7 +18302,12 @@ export default function People() {
                                   if (totalHrs <= 0) return '—'
                                   const revHr = totalRev / totalHrs
                                   const profitHr = totalProfit / totalHrs
-                                  return `$${Math.round(revHr).toLocaleString('en-US', { maximumFractionDigits: 0 })} / $${Math.round(profitHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                                  return (
+                                    <>
+                                      <div>$<strong>{Math.round(revHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
+                                      <div style={{ color: profitHr < 0 ? '#b91c1c' : undefined }}>$<strong>{Math.round(profitHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                    </>
+                                  )
                                 })()}
                               </td>
                             </tr>
@@ -15967,6 +18490,132 @@ export default function People() {
               </section>
             </>
           )}
+          {reviewLaborBreakdownContext && (() => {
+            const ctx = reviewLaborBreakdownContext
+            const rows = ctx.jobId ? (reviewLaborByJobAndPerson[ctx.jobId] ?? []) : []
+            const sumOfRows = rows.reduce((s, r) => s + r.laborCost, 0)
+            const sumHours = rows.reduce((s, r) => s + r.hours, 0)
+            const denom = ctx.totalLaborOnJob > 0 ? ctx.totalLaborOnJob : sumOfRows
+            const headerLabel = [ctx.jobNumberLabel, ctx.jobName].filter(Boolean).join(' · ') || (ctx.mode === 'profit' ? 'Profit breakdown' : 'Labor breakdown')
+            const isProfit = ctx.mode === 'profit'
+            const profitNegative = ctx.revenueBeforeOverhead < 0
+            return (
+              <div
+                onClick={() => setReviewLaborBreakdownContext(null)}
+                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+              >
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: '92vw', maxHeight: '85vh', overflow: 'auto' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.75rem' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.125rem' }}>{isProfit ? 'Profit shares by person' : 'Labor contributors'}</h3>
+                      <div style={{ fontSize: '0.875rem', color: '#374151', marginTop: '0.25rem' }}>{headerLabel}</div>
+                      {ctx.jobAddress ? (
+                        <div style={{ fontSize: '0.8em', color: '#6b7280', marginTop: '0.1rem' }}>{stripAddressZipState(ctx.jobAddress) || ctx.jobAddress}</div>
+                      ) : null}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReviewLaborBreakdownContext(null)}
+                      style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }}
+                      aria-label="Close"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                    {isProfit ? (
+                      <>
+                        Total profit on this job (revenue before overhead): <strong style={{ color: profitNegative ? '#b91c1c' : '#111827' }}>${Math.round(ctx.revenueBeforeOverhead).toLocaleString('en-US')}</strong>
+                        <div style={{ fontSize: '0.95em', color: '#9ca3af', marginTop: '0.15rem' }}>
+                          Allocated by each person's share of total labor (${Math.round(denom).toLocaleString('en-US')}{sumHours > 0 ? ` · ${sumHours.toFixed(2)} hrs` : ''}).
+                        </div>
+                      </>
+                    ) : (
+                      <>Total labor on this job (everyone, all time): <strong style={{ color: '#111827' }}>${Math.round(denom).toLocaleString('en-US')}</strong>{sumHours > 0 ? ` · ${sumHours.toFixed(2)} hrs` : ''}</>
+                    )}
+                  </div>
+                  {rows.length === 0 ? (
+                    <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No labor recorded for this job.</p>
+                  ) : (
+                    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                        <thead style={{ background: '#f9fafb' }}>
+                          <tr>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Share</th>
+                            {isProfit && (
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Profit slice</th>
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map((r) => {
+                            const isYou = ctx.userPersonName && r.personName === ctx.userPersonName
+                            const ratio = denom > 0 ? r.laborCost / denom : 0
+                            const pct = Math.round(ratio * 100)
+                            const profitSlice = ratio * ctx.revenueBeforeOverhead
+                            const sourceLabel = (() => {
+                              const parts: string[] = []
+                              if (r.subLaborCost > 0) parts.push('sub')
+                              if (r.crewLaborCost > 0) parts.push('crew')
+                              return parts.join(' + ')
+                            })()
+                            return (
+                              <tr
+                                key={r.personName}
+                                style={{ borderBottom: '1px solid #e5e7eb', background: isYou ? '#fef3c7' : undefined }}
+                              >
+                                <td style={{ padding: '0.5rem 0.75rem' }}>
+                                  <div style={{ fontWeight: isYou ? 600 : 400 }}>
+                                    {r.personName}
+                                    {isYou ? <span style={{ marginLeft: '0.4rem', fontSize: '0.75em', color: '#92400e', fontWeight: 600 }}>(you)</span> : null}
+                                  </div>
+                                  {sourceLabel ? <div style={{ fontSize: '0.75em', color: '#9ca3af' }}>{sourceLabel}</div> : null}
+                                </td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.hours > 0 ? r.hours.toFixed(2) : '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.laborCost > 0 ? `$${formatCurrency(r.laborCost)}` : '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: '#6b7280' }}>{denom > 0 && r.laborCost > 0 ? `${pct}%` : '—'}</td>
+                                {isProfit && (
+                                  <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: isYou ? 600 : 400, color: profitSlice >= 0 ? undefined : '#b91c1c' }}>
+                                    {Math.abs(profitSlice) >= 0.5 ? `$${formatCurrency(profitSlice)}` : '—'}
+                                  </td>
+                                )}
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                        <tfoot>
+                          <tr>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>Total</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>{sumHours > 0 ? sumHours.toFixed(2) : '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>{sumOfRows > 0 ? `$${formatCurrency(sumOfRows)}` : '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', color: '#6b7280' }}>
+                              {denom > 0 ? `${Math.round((sumOfRows / denom) * 100)}%` : '—'}
+                            </td>
+                            {isProfit && (
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600, color: ctx.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>
+                                {Math.abs(ctx.revenueBeforeOverhead) >= 0.5 ? `$${formatCurrency(denom > 0 ? (sumOfRows / denom) * ctx.revenueBeforeOverhead : 0)}` : '—'}
+                              </td>
+                            )}
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                  {Math.abs(sumOfRows - ctx.totalLaborOnJob) > 1 && ctx.totalLaborOnJob > 0 && (
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.75em', color: '#9ca3af' }}>
+                      Per-person rows total ${formatCurrency(sumOfRows)}; the job header showed ${formatCurrency(ctx.totalLaborOnJob)}. The two should match — a small gap usually means a sub-labor card without an assignee or a crew row outside the 2-year lookback window.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
         </div>
       )}
 

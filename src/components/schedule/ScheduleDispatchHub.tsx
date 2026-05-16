@@ -4,9 +4,9 @@ import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import {
-  scheduleBlockActionIconButtonStyle,
   scheduleBlockActionLinkedIconButtonStyle,
   scheduleBlockActionTextButtonStyle,
+  scheduleBlockControlPlateBackgroundStyle,
   scheduleBlockLinkedControlPlateStyle,
 } from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
@@ -45,6 +45,11 @@ import {
 } from '../../lib/scheduleDispatchColumnFocus'
 import { scheduleDispatchMobileNamePill } from '../../lib/scheduleDispatchMobileNamePill'
 import { useIsMobile } from '../../hooks/useIsMobile'
+import {
+  userTimeOffCellKey,
+  type UserTimeOffCellInfo,
+} from '../../lib/userTimeOffByCell'
+import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
 
 const hubExpectedManpowerSrOnly: CSSProperties = {
   position: 'absolute',
@@ -188,7 +193,14 @@ function HubJobsPanel({
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
 
-      <div ref={jobsScrollRef} style={{ overflowX: 'auto' }}>
+      <div
+        ref={jobsScrollRef}
+        style={{
+          overflowX: 'auto',
+          marginLeft: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
+          marginRight: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
+        }}
+      >
         <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
           <thead>
             <tr>
@@ -329,10 +341,11 @@ function HubJobsPanel({
 }
 
 const hubPeopleSalarySuffix: CSSProperties = {
-  marginLeft: '0.15rem',
+  display: 'block',
   fontSize: '0.68rem',
   color: '#9ca3af',
   fontWeight: 400,
+  lineHeight: 1.1,
 }
 
 function HubPeopleBlockCard({
@@ -582,22 +595,21 @@ function HubPeopleBlockCard({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 20,
-                height: 20,
+                width: 16,
+                height: 16,
+                minWidth: 16,
+                minHeight: 16,
                 boxSizing: 'border-box',
                 padding: 0,
                 color: '#1d4ed8',
-                background: 'transparent',
-                border: 'none',
-                borderRadius: 4,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 margin: 0,
-                ...(showLinkedFloat ? { marginLeft: -4 } : {}),
-                ...scheduleBlockActionIconButtonStyle,
+                ...scheduleBlockControlPlateBackgroundStyle,
+                ...scheduleBlockActionLinkedIconButtonStyle,
               }}
             >
-              <ScheduleDispatchBlockNoteIcon size={12} />
+              <ScheduleDispatchBlockNoteIcon size={10} />
             </button>
           ) : null}
         </div>
@@ -718,6 +730,8 @@ function HubPeopleDayCell({
   hubMultiCellAddSelectedKeys,
   onHubMultiCellAddToggle,
   onRequestEditBlockNote,
+  timeOffInfo,
+  onRequestUndoNotComingIn,
 }: {
   personUserId: string
   workDate: string
@@ -747,9 +761,12 @@ function HubPeopleDayCell({
   hubMultiCellAddSelectedKeys: ReadonlySet<string>
   onHubMultiCellAddToggle?: (personUserId: string, workDate: string) => void
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
+  timeOffInfo?: UserTimeOffCellInfo | null
+  onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
 }) {
+  const cellHasTimeOff = timeOffInfo != null
   const droppableId = scheduleDispatchCellDroppableId(workDate, personUserId)
-  const { isOver, setNodeRef } = useDroppable({ id: droppableId })
+  const { isOver, setNodeRef } = useDroppable({ id: droppableId, disabled: cellHasTimeOff })
   const idleBg = scheduleDispatchDayColumnCellIdleBg(workDate, {
     scheduleTodayYmd,
     columnFocusDayYmd,
@@ -768,16 +785,25 @@ function HubPeopleDayCell({
   } else if (placementPickingActive && !linkedWrongDay) {
     cellBg = isOver ? '#c7d2fe' : '#eef2ff'
   }
+  // Time-off days are not valid scheduling targets in the picker / placement
+  // flows: gray them out the same way the existing "linked wrong day" cells
+  // do, so they read as "not a target".
+  if (cellHasTimeOff && (assignJobPickingActive || placementPickingActive)) {
+    cellBg = '#f3f4f6'
+  }
 
-  const cellClickable = (assignJobPickingActive || placementPickingActive) && !linkedWrongDay
+  const cellClickable =
+    (assignJobPickingActive || placementPickingActive) && !linkedWrongDay && !cellHasTimeOff
   const emptyCellClickable =
     canEdit &&
     cellBlocks.length === 0 &&
     onEmptyCellClick != null &&
     !assignJobPickingActive &&
     !placementPickingActive &&
-    !hubMultiCellAddActive
-  const multiSelectCellActive = hubMultiCellAddActive && canEdit && onHubMultiCellAddToggle != null
+    !hubMultiCellAddActive &&
+    !cellHasTimeOff
+  const multiSelectCellActive =
+    hubMultiCellAddActive && canEdit && onHubMultiCellAddToggle != null && !cellHasTimeOff
   const multiSelectKey = hubPersonDayKey(personUserId, workDate)
   const isMultiSelected = hubMultiCellAddSelectedKeys.has(multiSelectKey)
   if (multiSelectCellActive && isMultiSelected) {
@@ -789,12 +815,14 @@ function HubPeopleDayCell({
     cellBlocks.length > 0 &&
     !assignJobPickingActive &&
     !placementPickingActive &&
-    !hubMultiCellAddActive
+    !hubMultiCellAddActive &&
+    !cellHasTimeOff
 
   return (
     <td
       ref={setNodeRef}
       onClick={() => {
+        if (cellHasTimeOff) return
         if (multiSelectCellActive) {
           onHubMultiCellAddToggle(personUserId, workDate)
           return
@@ -814,6 +842,7 @@ function HubPeopleDayCell({
       }}
       style={{
         position: 'relative',
+        isolation: 'isolate',
         padding: '0.35rem',
         border: isMultiSelected && multiSelectCellActive ? '2px solid #ca8a04' : '1px solid #e5e7eb',
         verticalAlign: 'top',
@@ -824,8 +853,49 @@ function HubPeopleDayCell({
           multiSelectCellActive || cellClickable || emptyCellClickable ? 'pointer' : undefined,
       }}
     >
+      {timeOffInfo && cellBlocks.length === 0 ? (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '0.35rem',
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ pointerEvents: 'auto' }}>
+            <ScheduleDispatchTimeOffChip
+              info={timeOffInfo}
+              onClick={
+                canEdit &&
+                onRequestUndoNotComingIn &&
+                timeOffInfo.variant === 'not_coming_in'
+                  ? () => onRequestUndoNotComingIn(personUserId, workDate)
+                  : undefined
+              }
+              interactiveTitle="Click to mark as coming in"
+            />
+          </span>
+        </div>
+      ) : timeOffInfo ? (
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 4 }}>
+          <ScheduleDispatchTimeOffChip
+            info={timeOffInfo}
+            onClick={
+              canEdit &&
+              onRequestUndoNotComingIn &&
+              timeOffInfo.variant === 'not_coming_in'
+                ? () => onRequestUndoNotComingIn(personUserId, workDate)
+                : undefined
+            }
+            interactiveTitle="Click to mark as coming in"
+          />
+        </div>
+      ) : null}
       {cellBlocks.length === 0 ? (
-        <span style={{ color: '#d1d5db' }}>—</span>
+        timeOffInfo ? null : <span style={{ color: '#d1d5db' }}>—</span>
       ) : (
         cellBlocks.map((b) => {
           const g = b.shared_block_group_id
@@ -955,6 +1025,10 @@ type HubPeoplePanelProps = {
   showExpectedManpower?: boolean
   /** When false, hide the Hide weekend checkbox in the People toolbar (e.g. Quickfill tomorrow). */
   showHideWeekendToggle?: boolean
+  /** Per-cell time-off info keyed by `userTimeOffCellKey`; when present a chip is rendered. */
+  userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
+  /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
+  onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
 }
 
 function HubPeoplePanel({
@@ -1005,6 +1079,8 @@ function HubPeoplePanel({
   onRequestEditBlockNote,
   showExpectedManpower = true,
   showHideWeekendToggle = true,
+  userTimeOffByCell,
+  onRequestUndoNotComingIn,
 }: HubPeoplePanelProps) {
   const isMobile = useIsMobile()
   const peopleScrollRef = useRef<HTMLDivElement>(null)
@@ -1237,7 +1313,14 @@ function HubPeoplePanel({
 
       {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
 
-      <div ref={peopleScrollRef} style={{ overflowX: 'auto' }}>
+      <div
+        ref={peopleScrollRef}
+        style={{
+          overflowX: 'auto',
+          marginLeft: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
+          marginRight: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
+        }}
+      >
         <table style={{ borderCollapse: 'collapse', width: 'max-content', minWidth: '100%', fontSize: '0.8125rem' }}>
           <thead>
             <tr>
@@ -1245,7 +1328,9 @@ function HubPeoplePanel({
                 style={{
                   textAlign: 'left',
                   padding: '0.5rem',
-                  border: '1px solid #e5e7eb',
+                  borderTop: '1px solid #e5e7eb',
+                  borderRight: '1px solid #e5e7eb',
+                  borderBottom: '1px solid #e5e7eb',
                   background: isMobile ? 'transparent' : '#f3f4f6',
                   position: 'sticky',
                   left: 0,
@@ -1253,6 +1338,9 @@ function HubPeoplePanel({
                   width: '1%',
                   minWidth: 0,
                   whiteSpace: 'nowrap',
+                  boxShadow: isMobile
+                    ? undefined
+                    : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
                 }}
               >
                 {isMobile ? <span style={scheduleDispatchMobileNamePill}>Person</span> : 'Person'}
@@ -1292,7 +1380,9 @@ function HubPeoplePanel({
                   <td
                     style={{
                       padding: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      borderTop: '1px solid #e5e7eb',
+                      borderRight: '1px solid #e5e7eb',
+                      borderBottom: '1px solid #e5e7eb',
                       position: 'sticky',
                       left: 0,
                       background: isMobile ? 'transparent' : '#fff',
@@ -1303,6 +1393,9 @@ function HubPeoplePanel({
                       width: '1%',
                       minWidth: 0,
                       whiteSpace: isMobile ? undefined : 'nowrap',
+                      boxShadow: isMobile
+                        ? undefined
+                        : 'inset 1px 0 0 #e5e7eb, inset -1px 0 0 #e5e7eb',
                     }}
                   >
                     {isMobile ? (
@@ -1314,7 +1407,7 @@ function HubPeoplePanel({
                             aria-label="Salaried (Pay settings)"
                             style={hubPeopleSalarySuffix}
                           >
-                            {' '}(s)
+                            (s)
                           </span>
                         ) : null}
                       </span>
@@ -1327,7 +1420,7 @@ function HubPeoplePanel({
                             aria-label="Salaried (Pay settings)"
                             style={hubPeopleSalarySuffix}
                           >
-                            {' '}(s)
+                            (s)
                           </span>
                         ) : null}
                       </>
@@ -1335,6 +1428,8 @@ function HubPeoplePanel({
                   </td>
                   {visibleDayKeys.map((dk) => {
                     const cellBlocks = personDayBlocks.get(hubPersonDayKey(person.userId, dk)) ?? []
+                    const timeOffInfo =
+                      userTimeOffByCell?.get(userTimeOffCellKey(person.userId, dk)) ?? null
                     return (
                       <HubPeopleDayCell
                         key={dk}
@@ -1366,6 +1461,8 @@ function HubPeoplePanel({
                         hubMultiCellAddSelectedKeys={hubMultiCellAddSelectedKeys}
                         onHubMultiCellAddToggle={onHubMultiCellAddToggle}
                         onRequestEditBlockNote={onRequestEditBlockNote}
+                        timeOffInfo={timeOffInfo}
+                        onRequestUndoNotComingIn={onRequestUndoNotComingIn}
                       />
                     )
                   })}
@@ -1897,6 +1994,10 @@ type Props = {
   showHubViewTabs?: boolean
   /** When false, hide the Hide weekend checkbox on the People tab (e.g. Quickfill tomorrow). */
   showHideWeekendToggle?: boolean
+  /** Map keyed by `userTimeOffCellKey(userId, workDate)` → time-off info to render as a chip on the cell. */
+  userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
+  /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
+  onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
 }
 
 const HUB_PEOPLE_TOOLBAR_BTN_H = 32
@@ -1982,6 +2083,8 @@ export function ScheduleDispatchHub({
   showWeekNavigation = true,
   showHubViewTabs = true,
   showHideWeekendToggle = true,
+  userTimeOffByCell,
+  onRequestUndoNotComingIn,
 }: Props) {
   const tabForKey = showHubViewTabs ? hubTab : 'people'
   const hubJobsColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-jobs-${tabForKey}`
@@ -2113,6 +2216,8 @@ export function ScheduleDispatchHub({
           onRequestEditBlockNote={onRequestEditBlockNote}
           showExpectedManpower={showExpectedManpower}
           showHideWeekendToggle={showHideWeekendToggle}
+          userTimeOffByCell={userTimeOffByCell}
+          onRequestUndoNotComingIn={onRequestUndoNotComingIn}
         />
       ) : hubTab === 'day' ? (
         <QuickfillScheduleSection initialWorkDateYmd={dayTabWorkDateYmd} />
@@ -2179,6 +2284,8 @@ export function ScheduleDispatchHub({
           onRequestEditBlockNote={onRequestEditBlockNote}
           showExpectedManpower={showExpectedManpower}
           showHideWeekendToggle={showHideWeekendToggle}
+          userTimeOffByCell={userTimeOffByCell}
+          onRequestUndoNotComingIn={onRequestUndoNotComingIn}
         />
       )}
     </div>

@@ -230,6 +230,31 @@ export function buildPersonDayBlockMap(blocks: JobScheduleBlockRow[]): Map<strin
   return m
 }
 
+/**
+ * Subset of `ids` that have `users.archived_at IS NOT NULL`. Used by Schedule dispatch
+ * (Hub + Job-Week) to hide archived users from the roster while keeping the schedule
+ * blocks in the database — archived users with dangling blocks simply have no row to
+ * render on. Empty input returns an empty set without hitting Supabase.
+ */
+export async function fetchArchivedUserIdSetForIds(ids: string[]): Promise<Set<string>> {
+  const unique = [...new Set(ids)].filter(Boolean)
+  if (unique.length === 0) return new Set()
+  try {
+    const rows = await withSupabaseRetry(
+      async () =>
+        await supabase.from('users').select('id').in('id', unique).not('archived_at', 'is', null),
+      'fetchArchivedUserIdSetForIds',
+    )
+    const out = new Set<string>()
+    for (const row of (rows ?? []) as Array<{ id: string }>) {
+      if (row.id) out.add(row.id)
+    }
+    return out
+  } catch {
+    return new Set()
+  }
+}
+
 export async function fetchUserNamesForIds(
   ids: string[],
 ): Promise<{ data: Map<string, string>; error: string | null }> {

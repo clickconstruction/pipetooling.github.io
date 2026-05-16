@@ -10362,6 +10362,10 @@ export type Database = {
         Args: { p_person_name: string }
         Returns: Json
       }
+      pay_staff_remove_not_coming_in_for_user_day: {
+        Args: { p_user_id: string; p_work_date: string }
+        Returns: Json
+      }
       people_hours_subtract_approved_hours: {
         Args: {
           p_entered_by: string

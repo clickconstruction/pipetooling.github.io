@@ -127,6 +127,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### May 15, 2026
 
+**`20260515233801_pay_staff_remove_not_coming_in_for_user_day.sql`**
+- **Purpose**: **`pay_staff_remove_not_coming_in_for_user_day(p_user_id uuid, p_work_date date)`** — **`SECURITY DEFINER`** RPC for the **Schedule Dispatch** *Undo Not coming in* flow. Symmetric to **`pay_staff_bulk_insert_user_time_off`** with the **same authz gate** (`is_dev` / `is_pay_approved_master` / `is_assistant_of_pay_approved_master` / `is_assistant`) and **per-target check** (`salary_schedule_staff_or_self_target`).
+- **Changes**: Tightly scoped DELETE — only rows where `user_id = p_user_id AND start_date = p_work_date AND end_date = p_work_date AND kind = 'unpaid' AND note = 'Not coming in'` (so PTO and other variants are intentionally untouchable through this path). After delete, runs `sync_salary_clock_sessions_for_user_day(p_user_id, p_work_date)` when `p_work_date = (timezone('America/Denver', now()))::date` so any salary session that was hidden by the time-off entry comes back. Returns JSONB `{ ok, deleted, sync_warning? }` on success / `{ ok:false, message }` on bad args. `REVOKE ALL FROM PUBLIC; GRANT EXECUTE TO authenticated, service_role`.
+- **Impact**: **[`ScheduleDispatchUndoNotComingInModal.tsx`](src/components/schedule/ScheduleDispatchUndoNotComingInModal.tsx)** + **[`removeNotComingInForUserAsStaff`](src/lib/notComingInTimeOff.ts)** + cell-chip click in **[`ScheduleDispatchHubPage.tsx`](src/components/schedule/ScheduleDispatchHubPage.tsx)** / **[`ScheduleDispatchJobWeek.tsx`](src/components/schedule/ScheduleDispatchJobWeek.tsx)**. Table-level RLS DELETE policy on `user_time_off` stays self-only — staff use this RPC, never a direct delete. **`RECENT_FEATURES.md`** **v2.535**. `npm run gen-types:linked` after apply.
+- **Category**: Schedule Dispatch / People / Time off / SECURITY DEFINER RPCs
+
 **`20260515102040_bid_estimators_tab.sql`**
 - **Purpose**: **Bids → Estimators tab** (`?tab=estimators`, viewable by **all roles**). Creates:
   - **`bid_estimators_extra_users(user_id PK → public.users, added_at, added_by)`** — org-wide augmentation list for the estimators column set. RLS: authenticated read; **dev / master_technician / assistant** insert/delete (inline role check, not `is_dev_or_master_or_assistant()` which now also matches `primary`).

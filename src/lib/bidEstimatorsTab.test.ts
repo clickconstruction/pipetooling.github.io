@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  bidEstimatorsBidMatchesSearch,
   bidEstimatorsWindowStartYmd,
   buildBidEstimatorsCellMap,
   buildBidEstimatorsCostModeChip,
@@ -10,6 +11,7 @@ import {
   formatBidEstimatorsProjectNameClip,
   formatBidValueK,
   lookupBidEstimatorsCell,
+  normalizeBidEstimatorsSearchQuery,
   type BidEstimatorsAllTimeHoursRow,
   type BidEstimatorsWindowHoursRow,
 } from './bidEstimatorsTab'
@@ -216,5 +218,96 @@ describe('formatBidEstimatorsProjectNameClip', () => {
 
   it('honors a custom max', () => {
     expect(formatBidEstimatorsProjectNameClip('Take 5 Oil Change', 4)).toBe('Take...')
+  })
+})
+
+describe('normalizeBidEstimatorsSearchQuery', () => {
+  it('lowercases and trims', () => {
+    expect(normalizeBidEstimatorsSearchQuery('  BE249  ')).toBe('be249')
+  })
+
+  it('returns empty for whitespace-only / null / undefined / non-string', () => {
+    expect(normalizeBidEstimatorsSearchQuery('   ')).toBe('')
+    expect(normalizeBidEstimatorsSearchQuery('')).toBe('')
+    expect(normalizeBidEstimatorsSearchQuery(null)).toBe('')
+    expect(normalizeBidEstimatorsSearchQuery(undefined)).toBe('')
+  })
+})
+
+describe('bidEstimatorsBidMatchesSearch', () => {
+  const fields = {
+    ledgerLabel: 'BE249',
+    bidNumber: '249',
+    projectName: 'Take 5 Oil Change',
+    gcBuilderName: 'Vernon Construction',
+  }
+
+  it('empty / whitespace query matches everything (no filter)', () => {
+    expect(bidEstimatorsBidMatchesSearch('', fields)).toBe(true)
+    expect(bidEstimatorsBidMatchesSearch('   ', fields)).toBe(true)
+  })
+
+  it('matches the full ledger label', () => {
+    expect(bidEstimatorsBidMatchesSearch('BE249', fields)).toBe(true)
+  })
+
+  it('matches a prefix of the ledger label', () => {
+    expect(bidEstimatorsBidMatchesSearch('BE', fields)).toBe(true)
+    expect(bidEstimatorsBidMatchesSearch('be2', fields)).toBe(true)
+  })
+
+  it('matches the raw bid number digits without prefix', () => {
+    expect(bidEstimatorsBidMatchesSearch('249', fields)).toBe(true)
+  })
+
+  it('is case-insensitive', () => {
+    expect(bidEstimatorsBidMatchesSearch('be249', fields)).toBe(true)
+    expect(bidEstimatorsBidMatchesSearch('TAKE 5', fields)).toBe(true)
+  })
+
+  it('matches a substring of the project name', () => {
+    expect(bidEstimatorsBidMatchesSearch('oil', fields)).toBe(true)
+    expect(bidEstimatorsBidMatchesSearch('change', fields)).toBe(true)
+  })
+
+  it('matches GC/builder name', () => {
+    expect(bidEstimatorsBidMatchesSearch('vernon', fields)).toBe(true)
+    expect(bidEstimatorsBidMatchesSearch('construction', fields)).toBe(true)
+  })
+
+  it('returns false when query is not in any field', () => {
+    expect(bidEstimatorsBidMatchesSearch('asphalt', fields)).toBe(false)
+    expect(bidEstimatorsBidMatchesSearch('BE250', fields)).toBe(false)
+  })
+
+  it('tolerates null/undefined fields', () => {
+    expect(
+      bidEstimatorsBidMatchesSearch('249', {
+        ledgerLabel: 'BE249',
+        bidNumber: null,
+        projectName: null,
+        gcBuilderName: null,
+      }),
+    ).toBe(true)
+    expect(
+      bidEstimatorsBidMatchesSearch('vernon', {
+        ledgerLabel: 'B?',
+        bidNumber: null,
+        projectName: null,
+        gcBuilderName: 'Vernon Construction',
+      }),
+    ).toBe(true)
+    expect(
+      bidEstimatorsBidMatchesSearch('zzz', {
+        ledgerLabel: 'B?',
+        bidNumber: null,
+        projectName: null,
+        gcBuilderName: null,
+      }),
+    ).toBe(false)
+  })
+
+  it('trims and lowercases the query at call time', () => {
+    expect(bidEstimatorsBidMatchesSearch('  Oil  ', fields)).toBe(true)
   })
 })

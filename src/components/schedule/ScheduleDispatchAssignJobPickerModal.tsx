@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 export type ScheduleDispatchAssignJobPickerRow = {
   id: string
@@ -16,6 +16,7 @@ export function ScheduleDispatchAssignJobPickerModal({
   onSearchChange,
   onPickJob,
   onCreateNewJob,
+  notComingIn,
 }: {
   open: boolean
   onClose: () => void
@@ -25,8 +26,21 @@ export function ScheduleDispatchAssignJobPickerModal({
   onSearchChange: (v: string) => void
   onPickJob: (jobId: string) => void
   onCreateNewJob?: () => void
+  /**
+   * When provided, the footer offers a "Not coming in today" action with an inline confirm step.
+   * Only meaningful when the picker is being opened for a single person on a single day
+   * (cell-add intent); leave undefined for toolbar / multi-cell intents.
+   */
+  notComingIn?: {
+    personLabel: string
+    workDateLabel: string
+    existingBlockCount: number
+    busy?: boolean
+    onConfirm: () => void | Promise<void>
+  }
 }) {
   const searchRef = useRef<HTMLInputElement>(null)
+  const [notComingInConfirming, setNotComingInConfirming] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -34,6 +48,10 @@ export function ScheduleDispatchAssignJobPickerModal({
       searchRef.current?.focus()
     })
     return () => window.cancelAnimationFrame(id)
+  }, [open])
+
+  useEffect(() => {
+    if (!open) setNotComingInConfirming(false)
   }, [open])
 
   if (!open) return null
@@ -166,22 +184,124 @@ export function ScheduleDispatchAssignJobPickerModal({
             </ul>
           )}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
-          <button
-            type="button"
-            onClick={onClose}
+        {notComingIn && notComingInConfirming ? (
+          <div
+            role="alertdialog"
+            aria-label="Confirm mark not coming in today"
             style={{
-              padding: '0.45rem 1rem',
-              fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
-              borderRadius: 4,
-              cursor: 'pointer',
+              border: '1px solid #fecaca',
+              background: '#fef2f2',
+              borderRadius: 6,
+              padding: '0.6rem 0.75rem',
+              marginTop: '0.75rem',
             }}
           >
-            Cancel
-          </button>
-        </div>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#7f1d1d', lineHeight: 1.4 }}>
+              Mark <strong>{notComingIn.personLabel}</strong> as not coming in
+              {notComingIn.workDateLabel ? (
+                <>
+                  {' '}on <strong>{notComingIn.workDateLabel}</strong>
+                </>
+              ) : null}
+              ?
+              {notComingIn.existingBlockCount > 0 ? (
+                <>
+                  {' '}
+                  This will also remove their{' '}
+                  <strong>
+                    {notComingIn.existingBlockCount} existing schedule block
+                    {notComingIn.existingBlockCount === 1 ? '' : 's'}
+                  </strong>{' '}
+                  for the day.
+                </>
+              ) : null}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={notComingIn.busy}
+                onClick={() => setNotComingInConfirming(false)}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.8125rem',
+                  background: '#fff',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: notComingIn.busy ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={notComingIn.busy}
+                onClick={() => {
+                  if (notComingIn.busy) return
+                  void notComingIn.onConfirm()
+                }}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.8125rem',
+                  background: notComingIn.busy ? '#fca5a5' : '#dc2626',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: notComingIn.busy ? 'not-allowed' : 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                {notComingIn.busy ? 'Saving…' : 'Confirm not coming in'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'flex',
+              gap: '0.5rem',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginTop: '0.75rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+              {notComingIn ? (
+                <button
+                  type="button"
+                  disabled={notComingIn.busy}
+                  onClick={() => setNotComingInConfirming(true)}
+                  style={{
+                    padding: '0.45rem 0.6rem',
+                    fontSize: '0.8125rem',
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#b91c1c',
+                    cursor: notComingIn.busy ? 'not-allowed' : 'pointer',
+                    textDecoration: 'underline',
+                    fontWeight: 500,
+                  }}
+                >
+                  Not coming in today
+                </button>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '0.45rem 1rem',
+                fontSize: '0.875rem',
+                background: '#f3f4f6',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                cursor: 'pointer',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

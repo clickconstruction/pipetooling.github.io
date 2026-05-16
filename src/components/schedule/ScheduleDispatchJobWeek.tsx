@@ -24,7 +24,9 @@ import {
   defaultNewBlockRangeInFirstGap,
   type AddBlockTimelineSegment,
 } from '../../lib/scheduleDispatchAddBlockTimeline'
-import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import { scheduleFormatWeekdayLong, scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import { removeNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
+import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 import { executeScheduleDispatchBlockReassign } from '../../lib/scheduleDispatchDragEnd'
 import { insertScheduleDispatchCopiedLeg } from '../../lib/scheduleDispatchMirrorInsert'
 import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate'
@@ -37,7 +39,7 @@ import {
   ScheduleDispatchGrid,
   type ScheduleDispatchCardPlacementMode,
 } from './ScheduleDispatchGrid'
-import { fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
+import { fetchArchivedUserIdSetForIds, fetchUserNamesForIds } from '../../lib/scheduleDispatchHub'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { pickDayForScheduleDispatchUrl } from '../../lib/scheduleDispatchColumnFocus'
@@ -55,6 +57,11 @@ import {
   RemoveScheduleBlockConfirmModal,
   validateScheduleDispatchBlockTimeRange,
 } from './scheduleDispatchRemoveBlockModal'
+import {
+  buildUserTimeOffByCell,
+  fetchUserTimeOffForUsersInRange,
+  type UserTimeOffCellInfo,
+} from '../../lib/userTimeOffByCell'
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 function readScheduleDispatchHideWeekend(): boolean {
@@ -155,6 +162,9 @@ export function ScheduleDispatchJobWeek() {
   const [jobTitle, setJobTitle] = useState('')
   const [teamMembers, setTeamMembers] = useState<ScheduleTeamMember[]>([])
   const [blocks, setBlocks] = useState<JobScheduleBlockRow[]>([])
+  const [userTimeOffByCell, setUserTimeOffByCell] = useState<Map<string, UserTimeOffCellInfo>>(
+    () => new Map(),
+  )
   const [jobScheduleSalariedUserIds, setJobScheduleSalariedUserIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   )
@@ -234,14 +244,19 @@ export function ScheduleDispatchJobWeek() {
         const assigneeIds = blocksData.map((b) => b.assignee_user_id)
         const rosterIds = [...new Set([...teamIds, ...assigneeIds])].filter(Boolean)
         const teamById = new Map(ctx.data.teamMembers.map((t) => [t.user_id, t]))
-        const { data: nameMap, error: nameErr } = await fetchUserNamesForIds(rosterIds)
+        const [{ data: nameMap, error: nameErr }, archivedSet] = await Promise.all([
+          fetchUserNamesForIds(rosterIds),
+          fetchArchivedUserIdSetForIds(rosterIds),
+        ])
         if (seq !== jobWeekLoadSeqRef.current) return
         if (nameErr) showToast(`People names: ${nameErr}`, 'warning')
-        const mergedRoster: ScheduleTeamMember[] = rosterIds.map((uid) => {
-          const fromTeam = teamById.get(uid)
-          if (fromTeam) return fromTeam
-          return { user_id: uid, name: nameMap.get(uid) ?? null }
-        })
+        const mergedRoster: ScheduleTeamMember[] = rosterIds
+          .filter((uid) => !archivedSet.has(uid))
+          .map((uid) => {
+            const fromTeam = teamById.get(uid)
+            if (fromTeam) return fromTeam
+            return { user_id: uid, name: nameMap.get(uid) ?? null }
+          })
         setTeamMembers(mergedRoster)
         try {
           const salaried = await fetchSalariedUserIdSetFromUserIds(rosterIds)
@@ -273,6 +288,32 @@ export function ScheduleDispatchJobWeek() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const visibleUserIdsForTimeOffSerialized = useMemo(() => {
+    const ids = new Set<string>()
+    for (const m of teamMembers) ids.add(m.user_id)
+    for (const b of blocks) ids.add(b.assignee_user_id)
+    return [...ids].sort().join('|')
+  }, [teamMembers, blocks])
+
+  const refreshUserTimeOff = useCallback(async () => {
+    const ids = visibleUserIdsForTimeOffSerialized
+      ? visibleUserIdsForTimeOffSerialized.split('|').filter(Boolean)
+      : []
+    if (ids.length === 0 || !weekStart || !weekEnd) {
+      setUserTimeOffByCell(new Map())
+      return
+    }
+    const { data, error } = await fetchUserTimeOffForUsersInRange(ids, weekStart, weekEnd)
+    if (error) return
+    const dayKeys: string[] = []
+    for (let i = 0; i < 7; i += 1) dayKeys.push(ymdAddDays(weekStart, i))
+    setUserTimeOffByCell(buildUserTimeOffByCell(data, dayKeys))
+  }, [visibleUserIdsForTimeOffSerialized, weekStart, weekEnd])
+
+  useEffect(() => {
+    void refreshUserTimeOff()
+  }, [refreshUserTimeOff])
 
   useEffect(() => {
     setJobPreview(null)
@@ -373,6 +414,70 @@ export function ScheduleDispatchJobWeek() {
   const [blockNoteEdit, setBlockNoteEdit] = useState<JobScheduleBlockRow | null>(null)
   const [blockNoteBusy, setBlockNoteBusy] = useState(false)
   const [blockNoteError, setBlockNoteError] = useState<string | null>(null)
+  const [undoNotComingInTarget, setUndoNotComingInTarget] = useState<
+    | {
+        personUserId: string
+        personLabel: string
+        workDate: string
+        workDateLabel: string
+      }
+    | null
+  >(null)
+  const [undoNotComingInBusy, setUndoNotComingInBusy] = useState(false)
+
+  const handleRequestUndoNotComingIn = useCallback(
+    (personUserId: string, workDate: string) => {
+      if (!canEdit) return
+      const personLabel = nameByUserId.get(personUserId) ?? 'Team member'
+      setUndoNotComingInTarget({
+        personUserId,
+        personLabel,
+        workDate,
+        workDateLabel: scheduleFormatWeekdayLong(workDate),
+      })
+    },
+    [canEdit, nameByUserId],
+  )
+
+  const handleCancelUndoNotComingIn = useCallback(() => {
+    if (undoNotComingInBusy) return
+    setUndoNotComingInTarget(null)
+  }, [undoNotComingInBusy])
+
+  const handleConfirmUndoNotComingIn = useCallback(async () => {
+    const target = undoNotComingInTarget
+    if (!target || !canEdit) return
+    setUndoNotComingInBusy(true)
+    try {
+      const result = await removeNotComingInForUserAsStaff({
+        subjectUserId: target.personUserId,
+        workDateYmd: target.workDate,
+      })
+      if (!result.ok) {
+        showToast(result.message, 'error')
+        return
+      }
+      if (result.deleted === 0) {
+        showToast(
+          `${target.personLabel} was already cleared for ${target.workDate}.`,
+          'warning',
+        )
+      } else {
+        showToast(
+          `${target.personLabel} is no longer marked Not coming in (${target.workDate}).`,
+          'success',
+        )
+        if (result.syncWarning) {
+          showToast(`Salary sync: ${result.syncWarning}`, 'warning')
+        }
+      }
+      setUndoNotComingInTarget(null)
+      await load()
+      void refreshUserTimeOff()
+    } finally {
+      setUndoNotComingInBusy(false)
+    }
+  }, [undoNotComingInTarget, canEdit, showToast, load, refreshUserTimeOff])
 
   const placementSourceBlock = useMemo(() => {
     if (!cardPlacementMode) return null
@@ -975,6 +1080,8 @@ export function ScheduleDispatchJobWeek() {
           canAddUserToJobRoster={canAddToJobRoster}
           onAddUserToJobRoster={canAddToJobRoster ? (uid) => void addUserToJobRoster(uid) : undefined}
           addToJobBusyUserId={addToJobBusyUserId}
+          userTimeOffByCell={userTimeOffByCell}
+          onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
         />
       </DndContext>
 
@@ -1009,6 +1116,14 @@ export function ScheduleDispatchJobWeek() {
         onSave={(plain) => void saveJobWeekBlockNote(plain)}
       />
       {removeScheduleBlockConfirmModal}
+      <ScheduleDispatchUndoNotComingInModal
+        open={undoNotComingInTarget != null}
+        busy={undoNotComingInBusy}
+        personLabel={undoNotComingInTarget?.personLabel ?? ''}
+        workDateLabel={undoNotComingInTarget?.workDateLabel ?? ''}
+        onCancel={handleCancelUndoNotComingIn}
+        onConfirm={() => void handleConfirmUndoNotComingIn()}
+      />
     </div>
     {jobPreview ? (
       <PreviewJobModal

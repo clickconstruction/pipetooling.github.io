@@ -189,6 +189,48 @@ export function buildBidEstimatorsCostModeChip(
   return { kind: 'value', scaledDollars: scaled, totalDollars: bidValueDollars }
 }
 
+/**
+ * Searchable fields for a single bid on the Estimators tab. `ledgerLabel` is the
+ * fully-formatted prefix + number string (e.g. `"BE249"` / `"B412"`), so search
+ * matches against `"BE"`, `"BE2"`, `"249"`, etc.
+ */
+export type BidEstimatorsSearchFields = {
+  ledgerLabel: string
+  bidNumber: string | null
+  projectName: string | null
+  gcBuilderName: string | null
+}
+
+/** Normalizes a raw user search query: trims and lowercases. Empty when whitespace-only. */
+export function normalizeBidEstimatorsSearchQuery(raw: string | null | undefined): string {
+  if (typeof raw !== 'string') return ''
+  return raw.trim().toLowerCase()
+}
+
+/**
+ * Case-insensitive substring match across a bid's searchable fields. An empty
+ * normalized query returns `true` (no filter applied) so callers can use this
+ * predicate uniformly without branching first.
+ */
+export function bidEstimatorsBidMatchesSearch(
+  query: string,
+  fields: BidEstimatorsSearchFields,
+): boolean {
+  const q = query.trim().toLowerCase()
+  if (q === '') return true
+  const haystacks: Array<string | null | undefined> = [
+    fields.ledgerLabel,
+    fields.bidNumber,
+    fields.projectName,
+    fields.gcBuilderName,
+  ]
+  for (const h of haystacks) {
+    if (typeof h !== 'string') continue
+    if (h.toLowerCase().includes(q)) return true
+  }
+  return false
+}
+
 /** Default max-chars of a project name shown next to the bid chip on the Estimators tab. */
 export const BID_ESTIMATORS_PROJECT_CLIP_MAX = 10
 

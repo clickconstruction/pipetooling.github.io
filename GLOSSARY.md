@@ -190,6 +190,20 @@ User clock-in/clock-out records from the Dashboard. Each session has `clocked_in
 
 **Database**: `job_schedule_blocks` — migration **`20260407061043`** adds **`shared_block_group_id`**; **`20260407052651`** enforces minimum 30-minute duration.
 
+### Not coming in (Schedule Dispatch)
+A single-day **`user_time_off`** row with **`kind='unpaid'`** + **`note='Not coming in'`** that the dispatcher records from **Schedule Dispatch** to mark someone as not working that day. The mark drives three behaviors at once on the dispatch grid (Hub + JobWeek), and is the only **`user_time_off`** variant the grid surfaces a write affordance for — PTO and other off-ranges still come from People / Calendar.
+
+- **Recording it** — Picker footer **Not coming in today** on the **Add job to schedule** modal (single person + day intent only) → `recordNotComingInForUserAsStaff` → `pay_staff_bulk_insert_user_time_off` RPC (single-day **`unpaid`** insert) → bulk `deleteJobScheduleBlock` for **every** block on that user/day across **every** job (not just the job that was about to be added). If the user already has any overlapping `user_time_off` row (PTO etc.), the helper short-circuits with `alreadyMarked: true` instead of inserting a duplicate.
+- **Showing it** — **[`ScheduleDispatchTimeOffChip`](src/components/schedule/ScheduleDispatchTimeOffChip.tsx)** renders a red **Not coming in** pill at the top of every cell whose assignee has the row, fed by **[`userTimeOffByCell.ts`](src/lib/userTimeOffByCell.ts)** (chunked fetch + per-cell map; pure mapping covered by 14 unit tests). PTO and multi-day unpaid render as the amber **Off** variant from the same module. The chip is centered both axes when the cell has no blocks; sits at the top center when blocks are below it.
+- **Disabling new work while it's on** — Each cell computes `cellHasTimeOff` and uses it to (a) `useDroppable({ disabled: true })` so DnD reassign / linked-copy bounces, (b) hide the **Add block** / `+` triangle, (c) grey out (`#f3f4f6`) during placement / picker / multi-cell flows, (d) ignore click-to-add. Existing blocks render and remain fully interactive (edit / delete / link copy) so cleanup edge cases stay accessible.
+- **Undoing it** — Click the red chip → **[`ScheduleDispatchUndoNotComingInModal`](src/components/schedule/ScheduleDispatchUndoNotComingInModal.tsx)** (Cancel / **Mark as coming in**) → `removeNotComingInForUserAsStaff` → SECURITY DEFINER RPC **`pay_staff_remove_not_coming_in_for_user_day`** (migration **`20260515233801`**). The RPC is **tightly scoped** server-side: only deletes rows where `start_date = end_date = p_work_date AND kind = 'unpaid' AND note = 'Not coming in'`, then re-runs `sync_salary_clock_sessions_for_user_day` for the day. Authz gate is identical to the insert RPC. Schedule blocks deleted on the way in are **not restored** on undo (they're hard-deleted) — the dispatcher re-adds with one click in the picker.
+
+**Roles**: dev / master_technician / assistant / superintendent (same as `/schedule-dispatch` access).
+
+**Database**: `user_time_off` — migration **`20270331170000`** (table); **`20270331190000`** (`kind='unpaid'` constraint); **`20270331192000`** (insert RPC); **`20260515233801`** (undo RPC).
+
+**See also**: **`AGENTS.md`** **Schedule dispatch** rows; **`RECENT_FEATURES.md`** **v2.535**.
+
 ### My Roles Goals / Daily goals gate
 Per-user checklist lines (**`user_dashboard_goals`**) edited by dev, master, or assistant in Settings. After the **first successful clock-in of a calendar day**, if the user has at least one goal, a full-screen overlay titled **“My Roles Goals”** appears; **Continue** writes **`user_daily_goals_ack`** for that local date so the gate stays off until the next calendar day.
 
@@ -360,13 +374,20 @@ The main bid management system. Bid Board is the first tab showing all bids in a
 
 **Database**: `bids` table
 
-**6 Tabs**: Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup
+**Tabs**: Bid Board, **Unsent/Working** Kanban (`?tab=working`), Bid Costs, **Estimators** (`?tab=estimators` — see below), Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release. Builder Review is a separate top-row tab.
 
 ### Bid Number
 Short identifier for a bid (e.g. "456"), analogous to HCP for jobs. Stored in `bids.bid_number`. Auto-generated for new bids via `bids_bid_number_seq`; backfilled for existing bids (oldest first). **Display label** is **`{bid_prefix}{bid_number}`** where **`bid_prefix`** comes from **`service_types.ledger_bid_prefix`** for that bid’s trade (trimmed); **null/blank** falls back to **`B`** (same as legacy **`B456`**). Used in Clock In / Update Focus search labels, People Hours clock session displays, **Bid Board** (**`BidBoardBidNumberMark`** in **`Bids.tsx`**: full prefix at **`0.7em`**, **`bid_number`** at inherited size — **v2.498**), workflow tab headings, Documents, Mercury alloc search, etc. **Unified search** accepts typed **`B` + remainder** or **`ledger_bid_prefix` + remainder** (case-insensitive) to find `bid_number`. **Edit restriction**: Only dev, master_technician, and assistant can edit; estimator and primary see it read-only (enforced by UI and database trigger).
 
 ### Ledger display prefix (job / bid)
 Optional **per–service-type** characters shown **before** the numeric **HCP** (**`jobs_ledger.hcp_number`**) or **bid** (**`bids.bid_number`**) in the UI and in some notifications. Stored on **`service_types`** as **`ledger_job_prefix`** and **`ledger_bid_prefix`**. **Dev-only** editing in **Settings** (Service types). **Implementation**: [`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts); Edge helpers in **`supabase/functions/_shared/ledgerDisplayPrefixes.ts`**. **Stripe** invoice **number** generation remains **digits-only HCP** (no prefix) unless changed separately.
+
+### Estimators tab (Bids → Estimators)
+A cross-bid analytics tab on the Bids page (**`?tab=estimators`**, viewable by **all roles**) — **v2.531**. Shows a **days × estimators** pivot of **`clock_sessions`** linked to **bids** over the last **30 days** (**`APP_CALENDAR_TZ`**). Each cell stacks one chip per bid the column user clocked into that day, formatted **`{N}% — {label} ({project clip})`**, where **`{N}% = userHoursThatDay / bidAllTimeHours × 100`** (lifetime team denominator, so **100%** means that user has been the only one to clock any time to the bid ever). **`{label}`** is the trade-aware ledger label (e.g. **`BE249`** when **`service_types.ledger_bid_prefix` = `BE`**, **`B412`** when blank — see **Bid Number**); **`{project clip}`** is the first **10** characters of **`bids.project_name`** + `...` (omitted when ≤10 chars). Click the bid label → **Bid preview** modal via **`useBidPreview`**.
+
+**Columns** = `role = 'estimator'` users **plus** the org-wide augmentation list **`bid_estimators_extra_users`**. **Manage columns** (dev / master_technician / assistant only) edits the augmentation list via **[`BidsEstimatorsExtraUsersModal.tsx`](src/components/bids/BidsEstimatorsExtraUsersModal.tsx)**. **Cost mode** (dev only) appends **`{bidValue × pct}k | {bidValue}k`** per chip via **`formatBidValueK`**, or **`no bid value`** in red when **`bids.bid_value`** is missing. **Search bar** (**v2.534**) above the table matches the bid's ledger label (prefix or digits), **`project_name`**, and **GC/Builder name** (**`customers.name`** with legacy **`bids_gc_builders.name`** fallback) — case-insensitive substring; matching chips get an amber pill and rows with no match are hidden, but estimator columns stay stable.
+
+**RLS-safe aggregation** via two **`SECURITY DEFINER`** RPCs in **`20260515102040_bid_estimators_tab.sql`**: **`list_bid_estimators_window_hours`** (per-cell per-day decimal hours) and **`list_bid_estimators_all_time_hours`** (lifetime per-bid denominator). Both filter out rejected / revoked sessions and clip open sessions at **`now()`**. **Implementation**: **[`src/components/bids/BidsEstimatorsTab.tsx`](src/components/bids/BidsEstimatorsTab.tsx)**, pure helpers in **[`src/lib/bidEstimatorsTab.ts`](src/lib/bidEstimatorsTab.ts)** (42 unit tests in **`.test.ts`**). See **`BIDS_SYSTEM.md`** → Estimators Tab.
 
 ### GC / Builder / General Contractor
 Customer in the bids context. The entity requesting the bid (can be actual GC, homeowner, developer, etc.).

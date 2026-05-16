@@ -11,6 +11,7 @@ import {
 } from '../../utils/dateUtils'
 import {
   BID_ESTIMATORS_TAB_DEFAULT_WINDOW_DAYS,
+  bidEstimatorsBidMatchesSearch,
   bidEstimatorsWindowStartYmd,
   buildBidEstimatorsCellMap,
   buildBidEstimatorsCostModeChip,
@@ -21,6 +22,7 @@ import {
   formatBidEstimatorsProjectNameClip,
   formatBidValueK,
   lookupBidEstimatorsCell,
+  normalizeBidEstimatorsSearchQuery,
   type BidEstimatorsAllTimeHoursRow,
   type BidEstimatorsWindowHoursRow,
 } from '../../lib/bidEstimatorsTab'
@@ -42,6 +44,18 @@ type BidLabelRow = {
   service_type_id: string | null
   project_name: string | null
   bid_value: number | null
+  gc_builder_name: string | null
+}
+
+/** Raw shape returned by the nested PostgREST select before we collapse into BidLabelRow. */
+type BidLabelRowRaw = {
+  id: string
+  bid_number: string | null
+  service_type_id: string | null
+  project_name: string | null
+  bid_value: number | null
+  customers: { name: string | null } | { name: string | null }[] | null
+  bids_gc_builders: { name: string | null } | { name: string | null }[] | null
 }
 
 export type BidsEstimatorsTabProps = {
@@ -114,6 +128,7 @@ export function BidsEstimatorsTab({
   const [extrasModalOpen, setExtrasModalOpen] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const [costMode, setCostMode] = useState(false)
+  const [searchInput, setSearchInput] = useState('')
 
   const todayYmd = useMemo(
     () => calendarYmdInAppTzFromIso(new Date().toISOString()) || '',
@@ -261,6 +276,55 @@ export function BidsEstimatorsTab({
     [bidLabels],
   )
 
+  const normalizedQuery = useMemo(
+    () => normalizeBidEstimatorsSearchQuery(searchInput),
+    [searchInput],
+  )
+  const searchActive = normalizedQuery !== ''
+
+  /**
+   * Set of bidIds whose label/number/project/gc-builder matches the current
+   * search. When the search is empty this stays empty too — callers should
+   * branch on `searchActive` rather than treating an empty set as "no matches".
+   */
+  const matchedBidIds = useMemo(() => {
+    const out = new Set<string>()
+    if (!searchActive) return out
+    for (const [bidId, row] of bidLabels) {
+      const ledgerLabel = formatBidLedgerNumberLabel(
+        resolveBidLedgerPrefix(row.service_type_id, ledgerPrefixMap),
+        row.bid_number,
+      )
+      if (
+        bidEstimatorsBidMatchesSearch(normalizedQuery, {
+          ledgerLabel,
+          bidNumber: row.bid_number,
+          projectName: row.project_name,
+          gcBuilderName: row.gc_builder_name,
+        })
+      ) {
+        out.add(bidId)
+      }
+    }
+    return out
+  }, [bidLabels, ledgerPrefixMap, normalizedQuery, searchActive])
+
+  /**
+   * Days (rows) to render. When search is active, only days where at least one
+   * cell contains a matched bid are kept. The estimator columns are NOT filtered
+   * — layout stays stable across searches.
+   */
+  const visibleDays = useMemo(() => {
+    if (!searchActive) return days
+    return days.filter((d) =>
+      columnUsers.some((u) =>
+        lookupBidEstimatorsCell(cellMap, u.id, d).some((entry) =>
+          matchedBidIds.has(entry.bidId),
+        ),
+      ),
+    )
+  }, [days, searchActive, columnUsers, cellMap, matchedBidIds])
+
   const showManageBtn = canManageColumns(viewerRole)
   const showCostModeToggle = viewerRole === 'dev'
   const triggerReload = useCallback(() => setReloadKey((k) => k + 1), [])
@@ -326,6 +390,65 @@ export function BidsEstimatorsTab({
           ) : null}
         </div>
       </div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          marginBottom: '0.5rem',
+          flexWrap: 'wrap',
+        }}
+      >
+        <input
+          type="search"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search bids — number, project name, or GC/Builder"
+          aria-label="Search bids on the Estimators tab"
+          style={{
+            flex: '1 1 16rem',
+            minWidth: 0,
+            padding: '0.4rem 0.6rem',
+            border: '1px solid #d1d5db',
+            borderRadius: 4,
+            fontSize: '0.875rem',
+            background: '#fff',
+            color: '#111827',
+          }}
+        />
+        {searchActive ? (
+          <>
+            <span
+              style={{
+                fontSize: '0.8125rem',
+                color: '#374151',
+                whiteSpace: 'nowrap',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+              aria-live="polite"
+            >
+              {matchedBidIds.size === 0
+                ? 'No matching bids'
+                : `${matchedBidIds.size} bid${matchedBidIds.size === 1 ? '' : 's'} · ${visibleDays.length} day${visibleDays.length === 1 ? '' : 's'}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setSearchInput('')}
+              style={{
+                padding: '0.35rem 0.6rem',
+                background: '#fff',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                cursor: 'pointer',
+                fontSize: '0.8125rem',
+                color: '#374151',
+              }}
+            >
+              Clear
+            </button>
+          </>
+        ) : null}
+      </div>
       {error ? (
         <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{error}</p>
       ) : null}
@@ -337,6 +460,10 @@ export function BidsEstimatorsTab({
           No estimator columns yet. {showManageBtn
             ? 'Use Manage columns to add users from the team.'
             : 'Ask a dev, master, or assistant to add users.'}
+        </p>
+      ) : searchActive && visibleDays.length === 0 ? (
+        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          No bids in the last {windowDays} days match <strong>{searchInput.trim()}</strong>.
         </p>
       ) : (
         <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
@@ -352,7 +479,7 @@ export function BidsEstimatorsTab({
               </tr>
             </thead>
             <tbody>
-              {days.map((d) => {
+              {visibleDays.map((d) => {
                 const isToday = d === todayYmd
                 return (
                   <tr key={d}>
@@ -393,6 +520,19 @@ export function BidsEstimatorsTab({
                                       entry.pctOfBidAllTime,
                                     )
                                   : null
+                                const isMatch = searchActive && matchedBidIds.has(entry.bidId)
+                                const liStyle: CSSProperties = {
+                                  lineHeight: 1.2,
+                                  fontSize: '0.8125rem',
+                                  ...(isMatch
+                                    ? {
+                                        background: '#fef3c7',
+                                        padding: '0.05rem 0.3rem',
+                                        borderRadius: 3,
+                                        boxShadow: 'inset 0 0 0 1px #fcd34d',
+                                      }
+                                    : null),
+                                }
                                 const title =
                                   `${pctText} — ${label}${project ? ` (${project})` : ''}` +
                                   ` · ${formatBidEstimatorsCellHours(entry.hoursOnDay)} of ` +
@@ -403,7 +543,7 @@ export function BidsEstimatorsTab({
                                       : ' · no bid value'
                                     : '')
                                 return (
-                                  <li key={entry.bidId} style={{ lineHeight: 1.2, fontSize: '0.8125rem' }}>
+                                  <li key={entry.bidId} style={liStyle}>
                                     <span style={{ color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{pctText}</span>
                                     <span style={{ color: '#6b7280', margin: '0 0.35rem' }}>—</span>
                                     <button
@@ -418,6 +558,7 @@ export function BidsEstimatorsTab({
                                         textDecoration: 'underline',
                                         cursor: 'pointer',
                                         fontSize: '0.8125rem',
+                                        fontWeight: isMatch ? 600 : undefined,
                                       }}
                                     >
                                       {label}
@@ -475,6 +616,12 @@ export function BidsEstimatorsTab({
   )
 }
 
+function pickNestedName(value: BidLabelRowRaw['customers']): string | null {
+  if (value == null) return null
+  if (Array.isArray(value)) return value[0]?.name ?? null
+  return value.name ?? null
+}
+
 async function loadBidLabels(bidIds: string[]): Promise<BidLabelRow[]> {
   if (bidIds.length === 0) return []
   const out: BidLabelRow[] = []
@@ -486,11 +633,24 @@ async function loadBidLabels(bidIds: string[]): Promise<BidLabelRow[]> {
         async () =>
           supabase
             .from('bids')
-            .select('id, bid_number, service_type_id, project_name, bid_value')
+            .select(
+              'id, bid_number, service_type_id, project_name, bid_value, customers(name), bids_gc_builders(name)',
+            )
             .in('id', chunk),
         'estimators tab: load bid labels',
       )) ?? []
-    out.push(...(rows as BidLabelRow[]))
+    for (const r of rows as BidLabelRowRaw[]) {
+      const customerName = pickNestedName(r.customers)
+      const legacyBuilderName = pickNestedName(r.bids_gc_builders)
+      out.push({
+        id: r.id,
+        bid_number: r.bid_number,
+        service_type_id: r.service_type_id,
+        project_name: r.project_name,
+        bid_value: r.bid_value,
+        gc_builder_name: customerName ?? legacyBuilderName ?? null,
+      })
+    }
   }
   return out
 }

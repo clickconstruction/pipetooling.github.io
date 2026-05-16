@@ -86,16 +86,17 @@ when_to_read:
 ## Table of Contents
 1. [Overview](#overview)
 2. [Bid Board Tab](#bid-board-tab)
-3. [Counts Tab](#counts-tab)
-4. [Takeoff Tab](#takeoff-tab)
-5. [Cost Estimate Tab](#cost-estimate-tab)
-6. [Pricing Tab](#pricing-tab)
-7. [Cover Letter Tab](#cover-letter-tab)
-8. [Submission & Followup Tab](#submission--followup-tab)
-9. [RFI Tab](#rfi-tab)
-10. [Lien Release Tab](#lien-release-tab)
-11. [Database Schema](#database-schema)
-12. [Integration with Materials](#integration-with-materials)
+3. [Estimators Tab](#estimators-tab)
+4. [Counts Tab](#counts-tab)
+5. [Takeoff Tab](#takeoff-tab)
+6. [Cost Estimate Tab](#cost-estimate-tab)
+7. [Pricing Tab](#pricing-tab)
+8. [Cover Letter Tab](#cover-letter-tab)
+9. [Submission & Followup Tab](#submission--followup-tab)
+10. [RFI Tab](#rfi-tab)
+11. [Lien Release Tab](#lien-release-tab)
+12. [Database Schema](#database-schema)
+13. [Integration with Materials](#integration-with-materials)
 
 ---
 
@@ -104,7 +105,7 @@ when_to_read:
 The Bids system is a comprehensive bidding and estimation tool for plumbing contractors. It provides a complete workflow from initial fixture counts through pricing, cost estimation, and bid submission tracking.
 
 ### Key Features
-- **Ten integrated tabs** covering the complete bid lifecycle (Bid Board, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release)
+- **Eleven integrated tabs** covering the complete bid lifecycle (Bid Board, **Estimators**, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release). **Estimators** (**v2.531+**) is a cross-bid pivot, not part of the linear per-bid workflow below — see [Estimators Tab](#estimators-tab).
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates
 - **Automatic cost calculations** including driving costs
 - **Margin analysis** comparing costs to revenue
@@ -182,7 +183,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
 5. **Project Name** - Bid identifier
 6. **Address** - Project location; line break after first comma (street on line 1, city/state on line 2)
 7. **Account Man** - Account manager or estimator name
-8. **Bid** - Total bid amount (short format)
+8. **Bid** - Total bid amount (short format). **Empty bid-value alert** (**`RECENT_FEATURES.md`** **v2.532**): when a bid is in **"Not yet won or lost"** (**`bid_date_sent`** set + **`outcome`** not **`won`** / **`lost`** / **`started_or_complete`**) and **`bid_value`** is null / `0` / unparseable, the cell renders a red filled-circle **`$`** button (18×18 px, **`#dc2626`**) in place of the **—** em-dash. Click opens **Edit Bid** with **`focus: 'bidValue'`** so the **`pendingBidFormFocus`** effect scroll-centers, focuses, and **`.select()`**s the **Bid Value** input (id **`bid-form-bid-value`**), then pulses an amber outline (**`#d97706`**) + background (**`#fffbeb`**) for **1.6s**. **`e.stopPropagation()`** on the button so it doesn't trigger row-level handlers. Predicate **[`shouldShowEmptyBidValueAlert`](src/lib/bidBoardEmptyBidValueAlert.ts)** is reusable for other bid surfaces (Submission & Followup, Working board). **12** unit tests in **[`bidBoardEmptyBidValueAlert.test.ts`](src/lib/bidBoardEmptyBidValueAlert.test.ts)**.
 9. **Bid Date** - Bid due date (date and bracket on separate lines)
 10. **Distance to Office** - Miles (rounded)
 11. **Last Contact** - Weekday and date on separate lines (e.g., "Wed" / "2/11"); clickable; "+" if none
@@ -237,6 +238,104 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
   - Saves the bid
   - Switches to Counts tab
   - Preselects the new bid for counting
+
+---
+
+## Estimators Tab
+
+URL: **`?tab=estimators`**. Sits to the **right of Bid Costs** in the tab strip and is **viewable by all roles** (dev, master_technician, assistant, estimator, primary, helpers, subcontractor, superintendent). Unlike the per-bid workflow tabs (Counts → Lien Release), this is a cross-bid analytics view.
+
+### Purpose
+Pivot of **`clock_sessions`** linked to **bids** over the last **30 days**, organised as **days (rows) × estimators (columns)**. Each cell stacks one chip per bid the column user clocked into on that row's day, with their share of the bid's lifetime team clock time so anyone can see at a glance where estimator time is going across the pipeline.
+
+### Layout
+- **Title** **`Estimators`**. Beside it: **Cost mode** toggle (dev only) and **Manage columns** (dev / master_technician / assistant).
+- **Search bar** (**v2.534**, full-width below the title row) — see [Search](#search).
+- **Sticky-left day column** with **MM/DD** + short weekday (`America/Chicago`); today's row gets a soft amber tint (**`#fffbeb`**).
+- **Estimator columns**, sticky to the corner header; column count is `estimator-role users + extras list` (see [Columns](#columns)).
+- **Cells**: a `<ul>` of chips, one per bid for that user×day, ordered by **hours desc, then `bid_id`** for stability. Empty cell renders a faint **`·`** placeholder.
+
+### Cell chip format
+Each chip renders as one line:
+
+```
+{N}%  —  {label}  ({project clip})
+```
+
+- **`{N}%`** = `userHoursThatDay / bidAllTimeHours × 100`, rounded to whole percent. Lifetime denominator means the cell is a fraction of *all-time* team effort on the bid, not the bid's effort that day. **`100%`** means the user is the only one who has clocked any time to that bid, ever.
+- **`{label}`** = the trade-aware bid ledger label from **[`formatBidLedgerNumberLabel`](src/lib/ledgerDisplayPrefixes.ts)** + **`resolveBidLedgerPrefix(service_type_id, …)`** — e.g. **`BE249`** when **`service_types.ledger_bid_prefix` = `BE`**, **`B412`** when blank. Click the label to open **Bid preview** via **`useBidPreview`**.
+- **`({project clip})`** = the bid's **`project_name`** clipped to the first **10** characters + `...` (omitted when the name is **≤10** chars or empty). Implemented by **`formatBidEstimatorsProjectNameClip`**.
+- **`title`** / **`aria-label`** expands the full chip text plus `{hours on day}h of {bid all-time}h total` for hover/screen-reader detail.
+
+### Search
+A search bar above the table (placeholder **`Search bids — number, project name, or GC/Builder`**, `aria-label="Search bids on the Estimators tab"`) filters the visible day rows to bids matching the query. Match is **case-insensitive substring** across four fields per bid:
+- **Ledger label** (e.g. `BE249`, prefix or digits — so `BE` matches all bids of that trade, `249` matches the digits alone).
+- Raw **`bid_number`** digits.
+- **`project_name`**.
+- **GC/Builder name** — preferred **`customers.name`** via nested PostgREST select on the bids labels loader; legacy **`bids_gc_builders.name`** fallback when `customers` is null.
+
+When a query is active:
+- A live-region result counter (**`aria-live="polite"`**) reads **`{N} bid(s) · {K} day(s)`**.
+- A **Clear** button beside it resets the input.
+- Day rows that contain zero matching cells are not rendered.
+- Estimator **columns are NOT hidden** so the layout stays stable mid-typing.
+- In every visible row, **all chips render** (so context isn't lost), and **matching chips** get an amber pill (**`#fef3c7`** background, **`1px`** **`#fcd34d`** inset shadow) with the bid number bolded.
+- Empty match: the table is replaced with `No bids in the last 30 days match {query}.` — toolbar stays so the operator can refine without scrolling.
+
+Pure predicate **[`bidEstimatorsBidMatchesSearch`](src/lib/bidEstimatorsTab.ts)** + **`normalizeBidEstimatorsSearchQuery`** are covered by **12** unit tests in **[`bidEstimatorsTab.test.ts`](src/lib/bidEstimatorsTab.test.ts)** (label, prefix, digits, project, GC/builder, null fields, whitespace query). See **`RECENT_FEATURES.md`** **v2.534**.
+
+### Cost mode (dev only)
+Toggle above the search bar (gated on **`viewerRole === 'dev'`**). When **on**, each chip appends a suffix:
+
+```
+… {scaled}k | {total}k
+```
+
+- **`{total}k`** = the bid's **`bid_value`** formatted via **`formatBidValueK`** (e.g. `30k`, `121k`; sub-$1k shows one decimal `0.5k`).
+- **`{scaled}k`** = **`bid_value × (pct / 100)`** — the user's "share" of the bid value at today's percentage.
+- When **`bid_value`** is **`null`** / non-finite, the chip renders **`no bid value`** in **`#dc2626`** instead. (Same red as the Bid Board empty-bid-value alert — **v2.532**.)
+
+Cost mode is intended as an internal capacity-vs-pipeline snapshot, not payroll or billing.
+
+### Columns
+Estimator column set = **`role = 'estimator'` users** ∪ **`bid_estimators_extra_users`** (org-wide augmentation list). Archived users (**`archived_at` IS NOT NULL**) and users whose name is literally `delete` (case-insensitive, trimmed) are excluded — same filter as `loadEstimatorUsers` elsewhere in Bids.
+
+**Manage columns** button (dev / master_technician / assistant only) opens **[`BidsEstimatorsExtraUsersModal.tsx`](src/components/bids/BidsEstimatorsExtraUsersModal.tsx)** which lists candidates (non-archived, non-helpers, non-estimator users) with a checkbox each. Toggling a checkbox writes to **`bid_estimators_extra_users(user_id, added_at, added_by)`**. RLS on that table: authenticated **read**; dev / master_technician / assistant **insert/delete** (inline role check, not `is_dev_or_master_or_assistant()` — `primary` is intentionally excluded). Migration **`20260515102040_bid_estimators_tab.sql`**.
+
+### Server-side aggregation (RLS-safe)
+Two **`SECURITY DEFINER STABLE`** RPCs in **`20260515102040_bid_estimators_tab.sql`** expose only aggregated hours, so non pay-access roles can render the pivot without unlocking direct **`clock_sessions`** SELECT on other users' rows:
+
+- **`list_bid_estimators_window_hours(p_user_ids UUID[], p_start_date DATE, p_end_date DATE)`** → `(user_id, bid_id, work_date, hours NUMERIC)` per cell in the visible window.
+- **`list_bid_estimators_all_time_hours(p_bid_ids UUID[])`** → `(bid_id, hours NUMERIC)` lifetime team clock hours per bid (the denominator for the cell percentages).
+
+Both RPCs use the **same** filter: **`bid_id IS NOT NULL`**, **`rejected_at IS NULL`**, **`revoked_at IS NULL`**, **`COALESCE(clocked_out_at, now()) > clocked_in_at`** (open sessions clip at *now*). Drift between window and all-time totals therefore cannot happen for legitimate clock data.
+
+### Window and date math
+- Window length = **30 days** (constant **`BID_ESTIMATORS_TAB_DEFAULT_WINDOW_DAYS`** in **[`bidEstimatorsTab.ts`](src/lib/bidEstimatorsTab.ts)**).
+- Today is computed once via **`calendarYmdInAppTzFromIso(new Date().toISOString())`** using **`APP_CALENDAR_TZ`** (no `'America/Chicago'` string literal).
+- **`buildBidEstimatorsWindowDays(today, 30)`** returns the 30 YYYY-MM-DD strings descending (today first); **`bidEstimatorsWindowStartYmd`** is the inclusive start.
+- Weekday short label per row uses an `Intl.DateTimeFormat` instance bound to **`APP_CALENDAR_TZ`**.
+
+### Pure helpers
+All filter / aggregate / format logic lives in **[`src/lib/bidEstimatorsTab.ts`](src/lib/bidEstimatorsTab.ts)** (no React, no Supabase):
+
+- **`buildBidEstimatorsCellMap(windowRows, allTimeRows)`** — folds both RPC payloads into a `Map<userId::workDate, BidEstimatorsCellEntry[]>`, sorts entries by `hoursOnDay desc`, attaches `pctOfBidAllTime`.
+- **`lookupBidEstimatorsCell(map, userId, workDate)`** — O(1) cell lookup.
+- **`distinctBidIdsFromWindowRows(rows)`** — the bid-id set used to fetch labels and totals.
+- **`formatBidEstimatorsCellPercent(pct)`** / **`formatBidEstimatorsCellHours(h)`** / **`formatBidEstimatorsProjectNameClip(name, max=10)`**.
+- **`buildBidEstimatorsCostModeChip(bidValueDollars, pctOfBidAllTime)`** → `{ kind: 'value', scaledDollars, totalDollars }` or `{ kind: 'missing' }`.
+- **`formatBidValueK(dollars)`** — compact `$k` formatter shared with Cost mode.
+- **`normalizeBidEstimatorsSearchQuery`** / **`bidEstimatorsBidMatchesSearch`** — search.
+
+Test suite: **[`bidEstimatorsTab.test.ts`](src/lib/bidEstimatorsTab.test.ts)** — **42** unit tests covering days, cell map, distinct ids, formatters, project clip, cost mode chip, and search.
+
+### Component file
+**[`src/components/bids/BidsEstimatorsTab.tsx`](src/components/bids/BidsEstimatorsTab.tsx)** owns load orchestration, derived memos (`cellMap`, `matchedBidIds`, `visibleDays`), and the table render. **[`Bids.tsx`](src/pages/Bids.tsx)** wires the tab into the tab strip and passes `onOpenBidPreview` from `useBidPreview`.
+
+### Related docs
+- **`RECENT_FEATURES.md`** → **v2.531** (tab added), **v2.534** (search bar).
+- **`MIGRATIONS.md`** → **`20260515102040_bid_estimators_tab.sql`**.
+- **`AGENTS.md`** → Estimators tab index row.
 
 ---
 

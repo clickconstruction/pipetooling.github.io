@@ -41,6 +41,7 @@ import {
   aggregateWeekSummariesByJob,
   blocksToJobWeekSummaries,
   buildPersonDayBlockMap,
+  fetchArchivedUserIdSetForIds,
   hubPersonDayKey,
   fetchJobsLedgerForScheduleDispatchHub,
   fetchTeamMemberUserIdsForJobIds,
@@ -68,6 +69,16 @@ import {
   RemoveScheduleBlockConfirmModal,
   validateScheduleDispatchBlockTimeRange,
 } from './scheduleDispatchRemoveBlockModal'
+import {
+  recordNotComingInForUserAsStaff,
+  removeNotComingInForUserAsStaff,
+} from '../../lib/notComingInTimeOff'
+import {
+  buildUserTimeOffByCell,
+  fetchUserTimeOffForUsersInRange,
+  type UserTimeOffCellInfo,
+} from '../../lib/userTimeOffByCell'
+import { ScheduleDispatchUndoNotComingInModal } from './ScheduleDispatchUndoNotComingInModal'
 
 const SCHEDULE_DISPATCH_HIDE_WEEKEND_STORAGE_KEY = 'scheduleDispatchHideWeekend'
 const SCHEDULE_DISPATCH_HIGHLIGHT_LINKED_GROUPS_KEY = 'scheduleDispatchHighlightLinkedGroups'
@@ -255,6 +266,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubJobs, setHubJobs] = useState<ScheduleDispatchHubJobRow[]>([])
   const [hubWeekBlocks, setHubWeekBlocks] = useState<JobScheduleBlockRow[]>([])
   const [hubTeamMemberUserIds, setHubTeamMemberUserIds] = useState<string[]>([])
+  const [hubArchivedUserIds, setHubArchivedUserIds] = useState<ReadonlySet<string>>(() => new Set())
   const [hubPeopleNameById, setHubPeopleNameById] = useState<Map<string, string>>(() => new Map())
   const [hubHourlyWageByUserId, setHubHourlyWageByUserId] = useState<Map<string, number>>(() => new Map())
   const [hubPayApprovedMasterIds, setHubPayApprovedMasterIds] = useState<Set<string>>(() => new Set())
@@ -316,9 +328,36 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const hubAllPeopleRows = useMemo(() => {
     const idSet = new Set<string>([...hubTeamMemberUserIds, ...hubWeekBlocks.map((b) => b.assignee_user_id)])
     return [...idSet]
+      .filter((userId) => !hubArchivedUserIds.has(userId))
       .map((userId) => ({ userId, displayName: hubPeopleNameById.get(userId) ?? 'Unknown' }))
       .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' }))
-  }, [hubTeamMemberUserIds, hubWeekBlocks, hubPeopleNameById])
+  }, [hubTeamMemberUserIds, hubWeekBlocks, hubPeopleNameById, hubArchivedUserIds])
+
+  const [hubUserTimeOffByCell, setHubUserTimeOffByCell] = useState<Map<string, UserTimeOffCellInfo>>(
+    () => new Map(),
+  )
+
+  const hubVisibleUserIdsSerialized = useMemo(
+    () => [...hubAllPeopleRows.map((r) => r.userId)].sort().join('|'),
+    [hubAllPeopleRows],
+  )
+
+  const refreshHubUserTimeOff = useCallback(async () => {
+    const userIds = hubAllPeopleRows.map((r) => r.userId)
+    if (userIds.length === 0 || !weekStart || !weekEnd) {
+      setHubUserTimeOffByCell(new Map())
+      return
+    }
+    const { data, error } = await fetchUserTimeOffForUsersInRange(userIds, weekStart, weekEnd)
+    if (error) return
+    const dayKeys: string[] = []
+    for (let i = 0; i < 7; i += 1) dayKeys.push(ymdAddDays(weekStart, i))
+    setHubUserTimeOffByCell(buildUserTimeOffByCell(data, dayKeys))
+  }, [hubAllPeopleRows, weekStart, weekEnd])
+
+  useEffect(() => {
+    void refreshHubUserTimeOff()
+  }, [refreshHubUserTimeOff, hubVisibleUserIdsSerialized])
 
   const hubUserIdsWithBlocksThisWeek = useMemo(
     () => new Set(hubWeekBlocks.map((b) => b.assignee_user_id)),
@@ -427,6 +466,9 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const { data: nameMap, error: nameErr } = await fetchUserNamesForIds(rosterIds)
       setHubPeopleNameById(nameMap)
       if (nameErr) showToast(`People names: ${nameErr}`, 'warning')
+
+      const archivedSet = await fetchArchivedUserIdSetForIds(rosterIds)
+      setHubArchivedUserIds(archivedSet)
 
       try {
         const salaried = await fetchSalariedUserIdSetFromUserIds(rosterIds)
@@ -647,6 +689,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [addNote, setAddNote] = useState('')
   const [addSaving, setAddSaving] = useState(false)
   const [addError, setAddError] = useState<string | null>(null)
+  const [notComingInBusy, setNotComingInBusy] = useState(false)
   const [addBlockTimelineSegments, setAddBlockTimelineSegments] = useState<AddBlockTimelineSegment[]>([])
   const [addBlockDraftByBlockId, setAddBlockDraftByBlockId] = useState<
     Record<string, { time_start: string; time_end: string }>
@@ -1208,6 +1251,166 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     showToast,
   ])
 
+  const handleMarkNotComingInTodayFromAssignPicker = useCallback(async () => {
+    if (!hubCellAddContext) return
+    const subjectUserId = hubCellAddContext.assigneeUserId
+    const workDateYmd = hubCellAddContext.workDate
+    const personName = hubPeopleNameById.get(subjectUserId) ?? 'Team member'
+    const existingBlockIds = (
+      hubPersonDayBlocks.get(hubPersonDayKey(subjectUserId, workDateYmd)) ?? []
+    ).map((b) => b.id)
+
+    setNotComingInBusy(true)
+    const result = await recordNotComingInForUserAsStaff({ subjectUserId, workDateYmd })
+
+    if (!result.ok) {
+      setNotComingInBusy(false)
+      showToast(result.message, 'error')
+      return
+    }
+
+    let removedCount = 0
+    let removalFailures = 0
+    if (existingBlockIds.length > 0) {
+      const settled = await Promise.all(
+        existingBlockIds.map(async (id) => {
+          const { error } = await deleteJobScheduleBlock(id)
+          return { id, error }
+        }),
+      )
+      removedCount = settled.filter((r) => !r.error).length
+      removalFailures = settled.length - removedCount
+    }
+
+    if (result.alreadyMarked) {
+      showToast(
+        `${personName} already had unpaid time off on ${workDateYmd}.${
+          removedCount > 0
+            ? ` Removed ${removedCount} schedule block${removedCount === 1 ? '' : 's'} for the day.`
+            : ''
+        }`,
+        'warning',
+      )
+    } else {
+      showToast(
+        `Marked ${personName} as not coming in (${workDateYmd}).${
+          removedCount > 0
+            ? ` Removed ${removedCount} schedule block${removedCount === 1 ? '' : 's'} for the day.`
+            : ''
+        }`,
+        'success',
+      )
+      if (result.syncWarning) {
+        showToast(`Salary sync: ${result.syncWarning}`, 'warning')
+      }
+    }
+    if (removalFailures > 0) {
+      showToast(
+        `${removalFailures} schedule block${
+          removalFailures === 1 ? '' : 's'
+        } could not be removed; please remove manually.`,
+        'warning',
+      )
+    }
+
+    closeHubAssignJobPicker()
+    if (jobId) {
+      await load()
+    } else {
+      await loadHub({ quiet: true })
+    }
+    void refreshHubUserTimeOff()
+    setNotComingInBusy(false)
+  }, [
+    hubCellAddContext,
+    hubPeopleNameById,
+    hubPersonDayBlocks,
+    showToast,
+    closeHubAssignJobPicker,
+    jobId,
+    load,
+    loadHub,
+    refreshHubUserTimeOff,
+  ])
+
+  // ──────────────────────────────────────────────────────────────────────
+  // Undo "Not coming in" — confirm modal driven by a click on the cell chip.
+  // ──────────────────────────────────────────────────────────────────────
+  const [undoNotComingInTarget, setUndoNotComingInTarget] = useState<
+    | {
+        personUserId: string
+        personLabel: string
+        workDate: string
+        workDateLabel: string
+      }
+    | null
+  >(null)
+  const [undoNotComingInBusy, setUndoNotComingInBusy] = useState(false)
+
+  const handleRequestUndoNotComingIn = useCallback(
+    (personUserId: string, workDate: string) => {
+      if (!canEdit) return
+      const personLabel = hubPeopleNameById.get(personUserId) ?? 'Team member'
+      setUndoNotComingInTarget({
+        personUserId,
+        personLabel,
+        workDate,
+        workDateLabel: scheduleFormatWeekdayLong(workDate),
+      })
+    },
+    [canEdit, hubPeopleNameById],
+  )
+
+  const handleCancelUndoNotComingIn = useCallback(() => {
+    if (undoNotComingInBusy) return
+    setUndoNotComingInTarget(null)
+  }, [undoNotComingInBusy])
+
+  const handleConfirmUndoNotComingIn = useCallback(async () => {
+    const target = undoNotComingInTarget
+    if (!target || !canEdit) return
+    setUndoNotComingInBusy(true)
+    try {
+      const result = await removeNotComingInForUserAsStaff({
+        subjectUserId: target.personUserId,
+        workDateYmd: target.workDate,
+      })
+      if (!result.ok) {
+        showToast(result.message, 'error')
+        return
+      }
+      if (result.deleted === 0) {
+        // Already cleared by someone else — refresh quietly so the chip goes away.
+        showToast(`${target.personLabel} was already cleared for ${target.workDate}.`, 'warning')
+      } else {
+        showToast(
+          `${target.personLabel} is no longer marked Not coming in (${target.workDate}).`,
+          'success',
+        )
+        if (result.syncWarning) {
+          showToast(`Salary sync: ${result.syncWarning}`, 'warning')
+        }
+      }
+      setUndoNotComingInTarget(null)
+      if (jobId) {
+        await load()
+      } else {
+        await loadHub({ quiet: true })
+      }
+      void refreshHubUserTimeOff()
+    } finally {
+      setUndoNotComingInBusy(false)
+    }
+  }, [
+    undoNotComingInTarget,
+    canEdit,
+    showToast,
+    jobId,
+    load,
+    loadHub,
+    refreshHubUserTimeOff,
+  ])
+
   const requestDeleteBlock = useCallback(
     (id: string) => {
       if (!canEdit) return
@@ -1607,6 +1810,8 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onHubMultiCellAddToggle={canEdit ? onHubMultiCellAddToggle : undefined}
             onRequestHubMultiCellAddMode={canEdit ? onRequestHubMultiCellAddMode : undefined}
             onRequestEditBlockNote={canEdit ? (b) => { setBlockNoteError(null); setBlockNoteEdit(b) } : undefined}
+            userTimeOffByCell={hubUserTimeOffByCell}
+            onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
           />
         </DndContext>
         {hubMultiCellAddActive && !hubAssignJobPickerOpen ? (
@@ -1664,6 +1869,14 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
           addTimeline={addBlockModalTimeline}
         />
         {removeScheduleBlockConfirmModal}
+        <ScheduleDispatchUndoNotComingInModal
+          open={undoNotComingInTarget != null}
+          busy={undoNotComingInBusy}
+          personLabel={undoNotComingInTarget?.personLabel ?? ''}
+          workDateLabel={undoNotComingInTarget?.workDateLabel ?? ''}
+          onCancel={handleCancelUndoNotComingIn}
+          onConfirm={() => void handleConfirmUndoNotComingIn()}
+        />
         <ScheduleDispatchAssignJobPickerModal
           open={hubAssignJobPickerOpen}
           onClose={closeHubAssignJobPicker}
@@ -1692,6 +1905,25 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             showToast('Click a person day cell to place a block for this job.', 'info')
           }}
           onCreateNewJob={jobFormModal ? onCreateNewJobFromHubJobPicker : undefined}
+          notComingIn={
+            hubAssignJobPickerIntent === 'cell' && hubCellAddContext
+              ? {
+                  personLabel:
+                    hubPeopleNameById.get(hubCellAddContext.assigneeUserId) ?? 'Team member',
+                  workDateLabel: scheduleFormatWeekdayLong(hubCellAddContext.workDate),
+                  existingBlockCount: (
+                    hubPersonDayBlocks.get(
+                      hubPersonDayKey(
+                        hubCellAddContext.assigneeUserId,
+                        hubCellAddContext.workDate,
+                      ),
+                    ) ?? []
+                  ).length,
+                  busy: notComingInBusy,
+                  onConfirm: handleMarkNotComingInTodayFromAssignPicker,
+                }
+              : undefined
+          }
         />
         {linkedGroupModalId ? (
           <LinkedScheduleGroupModal

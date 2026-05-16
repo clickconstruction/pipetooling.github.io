@@ -65,6 +65,60 @@ export async function recordNotComingInForUserAsStaff(params: {
   }
 }
 
+export type RemoveNotComingInForUserAsStaffResult =
+  | { ok: true; deleted: number; syncWarning?: string }
+  | { ok: false; message: string }
+
+/**
+ * Parse the `pay_staff_remove_not_coming_in_for_user_day` RPC payload into a
+ * tagged-union result. Exported for unit tests; callers should use
+ * `removeNotComingInForUserAsStaff` instead.
+ */
+export function parseRemoveNotComingInResult(data: unknown): RemoveNotComingInForUserAsStaffResult {
+  if (data === null || typeof data !== 'object') {
+    return { ok: false, message: 'Empty response from server' }
+  }
+  const o = data as Record<string, unknown>
+  const ok = o.ok === true
+  if (!ok) {
+    const message = typeof o.message === 'string' && o.message ? o.message : 'Could not undo time off'
+    return { ok: false, message }
+  }
+  const deleted = typeof o.deleted === 'number' ? o.deleted : 0
+  const syncWarning =
+    typeof o.sync_warning === 'string' && o.sync_warning ? o.sync_warning : undefined
+  return syncWarning ? { ok: true, deleted, syncWarning } : { ok: true, deleted }
+}
+
+/**
+ * Pay-staff path: undo a single-day "Not coming in" `user_time_off` row that was
+ * created from Schedule Dispatch. Tightly scoped server-side to that exact row
+ * (see migration `20260515233801_pay_staff_remove_not_coming_in_for_user_day.sql`).
+ *
+ * - `deleted: 0` indicates nothing matched (e.g. somebody already removed it);
+ *   callers can treat that as a no-op success and refresh.
+ * - `syncWarning` is set when post-delete salary sync raised a non-fatal error.
+ */
+export async function removeNotComingInForUserAsStaff(params: {
+  subjectUserId: string
+  workDateYmd: string
+}): Promise<RemoveNotComingInForUserAsStaffResult> {
+  const { subjectUserId, workDateYmd } = params
+  try {
+    const data = await withSupabaseRetry(
+      async () =>
+        supabase.rpc('pay_staff_remove_not_coming_in_for_user_day', {
+          p_user_id: subjectUserId,
+          p_work_date: workDateYmd,
+        }),
+      'pay_staff_remove_not_coming_in_for_user_day',
+    )
+    return parseRemoveNotComingInResult(data)
+  } catch (e) {
+    return { ok: false, message: formatErrorMessage(e, 'Could not undo time off') }
+  }
+}
+
 /** Self-serve insert (RLS: own user only). Returns overlap skip same as staff path. */
 export async function recordNotComingInSelf(params: {
   userId: string
