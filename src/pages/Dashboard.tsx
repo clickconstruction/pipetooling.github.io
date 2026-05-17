@@ -32,6 +32,8 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
+import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -1144,6 +1146,11 @@ export default function Dashboard() {
     jobName: string
   } | null>(null)
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
+  const [jobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
+  // Component-local "show full dashboard" override; resets every page load so
+  // the field-first paint is consistent. The Job Mode toggle in the gear menu
+  // remains the persistent setting.
+  const [jobModeShowFullDashboard, setJobModeShowFullDashboard] = useState(false)
   const [collectPaymentJob, setCollectPaymentJob] = useState<{
     id: string
     hcpNumber: string
@@ -4477,6 +4484,56 @@ export default function Dashboard() {
       )}
     </>
   )
+
+  // Job Mode focused view: replaces top of Dashboard with one big card; rest of
+  // Dashboard is hidden until user taps "Show full dashboard" (component-local;
+  // resets every page load). Toggle lives in the header gear menu (Layout.tsx).
+  if (jobModeEnabled && !jobModeShowFullDashboard && authUser?.id) {
+    return (
+      <div>
+        {tallyAndPinnedBlock}
+        <DashboardJobModeCard
+          userId={authUser.id}
+          onLeaveReport={(j) => setLeaveReportJob(j)}
+        />
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
+          <button
+            type="button"
+            onClick={() => setJobModeShowFullDashboard(true)}
+            style={{
+              padding: '0.5rem 0.9rem',
+              borderRadius: 8,
+              border: '1px solid #d1d5db',
+              background: 'white',
+              color: '#1f2937',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Show full dashboard
+          </button>
+        </div>
+        {leaveReportJob && (
+          <AdditionalReportModal
+            open={!!leaveReportJob}
+            onClose={() => setLeaveReportJob(null)}
+            onSaved={() => {
+              setLeaveReportJob(null)
+              void refreshDashboardAssignedJobLists()
+            }}
+            onReportSaved={() => void refreshDashboardAssignedJobLists()}
+            authUserId={authUser?.id ?? null}
+            userRole={role}
+            jobId={leaveReportJob.id}
+            hcpNumber={leaveReportJob.hcpNumber}
+            jobName={leaveReportJob.jobName}
+            jobAddress={leaveReportJob.jobAddress}
+          />
+        )}
+      </div>
+    )
+  }
 
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
   return (

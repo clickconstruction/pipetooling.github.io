@@ -18,27 +18,11 @@ export function computePayReportAssignmentsBreakdown(
   jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }>,
   bidsMap: Record<string, { bid_number: string; project_name: string; address: string }>,
 ): PayReportAssignmentDayBreakdown[] {
-  function getEffectiveJobAssignments(pn: string, workDate: string): CrewJobAssignment[] {
-    const key = `${workDate}:${pn}`
-    const row = crewByDatePerson[key]
-    if (!row) return []
-    if (row.crew_lead_person_name) {
-      const leadKey = `${workDate}:${row.crew_lead_person_name}`
-      const leadRow = crewByDatePerson[leadKey]
-      return leadRow?.job_assignments ?? []
-    }
-    return row.job_assignments
+  function getJobAssignmentsForDay(pn: string, workDate: string): CrewJobAssignment[] {
+    return crewByDatePerson[`${workDate}:${pn}`]?.job_assignments ?? []
   }
-  function getEffectiveBidAssignments(pn: string, workDate: string): CrewBidAssignment[] {
-    const key = `${workDate}:${pn}`
-    const row = crewBidsByDatePerson[key]
-    if (!row) return []
-    if (row.crew_lead_person_name) {
-      const leadKey = `${workDate}:${row.crew_lead_person_name}`
-      const leadRow = crewBidsByDatePerson[leadKey]
-      return leadRow?.bid_assignments ?? []
-    }
-    return row.bid_assignments
+  function getBidAssignmentsForDay(pn: string, workDate: string): CrewBidAssignment[] {
+    return crewBidsByDatePerson[`${workDate}:${pn}`]?.bid_assignments ?? []
   }
   function jobLabel(jobId: string): string {
     const d = jobsMap[jobId]
@@ -57,8 +41,8 @@ export function computePayReportAssignmentsBreakdown(
     return bidNum || projectName || (d.address ?? '').trim() || bidId.slice(0, 8)
   }
   return dayRows.map((r) => {
-    const jobAssignments = getEffectiveJobAssignments(personName, r.work_date)
-    const bidAssignments = getEffectiveBidAssignments(personName, r.work_date)
+    const jobAssignments = getJobAssignmentsForDay(personName, r.work_date)
+    const bidAssignments = getBidAssignmentsForDay(personName, r.work_date)
     const jobParts = jobAssignments.map((a) => {
       const hrs = r.hours * (a.pct / 100)
       return `${jobLabel(a.job_id)} ${hrs.toFixed(2)} hrs`

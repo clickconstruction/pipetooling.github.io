@@ -7,16 +7,49 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-15
+last_updated: 2026-05-16
 estimated_read_time: 30-40 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.536+ (reverse chronological)"
+version_range: "v2.547+ (reverse chronological)"
 
 key_sections:
+  - name: "Latest Version (v2.547)"
+    line: ~1825
+    description: "People \u2192 Review **Team Summary** drilldown modals \u2014 uniform layout & visibility polish across all eight modals (**Hours**, **Overhead hours**, **Overhead labor**, **Field hours**, **Gross Revenue**, **Net Revenue**, **Profit (after overhead)**, **Gross Revenue/hr**, **Profit/hr (after overhead)**). **(1) Hours breakdown** \u2014 day list now includes Office and Bid allocations (previously the modal-only `crewByDateForPerson` builder filtered out the configured Office job and didn't read `people_crew_bids` at all, so Paige-shaped *whole day on Office* / *whole day on a bid* days surfaced as `No crew assignment`); each allocation line gets the **address** appended (`(percent) Job # | Job Name - 12921 FM 20 Kingsbury TX`); running total moved into the title (`Hours breakdown \u2014 Abraham \u00b7 50.8 hrs`); the redundant top-and-bottom `Total: N hrs` lines + the `Daily hours` `<h3>` + the `Total = sum of daily hours = N hrs. Each line under a day reads (pct) Job # | Job Name.` legend caption are gone; the *Sub labor hours are not added in this mode \u2014 toggle Only paid jobs in Review to count them.* hint is now always rendered (was previously gated on `subLaborRows.length > 0`, which hid it precisely when discoverability mattered most). **(2) Overhead hours breakdown** \u2014 the static *Bucket | Hours | Share of overhead* table is replaced with a hierarchical session-level layout that matches the Hours breakdown idiom: **`Office \u00b7 17.7 hrs`** + **`Bids \u00b7 12.9 hrs`** centered section headers, per-day blocks underneath each (**`{DOW} {YYYY-MM-DD} \u00b7 N.N hrs`**), and per-session lines indented under each day (Office: `(pct) 8:00 AM \u2192 5:30 PM \u00b7 N hrs`, Bids: `(pct) B249 | Project Name - address \u00b7 N hrs`). Running total moved into the title (`Overhead hours breakdown \u2014 Abraham \u00b7 30.5 hrs`); intro paragraph moved to the bottom as a `.caption`; the *Where overhead fits in this person's work* `<h3>` is hidden (the column headers carry enough context); the **Share of total work** column header + cells are left-aligned within their rightmost column position via inline `text-align: left;` so percentages don't bump up against the right edge of the table. **(3) Overhead labor breakdown** \u2014 intro paragraph moved to the bottom; `Overhead labor: -$X (X hrs \u00d7 $Y/hr)` line is centered; **Share** column header + cells left-aligned within their rightmost column; the *Where it shows up* cell on the Field row trimmed from `Already in Net Revenue via job-level revenue \u2212 parts \u2212 total labor; not added to this column to avoid double-counting.` to just `Already in Net Revenue.` (the long version is still in the bottom captions). **(4) Field hours breakdown** \u2014 running total moved into the title (`Field hours breakdown \u2014 Abraham \u00b7 17.9 hrs`); redundant `Field hrs:` line removed; the `How field hrs is computed` `<h3>` is collapsed into the table's first column header (the column that used to read `Step` is now `How field hrs is computed`); `Where the field hrs went` `<h3>` is centered; **Share of field hrs** column header + cells left-aligned within rightmost column. **(5) Gross Revenue breakdown** \u2014 every column header and every body cell is centered (`text-align: center;` inline on each `<th>` and `<td>`, `font-variant-numeric: tabular-nums` from `class=\"num\"` preserved); running total moved into the title (`Gross Revenue breakdown \u2014 Abraham \u00b7 $872`); explanation paragraph moved to the bottom. **(6) Net Revenue breakdown** \u2014 running total moved into the title (`Net Revenue breakdown \u2014 Abraham \u00b7 $1,766`); explanation paragraph moved to the bottom. **(7) Profit (after overhead) breakdown** \u2014 explanation paragraph moved to the bottom. **(8) Gross Revenue/hr breakdown** \u2014 explanation paragraph moved to the bottom. **(9) Profit/hr (after overhead) breakdown** \u2014 explanation paragraph moved to the bottom. **Cross-cutting typography**: the `· N hrs` muted suffix on per-day headers (`Mon 2026-05-04 · 6.8 hrs`) and on Overhead-hours section headers (`Office · 17.7 hrs`) now inherits the parent's color / weight / size verbatim (only `margin-left: 0.5rem` retained for spacing) so all label-and-total pairings read with one typography rather than two. **Schema / state plumbing** that landed alongside (1) and (2): **`TeamReviewUnion`** gains `periodCrewBidRows: Array<{work_date, person_name, bid_assignments}>`, `bidsById: Map<bid_id, { bid_number, project_name, address }>`, and `overheadSessionsByPerson: Record<person_name, Array<{ sessionId, workDate, bucket, clockedInIso, clockedOutIso, hours, bidId }>>`. **`loadTeamReviewUnion`** adds a period-only `people_crew_bids` fetch to the parallel `Promise.all`, a conditional `get_bids_by_ids` RPC keyed on the union of bid IDs, and a per-person session list collected during the existing `overheadSessionsAllTime` iteration (period-filtered, approved-closed only, open sessions skipped because they have no end time to render). **`HoursBreakdown.dailyRows[].crewAllocations`** widened from `{ hcp, pct, hours }` to `{ hcp, jobName, address, pct, hours }`; the `crewByDateForPerson` builder in `derivePersonTeamSummary` iterates `union.periodCrewRows` (no Office filter) and `union.periodCrewBidRows` directly \u2014 revenue / profit math still uses `crewJobsWithLeadFiltered` so Office and bids stay out of field-revenue allocation. New **`OverheadSessionLine`** type + **`TeamSummaryRow.overheadSessions: OverheadSessionLine[]`**: `derivePersonTeamSummary` formats `clocked_in_at` / `clocked_out_at` to `8:00 AM`-style strings via `Intl.DateTimeFormat` in `APP_CALENDAR_TZ`, resolves bid display fields via `union.bidsById` (`B{bid_number}` with auto-`B` prefix when the raw number doesn't already start with one, `\\u2014` fallback for missing project name), sorts by `(workDate, startTime)` ascending. **`breakdownsPayload`** forwards `overheadSessions`. **New iframe helpers**: `buildOverheadSessionsSection(label, sessions, bucketTotalHrs)` groups sessions by `workDate`, computes `(session.hours / dayBucketTotal) \u00d7 100` for the per-line pct, and reuses the existing `.hours-day-section` / `.hours-day-header` / `.hours-day-allocs` / `.hours-day-alloc` / `.alloc-pct` / `.alloc-jobnum` / `.alloc-jobname` / `.alloc-address` / `.alloc-counted` styles. New CSS: `.modal .hours-day-alloc .alloc-address { color: #6b7280; }`. None of the math changes: revenue / profit / overhead pool / field-hour rate are exactly as they were after **v2.539** Convention 1 + **v2.540** Overhead labor + **v2.544** hierarchical layout. This is purely a presentation pass that makes the modals consistent with each other, surfaces the *whole story* of where someone's hours went (Office and Bids included), and gets totals into titles so the modal headers carry the headline metric. Files: [`src/pages/People.tsx`](src/pages/People.tsx) \u2014 `TeamReviewUnion` type, `loadTeamReviewUnion` (period bids fetch, `get_bids_by_ids`, `overheadSessionsByPerson` populate, return), `HoursBreakdown.dailyRows[].crewAllocations` type, `OverheadSessionLine` type + `TeamSummaryRow.overheadSessions` field, `derivePersonTeamSummary` (`crewByDateForPerson` rewrite, `Intl.DateTimeFormat` + bid metadata resolution for `overheadSessions`), `breakdownsPayload` extended, iframe `<style>` (`.alloc-address`, `.day-hours` typography reset to inherit), iframe `buildHoursBody` / `buildOverheadHoursBody` / `buildOverheadLaborBody` / `buildFieldHoursBody` / `buildGrossBody` / `buildNetBody` / `buildProfitBody` / `buildGrossPerHourBody` / `buildProfitPerHourBody` rewrites, new iframe helper `buildOverheadSessionsSection`, modal `openModal` title constructors for Hours / Overhead-hours / Field / Gross / Net (running totals appended via `\\u00b7` + `fmtH` / `fmtMoney`). Verified: `npx tsc --noEmit` clean; no new lints; 17 / 17 `peopleHoursUnallocatedRows` + 15 / 15 `peopleHoursPendingByCell` unit tests still pass; one additional period-only `people_crew_bids` fetch + one conditional `get_bids_by_ids` RPC added to `loadTeamReviewUnion` (both gated to skip empty inputs, so cost is zero when no bids are crew-linked in the period)."
+  - name: "Previous Version (v2.546)"
+    line: ~1825
+    description: "**Quickfill** **Unassigned field time** — every input now comes from approved-closed `clock_sessions` only. New pure helper [`buildApprovedClosedHoursByPersonByDate`](src/lib/peopleHoursUnallocatedRows.ts) sums approved-closed clock hours per (person, work_date) across every bucket (office, bid, field, unassigned); `computeUnallocatedFieldRows` uses that map as the source for both candidate keys and `dayHoursRaw` instead of the legacy `people_hours.hours` lookup. Hourly people now read `dayHoursRaw` directly from approved clock — manual grid overrides in `people_hours` no longer create phantom unassigned rows when no clock backs them up. Salary people still get `8` on weekdays, but **only** when they have at least one approved closed session that day; no clock activity → no row (the long-standing phantom 8h on PTO/no-show salary days is gone). Pending closed sessions are excluded by the caller's Supabase query (`approved_at IS NOT NULL`) and additionally by `buildApprovedClosedHoursByPersonByDate` itself, so the section never reflects something that hasn't actually been approved into payroll yet — Pending Sessions UI is the canonical home for those. [`ComputeUnallocatedFieldRowsArgs.peopleHours`](src/lib/peopleHoursUnallocatedRows.ts) is now optional + ignored (kept for caller-side compile during rollout). [`QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx) drops the `people_hours` Supabase query, `HoursRow` type, `peopleHours` state, and the `people_hours` Realtime subscription — Realtime now only reacts to `people_crew_jobs` / `people_crew_bids` / `clock_sessions` (the actual sources of truth). Tests in [`peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts) rewritten to seed approved sessions instead of `peopleHours`; new test suite for `buildApprovedClosedHoursByPersonByDate` (2 tests), new gate tests (`skips salary weekdays with NO approved clock`, `skips when a closed session is still pending approval`, `does not emit weekend rows for salaried people even with approved weekend clock`, `uses approved-clock hours (not people_hours) for hourly people`). 21 / 21 vitest pass; full suite 548 / 548 green; `npx tsc --noEmit` clean."
+  - name: "Previous Version (v2.545)"
+    line: ~1825
+    description: "**`PeopleHoursDayAuditModal`** per-clock-session **Assign** popover — every clock-session row whose `job_ledger_id` and `bid_id` are both null and where `canEditCrewJobs && !sessionsUserMissing && !!s.user_id` now shows the shared **`AssignSessionJobPopover`** trigger right alongside the existing **Approve** / **Edit** buttons in the row's right-side actions cluster. The popover is the same portal-rendered component the Dashboard clock strip uses (`src/components/clock-sessions/AssignSessionJobPopover.tsx`) — `popoverZIndex={1110}` so it floats above the audit modal's `zIndex: 1002`, dispatch quick-picks seeded from `dispatchScheduleAssigneeUserId={s.user_id}` + `dispatchScheduleWorkDateYmd={workDate}`, unified `search_jobs_ledger` + `search_bids_for_clock` results with trade pills, on-save it `UPDATE`s `clock_sessions.job_ledger_id` (or `bid_id`) for **just that session**. The **`clock_sessions_sync_crew_assignments_after_job_bid`** trigger (migration `20260402120000`) fires on the update and re-runs `sync_crew_jobs_from_clock` for `(person, work_date)`; per **v2.538** the RPC always rewrites `people_crew_jobs.job_assignments` so for already-approved sessions the crew row updates server-side immediately. The modal's `onSaved` hook calls `refreshSessions()` + bubbles `onCrewSaved` so the Quickfill Unassigned section re-runs `loadAll` + `computeUnallocatedFieldRows` and the row drops from the list as soon as `unallocatedHrs ≤ thresholdHours`. **This is the canonical fix for the *Darren has 6.02 unassigned hours but his clock session has free-text notes about the ATV job* case** that motivated **v2.543**: rather than manually adding a `people_crew_jobs.job_assignments` entry, the dispatcher links the session to the actual `job_ledger_id` and the team summary stays consistent with payroll forever. **v2.543** mechanisms (`Assign a job or bid` blue CTA on the empty assignments panel, view-mode subtitle ternary, pending-approval banner from **v2.537**) remain unchanged — together they cover all three repair paths from the audit modal: (a) the session was never linked to a job in the first place → per-row **Assign** popover; (b) the session is linked but not yet approved → pending-approval banner with **Approve all**; (c) the session was overhead and shouldn't allocate at all → override `people_crew_jobs.job_assignments` directly via the **Assign a job or bid** CTA. Files: [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx) — added `import { AssignSessionJobPopover } from './clock-sessions/AssignSessionJobPopover'`, new `canAssignSessionJob` predicate per session row, popover rendered inside the existing `(showClockEdit || canApprove || canAssignSessionJob) ? <actions> : null` flex cluster. No prop additions, no caller-side breaking changes — the three call sites ([`Quickfill.tsx`](src/pages/Quickfill.tsx) via `QuickfillUnassignedFieldTimeSection`, [`QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx), [`HoursSection.tsx`](src/components/quickfill/HoursSection.tsx), [`People.tsx`](src/pages/People.tsx)) get the new affordance for free. Verified: `npx tsc --noEmit` clean for touched files (two unrelated pre-existing errors in untracked `src/lib/jobModePickCurrentNext.ts` from a parallel work stream); 544 / 544 vitest pass; no new lints."
+  - name: "Previous Version (v2.544)"
+    line: ~1825
+    description: "People → Review **Team Summary** **Hours breakdown** drilldown reformatted as a hierarchical Day \u2192 indented allocation list. The old `Date | Hours | Crew jobs (per day)` table (where the third column was a comma-joined `JP787 (32%), JP737 (23%), JP796 (15%)` string) is replaced with a per-day block: bolded header `{DOW} {YYYY-MM-DD} \u00b7 N.N hrs` and an indented allocation list where each crew assignment renders as **`(percent) Job # | Job Name`** on its own line. In **Only paid jobs** mode the day header also shows `\u00b7 {counted} hrs counted` and each allocation line carries `\u00b7 {hours} hrs counted` for traceability against the Crew subtotal. Allocations within a day are sorted by descending pct so the biggest share rises to the top of each day's list. Days with no crew assignment surface a muted *No crew assignment* line under the header (default mode only \u2014 Only-paid mode skips empty-allocation days, unchanged). Implementation extends `HoursBreakdown.dailyRows[].crewAllocations` from `{ hcp, pct, hours }` to `{ hcp, jobName, pct, hours }`; the `crewByDateForPerson` builder in `derivePersonTeamSummary` reads `union.jobsById.get(c.job_id)?.job_name` and trims it (empty string falls back to `\u2014` at render time). Iframe `buildHoursBody` adds four pure helpers \u2014 `dowShort(dateStr)`, `dayHeaderLabel(dateStr)`, `buildAllocLineHtml(a, opts)`, `buildDaySectionHtml(d, opts)` \u2014 backed by new `.hours-day-list` / `.hours-day-section` / `.hours-day-header` / `.hours-day-allocs` / `.hours-day-alloc` / `.alloc-pct` / `.alloc-jobnum` / `.alloc-jobname` / `.alloc-counted` / `.hours-day-noalloc` / `.hours-day-total` styles in the iframe `<style>`. Sub-labor section keeps its prior tabular layout (rare and already short-form). Print-modal mode (v2.542) inherits the new layout for free since the styling lives under `.modal` which is what `body.printing-modal` exposes. Files: [`src/pages/People.tsx`](src/pages/People.tsx) (`HoursBreakdown` type, `crewByDateForPerson` populate, iframe CSS, `buildHoursBody` rewrite). Verified: `npx tsc --noEmit` clean, no lints. The same allocation data already drives the Team Summary table; this is purely a presentation change in the drilldown."
+  - name: "Previous Version (v2.543)"
+    line: ~1825
+    description: "**`PeopleHoursDayAuditModal`** (Open day audit from Quickfill **Unassigned field time**, People → Hours grid correct-day audit, Quickfill Hours section) — discoverability fix so adding a job/bid is one click from the empty state. (1) **Assign a job or bid CTA** — when `canEditCrewJobs && !isEditMode` and the day has zero crew assignments, the **Job / bid assignments** panel now renders an `Assign a job or bid` blue-outline button right next to the *No job or bid assignments for this day.* text; clicking it sets `isEditMode = true`, `jobSearchOpen = true`, `jobSearchText = ''`, and `jobSearchResults = []` in one click so the search input is already mounted, focused, and ready for the dispatcher to type (no need to discover the small `Edit` button at the top-right then the `+` button inside the assignments row). Once a result is picked, it lands in `unifiedAssignments` at 100%, and the existing **Save crew** button persists via the two upserts to `people_crew_jobs` / `people_crew_bids`; the Quickfill Unassigned section then drops the row from its list on the parent's `onCrewSaved` → `loadAll` refresh. (2) **View-mode subtitle fix** — the subtitle used to hardcode *“This day is marked Correct (view only).”* in every non-edit state, but the modal never actually consults `hours_reviewed` and the user often opens it from the Unassigned section *because* the day is the opposite of correct. New wording: `Editing` keeps the existing *“Editing — save crew assignments with Save…”* copy; `view + canEditCrewJobs` becomes *“Click Edit to change assignments or sessions.”* (points at the existing top-right Edit affordance for users who want to add to an already-populated day); `view + !canEditCrewJobs` becomes *“View only — you don't have permission to edit this day.”* Apostrophe written as `\\u2019` so the inline `style={...}` string literal survives both the TS parser and Prettier without escape gymnastics. Files: [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx) — subtitle ternary at the top of the dialog body, new flex wrapper around the empty-state `<p>` so the button can sit inline, button styled to match the existing `Open in Schedule Dispatch` blue-outline aesthetic. No new state, no new effects, no new exports. Verified: `npx tsc --noEmit` clean, no new lints; visible behavior is unchanged for users who land in Edit mode directly via the top-right button. Three caller sites unchanged ([`Quickfill.tsx`](src/pages/Quickfill.tsx) — via `QuickfillUnassignedFieldTimeSection`, [`QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx), [`HoursSection.tsx`](src/components/quickfill/HoursSection.tsx), [`People.tsx`](src/pages/People.tsx))."
+  - name: "Previous Version (v2.542)"
+    line: ~1816
+    description: "People → Review **Team Summary** medium-impact polish (items 5 / 6 / 7 from the v2.541 holistic review). **(5) Popup no longer double-fetches** — clicking the popup button on the embedded summary used to issue a fresh `loadTeamSummaryData()` even though the inline iframe had just rendered the same rows. New `teamSummaryDataCacheRef` (a `useRef<{ rows, cacheKey }>`) holds the inline iframe's most recent rows; `buildTeamSummaryCacheKey()` joins the effective `[start, end]`, `reviewOnlyPaidInFull`, sorted `showPeopleForReview` membership, and a salary-flag + wage signature of every `payConfig` entry into one comparable string. Auto-refresh effect clears the cache unconditionally on any dep change so the popup can never show data older than the inline view. After a successful inline load the cache is stamped with the cache key snapshotted *before* the network round-trip, so a dep-driven invalidation that races the load still gets caught on the next popup click. Popup path checks `cached != null && cached.cacheKey === buildTeamSummaryCacheKey()`; on a hit, `dataPromise = Promise.resolve(cached.rows)` resolves in a microtask and the new window paints instantly with no Supabase traffic and no `Loading Team Summary…` toast (the toast's still shown on a cache miss). Button **renamed** from `Open in print view` to `Open in new window` (the popup is fully interactive — print is one of many things you can do with it); title updated to *“Open the same fully-interactive summary in a new browser window (handy for printing or sharing)”*. **(6) Period selector expanded** — `ReviewPeriod` gains `'this_week'` (Sunday → today, running-week monitoring), `'last_30_days'` (rolling 30 days; replaces the misnamed `'last_month'` which was 30-day rolling, not the previous calendar month), `'last_90_days'`, `'this_year'` (Jan 1 → today), and `'custom'` (two `<input type=\"date\">` From/To fields with `min` / `max` cross-bounding, swapped if entered out of order, and a *“Pick both dates to set the range.”* hint when one input is empty). Switching to **Custom range…** seeds the inputs with the *current* effective range so the picker isn't empty. The auto-refresh effect now skips loads while the custom pair is half-finished so the network doesn't thrash mid-typing. `getReviewDateRange` and `getReviewPeriodLabel` learned all five new periods. Both data-loading effects (`selectedReviewPersonIndex` / Team Summary auto-refresh) include `reviewCustomRangeStart` + `reviewCustomRangeEnd` in their dep arrays. **(7) Drilldown modals are now printable** — Print button added to the modal header (next to Close); clicking it adds `body.printing-modal`, calls `window.print()`, and an `afterprint` listener strips the class so the screen view restores. New `@media print` rules scope the existing modal-hide to `body:not(.printing-modal)` and, when `.printing-modal` is set, hide everything outside `.modal` (`<h1>`, `.meta`, `.meta-sub`, `.tools`, `> table`, `.footer-caption`, `.modal-backdrop`, `.modal-print`, `.modal-close`) and reset the modal to a static, full-width, no-shadow block so it fills the printable page cleanly. Defensive cleanup: `closeModal()` always strips `.printing-modal` (in case the user cancelled the print dialog and the browser didn't fire `afterprint`), and the Escape-key handler does the same. Print button styled to match the existing toolbar buttons (white bg / 1px border / `:focus-visible` 2px blue outline / `Print` text). Files: [`src/pages/People.tsx`](src/pages/People.tsx) — `ReviewPeriod` type, `reviewCustomRange{Start,End}` state, `getReviewDateRange`, `getReviewPeriodLabel`, period dropdown UI, custom range inputs, two effect dep arrays, `teamSummaryDataCacheRef`, `buildTeamSummaryCacheKey`, popup short-circuit, button rename, modal-header `<button class=\"modal-print\">`, scoped `@media print` rules, `modal-print` JS handler, `closeModal` cleanup. Verified: `npx tsc --noEmit` clean, no new lints."
+  - name: "Previous Version (v2.541)"
+    line: ~1816
+    description: "People → Review **Team Summary** high-impact polish: (1) **Drilldown cells are now keyboard accessible** — every clickable cell (Hours / Overhead hrs / Overhead labor / Field hrs / Gross / Net / Profit / Gross-, Net-, Profit-per-hr) gets `tabindex=\"0\"`, `role=\"button\"`, a descriptive `aria-label` (e.g. *“Profit after overhead breakdown for Robert: $4,250”*), and Enter / Space keydown handlers that match the existing click behavior; `:focus-visible` outline (2px `#2563eb`) so the focused cell is obviously highlighted; opening a modal pulls focus to the close button and closing it returns focus to the originating cell — keyboard-only users and screen readers can now reach every drilldown that mouse users can. (2) **Open drilldowns survive auto-refresh** — the iframe now posts `team-summary-modal-open` / `team-summary-modal-close` messages to the parent; the auto-refresh `useEffect` that previously rebuilt the entire `srcDoc` whenever `reviewOverheadRates.ratePerHour`, `reviewPeriod`, `payConfig`, or any review dep changed (and silently wiped any open modal) now sets `teamSummaryRefreshPendingRef` while the modal is open and drains the pending refresh once the modal closes (via a `teamSummaryDrainTick` state bump that re-runs the same effect). The user's investigation is preserved; the refresh runs as soon as they're done. (3) **In-table search + click-to-sort** — a tools row above the table renders a 220px-min `<input type=\"search\">` (Filter people by name, case-insensitive substring) and a `Reset sort` button (disabled when already at the default Profit-after-overhead-desc sort). Every `<th>` is `data-sort=\"key\"` + `tabindex=\"0\"` + `role=\"columnheader\"` with `aria-sort` and a `▲` / `▼` indicator; clicking or pressing Enter / Space toggles direction (text columns default asc on first click, numeric columns default desc); null values (e.g. a row missing `profitAfterOverhead` because `overheadRate` hasn't loaded) sort to the bottom regardless of direction so they don't claim ranks. Sort + filter happen entirely client-side off a single `breakdowns` payload — no parent round-trip. (4) **Footer transparency** — when the search filter is active the footer label switches from `Team total · N people` to `Filtered total · k of N people` and the totals reflect the filtered subset (so the user can see *“these eight people generated $X”* directly); a `aria-live=\"polite\"` *Showing k of N* status sits next to the search input. A persistent `<p class=\"footer-caption\">` below the table notes that **archived or external-only workers contribute to job revenue but are not in this table, so their share of those jobs is not summed in the totals** — addressing the silent-undercount risk where the roster filter excludes someone who worked on a job. (5) **Print mode** hides the tools row, sort cursors, and sort indicators via `@media print`, plus the existing modal/click-cell suppressions, so printed output is identical to the pre-v2.541 layout. **Architectural change**: the row HTML and footer HTML are no longer built on the parent (server-side TS) and shipped as static strings — they're now built inside the iframe IIFE from a single `breakdowns` payload that carries `idx`, `name`, all numeric fields (`totalHours`, `overheadHours`, `overheadLaborCost`, `fieldHours`, `gross`, `net`, `profitAfterOverhead`, `revPerHour`, `netPerHour`, `profitPerHourAfterOverhead`, `payConfigSource`, `hourlyWage`), and the per-person breakdown sub-objects (`hb` / `gb` / `nb` / `pb`). The pre-v2.541 TS cell builders (`cellMoney`, `cellHoursClickable`, `cellOverheadLaborClickable`, etc.) and the `tableRows.join('\\n')` / `footerRow` HTML strings are gone; the iframe's new `renderTable()` function filters → sorts → emits row HTML → emits footer HTML → updates `aria-sort` indicators → updates `Showing k of N` → re-attaches click + keydown handlers in one pass. The unused parent-side `fmtMoney` / `fmtHours` / `negStyle` helpers were removed (they only formatted strings that are now produced inside the iframe). Files: [`src/pages/People.tsx`](src/pages/People.tsx) — single edit site (~9100 LOC area inside `openTeamSummaryWindow`); the data-load path, `derivePersonTeamSummary`, and modal builders (`buildHoursBody`, `buildOverheadLaborBody`, …) are unchanged. Verified: `npx tsc --noEmit` clean, no new lints, Vite HMR push clean."
+  - name: "Previous Version (v2.540)"
+    line: ~1816
+    description: "People → Review **Team Summary** gains an **Overhead labor** column positioned **between Overhead hrs and Field hrs** (so the four overhead-related cells — Overhead hrs / Overhead labor — sit adjacent before the field-revenue side of the table), showing each person's `(officeHours + bidHours) × people_pay_config.hourly_wage` for the period as a **negative dollar amount** (cost convention) with red `negStyle` styling and `-$X` via `fmtMoney`, plus a negative footer Team total. Office workers who used to render `$0` across Gross / Net / Profit (after overhead) — because their wage was folded into the rolling 90-day overhead pool and silently redistributed to field workers via the `$/field-hour` rate — now show their actual contribution to that pool right in their own row. **Field labor is intentionally excluded** from this column: it is already subtracted at the per-job level inside Net Revenue (`job_net = revenue \u2212 parts \u2212 total_labor`), so listing it again here would visually double-count. None of the existing math changes: the overhead-pool model, the `$/field-hour` rate, and the **Profit (after overhead)** deduction (still `r.fieldHours × overheadRate`) all stay exactly as they were after **v2.539** Convention 1. **`TeamSummaryRow`** gains `hourlyWage: number; overheadLaborCost: number` (stored as `-(overheadHours × hourlyWage)` where `overheadHours = officeHours + bidHours`); `derivePersonTeamSummary` populates both from the same `payConfigSnapshot[personName]` already in scope; the totals reducer accumulates `acc.overheadLaborCost += r.overheadLaborCost` and naturally sums to a negative team total; new `cellOverheadLaborClickable` helper renders `-$X` red via `negStyle(n)` with the same dotted-underline drilldown affordance, falling back to `—` when wage is unset or all hours were field (`n >= 0`); `breakdownsPayload` forwards `hourlyWage`, `overheadLaborCost`, and `payConfigSource` (`'salary' | 'hourly' | 'unknown'`). Click the cell to open an **Overhead labor breakdown** modal (`buildOverheadLaborBody`) showing source, hourly_wage, and a focused Office / Bid split (`-(hours × wage)`) with shares and a negative subtotal — plus a separate **For context: this person's field labor** section that lists `fieldHours × wage` greyed out with a clear *“Already in Net Revenue via job-level revenue \u2212 parts \u2212 total labor; not added to this column to avoid double-counting”* note, and an amber caption when `hourly_wage` is missing on `people_pay_config`. Files: [`src/pages/People.tsx`](src/pages/People.tsx) (type field rename, formula `-(overheadHours × hourlyWage)`, totals reducer + init key, `cellOverheadLaborClickable`, `<th>Overhead<br>labor</th>`, table row, footer cell, breakdownsPayload, `buildOverheadLaborBody`, `overhead_labor` click branch + modal title). Verified: `npx tsc --noEmit` clean; 17 / 17 `peopleHoursUnallocatedRows` + 15 / 15 `peopleHoursPendingByCell` unit tests still pass; lints clean. Print-iframe escape audit: every JS string literal in `buildOverheadLaborBody` either uses HTML entities (`&mdash;`, `&ldquo;`, …), unicode escapes (`\u00d7`, `\u2014`, `\u2192`, `\u2212`), or the `\\'` template-literal-survival pattern for the two `person\\'s` apostrophes — same trap that bit v2.539 doesn't recur."
+  - name: "Previous Version (v2.539)"
+    line: ~1820
+    description: "Align two `field × pct` consumers (`peopleHoursUnallocatedRows.computeUnallocatedFieldRows` and `derivePersonTeamSummary` block in `src/pages/People.tsx`) with the `sync_crew_jobs_from_clock` trigger semantic so all six labor-attribution call sites multiply crew percentages by **`dayHoursRaw`** (Convention 1, share-of-total-day) instead of `(dayHoursRaw - overheadOnDay)` (Convention 2, share-of-field-only). The trigger writes pct as share of total session hours including the configured Office overhead job, and four consumers (`loadReviewData`, `teamLabor.ts`, `payReportAssignmentsBreakdown`, `draftPayrollPersonBreakdown`) already read it that way; the two Convention-2 consumers under-credited non-Office jobs by exactly the Office share of the day and surfaced a phantom remainder as 'unallocated'. Practical effect: Quickfill **Unassigned field time** drops Paige-shaped rows (9.19h day with 2.72h Office clock + 70.4% non-Office crew → 1.91h phantom remainder collapses to ~0); People → Hours **Team Summary** print drops the 'Unallocated hours' row in well-formed days (existing `> 0.01` gate auto-hides); profit/hr and rev/hr shift slightly because period numerator and lifetime denominator both move on the same convention. Real unattributed cases (no sessions on a salary day, sub-labor unmatched, manual sub-100% pct) still surface. No DB migration, no schema change. Edits: `src/lib/peopleHoursUnallocatedRows.ts` (1 numerical line + JSDoc rewrite), `src/pages/People.tsx` (Site A — `loadTeamReviewUnion` lifetime denominator + `overheadHoursByPersonByDateAllTime` build step removed; Site B — `derivePersonTeamSummary` `crewJobs` numerator; Site C — `crewByDateForPerson` daily breakdown; Site D — print footnote at ~L9628 rewritten from 'subtract office + bid clock' to 'day total × pct, Office filtered as overhead'). Tests: 1 new Paige-shaped regression test in `peopleHoursUnallocatedRows.test.ts` (existing 16 stay green because they all use `overheadOnDay = 0` or no non-Office crew, so both conventions agree); 17 / 17 vitest pass; `npx tsc --noEmit` clean."
+  - name: "Previous Version (v2.538)"
+    line: ~1898
+    description: "Freeze 'inherit from crew lead' across crew tables, sync RPCs, and the React UI. The Team Costs Crew column / lead picker, dual-write paths, lookup map in `HoursUnassignedModal`, read-only inheritance label in `PeopleHoursDayAuditModal`, and every `crew_lead_person_name` dereference in `payReportAssignmentsBreakdown`, `draftPayrollPersonBreakdown`, `teamLabor.ts`, `crewAssignments.ts`, `peopleHoursUnallocatedRows`, `cascadePersonName`, `src/pages/People.tsx`, `src/pages/Jobs.tsx`, and `src/pages/Quickfill.tsx` callers are removed; every SELECT and Supabase upsert now omits `crew_lead_person_name`. Schema: migration `20260516154601_freeze_crew_lead_inheritance` materialized 116 inherited job follower rows + 29 bid follower rows into per-person assignments and set every `crew_lead_person_name` to NULL (backup tables `_freeze_crew_lead_jobs_backup` / `_freeze_crew_lead_bids_backup` capture the pre-freeze state for rollback). Migration `20260516162434_drop_crew_lead_inheritance_from_sync_rpcs` rewrites `sync_crew_jobs_from_clock` + `sync_crew_bids_from_clock` to remove the early-return `IF v_crew_lead IS NOT NULL THEN RETURN; END IF` branch and keep writing NULL into the deprecated column on INSERT / UPDATE; the column stays in place for now to keep historical SELECTs valid. `ReviewCrewJob.viaLead` / `crewMemberNames` are dropped from the Run Payroll review UI (every row was always a non-follower after the freeze, so the `with {lead}` / `with {members}` lines never fired). Verified with 529 unit tests passing, `npx tsc --noEmit` clean, and `gen-types:linked` re-generation."
+  - name: "Previous Version (v2.537)"
+    line: ~1949
+    description: "People → Hours and Quickfill audit hardening. (1) Revoked clock sessions no longer count on the People → Hours grid: per-cell display sum and the cost-matrix Unapproved row both delegate to new pure helpers (`sumClosedPendingClockHoursForCell`, `pendingUnapprovedCountsByWorkDate`) in `peopleHoursPendingByCell.ts` that explicitly skip `rejected_at || revoked_at`. Without this, revoke (which clears `approved_at` but leaves `rejected_at` null) kept revoked hours on the cell because `loadPendingClockSessions` only filters on `approved_at IS NULL AND rejected_at IS NULL`. Now `getHoursGridDisplayHours = max(people_hours, pendingSum)` and the unapproved column count both drop the revoked row immediately. 9 new unit tests in `peopleHoursPendingByCell.test.ts` cover open / rejected / revoked / zero-duration / invalid-timestamp variants. (2) New Quickfill section **Unassigned field time** (`quickfill_section_marks.section_id = 'unassigned-field-time'`, dev / master_technician / assistant) — `QuickfillUnassignedFieldTimeSection.tsx` lists per (person, work_date) cells where the person was paid for field-type time (salary 8h on weekdays, hourly = `people_hours`) that the team summary cannot allocate to a specific revenue-generating job. Pure compute in `peopleHoursUnallocatedRows.ts` (`computeUnallocatedFieldRows` mirrors `derivePersonTeamSummary` math: `fieldHours = max(0, dayHoursRaw - overheadOnDay)`, then subtract `crewAttributedHrs` from `people_crew_jobs` + `people_crew_bids` and any `subLaborHrs`; emits rows where remainder exceeds threshold). 16 unit tests. Window 3 / 7 / 14 / 30 days, threshold 0.25 / 0.5 / 1 / 2 / 4 h (defaults 14 days · 1 h, persisted in `localStorage`). Realtime on `people_crew_jobs` / `people_crew_bids` / `people_hours` / `clock_sessions`. Each row has **Open day audit** which mounts the existing `PeopleHoursDayAuditModal` for that person+day. (3) Audit modal upgrades — read-only **Dispatch** panel above **Clock sessions** (uses `usePersonDayScheduleData` + `QuickfillScheduleUserRow` for the same hourly timeline rendered on Quickfill Schedule and the User day schedule modal; `clockSessionsToDispatchSecondaryBands` paints approved clock time as the secondary band; plain-text block list with `time_start–time_end · job/HCP · note`; **Open in Schedule Dispatch** deep-link). Each clock-session row gets a status badge (**Approved** green / **Pending** amber / **Open** grey, with explanatory tooltips) and an inline **Approve** button next to **Edit** for closed pending sessions when `canEditCrewJobs` (calls `approveClockSessions` and refreshes both sessions and the parent unassigned list). Pending-approval banner appears in the **Job / bid assignments** panel when there are no crew assignments yet but pending closed sessions are linked to a job/bid: `\"{N} pending session(s) link to {Job/Bid label}. Approve {it/them} above to auto-assign these hours.\"` plus an **Approve all (N)** button for ≥2 sessions. (4) Clock sessions section in the audit modal grows naturally (no inner `maxHeight: 220` / `overflowY: auto`); the modal's outer `maxHeight: 90vh` handles overflow so there is no nested scrollbar. No DB / RLS / Edge changes; `tsc --noEmit` clean."
   - name: "Latest Version (v2.536)"
-    line: ~1804
+    line: ~1869
     description: "Schedule Dispatch polish pass. (1) Full-bleed table: Hub people / Hub jobs / JobWeek scroll containers break out of both `<main>`'s `var(--app-main-pad)` and the inner page wrapper's `1rem 1.25rem` padding via `marginLeft/Right: calc(-1 * (var(--app-main-pad) + 1.25rem))`. WeekNav lifted out of the JobWeek `scrollRootRef` so only the table is full-width; toolbars / view tabs stay in the padded area. Sticky Person column now pins to the screen edge. (2) Salaried `(s)` suffix renders on its own line under the name (`scheduleGridSalarySuffix` / `hubPeopleSalarySuffix` → `display: block` + `lineHeight: 1.1`); works inside the mobile `inline-block` name pill because block children create a line break regardless of `white-space: nowrap`. (3) Archived users hidden from Dispatch — new `fetchArchivedUserIdSetForIds(ids)` helper in `scheduleDispatchHub.ts` (single non-`archived_at` query, empty input short-circuits, errors return empty so a blip can't hide everyone). Hub stores `hubArchivedUserIds` and filters `hubAllPeopleRows` (covers Hub people + Hub jobs + Quickfill paths since they share the same memo). JobWeek runs the helper in `Promise.all` with `fetchUserNamesForIds` and filters `rosterIds` before building `mergedRoster`. All four roster sources covered (`fetchUsersTabUserIdsForScheduleDispatchHub`, `jobs_ledger_team_members`, `job_schedule_blocks.assignee_user_id`, embedded `users(name)` via `fetchScheduleJobContext`); DnD / picker / multi-cell add are implicitly safe via the rendered roster. (4) Twin white-circle action chrome: edit-note button now uses `scheduleBlockControlPlateBackgroundStyle` (extracted from `scheduleBlockLinkedControlPlateStyle`) — same 16×16 plate, same `size={10}` glyph, same subtle 1px `scheduleBlockActionLinkedIconButtonStyle` filter as the linked badge; the heavy halation `scheduleBlockActionIconButtonStyle` was deleted (no callers). Container `gap: 0` + `marginLeft: 0` make the two circles sit edge-to-edge for an `almost touching` look. No migrations / RPCs / RLS changes; `tsc --noEmit` clean."
   - name: "Latest Version (v2.535)"
     line: ~1801
@@ -1432,6 +1465,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.545 — **Dashboard** **Job Mode** — **gear-menu toggle** (per-user `localStorage`, **[`useJobModeEnabled`](src/hooks/useJobModeEnabled.ts)** + **[`jobModeToggle.ts`](src/lib/jobModeToggle.ts)**) replaces top of Dashboard with **[`DashboardJobModeCard`](src/components/jobMode/DashboardJobModeCard.tsx)**: stacked **HCP / Job Name / Address** header, big **Leave Report** + **Next Job** buttons. Clock-driven advance — Leave Report opens existing **`AdditionalReportModal`**; Next Job opens **[`JobModeAdvanceNotesModal`](src/components/jobMode/JobModeAdvanceNotesModal.tsx)** (single-line notes, Skip notes / Confirm) and calls **`applyUpdateFocusDirect`** on **[`UpdateFocusOpenerBridgeContext`](src/contexts/UpdateFocusOpenerBridgeContext.tsx)**, which `ClockInOutButton` registers — closes the open `clock_sessions` row and inserts a new one for the next scheduled `job_schedule_blocks` block (or clocks in to the first block when no open session). Pure picker **[`pickCurrentAndNextScheduleBlock`](src/lib/jobModePickCurrentNext.ts)** + **14** unit tests cover empty schedule, clocked-on-first/middle/last, off-schedule job, on-bid, multi-window same job. Rest of Dashboard hidden until **Show full dashboard** (component-local, resets every load). Toggle gated by **`canLeaveJobFieldReport(role)`**](#latest-updates-v2545)
 **New:** [v2.518 — **Bids** — **Working-board archive** — single entry **Archive from board** in **[`BidFormModal`](src/components/bids/BidFormModal.tsx)** footer (next to **Delete bid**); visibility from **saved** **`editingBid`** only (**[`bidEligibleForWorkingBoardArchive`](src/lib/workingBoardArchiveEligibility.ts)**, **`canUserArchiveBidOnWorkingBoard`**); **`promptArchiveWorkingBoardBid`** confirm overlay **`z-index` 1005** above the form; removed **Archive** from **[`BidsWorkingBoard`](src/components/bids/BidsWorkingBoard.tsx)** cards, Bid Board row, Submission **unsent** table; **`archiveWorkingBoardBid`** merges **`editingBid`** after **`loadBids`** when the form stays open](#latest-updates-v2518)
 **New:** [v2.517 — **Bids** — **Unsent/Working** **archive** — **`bids.working_board_archived_at`** / **`_by`** (**`20260511015410`**); **Bid Board** toolbar **Archived** modal (**[`BidWorkingBoardArchivedModal.tsx`](src/components/bids/BidWorkingBoardArchivedModal.tsx)**) + **Un-archive**; **eligible** vs **visible** bids in **[`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx)** preserves **placements** for archived rows; **Clock In** quick picks (**[`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts)**) + inbox badge + Bid Board **Unsent / Working Bids** + Submission **unsent** omit archived; deep link toast when archived](#latest-updates-v2517)
 **New:** [v2.516 — **Jobs** **Stages** — **Combine / Separate** — **[`JobsCombineSeparateModal`](src/components/jobs/JobsCombineSeparateModal.tsx)** on the **right** of the Stages toolbar (after **Total by Name**; narrow **C / S**); **Combine** **`migrate_job_ledger_costs_and_delete`**; **Separate** **`split_job_ledger_fixtures_to_new_job`** (**`20260511012922`**) — **Working** source, **Specific Work** + optional **clock_sessions**, new HCP/name/address; limitations callout (**`Jobs.tsx`**)](#latest-updates-v2516)
@@ -1802,6 +1836,917 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.547)
+
+**Date**: 2026-05-16
+
+### Team Summary drilldown modals — uniform layout & visibility polish
+
+**Why this exists.** The eight drilldown modals reachable from People → Review **Team Summary** (`Hours`, `Overhead hours`, `Overhead labor`, `Field hours`, `Gross Revenue`, `Net Revenue`, `Profit (after overhead)`, `Gross Revenue/hr`, `Profit/hr (after overhead)`) had drifted apart in layout convention as each one was added. Some put their headline metric in a body line (`Total: $X`), others in the title; some led with a paragraph of explanation that pushed the data below the fold; a few muted-color suffixes on day headers (`· N hrs`) used a different size/weight than the date next to them. The **Hours breakdown** in particular had two visibility bugs that motivated the broader pass: (a) it filtered out the configured Office job and never read `people_crew_bids` at all, so days that were 100% Office work or 100% on a bid surfaced as `No crew assignment`, contradicting the time the person actually clocked; and (b) it showed neither the job address nor the running total in the title, so the modal title wasn't self-describing.
+
+#### What changed — modal-by-modal
+
+**Hours breakdown.**
+
+- Day list now includes Office and Bid allocations. The modal-only `crewByDateForPerson` builder used to feed off `crewJobsWithLeadFiltered` (Office filtered out — it's overhead, not field revenue), and `people_crew_bids` was never queried for this period. Now it iterates the full `union.periodCrewRows` (no Office filter) plus a new `union.periodCrewBidRows` so the modal shows every job/bid the person was credited to, regardless of whether it contributes to *field* revenue. Field-revenue math (`derivePersonTeamSummary` `crewJobs` numerator, etc.) is unchanged — the wider build only feeds the modal display.
+- Each allocation line gets the **address** appended: `(percent) Job # | Job Name - 12921 FM 20 Kingsbury TX`. Required widening `HoursBreakdown.dailyRows[].crewAllocations` from `{ hcp, pct, hours }` to `{ hcp, jobName, address, pct, hours }`, with `address` resolved from `union.jobsById.get(c.job_id)?.job_address` for jobs and from `union.bidsById.get(b.bid_id)?.address` for bids; address is omitted (no trailing dash) when the source row is empty.
+- Running total moved into the modal title (`Hours breakdown — Abraham · 50.8 hrs`); the redundant top-and-bottom `Total: N hrs` lines are gone. The `Daily hours` `<h3>` and the `Total = sum of daily hours = N hrs. Each line under a day reads (pct) Job # | Job Name.` legend caption are removed (the title carries the total; the layout itself documents the line format).
+- The *Sub labor hours are not added in this mode — toggle Only paid jobs in Review to count them.* hint is now always rendered as a `.caption`. Previously it was gated on `hb.subLaborRows.length > 0`, which suppressed it precisely when there was no sub labor — the case where discoverability matters most because the user can't see why the toggle exists.
+
+**Overhead hours breakdown.**
+
+- The static *Bucket | Hours | Share of overhead* table is replaced with a hierarchical session-level layout that matches the Hours breakdown idiom. **`Office · 17.7 hrs`** and **`Bids · 12.9 hrs`** centered section headers (`<h3 style="text-align:center;">`), per-day blocks underneath each (`{DOW} {YYYY-MM-DD} · N.N hrs`), and per-session lines indented under each day. Office sessions render as `(pct) 8:00 AM → 5:30 PM · N hrs`; bid sessions render as `(pct) B249 | Project Name - address · N hrs`. The pct on each line is `session.hours / dayBucketTotal × 100` so percentages within a day always add to 100% within their bucket.
+- Plumbing for this lives in three places: (a) **`TeamReviewUnion`** gains `overheadSessionsByPerson: Record<person_name, Array<{ sessionId, workDate, bucket, clockedInIso, clockedOutIso, hours, bidId }>>`, populated during the existing `overheadSessionsAllTime` iteration in `loadTeamReviewUnion` (period-filtered, approved-closed only, open sessions skipped because they have no end time to render); (b) `derivePersonTeamSummary` adds an **`OverheadSessionLine`** type and emits `TeamSummaryRow.overheadSessions` by formatting `clocked_in_at` / `clocked_out_at` with `Intl.DateTimeFormat` in `APP_CALENDAR_TZ` and resolving bid display fields (`B{bid_number}`, project, address) from `union.bidsById`; (c) the iframe gets a new `buildOverheadSessionsSection(label, sessions, bucketTotalHrs)` helper that groups by `workDate` and reuses the existing `.hours-day-section` / `.hours-day-header` / `.hours-day-allocs` / `.hours-day-alloc` / `.alloc-pct` / `.alloc-jobnum` / `.alloc-jobname` / `.alloc-address` / `.alloc-counted` styles.
+- Running total moved into the title (`Overhead hours breakdown — Abraham · 30.5 hrs`); intro paragraph (`Overhead hours are approved clock sessions on the configured Office job or on any bid — the same buckets that feed the rolling 90-day overhead rate.`) moved to the bottom as a `.caption`.
+- The *Where overhead fits in this person's work* `<h3>` is hidden (the column headers carry enough context to identify the table). The **Share of total work** column header + cells now use inline `text-align: left;` so percentages align against their label rather than the right edge of the table.
+
+**Overhead labor breakdown.**
+
+- Intro paragraph (`Overhead labor is what the company paid this person for hours that are not billed to a field job…`) moved to the bottom as a `.caption`.
+- Summary line `Overhead labor: -$X (X overhead hrs × $Y/hr)` is centered.
+- **Share** column header + cells left-aligned within their rightmost column.
+- The *Where it shows up* cell on the Field-labor row trimmed from `Already in **Net Revenue** via job-level revenue − parts − total labor; not added to this column to avoid double-counting.` to just `Already in **Net Revenue**.` — the long version still lives in the bottom captions, but the cell-level explanation no longer competes for attention.
+
+**Field hours breakdown.**
+
+- Running total moved into the title (`Field hours breakdown — Abraham · 17.9 hrs`); redundant `Field hrs:` line removed.
+- The standalone `<h3>How field hrs is computed</h3>` is collapsed into the table's first column header — the column that used to read `Step` is now `How field hrs is computed`.
+- `Where the field hrs went` `<h3>` is centered.
+- **Share of field hrs** column header + cells left-aligned within their rightmost column.
+
+**Gross Revenue breakdown.**
+
+- Every column header and every body cell is centered (`text-align: center;` inline on each `<th>` and `<td>`); `font-variant-numeric: tabular-nums` from `class="num"` is preserved so dollar amounts still align vertically.
+- Running total moved into the title (`Gross Revenue breakdown — Abraham · $872`); explanation paragraph moved to the bottom.
+
+**Net Revenue breakdown.**
+
+- Running total moved into the title (`Net Revenue breakdown — Abraham · $1,766`); explanation paragraph moved to the bottom.
+
+**Profit (after overhead) breakdown.**
+
+- Explanation paragraph moved to the bottom.
+
+**Gross Revenue/hr breakdown.**
+
+- Explanation paragraph moved to the bottom.
+
+**Profit/hr (after overhead) breakdown.**
+
+- Explanation paragraph moved to the bottom.
+
+#### Cross-cutting typography
+
+The `· N hrs` muted suffix on per-day headers (`Mon 2026-05-04 · 6.8 hrs`) and on Overhead-hours section headers (`Office · 17.7 hrs`) now inherits the parent's color / weight / size verbatim — only `margin-left: 0.5rem` is retained for spacing. Pre-v2.547 the `.day-hours` rule shrank the suffix to a smaller muted style, which made each label look like two unrelated pieces of typography rather than one composite metric.
+
+#### Files
+
+- [`src/pages/People.tsx`](src/pages/People.tsx) — `TeamReviewUnion` type (`periodCrewBidRows`, `bidsById`, `overheadSessionsByPerson`); `loadTeamReviewUnion` (period bids fetch, conditional `get_bids_by_ids` RPC keyed on the union of bid IDs, `overheadSessionsByPerson` populate); `HoursBreakdown.dailyRows[].crewAllocations` widened with `jobName + address`; new `OverheadSessionLine` type + `TeamSummaryRow.overheadSessions: OverheadSessionLine[]`; `derivePersonTeamSummary` (`crewByDateForPerson` rewrite to drop the Office filter and read `periodCrewBidRows`, plus `Intl.DateTimeFormat` time formatting + bid metadata resolution); `breakdownsPayload` extended with `overheadSessions`; iframe `<style>` (`.alloc-address` muted color, `.day-hours` typography reset to inherit); iframe `buildHoursBody` / `buildOverheadHoursBody` / `buildOverheadLaborBody` / `buildFieldHoursBody` / `buildGrossBody` / `buildNetBody` / `buildProfitBody` / `buildGrossPerHourBody` / `buildProfitPerHourBody` rewrites; new iframe helper `buildOverheadSessionsSection`; modal `openModal` title constructors append running totals via `\u00b7` + `fmtH` / `fmtMoney` for Hours / Overhead-hours / Field / Gross / Net.
+
+#### Verified
+
+- `npx tsc --noEmit` — clean.
+- 17 / 17 `peopleHoursUnallocatedRows` + 15 / 15 `peopleHoursPendingByCell` unit tests still pass.
+- No new lints.
+- One additional period-only `people_crew_bids` fetch + one conditional `get_bids_by_ids` RPC added to `loadTeamReviewUnion` — both gated to skip empty inputs, so the cost is zero when no bids are crew-linked in the period.
+
+#### Behavior preserved
+
+- None of the math changes: revenue / profit / overhead pool / field-hour rate are exactly as they were after **v2.539** Convention 1 + **v2.540** Overhead labor + **v2.544** hierarchical Hours layout. This is purely a presentation pass that (i) makes the modals consistent with each other, (ii) surfaces the *whole story* of where someone's hours went (Office and Bids included in the Hours and Overhead-hours modals), and (iii) gets totals into titles so the modal headers carry the headline metric.
+
+---
+
+## Updates (v2.546)
+
+**Date**: 2026-05-16
+
+### Quickfill Unassigned field time: approved-clock-only sourcing
+
+**Why this exists.** Pre-v2.546 the "Unassigned field time" section read `dayHoursRaw` from `people_hours.hours` for hourly people and from a flat `8h` weekday template for salary people. Two failure modes followed: (a) manual edits to the People → Hours grid that weren't backed by approved clock could create phantom rows, and (b) salary people who took PTO / no-clocked a weekday still surfaced as "8h unallocated" even though no actual work happened. The section's whole job is "find approved time that payroll covers but the team summary can't tie to a revenue job" — so the inputs should *be* approved time, not a payroll alias that may diverge from the underlying clock.
+
+#### What changed
+
+New pure helper [`buildApprovedClosedHoursByPersonByDate`](src/lib/peopleHoursUnallocatedRows.ts) sums **approved-closed `clock_sessions`** hours per `(personName, work_date)` across every bucket (office, bid, field, unassigned) — no overhead-bucket filter, just "did this person have approved time this day, and how much". The helper enforces the same exclusion gates as `buildOverheadHoursByPersonByDate`: `rejected_at IS NULL`, `revoked_at IS NULL`, `approved_at IS NOT NULL`, `clocked_out_at IS NOT NULL`. Two unit tests cover the math: one verifies it sums across all four buckets, one verifies it ignores pending / rejected / revoked / open sessions.
+
+`computeUnallocatedFieldRows` now drives every input off that map:
+
+| Aspect | Pre-v2.546 | v2.546 |
+|---|---|---|
+| **Candidate keys** | Every (salary, weekday) in window ∪ every `people_hours.hours > 0` row | Every `(person, work_date)` with approved closed clock activity |
+| **Hourly `dayHoursRaw`** | `people_hours.hours` | `Σ approved-closed clock hours` |
+| **Salary `dayHoursRaw`** | `8` on weekdays (always) | `8` on weekdays **only when** that person has approved clock that day |
+| **Pending sessions** | Indirectly excluded (only via `people_hours` flow) | Explicitly excluded (`approved_at IS NULL` → 0 hours, no candidate) |
+
+The function still preserves Convention 1 (share-of-total-day) for crew attribution, still subtracts overhead via `buildOverheadHoursByPersonByDate`, still applies the `thresholdHours` filter and the same sort. Job assignments coming from `people_crew_jobs` are unchanged — they were already approved-only via the `sync_crew_jobs_from_clock` trigger.
+
+The `ComputeUnallocatedFieldRowsArgs.peopleHours` field is kept optional + documented as deprecated/ignored so the type doesn't break stale callers during rollout.
+
+#### Caller cleanup
+
+[`QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx) drops every `people_hours` touchpoint that's no longer needed:
+
+- `HoursRow` type definition.
+- `const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])` state.
+- The `supabase.from('people_hours').select(...)` line in the parallel load (one less Supabase round-trip per refresh).
+- `setPeopleHours((hoursRes.data ?? []) as HoursRow[])`.
+- The `people_hours` Realtime subscription on the `quickfill-unassigned-field-time` channel — Realtime now only reacts to `people_crew_jobs`, `people_crew_bids`, and `clock_sessions` (the actual sources of truth, in dependency order). Manual grid edits no longer trigger a needless reload of a section that doesn't read them.
+- The `peopleHours` arg passed to `computeUnallocatedFieldRows` and its corresponding `useMemo` dep.
+
+#### Tests
+
+[`peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts) was substantially rewritten — every test that used to seed `peopleHours: [...]` now seeds approved sessions via a new `fieldSession({ id, userId, userName, workDate, hours })` helper that builds an approved-closed clock row with no `job_ledger_id` / `bid_id` (so it registers as approved activity without contributing to overhead or implying a crew sync). New / changed test coverage:
+
+- **`buildApprovedClosedHoursByPersonByDate` — sums across all buckets** (office + bid + field-job + unassigned).
+- **`buildApprovedClosedHoursByPersonByDate` — ignores pending / rejected / revoked / open**.
+- **`emits a salary-day row when there IS approved clock activity but no crew sync`** — confirms the salary 8h template still fires when justified.
+- **`skips salary weekdays with NO approved clock activity`** — the v2.546 phantom-row fix.
+- **`skips when a closed session is still pending approval`** — confirms pending clock can't surface a row, even if the underlying session would have produced one once approved.
+- **`does not emit weekend rows for salaried people even with approved weekend clock`** — weekend gate still wins over clock activity.
+- **`uses approved-clock hours (not people_hours) for hourly people`** — the helper is fed a deliberately wrong `peopleHours: [{ ... hours: 99 }]` arg alongside a real 6.5h session; the row's `dayHoursRaw === 6.5` proves the deprecated input is ignored.
+- The Paige-shaped Convention-1 regression test (v2.539) was updated to seed approved field clock alongside the office clock so total approved hours still ≈ 9.19; assertion unchanged (`unallocatedHrs ≈ 0` → row suppressed).
+- `sorts by date desc then unallocated desc`, `summarizeUnallocatedFieldRows`, and `groupUnallocatedFieldRowsByDate` all gained per-day approved sessions for Alex + Sally so the existing 6-row / 48h totals still emit under the new gate.
+
+21 / 21 unit tests pass. Full repo suite 548 / 548 green. `npx tsc --noEmit` clean.
+
+#### Verified
+
+- `npx vitest run src/lib/peopleHoursUnallocatedRows.test.ts` — 21 / 21 pass.
+- `npx vitest run` — 548 / 548 pass across 73 test files.
+- `npx tsc --noEmit` — clean.
+
+#### Files
+
+**Modified**
+
+- [`src/lib/peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts) — new exported `buildApprovedClosedHoursByPersonByDate` helper, `effectiveDayHoursRaw` reads approved hours, candidate iteration rewritten, doc comment + `dayHoursRaw` JSDoc updated, `peopleHours` arg marked deprecated.
+- [`src/lib/peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts) — new `fieldSession` helper, every `peopleHours: [...]` swapped for sessions, three new gate tests plus two helper tests.
+- [`src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx) — `HoursRow` type + `peopleHours` state + `people_hours` query + `people_hours` Realtime subscription + arg removed.
+
+#### Out of scope
+
+- Backfilling existing audit-modal artifacts: the modal still surfaces `people_hours` cells for reference; only the gate that puts a row on the Unassigned list changed.
+- People → Hours grid behavior (still shows manual / payroll hours independently — that's the right surface for "what's payroll going to pay vs what's pending").
+- The Pending Sessions UI (v2.537) remains the canonical home for "session is closed but not yet approved" — Unassigned field time defers to it.
+
+---
+
+## Latest Updates (v2.545)
+
+**Date**: 2026-05-16
+
+### Dashboard: Job Mode focused field-worker view
+
+**Why this exists.** Field workers on a phone don't need the full Dashboard — pinned tabs, ready-to-bill queues, recent reports, my-bids, my-team. They need to know what job they're on right now and tap two buttons: file a report, or move to the next job on their schedule. Job Mode is a per-user, per-device toggle in the header gear menu that swaps the top of the Dashboard for that focused card and hides everything else behind a single "Show full dashboard" link.
+
+#### What changed
+
+A new toggle ("Job Mode") sits at the top of the gear-icon dropdown (only visible to roles that can leave field reports — `dev`, `master_technician`, `assistant`, `helpers`, `subcontractor`, `primary`, `superintendent` per `canLeaveJobFieldReport`). It writes a per-user localStorage key (`dashboard_job_mode_${userId}`) so a shared phone doesn't leak the toggle between accounts and a tab change syncs via the `storage` event.
+
+When the flag is on, [`Dashboard.tsx`](src/pages/Dashboard.tsx) takes an early-return code path. Above the fold the user sees:
+
+- The existing tally / pinned-tabs banner (kept — AR-unallocated, lost-bids and stale-tally nudges still need to surface).
+- One big card ([`DashboardJobModeCard`](src/components/jobMode/DashboardJobModeCard.tsx)) with three stacked lines (HCP number / Job Name / Address) and two large buttons side-by-side: **Leave Report** (blue) and **Next Job** (green).
+- A small "Show full dashboard" button.
+- The same `AdditionalReportModal` mount the regular Dashboard uses, so Leave Report behaves identically.
+
+The "Show full dashboard" toggle is component-local React state — every page load resets to the focused view, but the user can expand mid-session if they need the full Dashboard.
+
+#### Card behavior (clock-driven)
+
+The card derives "current" and "next" from the user's open `clock_sessions` row (current focus job) and today's `job_schedule_blocks` (sorted by `time_start`). Pure helper [`pickCurrentAndNextScheduleBlock`](src/lib/jobModePickCurrentNext.ts) handles every state branch:
+
+| Open session | Schedule | State | Next-button label | Action |
+|---|---|---|---|---|
+| None | None | `no-clock-no-schedule` | Clock In | Opens the existing Clock In flow |
+| None | One+ blocks | `not-clocked-in-with-schedule` | Start First Job | Inserts a new `clock_sessions` row pointing at the first block |
+| On scheduled job, more after | Multiple jobs | `on-scheduled-job-not-last` | Next Job | Closes current row + inserts new row for next *different* job |
+| On scheduled job, last | One+ blocks | `on-scheduled-job-last` | Last job of the day | Disabled |
+| On off-schedule job | One+ blocks | `on-off-schedule-job` | Switch to Scheduled Job | Closes + inserts for first block; current job header still shows |
+| On off-schedule job | None | `on-off-schedule-job` | Choose Next Job | Opens existing Update Focus modal |
+| On a bid | One+ blocks | `on-bid` | Start First Scheduled Job | Closes bid session + inserts new row for first block |
+| On a bid | None | `on-bid` | Choose Next Job | Opens existing Update Focus modal |
+
+Job continuation windows (same `job_id` split into morning + afternoon blocks) are skipped when picking "next" — Next Job means a *different* job. Multi-window same-job-only-rest-of-day correctly resolves to `on-scheduled-job-last`.
+
+#### Notes prompt
+
+Tapping Next Job opens [`JobModeAdvanceNotesModal`](src/components/jobMode/JobModeAdvanceNotesModal.tsx) — a single-line text input with three actions: **Cancel**, **Skip notes** (writes empty notes), **Confirm** (writes typed notes). Enter submits, Escape cancels. The destination job line is shown above the input ("`JP523 · Mission Hills`") so the user sees what they're switching to.
+
+#### One-source-of-truth clock mutation
+
+Job Mode never re-implements the close-and-insert mutation. [`UpdateFocusOpenerBridgeContext`](src/contexts/UpdateFocusOpenerBridgeContext.tsx) gained `applyUpdateFocusDirect`, paralleling the existing `requestOpenUpdateFocus` opener. [`ClockInOutButton`](src/components/ClockInOutButton.tsx) registers a `useCallback` that:
+
+- If no open session: `INSERT clock_sessions` + `scheduleClockInLocationPatch` + `notifyFirstClockInOfDay` + `onClockInSuccess()`.
+- If open session and salaried: in-place `UPDATE` of `job_ledger_id` / `bid_id` / `notes`.
+- If open session and hourly: `UPDATE clocked_out_at = now`, then `INSERT` a new row with new association, then `scheduleUpdateFocusLocationPatches` for both ids.
+
+`ClockInOutButton` remains the sole owner of these mutations; the existing Update Focus modal uses `handleUpdateFocus` (unchanged), and Job Mode uses the bridge to call the same logic. After the mutation, the card's Realtime subscription on `clock_sessions` (`postgres_changes` filtered to `user_id`) re-renders the new state automatically — the open session refresh handles the visible jump from "current job A" to "current job B".
+
+#### Realtime + day rollover
+
+The card subscribes to `postgres_changes` on `clock_sessions` (this user) and `job_schedule_blocks` (this user, this work_date). A 1-minute interval also re-checks `denverCalendarDayKey(Date.now())`; if the day rolls over while the page stays open the schedule reloads.
+
+#### Files
+
+**New**
+
+- [`src/lib/jobModeToggle.ts`](src/lib/jobModeToggle.ts) — `readJobModeEnabled` / `writeJobModeEnabled` / `jobModeStorageKey`. Per-user key, fail-closed `try/catch`.
+- [`src/hooks/useJobModeEnabled.ts`](src/hooks/useJobModeEnabled.ts) — `[boolean, (next: boolean) => void]`; `storage`-event subscription for cross-tab sync.
+- [`src/lib/jobModePickCurrentNext.ts`](src/lib/jobModePickCurrentNext.ts) — pure picker with deterministic ordering (`time_start`, then `time_end`, then `id` for stability).
+- [`src/lib/jobModePickCurrentNext.test.ts`](src/lib/jobModePickCurrentNext.test.ts) — 14 tests covering every state and the multi-window edge cases.
+- [`src/components/jobMode/DashboardJobModeCard.tsx`](src/components/jobMode/DashboardJobModeCard.tsx) — the card. Loads schedule + open session in parallel via `withSupabaseRetry`; embeds `jobs_ledger(hcp_number, job_name, job_address, service_type_id)` so a single round trip backs the picker; falls back to a `jobs_ledger` lookup when the user is clocked on a job not on today's schedule, or a `bids` lookup when on a bid.
+- [`src/components/jobMode/JobModeAdvanceNotesModal.tsx`](src/components/jobMode/JobModeAdvanceNotesModal.tsx) — small overlay (z-index 1100, above the standard Update Focus overlay).
+
+**Modified**
+
+- [`src/contexts/UpdateFocusOpenerBridgeContext.tsx`](src/contexts/UpdateFocusOpenerBridgeContext.tsx) — added `registerUpdateFocusApplyDirect` + `applyUpdateFocusDirect: (opts) => Promise<{ ok, error }>`. Bridge fails closed when no register has happened yet.
+- [`src/components/ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx) — added `applyUpdateFocusDirectImpl` (the reusable mutation) and a register/unregister `useEffect`.
+- [`src/components/Layout.tsx`](src/components/Layout.tsx) — Job Mode gear-dropdown item with checkbox indicator (green `#16a34a` when on); `aria-pressed` for screen readers.
+- [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) — `useJobModeEnabled` + `jobModeShowFullDashboard` state + early return path.
+
+#### Verified
+
+- `npx tsc --noEmit` clean for all touched files (pre-existing `src/pages/People.tsx` parse error from the in-flight working tree is unrelated).
+- 14 picker tests pass (`npx vitest run src/lib/jobModePickCurrentNext.test.ts`).
+
+#### Out of scope (later)
+
+- Server-side persistence (sticking with localStorage per device — matches `dashboard_clock_strip_scope`).
+- Bid-aware scheduling (`job_schedule_blocks` is jobs-only).
+- Geolocation gating on Next Job.
+- Push notification when a scheduled block's `time_start` is reached.
+
+---
+
+## Latest Updates (v2.545)
+
+**Date**: 2026-05-16
+
+### Day audit modal: per-clock-session `Assign` popover (the canonical fix path)
+
+**Why this exists.** **v2.543** added two ways to fix an "Unassigned field time" row from the audit modal: an inline **Assign a job or bid** CTA in the **Job / bid assignments** panel, and a corrected view-mode subtitle. But that CTA wrote to `people_crew_jobs.job_assignments` directly — which works, but is a band-aid: the underlying `clock_sessions.job_ledger_id` is still null, so if anyone re-runs `sync_crew_jobs_from_clock` (e.g. by approving another session for the same day) the manual assignment is recomputed away. The real fix is to set the link on the clock session itself; everything downstream then derives from the source of truth.
+
+The user's request was direct: *"from that modal, when a clock session has no job, I would like a button to be able to assign it a job without having to go into edit."* This delivers that.
+
+#### What changed in `PeopleHoursDayAuditModal.tsx`
+
+1. **Per-row `Assign` button on unlinked clock sessions.** Every clock-session row now computes `canAssignSessionJob = canEditCrewJobs && !sessionsUserMissing && !!s.user_id && !s.job_ledger_id && !s.bid_id`. When true, the right-side actions cluster (previously **Approve** + **Edit**) renders the shared **`AssignSessionJobPopover`** *before* those buttons. Layout: same flex container with `gap: 0.35rem`; popover trigger / Approve / Edit sit left-to-right in that order.
+
+2. **The popover is the existing Dashboard component, not a new one.** Imported from `src/components/clock-sessions/AssignSessionJobPopover.tsx` — the same portal-rendered control that lets dispatchers reassign jobs on the live clock strip. Props passed:
+   - `session={{ id: s.id, job_ledger_id: s.job_ledger_id, bid_id: s.bid_id }}` — minimal shape required.
+   - `popoverZIndex={1110}` — floats above the audit modal's `zIndex: 1002` and is consistent with the `ClockSessionEditSplitModal` portal it sits next to.
+   - `dispatchScheduleAssigneeUserId={s.user_id}` + `dispatchScheduleWorkDateYmd={workDate}` — surfaces Dispatch quick-picks for that assignee + day above the search field, so a one-click pick is possible when the day's `job_schedule_blocks` already named the job.
+   - `onSaved={() => { refreshSessions(); onCrewSaved?.(); showToast?.('Job assigned to clock session.', 'success') }}` — refreshes the local sessions list, bubbles `onCrewSaved` to the parent (Quickfill `loadAll` + `computeUnallocatedFieldRows`), and toasts confirmation.
+   - `onError={(msg) => showToast?.(msg, 'error')}` — propagates RLS / network / validation errors back to the user.
+
+3. **Why it works end-to-end (no new DB code needed).** On save, `AssignSessionJobPopover` `UPDATE`s `clock_sessions.job_ledger_id` (or `bid_id`) for that one row. The **`clock_sessions_sync_crew_assignments_after_job_bid`** trigger (migration **`20260402120000`**) fires whenever `job_ledger_id` or `bid_id` changes and calls **`sync_crew_jobs_from_clock(person_name, work_date)`**. Per the **v2.538** rewrite, that RPC always recomputes `job_assignments` from approved closed `clock_sessions` for the day — it no longer skips rows whose `crew_lead_person_name` is set. So:
+   - **Already-approved session, no `job_ledger_id`** → setting the link via the popover → trigger fires → `sync_crew_jobs_from_clock` runs → `people_crew_jobs.job_assignments` is written with the new `(job_id, pct)` entry → audit modal **`Job / bid assignments`** panel + Quickfill Unassigned list both update on the next refresh.
+   - **Pending session, no `job_ledger_id`** → setting the link → trigger fires → RPC runs but only sees approved sessions → still no crew row → row stays in Unassigned list. User then approves via the inline **Approve** button (v2.537) → `sync_crew_jobs_from_clock` runs again with this session now eligible → crew row populates.
+
+4. **Three repair paths now coexist in the same modal.** The user has a clear path for every shape of "unallocated time":
+   - *(a) Session was never linked to a job in the first place* → use the new per-row **Assign** popover (this change).
+   - *(b) Session is linked to a job but not yet approved* → use the **Approve** button on that row, or **Approve all (N)** in the pending-approval banner (v2.537).
+   - *(c) Session was overhead / non-billable and shouldn't allocate at all* → override `people_crew_jobs.job_assignments` directly via the **Assign a job or bid** CTA on the empty assignments panel (v2.543).
+
+#### What did *not* change
+
+- No new state, no new effects, no new exports on `PeopleHoursDayAuditModal`. The popover encapsulates its own state.
+- The existing **Approve** + **Edit** buttons are untouched in both look and behavior.
+- The v2.543 `Assign a job or bid` CTA on the empty assignments panel stays in place — it's the right answer for case (c) above.
+- The v2.537 pending-approval banner stays in place — it's the right answer for case (b).
+- No DB migration, RPC, RLS, or schema change required.
+
+#### Files
+
+- [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx) — `import { AssignSessionJobPopover } from './clock-sessions/AssignSessionJobPopover'`; new `canAssignSessionJob` predicate per row; popover rendered inside the existing actions cluster gated on `(showClockEdit || canApprove || canAssignSessionJob)`.
+
+#### Verified
+
+- `npx tsc --noEmit` clean for touched files (two unrelated pre-existing errors in untracked `src/lib/jobModePickCurrentNext.ts` from a parallel work stream — neither touches the audit modal).
+- `npx vitest run` — **73 files, 544 tests passed**.
+- No new lint errors.
+- The three caller sites of `PeopleHoursDayAuditModal` ([`Quickfill.tsx`](src/pages/Quickfill.tsx) via `QuickfillUnassignedFieldTimeSection`, [`QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx), [`HoursSection.tsx`](src/components/quickfill/HoursSection.tsx), [`People.tsx`](src/pages/People.tsx)) require no changes; the new affordance shows up automatically wherever they already pass `canEditCrewJobs`.
+
+---
+
+## Latest Updates (v2.544)
+
+**Date**: 2026-05-16
+
+### People → Review Team Summary: Hours breakdown drilldown reformatted as Day → indented allocations
+
+**Why this exists.** Operators reading the Hours drilldown for someone on a multi-job day were squinting at a comma-joined string in the third column to figure out what each piece meant — *“`JP787 (32%), JP737 (23%), JP796 (15%)` … which job is which? Where's the customer name?”*. The visual shape didn't match how they think about a day verbally (*“Mon: I spent a third on Holly Garza, then Mike Holub, then Done Right”*), and there was no job name anywhere — only the HCP number.
+
+#### What changed
+
+The previous Hours-modal table (`Date | Hours | Crew jobs (per day)`) is replaced with a hierarchical block layout: each day is its own section, with the day-of-week + ISO date + day hours as a bold header, and each crew allocation indented under it as `(percent) Job # | Job Name` on its own line. Allocations within a day are sorted by descending pct so the biggest share rises to the top.
+
+##### New layout — default mode (`Only paid jobs` off)
+
+```
+Daily hours
+
+  Mon 2026-05-12 · 8.0 hrs
+        (32.0%) JP787 | Holly Garza
+        (23.0%) JP737 | Mike Holub
+        (15.4%) JP796 | Done Right
+        (29.6%) JP000 | Office
+
+  Tue 2026-05-13 · 8.0 hrs
+        (50.0%) JP787 | Holly Garza
+        (50.0%) JP000 | Office
+
+  Wed 2026-05-14 · 7.5 hrs
+        No crew assignment
+
+  Total: 38.5 hrs
+```
+
+##### New layout — Only paid jobs mode (`Only paid jobs` on)
+
+```
+Crew jobs (per day)
+
+  Mon 2026-05-12 · 8.0 hrs · 5.6 hrs counted
+        (32.0%) JP787 | Holly Garza · 2.6 hrs counted
+        (23.0%) JP737 | Mike Holub · 1.8 hrs counted
+        (15.4%) JP796 | Done Right · 1.2 hrs counted
+
+  Crew subtotal: 5.6 hrs
+
+Sub labor jobs
+  …
+
+Total = crew (…) + sub labor (…) = … hrs.
+```
+
+(Only-paid mode skips days with zero crew allocations, same as before.)
+
+#### Implementation
+
+- **`HoursBreakdown.dailyRows[].crewAllocations`** type extended from `{ hcp, pct, hours }` to `{ hcp, jobName, pct, hours }`.
+- **`crewByDateForPerson` builder** inside `derivePersonTeamSummary` (`src/pages/People.tsx`) now reads `union.jobsById.get(c.job_id)?.job_name`, trims it, and falls back to empty string. The render step substitutes a `—` for empty.
+- **Iframe `buildHoursBody`** adds four pure helpers in the IIFE:
+  - `dowShort(dateStr)` — local-noon parse to dodge UTC drift, returns `Sun` / `Mon` / …
+  - `dayHeaderLabel(dateStr)` — `{DOW} {YYYY-MM-DD}`
+  - `buildAllocLineHtml(a, opts)` — emits one allocation line; `opts.showCounted` adds the `· {hours} hrs counted` tail used in Only-paid mode.
+  - `buildDaySectionHtml(d, opts)` — emits one day block including the no-allocation muted line for default mode.
+- **Iframe CSS** gains `.hours-day-list`, `.hours-day-section` (with `:last-child { border-bottom: none }`), `.hours-day-header` (with a muted `.day-hours` span), `.hours-day-allocs` (1.5rem left indent), `.hours-day-alloc`, `.alloc-pct` (right-aligned-ish min-width 3.4rem so the percentages line up), `.alloc-jobnum`, `.alloc-jobname`, `.alloc-counted`, `.hours-day-noalloc`, and `.hours-day-total`.
+- **Sub-labor section** keeps its prior tabular layout — sub-labor rows are short-form (HCP + hours) and don't benefit from hierarchical reformatting.
+- **Print** mode inherits the new layout because the `.hours-day-*` styles live under the `.modal` selector — when `body.printing-modal` is on (v2.542), the modal still renders with the same hierarchy.
+
+#### Files
+
+- `src/pages/People.tsx` — `HoursBreakdown.dailyRows[].crewAllocations` type, `crewByDateForPerson` populate site, iframe `<style>` block (added `.hours-day-*` rules), iframe IIFE (added four helpers + rewrote both branches of `buildHoursBody`).
+
+#### Verified
+
+- `npx tsc --noEmit` clean.
+- No new lints.
+- The same allocation data already drives the Team Summary table — this is purely a presentation change in the drilldown.
+
+---
+
+## Latest Updates (v2.543)
+
+**Date**: 2026-05-16
+
+### Day audit modal: one-click "Assign a job or bid" + truthful view-mode subtitle
+
+**Why this exists.** When a dispatcher opens **Open day audit** from Quickfill **Unassigned field time** (the section that lists per-day paid time the team summary can't tie to a job), the most common next step is to assign the missing job. But the existing modal hid that path behind two clicks: first the small **Edit** button at the top-right, then the **+** chip inside the assignments row. The empty-state line *"No job or bid assignments for this day."* looked like a dead end, and the subtitle *"This day is marked Correct (view only)."* actively suggested no edits were possible — even though the modal never actually consulted `people_hours.hours_reviewed`. End result: dispatchers clicked Edit by accident or asked *“why is Darren in this list if his job is assigned?”* (it wasn't — the session had free-text notes but `job_ledger_id IS NULL`, so `sync_crew_jobs_from_clock` had nothing to insert; see v2.537 for the math).
+
+#### What changed in `PeopleHoursDayAuditModal.tsx`
+
+1. **`Assign a job or bid` CTA.** When `canEditCrewJobs && !isEditMode` and `unifiedAssignments.length === 0`, the **Job / bid assignments** panel now renders an inline blue-outline button next to the *No job or bid assignments for this day.* text. Click it and the modal:
+   - sets `isEditMode = true` (mounts the full assignments editor + Save button),
+   - sets `jobSearchOpen = true` so the **Search HCP, bid #, job name, project, address…** input is mounted with `autoFocus`,
+   - clears `jobSearchText` and `jobSearchResults` so the previous search isn't sticky.
+
+   Pick a result → it lands in `unifiedAssignments` at 100% → click **Save crew** → the existing `await supabase.from('people_crew_jobs').upsert(...)` and `await supabase.from('people_crew_bids').upsert(...)` calls run with `{ onConflict: 'work_date,person_name' }` → `onCrewSaved` fires → the parent (Quickfill `QuickfillUnassignedFieldTimeSection` or People → Hours grid) reloads, recomputes `computeUnallocatedFieldRows`, and the row drops out of the list as soon as `unallocatedHrs ≤ thresholdHours`.
+
+2. **View-mode subtitle now matches reality.** The hardcoded *"This day is marked Correct (view only)."* was misleading on two axes — the modal doesn't check `hours_reviewed`, and `canEditCrewJobs` users could always click **Edit**. New ternary covers all three real states:
+
+   | State | Subtitle |
+   |---|---|
+   | `isEditMode && canEditCrewJobs` | `Editing — save crew assignments with Save; clock changes apply when you confirm in the clock dialog.` *(unchanged)* |
+   | `!isEditMode && canEditCrewJobs` | `Click Edit to change assignments or sessions.` |
+   | `!isEditMode && !canEditCrewJobs` | `View only — you don\u2019t have permission to edit this day.` |
+
+   The apostrophe in the last variant is written as `\\u2019` so the inline `style={…}` JSX string literal survives the TS parser and Prettier without escape gymnastics.
+
+3. **No other state, hook, prop, or callback changes.** The CTA is purely a `<button>` that mutates four existing state setters; there's no new `useEffect`, no new RPC, no new context, no new prop on the public API. All three caller sites ([`Quickfill.tsx`](src/pages/Quickfill.tsx) via `QuickfillUnassignedFieldTimeSection`, [`QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx), [`HoursSection.tsx`](src/components/quickfill/HoursSection.tsx), [`People.tsx`](src/pages/People.tsx)) get the new affordance for free because they already pass `canEditCrewJobs={canAccess}` for dev / master_technician / assistant.
+
+#### What did *not* change
+
+- The audit logic (`computeUnallocatedFieldRows`, `derivePersonTeamSummary`) is untouched — this is purely a UX fix on top of the v2.537 / v2.539 math.
+- The top-right **Edit** button still works the same way for the “already has assignments, want to add another” path.
+- The pending-approval banner that says *“N pending sessions link to {Job} — Approve them above to auto-assign”* is unchanged; the CTA below it lets dispatchers also handle the *“session was never linked to a job in the first place”* case without leaving the modal.
+- The **Open in Schedule Dispatch** deep-link, the read-only Dispatch panel, the Clock sessions list with **Approve** / **Edit** per-row, and the **Save crew** flow all stay the same.
+
+#### Files
+
+- [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx) — subtitle ternary at the top of the dialog body; empty-state `<p>` wrapped in a flex container so the new button sits inline; new `<button>` styled to match the existing `Open in Schedule Dispatch` blue-outline aesthetic.
+
+#### Verified
+
+- `npx tsc --noEmit` clean.
+- No new lint errors on the touched file.
+- Behavior unchanged for users who enter Edit mode via the top-right button; the new CTA is purely additive and only renders in the previously dead-end empty state.
+
+---
+
+## Latest Updates (v2.542)
+
+**Date**: 2026-05-16
+
+### People → Review Team Summary: cached popup, expanded period selector, printable drilldown modals
+
+**Why this exists.** Three medium-impact items from the v2.541 holistic review, which together close the most common operational papercuts on the page:
+
+5. **The popup re-fetched data the inline view already had.** Clicking *Open in print view* on the embedded summary issued a duplicate `loadTeamSummaryData()` against Supabase even though the inline iframe had just rendered the exact same rows. On a real-world team with 30+ people that's a noticeable wait + an unnecessary Supabase hit per click. The button name was also misleading — the popup is fully interactive, so calling it *“print view”* misled people into thinking it was a different document.
+6. **The period selector was rigid.** Five fixed options (*Today / Yesterday / Last week / Last two weeks / Last month*) couldn't answer *“how is this week shaping up so far?”*, *“how was the last quarter?”*, or *“what did we do all year?”* without timezone gymnastics. *Last month* was also a misnomer — it was rolling 30 days back from today, not the previous calendar month.
+7. **Drilldown modals couldn't be printed.** The existing `@media print` rule was `.modal-backdrop, .modal { display: none !important }`, so all the per-job context users actually study lived in modals that vanished on paper.
+
+#### What changed
+
+##### 5. Popup row cache + button rename
+
+- New ref `teamSummaryDataCacheRef = useRef<{ rows: TeamSummaryRow[]; cacheKey: string } | null>(null)` holds the most-recently-rendered rows from the inline iframe.
+- New helper `buildTeamSummaryCacheKey()` joins the effective `[start, end]`, the `reviewOnlyPaidInFull` flag, the sorted `showPeopleForReview` membership, and a *salary-flag + wage* signature of every `payConfig` entry into one comparable string. The wage portion is the key — without it, an operator editing a wage in another tab would silently get stale rows on the popup.
+- The Team Summary auto-refresh `useEffect` now does `teamSummaryDataCacheRef.current = null` *unconditionally* at the top, *before* the early-returns. Any dep change → cache wiped → the next popup click falls back to a fresh fetch (pre-v2.542 behavior). This is more conservative than gating on cache-key equality alone.
+- After `loadTeamSummaryData().then(rows => …)` resolves on the inline path, the cache is stamped with the cache key snapshotted *before* the network round-trip:
+
+```typescript
+const currentCacheKey = buildTeamSummaryCacheKey()
+// … later, inside .then(rows => …):
+if (isEmbedded) {
+  teamSummaryDataCacheRef.current = { rows, cacheKey: currentCacheKey }
+}
+```
+
+  This handles the race where deps change mid-load. The cache key reflects *what we asked for*, so if `buildTeamSummaryCacheKey()` returns something different by the time the user clicks the popup, the cache is invalidated naturally.
+- Popup-only short-circuit:
+
+```typescript
+const cached = teamSummaryDataCacheRef.current
+const canReuseCache = !isEmbedded && cached != null && cached.cacheKey === currentCacheKey
+const dataPromise = canReuseCache && cached
+  ? Promise.resolve(cached.rows)
+  : loadTeamSummaryData()
+```
+
+  On a cache hit the popup paints in a single microtask — the *Loading Team Summary…* toast is also suppressed (it'd just look stale).
+- Button renamed: **Open in print view** → **Open in new window**; title updated to *“Open the same fully-interactive summary in a new browser window (handy for printing or sharing)”* so the affordance accurately describes what happens.
+
+##### 6. Period selector expansion
+
+- `ReviewPeriod` gained five new variants and renamed one:
+  - `'this_week'` — Sunday → today (running-week monitoring; *"how are we doing so far this week?"*).
+  - `'last_30_days'` — rolling 30 days back from today. **Replaces** `'last_month'`, whose label was a misnomer — it was always rolling, not calendar-month.
+  - `'last_90_days'` — rolling 90 days. Useful for trend comparisons.
+  - `'this_year'` — Jan 1 of the current year → today (calendar YTD).
+  - `'custom'` — two `<input type="date">` From / To inputs.
+- Switching the dropdown to *Custom range…* now seeds the inputs with the current effective range so the picker doesn't open empty:
+
+```typescript
+if (next === 'custom' && !reviewCustomRangeStart && !reviewCustomRangeEnd) {
+  const [seedStart, seedEnd] = getReviewDateRange()
+  setReviewCustomRangeStart(seedStart)
+  setReviewCustomRangeEnd(seedEnd)
+}
+```
+
+- Custom-range UX safeguards:
+  - Both inputs cross-bound (`max={reviewCustomRangeEnd}` on the From input, `min={reviewCustomRangeStart}` on the To input) so the native date picker stops users from picking impossible ranges.
+  - If the user does pick them out of order anyway, `getReviewDateRange()` swaps them.
+  - When only one input is set, the range collapses to that single date — keeps the table responsive while the user finishes picking.
+  - When both inputs are empty, a muted hint *“Pick both dates to set the range.”* renders next to the inputs.
+- Auto-refresh skips loads while a custom range is half-finished so the network doesn't thrash mid-typing:
+
+```typescript
+if (
+  reviewPeriod === 'custom' &&
+  (!reviewCustomRangeStart || !reviewCustomRangeEnd)
+) {
+  return
+}
+```
+
+- `getReviewPeriodLabel()` learned all five new period labels (*This week (running)*, *Last 30 days*, *Last 90 days*, *This year*, *Custom range*).
+- Both data-loading effects — the per-person `selectedReviewPersonIndex` / `loadReviewData` effect (~L8309) and the Team Summary auto-refresh effect (~L7385) — include `reviewCustomRangeStart` + `reviewCustomRangeEnd` in their dep arrays so changing the dates triggers a reload.
+
+##### 7. Printable drilldown modals
+
+- Added a **Print** button to the modal header next to Close:
+
+```html
+<div class="modal-header">
+  <h2 id="modal-title"></h2>
+  <div class="modal-header-actions">
+    <button class="modal-print" id="modal-print" type="button" aria-label="Print this breakdown" title="Print only this breakdown">Print</button>
+    <button class="modal-close" id="modal-close" type="button" aria-label="Close">&times;</button>
+  </div>
+</div>
+```
+
+- Click handler adds `body.printing-modal`, calls `window.print()`, and an `afterprint` listener strips the class so the screen view comes back identical to before:
+
+```javascript
+modalPrintBtn.addEventListener('click', function(){
+  document.body.classList.add('printing-modal');
+  function onAfterPrint(){
+    clearPrintingModalClass();
+    window.removeEventListener('afterprint', onAfterPrint);
+  }
+  window.addEventListener('afterprint', onAfterPrint);
+  try { window.print(); } catch (e) { clearPrintingModalClass(); }
+});
+```
+
+- `@media print` rules now split into two modes:
+  - **Default print** (whole-table) is gated on `body:not(.printing-modal)` and keeps the existing *hide-modal* behavior.
+  - **Modal-only print** (`body.printing-modal`) hides `<h1>`, `.meta`, `.meta-sub`, `.tools`, `> table`, `.footer-caption`, `.modal-backdrop`, `.modal-print`, `.modal-close` and resets the modal to a static, full-width, no-shadow, no-padding block so it fills the printable page cleanly.
+- Defensive cleanup: `closeModal()` always strips `.printing-modal` (in case the user cancelled the print dialog and the browser didn't fire `afterprint`), and the Escape-key handler does the same. The `try { window.print(); } catch` arm also clears the class so a print failure doesn't lock the user into modal-only print mode.
+- Print button styled to match the existing toolbar buttons (white background, 1px `#d1d5db` border, `:hover` `#f9fafb`, `:focus-visible` 2px `#2563eb` outline, `font-size: 0.8rem`).
+
+#### Behavioral deltas
+
+- **Cache hit on popup**: opens in one microtask with no Supabase load and no *Loading…* toast.
+- **Cache miss on popup**: identical to pre-v2.542 — fresh load with the toast.
+- **Period dropdown**: nine options instead of five; *Custom range…* reveals two date inputs inline; *Last month* renamed to *Last 30 days* (semantics unchanged).
+- **Modal Print**: prints just the modal body, fills the page, no surrounding chrome. Whole-table print still works via Ctrl/Cmd+P or print-via-popup.
+- **Auto-refresh**: skips loads when `reviewPeriod === 'custom'` and either input is empty.
+
+#### Files
+
+- `src/pages/People.tsx` — single edit site:
+  - Type/state: `ReviewPeriod` type expansion, `reviewCustomRangeStart` / `reviewCustomRangeEnd` state, `teamSummaryDataCacheRef`.
+  - Helpers: `getReviewDateRange()` learned 5 new branches, `getReviewPeriodLabel()` labels map updated, new `buildTeamSummaryCacheKey()`.
+  - Effects: Team Summary auto-refresh effect + `selectedReviewPersonIndex` effect dep arrays now include the custom range; auto-refresh moves the cache clear above the early-returns; auto-refresh adds the `reviewPeriod === 'custom'` half-finished guard.
+  - Iframe builder (`openTeamSummaryWindow`): popup-only `canReuseCache` short-circuit; `dataPromise` ternary; cache populate inside `.then`; suppressed *Loading…* toast on hit.
+  - UI: dropdown options expanded; custom-range From / To inputs with cross-bounding; *“Pick both dates to set the range.”* hint; button rename to *Open in new window* with updated title; modal header gains a `Print` button inside `.modal-header-actions`; scoped `@media print` rules.
+  - JS: `modal-print` click handler with `afterprint` cleanup; defensive cleanup in `closeModal()` and the Escape handler.
+
+#### Verified
+
+- `npx tsc --noEmit` clean.
+- No new lints.
+
+---
+
+## Latest Updates (v2.541)
+
+**Date**: 2026-05-16
+
+### People → Review Team Summary: keyboard a11y, modal-safe refresh, in-table search + sort, transparent footer
+
+**Why this exists.** A holistic review of the Team Summary surfaced four high-impact quality issues:
+
+1. **Keyboard accessibility was broken.** Every drilldown was a bare `<td class="click-cell">` — not focusable, not announced as interactive, no Enter / Space activation. Keyboard-only users and screen-reader users had no way to reach any breakdown the table offered.
+2. **Auto-refresh wiped open drilldowns.** The auto-refresh `useEffect` rebuilt the entire `srcDoc` whenever `reviewOverheadRates.ratePerHour`, `payConfig`, `reviewPeriod`, or any review dep changed. Any open modal vanished mid-investigation.
+3. **No in-table interactions.** 11 fixed-sort columns, no search, no re-sort. With 30+ people the operator had to scroll to find anyone, and there was no way to ask *“who's our highest gross-per-hour right now?”*.
+4. **Footer could silently undercount.** The roster filter (archived, external-only) excluded workers from the table without acknowledging that their share of any given job *isn't* in the team total.
+
+#### What changed
+
+##### 1. Keyboard a11y on every drilldown cell
+
+- Each clickable cell now renders with `tabindex="0"`, `role="button"`, and a descriptive `aria-label` (e.g. *“Profit after overhead breakdown for Robert: $4,250”*) so screen readers announce both column type and value before activation.
+- Enter and Space both trigger the same `openModal(idx, type)` route as a click, with `preventDefault` on Space to avoid scrolling.
+- `:focus-visible` outline (2px `#2563eb`, `outline-offset: -2px`) gives a clear keyboard ring without showing on mouse focus.
+- Modal lifecycle now manages focus correctly: opening captures `document.activeElement` into `lastFocusedTrigger`, focuses the close button; closing returns focus to the originating cell. Escape still closes (existing behavior).
+- Implementation lives entirely in the iframe IIFE inside `clickCellTd(opts)`; every cell builder (`hoursClickableTd`, `overheadHoursClickableTd`, `overheadLaborClickableTd`, `fieldHoursClickableTd`, `grossClickableTd`, `netClickableTd`, `profitClickableTd`, `grossPerHrClickableTd`, `netPerHrClickableTd`, `profitPerHrClickableTd`) routes through it.
+
+##### 2. Modal-safe auto-refresh
+
+- The iframe posts two new messages to the parent: `team-summary-modal-open` (immediately after `openModal` paints), `team-summary-modal-close` (only when a modal was actually open, to avoid duplicate sends).
+- Parent maintains `teamSummaryModalOpenRef` (boolean) and `teamSummaryRefreshPendingRef` (boolean). The auto-refresh effect now checks `teamSummaryModalOpenRef.current` *before* calling `openTeamSummaryWindow('inline')`; if the modal is open, the effect sets `teamSummaryRefreshPendingRef = true` and returns without rebuilding.
+- When the iframe posts `team-summary-modal-close`, the parent clears `teamSummaryModalOpenRef`; if `teamSummaryRefreshPendingRef` is set, it bumps a new `teamSummaryDrainTick` state — added to the effect's dep list — which re-runs the effect with the latest dep values and produces the deferred refresh.
+- Result: data still stays current (rate finishes loading, new clock sessions land, etc.), but never at the cost of clobbering an open investigation.
+
+##### 3. Search + click-to-sort
+
+- New tools row above the table: `<input type="search" id="search-input" aria-label="Filter people by name" placeholder="Search by name…">`, an `aria-live="polite"` `<span id="filter-status">`, and a `Reset sort` button (disabled when at the default Profit-after-overhead-desc).
+- Search is plain substring + case-insensitive on `r.name`. As the user types, `searchQuery` updates and `renderTable()` re-runs (filter → sort → re-emit `<tbody>` + `<tfoot>` → re-attach handlers).
+- Every `<th>` now carries `data-sort="key"` + `tabindex="0"` + `role="columnheader"` + `aria-sort` and a `<span class="sort-indicator">` that switches between empty / `▲` / `▼`.
+  - First click on a column with `data-sort="name"` defaults to ascending; numeric columns default to descending.
+  - Subsequent clicks on the same column toggle direction; clicking a different column resets to that column's default direction.
+  - Enter / Space on a focused header have the same effect.
+  - `aria-sort` flips between `none` / `ascending` / `descending` so screen readers announce the active sort.
+- Null-safe comparator: rows where the sort value is `null` (e.g. `profitAfterOverhead` is `null` until `overheadRate` loads) sort to the bottom regardless of direction so they never claim ranks.
+- Default sort matches the pre-v2.541 server-side order: Profit (after overhead) descending, with Name as the tiebreaker — so the initial paint is identical to before.
+
+##### 4. Footer transparency
+
+- When the search filter narrows the visible set, the footer's first-column label switches from `Team total · N people` to `Filtered total · k of N people`, and the totals reflect only the filtered subset (so the operator can see *“these eight people generated $X”* directly).
+- The `<span id="filter-status">` next to the search input mirrors the same state in an `aria-live="polite"` region — *“Showing 8 of 24 people”* — so screen readers announce the change.
+- A persistent `<p class="footer-caption">` below the table notes that **archived or external-only workers contribute to job revenue but are not in this table, so their share of those jobs is not summed in the totals**. When a filter is active it gains a leading sentence — *“Footer totals reflect only the people shown above.”* — to make the relationship between filter + totals explicit.
+
+##### 5. Print mode unchanged
+
+`@media print` hides the new `.tools` row, drops the `cursor: pointer` on `th[data-sort]`, hides `.sort-indicator` spans, and (as before) suppresses `.click-cell` colors / underlines and `.modal-backdrop` / `.modal`. Printed output is visually identical to the pre-v2.541 layout.
+
+#### Architectural change
+
+Previously the row HTML and footer HTML were built on the parent (server-side TS) inside `openTeamSummaryWindow` and shipped as static template-literal strings into the iframe `srcDoc`. To support client-side filter / sort / re-render *without* a parent round-trip, both are now built **inside the iframe IIFE** from a single `breakdowns` payload.
+
+- `breakdownsPayload` (parent → iframe) gains row-level numeric fields: `idx`, `totalHours`, `gross`, `net`, `profitAfterOverhead`, `revPerHour`, `netPerHour`, `profitPerHourAfterOverhead`. These join the existing per-person breakdown sub-objects (`hb` / `gb` / `nb` / `pb`) and the v2.540 cost fields (`overheadHours`, `officeHours`, `bidHours`, `fieldHours`, `hourlyWage`, `overheadLaborCost`, `payConfigSource`).
+- `idx` is stable across sort/filter and references the original index in `breakdowns`, so `breakdowns[idx]` lookups in the modal click router stay valid no matter how the table is currently displayed.
+- The pre-v2.541 TS cell builders (`cellMoney`, `cellHoursClickable`, `cellOverheadLaborClickable`, etc.) and the `tableRows.join('\n')` / `footerRow` HTML strings are gone. The iframe now has JS equivalents (`plainMoneyTd`, `plainHoursTd`, `clickCellTd(opts)`, `hoursClickableTd`, `overheadHoursClickableTd`, `overheadLaborClickableTd`, `fieldHoursClickableTd`, `grossClickableTd`, `netClickableTd`, `profitClickableTd`, `grossPerHrClickableTd`, `netPerHrClickableTd`, `profitPerHrClickableTd`) plus `buildRowHtml(r)`, `buildFooterHtml(visibleRows)`, and `renderTable()`.
+- The unused parent-side `fmtMoney` / `fmtHours` / `negStyle` helpers were removed (they only formatted strings that are now produced inside the iframe). `escapeHtml` stays — the parent still escapes the period label that goes into the static `<div class="meta">`.
+- The data-load path, `derivePersonTeamSummary`, and the per-cell modal builders (`buildHoursBody`, `buildOverheadHoursBody`, `buildOverheadLaborBody`, `buildGrossBody`, `buildNetBody`, `buildProfitBody`, `buildGrossPerHourBody`, `buildNetPerHourBody`, `buildProfitPerHourBody`, `buildOverheadRateBody`) are all unchanged.
+
+#### Behavioral deltas
+
+- **Initial paint** is identical to v2.540 — same default sort, same numbers, same totals. The only new chrome is the tools row above the table and the footer caption below it.
+- **Drilldown numbers** are unchanged; the modal builders still consume the same `entry` shape.
+- **Print layout** is identical to v2.540 (tools row hidden via `@media print`).
+- **Timing**: client-side re-renders on sort / filter run in a single tick off the in-iframe `breakdowns` array. No parent re-render, no `srcDoc` swap, no scroll-position loss.
+
+#### Files
+
+- `src/pages/People.tsx` — single edit site inside `openTeamSummaryWindow`:
+  - Removed: parent-side cell builders, `tableRows.map(...)`, `footerRow`, `totals` reducer, unused `fmtMoney` / `fmtHours` / `negStyle` helpers.
+  - Added (parent): `idx`/`totalHours`/`gross`/`net`/`profitAfterOverhead`/`revPerHour`/`netPerHour`/`profitPerHourAfterOverhead` fields on `breakdownsPayload`; `teamSummaryModalOpenRef` / `teamSummaryRefreshPendingRef` / `teamSummaryDrainTick` state; modal-aware deferral inside the auto-refresh effect; new `team-summary-modal-open` / `team-summary-modal-close` cases on the existing `message` listener.
+  - Added (iframe HTML): tools row, sortable headers with `data-sort` + `tabindex="0"` + `role="columnheader"` + `aria-sort` + `.sort-indicator`, `<tbody id="tbody">`, `<tfoot id="tfoot">`, footer caption, expanded `@media print` rules.
+  - Added (iframe JS): cell builders mirroring the pre-v2.541 TS versions, `buildRowHtml(r)`, `buildFooterHtml(visibleRows)`, sort + filter state (`sortKey`, `sortDir`, `searchQuery`), `compareRows(a, b)`, `getVisibleRows()`, `updateSortIndicators()`, `updateFilterStatus(visible)`, `updateFooterCaption(visible)`, `attachClickCellHandlers()`, `renderTable()`, header / search / reset wiring, modal focus management, `postParent(type)` helper, initial `renderTable()` call.
+
+#### Verified
+
+- `npx tsc --noEmit` clean.
+- No new lints (the previously-warned unused parent helpers were removed, not silenced).
+- Vite HMR push clean (no syntax errors in the IIFE template literal).
+- Pre-existing tests (`peopleHoursPendingByCell.test.ts`, `peopleHoursUnallocatedRows.test.ts`) untouched and unaffected — these are pure helpers and weren't part of the iframe rewrite.
+
+---
+
+## Latest Updates (v2.540)
+
+**Date**: 2026-05-16
+
+### People → Review Team Summary: surface overhead labor cost via a new `Overhead labor` column
+
+#### Why
+
+Previously, anyone clocked into the configured **Office** job all day showed up in the **Team Summary** as `totalHours = 8`, `overheadHours = 8`, `fieldHours = 0`, and **`$0` across Gross / Net / Profit (after overhead)**. The company paid them, but their row made them look free.
+
+The math wasn't actually wrong — their wage *was* in the model, just hidden:
+
+1. Office labor is part of the rolling 90-day overhead pool numerator (along with bid labor and office parts).
+2. That pool is divided by team field hours to produce `$/field-hour`.
+3. Field workers are charged that rate × their field hours in **Profit (after overhead)**.
+
+So office workers' wages were silently redistributed to field workers as a deduction. The Team Summary just never re-surfaced the office worker's own cost in their own row.
+
+#### What changed
+
+A new **Overhead labor** column lands **between Overhead hrs and Field hrs** (so the two overhead-side cells sit adjacent before the field-revenue half of the table), **stored and displayed as a negative dollar amount** (cost convention) so it reads `-$X` in red, matches the rest of the P&L styling, and sums into a negative footer total without any special-casing.
+
+Crucially, this column is scoped to **overhead labor only** — `(officeHours + bidHours) × hourly_wage`. Field labor is **intentionally excluded** because it is already subtracted at the per-job level inside the existing Net Revenue formula (`job_net = revenue − parts − total_labor`), so adding it here too would visually double-count for field workers.
+
+- Per row: `-(r.overheadHours × people_pay_config.hourly_wage)` for that person, formatted via `fmtMoney` (`-$400`) and red-shaded via `negStyle(n)` (the same `#b91c1c` used by other negative dollar cells).
+- Footer: team-total `overheadLaborCost` (negative sum of every visible row), rendered through `cellMoney` which also applies `negStyle`.
+- Cell uses the same dotted-underline drilldown affordance; rows with no overhead labor (pure field workers, or no wage configured — `r.overheadLaborCost >= 0`) render `—` and aren't clickable.
+- Click any cell → **Overhead labor breakdown** modal showing **source** (Salaried / Hourly / Unknown), **hourly_wage**, and a focused **Office** / **Bid** split where each bucket cost is `-(hours × wage)` (so each row reads `-$X` in the modal too) with per-bucket share, and a negative subtotal. Bucket shares come out positive because both numerator and denominator are negative (`(-officeCost) / (-overheadLaborCost)`).
+- The modal also includes a separate **For context: this person's field labor** section that lists `fieldHours × wage` greyed out with the explanatory note *"Already in Net Revenue via job-level `revenue − parts − total labor`; not added to this column to avoid double-counting."* This makes the "where did my field labor go" question answerable in one click without misleading anyone into thinking it should be added.
+- When `hourly_wage` isn't set on `people_pay_config`, the modal shows an amber caption pointing the user at the People → Hours pay-config row to fix it.
+
+Importantly, **none of the existing math changes**:
+
+- Overhead pool numerator / denominator / `$/field-hour` rate (Method A) are unchanged.
+- `Profit (after overhead) = r.profit − r.fieldHours × overheadRate` is unchanged (still uses field hours, not labor cost).
+- All other columns (Gross Revenue, Net Revenue, Profit, per-hour metrics) are unchanged.
+- The Convention 1 alignment from v2.539 remains in place.
+
+This is purely visibility — pure office workers now show e.g. `-$400` in their row even though their gross/net are still `$0`, so it's no longer easy to misread the page as "office workers cost nothing." Field workers' rows show `—` (no overhead labor) which is correct: their pay is already reflected in their Net Revenue allocation.
+
+#### Files
+
+[`src/pages/People.tsx`](src/pages/People.tsx):
+
+- `TeamSummaryRow` type gains `hourlyWage: number; overheadLaborCost: number` (where `overheadLaborCost <= 0`).
+- `derivePersonTeamSummary` reads `cfg = payConfigSnapshot[personName]` (already in scope), computes `hourlyWage = cfg?.hourly_wage ?? 0` and `overheadLaborCost = -(overheadHours × hourlyWage)` (negative), and forwards both fields on the returned row. A short comment explains why field hours are excluded.
+- The totals reducer initializes `overheadLaborCost: 0` and accumulates `acc.overheadLaborCost += r.overheadLaborCost` alongside `fieldHours` — produces a negative team total that flows through `cellMoney` + `negStyle`.
+- New `cellOverheadLaborClickable(n, idx)` helper renders the `-$X` cell red via `negStyle(n)` when `n < 0` (with `data-type="overhead_labor"`), `—` otherwise.
+- New `<th class="num">Overhead<br>labor</th>` inserted **between `Overhead<br>hrs` and `Field<br>hrs`** so the two overhead-side cells (hours then dollars) read together, then the page transitions to the field-revenue half of the table. The matching cell is inserted in `tableRows` in the same position and `cellMoney(totals.overheadLaborCost)` is placed in the footer row in the matching slot.
+- `breakdownsPayload` forwards `hourlyWage`, `overheadLaborCost`, and `payConfigSource: 'salary' | 'hourly' | 'unknown'` (derived once via a hoisted `const cfg = payConfig[r.personName]` to satisfy `noUncheckedIndexedAccess`).
+- `buildOverheadLaborBody(entry)` lives inside the print-iframe IIFE script (right after `buildOverheadHoursBody`, before `buildFieldHoursBody`); a new `else if (type === 'overhead_labor')` branch in the click-router calls it.
+
+#### Verified
+
+- `npx tsc --noEmit` clean.
+- 17 / 17 `peopleHoursUnallocatedRows.test.ts` and 15 / 15 `peopleHoursPendingByCell.test.ts` still pass (no behavioral overlap with this column, so no test changes were needed).
+- Lints clean.
+- Print iframe escape audit: every JS string in `buildOverheadLaborBody` either uses HTML entities (`&mdash;`, `&ldquo;`, …), `\u00d7` / `\u2014` / `\u2192` / `\u2212` unicode escapes, or the `\\'` template-literal-survival pattern for the two `person\\'s` apostrophes — so the same template-literal-collapse trap that bit v2.539 doesn't recur.
+
+---
+
+## Latest Updates (v2.539)
+
+**Date**: 2026-05-16
+
+### Align "field × pct" consumers with the trigger's "day × pct" semantic (Option E)
+
+`sync_crew_jobs_from_clock` writes each `people_crew_jobs.job_assignments[].pct` as **share of total session hours** including the configured Office overhead job — that is, pct sums to 100 across all crew rows for a person+date (Office included). Four consumers were already designed around that semantic and multiply by `dayHoursRaw` (Convention 1): `loadReviewData` in [`src/pages/People.tsx`](src/pages/People.tsx), [`src/utils/teamLabor.ts`](src/utils/teamLabor.ts), [`src/lib/payReportAssignmentsBreakdown.ts`](src/lib/payReportAssignmentsBreakdown.ts), and (transitively) [`src/lib/draftPayrollPersonBreakdown.ts`](src/lib/draftPayrollPersonBreakdown.ts). Two consumers were on the wrong convention — they multiplied by `(dayHoursRaw - overheadOnDay)`, i.e. field-only hours — which under-credited non-Office jobs by exactly the Office share of the day and surfaced a phantom remainder as "unallocated":
+
+- **Quickfill → Unassigned field time** ([`src/lib/peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts) `computeUnallocatedFieldRows`).
+- **People → Hours Team Summary** (`derivePersonTeamSummary` block in [`src/pages/People.tsx`](src/pages/People.tsx) and its lifetime denominator `teamLaborCostByJobId` in `loadTeamReviewUnion`).
+
+#### The Paige regression that motivated this
+
+Reported case from `src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx`:
+
+```
+sessions:    Holly 2:56:32, Office 2:43:13, Mike 2:06:31, Done 1:24:55
+peopleHours: 9.19h
+trigger pct: Holly 32, Office 29.6, Mike 23, Done 15.4   (sums to 100)
+overheadOnDay (Office session): 2.72h
+fieldHours = 9.19 − 2.72 = 6.47
+
+Convention 2 (before):
+  crewAttributedHrs = 6.47 × (32+23+15.4)/100 = 6.47 × 0.704 = 4.56
+  unallocated       = max(0, 6.47 − 4.56 − 0) = 1.91h          <-- phantom
+
+Convention 1 (Option E):
+  crewAttributedHrs = 9.19 × 0.704 = 6.47
+  unallocated       = max(0, 6.47 − 6.47 − 0) = 0              <-- correct
+```
+
+When sessions cover the paid day, `Σ_{non-Office} dayHoursRaw × pct/100 = (1 − officePct) × dayHoursRaw = fieldHours`, so the unallocated remainder collapses to ~0. Real unattributed cases — no sessions on a salary day, sub-labor unmatched, manual sub-100% pct — still surface.
+
+#### Code changes
+
+- [`src/lib/peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts) — `crewAttributedHrs = (dayHoursRaw * crewPct) / 100` (was `fieldHours * crewPct / 100`); file-header JSDoc rewritten to describe Convention 1 with an explicit note that pct matches the `sync_crew_jobs_from_clock` trigger and the `payReportAssignmentsBreakdown` / `teamLabor.ts` consumers.
+- [`src/pages/People.tsx`](src/pages/People.tsx) — four sites:
+  - **Site A** — `loadTeamReviewUnion` lifetime denominator (`teamLaborCostByJobId`): switch to `dayHoursRaw × pct / 100`. The supporting `overheadHoursByPersonByDateAllTime` build step (~L8364, L8375-L8376) is removed because it had no other consumer; the period-only `overheadHoursByPerson` and `overheadHoursByPersonByDate` maps stay (still used by `derivePersonTeamSummary`'s overhead bucket display and the period `fieldHours`).
+  - **Site B** — `derivePersonTeamSummary` `crewJobs` numerator: `hours = dayHoursRaw × pct / 100`.
+  - **Site C** — `derivePersonTeamSummary` `crewByDateForPerson` daily breakdown: same change, keeps the per-day list aligned with `crewJobs`.
+  - **Site D** — print footnote at ~L9628: rewritten from "Crew assignments subtract office + bid clock from the day before applying the percentage…" to "Each crew assignment's hours = day total × pct. The day total is `peopleHours` (or 8 hrs on a salary weekday). Office time has its own crew row and is filtered from this field-revenue rollup; its share of the day appears as overhead." The existing `> 0.01` gates above (~L9291, L9358, L9421, L9503, L9598, L9615) auto-hide the now-zero "Unallocated hours" rows.
+
+#### Tests / verification
+
+- 1 new regression test in [`src/lib/peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts) — `'emits zero unallocated when sessions cover the day across Office + field crew (Option E regression)'` — uses Blake (hourly in `PAY_CONFIG`) with a 2.72h Office session and pct {Office 29.6, Holly 32, Mike 23, Done 15.4}; asserts the row is suppressed by the 0.5h threshold.
+- All 16 existing assertions stay green: every existing test either has `overheadOnDay = 0` (so `fieldHours == dayHoursRaw` and both conventions match) or has no non-Office crew assignment (so `crewAttributedHrs = 0` either way). No expectation values needed adjustment.
+- **17 / 17** unit tests pass (`npx vitest run src/lib/peopleHoursUnallocatedRows.test.ts`).
+- `npx tsc -b` clean across the codebase.
+
+#### What does **not** change
+
+- `sync_crew_jobs_from_clock` and `sync_crew_bids_from_clock` SQL — unchanged. No DB migration needed.
+- `clock_sessions_sync_crew_assignments_after_job_bid` trigger — unchanged.
+- `loadReviewData` (Person Review path), `teamLabor.ts`, `payReportAssignmentsBreakdown.ts`, `draftPayrollPersonBreakdown.ts` — all already on Convention 1.
+- [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx) — already enforces sum-to-100 across all crew assignments on add/remove (verified at the rebalance step), so manual edits stay compatible.
+- DB schema, RLS, RPCs, `src/types/database.ts` — no changes.
+
+#### Behavioural delta for users
+
+- Quickfill **Unassigned field time**: Paige-shaped rows (Office overhead clock + non-Office crew on the same day) disappear. Truly unattributed rows still surface.
+- People → Hours **Team Summary** print: "Unallocated hours" row drops below the existing `> 0.01` gate in well-formed days. Footnote rewritten.
+- **Profit per hour / Rev per hour**: shift slightly. Period numerator and lifetime denominator both move on the same convention so ratios stay stable; magnitude is bounded by `officePct × wage`.
+
+#### Risks
+
+- Salary partial-coverage days (paid 8h, only 5h of sessions) now extrapolate session shares onto paid time (e.g. 80% × 8 = 6.4h on Holly even when Holly only had 4h of clocked sessions). This is the same assumption Pay Stubs and `teamLabor.ts` already make, so the change increases consistency rather than introducing a new model.
+- Footnote rewrite is the only user-visible string change; literal text, no semantics depend on it.
+
+#### Files
+
+- **Updated**: [`src/lib/peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts), [`src/lib/peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts), [`src/pages/People.tsx`](src/pages/People.tsx).
+- **Docs**: AGENTS.md (Quick Index hint), RECENT_FEATURES.md.
+
+---
+
+## Latest Updates (v2.538)
+
+**Date**: 2026-05-16
+
+### Freeze "inherit from crew lead" across crew tables, sync RPCs, and the React UI
+
+The "inherit jobs from crew lead" feature on `people_crew_jobs` / `people_crew_bids` is removed end-to-end. Going forward every row owns its own `job_assignments` / `bid_assignments`; the `crew_lead_person_name` column is retained as a deprecated artifact (always NULL) so historical SELECTs and the freeze backup tables stay valid. The business shift is that **clock sessions** now drive per-person pay: hourly people count their own approved closed clock hours, salaried people split their salary across the same hours, and crew-lead inheritance can no longer hide a follower's actual time behind a lead's job mix.
+
+#### 1. Data freeze migration (`20260516154601_freeze_crew_lead_inheritance`)
+
+Idempotent SQL — safe to re-run — that:
+
+- Creates audit backup tables **`public._freeze_crew_lead_jobs_backup`** (work_date, person_name, crew_lead_person_name, job_assignments, captured_at) and **`public._freeze_crew_lead_bids_backup`** (… bid_assignments …) via `CREATE TABLE IF NOT EXISTS … AS SELECT …` and snapshots every current follower row before mutating it. The tables are unprivileged (no RLS enabled, no grants to `authenticated` / `anon`), so only the migration owner / service role can read them — they exist purely as a one-shot rollback / audit trail and will be dropped alongside the column in a future cleanup migration.
+- For each `people_crew_jobs` follower (`crew_lead_person_name IS NOT NULL`), looks up the lead's `(work_date, person_name)` row and **materializes** the lead's `job_assignments` into the follower's row (so the follower keeps the same proportional pay attribution they had via inheritance). Orphan followers (the lead row no longer exists) collapse to `'[]'::jsonb` and a NULL `crew_lead_person_name`.
+- Runs the same logic for `people_crew_bids` / `bid_assignments`.
+- Sets `crew_lead_person_name = NULL` on every row in both tables.
+- Updates the column COMMENTs to mark `crew_lead_person_name` deprecated.
+
+Pre-flight audit found **116** job follower rows and **29** bid follower rows; after the migration, **`SELECT COUNT(*) FROM people_crew_jobs WHERE crew_lead_person_name IS NOT NULL`** returns **0** on both tables.
+
+#### 2. Sync RPC freeze migration (`20260516162434_drop_crew_lead_inheritance_from_sync_rpcs`)
+
+`CREATE OR REPLACE` on both **`public.sync_crew_jobs_from_clock(p_person_name, p_work_date)`** and **`public.sync_crew_bids_from_clock(p_person_name, p_work_date)`** to **delete the early-return**:
+
+```sql
+SELECT crew_lead_person_name INTO v_crew_lead FROM public.people_crew_jobs WHERE …;
+IF v_crew_lead IS NOT NULL THEN RETURN; END IF;
+```
+
+Before this freeze the RPCs **skipped** any row whose `crew_lead_person_name` was set so they would not overwrite the inherited mix. After the freeze every row is its own owner, so we always compute and write. The INSERT / UPDATE still **writes NULL** into `crew_lead_person_name` explicitly so the column behavior stays well-defined while the column itself is around. Function COMMENTs were rewritten accordingly (`"Always writes the computed assignments and keeps crew_lead_person_name NULL (inherit-from-crew-lead is deprecated)."`).
+
+The trigger **`clock_sessions_sync_crew_assignments_after_job_bid`** (migration `20260402120000_clock_sessions_sync_crew_assignments_trigger`) is unchanged because it already calls these two RPCs.
+
+#### 3. React UI / helpers
+
+- **`CrewJobsBlock.tsx`** — drop the **Crew** column and the per-person **crew lead** `<select>`. The Assignments cell is now editable for every row when `canEdit`; the `crew_lead_person_name` field is no longer in `CrewRow`, no longer read from `loadCrewJobs`, and no longer written by `saveCrewRow` / `addAssignmentToPerson`. `getEffectiveAssignments` was deleted.
+- **`HoursUnassignedModal.tsx`** — drop the "Crew lead (inherit jobs from)" picker, the `getEffectiveAssignmentsFromCrewMap` helper, the `showPeople` prop, the read-only `Inherits {lead}` chip, and every `crew_lead_person_name` field from the draft / save payload. The header copy changes from "Assign a crew lead or add jobs/bids" to "Add jobs or bids".
+- **`PeopleHoursDayAuditModal.tsx`** — drop the same crew-lead picker, the `availableCrewLeads` / `hasCrewLead` / `jobsEditable` / `crewEditable` calculations, the inherit-from-lead read-only banner, the `showPeople` prop (and its three caller updates in **`People.tsx`** / **`QuickfillUnassignedFieldTimeSection.tsx`** / **`HoursSection.tsx`**), and `crew_lead_person_name` from the `upsert` payload.
+- **Helpers** simplified to plain "row owns its own assignments":
+  - **`src/utils/teamLabor.ts`** — `CrewJobRow` / `CrewBidRow` drop the column; `getEffectiveAssignments` renamed to `getCrewJobAssignments` / `getCrewBidAssignments` and now returns `row.job_assignments` (or `bid_assignments`) directly.
+  - **`src/utils/crewAssignments.ts`** — `MergedCrewMapRow` drops the column; `buildCrewMapFromJobsAndBidRows` no longer carries it on the input rows or output map.
+  - **`src/lib/payReportAssignmentsBreakdown.ts`** — `getEffectiveJobAssignments` / `getEffectiveBidAssignments` renamed to `getJobAssignmentsForDay` / `getBidAssignmentsForDay`, and the body becomes `row?.job_assignments ?? []` (no lead dereference).
+  - **`src/lib/draftPayrollPersonBreakdown.ts`** — drops the column from the Supabase `select(...)` calls, the row arrays, and the `crewByDatePerson` / `crewBidsByDatePerson` maps.
+  - **`src/lib/cascadePersonName.ts`** — removes the two follow-up `update(...)` calls that used to rename `crew_lead_person_name` whenever a person's name changed.
+  - **`src/lib/peopleHoursUnallocatedRows.ts`** — drops `crew_lead_person_name` from `PeopleHoursUnallocatedCrewInput`, the internal `CrewBucket`, and `PeopleHoursUnallocatedRow` (so the Quickfill section no longer shows a `Lead: {name}` chip). Phase-1's lookup-map workaround for the inheritance read-side bug is unwound.
+- **Page sweeps** — every `crew_lead_person_name` SELECT clause and every `row.crew_lead_person_name ? leadAssignments : row.job_assignments` dereference in **`src/pages/People.tsx`** (~20 sites across `payJobsBreakdown`, `loadCrewJobsForHoursRange`, `mergeCrewJobsForDateRange`, `loadReviewData`, `loadTeamReviewUnion`, `derivePersonTeamSummary`, `hasAssignmentsForDate`) and **`src/pages/Jobs.tsx`** (`loadTeamLaborData` + its own `getEffectiveAssignments` duplicate at ~line 2495) are removed.
+- **Review CrewJobs UI** — `ReviewCrewJob.viaLead` / `crewMemberNames` were dropped because, after the freeze, every emitted row is a `viaLead === null` non-follower row, so the `with {lead}` / `with {member1, member2}` JSX never fired. `crewMembersByDateAndLead` map is gone with it.
+
+#### 4. Quickfill `crew_lead_person_name` cleanup
+
+The Quickfill `loadAll` paths in **`HoursSection.tsx`** and **`QuickfillUnassignedFieldTimeSection.tsx`** drop the column from `select('work_date, person_name, …, job_assignments')` calls, the `CrewRow` / `CrewJobsRow` / `CrewBidsRow` type aliases, and the `hasAssignmentsForDate` predicate (which now reads `(row.unifiedAssignments?.length ?? 0) > 0`). The "Open day audit" entry point keeps working; the audit modal no longer shows the inherit-from-lead read-only banner because there's nothing to inherit.
+
+#### 5. Tests / verification
+
+- 4 inheritance-specific tests dropped from `peopleHoursUnallocatedRows.test.ts`; remaining **16 unit tests** still pass.
+- Pre-flight audit confirmed **0** follower rows after the freeze on both `people_crew_jobs` and `people_crew_bids`; backup tables hold **116** + **29** original rows respectively.
+- **529** total unit tests pass (`npx vitest run`).
+- `npx tsc --noEmit` clean across the codebase.
+- `npm run gen-types:linked` ran after the RPC migration to regenerate `src/types/database.ts` with the new function bodies.
+- Migration history for the two new files (`20260516154601`, `20260516162434`) repaired with `supabase migration repair --status applied --linked` after MCP `apply_migration` so `migration list --linked` shows both local and remote columns aligned.
+
+#### Files
+
+- **New migrations**: [`supabase/migrations/20260516154601_freeze_crew_lead_inheritance.sql`](supabase/migrations/20260516154601_freeze_crew_lead_inheritance.sql), [`supabase/migrations/20260516162434_drop_crew_lead_inheritance_from_sync_rpcs.sql`](supabase/migrations/20260516162434_drop_crew_lead_inheritance_from_sync_rpcs.sql).
+- **Updated**: [`src/components/CrewJobsBlock.tsx`](src/components/CrewJobsBlock.tsx), [`src/components/HoursUnassignedModal.tsx`](src/components/HoursUnassignedModal.tsx), [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx), [`src/components/quickfill/HoursSection.tsx`](src/components/quickfill/HoursSection.tsx), [`src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx), [`src/pages/People.tsx`](src/pages/People.tsx), [`src/pages/Jobs.tsx`](src/pages/Jobs.tsx), [`src/utils/teamLabor.ts`](src/utils/teamLabor.ts), [`src/utils/crewAssignments.ts`](src/utils/crewAssignments.ts), [`src/lib/payReportAssignmentsBreakdown.ts`](src/lib/payReportAssignmentsBreakdown.ts), [`src/lib/draftPayrollPersonBreakdown.ts`](src/lib/draftPayrollPersonBreakdown.ts), [`src/lib/cascadePersonName.ts`](src/lib/cascadePersonName.ts), [`src/lib/peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts), [`src/lib/peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts), [`src/types/database.ts`](src/types/database.ts) (regenerated).
+- **Docs**: AGENTS.md, PROJECT_DOCUMENTATION.md, GLOSSARY.md, MIGRATIONS.md, RECENT_FEATURES.md.
+
+---
+
+## Latest Updates (v2.537)
+
+**Date**: 2026-05-16
+
+### People → Hours: revoked hours leave the grid; new Quickfill "Unassigned field time" with rebuilt Open day audit
+
+A two-part audit hardening pass focused on the gap between **what payroll knows** and **what the team summary can attribute to a job**. The Hours grid stops counting revoked sessions in the cell display and the Unapproved column. Quickfill gets a new section that lists the days where the org paid for field-type time but no crew assignment exists for it, and the **Open day audit** modal opened from those rows now shows the dispatcher's plan for that day, plus inline session approval, so a dispatcher can resolve "why does Trace have 8 unassigned hours?" without leaving the audit.
+
+#### 1. Revoked clock sessions no longer leak into the Hours grid
+
+The Hours grid cell value is **`max(people_hours, sum-of-closed-pending-clock-hours)`** so a manually entered hour or a freshly-clocked closed session is visible **before** approval merges into `people_hours`. The `pendingClockSessions` source list is loaded with **`approved_at IS NULL AND rejected_at IS NULL`**, which is correct for **rejected** rows but **wrong** for **revoked** rows: revoke clears `approved_at` and sets `revoked_at`, but `rejected_at` stays null, so a revoked session still shows up in `pendingClockSessions`. Until this version, `sumClosedPendingClockHoursForPersonDate` and the `pendingUnapprovedCountByWorkDate` memo had no `revoked_at` filter, so the cell value and the cost-matrix **Unapproved** column kept the hours after `revoke_clock_sessions` had already subtracted them from `people_hours` server-side. The amber pending-vs-payroll badge introduced in **v2.533** **did** filter revoked correctly, which made the inconsistency obvious to operators.
+
+- **Pure helpers** in **[`src/lib/peopleHoursPendingByCell.ts`](src/lib/peopleHoursPendingByCell.ts)**:
+  - **`sumClosedPendingClockHoursForCell(pendingClockSessions, userId, workDate)`** — sums durations only for `clocked_out_at != null && !rejected_at && !revoked_at`, with `Number.isFinite` checks on both timestamps and `dur > 0`.
+  - **`pendingUnapprovedCountsByWorkDate(pendingClockSessions)`** — returns `{ [workDate]: n }`, skipping `rejected_at || revoked_at` so a revoked row does not keep the column count high after the hours are reversed. Open and closed sessions are still both counted otherwise (matches prior behavior since revoke only ever fires on closed rows).
+- **`People.tsx`** rewires both call sites: `sumClosedPendingClockHoursForPersonDate(personName, workDate)` becomes a thin wrapper that resolves `users.id` from `personName` and delegates to the helper; `pendingUnapprovedCountByWorkDate` is now a one-line `useMemo` over the helper. The doc comment on the wrapper explicitly calls out the revoked-load behavior so the next reader does not have to relearn the gotcha.
+- **9 new unit tests** in **[`src/lib/peopleHoursPendingByCell.test.ts`](src/lib/peopleHoursPendingByCell.test.ts)** cover: open sessions skipped, rejected skipped, revoked skipped, mixed sessions sum only valid ones, sub-millisecond duration treated as 0, invalid `clocked_in_at` / `clocked_out_at` strings ignored, count helper skips rejected, count helper skips revoked, count helper sums approved + pending of every status that is neither rejected nor revoked.
+- **No** schema or RPC change. Revoke flow (RPC `revoke_clock_sessions` from `20260315120005_revoke_set_revoked_by_approve_clear`) and the trigger sync `clock_sessions_sync_crew_assignments_after_job_bid` are unchanged. The fix is entirely in the read-side filter.
+
+#### 2. Quickfill → "Unassigned field time" section
+
+A new collapsible section on **Quickfill** (id `unassigned-field-time`, gated on **dev** / **master_technician** / **assistant**) that lists the days where someone was paid for **field-type** time the team summary cannot tie back to a job. The classic case: a salaried tech worked Monday with no `people_crew_jobs` row for that day, so the **Team Summary** Field column has hours that contribute to **Total** but nothing in the per-job breakdown — those hours are real cost without a revenue attribution.
+
+- **Pure compute** in **[`src/lib/peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts)** mirrors the `derivePersonTeamSummary` math:
+  - `dayHoursRaw = is_salary ? (weekday ? 8 : 0) : people_hours.hours`
+  - `overheadOnDay = Σ approved-closed (office + bid) clock for that person+date`, where office = `job_ledger_id === overheadOfficeJobLedgerId` and bid = `bid_id` set (matches `overheadBucketForSession`).
+  - `fieldHours = max(0, dayHoursRaw - overheadOnDay)`
+  - `crewAttributedHrs = Σ over crew assignments (excluding `overheadOfficeJobLedgerId`) of `fieldHours * pct/100`.
+  - `subLaborHrs` (optional) folded in per (person, date).
+  - `unallocatedHrs = max(0, fieldHours - crewAttributedHrs - subLaborHrs)`. Only emit rows where `unallocatedHrs > thresholdHours`.
+- **`computeUnallocatedFieldRows`** + **`summarizeUnallocatedFieldRows`** + **`groupUnallocatedFieldRowsByDate`** + **`buildWorkDateListInclusive`** are pure and exhaustively covered — **16 unit tests** in **[`src/lib/peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts)** cover: empty inputs, hourly with full crew assignment, hourly with no assignment, salary weekday default to 8, salary weekend skip, overhead reduces field, sub-labor reduces field, threshold gate, multiple people same day, sort order, summarize counts, day-grouping order, malformed inputs.
+- **UI** in **[`src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx)**:
+  - Window selector — **3 / 7 / 14 / 30** days (default **14**, persisted to `localStorage` `quickfill_unassigned_field_window_days`).
+  - Threshold selector — **≥ 0.25 / 0.5 / 1 / 2 / 4 h** (default **1 h**, persisted to `quickfill_unassigned_field_threshold`).
+  - Single-line summary: `{H} h across {N} {person|people} · {K} {day|days}`.
+  - Day groups, each with a header `{Weekday, Mon Day Year} · {H} h unassigned` and a row table: **Person**, **Day hrs**, **Overhead**, **Field**, **Unalloc.** (amber bold), **Context** (`Lead: {name} · {n} crew assignments` or `No crew assignments`), and an **Open day audit** button that opens the existing `PeopleHoursDayAuditModal` for that person + workDate.
+  - Realtime: subscribes to `people_crew_jobs`, `people_crew_bids`, `people_hours`, `clock_sessions` postgres_changes and reloads via a `loadAllRef` so the section reflects approve / reject / revoke / save without a manual refresh.
+  - Salaried people are tagged with a small `salary` chip on the name.
+- **Why threshold defaults to 1 h** — Quickfill's surface is "things that need attention this week"; 1 h cuts the long tail of 5–15 minute drift (geocoded clock-out latencies, pre-shift line items) without hiding genuine half-day gaps.
+
+#### 3. Open day audit — Dispatch panel + inline approve + dynamic clock-sessions section
+
+The **Open day audit** modal (`PeopleHoursDayAuditModal`) was already used by the Hours grid correct-day audit and now also from Quickfill **Unassigned field time**. With the new entry point, the audit needed two new things: **what was the person scheduled to do that day** (so the operator can compare schedule vs actual without leaving the modal), and **why aren't pending-but-linked sessions auto-assigning** (so they can fix it in one click).
+
+- **Dispatch panel** above **Clock sessions** — uses **`usePersonDayScheduleData(resolvedClockUserId, workDate)`** to load the day's `job_schedule_blocks` plus the same approved closed `clock_sessions` already on screen, and renders the same `QuickfillScheduleUserRow` strip the **User day schedule** modal and Quickfill **Schedule** show: hourly track with primary (scheduled) and secondary (recorded) bands. Below the strip: a plain-text `<ul>` of every block — `time_start–time_end · {job/HCP label} · — {note}` (note shown only when non-empty). Header has **Open in Schedule Dispatch** that links to `/schedule-dispatch?week={Sunday}&day={workDate}` (computed from `companyWeekStartSundayContaining` with `getDefaultWeekRange` fallback). When the person's name does not resolve to a `users` row (no login), the panel shows `No login account linked to this name in Users — dispatch cannot be shown.`; while loading, `Loading…`; when there are no blocks, `No dispatch blocks for this day.`.
+- **Per-row session badge** on the **Clock sessions** list — every row now shows a **status pill** to the right of the time / link label:
+  - **Approved** — green (`#16a34a` border, `#f0fdf4` bg, `#166534` text), tooltip *"Hours approved and merged into payroll."*
+  - **Pending** — amber (`#d97706` / `#fffbeb` / `#b45309`), tooltip *"Hours not yet approved — they will not appear in payroll until approved."*
+  - **Open** — grey (`#6b7280` / `#f3f4f6` / `#374151`), tooltip *"Session is still open (no clock-out yet)."*
+- **Inline Approve button** — for **closed pending** rows when **`canEditCrewJobs`**, an **Approve** button appears next to **Edit**. Calls **`approveClockSessions`** ([`src/lib/approveClockSessions.ts`](src/lib/approveClockSessions.ts)) which invokes the existing **`approve_clock_sessions`** RPC — same path as the Pending Sessions section, so `sync_crew_jobs_from_clock` (migration `20260422120000`) and the trigger sync still run server-side. Per-session in-flight state via `approvingSessionIds: Set<string>` disables only the row being approved (`Approving…`); on success the modal refreshes its sessions list and bubbles `onCrewSaved?.()` so the parent Quickfill list re-runs `loadAll` and the **Unassigned field time** row drops off if the approve filled the gap. Failures show a toast via `showToast`.
+- **Pending-approval hint banner** in the **Job / bid assignments** panel — when there are **no** crew assignments yet (`unifiedAssignments` empty + no crew lead) **and** at least one closed pending session links to a `job_ledger_id` or `bid_id`, the banner reads `"{N} pending session(s) link to {Job/Bid label}{, {Job/Bid label2} and {extra} more}. Approve {it/them} above to auto-assign these hours."`. For 1–2 distinct labels the banner names them; for 3+ it shows two then `and {n} more`. Job/bid labels are resolved through `formatJobLedgerShortLine` / `formatBidLedgerShortLine` with the trade-aware `prefixMap` (matches v2.432 ledger display prefix support — e.g. `BE249` when `service_types.ledger_bid_prefix='BE'`). When there are 2+ pending linked sessions, an **Approve all (N)** button on the banner approves them in one RPC call.
+- **Why this fixes "Trace has 8 unassigned hours but a dispatched job"** — the diagnosis chain goes **`people_crew_jobs` → trigger `clock_sessions_sync_crew_assignments_after_job_bid` → requires `approved_at IS NOT NULL`**. A clocked but unapproved session never populates the crew row, so the team summary's Field column has no attribution. Before this version the audit modal showed the session and the (empty) crew assignments side-by-side with no UI cue that approving was the missing step. Now the **Pending** badge and the inline **Approve** button (or banner **Approve all**) give a one-click resolution from the same modal that surfaced the issue.
+- **Clock sessions section grows naturally** — the modal's outer container is `maxHeight: '90vh'` + `overflow: 'auto'`; the inner sessions list previously had its own `maxHeight: 220` + `overflowY: 'auto'`, which produced a nested scrollbar that was awkward when only 3–4 sessions existed but the modal had room. That cap was removed, so the sessions list lays out at full height and the modal scrolls when total content exceeds the viewport.
+
+#### Files
+
+- **New**: [`src/lib/peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts), [`src/lib/peopleHoursUnallocatedRows.test.ts`](src/lib/peopleHoursUnallocatedRows.test.ts) (16 tests), [`src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx).
+- **Updated**: [`src/lib/peopleHoursPendingByCell.ts`](src/lib/peopleHoursPendingByCell.ts) (`sumClosedPendingClockHoursForCell`, `pendingUnapprovedCountsByWorkDate`); [`src/lib/peopleHoursPendingByCell.test.ts`](src/lib/peopleHoursPendingByCell.test.ts) (+9 tests; suite total 15); [`src/pages/People.tsx`](src/pages/People.tsx) (delegate to helpers; doc comment on the wrapper); [`src/pages/Quickfill.tsx`](src/pages/Quickfill.tsx) (`SECTIONS` entry, role gate, render case for `unassigned-field-time`); [`src/components/PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx) (Dispatch panel, badges, inline Approve + handler, pending-approval banner, removed inner scroll cap).
+- **No** migrations, no RPCs, no Edge functions, no RLS changes; type-gen unchanged. `tsc --noEmit` clean; all helper tests pass.
+
 ---
 
 ## Latest Updates (v2.536)

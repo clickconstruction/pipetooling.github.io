@@ -39,6 +39,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      _freeze_crew_lead_bids_backup: {
+        Row: {
+          bid_assignments: Json | null
+          captured_at: string | null
+          crew_lead_person_name: string | null
+          person_name: string | null
+          work_date: string | null
+        }
+        Insert: {
+          bid_assignments?: Json | null
+          captured_at?: string | null
+          crew_lead_person_name?: string | null
+          person_name?: string | null
+          work_date?: string | null
+        }
+        Update: {
+          bid_assignments?: Json | null
+          captured_at?: string | null
+          crew_lead_person_name?: string | null
+          person_name?: string | null
+          work_date?: string | null
+        }
+        Relationships: []
+      }
+      _freeze_crew_lead_jobs_backup: {
+        Row: {
+          captured_at: string | null
+          crew_lead_person_name: string | null
+          job_assignments: Json | null
+          person_name: string | null
+          work_date: string | null
+        }
+        Insert: {
+          captured_at?: string | null
+          crew_lead_person_name?: string | null
+          job_assignments?: Json | null
+          person_name?: string | null
+          work_date?: string | null
+        }
+        Update: {
+          captured_at?: string | null
+          crew_lead_person_name?: string | null
+          job_assignments?: Json | null
+          person_name?: string | null
+          work_date?: string | null
+        }
+        Relationships: []
+      }
       address_geocodes: {
         Row: {
           address_normalized: string

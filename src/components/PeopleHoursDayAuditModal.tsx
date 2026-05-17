@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -11,8 +12,18 @@ import {
 } from '../utils/crewAssignments'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import { ClockSessionEditSplitModal } from './ClockSessionEditSplitModal'
+import { AssignSessionJobPopover } from './clock-sessions/AssignSessionJobPopover'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
+import { approveClockSessions } from '../lib/approveClockSessions'
+import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
+import { usePersonDayScheduleData } from '../hooks/usePersonDayScheduleData'
+import { blocksToSegments } from '../lib/quickfillScheduleSegments'
+import { clockSessionsToDispatchSecondaryBands } from '../lib/clockSessionsToDispatchSecondaryBands'
+import { QuickfillScheduleUserRow } from './schedule/QuickfillScheduleUserRow'
+import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
+import { formatScheduleDispatchHubJobTitle } from '../lib/scheduleDispatchHub'
+import { companyWeekStartSundayContaining, getDefaultWeekRange } from '../utils/dateUtils'
 
 type CrewRow = MergedCrewMapRow
 
@@ -51,8 +62,7 @@ type Props = {
   onClose: () => void
   initialCrewRow: MergedCrewMapRow | null
   canEditCrewJobs?: boolean
-  showPeople?: string[]
-  /** Full map `${work_date}:${person_name}` → row; used for crew-lead inheritance and edit predicates. */
+  /** Full map `${work_date}:${person_name}` → row; used for crew-lead edit predicates. */
   crewJobsByDatePerson?: Record<string, MergedCrewMapRow>
   /** Reserved for future (e.g. recent/common jobs); passed through from parent for consistency. */
   hoursDateStart?: string
@@ -67,7 +77,6 @@ export function PeopleHoursDayAuditModal({
   onClose,
   initialCrewRow,
   canEditCrewJobs = false,
-  showPeople = [],
   crewJobsByDatePerson = {},
   onCrewSaved,
   showToast,
@@ -114,6 +123,8 @@ export function PeopleHoursDayAuditModal({
 
   const [clockEditSession, setClockEditSession] = useState<ClockSessionRow | null>(null)
   const [clockCreateOpen, setClockCreateOpen] = useState(false)
+  /** Per-session approving state — keyed by clock_sessions.id (also used for bulk approve when not single-row). */
+  const [approvingSessionIds, setApprovingSessionIds] = useState<Set<string>>(() => new Set())
 
   const fetchGenRef = useRef(0)
 
@@ -121,18 +132,11 @@ export function PeopleHoursDayAuditModal({
   const rowFromMap = useMemo(
     () =>
       crewJobsByDatePerson[crewKey] ??
-      initialCrewRow ?? { crew_lead_person_name: null, unifiedAssignments: [] },
+      initialCrewRow ?? { unifiedAssignments: [] },
     [crewJobsByDatePerson, crewKey, initialCrewRow]
   )
 
   const draftRow = draft ?? rowFromMap
-  const hasCrewLead = !!draftRow.crew_lead_person_name
-  const availableCrewLeads = showPeople.filter((p) => p !== personName)
-  const jobsEditable = !hasCrewLead
-  const crewEditable = !showPeople.some((p) => {
-    const r = crewJobsByDatePerson[`${workDate}:${p}`]
-    return r?.crew_lead_person_name === personName
-  })
 
   const refreshSessions = useCallback(() => {
     const gen = ++fetchGenRef.current
@@ -389,6 +393,48 @@ export function PeopleHoursDayAuditModal({
     setCrewDirty(true)
   }
 
+  /**
+   * Approve one or more pending clock sessions and refresh the modal.
+   *
+   * The server-side `approve_clock_sessions` RPC also runs `sync_crew_jobs_from_clock(person, date)`
+   * for any session that had a `job_ledger_id`, so after this call returns the audit modal's
+   * "Job / bid assignments" panel and the parent Quickfill list will both show the new attribution
+   * (parent picks it up via `onCrewSaved`, which re-runs `loadAll` and the unallocated-rows compute).
+   */
+  async function handleApproveSessions(sessionIds: string[]): Promise<void> {
+    if (!canEditCrewJobs) return
+    if (sessionIds.length === 0) return
+    setApprovingSessionIds((prev) => {
+      const next = new Set(prev)
+      for (const id of sessionIds) next.add(id)
+      return next
+    })
+    const { data, error } = await approveClockSessions(sessionIds)
+    setApprovingSessionIds((prev) => {
+      const next = new Set(prev)
+      for (const id of sessionIds) next.delete(id)
+      return next
+    })
+    if (error) {
+      showToast?.(error.message, 'error')
+      return
+    }
+    const result = (data ?? []) as Array<{ approved_count: number; error_message: string | null }>
+    const row = result[0]
+    if (row?.error_message) {
+      showToast?.(row.error_message, 'error')
+      return
+    }
+    showToast?.(
+      `Approved ${row?.approved_count ?? sessionIds.length} session${
+        (row?.approved_count ?? sessionIds.length) === 1 ? '' : 's'
+      }.`,
+      'success',
+    )
+    refreshSessions()
+    onCrewSaved?.()
+  }
+
   async function handleSaveCrew() {
     if (!canEditCrewJobs) return
     const toSave = draft ?? rowFromMap
@@ -402,7 +448,6 @@ export function PeopleHoursDayAuditModal({
             {
               work_date: workDate,
               person_name: personName,
-              crew_lead_person_name: toSave.crew_lead_person_name || null,
               job_assignments: jobAssignments,
             },
             { onConflict: 'work_date,person_name' }
@@ -417,7 +462,6 @@ export function PeopleHoursDayAuditModal({
             {
               work_date: workDate,
               person_name: personName,
-              crew_lead_person_name: toSave.crew_lead_person_name || null,
               bid_assignments: bidAssignments,
             },
             { onConflict: 'work_date,person_name' }
@@ -450,6 +494,132 @@ export function PeopleHoursDayAuditModal({
     } catch {
       return workDate
     }
+  }, [workDate])
+
+  const onDispatchDataError = useCallback(
+    (message: string, variant: 'error' | 'warning') => {
+      showToast?.(message, variant)
+    },
+    [showToast],
+  )
+
+  /** Closed, unapproved sessions that already link to a job or bid — the audit-relevant set: approving any of these auto-creates the people_crew_jobs / people_crew_bids row that drives "Job / bid assignments" and Quickfill's Unassigned-field-time list. */
+  const pendingLinkedSessions = useMemo(
+    () =>
+      sessions.filter(
+        (s) =>
+          s.clocked_out_at != null && !s.approved_at && (!!s.job_ledger_id || !!s.bid_id),
+      ),
+    [sessions],
+  )
+
+  /** Up to 2 distinct linked job/bid labels for the pending-approval banner; "+N more" suffix when more. */
+  const pendingLinkedLabelSummary = useMemo(() => {
+    if (pendingLinkedSessions.length === 0) return ''
+    const labels: string[] = []
+    const seen = new Set<string>()
+    for (const s of pendingLinkedSessions) {
+      let label: string | null = null
+      if (s.job_ledger_id) {
+        const j = jobDetailsMap[s.job_ledger_id]
+        label = j
+          ? formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name)
+          : 'a job'
+      } else if (s.bid_id) {
+        const b = bidDetailsMap[s.bid_id]
+        label = b
+          ? formatBidLedgerShortLine(prefixMap, b.service_type_id ?? null, b.bid_number, b.project_name)
+          : 'a bid'
+      }
+      if (!label) continue
+      if (seen.has(label)) continue
+      seen.add(label)
+      labels.push(label)
+    }
+    if (labels.length === 0) return ''
+    if (labels.length === 1) return labels[0]
+    if (labels.length === 2) return `${labels[0]} and ${labels[1]}`
+    return `${labels[0]}, ${labels[1]} and ${labels.length - 2} more`
+  }, [pendingLinkedSessions, jobDetailsMap, bidDetailsMap, prefixMap])
+
+  /** Empty state of the live (draft or persisted) crew assignment list — drives whether the pending-banner shows up under "Job / bid assignments". */
+  const crewAssignmentsEmpty = (draftRow.unifiedAssignments?.length ?? 0) === 0
+
+  const pendingApproveBanner =
+    !sessionsUserMissing && crewAssignmentsEmpty && pendingLinkedSessions.length > 0 ? (
+      <div
+        style={{
+          padding: '0.5rem 0.65rem',
+          border: '1px solid #fde68a',
+          background: '#fffbeb',
+          borderRadius: 6,
+          fontSize: '0.8125rem',
+          color: '#92400e',
+          marginBottom: '0.75rem',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '0.4rem',
+          alignItems: 'center',
+        }}
+      >
+        <span>
+          <strong>{pendingLinkedSessions.length}</strong> pending{' '}
+          {pendingLinkedSessions.length === 1 ? 'session links' : 'sessions link'} to{' '}
+          <strong>{pendingLinkedLabelSummary}</strong>. Approve{' '}
+          {pendingLinkedSessions.length === 1 ? 'it' : 'them'} above to auto-assign these hours.
+        </span>
+        {canEditCrewJobs && pendingLinkedSessions.length > 1 ? (
+          <button
+            type="button"
+            disabled={pendingLinkedSessions.every((s) => approvingSessionIds.has(s.id))}
+            onClick={() => void handleApproveSessions(pendingLinkedSessions.map((s) => s.id))}
+            style={{
+              marginLeft: 'auto',
+              padding: '0.2rem 0.5rem',
+              fontSize: '0.75rem',
+              border: '1px solid #16a34a',
+              borderRadius: 4,
+              background: '#f0fdf4',
+              color: '#15803d',
+              cursor: 'pointer',
+            }}
+          >
+            Approve all ({pendingLinkedSessions.length})
+          </button>
+        ) : null}
+      </div>
+    ) : null
+
+  const dispatchData = usePersonDayScheduleData(
+    resolvedClockUserId,
+    resolvedClockUserId ? workDate : null,
+    onDispatchDataError,
+  )
+  const dispatchNowMs = useIntervalNowMs(45_000)
+  const dispatchSegments = useMemo(
+    () => blocksToSegments(dispatchData.blocks, new Map(dispatchData.jobTitleById)),
+    [dispatchData.blocks, dispatchData.jobTitleById],
+  )
+  const dispatchSecondaryBands = useMemo(
+    () =>
+      clockSessionsToDispatchSecondaryBands(
+        dispatchData.sessions,
+        workDate,
+        dispatchNowMs,
+        new Map(dispatchData.jobTitleById),
+        new Map(dispatchData.bidTitleById),
+      ),
+    [
+      dispatchData.sessions,
+      workDate,
+      dispatchNowMs,
+      dispatchData.jobTitleById,
+      dispatchData.bidTitleById,
+    ],
+  )
+  const scheduleDispatchHref = useMemo(() => {
+    const weekStart = companyWeekStartSundayContaining(workDate) ?? getDefaultWeekRange().start
+    return `/schedule-dispatch?week=${encodeURIComponent(weekStart)}&day=${encodeURIComponent(workDate)}`
   }, [workDate])
 
   return (
@@ -497,21 +667,128 @@ export function PeopleHoursDayAuditModal({
           <h3 id="hours-day-audit-title" style={{ margin: 0, fontSize: '1.125rem', flex: 1 }}>
             {personName} — {dateLabel}
           </h3>
-          {canEditCrewJobs ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
+            {canEditCrewJobs ? (
+              <button
+                type="button"
+                onClick={handleHeaderEditToggle}
+                style={{ padding: '0.35rem 0.65rem', border: '1px solid #2563eb', borderRadius: 4, background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontSize: '0.8125rem' }}
+              >
+                {isEditMode ? 'Done' : 'Edit'}
+              </button>
+            ) : null}
             <button
               type="button"
-              onClick={handleHeaderEditToggle}
-              style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d1d6', borderRadius: 4, background: '#f9fafb', cursor: 'pointer', fontSize: '0.8125rem', flexShrink: 0 }}
+              onClick={() => {
+                exitEditMode()
+                onClose()
+              }}
+              style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.8125rem' }}
+              aria-label="Close day audit"
             >
-              {isEditMode ? 'Done' : 'Edit'}
+              Close
             </button>
-          ) : null}
+          </div>
         </div>
         <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 1rem 0' }}>
           {isEditMode && canEditCrewJobs
             ? 'Editing — save crew assignments with Save; clock changes apply when you confirm in the clock dialog.'
-            : 'This day is marked Correct (view only).'}
+            : canEditCrewJobs
+              ? 'Click Edit to change assignments or sessions.'
+              : 'View only — you don\u2019t have permission to edit this day.'}
         </p>
+
+        <div
+          style={{
+            marginBottom: '1rem',
+            border: '1px solid #e5e7eb',
+            borderRadius: 8,
+            padding: '0.75rem',
+            background: '#f9fafb',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.5rem',
+              marginBottom: '0.5rem',
+            }}
+          >
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>Dispatch</span>
+            <Link
+              to={scheduleDispatchHref}
+              onClick={() => {
+                exitEditMode()
+                onClose()
+              }}
+              style={{
+                padding: '0.2rem 0.45rem',
+                fontSize: '0.75rem',
+                border: '1px solid #2563eb',
+                borderRadius: 4,
+                background: '#eff6ff',
+                color: '#1d4ed8',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+              }}
+              title={`Open Schedule Dispatch for the week of ${dateLabel}`}
+              aria-label={`Open Schedule Dispatch for ${personName} on ${dateLabel}`}
+            >
+              Open in Schedule Dispatch
+            </Link>
+          </div>
+          {sessionsUserMissing ? (
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+              No login account linked to this name in Users — dispatch cannot be shown.
+            </p>
+          ) : !resolvedClockUserId || dispatchData.loading ? (
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>Loading…</p>
+          ) : (
+            <>
+              <div style={{ background: 'white', borderRadius: 6, border: '1px solid #e5e7eb', padding: '0.25rem 0.5rem', marginBottom: dispatchData.blocks.length > 0 ? '0.5rem' : 0 }}>
+                <QuickfillScheduleUserRow
+                  userId={resolvedClockUserId}
+                  displayName={personName}
+                  scheduleDayYmd={workDate}
+                  segments={dispatchSegments}
+                  secondaryBands={dispatchSecondaryBands}
+                  showNameColumn={false}
+                />
+              </div>
+              {dispatchData.blocks.length === 0 ? (
+                <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+                  No dispatch blocks for this day.
+                </p>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#374151', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                  {dispatchData.blocks.map((b) => {
+                    const jobLabel =
+                      dispatchData.jobTitleById.get(b.job_id) ??
+                      formatScheduleDispatchHubJobTitle(null, null)
+                    const note = (b.note ?? '').trim()
+                    return (
+                      <li key={b.id} style={{ lineHeight: 1.35 }}>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827', fontWeight: 500 }}>
+                          {scheduleFormatWindow(b.time_start, b.time_end)}
+                        </span>
+                        <span style={{ color: '#1d4ed8', marginLeft: '0.4rem' }} title={jobLabel}>
+                          {jobLabel}
+                        </span>
+                        {note ? (
+                          <span style={{ color: '#4b5563', marginLeft: '0.4rem' }} title={note}>
+                            — {note}
+                          </span>
+                        ) : null}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </>
+          )}
+        </div>
 
         <div
           style={{
@@ -556,7 +833,7 @@ export function PeopleHoursDayAuditModal({
             </div>
           )}
           {!sessionsLoading && sessions.length > 0 && (
-            <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {sessions.map((s) => {
                 const tIn = new Date(s.clocked_in_at)
                 const tOut = s.clocked_out_at ? new Date(s.clocked_out_at) : null
@@ -577,6 +854,26 @@ export function PeopleHoursDayAuditModal({
                     : 'Bid'
                 }
                 const showClockEdit = isEditMode && canEditCrewJobs && !sessionsUserMissing && !!s.user_id
+                const isApproved = !!s.approved_at
+                const isClosed = s.clocked_out_at != null
+                /** Only closed pending sessions can be approved (open sessions need clock-out first; matches approve_clock_sessions guard). */
+                const canApprove =
+                  canEditCrewJobs && !sessionsUserMissing && !isApproved && isClosed && !!s.user_id
+                const isApproving = approvingSessionIds.has(s.id)
+                /**
+                 * Per-row job/bid assignment is the canonical fix for "unallocated field time" when the
+                 * session was clocked without selecting a job. Setting `clock_sessions.job_ledger_id`
+                 * fires the `clock_sessions_sync_crew_assignments_after_job_bid` trigger (migration
+                 * 20260402120000), which re-runs `sync_crew_jobs_from_clock` for this (person, date)
+                 * — so for already-approved sessions the crew row updates immediately and the
+                 * Quickfill Unassigned section drops the row on the next `onCrewSaved` refresh.
+                 */
+                const canAssignSessionJob =
+                  canEditCrewJobs &&
+                  !sessionsUserMissing &&
+                  !!s.user_id &&
+                  !s.job_ledger_id &&
+                  !s.bid_id
                 return (
                   <div
                     key={s.id}
@@ -601,15 +898,76 @@ export function PeopleHoursDayAuditModal({
                           {linkLabel}
                         </span>
                       )}
-                      {showClockEdit ? (
+                      <span
+                        title={
+                          isApproved
+                            ? 'Approved — counts in payroll and crew assignments.'
+                            : isClosed
+                              ? 'Pending approval — does not count in payroll or crew assignments yet.'
+                              : 'Open session (still clocked in).'
+                        }
+                        style={{
+                          padding: '0.05rem 0.35rem',
+                          fontSize: '0.6875rem',
+                          fontWeight: 600,
+                          letterSpacing: '0.02em',
+                          textTransform: 'uppercase',
+                          borderRadius: 4,
+                          border: `1px solid ${isApproved ? '#16a34a' : isClosed ? '#d97706' : '#6b7280'}`,
+                          background: isApproved ? '#f0fdf4' : isClosed ? '#fffbeb' : '#f3f4f6',
+                          color: isApproved ? '#166534' : isClosed ? '#b45309' : '#374151',
+                        }}
+                      >
+                        {isApproved ? 'Approved' : isClosed ? 'Pending' : 'Open'}
+                      </span>
+                      {(showClockEdit || canApprove || canAssignSessionJob) ? (
                         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => setClockEditSession(s)}
-                            style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
-                          >
-                            Edit
-                          </button>
+                          {canAssignSessionJob ? (
+                            <AssignSessionJobPopover
+                              session={{ id: s.id, job_ledger_id: s.job_ledger_id, bid_id: s.bid_id }}
+                              popoverZIndex={1110}
+                              dispatchScheduleAssigneeUserId={s.user_id}
+                              dispatchScheduleWorkDateYmd={workDate}
+                              onSaved={() => {
+                                refreshSessions()
+                                onCrewSaved?.()
+                                showToast?.('Job assigned to clock session.', 'success')
+                              }}
+                              onError={(msg) => showToast?.(msg, 'error')}
+                            />
+                          ) : null}
+                          {canApprove ? (
+                            <button
+                              type="button"
+                              disabled={isApproving}
+                              onClick={() => void handleApproveSessions([s.id])}
+                              title={
+                                s.job_ledger_id || s.bid_id
+                                  ? 'Approve this session — will auto-assign these hours to the linked job/bid.'
+                                  : 'Approve this session.'
+                              }
+                              style={{
+                                padding: '0.15rem 0.45rem',
+                                fontSize: '0.75rem',
+                                border: `1px solid ${isApproving ? '#9ca3af' : '#16a34a'}`,
+                                borderRadius: 4,
+                                background: isApproving ? '#f3f4f6' : '#f0fdf4',
+                                color: isApproving ? '#6b7280' : '#15803d',
+                                cursor: isApproving ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              {isApproving ? 'Approving…' : 'Approve'}
+                            </button>
+                          ) : null}
+                          {showClockEdit ? (
+                            <button
+                              type="button"
+                              onClick={() => setClockEditSession(s)}
+                              style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                            >
+                              Edit
+                            </button>
+                          ) : null}
                         </div>
                       ) : null}
                     </div>
@@ -636,33 +994,12 @@ export function PeopleHoursDayAuditModal({
         >
           <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#111827' }}>Job / bid assignments</div>
 
+          {pendingApproveBanner}
+
           {isEditMode && canEditCrewJobs ? (
             <>
               {crewSaveError ? <p style={{ fontSize: '0.8125rem', color: '#b91c1c', margin: '0 0 0.5rem 0' }}>{crewSaveError}</p> : null}
-              {crewEditable ? (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>Crew lead (inherit jobs from)</label>
-                  <select
-                    value={draftRow.crew_lead_person_name ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value || null
-                      setDraft({ ...draftRow, crew_lead_person_name: v, unifiedAssignments: [] })
-                      setCrewDirty(true)
-                    }}
-                    style={{ padding: '0.5rem 0.75rem', minWidth: 180, border: '1px solid #d1d5db', borderRadius: 4 }}
-                  >
-                    <option value="">—</option>
-                    {availableCrewLeads.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : null}
-              {jobsEditable ? (
-                <>
-                  <div style={{ marginBottom: '1rem' }}>
+              <div style={{ marginBottom: '1rem' }}>
                     <div style={{ marginBottom: '0.35rem' }}>
                       <label style={{ fontSize: '0.875rem' }}>Assignments</label>
                     </div>
@@ -815,12 +1152,6 @@ export function PeopleHoursDayAuditModal({
                       )}
                     </div>
                   </div>
-                </>
-              ) : (
-                <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
-                  Jobs are inherited from crew lead <strong>{draftRow.crew_lead_person_name}</strong>. Clear crew lead to edit assignments here.
-                </p>
-              )}
               <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '0.5rem', marginTop: '0.75rem' }}>
                 <button
                   type="button"
@@ -842,11 +1173,33 @@ export function PeopleHoursDayAuditModal({
             </>
           ) : (
             <>
-              {initialCrewRow?.crew_lead_person_name ? (
-                <p style={{ fontSize: '0.8125rem', color: '#4b5563', margin: '0 0 0.5rem 0' }}>Crew lead: {initialCrewRow.crew_lead_person_name}</p>
-              ) : null}
               {!initialCrewRow || (initialCrewRow.unifiedAssignments?.length ?? 0) === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No job or bid assignments for this day.</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
+                  <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No job or bid assignments for this day.</p>
+                  {canEditCrewJobs ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditMode(true)
+                        setJobSearchOpen(true)
+                        setJobSearchText('')
+                        setJobSearchResults([])
+                      }}
+                      style={{
+                        padding: '0.25rem 0.6rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #2563eb',
+                        borderRadius: 4,
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        cursor: 'pointer',
+                      }}
+                      title="Open the search and add a job or bid for this day."
+                    >
+                      Assign a job or bid
+                    </button>
+                  ) : null}
+                </div>
               ) : (
                 <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
                   {initialCrewRow.unifiedAssignments.map((a) => {
@@ -864,18 +1217,6 @@ export function PeopleHoursDayAuditModal({
           )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-          <button
-            type="button"
-            onClick={() => {
-              exitEditMode()
-              onClose()
-            }}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
-          >
-            Close
-          </button>
-        </div>
       </div>
     </div>
   )

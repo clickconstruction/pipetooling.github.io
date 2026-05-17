@@ -17,6 +17,7 @@ import { SupplyHousesSection } from '../components/quickfill/SupplyHousesSection
 import { BankingSortingSnapshotSection } from '../components/quickfill/BankingSortingSnapshotSection'
 import { HoursSection } from '../components/quickfill/HoursSection'
 import { QuickfillPeopleHoursNewSection } from '../components/quickfill/QuickfillPeopleHoursNewSection'
+import { QuickfillUnassignedFieldTimeSection } from '../components/quickfill/QuickfillUnassignedFieldTimeSection'
 import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
 import { QuickfillEmailInboxSection } from '../components/quickfill/QuickfillEmailInboxSection'
 import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
@@ -55,6 +56,11 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
   { id: 'quickfill-hours', sectionId: 'hours', label: 'People Hours (Old)' },
   { id: 'quickfill-people-hours-new', sectionId: 'people-hours-new', label: 'People Hours (new)' },
+  {
+    id: 'quickfill-unassigned-field-time',
+    sectionId: 'unassigned-field-time',
+    label: 'Unassigned field time',
+  },
   { id: 'quickfill-difficult-people', sectionId: 'difficult-people', label: 'Difficult people' },
   { id: 'quickfill-banking-sorting', sectionId: 'banking-sorting', label: 'Banking sorting' },
   { id: 'quickfill-crew-jobs', sectionId: 'crew-jobs', label: 'Crew Jobs / Bids' },
@@ -607,12 +613,12 @@ function QuickfillPage() {
     })
   }
 
-  const warningsSectionOnPage = useMemo(() => {
-    if (role !== 'dev' && role !== 'master_technician' && role !== 'assistant') return false
-    if (!isSectionVisible('warnings')) return false
-    if (staleTallyStaffPeopleCount === null || staleTallyStaffTxCount === null) return false
-    return staleTallyStaffPeopleCount > 0 && staleTallyStaffTxCount > 0
-  }, [role, hiddenSectionIds, staleTallyStaffPeopleCount, staleTallyStaffTxCount])
+  // Eligibility-only (no data/count gating). The wrapper for `warnings` always renders
+  // for these roles so the page does not jump down when the stale-tally / AR-bank
+  // counts finish resolving. Inner banners self-hide when their counts are 0.
+  const warningsSectionEligible = useMemo(() => {
+    return role === 'dev' || role === 'master_technician' || role === 'assistant'
+  }, [role])
 
   const canAccessProspects = useMemo(
     () =>
@@ -624,17 +630,23 @@ function QuickfillPage() {
     [authUser, role, estimatorProspectsAccess],
   )
 
-  /** True if this section would render a Quickfill block (visibility + unpriced count rule). */
+  /**
+   * True if this section is eligible to render on the page for this user.
+   *
+   * Eligibility is role/feature-only — never data/count-gated — so the page
+   * height is stable from first paint and async data loads do not insert
+   * sections above the user's scroll position. Sections with no actual content
+   * still render their wrapper chrome (title row + Mark up to date button);
+   * their bodies handle their own empty / loading states.
+   */
   const sectionWouldRenderOnPage = useCallback(
     (sectionId: string): boolean => {
       if (!isSectionVisible(sectionId)) return false
-      if (sectionId === 'warnings') return warningsSectionOnPage
-      if (sectionId === 'unpriced-fixtures') return unpricedFixturesCount > 0
-      if (sectionId === 'no-customer-stages') {
-        if (!quickfillNoCustomerStages.fetchEnabled) return false
-        if (quickfillNoCustomerStages.loading) return false
-        return quickfillStagesAlertsUnionCount != null && quickfillStagesAlertsUnionCount > 0
+      if (sectionId === 'warnings') return warningsSectionEligible
+      if (sectionId === 'unpriced-fixtures') {
+        return role === 'dev' || role === 'master_technician' || role === 'assistant'
       }
+      if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
       if (sectionId === 'dispatch-inbox') return dispatchInboxEligible
       if (sectionId === 'schedule' || sectionId === 'tomorrow-schedule') {
         return role != null && CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE.has(role)
@@ -643,18 +655,18 @@ function QuickfillPage() {
       if (sectionId === 'difficult-people') {
         return role === 'dev' || role === 'master_technician' || role === 'assistant'
       }
+      if (sectionId === 'unassigned-field-time') {
+        return role === 'dev' || role === 'master_technician' || role === 'assistant'
+      }
       return true
     },
     [
       hiddenSectionIds,
-      warningsSectionOnPage,
-      unpricedFixturesCount,
+      warningsSectionEligible,
       dispatchInboxEligible,
       role,
       canAccessProspects,
       quickfillNoCustomerStages.fetchEnabled,
-      quickfillNoCustomerStages.loading,
-      quickfillStagesAlertsUnionCount,
     ],
   )
 
@@ -906,6 +918,34 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'people-hours-new', label: 'People Hours (new)' })}
           >
             <QuickfillPeopleHoursNewSection />
+          </QuickfillSectionWrapper>
+        )
+      case 'unassigned-field-time':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['unassigned-field-time']?.marked_at ?? null)}
+            collapsed={
+              isCollapsed('unassigned-field-time') &&
+              !forceExpandedSections.has('unassigned-field-time')
+            }
+            mark={sectionMarks['unassigned-field-time']}
+            onMarkUpToDate={() => markSectionUpToDate('unassigned-field-time')}
+            onOpenNow={() =>
+              setForceExpandedSections((s) => new Set([...s, 'unassigned-field-time']))
+            }
+            onOpenHistory={() =>
+              setMarkHistoryModal({
+                sectionId: 'unassigned-field-time',
+                label: 'Unassigned field time',
+              })
+            }
+          >
+            <QuickfillUnassignedFieldTimeSection />
           </QuickfillSectionWrapper>
         )
       case 'difficult-people':

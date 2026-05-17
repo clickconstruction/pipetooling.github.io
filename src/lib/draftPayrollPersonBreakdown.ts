@@ -58,7 +58,7 @@ export async function fetchDraftPayrollPersonBreakdown(
       () =>
         supabase
           .from('people_crew_jobs')
-          .select('work_date, person_name, crew_lead_person_name, job_assignments')
+          .select('work_date, person_name, job_assignments')
           .gte('work_date', start)
           .lte('work_date', end),
       'draft payroll breakdown people_crew_jobs',
@@ -67,7 +67,7 @@ export async function fetchDraftPayrollPersonBreakdown(
       () =>
         supabase
           .from('people_crew_bids')
-          .select('work_date, person_name, crew_lead_person_name, bid_assignments')
+          .select('work_date, person_name, bid_assignments')
           .gte('work_date', start)
           .lte('work_date', end),
       'draft payroll breakdown people_crew_bids',
@@ -77,27 +77,23 @@ export async function fetchDraftPayrollPersonBreakdown(
   const crewRows = (crewData ?? []) as Array<{
     work_date: string
     person_name: string
-    crew_lead_person_name: string | null
     job_assignments: { job_id: string; pct: number }[]
   }>
   const crewBidsRows = (crewBidsData ?? []) as Array<{
     work_date: string
     person_name: string
-    crew_lead_person_name: string | null
     bid_assignments: { bid_id: string; pct: number }[]
   }>
 
   const crewByDatePerson: Record<string, CrewJobRow> = {}
   for (const r of crewRows) {
     crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-      crew_lead_person_name: r.crew_lead_person_name,
       job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
     }
   }
   const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
   for (const r of crewBidsRows) {
     crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = {
-      crew_lead_person_name: r.crew_lead_person_name,
       bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
     }
   }
@@ -106,19 +102,9 @@ export async function fetchDraftPayrollPersonBreakdown(
   const bidIds = new Set<string>()
   for (const r of dayRows) {
     const row = crewByDatePerson[`${r.work_date}:${personName}`]
-    const jobAssignments = row
-      ? row.crew_lead_person_name
-        ? crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []
-        : row.job_assignments
-      : []
-    for (const a of jobAssignments) jobIds.add(a.job_id)
+    for (const a of row?.job_assignments ?? []) jobIds.add(a.job_id)
     const bidRow = crewBidsByDatePerson[`${r.work_date}:${personName}`]
-    const bidAssignments = bidRow
-      ? bidRow.crew_lead_person_name
-        ? crewBidsByDatePerson[`${r.work_date}:${bidRow.crew_lead_person_name}`]?.bid_assignments ?? []
-        : bidRow.bid_assignments
-      : []
-    for (const a of bidAssignments) bidIds.add(a.bid_id)
+    for (const a of bidRow?.bid_assignments ?? []) bidIds.add(a.bid_id)
   }
 
   const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}

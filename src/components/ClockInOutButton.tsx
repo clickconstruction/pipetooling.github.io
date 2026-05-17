@@ -145,7 +145,7 @@ export default function ClockInOutButton({
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
-  const { registerUpdateFocusOpener } = useUpdateFocusOpenerBridge()
+  const { registerUpdateFocusOpener, registerUpdateFocusApplyDirect } = useUpdateFocusOpenerBridge()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([])
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
@@ -1055,6 +1055,113 @@ export default function ClockInOutButton({
     registerUpdateFocusOpener(handleOpenUpdateFocusModal)
     return () => registerUpdateFocusOpener(null)
   }, [registerUpdateFocusOpener, handleOpenUpdateFocusModal])
+
+  // Direct (no-modal) variant for Job Mode card: clocks in if no open session,
+  // updates in place for salaried, or closes-and-inserts for hourly. Mirrors
+  // handleUpdateFocus / handleCompleteClockIn but takes opts directly so the
+  // caller doesn't depend on any modal state.
+  const applyUpdateFocusDirectImpl = useCallback(
+    async (opts: { jobLedgerId: string | null; bidId: string | null; notes: string }) => {
+      if (!userId || !userName?.trim()) {
+        return { ok: false, error: 'Missing user identity' }
+      }
+      const trimmedNotes = opts.notes.trim()
+      try {
+        const now = new Date()
+        if (!openSession) {
+          const inserted = await withSupabaseRetry(
+            async () =>
+              supabase
+                .from('clock_sessions')
+                .insert({
+                  user_id: userId,
+                  clocked_in_at: now.toISOString(),
+                  work_date: denverCalendarDayKey(now.getTime()),
+                  notes: trimmedNotes,
+                  job_ledger_id: opts.jobLedgerId,
+                  bid_id: opts.bidId,
+                })
+                .select('id')
+                .single(),
+            'job mode clock in',
+          )
+          const newId = (inserted as { id: string } | null)?.id
+          if (!newId) throw new Error('Clock in did not return a session id')
+          scheduleClockInLocationPatch(supabase, newId)
+          const workDate = denverCalendarDayKey(now.getTime())
+          await Promise.all([fetchSessions(), notifyFirstClockInOfDay(workDate, userId)])
+          onClockInSuccess?.()
+          return { ok: true, error: null }
+        }
+
+        if (salaryUiActive) {
+          const { error } = await supabase
+            .from('clock_sessions')
+            .update({
+              job_ledger_id: opts.jobLedgerId,
+              bid_id: opts.bidId,
+              notes: trimmedNotes || openSession.notes || '',
+            })
+            .eq('id', openSession.id)
+          if (error) throw error
+          await fetchSessions()
+          return { ok: true, error: null }
+        }
+
+        const closedId = openSession.id
+        await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .update({ clocked_out_at: now.toISOString() })
+              .eq('id', closedId),
+          'job mode update focus clock out',
+        )
+        const inserted = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('clock_sessions')
+              .insert({
+                user_id: userId,
+                clocked_in_at: now.toISOString(),
+                work_date: denverCalendarDayKey(now.getTime()),
+                notes: trimmedNotes,
+                job_ledger_id: opts.jobLedgerId,
+                bid_id: opts.bidId,
+              })
+              .select('id')
+              .single(),
+          'job mode update focus clock in',
+        )
+        const newSessionId = (inserted as { id: string } | null)?.id
+        if (!newSessionId) throw new Error('Update focus did not return a new session id')
+        scheduleUpdateFocusLocationPatches(supabase, closedId, newSessionId)
+        const workDate = denverCalendarDayKey(now.getTime())
+        await Promise.all([fetchSessions(), notifyFirstClockInOfDay(workDate, userId)])
+        onClockInSuccess?.()
+        return { ok: true, error: null }
+      } catch (e) {
+        return {
+          ok: false,
+          error: e instanceof Error ? e.message : 'Failed to switch focus',
+        }
+      }
+    },
+    [
+      userId,
+      userName,
+      openSession,
+      salaryUiActive,
+      fetchSessions,
+      notifyFirstClockInOfDay,
+      onClockInSuccess,
+    ],
+  )
+
+  useEffect(() => {
+    registerUpdateFocusApplyDirect(applyUpdateFocusDirectImpl)
+    return () => registerUpdateFocusApplyDirect(null)
+  }, [registerUpdateFocusApplyDirect, applyUpdateFocusDirectImpl])
 
   async function handleUpdateFocus() {
     if (!openSession || !userId || !userName?.trim()) return

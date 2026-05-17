@@ -21,7 +21,7 @@ import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 
 type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
 type HoursRow = { person_name: string; work_date: string; hours: number }
-type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: UnifiedAssignment[] }
+type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
 function getDaysInRange(start: string, end: string): string[] {
   const days: string[] = []
@@ -220,47 +220,34 @@ export function HoursSection() {
     const days = getDaysInRange(start, end)
     if (days.length === 0) return
     const [jobsRes, bidsRes] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').in('work_date', days),
-      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').in('work_date', days),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').in('work_date', days),
+      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').in('work_date', days),
     ])
     const jobsRows = (jobsRes.data ?? []) as Array<{
       work_date: string
       person_name: string
-      crew_lead_person_name: string | null
       job_assignments: Array<{ job_id: string; pct: number }>
     }>
     const bidsRows = (bidsRes.data ?? []) as Array<{
       work_date: string
       person_name: string
-      crew_lead_person_name: string | null
       bid_assignments: Array<{ bid_id: string; pct: number }>
     }>
-    const jobsByKey: Record<string, { crew_lead: string | null; jobs: Array<{ job_id: string; pct: number }> }> = {}
+    const jobsByKey: Record<string, Array<{ job_id: string; pct: number }>> = {}
     for (const r of jobsRows) {
       const k = `${r.work_date}:${r.person_name}`
-      jobsByKey[k] = {
-        crew_lead: r.crew_lead_person_name ?? null,
-        jobs: Array.isArray(r.job_assignments) ? r.job_assignments : [],
-      }
+      jobsByKey[k] = Array.isArray(r.job_assignments) ? r.job_assignments : []
     }
-    const bidsByKey: Record<string, { crew_lead: string | null; bids: Array<{ bid_id: string; pct: number }> }> = {}
+    const bidsByKey: Record<string, Array<{ bid_id: string; pct: number }>> = {}
     for (const r of bidsRows) {
       const k = `${r.work_date}:${r.person_name}`
-      bidsByKey[k] = {
-        crew_lead: r.crew_lead_person_name ?? null,
-        bids: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
-      }
+      bidsByKey[k] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
     }
     const allKeys = new Set([...Object.keys(jobsByKey), ...Object.keys(bidsByKey)])
     const map: Record<string, CrewRow> = {}
     for (const k of allKeys) {
-      const j = jobsByKey[k]
-      const b = bidsByKey[k]
-      const jobs = j?.jobs ?? []
-      const bids = b?.bids ?? []
-      const unified = mergeToUnified(jobs, bids)
-      const crewLead = j?.crew_lead ?? b?.crew_lead ?? null
-      map[k] = { crew_lead_person_name: crewLead, unifiedAssignments: unified }
+      const unified = mergeToUnified(jobsByKey[k] ?? [], bidsByKey[k] ?? [])
+      map[k] = { unifiedAssignments: unified }
     }
     setCrewJobsByDatePerson(map)
   }
@@ -413,7 +400,7 @@ export function HoursSection() {
     const key = `${workDate}:${personName}`
     const row = crewJobsByDatePerson[key]
     if (!row) return false
-    return !!(row.crew_lead_person_name || (row.unifiedAssignments?.length ?? 0) > 0)
+    return (row.unifiedAssignments?.length ?? 0) > 0
   }
 
   function isCorrectDayMissingJob(personName: string, workDate: string): boolean {
@@ -863,7 +850,6 @@ export function HoursSection() {
           onClose={() => setHoursDayAuditModal(null)}
           initialCrewRow={crewJobsByDatePerson[`${hoursDayAuditModal.workDate}:${hoursDayAuditModal.personName}`] ?? null}
           canEditCrewJobs={canEditCrewJobs}
-          showPeople={showPeopleForHours}
           crewJobsByDatePerson={crewJobsByDatePerson}
           hoursDateStart={hoursDateStart}
           hoursDateEnd={hoursDateEnd}

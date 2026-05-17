@@ -66,7 +66,7 @@ type PayConfigRow = {
   show_in_cost_matrix: boolean
 }
 
-type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: UnifiedAssignment[] }
+type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
 interface CrewJobsBlockProps {
   people?: string[]
@@ -302,8 +302,8 @@ export function CrewJobsBlock({
   async function loadCrewJobs(date: string) {
     setCrewJobsLoading(true)
     const [jobsRes, bidsRes, hoursRes] = await Promise.all([
-      supabase.from('people_crew_jobs').select('person_name, crew_lead_person_name, job_assignments').eq('work_date', date),
-      supabase.from('people_crew_bids').select('person_name, crew_lead_person_name, bid_assignments').eq('work_date', date),
+      supabase.from('people_crew_jobs').select('person_name, job_assignments').eq('work_date', date),
+      supabase.from('people_crew_bids').select('person_name, bid_assignments').eq('work_date', date),
       supabase.from('people_hours').select('person_name, hours').eq('work_date', date),
     ])
     setCrewJobsLoading(false)
@@ -315,41 +315,25 @@ export function CrewJobsBlock({
     }
     const jobsRows = (jobsData ?? []) as Array<{
       person_name: string
-      crew_lead_person_name: string | null
       job_assignments: Array<{ job_id: string; pct: number }>
     }>
     const bidsRows = (bidsData ?? []) as Array<{
       person_name: string
-      crew_lead_person_name: string | null
       bid_assignments: Array<{ bid_id: string; pct: number }>
     }>
-    const jobsByPerson: Record<string, { crew_lead: string | null; jobs: Array<{ job_id: string; pct: number }> }> = {}
+    const jobsByPerson: Record<string, Array<{ job_id: string; pct: number }>> = {}
     for (const r of jobsRows) {
-      jobsByPerson[r.person_name] = {
-        crew_lead: r.crew_lead_person_name ?? null,
-        jobs: Array.isArray(r.job_assignments) ? r.job_assignments : [],
-      }
+      jobsByPerson[r.person_name] = Array.isArray(r.job_assignments) ? r.job_assignments : []
     }
-    const bidsByPerson: Record<string, { crew_lead: string | null; bids: Array<{ bid_id: string; pct: number }> }> = {}
+    const bidsByPerson: Record<string, Array<{ bid_id: string; pct: number }>> = {}
     for (const r of bidsRows) {
-      bidsByPerson[r.person_name] = {
-        crew_lead: r.crew_lead_person_name ?? null,
-        bids: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
-      }
+      bidsByPerson[r.person_name] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
     }
     const allPersonNames = new Set([...Object.keys(jobsByPerson), ...Object.keys(bidsByPerson)])
     const map: Record<string, CrewRow> = {}
     for (const personName of allPersonNames) {
-      const j = jobsByPerson[personName]
-      const b = bidsByPerson[personName]
-      const jobs = j?.jobs ?? []
-      const bids = b?.bids ?? []
-      const unified = mergeToUnified(jobs, bids)
-      const crewLead = j?.crew_lead ?? b?.crew_lead ?? null
-      map[personName] = {
-        crew_lead_person_name: crewLead,
-        unifiedAssignments: unified,
-      }
+      const unified = mergeToUnified(jobsByPerson[personName] ?? [], bidsByPerson[personName] ?? [])
+      map[personName] = { unifiedAssignments: unified }
     }
     setCrewJobsData(map)
     if (!crewHoursByPersonProp) {
@@ -392,7 +376,6 @@ export function CrewJobsBlock({
           {
             work_date: crewJobsDate,
             person_name: personName,
-            crew_lead_person_name: row.crew_lead_person_name || null,
             job_assignments: jobAssignments,
           },
           { onConflict: 'work_date,person_name' }
@@ -404,7 +387,6 @@ export function CrewJobsBlock({
           {
             work_date: crewJobsDate,
             person_name: personName,
-            crew_lead_person_name: row.crew_lead_person_name || null,
             bid_assignments: bidAssignments,
           },
           { onConflict: 'work_date,person_name' }
@@ -438,7 +420,7 @@ export function CrewJobsBlock({
           service_type_id?: string | null
         },
   ) {
-    const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
+    const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
     if (row.unifiedAssignments.some((a) => a.type === item.type && a.id === item.id)) return
     const n = row.unifiedAssignments.length + 1
     const pct = Math.round((100 / n) * 10) / 10
@@ -659,15 +641,6 @@ export function CrewJobsBlock({
 
   if (!canAccess && canEditProp === undefined) return null
 
-  function getEffectiveAssignments(personName: string): UnifiedAssignment[] {
-    const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
-    if (row.crew_lead_person_name) {
-      const leadRow = crewJobsData[row.crew_lead_person_name]
-      return leadRow?.unifiedAssignments ?? []
-    }
-    return row.unifiedAssignments ?? []
-  }
-
   const crewJobsContent = (
     <>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -731,48 +704,23 @@ export function CrewJobsBlock({
               <tr>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
                 <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Crew</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assignments</th>
               </tr>
             </thead>
             <tbody>
               {visiblePeopleForCrew.map((personName) => {
-                const row = crewJobsData[personName] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
-                const isCrewLeadByOthers = visiblePeopleForCrew.some((p) => crewJobsData[p]?.crew_lead_person_name === personName)
-                const availableCrewLeads = visiblePeopleForCrew.filter((p) => p !== personName)
-                const hasCrewLead = !!row.crew_lead_person_name
-                const assignmentsEditable = canEdit && !hasCrewLead
-                const crewEditable = canEdit && !isCrewLeadByOthers
+                const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
                 const day = new Date(crewJobsDate + 'T12:00:00').getDay()
                 const cfg = payConfig[personName]
                 const effectiveHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (effectiveCrewHours[personName] ?? 0)
-                const assignments = assignmentsEditable ? row.unifiedAssignments : getEffectiveAssignments(personName)
                 return (
                   <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '0.75rem' }}>{personName}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'right', color: '#6b7280' }}>
                       {effectiveHours > 0 ? effectiveHours.toFixed(2) : '—'}
                     </td>
-                    <td style={{ padding: '0.75rem', background: !crewEditable ? '#f3f4f6' : undefined }}>
-                      {crewEditable ? (
-                        <select
-                          value={row.crew_lead_person_name ?? ''}
-                          onChange={(e) => saveCrewRow(personName, { ...row, crew_lead_person_name: e.target.value || null })}
-                          style={{ padding: '0.35rem 0.5rem', minWidth: 140, border: '1px solid #d1d5db', borderRadius: 4 }}
-                        >
-                          <option value="">—</option>
-                          {availableCrewLeads.map((p) => (
-                            <option key={p} value={p}>
-                              {p}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span style={{ color: '#6b7280' }}>—</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.75rem', background: !assignmentsEditable ? '#f3f4f6' : undefined }}>
-                      {assignmentsEditable ? (
+                    <td style={{ padding: '0.75rem', background: !canEdit ? '#f3f4f6' : undefined }}>
+                      {canEdit ? (
                         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
                           {row.unifiedAssignments.map((a, idx) => {
                             const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
@@ -870,14 +818,14 @@ export function CrewJobsBlock({
                         </div>
                       ) : (
                         <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
-                          {assignments.length > 0
-                            ? assignments
+                          {row.unifiedAssignments.length > 0
+                            ? row.unifiedAssignments
                                 .map((a) => {
                                   const details = a.type === 'job' ? crewJobDetailsMap[a.id] : crewBidDetailsMap[a.id]
                                   return formatAssignmentLabel(a.type, details, prefixMap)
                                 })
                                 .join(', ')
-                            : 'Inherits from crew lead'}
+                            : '—'}
                         </span>
                       )}
                     </td>

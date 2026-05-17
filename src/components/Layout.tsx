@@ -33,6 +33,8 @@ import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
+import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import {
   showEstimatorInboxButton,
   showHeaderTaskChecklistButton,
@@ -79,6 +81,8 @@ export default function Layout() {
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess } = useAuth()
   useAppActivityHeartbeat(authUser?.id)
+  const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
+  const jobModeMenuEligible = canLeaveJobFieldReport(role)
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
   const [impersonating, setImpersonating] = useState(
     () => typeof window !== 'undefined' && !!localStorage.getItem(IMPERSONATION_KEY)
@@ -826,6 +830,55 @@ export default function Layout() {
                   zIndex: 50,
                 }}
               >
+                {jobModeMenuEligible && authUser?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setJobModeEnabled(!jobModeEnabled)
+                      setGearOpen(false)
+                    }}
+                    title={jobModeEnabled ? 'Turn Job Mode off' : 'Turn Job Mode on'}
+                    aria-label="Toggle Job Mode"
+                    aria-pressed={jobModeEnabled}
+                    style={{
+                      display: 'flex',
+                      width: '100%',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: '0.5rem',
+                      padding: '0.5rem 1rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 'inherit',
+                      color: 'inherit',
+                      borderBottom: '1px solid #e5e7eb',
+                      boxSizing: 'border-box',
+                      fontWeight: jobModeEnabled ? 600 : 400,
+                    }}
+                  >
+                    <span>Job Mode</span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        display: 'inline-flex',
+                        width: 16,
+                        height: 16,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        borderRadius: 3,
+                        border: '1px solid #9ca3af',
+                        background: jobModeEnabled ? '#16a34a' : 'white',
+                        color: 'white',
+                        fontSize: '0.75rem',
+                        lineHeight: 1,
+                      }}
+                    >
+                      {jobModeEnabled ? '✓' : ''}
+                    </span>
+                  </button>
+                )}
                 {(role === 'estimator' ||
                   role === 'primary' ||
                   role === null ||

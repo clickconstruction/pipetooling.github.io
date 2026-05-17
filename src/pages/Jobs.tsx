@@ -272,7 +272,7 @@ type LaborJob = {
   payments?: LaborJobPayment[]
 }
 type CrewJobAssignment = { job_id: string; pct: number }
-type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
+type CrewJobRow = { job_assignments: CrewJobAssignment[] }
 type TeamLaborBreakdownEntry = {
   personName: string
   hours: number
@@ -2476,12 +2476,12 @@ export default function Jobs() {
     twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
     const startDate = twoYearsAgo.toLocaleDateString('en-CA')
     const [crewRes, hoursRes, configRes] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments'),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments'),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
       supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
     ])
     setTeamLaborLoading(false)
-    const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
     const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
     const configRows = (configRes.data ?? []) as Array<{ person_name: string; hourly_wage: number | null; is_salary: boolean }>
     const configMap: Record<string, { hourly_wage: number; is_salary: boolean }> = {}
@@ -2490,22 +2490,12 @@ export default function Jobs() {
     for (const h of hoursRows) hoursMap[`${h.person_name}:${h.work_date}`] = h.hours
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
-      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
-    }
-    function getEffectiveAssignments(personName: string, workDate: string): CrewJobAssignment[] {
-      const key = `${workDate}:${personName}`
-      const row = crewByDatePerson[key]
-      if (!row) return []
-      if (row.crew_lead_person_name) {
-        const leadRow = crewByDatePerson[`${workDate}:${row.crew_lead_person_name}`]
-        return leadRow?.job_assignments ?? []
-      }
-      return row.job_assignments
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
     }
     const jobAgg: Record<string, { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }> = {}
     const jobDetailByPersonDate: Record<string, Record<string, Record<string, { hours: number; cost: number }>>> = {}
     for (const r of crewRows) {
-      const assignments = getEffectiveAssignments(r.person_name, r.work_date)
+      const assignments = crewByDatePerson[`${r.work_date}:${r.person_name}`]?.job_assignments ?? []
       const cfg = configMap[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)

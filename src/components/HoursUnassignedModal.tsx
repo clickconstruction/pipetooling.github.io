@@ -13,7 +13,7 @@ import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 
-type CrewRow = { crew_lead_person_name: string | null; unifiedAssignments: UnifiedAssignment[] }
+type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type PayConfigRow = { person_name: string; is_salary: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
 
@@ -53,22 +53,6 @@ function getDaysInRange(start: string, end: string): string[] {
 
 const RECENT_QUICK_PICKS_MAX_UNIQUE = 14
 
-function getEffectiveAssignmentsFromCrewMap(
-  crewMap: Record<string, CrewRow>,
-  pName: string,
-  workDate: string
-): UnifiedAssignment[] {
-  const key = `${workDate}:${pName}`
-  const row = crewMap[key]
-  if (!row) return []
-  if (row.crew_lead_person_name) {
-    const leadKey = `${workDate}:${row.crew_lead_person_name}`
-    const leadRow = crewMap[leadKey]
-    return leadRow?.unifiedAssignments ?? []
-  }
-  return row.unifiedAssignments ?? []
-}
-
 /** Newest work_date first; dedupes job/bid ids across days; order within a day matches unifiedAssignments. */
 function collectAssignmentQuickPickIds(
   crewMap: Record<string, CrewRow>,
@@ -90,7 +74,7 @@ function collectAssignmentQuickPickIds(
   const seenBid = new Set<string>()
   const out: Array<{ kind: 'job' | 'bid'; id: string }> = []
   for (const d of workDates) {
-    const eff = getEffectiveAssignmentsFromCrewMap(crewMap, personName, d)
+    const eff = crewMap[`${d}:${personName}`]?.unifiedAssignments ?? []
     for (const a of eff) {
       if (a.type === 'job') {
         if (!seenJob.has(a.id)) {
@@ -183,7 +167,6 @@ export function HoursUnassignedModal({
   const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, CrewRow>>({})
   const [hoursDaysCorrect, setHoursDaysCorrect] = useState<Set<string>>(new Set())
-  const [showPeople, setShowPeople] = useState<string[]>([])
   const [peopleHours, setPeopleHours] = useState<HoursRow[]>([])
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [daySessions, setDaySessions] = useState<ClockSessionRow[]>([])
@@ -219,10 +202,7 @@ export function HoursUnassignedModal({
   }
 
   function hasAssignmentsForDate(pName: string, workDate: string): boolean {
-    const key = `${workDate}:${pName}`
-    const row = crewJobsByDatePerson[key]
-    if (!row) return false
-    return !!(row.crew_lead_person_name || (row.unifiedAssignments?.length ?? 0) > 0)
+    return (crewJobsByDatePerson[`${workDate}:${pName}`]?.unifiedAssignments?.length ?? 0) > 0
   }
 
   function getAssignmentKey(a: UnifiedAssignment): string {
@@ -241,15 +221,8 @@ export function HoursUnassignedModal({
 
   const effectiveSelectedDay = (selectedDay && unassignedDays.includes(selectedDay) ? selectedDay : unassignedDays[0]) ?? ''
   const key = `${effectiveSelectedDay}:${personName}`
-  const row = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
+  const row = crewJobsByDatePerson[key] ?? { unifiedAssignments: [] }
   const draftRow = draft ?? row
-  const hasCrewLead = !!draftRow.crew_lead_person_name
-  const availableCrewLeads = showPeople.filter((p) => p !== personName)
-  const jobsEditable = !hasCrewLead
-  const crewEditable = !showPeople.some((p) => {
-    const r = crewJobsByDatePerson[`${effectiveSelectedDay}:${p}`]
-    return r?.crew_lead_person_name === personName
-  })
 
   useEffect(() => {
     async function load() {
@@ -258,61 +231,43 @@ export function HoursUnassignedModal({
         supabase.from('hours_days_correct').select('work_date').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_hours').select('person_name, work_date, hours').eq('person_name', personName).gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
         supabase.from('people_pay_config').select('person_name, is_salary, show_in_cost_matrix, record_hours_but_salary'),
-        supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
-        supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
+        supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
+        supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', hoursDateStart).lte('work_date', hoursDateEnd),
       ])
       const correctDays = new Set((correctRes.data ?? []).map((r: { work_date: string }) => r.work_date))
       setHoursDaysCorrect(correctDays)
       setPeopleHours((hoursRes.data ?? []) as HoursRow[])
       const configRows = (configRes.data ?? []) as PayConfigRow[]
       const configMap: Record<string, PayConfigRow> = {}
-      const showList: string[] = []
       for (const c of configRows) {
         configMap[c.person_name] = c
-        if (c.person_name && (c.show_in_cost_matrix ?? false)) showList.push(c.person_name)
       }
       setPayConfig(configMap)
-      setShowPeople(showList.sort())
       const jobsRows = (jobsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
-        crew_lead_person_name: string | null
         job_assignments: Array<{ job_id: string; pct: number }>
       }>
       const bidsRows = (bidsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
-        crew_lead_person_name: string | null
         bid_assignments: Array<{ bid_id: string; pct: number }>
       }>
-      const jobsByKey: Record<string, { crew_lead: string | null; jobs: Array<{ job_id: string; pct: number }> }> = {}
+      const jobsByKey: Record<string, Array<{ job_id: string; pct: number }>> = {}
       for (const r of jobsRows) {
-        const k = `${r.work_date}:${r.person_name}`
-        jobsByKey[k] = {
-          crew_lead: r.crew_lead_person_name ?? null,
-          jobs: Array.isArray(r.job_assignments) ? r.job_assignments : [],
-        }
+        jobsByKey[`${r.work_date}:${r.person_name}`] = Array.isArray(r.job_assignments) ? r.job_assignments : []
       }
-      const bidsByKey: Record<string, { crew_lead: string | null; bids: Array<{ bid_id: string; pct: number }> }> = {}
+      const bidsByKey: Record<string, Array<{ bid_id: string; pct: number }>> = {}
       for (const r of bidsRows) {
-        const k = `${r.work_date}:${r.person_name}`
-        bidsByKey[k] = {
-          crew_lead: r.crew_lead_person_name ?? null,
-          bids: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
-        }
+        bidsByKey[`${r.work_date}:${r.person_name}`] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
       }
       const allKeys = new Set([...Object.keys(jobsByKey), ...Object.keys(bidsByKey)])
       const crewMap: Record<string, CrewRow> = {}
       const jobIds = new Set<string>()
       const bidIds = new Set<string>()
       for (const k of allKeys) {
-        const j = jobsByKey[k]
-        const b = bidsByKey[k]
-        const jobs = j?.jobs ?? []
-        const bids = b?.bids ?? []
-        const unified = mergeToUnified(jobs, bids)
-        const crewLead = j?.crew_lead ?? b?.crew_lead ?? null
-        crewMap[k] = { crew_lead_person_name: crewLead, unifiedAssignments: unified }
+        const unified = mergeToUnified(jobsByKey[k] ?? [], bidsByKey[k] ?? [])
+        crewMap[k] = { unifiedAssignments: unified }
         for (const a of unified) {
           if (a.type === 'job') jobIds.add(a.id)
           else bidIds.add(a.id)
@@ -418,8 +373,8 @@ export function HoursUnassignedModal({
 
   useEffect(() => {
     if (effectiveSelectedDay) {
-      const r = crewJobsByDatePerson[key] ?? { crew_lead_person_name: null, unifiedAssignments: [] }
-      setDraft({ ...r, unifiedAssignments: [...(r.unifiedAssignments || [])] })
+      const r = crewJobsByDatePerson[key] ?? { unifiedAssignments: [] }
+      setDraft({ unifiedAssignments: [...(r.unifiedAssignments || [])] })
     } else {
       setDraft(null)
     }
@@ -828,7 +783,6 @@ export function HoursUnassignedModal({
             {
               work_date: effectiveSelectedDay,
               person_name: personName,
-              crew_lead_person_name: toSave.crew_lead_person_name || null,
               job_assignments: jobAssignments,
             },
             { onConflict: 'work_date,person_name' }
@@ -843,7 +797,6 @@ export function HoursUnassignedModal({
             {
               work_date: effectiveSelectedDay,
               person_name: personName,
-              crew_lead_person_name: toSave.crew_lead_person_name || null,
               bid_assignments: bidAssignments,
             },
             { onConflict: 'work_date,person_name' }
@@ -916,7 +869,7 @@ export function HoursUnassignedModal({
         },
       }))
     }
-    setDraft({ crew_lead_person_name: null, unifiedAssignments: newAssignments })
+    setDraft({ unifiedAssignments: newAssignments })
   }
 
   if (loading) {
@@ -934,7 +887,7 @@ export function HoursUnassignedModal({
       <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Assign {personName} to jobs or bids</h3>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-          {personName} has hours on Correct days but no assignments. Assign a crew lead or add jobs/bids for each day.
+          {personName} has hours on Correct days but no assignments. Add jobs or bids for each day.
         </p>
         {unassignedDays.length === 0 ? (
           <p style={{ color: '#22c55e' }}>All days are now assigned.</p>
@@ -1054,29 +1007,9 @@ export function HoursUnassignedModal({
             ) : null}
             {effectiveSelectedDay && (
               <>
-                {crewEditable && (
-                  <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.875rem' }}>Crew lead (inherit jobs from)</label>
-                    <select
-                      value={draftRow.crew_lead_person_name ?? ''}
-                      onChange={(e) => {
-                        const v = e.target.value || null
-                        setDraft({ ...draftRow, crew_lead_person_name: v, unifiedAssignments: [] })
-                      }}
-                      style={{ padding: '0.5rem 0.75rem', minWidth: 180, border: '1px solid #d1d5db', borderRadius: 4 }}
-                    >
-                      <option value="">—</option>
-                      {availableCrewLeads.map((p) => (
-                        <option key={p} value={p}>{p}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-                {jobsEditable && (
-                  <>
-                    <div style={{ marginBottom: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                        <label style={{ fontSize: '0.875rem' }}>Common Jobs</label>
+                <div style={{ marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <label style={{ fontSize: '0.875rem' }}>Common Jobs</label>
                         {canEditCrewJobs && !commonJobsEditMode && (
                           <button type="button" onClick={() => setCommonJobsEditMode(true)} style={{ padding: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8125rem', color: '#6b7280' }}>Edit</button>
                         )}
@@ -1435,8 +1368,6 @@ export function HoursUnassignedModal({
                         )}
                       </div>
                     </div>
-                  </>
-                )}
               </>
             )}
           </>

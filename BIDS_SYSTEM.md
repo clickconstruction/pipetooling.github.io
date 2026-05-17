@@ -1812,11 +1812,11 @@ bid_pricing_assignments:
 people_crew_bids:
   work_date (date, PK)
   person_name (text, PK)
-  crew_lead_person_name (text, nullable)
+  crew_lead_person_name (text, nullable, DEPRECATED — always NULL after v2.538 freeze)
   bid_assignments (jsonb) -- [{ bid_id: uuid, pct: number }], sum to 100
 ```
 
-- Synced from approved `clock_sessions` with `bid_id` via `sync_crew_bids_from_clock(p_person_name, p_work_date)`.
+- Synced from approved `clock_sessions` with `bid_id` via `sync_crew_bids_from_clock(p_person_name, p_work_date)`. After **v2.538** the RPC always rewrites `bid_assignments` (no more "skip if `crew_lead_person_name` is set" branch); see `MIGRATIONS.md` `20260516162434` + `20260516154601` and `GLOSSARY.md` **Crew lead inheritance (deprecated)**.
 - **RPC**: `get_bids_by_ids(p_bid_ids uuid[])` returns `id`, `bid_number`, `project_name`, `address` for given bid IDs (SECURITY DEFINER).
 - Bids Pricing cost breakdown shows "Team Labor (clocked)" when users have clocked in with a bid.
 

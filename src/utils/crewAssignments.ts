@@ -50,7 +50,6 @@ export function mergeToUnified(
 
 /** Merged crew row for Hours grid / unassigned modal (jobs + bids per date:person). */
 export type MergedCrewMapRow = {
-  crew_lead_person_name: string | null
   unifiedAssignments: UnifiedAssignment[]
 }
 
@@ -62,42 +61,27 @@ export function buildCrewMapFromJobsAndBidRows(
   jobsRows: Array<{
     work_date: string
     person_name: string
-    crew_lead_person_name: string | null
     job_assignments: CrewJobAssignment[] | null | undefined
   }>,
   bidsRows: Array<{
     work_date: string
     person_name: string
-    crew_lead_person_name: string | null
     bid_assignments: CrewBidAssignment[] | null | undefined
   }>
 ): Record<string, MergedCrewMapRow> {
-  const jobsByKey: Record<string, { crew_lead: string | null; jobs: CrewJobAssignment[] }> = {}
+  const jobsByKey: Record<string, CrewJobAssignment[]> = {}
   for (const r of jobsRows) {
-    const k = `${r.work_date}:${r.person_name}`
-    jobsByKey[k] = {
-      crew_lead: r.crew_lead_person_name ?? null,
-      jobs: Array.isArray(r.job_assignments) ? r.job_assignments : [],
-    }
+    jobsByKey[`${r.work_date}:${r.person_name}`] = Array.isArray(r.job_assignments) ? r.job_assignments : []
   }
-  const bidsByKey: Record<string, { crew_lead: string | null; bids: CrewBidAssignment[] }> = {}
+  const bidsByKey: Record<string, CrewBidAssignment[]> = {}
   for (const r of bidsRows) {
-    const k = `${r.work_date}:${r.person_name}`
-    bidsByKey[k] = {
-      crew_lead: r.crew_lead_person_name ?? null,
-      bids: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
-    }
+    bidsByKey[`${r.work_date}:${r.person_name}`] = Array.isArray(r.bid_assignments) ? r.bid_assignments : []
   }
   const allKeys = new Set([...Object.keys(jobsByKey), ...Object.keys(bidsByKey)])
   const crewMap: Record<string, MergedCrewMapRow> = {}
   for (const k of allKeys) {
-    const j = jobsByKey[k]
-    const b = bidsByKey[k]
-    const jobs = j?.jobs ?? []
-    const bids = b?.bids ?? []
-    const unified = mergeToUnified(jobs, bids)
-    const crewLead = j?.crew_lead ?? b?.crew_lead ?? null
-    crewMap[k] = { crew_lead_person_name: crewLead, unifiedAssignments: unified }
+    const unified = mergeToUnified(jobsByKey[k] ?? [], bidsByKey[k] ?? [])
+    crewMap[k] = { unifiedAssignments: unified }
   }
   return crewMap
 }

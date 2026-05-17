@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export type CrewJobAssignment = { job_id: string; pct: number }
-export type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
+export type CrewJobRow = { job_assignments: CrewJobAssignment[] }
 
 export type TeamLaborBreakdownEntry = {
   personName: string
@@ -23,7 +23,7 @@ export type TeamLaborRow = {
 }
 
 export type CrewBidAssignment = { bid_id: string; pct: number }
-export type CrewBidRow = { crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }
+export type CrewBidRow = { bid_assignments: CrewBidAssignment[] }
 
 export type TeamLaborBidRow = {
   bidId: string
@@ -43,14 +43,13 @@ export async function loadTeamLaborData(
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   const startDate = twoYearsAgo.toLocaleDateString('en-CA')
   const [crewRes, hoursRes, configRes] = await Promise.all([
-    supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments'),
+    supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments'),
     supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
     supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
   ])
   const crewRows = (crewRes.data ?? []) as Array<{
     work_date: string
     person_name: string
-    crew_lead_person_name: string | null
     job_assignments: CrewJobAssignment[]
   }>
   const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
@@ -70,19 +69,11 @@ export async function loadTeamLaborData(
   const crewByDatePerson: Record<string, CrewJobRow> = {}
   for (const r of crewRows) {
     crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-      crew_lead_person_name: r.crew_lead_person_name,
       job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
     }
   }
-  function getEffectiveAssignments(personName: string, workDate: string): CrewJobAssignment[] {
-    const key = `${workDate}:${personName}`
-    const row = crewByDatePerson[key]
-    if (!row) return []
-    if (row.crew_lead_person_name) {
-      const leadRow = crewByDatePerson[`${workDate}:${row.crew_lead_person_name}`]
-      return leadRow?.job_assignments ?? []
-    }
-    return row.job_assignments
+  function getCrewJobAssignments(personName: string, workDate: string): CrewJobAssignment[] {
+    return crewByDatePerson[`${workDate}:${personName}`]?.job_assignments ?? []
   }
   const jobAgg: Record<
     string,
@@ -91,7 +82,7 @@ export async function loadTeamLaborData(
   /** jobId -> personName -> workDate -> allocated hours/cost for that day */
   const jobDetailByPersonDate: Record<string, Record<string, Record<string, { hours: number; cost: number }>>> = {}
   for (const r of crewRows) {
-    const assignments = getEffectiveAssignments(r.person_name, r.work_date)
+    const assignments = getCrewJobAssignments(r.person_name, r.work_date)
     const cfg = configMap[r.person_name]
     const day = new Date(r.work_date + 'T12:00:00').getDay()
     const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)
@@ -164,14 +155,13 @@ export async function loadTeamLaborDataForBids(
   twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
   const startDate = twoYearsAgo.toLocaleDateString('en-CA')
   const [crewRes, hoursRes, configRes] = await Promise.all([
-    supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments'),
+    supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments'),
     supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', startDate),
     supabase.from('people_pay_config').select('person_name, hourly_wage, is_salary'),
   ])
   const crewRows = (crewRes.data ?? []) as Array<{
     work_date: string
     person_name: string
-    crew_lead_person_name: string | null
     bid_assignments: CrewBidAssignment[]
   }>
   const hoursRows = (hoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
@@ -191,26 +181,18 @@ export async function loadTeamLaborDataForBids(
   const crewByDatePerson: Record<string, CrewBidRow> = {}
   for (const r of crewRows) {
     crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-      crew_lead_person_name: r.crew_lead_person_name,
       bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
     }
   }
-  function getEffectiveAssignments(personName: string, workDate: string): CrewBidAssignment[] {
-    const key = `${workDate}:${personName}`
-    const row = crewByDatePerson[key]
-    if (!row) return []
-    if (row.crew_lead_person_name) {
-      const leadRow = crewByDatePerson[`${workDate}:${row.crew_lead_person_name}`]
-      return leadRow?.bid_assignments ?? []
-    }
-    return row.bid_assignments
+  function getCrewBidAssignments(personName: string, workDate: string): CrewBidAssignment[] {
+    return crewByDatePerson[`${workDate}:${personName}`]?.bid_assignments ?? []
   }
   const bidAgg: Record<
     string,
     { people: Set<string>; hoursByPerson: Record<string, number>; costByPerson: Record<string, number> }
   > = {}
   for (const r of crewRows) {
-    const assignments = getEffectiveAssignments(r.person_name, r.work_date)
+    const assignments = getCrewBidAssignments(r.person_name, r.work_date)
     const cfg = configMap[r.person_name]
     const day = new Date(r.work_date + 'T12:00:00').getDay()
     const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMap[`${r.person_name}:${r.work_date}`] ?? 0)

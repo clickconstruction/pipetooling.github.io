@@ -147,8 +147,10 @@ import {
 import {
   buildPeopleHoursPendingByCellMap,
   pendingByCellKey,
+  pendingUnapprovedCountsByWorkDate,
   personPendingExcessHours,
   summarizePeopleHoursPendingByCell,
+  sumClosedPendingClockHoursForCell,
   workDateHasAnyPendingExcess,
   type PeopleHoursPendingCellEntry,
 } from '../lib/peopleHoursPendingByCell'
@@ -887,9 +889,9 @@ export default function People() {
 
   // Hours tab state (unassigned hours modal, crew jobs by date)
   type CrewJobAssignment = { job_id: string; pct: number }
-  type CrewJobRow = { crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }
+  type CrewJobRow = { job_assignments: CrewJobAssignment[] }
   type CrewBidAssignment = { bid_id: string; pct: number }
-  type CrewBidRow = { crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }
+  type CrewBidRow = { bid_assignments: CrewBidAssignment[] }
   const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, MergedCrewMapRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
   const [hoursDayAuditModal, setHoursDayAuditModal] = useState<{ personName: string; workDate: string } | null>(null)
@@ -1343,10 +1345,27 @@ export default function People() {
     [contractAddDocTabBaseId, contractDocumentAddTab, setContractDocumentFormStatus],
   )
 
-  // Review tab state
-  type ReviewPeriod = 'today' | 'yesterday' | 'last_week' | 'last_two_weeks' | 'last_month'
+  // Review tab state. v2.542 — `last_month` was a misnomer (it's really 30 days
+  // rolling back from today, not the previous calendar month) so we renamed the
+  // value to `last_30_days` and added a few common period scopes plus a custom
+  // range picker. `ReviewPeriod` is local state only (not persisted), so the
+  // value rename is safe.
+  type ReviewPeriod =
+    | 'today'
+    | 'yesterday'
+    | 'this_week'
+    | 'last_week'
+    | 'last_two_weeks'
+    | 'last_30_days'
+    | 'last_90_days'
+    | 'this_year'
+    | 'custom'
   const [selectedReviewPersonIndex, setSelectedReviewPersonIndex] = useState(0)
   const [reviewPeriod, setReviewPeriod] = useState<ReviewPeriod>('last_week')
+  // Custom range — only consulted when reviewPeriod === 'custom'. Defaults seed
+  // when the user first selects Custom from the dropdown (see UI below).
+  const [reviewCustomRangeStart, setReviewCustomRangeStart] = useState<string>('')
+  const [reviewCustomRangeEnd, setReviewCustomRangeEnd] = useState<string>('')
   const [viewportHeight, setViewportHeight] = useState<number>(typeof window === 'undefined' ? 800 : window.innerHeight)
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1394,8 +1413,6 @@ export default function People() {
     job_name: string
     job_address: string
     service_type_id: string | null
-    viaLead: string | null
-    crewMemberNames?: string[]
     hours: number
     laborCost: number
     driveCost: number
@@ -1469,6 +1486,23 @@ export default function People() {
   const [teamSummaryError, setTeamSummaryError] = useState<string | null>(null)
   const [teamSummaryIframeHeight, setTeamSummaryIframeHeight] = useState<number>(120)
   const teamSummaryReqIdRef = useRef(0)
+  // Drilldown modal awareness: while a modal is open inside the iframe we
+  // defer any data-driven refresh so the user's current investigation isn't
+  // wiped out (the entire `srcDoc` would otherwise be replaced). When the
+  // modal closes we drain any pending refresh by re-running the effect's
+  // body via a bumped trigger.
+  const teamSummaryModalOpenRef = useRef(false)
+  const teamSummaryRefreshPendingRef = useRef(false)
+  const [teamSummaryDrainTick, setTeamSummaryDrainTick] = useState(0)
+  // v2.542 — cache the rows the inline iframe just rendered so the popup
+  // ("Open in new window") doesn't re-issue `loadTeamSummaryData()` against
+  // Supabase for the exact same period. The auto-refresh effect clears this
+  // when any dep changes; `loadTeamSummaryData().then(...)` re-populates it
+  // with the cache key snapshotted at fetch time.
+  const teamSummaryDataCacheRef = useRef<{
+    rows: TeamSummaryRow[]
+    cacheKey: string
+  } | null>(null)
   type ReviewLaborBreakdownContext = {
     mode: 'labor' | 'profit'
     jobId: string | null
@@ -3831,22 +3865,20 @@ export default function People() {
     }
     await loadPayStubs()
     const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
     ])
-    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
-    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }>
+    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] }>
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
       crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-        crew_lead_person_name: r.crew_lead_person_name,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
     const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
     for (const r of crewBidsRows) {
       crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = {
-        crew_lead_person_name: r.crew_lead_person_name,
         bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
       }
     }
@@ -3854,10 +3886,10 @@ export default function People() {
     const bidIds = new Set<string>()
     for (const r of dayRows) {
       const row = crewByDatePerson[`${r.work_date}:${personName}`]
-      const jobAssignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      const jobAssignments = row?.job_assignments ?? []
       for (const a of jobAssignments) jobIds.add(a.job_id)
       const bidRow = crewBidsByDatePerson[`${r.work_date}:${personName}`]
-      const bidAssignments = bidRow ? (bidRow.crew_lead_person_name ? (crewBidsByDatePerson[`${r.work_date}:${bidRow.crew_lead_person_name}`]?.bid_assignments ?? []) : bidRow.bid_assignments) : []
+      const bidAssignments = bidRow?.bid_assignments ?? []
       for (const a of bidAssignments) bidIds.add(a.bid_id)
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
@@ -3984,27 +4016,27 @@ export default function People() {
     }
     const wage = cfg?.hourly_wage ?? 0
     const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
     ])
-    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
-    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }>
+    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] }>
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
-      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
     }
     const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
     for (const r of crewBidsRows) {
-      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
+      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
     }
     const jobIds = new Set<string>()
     const bidIds = new Set<string>()
     for (const r of dayRows) {
       const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const jobAssignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      const jobAssignments = row?.job_assignments ?? []
       for (const a of jobAssignments) jobIds.add(a.job_id)
       const bidRow = crewBidsByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const bidAssignments = bidRow ? (bidRow.crew_lead_person_name ? (crewBidsByDatePerson[`${r.work_date}:${bidRow.crew_lead_person_name}`]?.bid_assignments ?? []) : bidRow.bid_assignments) : []
+      const bidAssignments = bidRow?.bid_assignments ?? []
       for (const a of bidAssignments) bidIds.add(a.bid_id)
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
@@ -4096,27 +4128,27 @@ export default function People() {
     }
     const wage = cfg?.hourly_wage ?? 0
     const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
     ])
-    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
-    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; bid_assignments: CrewBidAssignment[] }>
+    const crewRows = (crewData ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const crewBidsRows = (crewBidsData ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] }>
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
-      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
+      crewByDatePerson[`${r.work_date}:${r.person_name}`] = { job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [] }
     }
     const crewBidsByDatePerson: Record<string, CrewBidRow> = {}
     for (const r of crewBidsRows) {
-      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { crew_lead_person_name: r.crew_lead_person_name, bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
+      crewBidsByDatePerson[`${r.work_date}:${r.person_name}`] = { bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [] }
     }
     const jobIds = new Set<string>()
     const bidIds = new Set<string>()
     for (const r of dayRows) {
       const row = crewByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const jobAssignments = row ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments) : []
+      const jobAssignments = row?.job_assignments ?? []
       for (const a of jobAssignments) jobIds.add(a.job_id)
       const bidRow = crewBidsByDatePerson[`${r.work_date}:${stub.person_name}`]
-      const bidAssignments = bidRow ? (bidRow.crew_lead_person_name ? (crewBidsByDatePerson[`${r.work_date}:${bidRow.crew_lead_person_name}`]?.bid_assignments ?? []) : bidRow.bid_assignments) : []
+      const bidAssignments = bidRow?.bid_assignments ?? []
       for (const a of bidAssignments) bidIds.add(a.bid_id)
     }
     const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
@@ -6269,9 +6301,25 @@ export default function People() {
     if (typeof window === 'undefined') return
     const onMessage = (e: MessageEvent) => {
       const data = e.data as { type?: string; height?: number } | null
-      if (!data || data.type !== 'team-summary-resize' || typeof data.height !== 'number') return
-      const maxH = Math.max(320, Math.floor(window.innerHeight * 0.85))
-      setTeamSummaryIframeHeight(Math.min(maxH, Math.max(60, data.height + 2)))
+      if (!data) return
+      if (data.type === 'team-summary-resize' && typeof data.height === 'number') {
+        const maxH = Math.max(320, Math.floor(window.innerHeight * 0.85))
+        setTeamSummaryIframeHeight(Math.min(maxH, Math.max(60, data.height + 2)))
+        return
+      }
+      if (data.type === 'team-summary-modal-open') {
+        teamSummaryModalOpenRef.current = true
+        return
+      }
+      if (data.type === 'team-summary-modal-close') {
+        teamSummaryModalOpenRef.current = false
+        if (teamSummaryRefreshPendingRef.current) {
+          teamSummaryRefreshPendingRef.current = false
+          // Trigger a re-run of the auto-refresh effect with current deps.
+          setTeamSummaryDrainTick((n) => n + 1)
+        }
+        return
+      }
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
@@ -6786,19 +6834,17 @@ export default function People() {
     const days = getDaysInRange(hoursDateStart, hoursDateEnd)
     if (days.length === 0) return
     void Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').in('work_date', days),
-      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').in('work_date', days),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').in('work_date', days),
+      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').in('work_date', days),
     ]).then(([jobsRes, bidsRes]) => {
       const jobsRows = (jobsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
-        crew_lead_person_name: string | null
         job_assignments: CrewJobAssignment[]
       }>
       const bidsRows = (bidsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
-        crew_lead_person_name: string | null
         bid_assignments: CrewBidAssignment[]
       }>
       setCrewJobsByDatePerson(buildCrewMapFromJobsAndBidRows(jobsRows, bidsRows))
@@ -6812,20 +6858,18 @@ export default function People() {
     if (days.length === 0) return
     const fetchId = ++draftPayrollCrewMergeFetchIdRef.current
     void Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').in('work_date', days),
-      supabase.from('people_crew_bids').select('work_date, person_name, crew_lead_person_name, bid_assignments').in('work_date', days),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').in('work_date', days),
+      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').in('work_date', days),
     ]).then(([jobsRes, bidsRes]) => {
       if (fetchId !== draftPayrollCrewMergeFetchIdRef.current) return
       const jobsRows = (jobsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
-        crew_lead_person_name: string | null
         job_assignments: CrewJobAssignment[]
       }>
       const bidsRows = (bidsRes.data ?? []) as Array<{
         work_date: string
         person_name: string
-        crew_lead_person_name: string | null
         bid_assignments: CrewBidAssignment[]
       }>
       const partial = buildCrewMapFromJobsAndBidRows(jobsRows, bidsRows)
@@ -7211,18 +7255,15 @@ export default function People() {
     return getHoursForPersonDate(personName, workDate)
   }
 
-  /** Pending (unapproved) closed clock sessions on the Hours grid: avoids showing 0 after creating a session from manual entry until approval merges into people_hours. */
+  /**
+   * Pending (unapproved) closed clock sessions on the Hours grid: avoids showing 0 after creating
+   * a session from manual entry until approval merges into people_hours. Excludes revoked sessions
+   * (which still load via the `approved_at IS NULL AND rejected_at IS NULL` filter because revoke
+   * only sets `revoked_at`) so revoked hours drop off the grid as soon as `people_hours` updates.
+   */
   function sumClosedPendingClockHoursForPersonDate(personName: string, workDate: string): number {
     const uid = users.find((u) => (u.name ?? '').trim() === personName.trim())?.id
-    if (!uid) return 0
-    let sum = 0
-    for (const s of pendingClockSessions) {
-      if (s.user_id !== uid || s.work_date !== workDate || s.clocked_out_at == null) continue
-      const a = new Date(s.clocked_in_at).getTime()
-      const b = new Date(s.clocked_out_at).getTime()
-      sum += Math.max(0, (b - a) / 3_600_000)
-    }
-    return sum
+    return sumClosedPendingClockHoursForCell(pendingClockSessions, uid, workDate)
   }
 
   /** Hours matrix: max(people_hours, pending clock) so manual-offer → session path stays visible; salary-only rows unchanged. */
@@ -7369,14 +7410,36 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab !== 'review' || !isDev) return
+    // Any dep change invalidates the popup's cache (rows would be stale).
+    // `loadTeamSummaryData().then(...)` below re-populates it on success.
+    // While the load is in flight the popup path falls back to a fresh
+    // fetch (pre-v2.542 behavior), avoiding stale-cache hits.
+    teamSummaryDataCacheRef.current = null
     if (showPeopleForReview.length === 0) {
       teamSummaryReqIdRef.current += 1
       setTeamSummaryHtml(null)
       setTeamSummaryError(null)
       setTeamSummaryLoading(false)
+      teamSummaryRefreshPendingRef.current = false
       return
     }
     if (Object.keys(payConfig).length === 0) return
+    // Custom range with a half-finished pair shouldn't trigger a load — it's
+    // pretty common to type one date and not the other for a moment, and we
+    // don't want to thrash the network or temporarily collapse to "today".
+    if (
+      reviewPeriod === 'custom' &&
+      (!reviewCustomRangeStart || !reviewCustomRangeEnd)
+    ) {
+      return
+    }
+    // Drilldown protection: if a modal is open inside the iframe, defer the
+    // rebuild until the user closes it. We mark pending and the message
+    // handler will bump `teamSummaryDrainTick` to re-run this effect.
+    if (teamSummaryModalOpenRef.current) {
+      teamSummaryRefreshPendingRef.current = true
+      return
+    }
     const t = window.setTimeout(() => {
       openTeamSummaryWindow('inline')
     }, 200)
@@ -7386,11 +7449,14 @@ export default function People() {
     activeTab,
     isDev,
     reviewPeriod,
+    reviewCustomRangeStart,
+    reviewCustomRangeEnd,
     reviewOnlyPaidInFull,
     payConfig,
     showPeopleForReview,
     reviewOverheadRates.ratePerHour,
     reviewOverheadRates.loading,
+    teamSummaryDrainTick,
   ])
 
   const ledgerFilteredPayStubs = useMemo(() => {
@@ -7480,10 +7546,28 @@ export default function People() {
       const y = d.toLocaleDateString('en-CA')
       return [y, y]
     }
+    if (reviewPeriod === 'custom') {
+      // Empty inputs collapse to "today" so the table still has *something*
+      // to render rather than throwing on an invalid range. The UI surfaces
+      // a hint when both inputs are empty.
+      const cs = reviewCustomRangeStart.trim()
+      const ce = reviewCustomRangeEnd.trim()
+      if (cs && ce) {
+        // Swap if the user picked them in the wrong order.
+        return cs <= ce ? [cs, ce] : [ce, cs]
+      }
+      if (cs && !ce) return [cs, cs]
+      if (!cs && ce) return [ce, ce]
+      return [todayStr, todayStr]
+    }
     // Current week's Sunday (start of this week)
     const day = today.getDay()
     const thisWeekSunday = new Date(today)
     thisWeekSunday.setDate(today.getDate() - day)
+    if (reviewPeriod === 'this_week') {
+      // Sunday of this week through today (running week, mid-week monitoring).
+      return [thisWeekSunday.toLocaleDateString('en-CA'), todayStr]
+    }
     if (reviewPeriod === 'last_week') {
       const lastWeekSunday = new Date(thisWeekSunday)
       lastWeekSunday.setDate(thisWeekSunday.getDate() - 7)
@@ -7491,12 +7575,24 @@ export default function People() {
       lastWeekSaturday.setDate(lastWeekSunday.getDate() + 6)
       return [lastWeekSunday.toLocaleDateString('en-CA'), lastWeekSaturday.toLocaleDateString('en-CA')]
     }
-    if (reviewPeriod === 'last_month') {
+    if (reviewPeriod === 'last_30_days') {
+      // Rolling 30 days back from today (was previously labeled "Last month";
+      // the label was a misnomer — see ReviewPeriod doc above).
       const start = new Date(today)
       start.setDate(today.getDate() - 30)
       return [start.toLocaleDateString('en-CA'), todayStr]
     }
-    // last_two_weeks
+    if (reviewPeriod === 'last_90_days') {
+      const start = new Date(today)
+      start.setDate(today.getDate() - 90)
+      return [start.toLocaleDateString('en-CA'), todayStr]
+    }
+    if (reviewPeriod === 'this_year') {
+      // Calendar year-to-date (Jan 1 → today).
+      const start = new Date(today.getFullYear(), 0, 1)
+      return [start.toLocaleDateString('en-CA'), todayStr]
+    }
+    // last_two_weeks (default fallthrough)
     const twoWeeksAgoSunday = new Date(thisWeekSunday)
     twoWeeksAgoSunday.setDate(thisWeekSunday.getDate() - 14)
     const lastWeekSaturday = new Date(thisWeekSunday)
@@ -7579,8 +7675,8 @@ export default function People() {
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', start).lte('job_date', end),
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart),
       forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles').eq('assigned_to_name', personName).gte('job_date', lookbackStart),
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart),
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
       forTeamSummary ? Promise.resolve({ data: [] }) : supabase.rpc('list_reports_with_job_info'),
       userId && !forTeamSummary
@@ -7609,8 +7705,8 @@ export default function People() {
     const laborRows = (laborRes.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
     const allLaborRowsForCostAllTime = (allLaborResForCostAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }>
     const personLaborRowsAllTime = (personLaborResAllTime.data ?? []) as Array<{ id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null }>
-    const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
-    const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const crewRows = (crewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const allCrewRowsForCostAllTime = (allCrewResForCostAllTime.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
     const hoursRows = (hoursRes.data ?? []) as Array<{ work_date: string; hours: number }>
     const allReports = (reportsRes.data ?? []) as Array<{ id: string; template_name: string; job_display_name: string; created_at: string; created_by_name: string }>
     const taskInstances = (tasksRes.data ?? []) as Array<{ id: string; checklist_item_id: string; scheduled_date: string; completed_at: string | null; checklist_items: { title: string; links?: string[] | null } | null }>
@@ -7670,45 +7766,31 @@ export default function People() {
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of crewRows) {
       crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-        crew_lead_person_name: r.crew_lead_person_name,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
     const crewByDatePersonAllTime: Record<string, CrewJobRow> = {}
     for (const r of allCrewRowsForCostAllTime) {
       crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`] = {
-        crew_lead_person_name: r.crew_lead_person_name,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
-    const crewMembersByDateAndLead = new Map<string, string[]>()
-    for (const r of crewRows) {
-      if (!r.crew_lead_person_name) continue
-      const key = `${r.work_date}:${r.crew_lead_person_name}`
-      const list = crewMembersByDateAndLead.get(key) ?? []
-      if (!list.includes(r.person_name)) list.push(r.person_name)
-      crewMembersByDateAndLead.set(key, list)
-    }
     const crewJobIds = new Set<string>()
-    const crewJobsWithLead: Array<{ work_date: string; job_id: string; viaLead: string | null; pct: number }> = []
+    const crewJobsWithLead: Array<{ work_date: string; job_id: string; pct: number }> = []
     for (const r of crewRows) {
       if (r.person_name !== personName) continue
       const row = crewByDatePerson[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       for (const a of assignments) {
         crewJobIds.add(a.job_id)
-        crewJobsWithLead.push({ work_date: r.work_date, job_id: a.job_id, viaLead: row?.crew_lead_person_name ?? null, pct: a.pct })
+        crewJobsWithLead.push({ work_date: r.work_date, job_id: a.job_id, pct: a.pct })
       }
     }
 
     const teamLaborCostByJobId = new Map<string, number>()
     for (const r of allCrewRowsForCostAllTime) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       const cfg = payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
@@ -7797,9 +7879,7 @@ export default function People() {
     }
     for (const r of allCrewRowsForCostAllTime) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       const cfg = payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
@@ -7831,9 +7911,7 @@ export default function People() {
     for (const r of allCrewRowsForCostAllTime) {
       if (r.person_name !== personName) continue
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       const cfg = payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
@@ -7859,9 +7937,7 @@ export default function People() {
     for (const r of allCrewRowsForCostAllTime) {
       if (r.person_name !== personName) continue
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       const cfg = payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
@@ -7970,8 +8046,6 @@ export default function People() {
         job_name: j?.job_name ?? '—',
         job_address: j?.job_address ?? '—',
         service_type_id: j?.service_type_id ?? null,
-        viaLead: c.viaLead,
-        crewMemberNames: c.viaLead === null ? (crewMembersByDateAndLead.get(`${c.work_date}:${personName}`) ?? []) : undefined,
         hours,
         laborCost,
         driveCost: 0,
@@ -8052,11 +8126,11 @@ export default function People() {
 
     const [allLaborRes, allCrewRes, allHoursRes2] = await Promise.all([
       forTeamSummary || !(laborHcps.length > 0 || crewJobIds.size > 0) ? Promise.resolve({ data: [] }) : supabase.from('people_labor_jobs').select('id, job_number, job_date').gte('job_date', lookbackStart2Y).lte('job_date', lookbackEnd),
-      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
+      forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
       forTeamSummary ? Promise.resolve({ data: [] }) : supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart2Y).lte('work_date', lookbackEnd),
     ])
     const allLaborRows = (allLaborRes.data ?? []) as Array<{ id: string; job_number: string | null; job_date: string | null }>
-    const allCrewRows = (allCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const allCrewRows = (allCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
     const allHoursRows2 = (allHoursRes2.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
     const hoursMapAll: Record<string, number> = {}
     for (const h of allHoursRows2) {
@@ -8100,7 +8174,6 @@ export default function People() {
     const allCrewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of allCrewRows) {
       allCrewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-        crew_lead_person_name: r.crew_lead_person_name,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
@@ -8108,9 +8181,7 @@ export default function People() {
     const jobIdsSet = new Set(allJobIdsForCrew)
     for (const r of allCrewRows) {
       const row = allCrewByDatePerson[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (allCrewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       const cfg = payConfig[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
       const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAll[`${r.person_name}:${r.work_date}`] ?? 0)
@@ -8244,7 +8315,8 @@ export default function People() {
     if (idx !== selectedReviewPersonIndex) setSelectedReviewPersonIndex(idx)
     const personName = showPeopleForReview[idx]
     if (personName) void loadReviewData(personName, false, reviewOnlyPaidInFull)
-  }, [activeTab, selectedReviewPersonIndex, reviewPeriod, reviewOnlyPaidInFull, showPeopleForReview, users])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedReviewPersonIndex, reviewPeriod, reviewCustomRangeStart, reviewCustomRangeEnd, reviewOnlyPaidInFull, showPeopleForReview, users])
 
   type HoursBreakdown = {
     source: 'salary' | 'hourly' | 'unknown'
@@ -8252,7 +8324,11 @@ export default function People() {
     dailyRows: Array<{
       date: string
       hours: number
-      crewAllocations: Array<{ hcp: string; pct: number; hours: number }>
+      // jobName + address added so the iframe Hours modal can render crew
+      // allocations as `(percent) Job # | Job Name - address` per day.
+      // Empty strings render as no-op (jobName falls back to "\u2014",
+      // address is omitted entirely when blank).
+      crewAllocations: Array<{ hcp: string; jobName: string; address: string; pct: number; hours: number }>
     }>
     subLaborRows: Array<{ hcp: string; date: string; hours: number }>
     totals: {
@@ -8303,9 +8379,32 @@ export default function People() {
     }>
     totalNet: number
     totalHours: number
+    fieldHours: number
+    overheadHours: number
     unaccountedHours: number
   }
-  type TeamSummaryRow = { personName: string; profit: number; gross: number; revPerHour: number; profitPerHour: number; totalHours: number; overheadHours: number; officeHours: number; bidHours: number; fieldHours: number; hoursBreakdown: HoursBreakdown; grossBreakdown: GrossRevenueBreakdown; netBreakdown: NetRevenueBreakdown; profitBreakdown: ProfitAfterOverheadBreakdown }
+  /**
+   * One pre-formatted session line for the Overhead-hours-breakdown modal.
+   * Times are pre-formatted in the company TZ and bid metadata is already
+   * resolved against `bidsById`, so the iframe just renders strings.
+   */
+  type OverheadSessionLine = {
+    workDate: string
+    bucket: 'office' | 'bid'
+    /** e.g. "8:00 AM" in the company TZ. */
+    startTime: string
+    /** e.g. "5:00 PM" in the company TZ. */
+    endTime: string
+    /** Approved closed session hours, same value used for the bucket totals. */
+    hours: number
+    /** Bid display number with "B" prefix (e.g. "B201"). Empty for office. */
+    bidHcp: string
+    /** Bid project name. Empty for office. */
+    bidName: string
+    /** Bid address. Empty for office or when address blank. */
+    bidAddress: string
+  }
+  type TeamSummaryRow = { personName: string; profit: number; gross: number; revPerHour: number; profitPerHour: number; totalHours: number; overheadHours: number; officeHours: number; bidHours: number; fieldHours: number; hourlyWage: number; overheadLaborCost: number; hoursBreakdown: HoursBreakdown; grossBreakdown: GrossRevenueBreakdown; netBreakdown: NetRevenueBreakdown; profitBreakdown: ProfitAfterOverheadBreakdown; overheadSessions: OverheadSessionLine[] }
 
   /**
    * Tier 3 — shared dataset fetched once for the whole team.
@@ -8318,11 +8417,20 @@ export default function People() {
   type TeamPeriodLaborRow = { id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }
   type TeamReviewUnion = {
     periodLaborRows: TeamPeriodLaborRow[]
-    periodCrewRows: Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    periodCrewRows: Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    /**
+     * Period bid crew rows, used **only** by the Hours-breakdown modal so it
+     * can show days where someone clocked into a bid as `(pct) B{n} | Project`
+     * instead of "No crew assignment". Revenue / profit math intentionally
+     * stays job-only — bid hours are already counted in the overhead pool.
+     */
+    periodCrewBidRows: Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] }>
     periodHoursRows: Array<{ person_name: string; work_date: string; hours: number }>
     mileageCost: number
     timePerMile: number
     jobsById: Map<string, TeamLedgerRow>
+    /** Bid id -> display fields, used by the Hours-breakdown modal only. */
+    bidsById: Map<string, { bid_number: string; project_name: string; address: string }>
     jobIdByHcp: Map<string, string>
     laborItemsByJobId: Map<string, TeamLaborItem[]>
     laborCostByHcp: Map<string, number>
@@ -8333,6 +8441,24 @@ export default function People() {
     hoursMap: Record<string, number>
     crewByDatePerson: Record<string, CrewJobRow>
     overheadHoursByPerson: Record<string, { office: number; bid: number }>
+    /** `${personName}:${work_date}` -> approved office+bid clock hours that day. */
+    overheadHoursByPersonByDate: Record<string, number>
+    /**
+     * Per-person, period-only approved office + bid clock sessions, used by
+     * the Overhead-hours-breakdown modal to render Office / Bids sections
+     * hierarchically (Day -> indented session lines). Bid `bid_id` is
+     * resolved against `bidsById` at render time inside
+     * `derivePersonTeamSummary`.
+     */
+    overheadSessionsByPerson: Record<string, Array<{
+      sessionId: string
+      workDate: string
+      bucket: 'office' | 'bid'
+      clockedInIso: string
+      clockedOutIso: string
+      hours: number
+      bidId: string | null
+    }>>
     officeJobLedgerId: string | null
   }
 
@@ -8348,14 +8474,13 @@ export default function People() {
 
     const officeJobLedgerId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
 
-    const overheadSessionsFetchPromise = (async () => {
+    const overheadSessionsAllTimeFetchPromise = (async () => {
       let q = supabase
         .from('clock_sessions')
         .select(
           'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
         )
-        .gte('work_date', start)
-        .lte('work_date', end)
+        .gte('work_date', lookbackStart)
       if (officeJobLedgerId) {
         q = q.or(`job_ledger_id.eq.${officeJobLedgerId},bid_id.not.is.null`)
       } else {
@@ -8370,25 +8495,36 @@ export default function People() {
       allTimeLaborRes,
       periodCrewRes,
       allTimeCrewRes,
+      periodCrewBidsRes,
       periodHoursRes,
       allTimeHoursRes,
       settingsRes,
       tallyRes,
-      overheadSessions,
+      overheadSessionsAllTime,
     ] = await Promise.all([
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', start).lte('job_date', end),
       supabase.from('people_labor_jobs').select('id, job_date, address, job_number, labor_rate, distance_miles, assigned_to_name').gte('job_date', lookbackStart),
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', start).lte('work_date', end),
-      supabase.from('people_crew_jobs').select('work_date, person_name, crew_lead_person_name, job_assignments').gte('work_date', lookbackStart),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
+      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', lookbackStart),
+      // Period-only bid crew rows -- modal display only, no all-time fetch needed.
+      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').gte('work_date', start).lte('work_date', end),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', start).lte('work_date', end),
       supabase.from('people_hours').select('person_name, work_date, hours').gte('work_date', lookbackStart),
       supabase.from('app_settings').select('key, value_num').in('key', ['drive_mileage_cost', 'drive_time_per_mile']),
       supabase.rpc('list_tally_parts_with_po'),
-      overheadSessionsFetchPromise,
+      overheadSessionsAllTimeFetchPromise,
     ])
 
+    // Derive the period buckets (for per-person totals shown in the Team
+    // Summary) and the period per-day map (for `derivePersonTeamSummary`'s
+    // overhead callouts). The lifetime crew labor cost denominator no longer
+    // needs an all-time per-day overhead map under Option E — pct is share of
+    // the total day so the multiplicand is `dayHoursRaw`, not `dayHoursRaw -
+    // overheadOnDay`. One fetch, period-only views.
     const overheadHoursByPerson: Record<string, { office: number; bid: number }> = {}
-    for (const s of overheadSessions) {
+    const overheadHoursByPersonByDate: Record<string, number> = {}
+    const overheadSessionsByPerson: TeamReviewUnion['overheadSessionsByPerson'] = {}
+    for (const s of overheadSessionsAllTime) {
       if (s.rejected_at || s.revoked_at) continue
       if (s.approved_at == null) continue
       const bucket = overheadBucketForSession(officeJobLedgerId, s.job_ledger_id, s.bid_id)
@@ -8397,16 +8533,41 @@ export default function People() {
       if (hrs == null || hrs <= 0) continue
       const name = (s.users?.name ?? '').trim()
       if (!name) continue
-      const cur = overheadHoursByPerson[name] ?? { office: 0, bid: 0 }
-      if (bucket === 'office') cur.office += hrs
-      else cur.bid += hrs
-      overheadHoursByPerson[name] = cur
+      const dateKey = `${name}:${s.work_date}`
+      if (s.work_date >= start && s.work_date <= end) {
+        const cur = overheadHoursByPerson[name] ?? { office: 0, bid: 0 }
+        if (bucket === 'office') cur.office += hrs
+        else cur.bid += hrs
+        overheadHoursByPerson[name] = cur
+        overheadHoursByPersonByDate[dateKey] = (overheadHoursByPersonByDate[dateKey] ?? 0) + hrs
+        // Skip open sessions for the modal (no clock_out_iso to render); they
+        // already contributed null hours and were filtered above.
+        if (s.clocked_out_at) {
+          const list = overheadSessionsByPerson[name] ?? []
+          list.push({
+            sessionId: s.id,
+            workDate: s.work_date,
+            bucket,
+            clockedInIso: s.clocked_in_at,
+            clockedOutIso: s.clocked_out_at,
+            hours: hrs,
+            bidId: s.bid_id ?? null,
+          })
+          overheadSessionsByPerson[name] = list
+        }
+      }
     }
 
     const periodLaborRows = (periodLaborRes.data ?? []) as TeamPeriodLaborRow[]
     const allTimeLaborRows = (allTimeLaborRes.data ?? []) as TeamPeriodLaborRow[]
-    const periodCrewRows = (periodCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
-    const allTimeCrewRows = (allTimeCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; crew_lead_person_name: string | null; job_assignments: CrewJobAssignment[] }>
+    const periodCrewRows = (periodCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const allTimeCrewRows = (allTimeCrewRes.data ?? []) as Array<{ work_date: string; person_name: string; job_assignments: CrewJobAssignment[] }>
+    const periodCrewBidRowsRaw = (periodCrewBidsRes.data ?? []) as Array<{ work_date: string; person_name: string; bid_assignments: CrewBidAssignment[] | null }>
+    const periodCrewBidRows = periodCrewBidRowsRaw.map((r) => ({
+      work_date: r.work_date,
+      person_name: r.person_name,
+      bid_assignments: Array.isArray(r.bid_assignments) ? r.bid_assignments : [],
+    }))
     const periodHoursRows = (periodHoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
     const allTimeHoursRows = (allTimeHoursRes.data ?? []) as Array<{ person_name: string; work_date: string; hours: number }>
     const settingsRows = (settingsRes.data ?? []) as Array<{ key: string; value_num: number | null }>
@@ -8462,31 +8623,33 @@ export default function People() {
     const crewByDatePerson: Record<string, CrewJobRow> = {}
     for (const r of periodCrewRows) {
       crewByDatePerson[`${r.work_date}:${r.person_name}`] = {
-        crew_lead_person_name: r.crew_lead_person_name,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
     const crewByDatePersonAllTime: Record<string, CrewJobRow> = {}
     for (const r of allTimeCrewRows) {
       crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`] = {
-        crew_lead_person_name: r.crew_lead_person_name,
         job_assignments: Array.isArray(r.job_assignments) ? r.job_assignments : [],
       }
     }
 
     // Lifetime crew labor cost per job (all crew members).
+    // Convention 1 — crew pct is share of the total day (matches the
+    // `sync_crew_jobs_from_clock` trigger denominator and `teamLabor.ts` /
+    // `payReportAssignmentsBreakdown.ts`). Multiply by `dayHoursRaw` so this
+    // lifetime denominator stays on the same convention as the period
+    // numerator in `derivePersonTeamSummary` and as the cost figures shown
+    // on pay stubs / Person Review.
     const teamLaborCostByJobId = new Map<string, number>()
     for (const r of allTimeCrewRows) {
       const row = crewByDatePersonAllTime[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePersonAllTime[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       const cfg = payConfigSnapshot[r.person_name]
       const day = new Date(r.work_date + 'T12:00:00').getDay()
-      const hours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
+      const dayHoursRaw = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (hoursMapAllTime[`${r.person_name}:${r.work_date}`] ?? 0)
       const rate = cfg?.hourly_wage ?? 0
       for (const a of assignments) {
-        const pctHrs = hours * (a.pct / 100)
+        const pctHrs = dayHoursRaw * (a.pct / 100)
         const cost = pctHrs * rate
         teamLaborCostByJobId.set(a.job_id, (teamLaborCostByJobId.get(a.job_id) ?? 0) + cost)
       }
@@ -8497,16 +8660,23 @@ export default function People() {
     const unionCrewJobIds = new Set<string>()
     for (const r of periodCrewRows) {
       const row = crewByDatePerson[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       for (const a of assignments) {
         unionCrewJobIds.add(a.job_id)
       }
     }
 
     const allJobIds = [...unionCrewJobIds]
-    const [crewJobsRes, laborJobsRes] = await Promise.all([
+    // Collect bid IDs across the period crew bid rows so we can resolve display
+    // metadata (bid_number, project_name) for the Hours-breakdown modal.
+    const unionCrewBidIds = new Set<string>()
+    for (const r of periodCrewBidRows) {
+      for (const a of r.bid_assignments) {
+        if (a.bid_id) unionCrewBidIds.add(a.bid_id)
+      }
+    }
+    const allBidIds = [...unionCrewBidIds]
+    const [crewJobsRes, laborJobsRes, crewBidsRes] = await Promise.all([
       allJobIds.length > 0
         ? onlyPaidJobs
           ? supabase.rpc('get_jobs_ledger_by_ids_paid_only', { p_job_ids: allJobIds })
@@ -8516,6 +8686,9 @@ export default function People() {
         ? onlyPaidJobs
           ? supabase.rpc('get_jobs_ledger_by_hcp_numbers_paid_only', { p_hcp_numbers: unionLaborHcps })
           : supabase.rpc('get_jobs_ledger_by_hcp_numbers', { p_hcp_numbers: unionLaborHcps })
+        : { data: [] },
+      allBidIds.length > 0
+        ? supabase.rpc('get_bids_by_ids', { p_bid_ids: allBidIds })
         : { data: [] },
     ])
     const crewJobsLedger = (crewJobsRes.data ?? []) as TeamLedgerRow[]
@@ -8531,6 +8704,15 @@ export default function People() {
       if (!jobsById.has(j.id)) jobsById.set(j.id, j)
       const hcp = (j.hcp_number ?? '').trim().toLowerCase()
       if (hcp) jobIdByHcp.set(hcp, j.id)
+    }
+    const bidRows = (crewBidsRes.data ?? []) as Array<{ id: string; bid_number: string | null; project_name: string | null; address: string | null }>
+    const bidsById = new Map<string, { bid_number: string; project_name: string; address: string }>()
+    for (const b of bidRows) {
+      bidsById.set(b.id, {
+        bid_number: (b.bid_number ?? '').trim(),
+        project_name: (b.project_name ?? '').trim(),
+        address: (b.address ?? '').trim(),
+      })
     }
 
     const jobIds = Array.from(jobsById.keys())
@@ -8550,10 +8732,12 @@ export default function People() {
     return {
       periodLaborRows,
       periodCrewRows,
+      periodCrewBidRows,
       periodHoursRows,
       mileageCost,
       timePerMile,
       jobsById,
+      bidsById,
       jobIdByHcp,
       laborItemsByJobId,
       laborCostByHcp,
@@ -8564,6 +8748,8 @@ export default function People() {
       hoursMap,
       crewByDatePerson,
       overheadHoursByPerson,
+      overheadHoursByPersonByDate,
+      overheadSessionsByPerson,
       officeJobLedgerId,
     }
   }
@@ -8580,8 +8766,20 @@ export default function People() {
     days: string[],
   ): TeamSummaryRow {
     const cfg = payConfigSnapshot[personName]
+    const officeJobIdForFilter = union.officeJobLedgerId
 
-    const personPeriodLaborRows = union.periodLaborRows.filter((r) => r.assigned_to_name === personName)
+    const personPeriodLaborRows = union.periodLaborRows
+      .filter((r) => r.assigned_to_name === personName)
+      .filter((r) => {
+        // Exclude sub-labor rows pointing at the configured office job — it's
+        // overhead, not a field-revenue job. Without this filter the office
+        // job appears in "Where the field hrs went" and gets a (typically
+        // negative) revenue allocation.
+        if (!officeJobIdForFilter) return true
+        const hcp = (r.job_number ?? '').trim().toLowerCase()
+        if (!hcp) return true
+        return union.jobIdByHcp.get(hcp) !== officeJobIdForFilter
+      })
     const laborRowsFiltered = onlyPaidJobs
       ? personPeriodLaborRows.filter((r) => {
           const hcp = (r.job_number ?? '').trim().toLowerCase()
@@ -8606,10 +8804,11 @@ export default function People() {
     for (const r of union.periodCrewRows) {
       if (r.person_name !== personName) continue
       const row = union.crewByDatePerson[`${r.work_date}:${r.person_name}`]
-      const assignments = row
-        ? (row.crew_lead_person_name ? (union.crewByDatePerson[`${r.work_date}:${row.crew_lead_person_name}`]?.job_assignments ?? []) : row.job_assignments)
-        : []
+      const assignments = row?.job_assignments ?? []
       for (const a of assignments) {
+        // Skip the configured office job — its time is overhead and is
+        // already accounted for via clock sessions, not crew revenue.
+        if (officeJobIdForFilter && a.job_id === officeJobIdForFilter) continue
         crewJobIds.add(a.job_id)
         crewJobsWithLead.push({ work_date: r.work_date, job_id: a.job_id, pct: a.pct })
       }
@@ -8620,8 +8819,11 @@ export default function People() {
 
     const crewJobs = crewJobsWithLeadFiltered.map((c) => {
       const day = new Date(c.work_date + 'T12:00:00').getDay()
-      const dayHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (union.hoursMap[`${personName}:${c.work_date}`] ?? 0)
-      const hours = dayHours * (c.pct / 100)
+      const dayHoursRaw = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (union.hoursMap[`${personName}:${c.work_date}`] ?? 0)
+      // Convention 1 — pct is share of the total day; multiply by dayHoursRaw
+      // so the period numerator stays on the same convention as the lifetime
+      // denominator in `loadTeamReviewUnion.teamLaborCostByJobId`.
+      const hours = dayHoursRaw * (c.pct / 100)
       const laborCost = hours * (cfg?.hourly_wage ?? 0)
       return { jobId: c.job_id, hours, laborCost }
     })
@@ -8736,6 +8938,13 @@ export default function People() {
       ? totalHoursPaidJobs
       : days.reduce((s, d) => s + getHoursForDay(d), 0)
 
+    const overheadBuckets = union.overheadHoursByPerson[personName] ?? { office: 0, bid: 0 }
+    const officeHours = overheadBuckets.office
+    const bidHours = overheadBuckets.bid
+    const overheadHours = officeHours + bidHours
+    const fieldHours = onlyPaidJobs
+      ? totalHours
+      : Math.max(0, totalHours - overheadHours)
     const profitBreakdownJobs: ProfitAfterOverheadBreakdown['jobs'] = netBreakdownJobs.map((j) => ({
       jobId: j.jobId,
       hcp: j.hcp,
@@ -8748,21 +8957,58 @@ export default function People() {
       jobs: profitBreakdownJobs,
       totalNet: allocatedProfit,
       totalHours,
-      unaccountedHours: Math.max(0, totalHours - allocatedHoursTotal),
+      fieldHours,
+      overheadHours,
+      unaccountedHours: Math.max(0, fieldHours - allocatedHoursTotal),
     }
 
-    const crewByDateForPerson = new Map<string, Array<{ hcp: string; pct: number; hours: number }>>()
-    for (const c of crewJobsWithLeadFiltered) {
-      const j = union.jobsById.get(c.job_id)
-      const hcp = (j?.hcp_number ?? '').trim().toUpperCase() || 'Unknown'
-      const dayOfWeek = new Date(c.work_date + 'T12:00:00').getDay()
-      const dayHours = cfg?.is_salary
+    // Modal-display only -- includes the configured Office job AND bid
+    // assignments so people who clocked into Office or a bid are visible in
+    // the Hours-breakdown drilldown (otherwise the day shows "No crew
+    // assignment"). Revenue / profit math uses `crewJobsWithLeadFiltered`,
+    // which still excludes Office and bids on purpose.
+    const crewByDateForPerson = new Map<string, Array<{ hcp: string; jobName: string; address: string; pct: number; hours: number }>>()
+    const dayHoursForPerson = (workDate: string) => {
+      const dayOfWeek = new Date(workDate + 'T12:00:00').getDay()
+      return cfg?.is_salary
         ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
-        : (union.hoursMap[`${personName}:${c.work_date}`] ?? 0)
-      const hours = dayHours * (c.pct / 100)
-      const list = crewByDateForPerson.get(c.work_date) ?? []
-      list.push({ hcp, pct: c.pct, hours })
-      crewByDateForPerson.set(c.work_date, list)
+        : (union.hoursMap[`${personName}:${workDate}`] ?? 0)
+    }
+    for (const r of union.periodCrewRows) {
+      if (r.person_name !== personName) continue
+      const dayHoursRaw = dayHoursForPerson(r.work_date)
+      for (const a of r.job_assignments) {
+        const j = union.jobsById.get(a.job_id)
+        const hcp = (j?.hcp_number ?? '').trim().toUpperCase() || 'Unknown'
+        const jobName = (j?.job_name ?? '').trim()
+        const address = (j?.job_address ?? '').trim()
+        // Convention 1 -- pct is share of the total day; hours = day * pct/100.
+        const hours = dayHoursRaw * (a.pct / 100)
+        const list = crewByDateForPerson.get(r.work_date) ?? []
+        list.push({ hcp, jobName, address, pct: a.pct, hours })
+        crewByDateForPerson.set(r.work_date, list)
+      }
+    }
+    for (const r of union.periodCrewBidRows) {
+      if (r.person_name !== personName) continue
+      const dayHoursRaw = dayHoursForPerson(r.work_date)
+      for (const a of r.bid_assignments) {
+        const meta = union.bidsById.get(a.bid_id)
+        // Bid number prefixed with "B" so the modal's allocation column reads
+        // "(pct) B249 | Project Name" and clearly distinguishes from a job.
+        // Falls back to "B?" when bid metadata is missing (rare; the row was
+        // synced but `get_bids_by_ids` filtered the bid out).
+        const rawBidNumber = (meta?.bid_number ?? '').trim()
+        const hcp = rawBidNumber
+          ? (rawBidNumber.toUpperCase().startsWith('B') ? rawBidNumber.toUpperCase() : 'B' + rawBidNumber)
+          : 'B?'
+        const jobName = (meta?.project_name ?? '').trim()
+        const address = (meta?.address ?? '').trim()
+        const hours = dayHoursRaw * (a.pct / 100)
+        const list = crewByDateForPerson.get(r.work_date) ?? []
+        list.push({ hcp, jobName, address, pct: a.pct, hours })
+        crewByDateForPerson.set(r.work_date, list)
+      }
     }
     const dailyRowsBreakdown: HoursBreakdown['dailyRows'] = []
     for (const d of days) {
@@ -8792,14 +9038,65 @@ export default function People() {
       totals: { daily: dailyTotal, crew: crewTotal, subLabor: subLaborTotal, totalHours },
     }
 
-    const overheadBuckets = union.overheadHoursByPerson[personName] ?? { office: 0, bid: 0 }
-    const officeHours = overheadBuckets.office
-    const bidHours = overheadBuckets.bid
-    const overheadHours = officeHours + bidHours
-    const fieldHours = onlyPaidJobs
-      ? totalHours
-      : Math.max(0, totalHours - overheadHours)
+    const hourlyWage = cfg?.hourly_wage ?? 0
+    // Overhead labor only — Office + Bid hours × wage. Field labor is
+    // already subtracted at the per-job level inside Net Revenue
+    // (`job_net = revenue - parts - total_labor`), so re-listing it here
+    // would visually double-count. Stored negative so the column reads
+    // as a cost (red `negStyle`, `-$X` via `fmtMoney`) and flows naturally
+    // into the footer total + per-bucket drilldown rows.
+    const overheadLaborCost = -(overheadHours * hourlyWage)
 
+    // Build the per-session display list for the Overhead-hours-breakdown
+    // modal. Times are formatted in the company TZ; bid metadata is
+    // resolved against `union.bidsById` so the iframe only renders strings.
+    const overheadTimeFormatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: APP_CALENDAR_TZ,
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+    const overheadRawSessions = union.overheadSessionsByPerson[personName] ?? []
+    const overheadSessions: OverheadSessionLine[] = overheadRawSessions
+      .map((s) => {
+        const inDate = new Date(s.clockedInIso)
+        const outDate = new Date(s.clockedOutIso)
+        const startTime = Number.isNaN(inDate.getTime())
+          ? ''
+          : overheadTimeFormatter.format(inDate)
+        const endTime = Number.isNaN(outDate.getTime())
+          ? ''
+          : overheadTimeFormatter.format(outDate)
+        let bidHcp = ''
+        let bidName = ''
+        let bidAddress = ''
+        if (s.bucket === 'bid' && s.bidId) {
+          const meta = union.bidsById.get(s.bidId)
+          const rawBidNumber = (meta?.bid_number ?? '').trim()
+          bidHcp = rawBidNumber
+            ? rawBidNumber.toUpperCase().startsWith('B')
+              ? rawBidNumber.toUpperCase()
+              : 'B' + rawBidNumber
+            : 'B?'
+          bidName = (meta?.project_name ?? '').trim()
+          bidAddress = (meta?.address ?? '').trim()
+        }
+        return {
+          workDate: s.workDate,
+          bucket: s.bucket,
+          startTime,
+          endTime,
+          hours: s.hours,
+          bidHcp,
+          bidName,
+          bidAddress,
+        }
+      })
+      .sort((a, b) => {
+        const byDate = a.workDate.localeCompare(b.workDate)
+        if (byDate !== 0) return byDate
+        return a.startTime.localeCompare(b.startTime)
+      })
     return {
       personName,
       profit: allocatedProfit,
@@ -8811,10 +9108,13 @@ export default function People() {
       officeHours,
       bidHours,
       fieldHours,
+      hourlyWage,
+      overheadLaborCost,
       hoursBreakdown,
       grossBreakdown,
       netBreakdown,
       profitBreakdown,
+      overheadSessions,
     }
   }
 
@@ -8827,14 +9127,37 @@ export default function People() {
     )
   }
 
+  // Snapshot of the inputs that determine `loadTeamSummaryData`'s output,
+  // joined into a single string so the popup path can compare cheaply. We
+  // sort the roster + payConfig keys so member order can't drift the key.
+  function buildTeamSummaryCacheKey(): string {
+    const [start, end] = getReviewDateRange()
+    const roster = [...showPeopleForReview].sort().join(',')
+    // payConfig sig: name → salary flag + wage. Catches wage-only edits that
+    // wouldn't otherwise change `showPeopleForReview` membership.
+    const pc = Object.keys(payConfig)
+      .sort()
+      .map((n) => {
+        const cfg = payConfig[n]
+        if (!cfg) return `${n}:?`
+        return `${n}:${cfg.is_salary ? 's' : 'h'}${cfg.hourly_wage ?? ''}`
+      })
+      .join('|')
+    return [start, end, reviewOnlyPaidInFull ? '1' : '0', roster, pc].join('::')
+  }
+
   function getReviewPeriodLabel(): string {
     const [start, end] = getReviewDateRange()
     const labels: Record<ReviewPeriod, string> = {
       today: 'Today',
       yesterday: 'Yesterday',
+      this_week: 'This week (running)',
       last_week: 'Last week',
       last_two_weeks: 'Last two weeks',
-      last_month: 'Last month',
+      last_30_days: 'Last 30 days',
+      last_90_days: 'Last 90 days',
+      this_year: 'This year',
+      custom: 'Custom range',
     }
     return `${labels[reviewPeriod]} (${start} – ${end})`
   }
@@ -8854,6 +9177,13 @@ export default function People() {
     }
     let win: Window | null = null
     let reqId = 0
+    // v2.542 cache hit (popup only): if the inline iframe already rendered
+    // for the exact same inputs, reuse those rows instead of issuing a fresh
+    // `loadTeamSummaryData()`. Embedded refreshes always re-fetch since the
+    // inline path *is* the cache source.
+    const currentCacheKey = buildTeamSummaryCacheKey()
+    const cached = teamSummaryDataCacheRef.current
+    const canReuseCache = !isEmbedded && cached != null && cached.cacheKey === currentCacheKey
     if (isEmbedded) {
       reqId = ++teamSummaryReqIdRef.current
       setTeamSummaryLoading(true)
@@ -8868,7 +9198,11 @@ export default function People() {
       win.document.write(loadingHtml)
       win.document.close()
       win.focus()
-      showToast('Loading Team Summary…', 'info')
+      // Skip the "Loading…" toast when we have a cache hit — the popup will
+      // resolve synchronously on the next tick and the toast just looks stale.
+      if (!canReuseCache) {
+        showToast('Loading Team Summary…', 'info')
+      }
     }
     const overheadRate = reviewOverheadRates.ratePerHour
     const overheadRateLoading = reviewOverheadRates.loading
@@ -8885,122 +9219,81 @@ export default function People() {
       fieldHours90d: reviewOverheadRates.fieldHours90d,
       fieldLaborUsd90d: reviewOverheadRates.fieldLaborUsd90d,
     }
-    loadTeamSummaryData()
+    const dataPromise = canReuseCache && cached
+      ? Promise.resolve(cached.rows)
+      : loadTeamSummaryData()
+    dataPromise
       .then((rows) => {
         if (isEmbedded && reqId !== teamSummaryReqIdRef.current) return
+        // Populate the cache only on the inline path — that's the surface
+        // a popup-click would later read from. Stamp it with the cache key
+        // we computed *before* the load so a dep-driven cache invalidation
+        // mid-load still results in `cached.cacheKey !== buildTeamSummaryCacheKey()`
+        // on the next popup click.
+        if (isEmbedded) {
+          teamSummaryDataCacheRef.current = { rows, cacheKey: currentCacheKey }
+        }
         try {
+          // Number/HTML formatting now lives inside the iframe IIFE; the
+          // parent only escapes the period label below. See iframe `renderTable()`.
           const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-          const fmtMoney = (n: number) => `${n < 0 ? '-$' : '$'}${Math.round(Math.abs(n)).toLocaleString('en-US', { maximumFractionDigits: 0 })}`
-          const fmtHours = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 1, minimumFractionDigits: 0 })
-          const negStyle = (n: number) => (n < 0 ? ' color:#b91c1c;' : '')
           type DisplayRow = TeamSummaryRow & {
             profitAfterOverhead: number | null
             profitPerHourAfterOverhead: number | null
           }
           const enriched: DisplayRow[] = rows.map((r) => {
-            const profitAfterOverhead = overheadRate != null ? r.profit - r.totalHours * overheadRate : null
+            const profitAfterOverhead = overheadRate != null ? r.profit - r.fieldHours * overheadRate : null
             const profitPerHourAfterOverhead =
               profitAfterOverhead != null && r.totalHours > 0 ? profitAfterOverhead / r.totalHours : null
             return { ...r, profitAfterOverhead, profitPerHourAfterOverhead }
           })
           const sortedRows = [...enriched].sort((a, b) => b.profit - a.profit || a.personName.localeCompare(b.personName))
 
-          const totals = sortedRows.reduce(
-            (acc, r) => {
-              acc.hours += r.totalHours
-              acc.overheadHours += r.overheadHours
-              acc.fieldHours += r.fieldHours
-              acc.gross += r.gross
-              acc.net += r.profit
-              if (r.profitAfterOverhead != null) {
-                acc.profit = (acc.profit ?? 0) + r.profitAfterOverhead
-              }
-              return acc
-            },
-            { hours: 0, overheadHours: 0, fieldHours: 0, gross: 0, net: 0, profit: null as number | null }
-          )
-          const teamGrossPerHr = totals.hours > 0 ? totals.gross / totals.hours : 0
-          const teamNetPerHr = totals.hours > 0 ? totals.net / totals.hours : 0
-          const teamProfitPerHr =
-            totals.profit != null && totals.hours > 0 ? totals.profit / totals.hours : null
-
-          const cellMoney = (n: number) =>
-            `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums;${negStyle(n)}">${fmtMoney(n)}</td>`
-          const cellMoneyOrDash = (n: number | null) =>
-            n == null
-              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
-              : cellMoney(n)
-          const cellHoursClickable = (n: number, idx: number) =>
-            `<td class="click-cell" data-idx="${idx}" data-type="hours" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;" title="Click for breakdown">${fmtHours(n)}</td>`
-          const cellGrossClickable = (n: number, idx: number) =>
-            `<td class="click-cell" data-idx="${idx}" data-type="gross" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
-          const cellNetClickable = (n: number, idx: number) =>
-            `<td class="click-cell" data-idx="${idx}" data-type="net" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
-          const cellProfitClickableOrDash = (n: number | null, idx: number) =>
-            n == null
-              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
-              : `<td class="click-cell" data-idx="${idx}" data-type="profit" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
-          const cellGrossPerHrClickable = (n: number, idx: number) =>
-            `<td class="click-cell" data-idx="${idx}" data-type="rev_per_hr" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
-          const cellNetPerHrClickable = (n: number, idx: number) =>
-            `<td class="click-cell" data-idx="${idx}" data-type="net_per_hr" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
-          const cellProfitPerHrClickableOrDash = (n: number | null, idx: number) =>
-            n == null
-              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
-              : `<td class="click-cell" data-idx="${idx}" data-type="profit_per_hr" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;${negStyle(n)}" title="Click for breakdown">${fmtMoney(n)}</td>`
-          const cellHours = (n: number) =>
-            `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums;">${fmtHours(n)}</td>`
-          const cellName = (s: string) =>
-            `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb;">${escapeHtml(s)}</td>`
-
-          const cellOverheadHoursClickable = (n: number, idx: number) =>
-            n > 0
-              ? `<td class="click-cell" data-idx="${idx}" data-type="overhead_hours" style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums; cursor: pointer; color: #2563eb; text-decoration: underline dotted; text-underline-offset: 2px;" title="Click for office vs bid breakdown">${fmtHours(n)}</td>`
-              : `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
-          const cellFieldHours = (n: number) =>
-            n > 0
-              ? `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; font-variant-numeric: tabular-nums;">${fmtHours(n)}</td>`
-              : `<td style="padding: 0.4rem 0.75rem; border: 1px solid #e5e7eb; text-align: center; color:#9ca3af;">—</td>`
-
-          const tableRows = sortedRows.map(
-            (r, i) =>
-              `<tr>${cellName(r.personName)}${cellHoursClickable(r.totalHours, i)}${cellOverheadHoursClickable(r.overheadHours, i)}${cellFieldHours(r.fieldHours)}${cellGrossClickable(r.gross, i)}${cellNetClickable(r.profit, i)}${cellProfitClickableOrDash(r.profitAfterOverhead, i)}${r.totalHours > 0 ? cellGrossPerHrClickable(r.revPerHour, i) : cellMoneyOrDash(null)}${r.totalHours > 0 ? cellNetPerHrClickable(r.profitPerHour, i) : cellMoneyOrDash(null)}${r.totalHours > 0 ? cellProfitPerHrClickableOrDash(r.profitPerHourAfterOverhead, i) : cellMoneyOrDash(null)}</tr>`
-          )
-
-          const footerRow = `<tr style="font-weight: 600; background: #f9fafb;">
-  <td style="padding: 0.5rem 0.75rem; border: 1px solid #e5e7eb;">Team total (${sortedRows.length})</td>
-  ${cellHours(totals.hours)}
-  ${cellHours(totals.overheadHours)}
-  ${cellHours(totals.fieldHours)}
-  ${cellMoney(totals.gross)}
-  ${cellMoney(totals.net)}
-  ${cellMoneyOrDash(totals.profit)}
-  ${totals.hours > 0 ? cellMoney(teamGrossPerHr) : cellMoneyOrDash(null)}
-  ${totals.hours > 0 ? cellMoney(teamNetPerHr) : cellMoneyOrDash(null)}
-  ${totals.hours > 0 ? cellMoneyOrDash(teamProfitPerHr) : cellMoneyOrDash(null)}
-</tr>`
+          // Cell builders, footer totals, and the row/footer HTML are now
+          // built inside the iframe IIFE so client-side search + sort can
+          // re-render without a parent round-trip. See `renderTable()` in
+          // the iframe script below.
 
           const overheadMetaText = overheadRateLoading
             ? 'Overhead Method A: loading…'
             : overheadRate == null
               ? 'Overhead Method A: unavailable'
-              : `Overhead Method A: $${overheadRate.toFixed(2)}/hr (rolling 90-day rate)`
+              : `Overhead Method A: $${overheadRate.toFixed(2)} per field hour (rolling 90-day rate)`
           const overheadMetaClickable = !overheadRateLoading && overheadRate != null
           const overheadMetaHtml = overheadMetaClickable
             ? `<button type="button" id="overhead-meta-btn" class="meta-sub-btn" title="Click for rate decomposition">${escapeHtml(overheadMetaText)} <span aria-hidden="true">&#9432;</span></button>`
             : escapeHtml(overheadMetaText)
 
-          const breakdownsPayload = sortedRows.map((r) => ({
-            name: r.personName,
-            hb: r.hoursBreakdown,
-            gb: r.grossBreakdown,
-            nb: r.netBreakdown,
-            pb: r.profitBreakdown,
-            overheadHours: r.overheadHours,
-            officeHours: r.officeHours,
-            bidHours: r.bidHours,
-            fieldHours: r.fieldHours,
-          }))
+          // Single payload that drives both the table render (sortable + filterable)
+          // and the per-cell drilldown modals. `idx` is stable across sort/filter so
+          // `breakdowns[idx]` lookups in the modal click router stay valid.
+          const breakdownsPayload = sortedRows.map((r, i) => {
+            const cfg = payConfig[r.personName]
+            const payConfigSource = !cfg ? 'unknown' : (cfg.is_salary ? 'salary' : 'hourly')
+            return {
+              idx: i,
+              name: r.personName,
+              hb: r.hoursBreakdown,
+              gb: r.grossBreakdown,
+              nb: r.netBreakdown,
+              pb: r.profitBreakdown,
+              totalHours: r.totalHours,
+              overheadHours: r.overheadHours,
+              officeHours: r.officeHours,
+              bidHours: r.bidHours,
+              fieldHours: r.fieldHours,
+              hourlyWage: r.hourlyWage,
+              overheadLaborCost: r.overheadLaborCost,
+              overheadSessions: r.overheadSessions,
+              gross: r.gross,
+              net: r.profit,
+              profitAfterOverhead: r.profitAfterOverhead,
+              revPerHour: r.revPerHour,
+              netPerHour: r.profitPerHour,
+              profitPerHourAfterOverhead: r.profitPerHourAfterOverhead,
+              payConfigSource,
+            }
+          })
           const breakdownsJson = JSON.stringify(breakdownsPayload).replace(/</g, '\\u003c')
           const overheadRateJson = overheadRate == null ? 'null' : String(overheadRate)
           const overheadDecompJson = JSON.stringify(overheadDecomp).replace(/</g, '\\u003c')
@@ -9029,54 +9322,133 @@ export default function People() {
       body { font-family: sans-serif; margin: ${isEmbedded ? '0' : '1in'}; }
       h1 { margin-bottom: 0.25rem;${isEmbedded ? ' display: none;' : ''} }
       .meta { color: #6b7280; margin-bottom: 0.25rem;${isEmbedded ? ' font-size: 0.85rem;' : ''} }
-      .meta-sub { color: #6b7280; margin-bottom: 1rem;${isEmbedded ? ' font-size: 0.85rem;' : ' font-size: 0.9rem;'} }
+      .meta-sub { color: #6b7280; margin-bottom: 0.75rem;${isEmbedded ? ' font-size: 0.85rem;' : ' font-size: 0.9rem;'} }
       .meta-sub-btn { background: none; border: 0; padding: 0; color: #2563eb; cursor: pointer; font: inherit; text-decoration: underline dotted; text-underline-offset: 2px; }
       .meta-sub-btn:hover { color: #1d4ed8; }
+      .tools { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+      .tools input[type="search"] { padding: 0.35rem 0.6rem; border: 1px solid #d1d5db; border-radius: 4px; font: inherit; min-width: 220px; }
+      .tools input[type="search"]:focus { outline: 2px solid #2563eb; outline-offset: -1px; border-color: #2563eb; }
+      .tools .reset-sort-btn { padding: 0.3rem 0.6rem; border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 4px; font-size: 0.8rem; cursor: pointer; }
+      .tools .reset-sort-btn:hover { background: #f9fafb; }
+      .tools .reset-sort-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+      .tools .filter-status { color: #6b7280; font-size: 0.85rem; }
       table { width: auto; border-collapse: collapse; table-layout: auto; }
       th, td { border: 1px solid #e5e7eb; white-space: nowrap; }
-      th { padding: 0.5rem 0.75rem; text-align: left; background: #f9fafb; font-weight: 600; vertical-align: bottom; }
+      th { padding: 0.5rem 0.75rem; text-align: left; background: #f9fafb; font-weight: 600; vertical-align: bottom; position: relative; }
       th.num { text-align: center; }
+      th[data-sort] { cursor: pointer; user-select: none; }
+      th[data-sort]:hover { background: #f3f4f6; }
+      th[data-sort]:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+      th .sort-indicator { display: inline-block; width: 0.7em; margin-left: 0.25em; color: #9ca3af; font-size: 0.75em; vertical-align: middle; }
+      th[aria-sort="ascending"] .sort-indicator,
+      th[aria-sort="descending"] .sort-indicator { color: #1f2937; }
       tfoot td { border-top: 2px solid #d1d5db; }
+      tbody.empty-state td { padding: 1rem 0.75rem; text-align: center; color: #6b7280; font-style: italic; background: #fafafa; }
       .click-cell:hover { background: #eff6ff; }
+      .click-cell:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
+      .footer-caption { color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem; max-width: 60em; }
       .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; z-index: 9; }
       .modal-backdrop.open { display: block; }
       .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 1rem 1.5rem 1.5rem; max-width: 90vw; max-height: 85vh; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.25); display: none; z-index: 10; min-width: 400px; }
       .modal.open { display: block; }
       .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; gap: 1rem; }
       .modal-header h2 { margin: 0; font-size: 1.1rem; }
+      .modal-header-actions { display: flex; align-items: center; gap: 0.5rem; }
+      .modal-print { background: #fff; border: 1px solid #d1d5db; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.8rem; cursor: pointer; color: #374151; line-height: 1.2; }
+      .modal-print:hover { background: #f9fafb; }
+      .modal-print:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
       .modal-close { background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; color: #6b7280; padding: 0.25rem 0.5rem; border-radius: 4px; }
       .modal-close:hover { background: #f3f4f6; color: #111827; }
+      .modal-close:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
       .modal h3 { margin-top: 1.25rem; margin-bottom: 0.5rem; font-size: 0.95rem; color: #374151; }
       .modal table { width: 100%; }
       .modal th, .modal td { padding: 0.35rem 0.6rem; white-space: normal; }
       .modal td.num, .modal th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
       .modal .caption { color: #6b7280; font-size: 0.85rem; margin-top: 1rem; }
-      @media print { body { margin: 0.5in; } .click-cell { color: inherit !important; text-decoration: none !important; cursor: default !important; } .modal-backdrop, .modal { display: none !important; } }
+      /* Hours breakdown — hierarchical Day -> (pct) Job # | Job Name layout (v2.543). */
+      .modal .hours-day-list { display: block; }
+      .modal .hours-day-section { padding: 0.45rem 0; border-bottom: 1px solid #f3f4f6; }
+      .modal .hours-day-section:last-child { border-bottom: none; }
+      .modal .hours-day-header { color: #1f2937; font-weight: 600; font-size: 0.92rem; }
+      /* Match the date's typography exactly so "6.8 hrs" reads the same as
+         "Mon 2026-05-04"; only nudge for spacing. */
+      .modal .hours-day-header .day-hours { margin-left: 0.5rem; }
+      .modal .hours-day-allocs { margin-left: 1.5rem; margin-top: 0.25rem; color: #374151; font-size: 0.9rem; line-height: 1.5; }
+      .modal .hours-day-alloc { padding: 0.02rem 0; }
+      .modal .hours-day-alloc .alloc-pct { display: inline-block; min-width: 3.4rem; color: #6b7280; font-variant-numeric: tabular-nums; }
+      .modal .hours-day-alloc .alloc-jobnum { color: #1f2937; font-variant-numeric: tabular-nums; }
+      .modal .hours-day-alloc .alloc-jobname { color: #4b5563; }
+      .modal .hours-day-alloc .alloc-address { color: #6b7280; }
+      .modal .hours-day-alloc .alloc-counted { color: #6b7280; margin-left: 0.5rem; font-variant-numeric: tabular-nums; }
+      .modal .hours-day-noalloc { color: #9ca3af; font-style: italic; font-size: 0.85rem; padding: 0.05rem 0; }
+      .modal .hours-day-total { margin-top: 0.85rem; padding-top: 0.5rem; border-top: 2px solid #d1d5db; font-weight: 600; font-size: 0.95rem; color: #1f2937; }
+      @media print {
+        body { margin: 0.5in; }
+        .tools { display: none !important; }
+        th[data-sort] { cursor: default; }
+        th .sort-indicator { display: none; }
+        .click-cell { color: inherit !important; text-decoration: none !important; cursor: default !important; }
+        /* Default print: hide all modal chrome (whole-table print). */
+        body:not(.printing-modal) .modal-backdrop,
+        body:not(.printing-modal) .modal { display: none !important; }
+        /* Modal-only print mode: hide everything except the modal body. */
+        body.printing-modal h1,
+        body.printing-modal .meta,
+        body.printing-modal .meta-sub,
+        body.printing-modal .tools,
+        body.printing-modal > table,
+        body.printing-modal .footer-caption,
+        body.printing-modal .modal-backdrop,
+        body.printing-modal .modal-print,
+        body.printing-modal .modal-close { display: none !important; }
+        body.printing-modal .modal {
+          position: static !important;
+          transform: none !important;
+          box-shadow: none !important;
+          border: none !important;
+          padding: 0 !important;
+          max-width: 100% !important;
+          max-height: none !important;
+          min-width: 0 !important;
+          display: block !important;
+          overflow: visible !important;
+        }
+      }
     </style></head><body>
       <h1>Team Summary</h1>
       <div class="meta">${escapeHtml(getReviewPeriodLabel())} &middot; ${sortedRows.length} ${sortedRows.length === 1 ? 'person' : 'people'}</div>
       <div class="meta-sub">${overheadMetaHtml}</div>
+      <div class="tools" id="tools">
+        <input type="search" id="search-input" placeholder="Search by name…" aria-label="Filter people by name">
+        <span class="filter-status" id="filter-status" aria-live="polite"></span>
+        <button type="button" id="reset-sort" class="reset-sort-btn" title="Sort by Profit (after overhead), descending">Reset sort</button>
+      </div>
       <table>
         <thead><tr>
-          <th>Name</th>
-          <th class="num">Hours</th>
-          <th class="num">Overhead<br>hrs</th>
-          <th class="num">Field<br>hrs</th>
-          <th class="num">Gross<br>Revenue</th>
-          <th class="num">Net<br>Revenue</th>
-          <th class="num">Profit<br>(after overhead)</th>
-          <th class="num">Gross<br>Revenue/hr</th>
-          <th class="num">Net<br>Revenue/hr</th>
-          <th class="num">Profit/hr<br>(after overhead)</th>
+          <th data-sort="name" tabindex="0" role="columnheader" aria-sort="none">Name<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="totalHours" tabindex="0" role="columnheader" aria-sort="none">Hours<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="overheadHours" tabindex="0" role="columnheader" aria-sort="none">Overhead<br>hrs<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="overheadLaborCost" tabindex="0" role="columnheader" aria-sort="none">Overhead<br>labor<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="fieldHours" tabindex="0" role="columnheader" aria-sort="none">Field<br>hrs<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="gross" tabindex="0" role="columnheader" aria-sort="none">Gross<br>Revenue<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="net" tabindex="0" role="columnheader" aria-sort="none">Net<br>Revenue<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="profitAfterOverhead" tabindex="0" role="columnheader" aria-sort="descending">Profit<br>(after overhead)<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="revPerHour" tabindex="0" role="columnheader" aria-sort="none">Gross<br>Revenue/hr<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="netPerHour" tabindex="0" role="columnheader" aria-sort="none">Net<br>Revenue/hr<span class="sort-indicator" aria-hidden="true"></span></th>
+          <th class="num" data-sort="profitPerHourAfterOverhead" tabindex="0" role="columnheader" aria-sort="none">Profit/hr<br>(after overhead)<span class="sort-indicator" aria-hidden="true"></span></th>
         </tr></thead>
-        <tbody>${tableRows.join('\n')}</tbody>
-        <tfoot>${footerRow}</tfoot>
+        <tbody id="tbody"></tbody>
+        <tfoot id="tfoot"></tfoot>
       </table>
+      <p class="footer-caption" id="footer-caption"></p>
       <div class="modal-backdrop" id="modal-backdrop"></div>
       <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
         <div class="modal-header">
           <h2 id="modal-title"></h2>
-          <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+          <div class="modal-header-actions">
+            <button class="modal-print" id="modal-print" type="button" aria-label="Print this breakdown" title="Print only this breakdown">Print</button>
+            <button class="modal-close" id="modal-close" type="button" aria-label="Close">&times;</button>
+          </div>
         </div>
         <div id="modal-body"></div>
       </div>
@@ -9089,6 +9461,307 @@ export default function People() {
         function fmtPct(n){ return Math.round(n) + '%'; }
         function fmtPct1(n){ return (Math.round(n*10)/10).toFixed(1) + '%'; }
         function fmtMoney(n){ return (n < 0 ? '-$' : '$') + Math.round(Math.abs(n)).toLocaleString('en-US', { maximumFractionDigits: 0 }); }
+
+        // ---- Cell HTML builders (iframe-side; mirror the pre-v2.541 TS versions) ----
+        var CELL_STYLE_BASE = 'padding:0.4rem 0.75rem;border:1px solid #e5e7eb;text-align:center;font-variant-numeric:tabular-nums;';
+        var CELL_STYLE_DASH = 'padding:0.4rem 0.75rem;border:1px solid #e5e7eb;text-align:center;color:#9ca3af;';
+        var CELL_STYLE_NAME = 'padding:0.4rem 0.75rem;border:1px solid #e5e7eb;';
+        function negS(n){ return n < 0 ? 'color:#b91c1c;' : ''; }
+        function dashTd(){ return '<td style="' + CELL_STYLE_DASH + '">\u2014</td>'; }
+        function plainMoneyTd(n){ return '<td style="' + CELL_STYLE_BASE + negS(n) + '">' + fmtMoney(n) + '</td>'; }
+        function plainHoursTd(n){ return '<td style="' + CELL_STYLE_BASE + '">' + fmtH(n) + '</td>'; }
+        function moneyOrDashTd(n){ return n == null ? dashTd() : plainMoneyTd(n); }
+        function nameTd(s){ return '<td style="' + CELL_STYLE_NAME + '">' + escH(s) + '</td>'; }
+        // Clickable + keyboard-focusable cell. type drives modal routing; ariaLabel
+        // is the screen-reader description (e.g. "Hours breakdown for Robert: 38.5").
+        function clickCellTd(opts){
+          var color = opts.colored === false ? '' : 'color:#2563eb;';
+          var dec = 'text-decoration:underline dotted;text-underline-offset:2px;';
+          return '<td class="click-cell" data-idx="' + opts.idx + '" data-type="' + opts.type
+            + '" tabindex="0" role="button" aria-label="' + escH(opts.ariaLabel)
+            + '" title="' + escH(opts.title || 'Click for breakdown')
+            + '" style="' + CELL_STYLE_BASE + 'cursor:pointer;' + color + dec + (opts.extraStyle || '') + '">'
+            + opts.content + '</td>';
+        }
+        function hoursClickableTd(n, idx, name, label){
+          return clickCellTd({ idx: idx, type: 'hours', content: fmtH(n),
+            ariaLabel: 'Hours breakdown for ' + name + ': ' + fmtH(n) + ' hours',
+            title: 'Click for breakdown' });
+        }
+        function overheadHoursClickableTd(n, idx, name){
+          if (n <= 0) return dashTd();
+          return clickCellTd({ idx: idx, type: 'overhead_hours', content: fmtH(n),
+            ariaLabel: 'Overhead hours breakdown for ' + name + ': ' + fmtH(n) + ' hours',
+            title: 'Click for office vs bid breakdown' });
+        }
+        function overheadLaborClickableTd(n, idx, name){
+          if (!(n < 0)) return dashTd();
+          return clickCellTd({ idx: idx, type: 'overhead_labor', content: fmtMoney(n),
+            ariaLabel: 'Overhead labor breakdown for ' + name + ': ' + fmtMoney(n),
+            title: 'Click for overhead-labor breakdown',
+            colored: false, extraStyle: negS(n) });
+        }
+        function fieldHoursClickableTd(n, idx, name){
+          if (n <= 0) return dashTd();
+          return clickCellTd({ idx: idx, type: 'field_hours', content: fmtH(n),
+            ariaLabel: 'Field hours breakdown for ' + name + ': ' + fmtH(n) + ' hours',
+            title: 'Click for field-hours breakdown' });
+        }
+        function grossClickableTd(n, idx, name){
+          return clickCellTd({ idx: idx, type: 'gross', content: fmtMoney(n),
+            ariaLabel: 'Gross revenue breakdown for ' + name + ': ' + fmtMoney(n),
+            extraStyle: negS(n) });
+        }
+        function netClickableTd(n, idx, name){
+          return clickCellTd({ idx: idx, type: 'net', content: fmtMoney(n),
+            ariaLabel: 'Net revenue breakdown for ' + name + ': ' + fmtMoney(n),
+            extraStyle: negS(n) });
+        }
+        function profitClickableTd(n, idx, name){
+          if (n == null) return dashTd();
+          return clickCellTd({ idx: idx, type: 'profit', content: fmtMoney(n),
+            ariaLabel: 'Profit after overhead breakdown for ' + name + ': ' + fmtMoney(n),
+            extraStyle: negS(n) });
+        }
+        function grossPerHrClickableTd(n, idx, name){
+          return clickCellTd({ idx: idx, type: 'rev_per_hr', content: fmtMoney(n),
+            ariaLabel: 'Gross revenue per hour breakdown for ' + name + ': ' + fmtMoney(n) + ' per hour',
+            extraStyle: negS(n) });
+        }
+        function netPerHrClickableTd(n, idx, name){
+          return clickCellTd({ idx: idx, type: 'net_per_hr', content: fmtMoney(n),
+            ariaLabel: 'Net revenue per hour breakdown for ' + name + ': ' + fmtMoney(n) + ' per hour',
+            extraStyle: negS(n) });
+        }
+        function profitPerHrClickableTd(n, idx, name){
+          if (n == null) return dashTd();
+          return clickCellTd({ idx: idx, type: 'profit_per_hr', content: fmtMoney(n),
+            ariaLabel: 'Profit per hour after overhead breakdown for ' + name + ': ' + fmtMoney(n) + ' per hour',
+            extraStyle: negS(n) });
+        }
+        function buildRowHtml(r){
+          var i = r.idx;
+          var hasHours = r.totalHours > 0;
+          return '<tr>'
+            + nameTd(r.name)
+            + hoursClickableTd(r.totalHours, i, r.name)
+            + overheadHoursClickableTd(r.overheadHours, i, r.name)
+            + overheadLaborClickableTd(r.overheadLaborCost, i, r.name)
+            + fieldHoursClickableTd(r.fieldHours, i, r.name)
+            + grossClickableTd(r.gross, i, r.name)
+            + netClickableTd(r.net, i, r.name)
+            + profitClickableTd(r.profitAfterOverhead, i, r.name)
+            + (hasHours ? grossPerHrClickableTd(r.revPerHour, i, r.name) : dashTd())
+            + (hasHours ? netPerHrClickableTd(r.netPerHour, i, r.name) : dashTd())
+            + (hasHours ? profitPerHrClickableTd(r.profitPerHourAfterOverhead, i, r.name) : dashTd())
+            + '</tr>';
+        }
+        function buildFooterHtml(visibleRows){
+          var totals = { hours: 0, overheadHours: 0, fieldHours: 0, overheadLaborCost: 0, gross: 0, net: 0, profit: null };
+          for (var i = 0; i < visibleRows.length; i++) {
+            var r = visibleRows[i];
+            totals.hours += r.totalHours;
+            totals.overheadHours += r.overheadHours;
+            totals.fieldHours += r.fieldHours;
+            totals.overheadLaborCost += r.overheadLaborCost;
+            totals.gross += r.gross;
+            totals.net += r.net;
+            if (r.profitAfterOverhead != null) totals.profit = (totals.profit || 0) + r.profitAfterOverhead;
+          }
+          var n = visibleRows.length;
+          var totalN = breakdowns.length;
+          var label = (n === totalN)
+            ? 'Team total \u00b7 ' + n + ' ' + (n === 1 ? 'person' : 'people')
+            : 'Filtered total \u00b7 ' + n + ' of ' + totalN + ' ' + (totalN === 1 ? 'person' : 'people');
+          var teamGrossPerHr = totals.hours > 0 ? totals.gross / totals.hours : 0;
+          var teamNetPerHr = totals.hours > 0 ? totals.net / totals.hours : 0;
+          var teamProfitPerHr = (totals.profit != null && totals.hours > 0) ? totals.profit / totals.hours : null;
+          var html = '<tr style="font-weight:600;background:#f9fafb;">';
+          html += '<td style="padding:0.5rem 0.75rem;border:1px solid #e5e7eb;">' + escH(label) + '</td>';
+          html += plainHoursTd(totals.hours);
+          html += plainHoursTd(totals.overheadHours);
+          html += plainMoneyTd(totals.overheadLaborCost);
+          html += plainHoursTd(totals.fieldHours);
+          html += plainMoneyTd(totals.gross);
+          html += plainMoneyTd(totals.net);
+          html += moneyOrDashTd(totals.profit);
+          html += (totals.hours > 0 ? plainMoneyTd(teamGrossPerHr) : dashTd());
+          html += (totals.hours > 0 ? plainMoneyTd(teamNetPerHr) : dashTd());
+          html += (totals.hours > 0 ? moneyOrDashTd(teamProfitPerHr) : dashTd());
+          html += '</tr>';
+          return html;
+        }
+
+        // ---- Sort + filter state ----
+        // Default sort matches the pre-v2.541 server order: profit (after overhead) desc.
+        // null sort values (e.g. r.profitAfterOverhead === null when overheadRate hasn't
+        // loaded) sort to the bottom regardless of direction so they don't claim ranks.
+        var sortKey = 'profitAfterOverhead';
+        var sortDir = 'desc';
+        var searchQuery = '';
+        function compareRows(a, b){
+          var av = a[sortKey];
+          var bv = b[sortKey];
+          var aN = (av == null);
+          var bN = (bv == null);
+          if (aN && bN) return a.name.localeCompare(b.name);
+          if (aN) return 1;
+          if (bN) return -1;
+          var d;
+          if (sortKey === 'name') {
+            d = String(av).localeCompare(String(bv));
+          } else {
+            d = (av < bv ? -1 : av > bv ? 1 : 0);
+          }
+          if (d === 0) return a.name.localeCompare(b.name);
+          return sortDir === 'asc' ? d : -d;
+        }
+        function getVisibleRows(){
+          var q = searchQuery.trim().toLowerCase();
+          var arr = q
+            ? breakdowns.filter(function(r){ return r.name.toLowerCase().indexOf(q) >= 0; })
+            : breakdowns.slice();
+          arr.sort(compareRows);
+          return arr;
+        }
+        function updateSortIndicators(){
+          var ths = document.querySelectorAll('th[data-sort]');
+          for (var i = 0; i < ths.length; i++) {
+            var th = ths[i];
+            var key = th.getAttribute('data-sort');
+            var span = th.querySelector('.sort-indicator');
+            if (key === sortKey) {
+              th.setAttribute('aria-sort', sortDir === 'asc' ? 'ascending' : 'descending');
+              if (span) span.textContent = sortDir === 'asc' ? '\u25B2' : '\u25BC';
+            } else {
+              th.setAttribute('aria-sort', 'none');
+              if (span) span.textContent = '';
+            }
+          }
+          var resetBtn = document.getElementById('reset-sort');
+          if (resetBtn) {
+            var atDefault = (sortKey === 'profitAfterOverhead' && sortDir === 'desc');
+            resetBtn.disabled = atDefault;
+          }
+        }
+        function updateFilterStatus(visible){
+          var status = document.getElementById('filter-status');
+          if (!status) return;
+          var totalN = breakdowns.length;
+          if (!searchQuery.trim()) {
+            status.textContent = '';
+            return;
+          }
+          status.textContent = 'Showing ' + visible.length + ' of ' + totalN + (totalN === 1 ? ' person' : ' people');
+        }
+        function updateFooterCaption(visible){
+          var cap = document.getElementById('footer-caption');
+          if (!cap) return;
+          var notes = [];
+          if (searchQuery.trim() && visible.length < breakdowns.length) {
+            notes.push('Footer totals reflect only the people shown above.');
+          }
+          notes.push('Workers archived or external-only contribute to job revenue but are not in this table; their share of those jobs is not summed here.');
+          cap.textContent = notes.join(' ');
+        }
+        function attachClickCellHandlers(){
+          var cells = document.querySelectorAll('.click-cell');
+          for (var i = 0; i < cells.length; i++) {
+            (function(cell){
+              cell.addEventListener('click', function(){
+                var idx = parseInt(cell.getAttribute('data-idx') || '-1', 10);
+                var type = cell.getAttribute('data-type') || '';
+                if (idx >= 0) openModal(idx, type);
+              });
+              cell.addEventListener('keydown', function(e){
+                if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                  e.preventDefault();
+                  var idx = parseInt(cell.getAttribute('data-idx') || '-1', 10);
+                  var type = cell.getAttribute('data-type') || '';
+                  if (idx >= 0) openModal(idx, type);
+                }
+              });
+            })(cells[i]);
+          }
+        }
+        function renderTable(){
+          var visible = getVisibleRows();
+          var tbody = document.getElementById('tbody');
+          var tfoot = document.getElementById('tfoot');
+          if (!tbody || !tfoot) return;
+          if (visible.length === 0) {
+            tbody.className = 'empty-state';
+            tbody.innerHTML = '<tr><td colspan="11">No matches' + (searchQuery.trim() ? ' for \u201C' + escH(searchQuery.trim()) + '\u201D' : '') + '.</td></tr>';
+          } else {
+            tbody.className = '';
+            var rowHtml = '';
+            for (var i = 0; i < visible.length; i++) rowHtml += buildRowHtml(visible[i]);
+            tbody.innerHTML = rowHtml;
+          }
+          tfoot.innerHTML = buildFooterHtml(visible);
+          updateSortIndicators();
+          updateFilterStatus(visible);
+          updateFooterCaption(visible);
+          attachClickCellHandlers();
+        }
+        // v2.543 — Hours breakdown renders each day as its own block with the
+        // crew allocations indented underneath in the format
+        //   (percent) Job # | Job Name
+        // (vs the older single-row table where allocations were a comma-joined
+        // string in a third column). Hierarchy reads better when there are 3+
+        // jobs in a day and matches the way operators describe the day verbally.
+        function dowShort(dateStr){
+          // Local-noon parse to dodge UTC drift, e.g. 2026-05-12T12:00:00.
+          if (!dateStr) return '';
+          var dt = new Date(dateStr + 'T12:00:00');
+          if (isNaN(dt.getTime())) return '';
+          return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][dt.getDay()];
+        }
+        function dayHeaderLabel(dateStr){
+          var dow = dowShort(dateStr);
+          return (dow ? dow + ' ' : '') + escH(dateStr);
+        }
+        function buildAllocLineHtml(a, opts){
+          var jobName = a.jobName ? escH(a.jobName) : '<span style="color:#9ca3af;">\u2014</span>';
+          var html = '<div class="hours-day-alloc">'
+            + '<span class="alloc-pct">(' + fmtPct1(a.pct) + ')</span> '
+            + '<span class="alloc-jobnum">' + escH(a.hcp) + '</span> | '
+            + '<span class="alloc-jobname">' + jobName + '</span>';
+          // Render the address only when present so blank addresses on
+          // Office / future jobs don't trail with a dangling "- ".
+          if (a.address) {
+            html += ' <span class="alloc-address">- ' + escH(a.address) + '</span>';
+          }
+          if (opts && opts.showCounted) {
+            html += '<span class="alloc-counted">\u00b7 ' + fmtH(a.hours) + ' hrs counted</span>';
+          }
+          html += '</div>';
+          return html;
+        }
+        function buildDaySectionHtml(d, opts){
+          var html = '<div class="hours-day-section">';
+          html += '<div class="hours-day-header">' + dayHeaderLabel(d.date)
+            + '<span class="day-hours">\u00b7 ' + fmtH(d.hours) + ' hrs</span>';
+          if (opts && opts.showCounted) {
+            var counted = d.crewAllocations.reduce(function(s,a){ return s + a.hours; }, 0);
+            html += '<span class="day-hours">\u00b7 ' + fmtH(counted) + ' hrs counted</span>';
+          }
+          html += '</div>';
+          html += '<div class="hours-day-allocs">';
+          if (d.crewAllocations.length === 0) {
+            html += '<div class="hours-day-noalloc">No crew assignment</div>';
+          } else {
+            // Sort allocations within the day by descending pct so the
+            // biggest job rises to the top of each day's list.
+            var allocs = d.crewAllocations.slice().sort(function(a,b){ return b.pct - a.pct; });
+            for (var ai = 0; ai < allocs.length; ai++) {
+              html += buildAllocLineHtml(allocs[ai], opts);
+            }
+          }
+          html += '</div>';
+          html += '</div>';
+          return html;
+        }
         function buildHoursBody(hb){
           var srcLabel = hb.source === 'salary' ? 'Salaried (8 hrs/weekday)' : hb.source === 'hourly' ? 'Hourly (from people_hours / clock sessions)' : 'Unknown (no pay config row)';
           var modeLabel = hb.onlyPaidJobs ? 'Only paid jobs (sub labor + crew assignments)' : 'All days in period (clocked / salary)';
@@ -9096,21 +9769,21 @@ export default function People() {
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
           html += '<div><strong>Source:</strong> ' + escH(srcLabel) + '</div>';
           html += '<div><strong>Counting mode:</strong> ' + escH(modeLabel) + '</div>';
-          html += '<div style="margin-top:0.5rem;font-size:1.05rem;"><strong>Total: ' + fmtH(hb.totals.totalHours) + ' hrs</strong></div>';
           html += '</div>';
+          // Sort dailyRows by date asc so the day-by-day story reads naturally.
+          var sortedDailyRows = hb.dailyRows.slice().sort(function(a,b){ return (a.date || '').localeCompare(b.date || ''); });
           if (hb.onlyPaidJobs) {
-            var hasCrew = hb.dailyRows.some(function(d){ return d.crewAllocations.length > 0; });
+            var hasCrew = sortedDailyRows.some(function(d){ return d.crewAllocations.length > 0; });
             if (hasCrew) {
               html += '<h3>Crew jobs (per day)</h3>';
-              html += '<table><thead><tr><th>Date</th><th class="num">Day hrs</th><th>Job allocations</th><th class="num">Hrs counted</th></tr></thead><tbody>';
-              for (var i=0; i<hb.dailyRows.length; i++) {
-                var d = hb.dailyRows[i];
+              html += '<div class="hours-day-list">';
+              for (var i = 0; i < sortedDailyRows.length; i++) {
+                var d = sortedDailyRows[i];
                 if (d.crewAllocations.length === 0) continue;
-                var allocStr = d.crewAllocations.map(function(a){ return escH(a.hcp) + ' (' + fmtPct(a.pct) + ')'; }).join(', ');
-                var counted = d.crewAllocations.reduce(function(s,a){ return s + a.hours; }, 0);
-                html += '<tr><td>' + escH(d.date) + '</td><td class="num">' + fmtH(d.hours) + '</td><td>' + allocStr + '</td><td class="num">' + fmtH(counted) + '</td></tr>';
+                html += buildDaySectionHtml(d, { showCounted: true });
               }
-              html += '</tbody><tfoot><tr><td colspan="3" style="text-align:right;font-weight:600;">Crew subtotal</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.crew) + '</td></tr></tfoot></table>';
+              html += '</div>';
+              html += '<div class="hours-day-total">Crew subtotal: ' + fmtH(hb.totals.crew) + ' hrs</div>';
             }
             if (hb.subLaborRows.length > 0) {
               html += '<h3>Sub labor jobs</h3>';
@@ -9122,24 +9795,19 @@ export default function People() {
               }
               html += '</tbody><tfoot><tr><td colspan="2" style="text-align:right;font-weight:600;">Sub labor subtotal</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.subLabor) + '</td></tr></tfoot></table>';
             }
-            html += '<p class="caption">Total = crew (' + fmtH(hb.totals.crew) + ') + sub labor (' + fmtH(hb.totals.subLabor) + ') = ' + fmtH(hb.totals.totalHours) + ' hrs.</p>';
+            html += '<p class="caption">Total = crew (' + fmtH(hb.totals.crew) + ') + sub labor (' + fmtH(hb.totals.subLabor) + ') = ' + fmtH(hb.totals.totalHours) + ' hrs. Each crew line shows <em>(pct) Job # | Job Name</em>; pct is the share of the day attributed to that job.</p>';
           } else {
-            if (hb.dailyRows.length > 0) {
-              html += '<h3>Daily hours</h3>';
-              html += '<table><thead><tr><th>Date</th><th class="num">Hours</th><th>Crew jobs (per day)</th></tr></thead><tbody>';
-              for (var i2=0; i2<hb.dailyRows.length; i2++) {
-                var d2 = hb.dailyRows[i2];
-                var allocStr2 = d2.crewAllocations.length > 0
-                  ? d2.crewAllocations.map(function(a){ return escH(a.hcp) + ' (' + fmtPct(a.pct) + ')'; }).join(', ')
-                  : '<span style="color:#9ca3af;">—</span>';
-                html += '<tr><td>' + escH(d2.date) + '</td><td class="num">' + fmtH(d2.hours) + '</td><td>' + allocStr2 + '</td></tr>';
+            if (sortedDailyRows.length > 0) {
+              html += '<div class="hours-day-list">';
+              for (var i2 = 0; i2 < sortedDailyRows.length; i2++) {
+                html += buildDaySectionHtml(sortedDailyRows[i2], { showCounted: false });
               }
-              html += '</tbody><tfoot><tr><td style="text-align:right;font-weight:600;">Total</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.daily) + '</td><td></td></tr></tfoot></table>';
+              html += '</div>';
             } else {
               html += '<p class="caption">No daily hours recorded in this period.</p>';
             }
             if (hb.subLaborRows.length > 0) {
-              html += '<h3 style="margin-top:1.5rem;">Sub labor jobs (informational — not counted in this mode)</h3>';
+              html += '<h3 style="margin-top:1.5rem;">Sub labor jobs (informational \u2014 not counted in this mode)</h3>';
               html += '<table><thead><tr><th>Date</th><th>HCP</th><th class="num">Hours</th></tr></thead><tbody>';
               var sub2 = hb.subLaborRows.slice().sort(function(a,b){ return (a.date || '').localeCompare(b.date || ''); });
               for (var k2=0; k2<sub2.length; k2++) {
@@ -9148,61 +9816,61 @@ export default function People() {
               }
               html += '</tbody><tfoot><tr><td colspan="2" style="text-align:right;font-weight:600;">Sub labor subtotal</td><td class="num" style="font-weight:600;">' + fmtH(hb.totals.subLabor) + '</td></tr></tfoot></table>';
             }
-            html += '<p class="caption">Total = sum of daily hours = ' + fmtH(hb.totals.totalHours) + ' hrs. (Sub labor hours are not added in this mode — toggle "Only paid jobs" in Review to count them.)</p>';
+            // Always-on discoverability hint for the Review-level toggle, even
+            // when this period has no sub-labor rows -- they may exist in
+            // other periods and the toggle still affects how Hours is counted.
+            html += '<p class="caption">Sub labor hours are not added in this mode \u2014 toggle "Only paid jobs" in Review to count them.</p>';
           }
           return html;
         }
         function buildGrossBody(gb) {
           var html = '';
-          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          html += '<div style="margin-bottom:0.5rem;">Gross Revenue is each job\\'s <strong>Value Created</strong> (Total Bill &times; % Complete) multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</div>';
-          html += '<div style="font-size:1.05rem;"><strong>Total: ' + fmtMoney(gb.total) + '</strong></div>';
-          html += '</div>';
           if (!gb.jobs || gb.jobs.length === 0) {
             html += '<p class="caption">No jobs contributed to revenue in this period.</p>';
+            html += '<p class="caption">Gross Revenue is each job\\'s <strong>Value Created</strong> (Total Bill &times; % Complete) multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</p>';
             return html;
           }
+          // Center every column header and cell so the table reads as a
+          // centered grid (numbers still tabular-aligned via font-variant).
           html += '<table>';
           html += '<thead><tr>';
-          html += '<th class="num">HCP</th>';
-          html += '<th>Job</th>';
-          html += '<th class="num">Total Bill</th>';
-          html += '<th class="num">% Complete</th>';
-          html += '<th class="num">Value Created</th>';
-          html += '<th class="num">Your cost<br>(period)</th>';
-          html += '<th class="num">Total labor<br>(lifetime)</th>';
-          html += '<th class="num">Share</th>';
-          html += '<th class="num">Allocated</th>';
+          html += '<th class="num" style="text-align:center;">HCP</th>';
+          html += '<th style="text-align:center;">Job</th>';
+          html += '<th class="num" style="text-align:center;">Total Bill</th>';
+          html += '<th class="num" style="text-align:center;">% Complete</th>';
+          html += '<th class="num" style="text-align:center;">Value Created</th>';
+          html += '<th class="num" style="text-align:center;">Your cost<br>(period)</th>';
+          html += '<th class="num" style="text-align:center;">Total labor<br>(lifetime)</th>';
+          html += '<th class="num" style="text-align:center;">Share</th>';
+          html += '<th class="num" style="text-align:center;">Allocated</th>';
           html += '</tr></thead><tbody>';
           for (var i = 0; i < gb.jobs.length; i++) {
             var j = gb.jobs[i];
             var pctSuffix = j.pctCompleteSource === 'assumed' ? ' (assumed)' : '';
             html += '<tr>';
-            html += '<td class="num">' + escH(j.hcp) + '</td>';
-            html += '<td>' + escH(j.jobName || '—') + '</td>';
-            html += '<td class="num">' + fmtMoney(j.totalBill) + '</td>';
-            html += '<td class="num">' + fmtPct(j.pctComplete) + escH(pctSuffix) + '</td>';
-            html += '<td class="num">' + fmtMoney(j.valueCreated) + '</td>';
-            html += '<td class="num">' + fmtMoney(j.costInPeriod) + '</td>';
-            html += '<td class="num">' + fmtMoney(j.totalLaborOnJob) + '</td>';
-            html += '<td class="num">' + fmtPct1(j.ratio * 100) + '</td>';
-            html += '<td class="num">' + fmtMoney(j.allocatedRevenue) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + escH(j.hcp) + '</td>';
+            html += '<td style="text-align:center;">' + escH(j.jobName || '—') + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtMoney(j.totalBill) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtPct(j.pctComplete) + escH(pctSuffix) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtMoney(j.valueCreated) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtMoney(j.costInPeriod) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtMoney(j.totalLaborOnJob) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtPct1(j.ratio * 100) + '</td>';
+            html += '<td class="num" style="text-align:center;">' + fmtMoney(j.allocatedRevenue) + '</td>';
             html += '</tr>';
           }
           html += '</tbody>';
-          html += '<tfoot><tr><td colspan="8" style="text-align:right;font-weight:600;">Total</td><td class="num" style="font-weight:600;">' + fmtMoney(gb.total) + '</td></tr></tfoot>';
+          html += '<tfoot><tr><td colspan="8" style="text-align:right;font-weight:600;">Total</td><td class="num" style="text-align:center;font-weight:600;">' + fmtMoney(gb.total) + '</td></tr></tfoot>';
           html += '</table>';
           html += '<p class="caption">Allocated = Value Created &times; (Your cost &divide; Total labor). Sorted by allocated revenue.</p>';
+          html += '<p class="caption">Gross Revenue is each job\\'s <strong>Value Created</strong> (Total Bill &times; % Complete) multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</p>';
           return html;
         }
         function buildNetBody(nb) {
           var html = '';
-          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          html += '<div style="margin-bottom:0.5rem;">Net Revenue is each job\\'s <strong>Net Revenue (before overhead)</strong> &mdash; Value Created minus parts and total labor &mdash; multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</div>';
-          html += '<div style="font-size:1.05rem;"><strong>Total: ' + fmtMoney(nb.total) + '</strong></div>';
-          html += '</div>';
           if (!nb.jobs || nb.jobs.length === 0) {
             html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
+            html += '<p class="caption">Net Revenue is each job\\'s <strong>Net Revenue (before overhead)</strong> &mdash; Value Created minus parts and total labor &mdash; multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</p>';
             return html;
           }
           html += '<table>';
@@ -9235,6 +9903,7 @@ export default function People() {
           html += '<tfoot><tr><td colspan="8" style="text-align:right;font-weight:600;">Total</td><td class="num"' + (nb.total < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoney(nb.total) + '</td></tr></tfoot>';
           html += '</table>';
           html += '<p class="caption">Allocated = Net Rev (job) &times; (Your cost &divide; Total labor). Net Rev (job) = Value Created &minus; Parts &minus; Total labor. Sorted by allocated net.</p>';
+          html += '<p class="caption">Net Revenue is each job\\'s <strong>Net Revenue (before overhead)</strong> &mdash; Value Created minus parts and total labor &mdash; multiplied by your <strong>share</strong> on that job (your labor cost in this period &divide; total labor on the job, all-time).</p>';
           return html;
         }
         function buildProfitBody(pb) {
@@ -9245,12 +9914,17 @@ export default function People() {
             html += '<div style="font-size:1.05rem;"><strong>Net Revenue: ' + fmtMoney(pb.totalNet) + '</strong></div>';
             return html;
           }
-          var totalOverhead = pb.totalHours * overheadRate;
+          var fieldHrs = (pb.fieldHours != null ? pb.fieldHours : pb.totalHours);
+          var overheadHrs = (pb.overheadHours != null ? pb.overheadHours : 0);
+          var totalOverhead = fieldHrs * overheadRate;
           var totalProfit = pb.totalNet - totalOverhead;
-          html += '<div style="margin-bottom:0.5rem;">Profit (after overhead) = Net Revenue &minus; (your hours &times; overhead rate). Method A allocates overhead per labor hour at the org-wide rolling 90-day rate.</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + '/hr</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per field hour</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(pb.totalNet) + '</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(pb.totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(pb.totalHours) + '</div>';
+          if (overheadHrs > 0.005) {
+            html += '<div style="margin-bottom:0.25rem;color:#374151;"><strong>&minus; Overhead hours (office + bid):</strong> ' + fmtH(overheadHrs) + ' (excluded from deduction)</div>';
+          }
+          html += '<div style="margin-bottom:0.25rem;"><strong>= Field hours:</strong> ' + fmtH(fieldHrs) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
           html += '<div style="font-size:1.05rem;"><strong>Profit (after overhead): <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></strong></div>';
           html += '</div>';
           if (!pb.jobs || pb.jobs.length === 0) {
@@ -9296,14 +9970,15 @@ export default function People() {
           }
           html += '</tbody>';
           html += '<tfoot><tr>';
-          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total</td>';
+          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total (field hours only)</td>';
           html += '<td class="num" style="font-weight:600;">' + fmtMoney(pb.totalNet) + '</td>';
-          html += '<td class="num" style="font-weight:600;">' + fmtH(pb.totalHours) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtH(fieldHrs) + '</td>';
           html += '<td class="num" style="font-weight:600;">' + fmtMoney(totalOverhead) + '</td>';
           html += '<td class="num"' + (totalProfit < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoney(totalProfit) + '</td>';
           html += '</tr></tfoot>';
           html += '</table>';
-          html += '<p class="caption">Overhead per job = your hours on that job &times; rate. Profit (job) = Allocated Net Rev &minus; Overhead. Sorted by profit.</p>';
+          html += '<p class="caption">Overhead per job = your hours on that job &times; rate. Profit (job) = Allocated Net Rev &minus; Overhead. Sorted by profit. <strong>Office and bid hours (' + fmtH(overheadHrs) + ') are not charged overhead</strong> &mdash; they are the overhead pool, not consumers of it.</p>';
+          html += '<p class="caption">Profit (after overhead) = Net Revenue &minus; (<strong>field hours</strong> &times; rate). The rate is dollars per <em>field</em> hour, so office and bid hours are excluded from the deduction &mdash; those hours are already part of the overhead pool that funds the rate.</p>';
           return html;
         }
         function fmtMoneyPerHr(n) { return fmtMoney(n) + '/hr'; }
@@ -9315,7 +9990,6 @@ export default function People() {
           var rate = totalHours > 0 ? totalGross / totalHours : 0;
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          html += '<div style="margin-bottom:0.5rem;">Gross Revenue/hr is your <strong>total Gross Revenue</strong> divided by your <strong>total hours</strong> in the period. Per-job rates show how much each job paid per hour you spent on it.</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Gross Revenue:</strong> ' + fmtMoney(totalGross) + '</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
           html += '<div style="font-size:1.05rem;"><strong>Gross Revenue/hr: ' + fmtMoneyPerHr(rate) + '</strong></div>';
@@ -9368,6 +10042,7 @@ export default function People() {
           html += '</tr></tfoot>';
           html += '</table>';
           html += '<p class="caption">Headline rate = Total Gross Revenue &divide; Total hours (including any unallocated hours). Per-job rate = Allocated Gross &divide; Your hours on that job. Sorted by per-job rate.</p>';
+          html += '<p class="caption">Gross Revenue/hr is your <strong>total Gross Revenue</strong> divided by your <strong>total hours</strong> in the period. Per-job rates show how much each job paid per hour you spent on it.</p>';
           return html;
         }
         function buildNetPerHourBody(entry) {
@@ -9437,6 +10112,8 @@ export default function People() {
           var nb = entry.nb;
           var pb = entry.pb;
           var totalHours = pb.totalHours;
+          var fieldHrs = (pb.fieldHours != null ? pb.fieldHours : totalHours);
+          var overheadHrs = (pb.overheadHours != null ? pb.overheadHours : 0);
           var totalNet = nb.total;
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
@@ -9446,13 +10123,16 @@ export default function People() {
             html += '<div><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
             return html;
           }
-          var totalOverhead = totalHours * overheadRate;
+          var totalOverhead = fieldHrs * overheadRate;
           var totalProfit = totalNet - totalOverhead;
           var rate = totalHours > 0 ? totalProfit / totalHours : 0;
-          html += '<div style="margin-bottom:0.5rem;">Profit/hr (after overhead) is your <strong>Profit (after overhead)</strong> divided by your <strong>total hours</strong>. Per-job rates show each job\\'s Net Rev/hr minus the flat overhead drag of $' + overheadRate.toFixed(2) + '/hr.</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + '/hr</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per field hour</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(totalNet) + '</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
+          if (overheadHrs > 0.005) {
+            html += '<div style="margin-bottom:0.25rem;color:#374151;"><strong>&minus; Overhead hours (office + bid):</strong> ' + fmtH(overheadHrs) + ' (excluded from deduction)</div>';
+          }
+          html += '<div style="margin-bottom:0.25rem;"><strong>= Field hours:</strong> ' + fmtH(fieldHrs) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Profit (after overhead):</strong> <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></div>';
           html += '<div style="font-size:1.05rem;"><strong>Profit/hr (after overhead): <span' + (rate < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoneyPerHr(rate) + '</span></strong></div>';
           html += '</div>';
@@ -9506,7 +10186,75 @@ export default function People() {
           html += '<td class="num" style="font-weight:600;">' + fmtH(totalHours) + '</td>';
           html += '</tr></tfoot>';
           html += '</table>';
-          html += '<p class="caption">Per-job: Profit/hr = (Allocated Net &divide; Your hours) &minus; Overhead rate. Headline rate = (Net Revenue &minus; Total overhead) &divide; Total hours, where total overhead = Total hours &times; rate. Sorted by per-job profit/hr.</p>';
+          html += '<p class="caption">Per-job: Profit/hr = (Allocated Net &divide; Your hours) &minus; Overhead rate. Headline rate = (Net Revenue &minus; Total overhead) &divide; Total hours, where <strong>total overhead = Field hours &times; rate</strong> (office and bid hours are not charged). Sorted by per-job profit/hr.</p>';
+          html += '<p class="caption">Profit/hr (after overhead) divides your <strong>Profit (after overhead)</strong> by your <strong>total hours</strong>. The overhead deduction itself is <strong>field hours &times; rate</strong> &mdash; office and bid hours are not charged overhead (they fund it).</p>';
+          return html;
+        }
+        function buildOverheadSessionsSection(label, sessions, bucketTotalHrs) {
+          // sessions: array of pre-formatted OverheadSessionLine entries with
+          // a single bucket (office or bid). Renders a hierarchical layout
+          // matching the Hours breakdown modal: per-day header + indented
+          // per-session lines. (pct) on each session is its share of that
+          // day's bucket total. bucketTotalHrs is rendered next to the
+          // section label so e.g. "Office \u00b7 17.7 hrs".
+          var html = '';
+          if (!sessions || sessions.length === 0) return '';
+          var headerHtml = escH(label);
+          if (typeof bucketTotalHrs === 'number') {
+            // Match the section label typography exactly (no muted color /
+            // weight / size); just nudge with margin-left for spacing.
+            headerHtml += '<span style="margin-left:0.5rem;">\u00b7 ' + fmtH(bucketTotalHrs) + ' hrs</span>';
+          }
+          html += '<h3 style="text-align:center;">' + headerHtml + '</h3>';
+          html += '<div class="hours-day-list">';
+          // Group by workDate, preserving the parent-side sort order.
+          var byDate = {};
+          var datesInOrder = [];
+          for (var i = 0; i < sessions.length; i++) {
+            var s = sessions[i];
+            if (!byDate[s.workDate]) {
+              byDate[s.workDate] = [];
+              datesInOrder.push(s.workDate);
+            }
+            byDate[s.workDate].push(s);
+          }
+          for (var di = 0; di < datesInOrder.length; di++) {
+            var dateKey = datesInOrder[di];
+            var daySessions = byDate[dateKey];
+            var dayTotal = 0;
+            for (var si = 0; si < daySessions.length; si++) dayTotal += (daySessions[si].hours || 0);
+            html += '<div class="hours-day-section">';
+            html += '<div class="hours-day-header">' + dayHeaderLabel(dateKey)
+              + '<span class="day-hours">\u00b7 ' + fmtH(dayTotal) + ' hrs</span>'
+              + '</div>';
+            html += '<div class="hours-day-allocs">';
+            for (var sj = 0; sj < daySessions.length; sj++) {
+              var ss = daySessions[sj];
+              var pct = dayTotal > 0 ? (ss.hours / dayTotal) * 100 : 0;
+              html += '<div class="hours-day-alloc">';
+              html += '<span class="alloc-pct">(' + fmtPct1(pct) + ')</span> ';
+              if (ss.bucket === 'bid') {
+                // Match the Hours breakdown convention: B# | Project Name - address.
+                var bidName = ss.bidName ? escH(ss.bidName) : '<span style="color:#9ca3af;">\u2014</span>';
+                html += '<span class="alloc-jobnum">' + escH(ss.bidHcp || 'B?') + '</span> | ';
+                html += '<span class="alloc-jobname">' + bidName + '</span>';
+                if (ss.bidAddress) {
+                  html += ' <span class="alloc-address">- ' + escH(ss.bidAddress) + '</span>';
+                }
+              } else {
+                // Office sessions: time range + hours act as the "session details".
+                if (ss.startTime && ss.endTime) {
+                  html += '<span class="alloc-jobname">' + escH(ss.startTime + ' \u2192 ' + ss.endTime) + '</span>';
+                } else {
+                  html += '<span class="alloc-jobname">Office session</span>';
+                }
+              }
+              html += '<span class="alloc-counted">\u00b7 ' + fmtH(ss.hours) + ' hrs</span>';
+              html += '</div>';
+            }
+            html += '</div>';
+            html += '</div>';
+          }
           return html;
         }
         function buildOverheadHoursBody(entry) {
@@ -9515,29 +10263,145 @@ export default function People() {
           var totalOverhead = officeHrs + bidHrs;
           var totalWork = (entry.hb && entry.hb.totals && entry.hb.totals.totalHours) || 0;
           var fieldHrs = entry.fieldHours || 0;
+          var sessions = entry.overheadSessions || [];
+          var officeSessions = [];
+          var bidSessions = [];
+          for (var oi = 0; oi < sessions.length; oi++) {
+            if (sessions[oi].bucket === 'office') officeSessions.push(sessions[oi]);
+            else if (sessions[oi].bucket === 'bid') bidSessions.push(sessions[oi]);
+          }
           var html = '';
-          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          html += '<div style="margin-bottom:0.5rem;">Overhead hours are approved clock sessions on the configured Office job or on any bid &mdash; the same buckets that feed the rolling 90-day overhead rate.</div>';
-          html += '<div style="font-size:1.05rem;"><strong>Overhead total: ' + fmtH(totalOverhead) + ' hrs</strong></div>';
-          html += '</div>';
+          if (officeSessions.length === 0 && bidSessions.length === 0) {
+            html += '<p class="caption">No approved office or bid sessions in this period.</p>';
+          } else {
+            html += buildOverheadSessionsSection('Office', officeSessions, officeHrs);
+            html += buildOverheadSessionsSection('Bids', bidSessions, bidHrs);
+          }
           html += '<table>';
-          html += '<thead><tr><th>Bucket</th><th class="num">Hours</th><th class="num">Share of overhead</th></tr></thead>';
+          html += '<thead><tr><th>Bucket</th><th class="num">Hours</th><th class="num" style="text-align:left;">Share of total work</th></tr></thead>';
           html += '<tbody>';
-          html += '<tr><td>Office (configured office job)</td><td class="num">' + fmtH(officeHrs) + '</td><td class="num">' + (totalOverhead > 0 ? fmtPct1((officeHrs / totalOverhead) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
-          html += '<tr><td>Bid (any bid_id)</td><td class="num">' + fmtH(bidHrs) + '</td><td class="num">' + (totalOverhead > 0 ? fmtPct1((bidHrs / totalOverhead) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
-          html += '</tbody>';
-          html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total overhead</td><td class="num" style="font-weight:600;">' + fmtH(totalOverhead) + '</td><td></td></tr></tfoot>';
-          html += '</table>';
-          html += '<h3>Where overhead fits in this person\\'s work</h3>';
-          html += '<table>';
-          html += '<thead><tr><th>Bucket</th><th class="num">Hours</th><th class="num">Share of total work</th></tr></thead>';
-          html += '<tbody>';
-          html += '<tr><td>Overhead (office + bid)</td><td class="num">' + fmtH(totalOverhead) + '</td><td class="num">' + (totalWork > 0 ? fmtPct1((totalOverhead / totalWork) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
-          html += '<tr><td>Field (residual)</td><td class="num">' + fmtH(fieldHrs) + '</td><td class="num">' + (totalWork > 0 ? fmtPct1((fieldHrs / totalWork) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '<tr><td>Overhead (office + bid)</td><td class="num">' + fmtH(totalOverhead) + '</td><td class="num" style="text-align:left;">' + (totalWork > 0 ? fmtPct1((totalOverhead / totalWork) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '<tr><td>Field (residual)</td><td class="num">' + fmtH(fieldHrs) + '</td><td class="num" style="text-align:left;">' + (totalWork > 0 ? fmtPct1((fieldHrs / totalWork) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
           html += '</tbody>';
           html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total work</td><td class="num" style="font-weight:600;">' + fmtH(totalWork) + '</td><td></td></tr></tfoot>';
           html += '</table>';
-          html += '<p class="caption">Field hrs = Total work hrs &minus; Overhead hrs. For salaried people, total work is their weekday salary days (8 hrs/weekday); for hourly, it is people_hours / clock sessions.</p>';
+          html += '<p class="caption">Field hrs = Total work hrs &minus; Overhead hrs. For salaried people, total work is their weekday salary days (8 hrs/weekday); for hourly, it is people_hours / clock sessions. <strong>Only field hrs are charged overhead in the &ldquo;Profit (after overhead)&rdquo; column</strong> &mdash; overhead hrs already fund the rate.</p>';
+          html += '<p class="caption">Overhead hours are approved clock sessions on the configured Office job or on any bid &mdash; the same buckets that feed the rolling 90-day overhead rate.</p>';
+          return html;
+        }
+        function buildOverheadLaborBody(entry) {
+          var officeHrs = entry.officeHours || 0;
+          var bidHrs = entry.bidHours || 0;
+          var fieldHrs = entry.fieldHours || 0;
+          var overheadHrs = officeHrs + bidHrs;
+          var wage = entry.hourlyWage || 0;
+          var overheadLaborCost = entry.overheadLaborCost || 0;
+          var src = entry.payConfigSource || 'unknown';
+          var srcLabel = src === 'salary' ? 'Salaried (weekday hrs \u00d7 hourly_wage from people_pay_config)' : src === 'hourly' ? 'Hourly (people_hours / clock sessions \u00d7 hourly_wage)' : 'Unknown (no people_pay_config row \u2014 wage treated as $0)';
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div><strong>Source:</strong> ' + escH(srcLabel) + '</div>';
+          html += '<div><strong>Hourly wage:</strong> ' + (wage > 0 ? '$' + wage.toFixed(2) + '/hr' : '<span style="color:#9ca3af;">not configured</span>') + '</div>';
+          html += '<div style="margin-top:0.5rem;font-size:1.05rem;text-align:center;"><strong>Overhead labor: ' + fmtMoney(overheadLaborCost) + '</strong> (' + fmtH(overheadHrs) + ' overhead hrs \u00d7 $' + (wage || 0).toFixed(2) + '/hr)</div>';
+          html += '</div>';
+          html += '<table>';
+          html += '<thead><tr><th>Bucket</th><th class="num">Hours</th><th class="num">Cost</th><th class="num" style="text-align:left;">Share</th></tr></thead>';
+          html += '<tbody>';
+          var officeCost = -(officeHrs * wage);
+          var bidCost = -(bidHrs * wage);
+          var hasCost = overheadLaborCost < 0;
+          html += '<tr><td>Office (configured office job)</td><td class="num">' + fmtH(officeHrs) + '</td><td class="num">' + fmtMoney(officeCost) + '</td><td class="num" style="text-align:left;">' + (hasCost ? fmtPct1((officeCost / overheadLaborCost) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '<tr><td>Bid (any bid_id)</td><td class="num">' + fmtH(bidHrs) + '</td><td class="num">' + fmtMoney(bidCost) + '</td><td class="num" style="text-align:left;">' + (hasCost ? fmtPct1((bidCost / overheadLaborCost) * 100) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td></tr>';
+          html += '</tbody>';
+          html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total overhead labor</td><td class="num" style="font-weight:600;">' + fmtH(overheadHrs) + '</td><td class="num" style="font-weight:600;">' + fmtMoney(overheadLaborCost) + '</td><td></td></tr></tfoot>';
+          html += '</table>';
+          html += '<h3>For context: this person\\'s field labor</h3>';
+          html += '<table>';
+          html += '<thead><tr><th>Bucket</th><th class="num">Hours</th><th class="num">Cost</th><th>Where it shows up</th></tr></thead>';
+          html += '<tbody>';
+          html += '<tr><td>Field (everything not Office or Bid)</td><td class="num">' + fmtH(fieldHrs) + '</td><td class="num" style="color:#9ca3af;">' + fmtMoney(-(fieldHrs * wage)) + '</td><td style="color:#6b7280;">Already in <strong>Net Revenue</strong>.</td></tr>';
+          html += '</tbody>';
+          html += '</table>';
+          if (wage <= 0) {
+            html += '<p class="caption" style="color:#b45309;">No <code>hourly_wage</code> is set for this person in <code>people_pay_config</code>, so the cost columns above show as $0. Set their wage on the People \u2192 Hours \u2192 Pay config row to make this column meaningful.</p>';
+          }
+          html += '<p class="caption">Overhead labor is what the company paid this person for hours that are <strong>not</strong> billed to a field job \u2014 the configured Office job and any time clocked into a bid. Field labor is excluded here on purpose: it is already subtracted at the per-job level inside Net Revenue (<code>job net = revenue \u2212 parts \u2212 total labor</code>), so showing it again would visually double-count.</p>';
+          html += '<p class="caption">Office and bid hours fund the rolling 90-day overhead pool (office labor + bid labor + office parts), which is then deducted from field workers as <code>field hours \u00d7 rate</code> in the &ldquo;Profit (after overhead)&rdquo; column. This Overhead labor column simply makes that contribution visible in each person\\'s own row \u2014 it does <strong>not</strong> change Gross, Net, or Profit numbers.</p>';
+          return html;
+        }
+        function buildFieldHoursBody(entry) {
+          var hb = entry.hb || { totals: { totalHours: 0 }, source: 'unknown' };
+          var pb = entry.pb || { jobs: [], unaccountedHours: 0 };
+          var totalWork = (hb.totals && hb.totals.totalHours) || 0;
+          var officeHrs = entry.officeHours || 0;
+          var bidHrs = entry.bidHours || 0;
+          var overheadHrs = officeHrs + bidHrs;
+          var fieldHrs = entry.fieldHours || 0;
+          var allocatedFieldHrs = 0;
+          var jobs = (pb.jobs || []).slice();
+          for (var i = 0; i < jobs.length; i++) allocatedFieldHrs += (jobs[i].hoursInPeriod || 0);
+          var unaccountedFieldHrs = pb.unaccountedHours || 0;
+          var srcLabel = hb.source === 'salary'
+            ? 'Salaried (8 hrs/weekday)'
+            : hb.source === 'hourly'
+              ? 'Hourly (from people_hours / clock sessions)'
+              : 'Unknown (no pay config row)';
+          var modeLabel = (hb.onlyPaidJobs)
+            ? 'Only paid jobs (sub labor + crew assignments on jobs marked paid in full)'
+            : 'All days in period (clocked / salary, minus office + bid)';
+          var ohRateNote = (typeof overheadRate === 'number' && overheadRate != null)
+            ? '$' + overheadRate.toFixed(2) + ' per field hour &times; ' + fmtH(fieldHrs) + ' = ' + fmtMoney(fieldHrs * overheadRate) + ' overhead charged in &ldquo;Profit (after overhead)&rdquo;'
+            : 'Overhead rate unavailable &mdash; reload Review.';
+          var html = '';
+          html += '<div style="margin-bottom:0.75rem;color:#374151;">';
+          html += '<div><strong>Source:</strong> ' + escH(srcLabel) + '</div>';
+          html += '<div><strong>Counting mode:</strong> ' + escH(modeLabel) + '</div>';
+          html += '</div>';
+          html += '<table>';
+          html += '<thead><tr><th>How field hrs is computed</th><th class="num">Hours</th></tr></thead><tbody>';
+          if (hb.onlyPaidJobs) {
+            html += '<tr><td>Sub labor + crew hours on paid-in-full jobs</td><td class="num">' + fmtH(totalWork) + '</td></tr>';
+            html += '<tr><td><em>Office + bid hours are not in this mode by construction</em></td><td class="num"><span style="color:#9ca3af;">&mdash;</span></td></tr>';
+          } else {
+            html += '<tr><td>Total work hrs (' + escH(hb.source === 'salary' ? 'salary days' : 'people_hours / clock sessions') + ')</td><td class="num">' + fmtH(totalWork) + '</td></tr>';
+            html += '<tr><td>&minus; Office hrs (clock on configured office job)</td><td class="num">' + fmtH(officeHrs) + '</td></tr>';
+            html += '<tr><td>&minus; Bid hrs (clock on any bid)</td><td class="num">' + fmtH(bidHrs) + '</td></tr>';
+          }
+          html += '</tbody>';
+          html += '<tfoot><tr><td style="text-align:right;font-weight:600;">= Field hrs</td><td class="num" style="font-weight:600;">' + fmtH(fieldHrs) + '</td></tr></tfoot>';
+          html += '</table>';
+          html += '<h3 style="text-align:center;">Where the field hrs went</h3>';
+          if (jobs.length === 0 && unaccountedFieldHrs < 0.01) {
+            html += '<p class="caption">No field hours were recorded against any job in this period.</p>';
+          } else {
+            html += '<table>';
+            html += '<thead><tr><th class="num">HCP</th><th>Job</th><th class="num">Your field hrs<br>(period)</th><th class="num" style="text-align:left;">Share of<br>field hrs</th></tr></thead><tbody>';
+            var jobsForDisplay = jobs.slice().sort(function(a, b){ return (b.hoursInPeriod || 0) - (a.hoursInPeriod || 0); });
+            for (var k = 0; k < jobsForDisplay.length; k++) {
+              var j = jobsForDisplay[k];
+              if ((j.hoursInPeriod || 0) <= 0.005) continue;
+              var share = fieldHrs > 0 ? (j.hoursInPeriod / fieldHrs) * 100 : 0;
+              html += '<tr>';
+              html += '<td class="num">' + escH(j.hcp) + '</td>';
+              html += '<td>' + escH(j.jobName || '\u2014') + '</td>';
+              html += '<td class="num">' + fmtH(j.hoursInPeriod) + '</td>';
+              html += '<td class="num" style="text-align:left;">' + (fieldHrs > 0 ? fmtPct1(share) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td>';
+              html += '</tr>';
+            }
+            if (unaccountedFieldHrs > 0.005) {
+              var unShare = fieldHrs > 0 ? (unaccountedFieldHrs / fieldHrs) * 100 : 0;
+              html += '<tr style="background:#fff7ed;">';
+              html += '<td class="num">&mdash;</td>';
+              html += '<td><em>Unallocated field hrs</em><div style="color:#6b7280;font-size:0.8rem;">Field-type hours not tied to a specific job allocation (e.g. salary day with no crew assignment).</div></td>';
+              html += '<td class="num">' + fmtH(unaccountedFieldHrs) + '</td>';
+              html += '<td class="num" style="text-align:left;">' + (fieldHrs > 0 ? fmtPct1(unShare) : '<span style="color:#9ca3af;">&mdash;</span>') + '</td>';
+              html += '</tr>';
+            }
+            html += '</tbody>';
+            html += '<tfoot><tr><td colspan="2" style="text-align:right;font-weight:600;">Total field hrs</td><td class="num" style="font-weight:600;">' + fmtH(allocatedFieldHrs + unaccountedFieldHrs) + '</td><td></td></tr></tfoot>';
+            html += '</table>';
+          }
+          html += '<p class="caption">Each crew assignment\\'s hours = day total \u00d7 pct. The day total is <code>peopleHours</code> (or 8 hrs on a salary weekday). Office time has its own crew row and is filtered from this field-revenue rollup; its share of the day appears as overhead. ' + ohRateNote + '</p>';
           return html;
         }
         function buildOverheadRateBody() {
@@ -9554,11 +10418,11 @@ export default function People() {
           var ratePerRevenueDecimal = d.ratePerRevenueDecimal;
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          html += '<div style="margin-bottom:0.5rem;">Rolling 90-day overhead rate. Method A allocates organizational overhead to every field labor hour so the team summary can deduct an "expected" overhead from each person\\'s share.</div>';
+          html += '<div style="margin-bottom:0.5rem;">Rolling 90-day overhead rate. Method A is <strong>$ per field hour</strong>: it spreads the overhead pool (office labor, bid labor, office parts) over the hours that actually produce billable field work. The Team Summary deducts <code>field hours &times; rate</code> from each person &mdash; office and bid hours are not charged because they are already counted in the numerator.</div>';
           if (d.windowStart && d.windowEnd) {
             html += '<div style="margin-bottom:0.25rem;"><strong>Window:</strong> ' + escH(d.windowStart) + ' &rarr; ' + escH(d.windowEnd) + '</div>';
           }
-          html += '<div style="font-size:1.05rem;"><strong>Rate:</strong> ' + (ratePerHour == null ? '<span style="color:#9ca3af;">unavailable</span>' : '$' + Number(ratePerHour).toFixed(2) + '/field hour') + '</div>';
+          html += '<div style="font-size:1.05rem;"><strong>Rate:</strong> ' + (ratePerHour == null ? '<span style="color:#9ca3af;">unavailable</span>' : '$' + Number(ratePerHour).toFixed(2) + ' per field hour') + '</div>';
           html += '</div>';
           html += '<h3>Numerator &mdash; overhead $ pool (90d)</h3>';
           html += '<table>';
@@ -9585,12 +10449,19 @@ export default function People() {
           html += '<h3>Resulting rates</h3>';
           html += '<table>';
           html += '<thead><tr><th>Rate</th><th class="num">Value</th><th>How it is used</th></tr></thead><tbody>';
-          html += '<tr><td>Method A &mdash; per field hour</td><td class="num">' + (ratePerHour == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerHour).toFixed(2) + '/hr') + '</td><td>Used to deduct overhead from each person in the Team Summary (Profit after overhead = Net &minus; hours &times; rate).</td></tr>';
+          html += '<tr><td>Method A &mdash; per field hour</td><td class="num">' + (ratePerHour == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerHour).toFixed(2) + '/hr') + '</td><td>Used to deduct overhead in the Team Summary: Profit after overhead = Net &minus; <strong>field hours</strong> &times; rate. Office and bid hours are not charged (they fund the rate).</td></tr>';
           html += '<tr><td>Method B &mdash; per field labor $</td><td class="num">' + (ratePerLaborDollar == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerLaborDollar).toFixed(2) + ' / $1 labor') + '</td><td>Reference only: ratio of overhead pool to field labor dollars.</td></tr>';
           html += '<tr><td>Method C &mdash; per revenue $ (invoices sent)</td><td class="num">' + (ratePerRevenueDecimal == null ? '<span style="color:#9ca3af;">&mdash;</span>' : (Number(ratePerRevenueDecimal) * 100).toFixed(1) + '% of revenue') + '</td><td>Reference only: invoices sent in window = ' + fmtMoney(invoices) + '.</td></tr>';
           html += '</tbody></table>';
           html += '<p class="caption">Method A is the headline rate. Sessions used: approved, not revoked, not rejected, with a clock-out. Wages come from <code>people_pay_config.hourly_wage</code>. Office job is the one configured in People &rarr; Overhead settings.</p>';
           return html;
+        }
+        // Track which cell opened the modal so we can return focus to it on close
+        // (keyboard a11y: never trap focus, never lose the trigger after closing).
+        var lastFocusedTrigger = null;
+        function postParent(type){
+          if (window.parent === window) return;
+          try { parent.postMessage({ type: type }, '*'); } catch(e) {}
         }
         function openModal(idx, type) {
           var entry = breakdowns[idx];
@@ -9598,16 +10469,34 @@ export default function People() {
           var title = '';
           var body = '';
           if (type === 'hours') {
-            title = 'Hours breakdown \\u2014 ' + entry.name;
+            // v2.547 -- running total moved into the title (e.g. "Hours
+            // breakdown -- Abraham . 50.8 hrs"); the redundant Total: N hrs
+            // line is dropped from buildHoursBody so the value appears once.
+            title = 'Hours breakdown \\u2014 ' + entry.name + ' \\u00b7 ' + fmtH(entry.hb.totals.totalHours) + ' hrs';
             body = buildHoursBody(entry.hb);
           } else if (type === 'overhead_hours') {
-            title = 'Overhead hours breakdown \\u2014 ' + entry.name;
+            // v2.547 -- running total moved into the title (matches Hours
+            // breakdown), and the per-bucket totals move into the Office /
+            // Bids section headers (see buildOverheadHoursBody).
+            var ohTotalHrs = (entry.officeHours || 0) + (entry.bidHours || 0);
+            title = 'Overhead hours breakdown \\u2014 ' + entry.name + ' \\u00b7 ' + fmtH(ohTotalHrs) + ' hrs';
             body = buildOverheadHoursBody(entry);
+          } else if (type === 'field_hours') {
+            // v2.547 -- field-hrs running total moved into the title to match
+            // the Hours / Overhead-hours modals.
+            title = 'Field hours breakdown \\u2014 ' + entry.name + ' \\u00b7 ' + fmtH(entry.fieldHours || 0) + ' hrs';
+            body = buildFieldHoursBody(entry);
+          } else if (type === 'overhead_labor') {
+            title = 'Overhead labor breakdown \\u2014 ' + entry.name;
+            body = buildOverheadLaborBody(entry);
           } else if (type === 'gross') {
-            title = 'Gross Revenue breakdown \\u2014 ' + entry.name;
+            // v2.547 -- running total moved into the title to match Hours /
+            // Overhead-hours / Field-hours modals; redundant Total line removed
+            // from buildGrossBody.
+            title = 'Gross Revenue breakdown \\u2014 ' + entry.name + ' \\u00b7 ' + fmtMoney((entry.gb && entry.gb.total) || 0);
             body = buildGrossBody(entry.gb);
           } else if (type === 'net') {
-            title = 'Net Revenue breakdown \\u2014 ' + entry.name;
+            title = 'Net Revenue breakdown \\u2014 ' + entry.name + ' \\u00b7 ' + fmtMoney((entry.nb && entry.nb.total) || 0);
             body = buildNetBody(entry.nb);
           } else if (type === 'profit') {
             title = 'Profit (after overhead) breakdown \\u2014 ' + entry.name;
@@ -9631,25 +10520,98 @@ export default function People() {
           document.getElementById('modal-body').innerHTML = body;
           document.getElementById('modal-backdrop').classList.add('open');
           document.getElementById('modal').classList.add('open');
+          lastFocusedTrigger = (document.activeElement && typeof document.activeElement.focus === 'function') ? document.activeElement : null;
+          var closeBtn = document.getElementById('modal-close');
+          if (closeBtn) try { closeBtn.focus(); } catch(e) {}
+          postParent('team-summary-modal-open');
         }
         function closeModal() {
+          var wasOpen = document.getElementById('modal').classList.contains('open');
           document.getElementById('modal-backdrop').classList.remove('open');
           document.getElementById('modal').classList.remove('open');
+          // Defensive cleanup: if user closes the modal while it was in
+          // print mode (e.g. they cancelled the print dialog and the
+          // browser didn't fire afterprint), strip the body class so the
+          // screen view doesn't look broken.
+          document.body.classList.remove('printing-modal');
+          if (wasOpen) {
+            if (lastFocusedTrigger) {
+              try { lastFocusedTrigger.focus(); } catch(e) {}
+            }
+            lastFocusedTrigger = null;
+            postParent('team-summary-modal-close');
+          }
         }
-        document.querySelectorAll('.click-cell').forEach(function(cell){
-          cell.addEventListener('click', function(){
-            var idx = parseInt(cell.getAttribute('data-idx') || '-1', 10);
-            var type = cell.getAttribute('data-type') || '';
-            if (idx >= 0) openModal(idx, type);
+        // ---- Header sort / search wiring ----
+        var ths = document.querySelectorAll('th[data-sort]');
+        for (var t = 0; t < ths.length; t++) {
+          (function(th){
+            function toggleSort(){
+              var key = th.getAttribute('data-sort');
+              if (!key) return;
+              if (key === sortKey) {
+                sortDir = (sortDir === 'asc') ? 'desc' : 'asc';
+              } else {
+                sortKey = key;
+                // Sensible default direction by column type: text asc, numbers desc.
+                sortDir = (key === 'name') ? 'asc' : 'desc';
+              }
+              renderTable();
+            }
+            th.addEventListener('click', toggleSort);
+            th.addEventListener('keydown', function(e){
+              if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                toggleSort();
+              }
+            });
+          })(ths[t]);
+        }
+        var searchInput = document.getElementById('search-input');
+        if (searchInput) {
+          searchInput.addEventListener('input', function(e){
+            searchQuery = e.target.value || '';
+            renderTable();
           });
-        });
+        }
+        var resetSortBtn = document.getElementById('reset-sort');
+        if (resetSortBtn) {
+          resetSortBtn.addEventListener('click', function(){
+            sortKey = 'profitAfterOverhead';
+            sortDir = 'desc';
+            renderTable();
+          });
+        }
         var overheadMetaBtn = document.getElementById('overhead-meta-btn');
         if (overheadMetaBtn) {
           overheadMetaBtn.addEventListener('click', function(){ openModal(-1, 'overhead_rate'); });
         }
         document.getElementById('modal-backdrop').addEventListener('click', closeModal);
         document.getElementById('modal-close').addEventListener('click', closeModal);
-        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal(); });
+        // Modal-only print: add a body class so @media print rules in <style>
+        // hide everything except .modal, then call window.print(). The
+        // afterprint event removes the class so the screen view comes back
+        // identical to before (works in Chrome / Firefox / Safari; older
+        // browsers without afterprint just keep the class until the next
+        // closeModal, which clears it via the cleanup below).
+        var modalPrintBtn = document.getElementById('modal-print');
+        function clearPrintingModalClass(){
+          document.body.classList.remove('printing-modal');
+        }
+        if (modalPrintBtn) {
+          modalPrintBtn.addEventListener('click', function(){
+            document.body.classList.add('printing-modal');
+            function onAfterPrint(){
+              clearPrintingModalClass();
+              window.removeEventListener('afterprint', onAfterPrint);
+            }
+            window.addEventListener('afterprint', onAfterPrint);
+            try { window.print(); } catch (e) { clearPrintingModalClass(); }
+          });
+        }
+        document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { clearPrintingModalClass(); closeModal(); } });
+        // Initial paint.
+        renderTable();
       })();</script>
       ${embeddedResizeScript}
     </body></html>`
@@ -9756,15 +10718,10 @@ export default function People() {
   const hoursDays = getDaysInRange(hoursDateStart, hoursDateEnd)
   const matrixDays = hoursDays
 
-  const pendingUnapprovedCountByWorkDate = useMemo(() => {
-    const counts: Record<string, number> = {}
-    for (const s of pendingClockSessions) {
-      const wd = s.work_date
-      if (!wd) continue
-      counts[wd] = (counts[wd] ?? 0) + 1
-    }
-    return counts
-  }, [pendingClockSessions])
+  const pendingUnapprovedCountByWorkDate = useMemo(
+    () => pendingUnapprovedCountsByWorkDate(pendingClockSessions),
+    [pendingClockSessions],
+  )
 
   /** People → Hours: per-cell pending closed sessions where pending hours > saved people_hours. Drives the amber badge, column dot, person row total badge, and roll-up pill. */
   const peopleHoursPendingByCellMap = useMemo(
@@ -9833,7 +10790,7 @@ export default function People() {
     const key = `${workDate}:${personName}`
     const row = crewJobsByDatePerson[key]
     if (!row) return false
-    return !!(row.crew_lead_person_name || (row.unifiedAssignments?.length ?? 0) > 0)
+    return (row.unifiedAssignments?.length ?? 0) > 0
   }
 
   function isCorrectDayMissingJob(personName: string, workDate: string): boolean {
@@ -17149,15 +18106,65 @@ export default function People() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
             <select
               value={reviewPeriod}
-              onChange={(e) => setReviewPeriod(e.target.value as ReviewPeriod)}
+              onChange={(e) => {
+                const next = e.target.value as ReviewPeriod
+                // Seed custom range with the current effective range when the
+                // user first switches to Custom — gives them somewhere sensible
+                // to start tweaking instead of empty inputs.
+                if (next === 'custom' && !reviewCustomRangeStart && !reviewCustomRangeEnd) {
+                  const [seedStart, seedEnd] = getReviewDateRange()
+                  setReviewCustomRangeStart(seedStart)
+                  setReviewCustomRangeEnd(seedEnd)
+                }
+                setReviewPeriod(next)
+              }}
               style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
             >
               <option value="today">Today</option>
               <option value="yesterday">Yesterday</option>
+              <option value="this_week">This week (running)</option>
               <option value="last_week">Last week</option>
               <option value="last_two_weeks">Last two weeks</option>
-              <option value="last_month">Last month</option>
+              <option value="last_30_days">Last 30 days</option>
+              <option value="last_90_days">Last 90 days</option>
+              <option value="this_year">This year</option>
+              <option value="custom">Custom range…</option>
             </select>
+            {reviewPeriod === 'custom' && (
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}
+                role="group"
+                aria-label="Custom date range"
+              >
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
+                  From
+                  <input
+                    type="date"
+                    value={reviewCustomRangeStart}
+                    onChange={(e) => setReviewCustomRangeStart(e.target.value)}
+                    aria-label="Custom range start date"
+                    max={reviewCustomRangeEnd || undefined}
+                    style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                  />
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
+                  To
+                  <input
+                    type="date"
+                    value={reviewCustomRangeEnd}
+                    onChange={(e) => setReviewCustomRangeEnd(e.target.value)}
+                    aria-label="Custom range end date"
+                    min={reviewCustomRangeStart || undefined}
+                    style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                  />
+                </label>
+                {(!reviewCustomRangeStart || !reviewCustomRangeEnd) && (
+                  <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                    Pick both dates to set the range.
+                  </span>
+                )}
+              </div>
+            )}
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
               <input
                 type="checkbox"
@@ -17185,9 +18192,9 @@ export default function People() {
                     color: '#374151',
                     cursor: teamSummaryLoading && !teamSummaryHtml ? 'not-allowed' : 'pointer',
                   }}
-                  title="Open this summary in a new window for printing"
+                  title="Open the same fully-interactive summary in a new browser window (handy for printing or sharing)"
                 >
-                  Open in print view
+                  Open in new window
                 </button>
               </div>
               {teamSummaryError ? (
@@ -17926,15 +18933,6 @@ export default function People() {
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.job_name}</div>
                                       <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{stripAddressZipState(j.job_address) || '—'}</div>
-                                      {j.viaLead ? (
-                                        <div style={{ fontSize: '0.8em', color: '#6b7280', marginTop: '0.15rem' }}>
-                                          with {j.viaLead}
-                                        </div>
-                                      ) : (j.crewMemberNames ?? []).length > 0 ? (
-                                        <div style={{ fontSize: '0.8em', color: '#6b7280', marginTop: '0.15rem' }}>
-                                          with {j.crewMemberNames!.join(', ')}
-                                        </div>
-                                      ) : null}
                                     </td>
                                     <td
                                       style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', cursor: j.totalLaborOnJob > 0 ? 'pointer' : undefined }}
@@ -19243,7 +20241,6 @@ export default function People() {
           onClose={() => setHoursDayAuditModal(null)}
           initialCrewRow={crewJobsByDatePerson[`${hoursDayAuditModal.workDate}:${hoursDayAuditModal.personName}`] ?? null}
           canEditCrewJobs={canEditCrewJobs}
-          showPeople={showPeopleForHours}
           crewJobsByDatePerson={crewJobsByDatePerson}
           hoursDateStart={hoursDateStart}
           hoursDateEnd={hoursDateEnd}

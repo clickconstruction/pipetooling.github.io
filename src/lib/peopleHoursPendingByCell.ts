@@ -177,3 +177,53 @@ export function personPendingExcessHours(
   }
   return sum
 }
+
+/**
+ * Sum of closed pending clock hours for one (user, work_date) cell on the People → Hours grid.
+ *
+ * Excludes rejected and revoked sessions so revocation immediately removes hours from the grid
+ * (revoke decrements `people_hours` server-side; without this filter, the revoked session row —
+ * still present in `pendingClockSessions` because `revoked_at` clears `approved_at` and leaves
+ * `rejected_at` null — would keep `getHoursGridDisplayHours = max(people_hours, pendingSum)` high).
+ */
+export function sumClosedPendingClockHoursForCell(
+  pendingClockSessions: readonly ClockSessionRow[],
+  userId: string | null | undefined,
+  workDate: string,
+): number {
+  if (!userId) return 0
+  let sum = 0
+  for (const s of pendingClockSessions) {
+    if (s.user_id !== userId) continue
+    if (s.work_date !== workDate) continue
+    if (s.clocked_out_at == null) continue
+    if (s.rejected_at || s.revoked_at) continue
+    const inMs = new Date(s.clocked_in_at).getTime()
+    const outMs = new Date(s.clocked_out_at).getTime()
+    if (!Number.isFinite(inMs) || !Number.isFinite(outMs)) continue
+    const dur = (outMs - inMs) / 3_600_000
+    if (dur <= 0) continue
+    sum += dur
+  }
+  return sum
+}
+
+/**
+ * Per-work-date count of clock sessions awaiting action on the cost matrix "Unapproved" row.
+ *
+ * Excludes rejected and revoked sessions so a revoked session does not keep the column count
+ * high after the hours are reversed. Counts both open and closed sessions otherwise (matches
+ * prior behavior; revoke only ever fires on closed rows so this only filters the closed bucket).
+ */
+export function pendingUnapprovedCountsByWorkDate(
+  pendingClockSessions: readonly ClockSessionRow[],
+): Record<string, number> {
+  const counts: Record<string, number> = {}
+  for (const s of pendingClockSessions) {
+    if (s.rejected_at || s.revoked_at) continue
+    const wd = s.work_date
+    if (!wd) continue
+    counts[wd] = (counts[wd] ?? 0) + 1
+  }
+  return counts
+}
