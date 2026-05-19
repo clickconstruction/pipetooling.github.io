@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useNewProjectModal } from '../contexts/NewProjectModalContext'
+import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { ProjectsJobHistoryTab } from '../components/projects/ProjectsJobHistoryTab'
 import { ProjectsForecastTab } from '../components/projects/ProjectsForecastTab'
@@ -57,6 +59,9 @@ export default function Projects() {
   const customerId = searchParams.get('customer')
   const activeTab = parseProjectsPageTab(searchParams.get('tab'))
   const newProjectModal = useNewProjectModal()
+  const editProjectModal = useEditProjectModal()
+  const navigate = useNavigate()
+  const location = useLocation()
 
   function setActiveTab(next: ProjectsPageTab) {
     const nextParams = new URLSearchParams(searchParams)
@@ -300,6 +305,16 @@ export default function Projects() {
   }, [customerId, refreshKey])
 
   useEffect(() => {
+    const editId = (location.state as { openEditProject?: string } | null)?.openEditProject
+    if (typeof editId !== 'string' || !editId || !editProjectModal) return
+    editProjectModal.openEditProjectModal(editId, {
+      onSaved: () => setRefreshKey((k) => k + 1),
+      onDeleted: () => setRefreshKey((k) => k + 1),
+    })
+    navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [editProjectModal, location.pathname, location.search, location.state, navigate])
+
+  useEffect(() => {
     if (!canAssignSuperintendents || projects.length === 0) return
     async function loadAllSuperintendents() {
       const { data, error } = await supabase
@@ -374,69 +389,80 @@ export default function Projects() {
     <p style={{ color: '#b91c1c' }}>{error}</p>
   ) : (
     <>
-      {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '0.5rem',
-            marginBottom: '1rem',
-            flexWrap: 'wrap',
-          }}
-        >
-          <button
-            type="button"
-            onClick={() =>
-              newProjectModal?.openNewProjectModal({
-                prefill: customerId ? { customerId } : undefined,
-                onCreated: () => setRefreshKey((k) => k + 1),
-              })
-            }
-            style={projectsPrimaryButtonStyle()}
+      {(() => {
+        const showStaffActions =
+          myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+        const showSearchInput = projects.length > 0
+        if (!showStaffActions && !showSearchInput) return null
+        return (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              marginBottom: '1rem',
+              flexWrap: 'wrap',
+            }}
           >
-            New Project
-          </button>
-          {myRole === 'dev' && (
-            <Link
-              to="/templates"
-              style={{
-                padding: '0.35rem 0.75rem',
-                fontSize: '0.875rem',
-                color: PROJECTS_MUTED_GREY,
-                textDecoration: 'none',
-              }}
-            >
-              Edit templates
-            </Link>
-          )}
-        </div>
-      )}
+            {showStaffActions && (
+              <button
+                type="button"
+                onClick={() =>
+                  newProjectModal?.openNewProjectModal({
+                    prefill: customerId ? { customerId } : undefined,
+                    onCreated: () => setRefreshKey((k) => k + 1),
+                  })
+                }
+                style={projectsPrimaryButtonStyle()}
+              >
+                New Project
+              </button>
+            )}
+            {showSearchInput && (
+              <input
+                type="search"
+                placeholder="Search by name, customer, HCP, or address..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck={false}
+                aria-label="Search projects"
+                style={{
+                  flex: '1 1 240px',
+                  minWidth: 200,
+                  padding: '0.35rem 0.75rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  boxSizing: 'border-box',
+                }}
+              />
+            )}
+            {myRole === 'dev' && (
+              <Link
+                to="/templates"
+                style={{
+                  padding: '0.35rem 0.75rem',
+                  fontSize: '0.875rem',
+                  color: PROJECTS_MUTED_GREY,
+                  textDecoration: 'none',
+                  marginLeft: showSearchInput ? 0 : 'auto',
+                }}
+              >
+                Edit templates
+              </Link>
+            )}
+          </div>
+        )
+      })()}
       {customerId && (
         <p style={{ marginBottom: '1rem' }}>
           <Link to="/projects">Show all projects</Link>
         </p>
       )}
       {projects.length > 0 && (
-        <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <input
-            type="search"
-            placeholder="Search by name, customer, HCP, or address..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-            aria-label="Search projects"
-            style={{
-              width: '100%',
-              padding: '0.35rem 0.75rem',
-              border: '1px solid #d1d5db',
-              borderRadius: 4,
-              boxSizing: 'border-box',
-            }}
-          />
+        <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
             {PROJECT_STATUS_ORDER.map((status) => {
               const active = statusFilter.has(status)
@@ -546,6 +572,11 @@ export default function Projects() {
             >
               <div>
                 <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
+                {formatProjectNumberLabel(p.project_number) && (
+                  <span style={{ marginLeft: 8, fontSize: '0.8125rem', color: '#6b7280' }}>
+                    {formatProjectNumberLabel(p.project_number)}
+                  </span>
+                )}
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                   {p.customers?.name ?? '—'}{' '}·{' '}
                   <span style={projectStatusPillStyle(p.status)}>{projectStatusLabel(p.status)}</span>
@@ -643,7 +674,26 @@ export default function Projects() {
                   width: narrow ? '100%' : undefined,
                 }}
               >
-                <Link to={`/projects/${p.id}/edit`}>Edit</Link>
+                <button
+                  type="button"
+                  onClick={() => {
+                    editProjectModal?.openEditProjectModal(p.id, {
+                      onSaved: () => setRefreshKey((k) => k + 1),
+                      onDeleted: () => setRefreshKey((k) => k + 1),
+                    })
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                    padding: 0,
+                    font: 'inherit',
+                  }}
+                >
+                  Edit
+                </button>
                 {p.master_user && (
                   <span style={{ padding: '0.2rem 0.5rem', background: '#eff6ff', borderRadius: 4, fontSize: '0.8125rem', fontWeight: 500 }}>
                     Master: {p.master_user.name || p.master_user.email || 'Unknown'}

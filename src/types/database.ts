@@ -2132,6 +2132,7 @@ export type Database = {
           links: string[]
           location_lat: number | null
           location_lng: number | null
+          pending_action: string | null
           reference_summary: string | null
           status: string
           title: string
@@ -2148,6 +2149,7 @@ export type Database = {
           links?: string[]
           location_lat?: number | null
           location_lng?: number | null
+          pending_action?: string | null
           reference_summary?: string | null
           status?: string
           title: string
@@ -2164,6 +2166,7 @@ export type Database = {
           links?: string[]
           location_lat?: number | null
           location_lng?: number | null
+          pending_action?: string | null
           reference_summary?: string | null
           status?: string
           title?: string
@@ -6425,6 +6428,7 @@ export type Database = {
           master_user_id: string | null
           name: string
           plans_link: string | null
+          project_number: string | null
           project_type: string | null
           status: Database["public"]["Enums"]["project_status"]
           street_name: string | null
@@ -6440,6 +6444,7 @@ export type Database = {
           master_user_id?: string | null
           name: string
           plans_link?: string | null
+          project_number?: string | null
           project_type?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           street_name?: string | null
@@ -6455,6 +6460,7 @@ export type Database = {
           master_user_id?: string | null
           name?: string
           plans_link?: string | null
+          project_number?: string | null
           project_type?: string | null
           status?: Database["public"]["Enums"]["project_status"]
           street_name?: string | null

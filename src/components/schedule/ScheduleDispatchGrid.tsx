@@ -21,7 +21,6 @@ import {
   scheduleBlockActionLinkedIconButtonStyle,
   scheduleBlockActionTextButtonStyle,
   scheduleBlockControlPlateBackgroundStyle,
-  scheduleBlockLinkedControlPlateStyle,
 } from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
@@ -99,8 +98,11 @@ function ScheduleDispatchBlockCard({
   const disabledStripAriaLabel =
     'Cannot drag: you do not have permission to reassign schedule blocks. Click for an explanation.'
 
-  const showTopRightControls =
-    linkPeerCount > 1 || (canEdit && !placementPickingActive && onRequestEditBlockNote)
+  const showLinkedBadge = linkPeerCount > 1
+  const showEditNoteBtn = canEdit && !placementPickingActive && !!onRequestEditBlockNote
+  const showTopRightControls = showEditNoteBtn
+  const showMinusPlusButtons = canEdit && !placementPickingActive
+  const showBottomRightCluster = showLinkedBadge || showMinusPlusButtons
 
   return (
     <div
@@ -193,28 +195,14 @@ function ScheduleDispatchBlockCard({
             gap: 0,
           }}
         >
-          {linkPeerCount > 1 ? (
-            <span
-              role="img"
-              aria-label="Linked"
-              title="Linked: time and note stay in sync for this crew block"
-              style={{
-                ...scheduleBlockLinkedControlPlateStyle,
-                color: '#1d4ed8',
-                ...scheduleBlockActionLinkedIconButtonStyle,
-              }}
-            >
-              <ScheduleDispatchLinkedChainsIcon size={10} />
-            </span>
-          ) : null}
-          {canEdit && !placementPickingActive && onRequestEditBlockNote ? (
+          {showEditNoteBtn ? (
             <button
               type="button"
               title="Edit block note"
               aria-label="Edit block note"
               onClick={(e) => {
                 e.stopPropagation()
-                onRequestEditBlockNote(block)
+                onRequestEditBlockNote?.(block)
               }}
               style={{
                 display: 'inline-flex',
@@ -239,7 +227,7 @@ function ScheduleDispatchBlockCard({
           ) : null}
         </div>
       ) : null}
-      {canEdit && !placementPickingActive ? (
+      {showBottomRightCluster ? (
         <div
           style={{
             position: 'absolute',
@@ -252,74 +240,98 @@ function ScheduleDispatchBlockCard({
             gap: 0,
           }}
         >
-          <button
-            type="button"
-            aria-label="Remove block"
-            title="Remove block"
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete(block.id)
-            }}
-            style={{
-              width: 20,
-              height: 20,
-              padding: 0,
-              margin: 0,
-              lineHeight: '18px',
-              fontSize: '0.85rem',
-              fontWeight: 700,
-              borderRadius: 4,
-              border: 'none',
-              background: 'transparent',
-              color: '#b91c1c',
-              cursor: 'pointer',
-              ...scheduleBlockActionTextButtonStyle,
-            }}
-          >
-            −
-          </button>
-          <div style={{ position: 'relative', margin: 0, marginLeft: -4 }}>
-            <button
-              ref={plusButtonRef}
-              type="button"
-              aria-label="Copy block to another cell"
-              title="Copy to another person & day"
-              onClick={(e) => {
-                e.stopPropagation()
-                onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
-              }}
+          {showLinkedBadge ? (
+            <span
+              role="img"
+              aria-label="Linked"
+              title="Linked: time and note stay in sync for this crew block"
               style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                 width: 20,
                 height: 20,
-                padding: 0,
-                margin: 0,
-                lineHeight: '18px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                borderRadius: 4,
-                border: 'none',
-                background: 'transparent',
                 color: '#1d4ed8',
-                cursor: 'pointer',
-                ...scheduleBlockActionTextButtonStyle,
+                marginRight: showMinusPlusButtons ? 2 : 0,
+                filter:
+                  'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
               }}
             >
-              +
-            </button>
-            <ScheduleDispatchPlusCopyMenu
-              open={plusMenuOpen}
-              anchorRef={plusButtonRef}
-              onClose={() => onPlusMenuBlockIdChange(null)}
-              onLinkedCopy={() => {
-                onPlusMenuBlockIdChange(null)
-                onStartCardPlacement(block, 'linked')
-              }}
-              onSoloCopy={() => {
-                onPlusMenuBlockIdChange(null)
-                onStartCardPlacement(block, 'unlinked')
-              }}
-            />
-          </div>
+              <ScheduleDispatchLinkedChainsIcon size={12} />
+            </span>
+          ) : null}
+          {showMinusPlusButtons ? (
+            <>
+              <button
+                type="button"
+                aria-label="Remove block"
+                title="Remove block"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete(block.id)
+                }}
+                style={{
+                  width: 20,
+                  height: 20,
+                  padding: 0,
+                  margin: 0,
+                  lineHeight: '18px',
+                  fontSize: '0.85rem',
+                  fontWeight: 700,
+                  borderRadius: 4,
+                  border: 'none',
+                  background: 'transparent',
+                  color: '#b91c1c',
+                  cursor: 'pointer',
+                  ...scheduleBlockActionTextButtonStyle,
+                }}
+              >
+                −
+              </button>
+              <div style={{ position: 'relative', margin: 0, marginLeft: -4 }}>
+                <button
+                  ref={plusButtonRef}
+                  type="button"
+                  aria-label="Copy block to another cell"
+                  title="Copy to another person & day"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
+                  }}
+                  style={{
+                    width: 20,
+                    height: 20,
+                    padding: 0,
+                    margin: 0,
+                    lineHeight: '18px',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    borderRadius: 4,
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#1d4ed8',
+                    cursor: 'pointer',
+                    ...scheduleBlockActionTextButtonStyle,
+                  }}
+                >
+                  +
+                </button>
+                <ScheduleDispatchPlusCopyMenu
+                  open={plusMenuOpen}
+                  anchorRef={plusButtonRef}
+                  onClose={() => onPlusMenuBlockIdChange(null)}
+                  onLinkedCopy={() => {
+                    onPlusMenuBlockIdChange(null)
+                    onStartCardPlacement(block, 'linked')
+                  }}
+                  onSoloCopy={() => {
+                    onPlusMenuBlockIdChange(null)
+                    onStartCardPlacement(block, 'unlinked')
+                  }}
+                />
+              </div>
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>

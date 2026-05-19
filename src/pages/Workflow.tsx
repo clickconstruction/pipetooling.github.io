@@ -1,12 +1,14 @@
 import { Fragment, useEffect, useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
+import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
+import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import type { Database } from '../types/database'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
@@ -186,6 +188,8 @@ function PersonDisplayWithContact({
 
 export default function Workflow() {
   const { projectId } = useParams()
+  const navigate = useNavigate()
+  const editProjectModal = useEditProjectModal()
   const { user: authUser, profileName: authProfileName, role: authRole } = useAuth()
   const { showToast } = useToastContext()
   const {
@@ -2295,8 +2299,16 @@ export default function Workflow() {
     <div className="workflow">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <Link to="/projects">{"\u2190"} Projects</Link>
-        <Link
-          to={`/projects/${project.id}/edit`}
+        <button
+          type="button"
+          onClick={() => {
+            editProjectModal?.openEditProjectModal(project.id, {
+              onSaved: () => {
+                void loadProject(project.id)
+              },
+              onDeleted: () => navigate('/projects'),
+            })
+          }}
           style={{
             fontSize: '0.875rem',
             padding: '0.25rem 0.5rem',
@@ -2306,10 +2318,15 @@ export default function Workflow() {
             textDecoration: 'none',
             fontWeight: 500,
             display: 'inline-block',
+            border: 'none',
+            cursor: 'pointer',
+            font: 'inherit',
           }}
         >
-          Project: {project.name}
-        </Link>
+          {formatProjectNumberLabel(project.project_number)
+            ? `${formatProjectNumberLabel(project.project_number)} \u00b7 ${project.name}`
+            : `Project: ${project.name}`}
+        </button>
       </div>
       <div style={{ marginBottom: '1.5rem', overflow: 'hidden' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

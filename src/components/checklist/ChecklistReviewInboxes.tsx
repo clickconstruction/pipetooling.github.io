@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useDispatchInbox } from '../../hooks/useDispatchInbox'
 import { useEstimatorInbox } from '../../hooks/useEstimatorInbox'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { DispatchInboxSection } from '../DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
@@ -51,6 +52,8 @@ export function ChecklistReviewInboxes() {
     dismissEstimatorRequest,
   } = useEstimatorInbox()
 
+  const jobFormModal = useJobFormModal()
+
   if (role === 'assistant') return null
   if (!dispatchInboxEligible && !estimatorInboxEligible) return null
 
@@ -85,6 +88,11 @@ export function ChecklistReviewInboxes() {
           onSubmitNoteAndClose={submitDispatchNoteAndClose}
           onDismiss={dismissDispatchRequest}
           onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+          onLinkJobPictures={
+            jobFormModal
+              ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+              : undefined
+          }
         />
       ) : null}
 

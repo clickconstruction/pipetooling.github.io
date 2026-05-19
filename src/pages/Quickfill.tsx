@@ -28,6 +28,7 @@ import { QuickfillTomorrowsScheduleSection } from '../components/quickfill/Quick
 import { QuickfillProspectsSection } from '../components/quickfill/QuickfillProspectsSection'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
+import { useJobFormModal } from '../contexts/JobFormModalContext'
 import {
   QuickfillSectionMetricsProvider,
   useQuickfillSectionMetric,
@@ -409,6 +410,7 @@ function QuickfillPage() {
     dismissDispatchRequest,
     fetchDismissedDispatchInboxRows,
   } = useDispatchInbox()
+  const jobFormModal = useJobFormModal()
   const { getOutstandingCount } = useQuickfillSectionMetricsContext()
   const unpricedFixturesCount = useUnpricedFixturesCount()
   const quickfillNoCustomerStages = useQuickfillStagesJobsWithoutCustomer()
@@ -1178,6 +1180,11 @@ function QuickfillPage() {
               onSubmitNoteAndClose={submitDispatchNoteAndClose}
               onDismiss={dismissDispatchRequest}
               onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+              onLinkJobPictures={
+                jobFormModal
+                  ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+                  : undefined
+              }
             />
           </QuickfillSectionWrapper>
         )

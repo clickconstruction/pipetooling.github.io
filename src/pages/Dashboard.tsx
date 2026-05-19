@@ -13,6 +13,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
+import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
 import { DELETE_DRAFT_BILL_LABEL } from '../lib/deleteDraftBillLabel'
 import { formatMoveIntoStageByOnLine } from '../lib/formatMoveIntoStageByOnLine'
 import {
@@ -58,6 +59,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import { useEditProjectModal } from '../contexts/EditProjectModalContext'
 import { useCostMatrixTotal } from '../hooks/useCostMatrixTotal'
 import { useBilledTotal } from '../hooks/useBilledTotal'
 import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApprovalCount'
@@ -139,6 +141,7 @@ import {
   subcontractorActivitySourceLabel,
   type SubcontractorActivitySource,
 } from '../lib/subcontractorJobActivityCopy'
+import { subcontractorLastActivityMobileLine } from '../lib/subcontractorLastActivityCompact'
 import SubcontractorJobActivityModal from '../components/dashboard/SubcontractorJobActivityModal'
 import {
   scheduleDateKeyAddDays,
@@ -219,6 +222,7 @@ type SubscribedStep = {
   step_name: string
   project_id: string
   project_name: string
+  project_number: string | null
   notify_when_started: boolean
   notify_when_complete: boolean
   notify_when_reopened: boolean
@@ -527,10 +531,6 @@ function subcontractorAssignedJobStageDisplay(
   return null
 }
 
-const MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST =
-  'Contact Dispatch and ask them to link a folder for this customer to be able to upload images.'
-const MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST_MS = 5000
-
 function DashboardJobPicturesLinkRow({
   jobPicturesLink,
   layout = 'stacked',
@@ -576,8 +576,8 @@ function DashboardJobPicturesLinkRow({
     const missingBtn = (
       <button
         type="button"
-        title="No customer photos link — tap for instructions"
-        aria-label="No customer photos link — tap for instructions"
+        title="No customer photos link — tap to ask Dispatch to set one"
+        aria-label="No customer photos link — tap to ask Dispatch to set one"
         onClick={(e) => {
           e.stopPropagation()
           onMissingClick()
@@ -857,6 +857,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const bidPreview = useBidPreview()
   const jobDetailModal = useJobDetailModal()
+  const editProjectModal = useEditProjectModal()
   const { user: authUser, role, estimatorProspectsAccess } = useAuth()
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
@@ -2561,25 +2562,31 @@ export default function Dashboard() {
         const projectIds = [...new Set(workflows.map((w) => w.project_id))]
         const { data: projects } = await supabase
           .from('projects')
-          .select('id, name')
+          .select('id, name, project_number')
           .in('id', projectIds)
         if (cancelled || !projects?.length) {
           if (!cancelled) setSubscribedLoading(false)
           return
         }
         const workflowToProject = new Map(workflows.map((w) => [w.id, w.project_id]))
-        const projectMap = new Map(projects.map((p) => [p.id, p.name]))
+        const projectMap = new Map(
+          projects.map((p) => [
+            p.id,
+            { name: p.name, project_number: p.project_number ?? null },
+          ]),
+        )
         const subscribed: SubscribedStep[] = []
         steps.forEach((step) => {
           const sub = subs.find((s) => s.step_id === step.id)
           const projectId = workflowToProject.get(step.workflow_id)
-          const projectName = projectId ? projectMap.get(projectId) : null
-          if (sub && projectId && projectName) {
+          const projectInfo = projectId ? projectMap.get(projectId) : null
+          if (sub && projectId && projectInfo) {
             subscribed.push({
               step_id: step.id,
               step_name: step.name,
               project_id: projectId,
-              project_name: projectName,
+              project_name: projectInfo.name,
+              project_number: projectInfo.project_number,
               notify_when_started: sub.notify_when_started ?? false,
               notify_when_complete: sub.notify_when_complete ?? false,
               notify_when_reopened: sub.notify_when_reopened ?? false,
@@ -3065,6 +3072,79 @@ export default function Dashboard() {
       jobFormModal?.openEditJob(jobId, { onSaved: () => void refreshInvoicesRef.current() })
     },
     [jobFormModal],
+  )
+
+  const submitLinkJobPicturesDispatchRequest = useCallback(
+    async (args: {
+      jobId: string
+      hcpNumber: string | null | undefined
+      jobName: string | null | undefined
+      jobAddress: string | null | undefined
+    }) => {
+      if (!authUser?.id) {
+        showToast('Sign in to send to Dispatch.', 'error')
+        return
+      }
+      const jobId = args.jobId.trim()
+      if (!jobId) return
+      const hcp = (args.hcpNumber ?? '').trim()
+      const name = (args.jobName ?? '').trim() || 'Job'
+      const address = (args.jobAddress ?? '').trim()
+      try {
+        const existing = await withSupabaseRetry<{ id: string } | null>(
+          async () =>
+            supabase
+              .from('dispatch_requests')
+              .select('id')
+              .eq('job_ledger_id', jobId)
+              .eq('pending_action', 'link_job_pictures')
+              .eq('status', 'open')
+              .limit(1)
+              .maybeSingle(),
+          'check existing link_job_pictures dispatch request',
+        )
+        if (existing?.id) {
+          showToast('Already sent to Dispatch. They will add the folder soon.', 'info')
+          return
+        }
+        const titlePrefix = hcp ? `HCP ${hcp} - ` : ''
+        const title = `Add a Customer Pictures folder for ${titlePrefix}${name}`
+        const referenceSummaryParts = [
+          hcp ? `HCP ${hcp}` : null,
+          name,
+        ].filter(Boolean) as string[]
+        const referenceHead = referenceSummaryParts.join(' | ')
+        const referenceSummary = address ? `${referenceHead} - ${address}` : referenceHead
+        const row = await withSupabaseRetry<{ id: string }>(
+          async () =>
+            supabase
+              .from('dispatch_requests')
+              .insert({
+                from_user_id: authUser.id,
+                title,
+                links: [],
+                job_ledger_id: jobId,
+                bid_id: null,
+                reference_summary: referenceSummary || null,
+                pending_action: 'link_job_pictures',
+              })
+              .select('id')
+              .single(),
+          'insert link_job_pictures dispatch request',
+        )
+        if (!row?.id) {
+          showToast('Could not send to Dispatch.', 'error')
+          return
+        }
+        void supabase.functions.invoke('notify-dispatch-request', {
+          body: { dispatch_request_id: row.id },
+        })
+        showToast('Sent to Dispatch. They will add the customer pictures folder soon.', 'success')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Failed to send to Dispatch'), 'error')
+      }
+    },
+    [authUser?.id, showToast],
   )
 
   const openReadyToBillDetailJobModal = useCallback(
@@ -4884,6 +4964,11 @@ export default function Dashboard() {
               onSubmitNoteAndClose={submitDispatchNoteAndClose}
               onDismiss={dismissDispatchRequest}
               onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+              onLinkJobPictures={
+                jobFormModal
+                  ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+                  : undefined
+              }
             />
           )}
           {authUser?.id && estimatorInboxEligible && (
@@ -5347,6 +5432,11 @@ export default function Dashboard() {
           onSubmitNoteAndClose={submitDispatchNoteAndClose}
           onDismiss={dismissDispatchRequest}
           onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+          onLinkJobPictures={
+            jobFormModal
+              ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+              : undefined
+          }
         />
       )}
       {authUser?.id && estimatorInboxEligible && role !== 'assistant' && (
@@ -5699,14 +5789,14 @@ export default function Dashboard() {
                 const sorted = [...blocks].sort((a, b) => a.time_start.localeCompare(b.time_start))
                 return (
                   <div key={which} style={{ marginBottom: which === 'today' ? '1.25rem' : 0 }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: '#374151' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: '#374151', textAlign: 'center' }}>
                       {dayTitle}
                       <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
                         {scheduleFormatWeekdayLong(ymd)}
                       </span>
                     </h3>
                     {sorted.length === 0 ? (
-                      <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.875rem' }}>No blocks scheduled.</p>
+                      <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
                     ) : (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                         {sorted.map((b) => {
@@ -5795,13 +5885,12 @@ export default function Dashboard() {
                                     size="large"
                                     jobPicturesLink={fromAssigned?.job_pictures_link}
                                     onMissingClick={() =>
-                                      showToast(
-                                        MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST,
-                                        'error',
-                                        MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST_MS,
-                                        undefined,
-                                        'center',
-                                      )
+                                      void submitLinkJobPicturesDispatchRequest({
+                                        jobId: b.job_id,
+                                        hcpNumber: fromAssigned?.hcp_number,
+                                        jobName: fromAssigned?.job_name ?? rowLabel,
+                                        jobAddress: fromAssigned?.job_address,
+                                      })
                                     }
                                   />
                                   {canLeaveJobFieldReport(role) ? (
@@ -7436,33 +7525,31 @@ export default function Dashboard() {
                       {isSubcontractorLikeRole(role) && isMobile && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
                           {(() => {
-                            const b = subcontractorLastActivityBlock(j)
-                            const a11y = [b.line1, b.line2, b.line3].filter(Boolean).join(' ')
+                            const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
+                            if (!m.clickable) {
+                              return (
+                                <span title={m.title} aria-label={m.aria} style={{ lineHeight: 1.25 }}>
+                                  {m.text}
+                                </span>
+                              )
+                            }
                             return (
-                              <div
-                                style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}
-                                title={b.title}
-                                aria-label={a11y}
+                              <button
+                                type="button"
+                                className="subcontractorLastActivityTypeBtn"
+                                title={m.title}
+                                aria-label={m.aria}
+                                style={{ lineHeight: 1.25 }}
+                                onClick={() =>
+                                  setSubcontractorJobActivityModalJob({
+                                    id: j.id,
+                                    hcpNumber: j.hcp_number ?? '—',
+                                    jobName: j.job_name ?? '—',
+                                  })
+                                }
                               >
-                                <span>{b.line1}</span>
-                                <span>{b.line2}</span>
-                                {b.line3 != null ? (
-                                  <button
-                                    type="button"
-                                    className="subcontractorLastActivityTypeBtn"
-                                    onClick={() =>
-                                      setSubcontractorJobActivityModalJob({
-                                        id: j.id,
-                                        hcpNumber: j.hcp_number ?? '—',
-                                        jobName: j.job_name ?? '—',
-                                      })
-                                    }
-                                    aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
-                                  >
-                                    {b.line3}
-                                  </button>
-                                ) : null}
-                              </div>
+                                {m.text}
+                              </button>
                             )
                           })()}
                         </div>
@@ -7725,33 +7812,31 @@ export default function Dashboard() {
                           </span>
                         )}
                           {(() => {
-                            const b = subcontractorLastActivityBlock(j)
-                            const a11y = [b.line1, b.line2, b.line3].filter(Boolean).join(' ')
+                            const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
+                            if (!m.clickable) {
+                              return (
+                                <span title={m.title} aria-label={m.aria} style={{ lineHeight: 1.25 }}>
+                                  {m.text}
+                                </span>
+                              )
+                            }
                             return (
-                              <div
-                                style={{ display: 'flex', flexDirection: 'column', gap: 2, lineHeight: 1.25 }}
-                                title={b.title}
-                                aria-label={a11y}
+                              <button
+                                type="button"
+                                className="subcontractorLastActivityTypeBtn"
+                                title={m.title}
+                                aria-label={m.aria}
+                                style={{ lineHeight: 1.25 }}
+                                onClick={() =>
+                                  setSubcontractorJobActivityModalJob({
+                                    id: j.id,
+                                    hcpNumber: j.hcp_number ?? '—',
+                                    jobName: j.job_name ?? '—',
+                                  })
+                                }
                               >
-                                <span>{b.line1}</span>
-                                <span>{b.line2}</span>
-                                {b.line3 != null ? (
-                                  <button
-                                    type="button"
-                                    className="subcontractorLastActivityTypeBtn"
-                                    onClick={() =>
-                                      setSubcontractorJobActivityModalJob({
-                                        id: j.id,
-                                        hcpNumber: j.hcp_number ?? '—',
-                                        jobName: j.job_name ?? '—',
-                                      })
-                                    }
-                                    aria-label={`What last activity means and recent history for ${j.job_name ?? 'this job'}`}
-                                  >
-                                    {b.line3}
-                                  </button>
-                                ) : null}
-                              </div>
+                                {m.text}
+                              </button>
                             )
                           })()}
                         </div>
@@ -8224,7 +8309,24 @@ export default function Dashboard() {
                             {sub.step_name}
                           </Link>
                           <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
-                            Project: <Link to={`/projects/${sub.project_id}/edit`} style={{ color: '#2563eb' }}>{sub.project_name}</Link>
+                            {formatProjectNumberLabel(sub.project_number) ?? 'Project'}:{' '}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                editProjectModal?.openEditProjectModal(sub.project_id)
+                              }}
+                              style={{
+                                color: '#2563eb',
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                font: 'inherit',
+                                cursor: 'pointer',
+                                textDecoration: 'underline',
+                              }}
+                            >
+                              {sub.project_name}
+                            </button>
                           </div>
                           {notifications.length > 0 && (
                             <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>

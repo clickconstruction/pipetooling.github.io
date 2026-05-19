@@ -19,6 +19,10 @@ export type DispatchInboxRow = {
   closed_by_user_id: string | null
   closed_by: { name: string | null } | null
   closed_note: string | null
+  /** Stable in-app action affordance token (e.g. 'link_job_pictures'). */
+  pending_action: string | null
+  /** Job this dispatch refers to (used by action affordances). */
+  job_ledger_id: string | null
   /** Thread notes on this request (from dispatch_request_notes). */
   note_count?: number
   last_note_at?: string | null
@@ -66,6 +70,8 @@ type DispatchInboxSectionProps = {
   onSubmitNoteAndClose: (requestId: string) => void
   onDismiss: (requestId: string) => void
   onOpenDismissedArchive?: () => void
+  /** Opens Edit Job with the Customer Pictures input scrolled into view and focused. */
+  onLinkJobPictures?: (jobId: string) => void
 }
 
 export function DispatchInboxSection({
@@ -89,6 +95,7 @@ export function DispatchInboxSection({
   onSubmitNoteAndClose,
   onDismiss,
   onOpenDismissedArchive,
+  onLinkJobPictures,
 }: DispatchInboxSectionProps) {
   const narrow = useNarrowViewport640()
   const body = (
@@ -173,6 +180,37 @@ export function DispatchInboxSection({
                     {dispatchRequestDismissingId === req.id ? '…' : 'Dismiss'}
                   </button>
                 )
+                const showLinkJobPicturesAction =
+                  !isClosed &&
+                  req.pending_action === 'link_job_pictures' &&
+                  !!req.job_ledger_id &&
+                  !!onLinkJobPictures
+                const linkJobPicturesBtn = showLinkJobPicturesAction ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (req.job_ledger_id && onLinkJobPictures) {
+                        onLinkJobPictures(req.job_ledger_id)
+                      }
+                    }}
+                    title="Open Edit Job and focus the Customer Pictures input"
+                    aria-label="Add Customer Pictures URL"
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: 'white',
+                      border: '1px solid #93c5fd',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      color: '#1d4ed8',
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Add Customer Pictures URL
+                  </button>
+                ) : null
                 return (
                   <Fragment key={req.id}>
                     {isFirstClosed ? (
@@ -339,10 +377,14 @@ export function DispatchInboxSection({
                             </div>
                           </div>
                         ) : narrow && !isClosed ? (
-                          statsEl
+                          <>
+                            {statsEl}
+                            {linkJobPicturesBtn}
+                          </>
                         ) : (
                           <>
                             {statsEl}
+                            {linkJobPicturesBtn}
                             {isClosed ? (
                               <>
                                 <div style={{ display: 'contents' }}>{dismissBtn}</div>

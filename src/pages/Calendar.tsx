@@ -24,14 +24,15 @@ import {
 import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../lib/resolveCalendarWorkday'
 import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
-import { scheduleFormatWindow } from '../lib/jobScheduleChicago'
+import { scheduleFormatTimeHm, scheduleFormatWindow } from '../lib/jobScheduleChicago'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'estimator'
 
 const CALENDAR_PLAN_CHIP_CAP = 3
 
-/** Move “Show recorded time” below the month grid on narrow viewports. */
+/** Move “Show my workday” and “Show recorded time” below the month grid on narrow viewports. */
 const CALENDAR_MOBILE_CHROME_MQ = '(max-width: 640px)'
 
 type PlannedBlockRow = {
@@ -40,6 +41,7 @@ type PlannedBlockRow = {
   work_date: string
   time_start: string
   time_end: string
+  note: string | null
   jobs_ledger: { hcp_number: string; job_name: string } | null
 }
 
@@ -118,6 +120,47 @@ function formatDateKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
+}
+
+/**
+ * Mobile-friendly time window. `scheduleFormatWindow` returns `8:00 AM–12:00 PM`;
+ * this drops the `:00` minutes when zero and adds spaces around the en-dash so the
+ * narrow planned-work chip reads `8 AM – 12 PM`.
+ */
+function compactScheduleWindow(timeStart: string, timeEnd: string): string {
+  const start = scheduleFormatTimeHm(timeStart).replace(':00 ', ' ')
+  const end = scheduleFormatTimeHm(timeEnd).replace(':00 ', ' ')
+  return `${start} – ${end}`
+}
+
+/** Shift a YYYY-MM-DD calendar key by `delta` days (no timezone math; operates on the key directly). */
+function shiftYmd(ymd: string, delta: number): string {
+  const parts = ymd.split('-').map(Number)
+  const y = parts[0] ?? 0
+  const m = parts[1] ?? 1
+  const d = parts[2] ?? 1
+  const next = new Date(y, m - 1, d + delta)
+  return formatDateKey(next)
+}
+
+/** Heading label for the My Day card: Today / Tomorrow / Yesterday, else weekday + month/day. */
+function formatMyDayHeadingLabel(ymd: string, todayKey: string): string {
+  if (ymd === todayKey) return 'Today'
+  if (ymd === shiftYmd(todayKey, 1)) return 'Tomorrow'
+  if (ymd === shiftYmd(todayKey, -1)) return 'Yesterday'
+  const parts = ymd.split('-').map(Number)
+  const y = parts[0] ?? 0
+  const m = parts[1] ?? 1
+  const d = parts[2] ?? 1
+  const date = new Date(y, m - 1, d)
+  const todayParts = todayKey.split('-').map(Number)
+  const todayYear = todayParts[0] ?? date.getFullYear()
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: date.getFullYear() !== todayYear ? 'numeric' : undefined,
+  })
 }
 
 function getCentralDateFromUTC(utcString: string | null): string | null {
@@ -248,8 +291,10 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDayForModal, setSelectedDayForModal] = useState<Date | null>(null)
-  const [showMyWorkday, setShowMyWorkday] = useState(true)
-  const [showRecordedTime, setShowRecordedTime] = useState(true)
+  const [showMyWorkday, setShowMyWorkday] = useState(false)
+  const [showRecordedTime, setShowRecordedTime] = useState(false)
+  // Default off on mobile, on on desktop. Overridden by stored value once the user toggles.
+  const [showWeekends, setShowWeekends] = useState(() => !mobileCalendarLayout)
   const [isSalaryLayerEligible, setIsSalaryLayerEligible] = useState(false)
   const [salaryTemplate, setSalaryTemplate] = useState<SalaryTemplateRow | null>(null)
   const [salaryOverridesByDate, setSalaryOverridesByDate] = useState<Record<string, SalaryOverrideRow>>({})
@@ -270,6 +315,20 @@ export default function Calendar() {
     const now = new Date()
     return getCentralDate(now)
   })
+  const [myDayKey, setMyDayKey] = useState<string>(() => formatDateKey(getCentralDate(new Date())))
+  const jobDetailModalCtx = useJobDetailModal()
+
+  // When the My Day card scrubs past the visible month grid, bump currentMonth so the
+  // existing month-load effect refreshes plannedByWorkDate for the new range.
+  useEffect(() => {
+    const { gridStart, gridEnd } = getVisibleGridDateRange(currentMonth)
+    if (myDayKey < gridStart || myDayKey > gridEnd) {
+      const parts = myDayKey.split('-').map(Number)
+      const y = parts[0] ?? currentMonth.getFullYear()
+      const m = parts[1] ?? currentMonth.getMonth() + 1
+      setCurrentMonth(new Date(y, m - 1, 1))
+    }
+  }, [myDayKey, currentMonth])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -286,6 +345,16 @@ export default function Calendar() {
     try {
       const v = localStorage.getItem(`calendar_show_recorded_time_${authUser.id}`)
       if (v !== null) setShowRecordedTime(v === 'true')
+    } catch {
+      /* ignore */
+    }
+  }, [authUser?.id])
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    try {
+      const v = localStorage.getItem(`calendar_show_weekends_${authUser.id}`)
+      if (v !== null) setShowWeekends(v === 'true')
     } catch {
       /* ignore */
     }
@@ -363,7 +432,7 @@ export default function Calendar() {
             async () =>
               await supabase
                 .from('job_schedule_blocks')
-                .select('id, job_id, work_date, time_start, time_end, jobs_ledger(hcp_number, job_name)')
+                .select('id, job_id, work_date, time_start, time_end, note, jobs_ledger(hcp_number, job_name)')
                 .eq('assignee_user_id', uid)
                 .gte('work_date', gridStart)
                 .lte('work_date', gridEnd)
@@ -720,7 +789,35 @@ export default function Calendar() {
 
   function today() {
     const now = new Date()
-    setCurrentMonth(getCentralDate(now))
+    const central = getCentralDate(now)
+    setCurrentMonth(central)
+    setMyDayKey(formatDateKey(central))
+  }
+
+  function renderShowMyWorkdayToggle() {
+    return (
+      <label
+        style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
+        title="Scheduled (green) hours show from tomorrow onward only. Unpaid time off appears on all days. Use recorded time for past days."
+      >
+        <input
+          type="checkbox"
+          checked={showMyWorkday}
+          onChange={(e) => {
+            const on = e.target.checked
+            setShowMyWorkday(on)
+            if (authUser?.id) {
+              try {
+                localStorage.setItem(`calendar_show_my_workday_${authUser.id}`, String(on))
+              } catch {
+                /* ignore */
+              }
+            }
+          }}
+        />
+        Show my workday
+      </label>
+    )
   }
 
   function renderShowRecordedTimeToggle() {
@@ -756,10 +853,142 @@ export default function Calendar() {
     )
   }
 
+  function renderShowWeekendsToggle() {
+    return (
+      <label
+        title="Hide Saturday and Sunday columns from the month grid. Day picks and scrubbing still work for any date you can reach."
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.35rem',
+          fontSize: '0.875rem',
+          cursor: 'pointer',
+          userSelect: 'none',
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={showWeekends}
+          onChange={(e) => {
+            const on = e.target.checked
+            setShowWeekends(on)
+            if (authUser?.id) {
+              try {
+                localStorage.setItem(`calendar_show_weekends_${authUser.id}`, String(on))
+              } catch {
+                /* ignore */
+              }
+            }
+          }}
+        />
+        Show weekends
+      </label>
+    )
+  }
+
+  function renderPlannedWorkChips(planned: PlannedBlockRow[], opts?: { onChipClick?: () => void }) {
+    if (planned.length === 0) {
+      return (
+        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No planned work.</p>
+      )
+    }
+    return (
+      <ul
+        style={{
+          listStyle: 'none',
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.35rem',
+        }}
+      >
+        {planned.map((p) => {
+          const jl = p.jobs_ledger
+          const label =
+            jl && ((jl.hcp_number ?? '').trim() || (jl.job_name ?? '').trim())
+              ? `${(jl.hcp_number ?? '').trim() || '—'} · ${(jl.job_name ?? '').trim()}`
+              : 'Job'
+          const canOpenJob = !!jobDetailModalCtx && !!p.job_id
+          const noteText = (p.note ?? '').trim()
+          const chipStyle = {
+            fontSize: '0.875rem',
+            padding: '0.5rem 0.75rem',
+            background: '#eef2ff',
+            border: '1px solid #c7d2fe',
+            borderRadius: 4,
+            color: '#312e81',
+            textAlign: 'center',
+          } as const
+          const chipBody = (
+            <>
+              <strong>{label}</strong>
+              <div style={{ marginTop: 4 }}>{scheduleFormatWindow(p.time_start, p.time_end)} Central</div>
+              {noteText ? (
+                <div
+                  style={{
+                    marginTop: 6,
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                    color: '#4338ca',
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  {noteText}
+                </div>
+              ) : null}
+            </>
+          )
+          if (canOpenJob) {
+            return (
+              <li key={p.id} style={chipStyle}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    opts?.onChipClick?.()
+                    jobDetailModalCtx?.openJobDetail({ jobId: p.job_id })
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 0,
+                    padding: 0,
+                    margin: 0,
+                    textAlign: 'center',
+                    color: 'inherit',
+                    font: 'inherit',
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                >
+                  {chipBody}
+                </button>
+              </li>
+            )
+          }
+          return (
+            <li key={p.id} style={chipStyle}>
+              {chipBody}
+            </li>
+          )
+        })}
+      </ul>
+    )
+  }
+
   if (loading) return <p>Loading...</p>
   if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
 
   const days = getDaysInMonth(currentMonth)
+  const visibleDays = showWeekends
+    ? days
+    : days.filter((d) => {
+        const dow = d.getDay()
+        return dow !== 0 && dow !== 6
+      })
+  const dayHeaders = showWeekends
+    ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+  const gridColumns = showWeekends ? 'repeat(7, 1fr)' : 'repeat(5, 1fr)'
   const monthName = currentMonth.toLocaleString('default', { month: 'long', year: 'numeric', timeZone: APP_CALENDAR_TZ })
   const now = new Date()
   const centralNow = getCentralDate(now)
@@ -776,6 +1005,55 @@ export default function Calendar() {
       
       {!loading && (
         <>
+          {authUser?.id && mobileCalendarLayout ? (
+            <div
+              aria-label="My day planned work"
+              style={{
+                border: '1px solid #e5e7eb',
+                borderRadius: 8,
+                padding: '0.75rem',
+                marginBottom: '1rem',
+                background: '#fff',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  marginBottom: '0.5rem',
+                }}
+              >
+                <button
+                  type="button"
+                  aria-label="Previous day"
+                  onClick={() => setMyDayKey((k) => shiftYmd(k, -1))}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                >
+                  ←
+                </button>
+                <div
+                  style={{
+                    flex: 1,
+                    textAlign: 'center',
+                    fontWeight: 600,
+                    fontSize: '0.9375rem',
+                  }}
+                >
+                  My Day · {formatMyDayHeadingLabel(myDayKey, todayKey)}
+                </div>
+                <button
+                  type="button"
+                  aria-label="Next day"
+                  onClick={() => setMyDayKey((k) => shiftYmd(k, 1))}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
+                >
+                  →
+                </button>
+              </div>
+              {renderPlannedWorkChips(plannedByWorkDate[myDayKey] ?? [])}
+            </div>
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <button type="button" onClick={prevMonth} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
@@ -787,43 +1065,22 @@ export default function Calendar() {
               </button>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              {isSalaryLayerEligible ? (
-                <label
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', cursor: 'pointer', userSelect: 'none' }}
-                  title="Scheduled (green) hours show from tomorrow onward only. Unpaid time off appears on all days. Use recorded time for past days."
-                >
-                  <input
-                    type="checkbox"
-                    checked={showMyWorkday}
-                    onChange={(e) => {
-                      const on = e.target.checked
-                      setShowMyWorkday(on)
-                      if (authUser?.id) {
-                        try {
-                          localStorage.setItem(`calendar_show_my_workday_${authUser.id}`, String(on))
-                        } catch {
-                          /* ignore */
-                        }
-                      }
-                    }}
-                  />
-                  Show my workday
-                </label>
-              ) : null}
+              {isSalaryLayerEligible && !mobileCalendarLayout ? renderShowMyWorkdayToggle() : null}
               {authUser?.id && !mobileCalendarLayout ? renderShowRecordedTimeToggle() : null}
+              {!mobileCalendarLayout ? renderShowWeekendsToggle() : null}
               <button type="button" onClick={today} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>
                 Today
               </button>
             </div>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb' }}>
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+          <div style={{ display: 'grid', gridTemplateColumns: gridColumns, gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb' }}>
+            {dayHeaders.map((day) => (
               <div key={day} style={{ background: 'white', padding: '0.5rem', textAlign: 'center', fontWeight: 500, fontSize: '0.875rem' }}>
                 {day}
               </div>
             ))}
-            {days.map((day, idx) => {
+            {visibleDays.map((day, idx) => {
               const daySteps = getStepsForDate(day)
               const dayBids = getBidsForDate(day)
               const dayCallbacks = getCallbacksForDate(day)
@@ -1177,10 +1434,16 @@ export default function Calendar() {
                         <>
                           {visible.map((p) => {
                             const jl = p.jobs_ledger
+                            const hcp = (jl?.hcp_number ?? '').trim()
+                            const jobName = (jl?.job_name ?? '').trim()
+                            const labelSeparator = mobileCalendarLayout ? ' ' : ' · '
                             const label =
-                              jl && ((jl.hcp_number ?? '').trim() || (jl.job_name ?? '').trim())
-                                ? `${(jl.hcp_number ?? '').trim() || '—'} · ${(jl.job_name ?? '').trim()}`
+                              jl && (hcp || jobName)
+                                ? `${hcp || '—'}${labelSeparator}${jobName}`
                                 : 'Planned'
+                            const timeWindow = mobileCalendarLayout
+                              ? compactScheduleWindow(p.time_start, p.time_end)
+                              : scheduleFormatWindow(p.time_start, p.time_end)
                             return (
                               <span
                                 key={p.id}
@@ -1196,6 +1459,7 @@ export default function Calendar() {
                                   lineHeight: 1.25,
                                   display: 'block',
                                   overflow: 'hidden',
+                                  textAlign: 'center',
                                 }}
                                 title={`${label} · ${scheduleFormatWindow(p.time_start, p.time_end)} (Central)`}
                               >
@@ -1211,7 +1475,7 @@ export default function Calendar() {
                                   {label}
                                 </span>
                                 <span style={{ display: 'block', color: '#4f46e5' }}>
-                                  {scheduleFormatWindow(p.time_start, p.time_end)}
+                                  {timeWindow}
                                 </span>
                               </span>
                             )
@@ -1245,12 +1509,16 @@ export default function Calendar() {
             <div
               style={{
                 display: 'flex',
+                flexWrap: 'wrap',
                 justifyContent: 'center',
+                gap: '1rem',
                 marginTop: '0.75rem',
                 marginBottom: '0.5rem',
               }}
             >
+              {isSalaryLayerEligible ? renderShowMyWorkdayToggle() : null}
               {renderShowRecordedTimeToggle()}
+              {renderShowWeekendsToggle()}
             </div>
           ) : null}
 
@@ -1392,31 +1660,9 @@ export default function Calendar() {
                           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>
                             Planned work
                           </div>
-                          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                            {modalPlanned.map((p) => {
-                              const jl = p.jobs_ledger
-                              const label =
-                                jl && ((jl.hcp_number ?? '').trim() || (jl.job_name ?? '').trim())
-                                  ? `${(jl.hcp_number ?? '').trim() || '—'} · ${(jl.job_name ?? '').trim()}`
-                                  : 'Job'
-                              return (
-                                <li
-                                  key={p.id}
-                                  style={{
-                                    fontSize: '0.875rem',
-                                    padding: '0.5rem 0.75rem',
-                                    background: '#eef2ff',
-                                    border: '1px solid #c7d2fe',
-                                    borderRadius: 4,
-                                    color: '#312e81',
-                                  }}
-                                >
-                                  <strong>{label}</strong>
-                                  <div style={{ marginTop: 4 }}>{scheduleFormatWindow(p.time_start, p.time_end)} Central</div>
-                                </li>
-                              )
-                            })}
-                          </ul>
+                          {renderPlannedWorkChips(modalPlanned, {
+                            onChipClick: () => setSelectedDayForModal(null),
+                          })}
                         </li>
                       ) : null}
                       {showRecordedTime && modalSessions.length > 0 ? (

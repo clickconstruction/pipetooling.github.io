@@ -10,7 +10,7 @@ import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
 const Customers = lazy(() => import('./pages/Customers'))
 const Projects = lazy(() => import('./pages/Projects'))
-const ProjectForm = lazy(() => import('./pages/ProjectForm'))
+const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
 const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
 const Workflow = lazy(() => import('./pages/Workflow'))
 const Settings = lazy(() => import('./pages/Settings'))
@@ -46,6 +46,7 @@ import { EstimatorTaskModalProvider } from './contexts/EstimatorTaskModalContext
 import { NewCustomerModalProvider } from './contexts/NewCustomerModalContext'
 import { NewProjectModalProvider } from './contexts/NewProjectModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
+import { EditProjectModalProvider } from './contexts/EditProjectModalContext'
 import { BillCustomerModalProvider } from './contexts/BillCustomerModalContext'
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
 import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
@@ -171,23 +172,25 @@ function AppContent() {
                       <NewCustomerModalProvider>
                         <NewProjectModalProvider>
                           <EditCustomerModalProvider>
-                            <BillCustomerModalProvider>
-                              <JobFormModalProvider>
-                                <BidPreviewModalProvider>
-                                  <DailyGoalsGateProvider>
-                                    <JobsListCacheProvider>
-                                      <UpdateFocusOpenerBridgeProvider>
-                                        <JobDetailModalProvider>
-                                          <UserDayScheduleModalProvider>
-                                            <Layout />
-                                          </UserDayScheduleModalProvider>
-                                        </JobDetailModalProvider>
-                                      </UpdateFocusOpenerBridgeProvider>
-                                    </JobsListCacheProvider>
-                                  </DailyGoalsGateProvider>
-                                </BidPreviewModalProvider>
-                              </JobFormModalProvider>
-                            </BillCustomerModalProvider>
+                            <EditProjectModalProvider>
+                              <BillCustomerModalProvider>
+                                <JobFormModalProvider>
+                                  <BidPreviewModalProvider>
+                                    <DailyGoalsGateProvider>
+                                      <JobsListCacheProvider>
+                                        <UpdateFocusOpenerBridgeProvider>
+                                          <JobDetailModalProvider>
+                                            <UserDayScheduleModalProvider>
+                                              <Layout />
+                                            </UserDayScheduleModalProvider>
+                                          </JobDetailModalProvider>
+                                        </UpdateFocusOpenerBridgeProvider>
+                                      </JobsListCacheProvider>
+                                    </DailyGoalsGateProvider>
+                                  </BidPreviewModalProvider>
+                                </JobFormModalProvider>
+                              </BillCustomerModalProvider>
+                            </EditProjectModalProvider>
                           </EditCustomerModalProvider>
                         </NewProjectModalProvider>
                       </NewCustomerModalProvider>
@@ -205,7 +208,7 @@ function AppContent() {
           <Route path="customers/:id/edit" element={<NavigateToEditCustomer />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/new" element={<ProjectNewGate />} />
-          <Route path="projects/:id/edit" element={<ProjectForm />} />
+          <Route path="projects/:id/edit" element={<ProjectEditGate />} />
           <Route path="workflows/:projectId" element={<Workflow />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="accounts-receivable" element={<JobsAccountsReceivable />} />

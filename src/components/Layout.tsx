@@ -12,6 +12,7 @@ import EstimatorTaskModal from './EstimatorTaskModal'
 import UserDayScheduleModal from './UserDayScheduleModal'
 import NewCustomerModal from './NewCustomerModal'
 import NewProjectModal from './NewProjectModal'
+import EditProjectModal from './projects/EditProjectModal'
 import EditCustomerModal from './EditCustomerModal'
 import {
   PINNABLE_PATHS,
@@ -1294,6 +1295,7 @@ export default function Layout() {
       <UserDayScheduleModal />
       <NewCustomerModal />
       <NewProjectModal />
+      <EditProjectModal />
       <EditCustomerModal />
     </div>
     </>

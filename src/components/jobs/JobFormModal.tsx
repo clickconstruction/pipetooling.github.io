@@ -573,6 +573,8 @@ export type JobFormModalProps = {
   newJobPrefillBidId?: string | null
   billingCustomerHighlightInitial: boolean
   fixturesSectionHighlightInitial: boolean
+  /** Scroll to / focus / flash the Customer Pictures input (dispatch "Add Customer Pictures URL"). */
+  jobPicturesLinkHighlightInitial: boolean
   alsoOpenCreateCustomerModal: boolean
   onClose: () => void
   onSaved: (() => void) | null
@@ -588,6 +590,7 @@ export default function JobFormModal({
   newJobPrefillBidId = null,
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
+  jobPicturesLinkHighlightInitial,
   alsoOpenCreateCustomerModal,
   onClose,
   onSaved,
@@ -724,6 +727,7 @@ export default function JobFormModal({
   const [projectFilesPlansExpanded, setProjectFilesPlansExpanded] = useState(false)
   const [billingCustomerHighlight, setBillingCustomerHighlight] = useState(false)
   const [fixturesSectionHighlight, setFixturesSectionHighlight] = useState(false)
+  const [jobPicturesLinkHighlight, setJobPicturesLinkHighlight] = useState(false)
   const [dateMet, setDateMet] = useState('')
   const [lastBillDate, setLastBillDate] = useState('')
   const [googleDriveLink, setGoogleDriveLink] = useState('')
@@ -840,6 +844,8 @@ export default function JobFormModal({
   const contractorsDropdownRef = useRef<HTMLDivElement | null>(null)
   const billingCustomerHighlightRef = useRef<HTMLDivElement | null>(null)
   const fixturesSectionHighlightRef = useRef<HTMLDivElement | null>(null)
+  const jobPicturesLinkHighlightRef = useRef<HTMLDivElement | null>(null)
+  const jobPicturesLinkInputRef = useRef<HTMLInputElement | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [newInvoiceAmount, setNewInvoiceAmount] = useState('')
@@ -1079,7 +1085,7 @@ export default function JobFormModal({
     onClose()
   }
 
-  function applyEditJob(job: JobWithDetails, billingGate: boolean, fixturesGate: boolean) {
+  function applyEditJob(job: JobWithDetails, billingGate: boolean, fixturesGate: boolean, picturesGate: boolean) {
     setPaymentRemoveConfirmRowId(null)
     setPaymentRemoveRpcBusy(false)
     setUnlinkMercuryConfirmRowId(null)
@@ -1095,6 +1101,7 @@ export default function JobFormModal({
     setBillViewInvoice(null)
     setBillingCustomerHighlight(billingGate)
     setFixturesSectionHighlight(fixturesGate)
+    setJobPicturesLinkHighlight(picturesGate)
     setEditing(job)
     setHcpNumber(job.hcp_number ?? '')
     setJobName(job.job_name ?? '')
@@ -1118,7 +1125,7 @@ export default function JobFormModal({
     )
     setFormServiceTypeId(job.service_type_id ?? '')
     setCustomerSearch('')
-    setCustomerExpanded(billingGate && !jobLedgerHasCustomerForBilling(job.customer_id))
+    setCustomerExpanded(picturesGate || (billingGate && !jobLedgerHasCustomerForBilling(job.customer_id)))
     setLastBillDate(job.last_bill_date ? job.last_bill_date.slice(0, 10) : '')
     setGoogleDriveLink(job.google_drive_link ?? '')
     setJobPicturesLink(job.job_pictures_link ?? '')
@@ -1179,6 +1186,7 @@ export default function JobFormModal({
     setContractorsDropdownOpen(false)
     setBillingCustomerHighlight(false)
     setFixturesSectionHighlight(false)
+    setJobPicturesLinkHighlight(false)
     setSourceEstimateForJob(null)
     setContractModalEstimateId(null)
     setNewInvoiceAmount('')
@@ -1493,7 +1501,7 @@ export default function JobFormModal({
             onClose()
             return
           }
-          applyEditJob(job, billingCustomerHighlightInitial, fixturesSectionHighlightInitial)
+          applyEditJob(job, billingCustomerHighlightInitial, fixturesSectionHighlightInitial, jobPicturesLinkHighlightInitial)
           if (alsoOpenCreateCustomerModal && (job.customer_name ?? '').trim()) {
             setCreateCustomerFromJobType('residential')
             setCreateCustomerFromJobModalOpen(true)
@@ -1847,6 +1855,29 @@ export default function JobFormModal({
     const t = window.setTimeout(() => setFixturesSectionHighlight(false), 2500)
     return () => window.clearTimeout(t)
   }, [fixturesSectionHighlight])
+
+  useEffect(() => {
+    if (!jobPicturesLinkHighlight) return
+    const id = requestAnimationFrame(() => {
+      jobPicturesLinkHighlightRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      const input = jobPicturesLinkInputRef.current
+      if (input) {
+        input.focus()
+        try {
+          input.select()
+        } catch {
+          // ignore environments where select() throws on empty inputs
+        }
+      }
+    })
+    return () => cancelAnimationFrame(id)
+  }, [jobPicturesLinkHighlight])
+
+  useEffect(() => {
+    if (!jobPicturesLinkHighlight) return
+    const t = window.setTimeout(() => setJobPicturesLinkHighlight(false), 2500)
+    return () => window.clearTimeout(t)
+  }, [jobPicturesLinkHighlight])
 
   useEffect(() => {
     if (customerId && customers.length > 0) {
@@ -2743,6 +2774,29 @@ export default function JobFormModal({
           .update(updatePayload)
           .eq('id', editing.id)
         if (updateErr) throw updateErr
+        const trimmedJobPicturesLink = jobPicturesLink.trim()
+        const previousJobPicturesLink = (editing.job_pictures_link ?? '').trim()
+        if (trimmedJobPicturesLink && !previousJobPicturesLink) {
+          try {
+            await withSupabaseRetry(
+              async () =>
+                supabase
+                  .from('dispatch_requests')
+                  .update({
+                    status: 'closed',
+                    closed_at: new Date().toISOString(),
+                    closed_by_user_id: authUser.id,
+                    closed_note: 'Customer Pictures URL added',
+                  })
+                  .eq('job_ledger_id', editing.id)
+                  .eq('pending_action', 'link_job_pictures')
+                  .eq('status', 'open'),
+              'auto-close link_job_pictures dispatch requests',
+            )
+          } catch (closeErr) {
+            console.warn('auto-close dispatch_requests failed', closeErr)
+          }
+        }
         await supabase.from('jobs_ledger_payments').delete().eq('job_id', editing.id)
         for (const [i, p] of validPayments.entries()) {
           await supabase.from('jobs_ledger_payments').insert({
@@ -3712,12 +3766,26 @@ export default function JobFormModal({
                     customer and job folders
                   </a>
                 </div>
-                <div style={{ marginBottom: 0 }}>
+                <div
+                  ref={jobPicturesLinkHighlightRef}
+                  style={{
+                    marginBottom: 0,
+                    borderRadius: 8,
+                    ...(jobPicturesLinkHighlight
+                      ? {
+                          padding: '0.75rem',
+                          background: '#eff6ff',
+                          border: '2px solid #93c5fd',
+                        }
+                      : {}),
+                  }}
+                >
                   <label htmlFor="job-form-customer-job-pictures" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
                     Customer Pictures
                   </label>
                   <input
                     id="job-form-customer-job-pictures"
+                    ref={jobPicturesLinkInputRef}
                     type="url"
                     value={jobPicturesLink}
                     onChange={(e) => setJobPicturesLink(e.target.value)}

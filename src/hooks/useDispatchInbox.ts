@@ -10,7 +10,7 @@ import type {
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
 const DISPATCH_REQUEST_SELECT =
-  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)'
+  'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)'
 
 const DISMISSED_DISPATCH_ID_CHUNK = 120
 

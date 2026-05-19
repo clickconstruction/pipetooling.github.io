@@ -125,6 +125,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### May 2026
 
+#### May 19, 2026
+
+**`20260519171140_dispatch_requests_pending_action.sql`**
+- **Purpose**: **Dashboard My Schedule → Dispatch task** flow. Adds a stable token to **`dispatch_requests`** that drives in-app action affordances on inbox rows. The first known value is **`'link_job_pictures'`** — *Add a Customer Pictures folder for a job*, surfaced as an **Add Customer Pictures URL** button on the dispatch inbox row that deep-links into **Edit Job** with the **Customer Pictures** input scrolled into view, focused, and flashed. Future tokens can extend the same UX without further schema changes.
+- **Changes**: **`ALTER TABLE public.dispatch_requests ADD COLUMN IF NOT EXISTS pending_action text NULL`** (nullable so plain text tasks keep working unchanged) + **`COMMENT ON COLUMN`** documenting the known token. **Partial index** **`dispatch_requests_pending_action_open_job_idx`** on **`(job_ledger_id, pending_action) WHERE pending_action IS NOT NULL AND status = 'open'`** so the per-job dedupe lookup (*do we already have an open `link_job_pictures` request for this job?*) costs a single index seek even as `dispatch_requests` grows. No RLS additions — existing row policies cover the new column. No RPCs.
+- **Impact**: **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** (`submitLinkJobPicturesDispatchRequest` — dedupe SELECT → INSERT → fire `notify-dispatch-request` Edge → toast); **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** (`jobPicturesLinkHighlight` flag mirrors `fixturesSectionHighlight` pattern — scroll/focus/flash + auto-close `dispatch_requests` after URL save); **[`JobFormModalContext.tsx`](src/contexts/JobFormModalContext.tsx)** (`OpenEditJobOptions.jobPicturesLinkHighlight`); **[`DispatchInboxSection.tsx`](src/components/DispatchInboxSection.tsx)** + **[`useDispatchInbox.ts`](src/hooks/useDispatchInbox.ts)** (row type + select column list + `onLinkJobPictures?` prop + button render); wired from **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **[`Quickfill.tsx`](src/pages/Quickfill.tsx)**, **[`ChecklistReviewInboxes.tsx`](src/components/checklist/ChecklistReviewInboxes.tsx)** (all three `DispatchInboxSection` mounts). Edge **`notify-dispatch-request`** unchanged (already tolerates empty `links[]`). **`RECENT_FEATURES.md`** **v2.556**, **`GLOSSARY.md`** **Link Customer Pictures dispatch action**. Applied via Supabase MCP `apply_migration` (local file timestamp predated existing remote migrations); `npm run gen-types:linked` after apply.
+- **Category**: Dashboard / Dispatch / schema
+
 #### May 16, 2026
 
 **`20260516162434_drop_crew_lead_inheritance_from_sync_rpcs.sql`**

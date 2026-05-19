@@ -8,6 +8,8 @@ export type OpenEditJobOptions = {
   billingCustomerHighlight?: boolean
   /** Scroll to Specific Work and flash highlight briefly (e.g. Field queue “Add Line Items”). */
   fixturesSectionHighlight?: boolean
+  /** Scroll to Customer Pictures and flash highlight briefly (Dispatch "Add Customer Pictures URL"). */
+  jobPicturesLinkHighlight?: boolean
   /** After opening edit, open "Create customer from job" when customer name is present (billing flow). */
   alsoOpenCreateCustomerModal?: boolean
 }
@@ -36,6 +38,7 @@ type InternalOpenState =
       initialJob: JobWithDetails | null
       billingCustomerHighlight: boolean
       fixturesSectionHighlight: boolean
+      jobPicturesLinkHighlight: boolean
       alsoOpenCreateCustomerModal: boolean
       onSaved: (() => void) | null
     }
@@ -65,6 +68,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
       initialJob: options?.initialJob ?? null,
       billingCustomerHighlight: options?.billingCustomerHighlight ?? false,
       fixturesSectionHighlight: options?.fixturesSectionHighlight ?? false,
+      jobPicturesLinkHighlight: options?.jobPicturesLinkHighlight ?? false,
       alsoOpenCreateCustomerModal: options?.alsoOpenCreateCustomerModal ?? false,
       onSaved: options?.onSaved ?? null,
     })
@@ -104,6 +108,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           initialJob={openState.initialJob}
           billingCustomerHighlightInitial={openState.billingCustomerHighlight}
           fixturesSectionHighlightInitial={openState.fixturesSectionHighlight}
+          jobPicturesLinkHighlightInitial={openState.jobPicturesLinkHighlight}
           alsoOpenCreateCustomerModal={openState.alsoOpenCreateCustomerModal}
           onClose={closeJobForm}
           onSaved={openState.onSaved}
@@ -118,6 +123,7 @@ export function JobFormModalProvider({ children }: { children: React.ReactNode }
           newJobPrefillBidId={openState.prefillBidId}
           billingCustomerHighlightInitial={false}
           fixturesSectionHighlightInitial={false}
+          jobPicturesLinkHighlightInitial={false}
           alsoOpenCreateCustomerModal={false}
           onClose={closeJobForm}
           onSaved={openState.onSaved}

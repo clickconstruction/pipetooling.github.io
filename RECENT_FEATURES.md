@@ -7,15 +7,21 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-18
+last_updated: 2026-05-19
 estimated_read_time: 30-45 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.554+ (reverse chronological)"
+version_range: "v2.556+ (reverse chronological)"
 
 key_sections:
-  - name: "Latest Version (v2.554)"
+  - name: "Latest Version (v2.556)"
+    line: ~1864
+    description: "My Schedule photo icon → Dispatch task with Edit Job deep-link. When a field user taps the red customer-photos icon on a My Schedule row that has no `jobs_ledger.job_pictures_link`, the Dashboard now inserts a `dispatch_requests` row tagged `pending_action = 'link_job_pictures'` and fires `notify-dispatch-request` (instead of showing the old *Contact Dispatch and ask them to link a folder…* toast). Inserts are deduplicated per (`job_ledger_id`, `pending_action`, `status='open'`) so a second tap shows *Already sent to Dispatch.* and creates nothing. The dispatch inbox row renders an inline blue-outlined **Add Customer Pictures URL** button on rows with that token; clicking it calls `onLinkJobPictures(jobId)` → `useJobFormModal().openEditJob(jobId, { jobPicturesLinkHighlight: true })` and the Edit Job modal scrolls to the **Customer Pictures** input, focuses it, and flashes a 2.5 s blue highlight (same mechanism as the existing `fixturesSectionHighlight` / `billingCustomerHighlight` patterns). Saving a non-empty `job_pictures_link` on the same job auto-closes any open `link_job_pictures` dispatch rows for that `job_ledger_id` with `closed_note = 'Customer Pictures URL added'`. New migration `20260519171140_dispatch_requests_pending_action` adds the nullable `pending_action` text column + a partial `(job_ledger_id, pending_action)` index gated on `pending_action IS NOT NULL AND status='open'` (keeps the dedupe lookup cheap). Edge `notify-dispatch-request` already tolerates empty `links[]` (no code change needed). DispatchInboxSection extended with `pending_action`, `job_ledger_id`, and an `onLinkJobPictures?` prop; `useDispatchInbox.DISPATCH_REQUEST_SELECT` hydrates the new fields. Wired through Dashboard, Quickfill, and ChecklistReviewInboxes. The missing-icon button copy/title is now *No customer photos link — tap to ask Dispatch to set one* so the affordance reads as an action."
+  - name: "Previous Version (v2.555)"
+    line: ~1880
+    description: "Dashboard mobile — subcontractor-style **Last Activity** column on Assigned Jobs collapses from three stacked lines (`Last activity:` / `23 hours ago` / `Field report`) to a single terse line `Last Activity 23h ago: Field report`. Only affects the two `isSubcontractorLikeRole(role) && isMobile` callsites in [`Dashboard.tsx`](src/pages/Dashboard.tsx) (around lines ~7440 and ~7726); desktop (`!isMobile`) keeps the existing three-line layout unchanged. Compact relative phrase: `5m ago / 23h ago / 2d ago / 3w ago / 4mo ago / 1y ago` (`mo` for months avoids the `m` (minute) collision; <1m and any future instant collapse to `just now` with no `ago` suffix). Multi-source ms-ties comma-join into the single line (e.g. `Last Activity 23h ago: Thread note, Field report`) following the existing `SUBCONTRACTOR_ACTIVITY_SOURCE_ORDER` from [`subcontractorJobActivityCopy.ts`](src/lib/subcontractorJobActivityCopy.ts). The whole compact line is the tap target (a `<button className=\"subcontractorLastActivityTypeBtn\">`), so tapping anywhere on the line still opens `SubcontractorJobActivityModal` (the existing source-type explainer) — discoverability stays the same. `title` reuses the existing `formatDatetime` for the long datetime tooltip; explicit `aria-label` like `Last activity: 23 hours ago, Field report` preserves the full phrase for screen readers. No-activity rows render as plain text `Last Activity: No activity yet` (not a button) and carry the existing long explainer (`No thread notes, field reports, work sessions, or schedule activity on this job yet`) as `title`. New pure helper module [`src/lib/subcontractorLastActivityCompact.ts`](src/lib/subcontractorLastActivityCompact.ts) with `compactTimeAgo`, `longTimeAgoPhrase`, `subcontractorLastActivitySourceLine`, and `subcontractorLastActivityMobileLine` — the last accepts an injectable `formatTitle` callback so the lib has zero locale dependency (tests pass a deterministic stub, Dashboard passes its existing `formatDatetime`). 22 unit tests in [`subcontractorLastActivityCompact.test.ts`](src/lib/subcontractorLastActivityCompact.test.ts) cover unit-bucket boundaries, null/blank/invalid ISO, just-now and future-instant collapse, single-source labels, tie-comma-joining in fixed order, no-source-aligned fallback, no-activity copy, and the default-passthrough `formatTitle`. Reuses existing `.subcontractorLastActivityTypeBtn` CSS (font/color/text-align inherit, hover underline, focus ring, `max-width: 100%` so long ties wrap on narrow phones). No DB / migration / RLS / RPC / Edge changes — fields already exist on `DashboardTeamAssignedJobRow` (`last_job_activity_at` + per-source `last_*_at`). Verified: `npx tsc --noEmit` clean, 22 / 22 unit tests pass, no new lints."
+  - name: "Previous Version (v2.554)"
     line: ~1853
     description: "Projects → new **Forecast** tab right of Job History — visualizes `project_workflow_steps` as Gantt bars driven by the `scheduled_start_date` / `scheduled_end_date` columns + the actual `started_at` / `ended_at` timestamps from Workflow. Two independent sub-tabs (`?forecastSub=specific|all-stages`, default `specific`). **Specific** — job search typeahead (substring match on HCP / name / address / project name via [`projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts), persists selection to `?forecastJob=` + `localStorage` `projects_forecast_specific_selected_job_v1`) shows one row per stage in `sequence_order` ASC, each row a colored Gantt bar spanning the stage's resolved `[startYmd, endYmd]`; range auto-fits to `min(start) → max(end)` padded ±3 days (user can override via From/To inputs; override persists under `projects_forecast_specific_range_v1`; **Reset to fit** chip restores auto-fit when overridden); click a stage bar or its left-gutter label opens `/workflows/${project_id}#step-${stage_id}` in a new tab. **All Stages** — one row per job-with-project (any `jobs_ledger.status`), stages laid out side-by-side horizontally so dispatchers can spot crew-assignment gaps at a glance; default range today − 7d → today + 90d (forward-leaning, persisted under `projects_forecast_all_range_v1`); **Only show jobs with active stages** checkbox filters out jobs whose every stage is `completed` / `approved` / `skipped` (persisted under `projects_forecast_all_active_only_v1`); job-row label or stage bar deep-links to Workflow. **Pure resolver** [`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) (`resolveForecastStages(stagesIn, todayYmd)`, 19 unit tests) chains every stage: `start = scheduled_start_date ?? prior.endYmd ?? actual(started_at) ?? todayYmd`, `end = scheduled_end_date ?? actual(ended_at) ?? ymdAddDays(start, 1)`, and flags `isUnscheduled = !scheduled_start && !scheduled_end && !started_at && !ended_at` so stages with no dates render as 1-day **grey dashed** placeholders at the chained position (never invisible). `colorKey` honors explicit `skipped` over the inferred `unscheduled` look. **Shared grid** [`ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx) is generic over row shape — sticky 2-tier date header (month run + day digit), today vertical line, weekend tints, optional sticky label gutter, `renderRow` callback so both sub-tabs share day-column math; auto-scrolls to center `todayYmd` on mount. Color map [`projectsForecastColors.ts`](src/lib/projectsForecastColors.ts) mirrors `getStepStatusStyle` from Workflow (green for completed/approved, orange `#E87600` in_progress, red `#b91c1c` rejected, light grey pending, muted strikethrough skipped, grey dashed unscheduled). **Realtime** channel `projects-forecast-${authUserId}` on `project_workflow_steps` with `workflow_id=in.(...)` filter (cap 80, unfiltered fallback) + unfiltered `jobs_ledger`, 280 ms debounce + `useDocumentVisibility` gate — mirrors the Job History pattern. Permissions ride existing `project_workflow_steps` RLS (dev / master see all, assistant / superintendent see via `can_access_project_via_workflow`, subcontractor / helpers see only assigned stages). New files: [`projectsForecastData.ts`](src/lib/projectsForecastData.ts) (`fetchForecastJobs` + `fetchForecastStages` + `groupStagesByWorkflow`), [`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) + tests, [`projectsForecastColors.ts`](src/lib/projectsForecastColors.ts), [`projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts) + 12 unit tests, [`projectsForecastToolbarStyles.ts`](src/lib/projectsForecastToolbarStyles.ts); [`ProjectsForecastTab.tsx`](src/components/projects/ProjectsForecastTab.tsx), [`ProjectsForecastSpecificTab.tsx`](src/components/projects/ProjectsForecastSpecificTab.tsx), [`ProjectsForecastAllStagesTab.tsx`](src/components/projects/ProjectsForecastAllStagesTab.tsx), [`ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx). Modified: [`Projects.tsx`](src/pages/Projects.tsx) (added `'forecast'` to `ProjectsPageTab`, parser, third tab button, mount). Verified: `npx tsc --noEmit` clean, no new lints, 31 / 31 vitest pass across the two new test files (resolver + job search) + 88 / 88 across the wider Projects + Forecast suite."
   - name: "Previous Version (v2.553)"
@@ -1859,7 +1865,185 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.554)
+## Latest Updates (v2.556)
+
+**Date**: 2026-05-19
+
+### My Schedule photo icon → Dispatch task with Edit Job deep-link
+
+Field users see a red customer-photos icon on every My Schedule row whose `jobs_ledger.job_pictures_link` is empty. The old behavior was a 5-second toast telling them to contact Dispatch out-of-band. The new behavior sends a structured task into the Dispatch inbox with a one-click action that opens Edit Job already focused on the right input.
+
+```mermaid
+sequenceDiagram
+    participant Field as Field user (My Schedule)
+    participant DB as dispatch_requests
+    participant Inbox as Dispatch inbox
+    participant Dispatcher
+    participant EditJob as JobFormModal
+
+    Field->>Field: tap red photo icon
+    Field->>DB: dedupe SELECT, then INSERT (pending_action='link_job_pictures')
+    Field->>Field: toast "Sent to Dispatch" or "Already sent"
+    DB->>Inbox: row renders Add Customer Pictures URL button
+    Dispatcher->>EditJob: click button → openEditJob({jobPicturesLinkHighlight: true})
+    EditJob->>EditJob: scroll + focus + flash Customer Pictures input
+    Dispatcher->>DB: save URL → auto-close open link_job_pictures rows for this jobId
+```
+
+#### Database
+
+Migration `supabase/migrations/20260519171140_dispatch_requests_pending_action.sql`:
+
+```sql
+ALTER TABLE public.dispatch_requests
+  ADD COLUMN IF NOT EXISTS pending_action text NULL;
+
+COMMENT ON COLUMN public.dispatch_requests.pending_action IS
+  'Stable token for in-app action affordances on the dispatch inbox row (NULL for plain text tasks). Known values: ''link_job_pictures'' (open Edit Job and focus the Customer Pictures input).';
+
+CREATE INDEX IF NOT EXISTS dispatch_requests_pending_action_open_job_idx
+  ON public.dispatch_requests (job_ledger_id, pending_action)
+  WHERE pending_action IS NOT NULL AND status = 'open';
+```
+
+The partial index keeps the dedupe lookup (`job_ledger_id = :jobId AND pending_action = 'link_job_pictures' AND status = 'open'`) cheap. Existing RLS on `dispatch_requests` covers the new column. No new policies; no RPCs.
+
+#### Submit flow (Dashboard)
+
+The old constants `MY_SCHEDULE_MISSING_JOB_PICTURES_TOAST{,_MS}` were removed. New helper `submitLinkJobPicturesDispatchRequest` on `Dashboard`:
+
+1. Dedupe pre-check via `withSupabaseRetry<{ id: string } | null>`: if an open `link_job_pictures` row already exists for this `job_ledger_id`, show *Already sent to Dispatch. They will add the folder soon.* and return.
+2. INSERT into `dispatch_requests` with `from_user_id: authUser.id`, `title: \`Add a Customer Pictures folder for HCP ${hcp} - ${jobName}\`` (omits the `HCP ${hcp} - ` prefix when missing), `links: []`, `job_ledger_id: jobId`, `bid_id: null`, `reference_summary: \`HCP ${hcp} | ${jobName} - ${jobAddress}\`` (parts gracefully drop when blank), `pending_action: 'link_job_pictures'`.
+3. Fire-and-forget `supabase.functions.invoke('notify-dispatch-request', { body: { dispatch_request_id } })` so the dispatch group receives the same push notification shape as `DispatchTaskModal` sends.
+4. Toast *Sent to Dispatch. They will add the customer pictures folder soon.*
+
+The button copy / title on `DashboardJobPicturesLinkRow` was updated to *No customer photos link — tap to ask Dispatch to set one* so the affordance reads as a dispatch action, not a passive instruction.
+
+#### Edit Job highlight + auto-close
+
+`OpenEditJobOptions` in [`src/contexts/JobFormModalContext.tsx`](src/contexts/JobFormModalContext.tsx) gains `jobPicturesLinkHighlight?: boolean`; the provider passes it through as `jobPicturesLinkHighlightInitial` to [`JobFormModal`](src/components/jobs/JobFormModal.tsx). Inside the modal, the flag mirrors the existing `fixturesSectionHighlight` / `billingCustomerHighlight` mechanism: new state, new `ref` on the Customer Pictures `<div>`, new `ref` on the `<input id="job-form-customer-job-pictures">`, plus two `useEffect`s — one to `scrollIntoView({behavior:'smooth', block:'nearest'})` + `.focus()` + `.select()` the input on the next `requestAnimationFrame`, and one to clear the flag after 2500 ms (same timeout as fixtures). The wrapper `<div>` picks up the same blue highlight style (`padding: 0.75rem`, `background: '#eff6ff'`, `border: '2px solid #93c5fd'`, `borderRadius: 8`) while the flag is set. When the flag is set on open, `applyEditJob` also force-expands the **Customer** accordion so the input is reachable even when `customer_id` is already linked.
+
+After the `jobs_ledger` UPDATE succeeds, the save handler compares `jobPicturesLink.trim()` against the snapshot's `editing.job_pictures_link?.trim()`. If the new value is non-empty and the previous value was empty, it issues a non-fatal `withSupabaseRetry` UPDATE on `dispatch_requests` for `(job_ledger_id = editing.id, pending_action = 'link_job_pictures', status = 'open')` setting `status='closed'`, `closed_at = now()`, `closed_by_user_id = authUser.id`, `closed_note = 'Customer Pictures URL added'`. Existing RLS already lets dispatch group members close requests, which matches the roles allowed to edit the job. Failure is logged and swallowed — saving the URL is the success path; the dispatch row falls into the next inbox load if the close blip recovers.
+
+#### Dispatch inbox affordance
+
+[`DispatchInboxRow`](src/components/DispatchInboxSection.tsx) gains `pending_action: string | null` and `job_ledger_id: string | null`. [`useDispatchInbox.DISPATCH_REQUEST_SELECT`](src/hooks/useDispatchInbox.ts) was extended to hydrate both. A new optional `onLinkJobPictures?: (jobId: string) => void` prop on `DispatchInboxSection` drives an inline blue-outlined button **Add Customer Pictures URL** rendered next to `statsEl` on rows where `!isClosed && pending_action === 'link_job_pictures' && job_ledger_id && onLinkJobPictures`. Visible in both narrow and wide layouts; hidden on closed rows so the auto-closed history stays clean.
+
+#### Wire-up
+
+Both `DispatchInboxSection` mounts in [`Dashboard.tsx`](src/pages/Dashboard.tsx), [`Quickfill.tsx`](src/pages/Quickfill.tsx), and [`ChecklistReviewInboxes.tsx`](src/components/checklist/ChecklistReviewInboxes.tsx) now pass `onLinkJobPictures={jobFormModal ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true }) : undefined}`. Quickfill and ChecklistReviewInboxes additionally import `useJobFormModal` (Dashboard already had it). `DispatchDismissedItemsModal` only imports the type — no UI wire-up needed.
+
+#### Edge function
+
+`supabase/functions/notify-dispatch-request/index.ts` builds the push body from `title + senderLabel + (reference_summary or job/bid lookup)` and never reads `links[]`, so passing `links: []` works as-is. No code change required.
+
+#### Files
+
+- New: [`supabase/migrations/20260519171140_dispatch_requests_pending_action.sql`](supabase/migrations/20260519171140_dispatch_requests_pending_action.sql).
+- Modified: [`src/contexts/JobFormModalContext.tsx`](src/contexts/JobFormModalContext.tsx) (option + provider plumbing), [`src/components/jobs/JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) (prop, state, refs, scroll/focus effect, clear effect, ref on Customer Pictures `<div>`/`<input>`, force-expand customer accordion, auto-close `dispatch_requests` after URL save), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) (drop toast constants, `submitLinkJobPicturesDispatchRequest`, button copy update, two `onLinkJobPictures` wire-ups), [`src/pages/Quickfill.tsx`](src/pages/Quickfill.tsx) (`useJobFormModal` import, one wire-up), [`src/components/checklist/ChecklistReviewInboxes.tsx`](src/components/checklist/ChecklistReviewInboxes.tsx) (same), [`src/components/DispatchInboxSection.tsx`](src/components/DispatchInboxSection.tsx) (row type, prop, button render), [`src/hooks/useDispatchInbox.ts`](src/hooks/useDispatchInbox.ts) (select column list), [`src/types/database.ts`](src/types/database.ts) (regenerated via `npm run gen-types:linked`).
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npm test -- --run` — 834 / 834 pass (no new pure-logic helpers to test directly; the auto-close + dedupe paths are exercised end-to-end through Supabase).
+- No new lints in any touched file.
+
+---
+
+## Previous Updates (v2.555)
+
+**Date**: 2026-05-19
+
+### Dashboard mobile: single-line "Last Activity"
+
+The subcontractor-style Assigned Jobs rows on the Dashboard used to render the "Last activity" cell as three stacked lines on mobile — `Last activity:` / `23 hours ago` / `Field report` — which ate a lot of vertical real estate for what's essentially one small status. This change collapses it into a single terse line prefixed with **Last Activity**:
+
+```
+Last Activity 23h ago: Field report
+```
+
+#### Scope
+
+Only the two `isSubcontractorLikeRole(role) && isMobile` callsites in [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) (around lines ~7440 and ~7726) are affected. Desktop (`!isMobile`) keeps the existing three-line layout unchanged. Jobs Stages' "Last activity" column in [`src/pages/Jobs.tsx`](src/pages/Jobs.tsx) is a different concept and is untouched.
+
+#### Compact format
+
+The relative time phrase: `5m ago / 23h ago / 2d ago / 3w ago / 4mo ago / 1y ago`. Two-letter `mo` for months avoids colliding with the one-letter `m` (minutes). `<1m` and any future-stamped activity collapse to `just now` (no `ago` suffix). Blank / invalid ISO surfaces through the wrapper as the no-activity row (see below); the raw helper returns `—` defensively.
+
+Multi-source ms-ties (when two activity types share the exact same timestamp) comma-join the source labels into the single line, using the existing fixed `SUBCONTRACTOR_ACTIVITY_SOURCE_ORDER` from [`src/lib/subcontractorJobActivityCopy.ts`](src/lib/subcontractorJobActivityCopy.ts):
+
+```
+Last Activity 23h ago: Thread note, Field report
+```
+
+Just-now drops the `ago` suffix but keeps the `Last Activity` prefix:
+
+```
+Last Activity just now: Thread note
+```
+
+When the activity timestamp doesn't align with any source's `last_*_at` (defensive fallback), the line drops the trailing colon and shows the prefix + compact rel alone:
+
+```
+Last Activity 5h ago
+```
+
+No-activity rows render as plain text (not a button) and carry the existing long explainer (`No thread notes, field reports, work sessions, or schedule activity on this job yet`) as `title`:
+
+```
+Last Activity: No activity yet
+```
+
+#### Tap behavior
+
+The whole compact line is the tap target — a `<button className="subcontractorLastActivityTypeBtn">` — so tapping anywhere on it opens the existing `SubcontractorJobActivityModal` (the source-type explainer). Previously only the third line ("Field report") was the tap target; the new single-line affordance is strictly larger and easier to hit on a phone.
+
+#### Accessibility
+
+- `title` reuses Dashboard's existing `formatDatetime` for the long datetime tooltip (`Latest activity: Wed, 5/19/26, 11:41 AM`).
+- `aria-label` carries the spelled-out phrase for screen readers (`Last activity: 23 hours ago, Field report`), independent of the visible terse text.
+- `:focus-visible` ring on the button is the existing 2 px `#2563eb` outline from [`src/index.css`](src/index.css).
+
+#### New pure helper
+
+New module [`src/lib/subcontractorLastActivityCompact.ts`](src/lib/subcontractorLastActivityCompact.ts):
+
+- `compactTimeAgo(iso, now?): string` — terse `Nunit ago` phrase (`23h ago`, `5d ago`, `just now`, `—`) with optional injected `now` for testability.
+- `longTimeAgoPhrase(iso, now?): string` — spelled-out phrase (`23 hours ago`, `Just now`, `No activity yet`) for `aria-label`.
+- `subcontractorLastActivitySourceLine(j): string | null` — comma-joined source labels matching the activity instant, in fixed source order.
+- `subcontractorLastActivityMobileLine(j, opts?): { text, clickable, title, aria }` — the top-level helper Dashboard wires into. Composes `Last Activity {compactTimeAgo}: {sourceLine}` (or drops the trailing `: {sourceLine}` when no source aligns, or returns `Last Activity: No activity yet` when there's no activity). Accepts an injectable `formatTitle` callback so the lib has zero locale dependency (tests pass a deterministic stub; Dashboard passes its existing `formatDatetime`).
+
+The mobile helper deliberately duplicates the source-ms-tie logic from `subcontractorLastActivityBlock` in [`Dashboard.tsx`](src/pages/Dashboard.tsx) rather than coupling to the page module — the desktop block stays as-is.
+
+#### Tests
+
+22 unit tests in [`src/lib/subcontractorLastActivityCompact.test.ts`](src/lib/subcontractorLastActivityCompact.test.ts) cover:
+
+- `compactTimeAgo`: null / blank / invalid ISO → `—`; future / <1m / just-now → `just now`; minutes / hours / days / weeks / months / years bucket boundaries with the `Nunit ago` suffix.
+- `longTimeAgoPhrase`: blank → `No activity yet`; `Just now` for sub-minute; singular vs plural pluralization across all units.
+- `subcontractorLastActivitySourceLine`: blank `last_job_activity_at` → null; single-source happy paths (each of the four sources); ms-tie comma-joining in fixed `SUBCONTRACTOR_ACTIVITY_SOURCE_ORDER`; defensive `null` return when no source aligns.
+- `subcontractorLastActivityMobileLine`: `Last Activity 23h ago: Field report` happy path with title + aria; just-now (no `ago` suffix); ms-tie comma-joining; activity-with-no-aligned-source (`Last Activity 5h ago` with no trailing colon); no-activity (`Last Activity: No activity yet`, not clickable, long title); invalid ISO falls through to no-activity; `formatTitle` defaults to ISO passthrough.
+
+#### CSS
+
+Reuses existing `.subcontractorLastActivityTypeBtn` from [`src/index.css`](src/index.css) — `font: inherit`, `color: inherit`, `text-align: inherit`, `cursor: pointer`, `max-width: 100%` (so long ties wrap on narrow phones), hover underline, focus ring. No CSS changes.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npx vitest run src/lib/subcontractorLastActivityCompact.test.ts` — 22 / 22 pass.
+- No new lints across `src/lib/subcontractorLastActivityCompact.{ts,test.ts}` and `src/pages/Dashboard.tsx`.
+
+#### Files
+
+- New: [`src/lib/subcontractorLastActivityCompact.ts`](src/lib/subcontractorLastActivityCompact.ts), [`src/lib/subcontractorLastActivityCompact.test.ts`](src/lib/subcontractorLastActivityCompact.test.ts).
+- Modified: [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) — new import, two `isMobile` mobile callsites replaced with the single-button render; the existing `subcontractorLastActivityBlock` (desktop multi-line) is unchanged and still used by the two `!isMobile` callsites.
+
+No DB / migration / RLS / RPC / Edge / docs-table changes. Existing `DashboardTeamAssignedJobRow` fields (`last_job_activity_at` + per-source `last_*_at`) already provide everything the helper needs.
+
+---
+
+## Previous Updates (v2.554)
 
 **Date**: 2026-05-18
 
