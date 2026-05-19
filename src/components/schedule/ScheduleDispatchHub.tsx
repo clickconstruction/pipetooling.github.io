@@ -7,7 +7,6 @@ import {
   scheduleBlockActionLinkedIconButtonStyle,
   scheduleBlockActionTextButtonStyle,
   scheduleBlockControlPlateBackgroundStyle,
-  scheduleBlockLinkedControlPlateStyle,
 } from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import {
@@ -403,8 +402,9 @@ function HubPeopleBlockCard({
 
   const groupId = block.shared_block_group_id
   const showLinkedFloat = Boolean(groupId && linkPeerCount > 1)
-  const showTopRightControls =
-    showLinkedFloat || (canEdit && !placementPickingActive && onRequestEditBlockNote)
+  const showEditNoteBtn = canEdit && !placementPickingActive && !!onRequestEditBlockNote
+  const showTopRightControls = showEditNoteBtn
+  const showMinusPlusButtons = canEdit && !placementPickingActive
   const linkedAccent =
     highlightLinkedGroups && groupId && linkPeerCount > 1
       ? linkedGroupAccentByGroupId.get(groupId)
@@ -539,7 +539,7 @@ function HubPeopleBlockCard({
             <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
           </div>
           {block.note ? (
-            <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
+            <div style={{ color: '#4b5563', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
           ) : null}
         </button>
       </div>
@@ -556,49 +556,23 @@ function HubPeopleBlockCard({
             gap: 0,
           }}
         >
-          {showLinkedFloat ? (
-            <button
-              type="button"
-              disabled={placementPickingActive}
-              title={
-                placementPickingActive
-                  ? undefined
-                  : 'Linked: time and note stay in sync. Click to see every block in this group.'
-              }
-              aria-label="View linked schedule group details"
-              onClick={(e) => {
-                e.stopPropagation()
-                if (placementPickingActive || !groupId) return
-                onOpenLinkedGroup(groupId)
-              }}
-              style={{
-                ...scheduleBlockLinkedControlPlateStyle,
-                color: '#1d4ed8',
-                cursor: placementPickingActive ? 'default' : 'pointer',
-                fontFamily: 'inherit',
-                ...scheduleBlockActionLinkedIconButtonStyle,
-              }}
-            >
-              <ScheduleDispatchLinkedChainsIcon size={10} />
-            </button>
-          ) : null}
-          {canEdit && !placementPickingActive && onRequestEditBlockNote ? (
+          {showEditNoteBtn ? (
             <button
               type="button"
               title="Edit block note"
               aria-label="Edit block note"
               onClick={(e) => {
                 e.stopPropagation()
-                onRequestEditBlockNote(block)
+                onRequestEditBlockNote?.(block)
               }}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 16,
-                height: 16,
-                minWidth: 16,
-                minHeight: 16,
+                width: 51,
+                height: 51,
+                minWidth: 51,
+                minHeight: 51,
                 boxSizing: 'border-box',
                 padding: 0,
                 color: '#1d4ed8',
@@ -609,31 +583,99 @@ function HubPeopleBlockCard({
                 ...scheduleBlockActionLinkedIconButtonStyle,
               }}
             >
-              <ScheduleDispatchBlockNoteIcon size={10} />
+              <ScheduleDispatchBlockNoteIcon size={32} />
             </button>
           ) : null}
         </div>
       ) : null}
-      {canEdit && !placementPickingActive ? (
+      {showLinkedFloat ? (
+        <button
+          type="button"
+          disabled={placementPickingActive}
+          title={
+            placementPickingActive
+              ? undefined
+              : 'Linked: time and note stay in sync. Click to see every block in this group.'
+          }
+          aria-label="View linked schedule group details"
+          onClick={(e) => {
+            e.stopPropagation()
+            if (placementPickingActive || !groupId) return
+            onOpenLinkedGroup(groupId)
+          }}
+          style={{
+            position: 'absolute',
+            top: 2,
+            right: 2,
+            zIndex: 4,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 20,
+            height: 20,
+            padding: 0,
+            margin: 0,
+            border: 'none',
+            background: 'transparent',
+            color: '#1d4ed8',
+            cursor: placementPickingActive ? 'default' : 'pointer',
+            fontFamily: 'inherit',
+            filter:
+              'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
+          }}
+        >
+          <ScheduleDispatchLinkedChainsIcon size={12} />
+        </button>
+      ) : null}
+      {showMinusPlusButtons ? (
+        <button
+          type="button"
+          aria-label="Remove block"
+          title="Remove block"
+          onClick={(e) => {
+            e.stopPropagation()
+            onDeleteBlock(block.id)
+          }}
+          style={{
+            position: 'absolute',
+            top: showEditNoteBtn ? 33 : 28,
+            right: showEditNoteBtn ? 33 : 18,
+            zIndex: 4,
+            width: 20,
+            height: 20,
+            padding: 0,
+            margin: 0,
+            lineHeight: '18px',
+            fontSize: '0.85rem',
+            fontWeight: 700,
+            borderRadius: 4,
+            border: 'none',
+            background: 'transparent',
+            color: '#b91c1c',
+            cursor: 'pointer',
+            ...scheduleBlockActionTextButtonStyle,
+          }}
+        >
+          −
+        </button>
+      ) : null}
+      {showMinusPlusButtons ? (
         <div
           style={{
             position: 'absolute',
-            bottom: 2,
+            top: showEditNoteBtn ? 33 : 28,
             right: 2,
-            zIndex: 3,
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 0,
+            zIndex: 4,
           }}
         >
           <button
+            ref={plusButtonRef}
             type="button"
-            aria-label="Remove block"
-            title="Remove block"
+            aria-label="Copy block to another cell"
+            title="Copy to another person & day"
             onClick={(e) => {
               e.stopPropagation()
-              onDeleteBlock(block.id)
+              onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
             }}
             style={{
               width: 20,
@@ -646,55 +688,26 @@ function HubPeopleBlockCard({
               borderRadius: 4,
               border: 'none',
               background: 'transparent',
-              color: '#b91c1c',
+              color: '#1d4ed8',
               cursor: 'pointer',
               ...scheduleBlockActionTextButtonStyle,
             }}
           >
-            −
+            +
           </button>
-          <div style={{ position: 'relative', margin: 0, marginLeft: -4 }}>
-            <button
-              ref={plusButtonRef}
-              type="button"
-              aria-label="Copy block to another cell"
-              title="Copy to another person & day"
-              onClick={(e) => {
-                e.stopPropagation()
-                onPlusMenuBlockIdChange(plusMenuOpen ? null : block.id)
-              }}
-              style={{
-                width: 20,
-                height: 20,
-                padding: 0,
-                margin: 0,
-                lineHeight: '18px',
-                fontSize: '0.85rem',
-                fontWeight: 700,
-                borderRadius: 4,
-                border: 'none',
-                background: 'transparent',
-                color: '#1d4ed8',
-                cursor: 'pointer',
-                ...scheduleBlockActionTextButtonStyle,
-              }}
-            >
-              +
-            </button>
-            <ScheduleDispatchPlusCopyMenu
-              open={plusMenuOpen}
-              anchorRef={plusButtonRef}
-              onClose={() => onPlusMenuBlockIdChange(null)}
-              onLinkedCopy={() => {
-                onPlusMenuBlockIdChange(null)
-                onStartCardPlacement(block, 'linked')
-              }}
-              onSoloCopy={() => {
-                onPlusMenuBlockIdChange(null)
-                onStartCardPlacement(block, 'unlinked')
-              }}
-            />
-          </div>
+          <ScheduleDispatchPlusCopyMenu
+            open={plusMenuOpen}
+            anchorRef={plusButtonRef}
+            onClose={() => onPlusMenuBlockIdChange(null)}
+            onLinkedCopy={() => {
+              onPlusMenuBlockIdChange(null)
+              onStartCardPlacement(block, 'linked')
+            }}
+            onSoloCopy={() => {
+              onPlusMenuBlockIdChange(null)
+              onStartCardPlacement(block, 'unlinked')
+            }}
+          />
         </div>
       ) : null}
     </div>
@@ -846,6 +859,7 @@ function HubPeopleDayCell({
         padding: '0.35rem',
         border: isMultiSelected && multiSelectCellActive ? '2px solid #ca8a04' : '1px solid #e5e7eb',
         verticalAlign: 'top',
+        maxWidth: 200,
         maxHeight: 180,
         overflowY: 'auto',
         background: cellBg,

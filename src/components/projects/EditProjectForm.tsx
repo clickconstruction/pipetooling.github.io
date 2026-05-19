@@ -4,7 +4,6 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
-import { formatProjectNumberLabel } from '../../lib/projectNumberLabel'
 import type { Database } from '../../types/database'
 
 type ProjectRow = Database['public']['Tables']['projects']['Row']
@@ -53,6 +52,11 @@ const LABEL_STYLE: CSSProperties = {
 const HELPER_STYLE: CSSProperties = {
   fontSize: '0.8125rem',
   color: '#6b7280',
+  marginTop: 4,
+}
+const WARNING_HELPER_STYLE: CSSProperties = {
+  fontSize: '0.8125rem',
+  color: '#b45309',
   marginTop: 4,
 }
 const BUTTON_PRIMARY_STYLE: CSSProperties = {
@@ -136,6 +140,7 @@ export default function EditProjectForm({
   const [plansLink, setPlansLink] = useState('')
   const [status, setStatus] = useState<ProjectRow['status']>('active')
   const [projectNumber, setProjectNumber] = useState<string>('')
+  const [duplicateWarning, setDuplicateWarning] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [fetching, setFetching] = useState(true)
@@ -208,6 +213,31 @@ export default function EditProjectForm({
     })()
   }, [projectId])
 
+  useEffect(() => {
+    const trimmed = projectNumber.trim()
+    if (!trimmed) {
+      setDuplicateWarning(null)
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('projects')
+        .select('id, name')
+        .eq('project_number', trimmed)
+        .neq('id', projectId)
+        .limit(1)
+      if (cancelled) return
+      const other = (data as Array<{ id: string; name: string }> | null)?.[0]
+      setDuplicateWarning(
+        other ? `Already used by "${other.name}". Save anyway?` : null,
+      )
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [projectNumber, projectId])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
@@ -221,6 +251,7 @@ export default function EditProjectForm({
       plans_link: string | null
       status: ProjectRow['status']
       customer_id: string
+      project_number: string
     } = {
       name: name.trim(),
       address: address.trim() || null,
@@ -229,6 +260,7 @@ export default function EditProjectForm({
       plans_link: plansLink.trim() || null,
       status,
       customer_id: customerId,
+      project_number: projectNumber.trim(),
     }
 
     try {
@@ -331,40 +363,34 @@ export default function EditProjectForm({
 
   const canDelete = myRole === 'dev' || myRole === 'master_technician'
 
-  const projectNumberLabel = formatProjectNumberLabel(projectNumber)
-
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'baseline',
-          justifyContent: 'space-between',
-          gap: '0.75rem',
-          margin: '0 0 0.75rem',
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Edit project</h2>
-        {projectNumberLabel && (
-          <span
-            style={{
-              fontSize: '0.8125rem',
-              fontWeight: 500,
-              color: '#1d4ed8',
-              background: '#eff6ff',
-              padding: '0.15rem 0.5rem',
-              borderRadius: 999,
-              whiteSpace: 'nowrap',
-            }}
-          >
-            {projectNumberLabel}
-          </span>
-        )}
-      </div>
+      <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.25rem' }}>Edit project</h2>
       <form
         onSubmit={handleSubmit}
         style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}
       >
+        <div>
+          <label htmlFor="project-number" style={LABEL_STYLE}>
+            Project #
+          </label>
+          <input
+            id="project-number"
+            type="text"
+            value={projectNumber}
+            onChange={(e) => setProjectNumber(e.target.value)}
+            placeholder="42"
+            autoComplete="off"
+            style={INPUT_STYLE}
+          />
+          {duplicateWarning && (
+            <div style={WARNING_HELPER_STYLE}>{duplicateWarning}</div>
+          )}
+          <div style={HELPER_STYLE}>
+            Auto-assigned when the project is created. Edit if you need to renumber.
+          </div>
+        </div>
+
         <div>
           <label htmlFor="customer" style={LABEL_STYLE}>
             Customer {REQUIRED_MARK}

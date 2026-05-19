@@ -5,11 +5,11 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-05-11
+last_updated: 2026-05-19
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
-total_migrations: ~99
+total_migrations: ~100
 date_range: "Through May 21, 2027"
 categories: "Bids, Materials, Workflow, RLS, Database Improvements"
 
@@ -126,6 +126,12 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### May 2026
 
 #### May 19, 2026
+
+**`20260519170221_add_project_number_to_projects.sql`**
+- **Purpose**: **Auto-assigned `Project #N`** on **`public.projects`** (mirrors the **`bids.bid_number`** pattern). Adds **`project_number TEXT DEFAULT ''`** + index, creates org-global **`projects_project_number_seq`**, backfills every existing row oldest-first via `row_number() OVER (ORDER BY created_at ASC NULLS LAST, id ASC)`, pins the sequence to `MAX(project_number) + 1`, and installs **`set_project_number_if_empty()`** as a **`BEFORE INSERT FOR EACH ROW`** trigger so manually-passed values are honored verbatim and only blanks get auto-filled. Backfill verified: 6 / 6 rows numbered 1–6 in `created_at` order; `projects_project_number_seq.last_value=7, is_called=true`.
+- **Changes**: **`ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS project_number TEXT DEFAULT ''`** + **`CREATE INDEX IF NOT EXISTS idx_projects_project_number`** + **`COMMENT ON COLUMN`**; **`CREATE SEQUENCE IF NOT EXISTS public.projects_project_number_seq START 1`**; CTE-driven backfill; **`setval`** to **`MAX + 1`** (regex-guarded `^\s*\d+\s*$` on the existing values so non-numeric entries can't crash the cast); **`CREATE OR REPLACE FUNCTION public.set_project_number_if_empty()`** that fills only when **`NEW.project_number IS NULL OR trim(...) = ''`**; **`DROP TRIGGER IF EXISTS … ; CREATE TRIGGER projects_set_project_number BEFORE INSERT ON public.projects FOR EACH ROW EXECUTE FUNCTION …`**. No new RLS — column inherits existing `projects` policies. The **`BEFORE INSERT`** scope means manual UPDATE renames stay free-text (cleared = stays cleared).
+- **Impact**: New helper **[`projectNumberLabel.ts`](src/lib/projectNumberLabel.ts)** (`formatProjectNumberLabel` / `formatProjectNumberBadge`, both null-safe and trim-safe; 11 unit tests in **[`projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts)**). Display surfaces wired: **[`EditProjectForm.tsx`](src/components/projects/EditProjectForm.tsx)** (round 1 = read-only badge in title; round 2 = first-position editable **`Project #`** input + live duplicate warning via `projects.select('id, name').eq('project_number', trimmed).neq('id', projectId).limit(1)` + `payload.project_number = projectNumber.trim()`), **[`Projects.tsx`](src/pages/Projects.tsx)** (inline muted label next to the project-name `<Link>`), **[`Workflow.tsx`](src/pages/Workflow.tsx)** (chip text `Project #N · {name}` with `Project: {name}` fallback), **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** (`SubscribedStep` type extended with `project_number: string | null`, projects loader select widened to `'id, name, project_number'`, in-memory `projectMap` carries `{ name, project_number }`, JSX renders `{formatProjectNumberLabel(sub.project_number) ?? 'Project'}: {sub.project_name}`). Unchanged: `NewProjectForm.tsx` (INSERT omits `project_number`, trigger fills); other surfaces showing project names (Jobs Stages, DetailJobModal, Calendar, ForecastSpecific, People active projects) intentionally untouched. **`RECENT_FEATURES.md`** **v2.557**, **`GLOSSARY.md`** **Project Number**, **`PROJECT_DOCUMENTATION.md`** `public.projects` Key Fields. Applied via Supabase MCP `apply_migration` (local file timestamp predated the `20260519171140` dispatch-requests migration); `npm run gen-types:linked` confirms `project_number: string | null` on `Database['public']['Tables']['projects']['Row']`.
+- **Category**: Projects / schema / Sequence + Trigger
 
 **`20260519171140_dispatch_requests_pending_action.sql`**
 - **Purpose**: **Dashboard My Schedule → Dispatch task** flow. Adds a stable token to **`dispatch_requests`** that drives in-app action affordances on inbox rows. The first known value is **`'link_job_pictures'`** — *Add a Customer Pictures folder for a job*, surfaced as an **Add Customer Pictures URL** button on the dispatch inbox row that deep-links into **Edit Job** with the **Customer Pictures** input scrolled into view, focused, and flashed. Future tokens can extend the same UX without further schema changes.

@@ -23,7 +23,7 @@ export const scheduleBlockActionTextButtonStyle: Pick<CSSProperties, 'textShadow
  */
 export const scheduleBlockControlPlateBackgroundStyle: CSSProperties = {
   borderRadius: '50%',
-  background: 'rgba(255,255,255,0.92)',
+  background: 'rgba(255,255,255,0.55)',
   border: 'none',
   boxShadow: '0 1px 2px rgba(0,0,0,0.06)',
 }

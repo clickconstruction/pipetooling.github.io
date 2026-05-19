@@ -17,11 +17,7 @@ import {
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
-import {
-  scheduleBlockActionLinkedIconButtonStyle,
-  scheduleBlockActionTextButtonStyle,
-  scheduleBlockControlPlateBackgroundStyle,
-} from '../../lib/scheduleBlockActionChromeStyle'
+import { scheduleBlockActionTextButtonStyle } from '../../lib/scheduleBlockActionChromeStyle'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { SCHEDULE_DISPATCH_DRAG_DISABLED_READONLY_MESSAGE } from '../../lib/scheduleDispatchDragHelp'
 import { scheduleDispatchCellDroppableId } from '../../lib/scheduleDispatchDnd'
@@ -179,14 +175,14 @@ function ScheduleDispatchBlockCard({
           <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
         </div>
         {block.note ? (
-          <div style={{ color: '#4b5563', marginTop: 2, wordBreak: 'break-word' }}>{block.note}</div>
+          <div style={{ color: '#4b5563', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
         ) : null}
       </div>
       {showTopRightControls ? (
         <div
           style={{
             position: 'absolute',
-            top: 2,
+            top: 4,
             right: 2,
             zIndex: 3,
             display: 'flex',
@@ -208,21 +204,23 @@ function ScheduleDispatchBlockCard({
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                width: 16,
-                height: 16,
-                minWidth: 16,
-                minHeight: 16,
+                width: 20,
+                height: 20,
+                minWidth: 20,
+                minHeight: 20,
                 boxSizing: 'border-box',
                 padding: 0,
+                border: 'none',
+                background: 'transparent',
                 color: '#1d4ed8',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 margin: 0,
-                ...scheduleBlockControlPlateBackgroundStyle,
-                ...scheduleBlockActionLinkedIconButtonStyle,
+                filter:
+                  'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
               }}
             >
-              <ScheduleDispatchBlockNoteIcon size={10} />
+              <ScheduleDispatchBlockNoteIcon size={12} />
             </button>
           ) : null}
         </div>
@@ -231,8 +229,8 @@ function ScheduleDispatchBlockCard({
         <div
           style={{
             position: 'absolute',
-            bottom: 2,
-            right: 2,
+            top: 4,
+            right: showEditNoteBtn ? 26 : 2,
             zIndex: 3,
             display: 'flex',
             flexDirection: 'row',
@@ -252,7 +250,7 @@ function ScheduleDispatchBlockCard({
                 width: 20,
                 height: 20,
                 color: '#1d4ed8',
-                marginRight: showMinusPlusButtons ? 2 : 0,
+                marginRight: showMinusPlusButtons ? -4 : 0,
                 filter:
                   'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
               }}

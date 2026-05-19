@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-04-29
+last_updated: 2026-05-19
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -151,9 +151,20 @@ Optional association between a Job (billing) and a Project (multi-phase work). J
 
 **Database**: `projects` table
 
-**Key Fields**: name, description, status, customer_id, master_user_id, address
+**Key Fields**: name, description, status, customer_id, master_user_id, address, project_number
 
 **Rule**: Project owner = Customer owner (cannot be changed independently)
+
+### Project Number
+Short identifier for a project (e.g. "42") that mirrors the **Bid Number** pattern. Stored in `projects.project_number` (TEXT, default `''`). **Auto-assigned** on insert by the `BEFORE INSERT` trigger `projects_set_project_number` via the org-global sequence `projects_project_number_seq` — only fills when the column is null / blank, so any caller passing a value (advanced flows) is honored verbatim. Existing rows were backfilled oldest-first by `created_at NULLS LAST` (migration **`20260519170221`**). **Display label** is **`Project #{number}`** rendered via [`formatProjectNumberLabel`](src/lib/projectNumberLabel.ts) (returns `null` when blank so consumers fall back gracefully — Workflow chip → `Project: {name}`, Dashboard subscribed line → `Project: {name}`, Projects list inline label simply hides).
+
+**Editable** from the Edit Project modal as the first form field (free-text, blank allowed; **v2.557**, mirrors how Jobs' HCP # works). Save is **warn-but-allow on duplicates** — typing a number another project already uses surfaces *Already used by "{Other Project}". Save anyway?* in amber but Save still works (no DB uniqueness constraint on `project_number`, consistent with `hcp_number` / `housecallpro_number`). Cleared values stay cleared on UPDATE — the BEFORE INSERT trigger does not fire on UPDATE, so renumbering or blanking is sticky.
+
+**Visibility** (intentionally narrow): Edit Project modal title-row form field, Projects list rows (`Project #N` label inline next to the project-name link), Workflow header chip (`Project #N · {project.name}`), Dashboard subscribed-stages line (`Project #N: {project_name}`). Other surfaces showing project names (Jobs Stages, DetailJobModal, Calendar / ForecastSpecific, People active projects) are intentionally untouched — extend later if needed.
+
+**Database**: `projects.project_number` (TEXT, default `''`), `projects_project_number_seq` (org-global sequence), `projects_set_project_number` (BEFORE INSERT FOR EACH ROW trigger), `idx_projects_project_number` (lookup index for the duplicate-warning query).
+
+**Helpers**: [`formatProjectNumberLabel(value)`](src/lib/projectNumberLabel.ts) → `'Project #42'` or `null`; [`formatProjectNumberBadge(value)`](src/lib/projectNumberLabel.ts) → `'#42'` or `null`. Both null-safe and trim-safe; covered by 11 unit tests in [`projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts).
 
 ### Workflow
 A sequence of stages/steps for completing a project. Each project has exactly one workflow. Created from templates or built from scratch.

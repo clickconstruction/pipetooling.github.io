@@ -39,8 +39,10 @@ type Props = {
   /** ymd → column index, for the today-line lookup. Ellipsis cols are not in here. */
   dayKeyIndex: ReadonlyMap<string, number>
   todayYmd: string
-  /** Left-gutter renderer for each row. Mirrors the dense grid's `rowLabel` prop shape. */
-  rowLabel: (stage: ResolvedStageBar) => ReactNode
+  /** Left-gutter renderer for each row. Mirrors the dense grid's `rowLabel` prop shape;
+   *  receives the row index (0-based) so the caller can display a row-position number
+   *  (1..N) instead of the raw `sequence_order` (which is sparse). */
+  rowLabel: (stage: ResolvedStageBar, idx: number) => ReactNode
   /** Click handler — fires for both the gutter label and the bar. */
   onOpenWorkflow: (stageId: string) => void
   /** Optional pinned message when `stages` is empty. */
@@ -217,7 +219,7 @@ export function ProjectsForecastSpecificGrid({
         {stages.length === 0 ? (
           <div style={{ height: FORECAST_SPECIFIC_ROW_H, borderBottom: '1px solid #f1f5f9' }} />
         ) : (
-          stages.map((stage) => (
+          stages.map((stage, idx) => (
             <div
               key={`gutter-${stage.stageId}`}
               style={{
@@ -233,7 +235,7 @@ export function ProjectsForecastSpecificGrid({
                 textOverflow: 'ellipsis',
               }}
             >
-              {rowLabel(stage)}
+              {rowLabel(stage, idx)}
             </div>
           ))
         )}

@@ -363,8 +363,18 @@ export function ProjectsForecastSpecificTab({
   }, [])
 
   const renderGutterLabel = useCallback(
-    (stage: ResolvedStageBar) => (
-      <StageGutterLabel resolved={stage} onClick={() => onOpenStage(stage.stageId)} />
+    (stage: ResolvedStageBar, idx: number) => (
+      // Show the user-facing row position (1, 2, 3, …) in the chip — the raw
+      // `sequence_order` is sparse (template authors leave gaps for future inserts and
+      // copy/insert operations on the Workflow page also create gaps), which made the chip
+      // numbers look arbitrary (e.g. 3, 5, 7, 16, 17, 21, 22). The raw value is still
+      // available on `stage.sequenceOrder` and surfaced in the chip's tooltip so it can be
+      // cross-referenced with the Workflow page when needed.
+      <StageGutterLabel
+        resolved={stage}
+        displayNumber={idx + 1}
+        onClick={() => onOpenStage(stage.stageId)}
+      />
     ),
     [onOpenStage],
   )
@@ -981,18 +991,27 @@ export function ProjectsForecastSpecificTab({
 
 function StageGutterLabel({
   resolved,
+  displayNumber,
   onClick,
 }: {
   resolved: ResolvedStageBar
+  /** Row-position number (1..N) shown in the chip — see callsite for rationale. */
+  displayNumber: number
   onClick: () => void
 }) {
   const swatch = forecastBarSwatch(resolved.colorKey)
+  // Surface the raw `sequence_order` in the tooltip so it remains discoverable when
+  // cross-referencing with the Workflow page (which renders the raw DB value).
+  const tooltip =
+    `Step ${displayNumber} of this job's workflow\n` +
+    `Open in Workflow — ${resolved.name}\n` +
+    `(sequence_order: ${resolved.sequenceOrder})`
   return (
     <button
       type="button"
       onClick={onClick}
-      title={`Open in Workflow — ${resolved.name}`}
-      aria-label={`Open stage ${resolved.name} in Workflow`}
+      title={tooltip}
+      aria-label={`Step ${displayNumber}: open ${resolved.name} in Workflow`}
       style={{
         all: 'unset',
         display: 'flex',
@@ -1020,7 +1039,7 @@ function StageGutterLabel({
           fontWeight: 700,
         }}
       >
-        {resolved.sequenceOrder}
+        {displayNumber}
       </span>
       <span
         style={{

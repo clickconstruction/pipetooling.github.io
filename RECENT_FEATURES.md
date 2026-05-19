@@ -12,11 +12,14 @@ estimated_read_time: 30-45 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.556+ (reverse chronological)"
+version_range: "v2.557+ (reverse chronological)"
 
 key_sections:
-  - name: "Latest Version (v2.556)"
-    line: ~1864
+  - name: "Latest Version (v2.557)"
+    line: ~1868
+    description: "Auto-assigned and now-editable **Project #**. Two rounds in one session. **Round 1 (auto-assign + display)** — new migration `20260519170221_add_project_number_to_projects.sql` adds **`projects.project_number TEXT DEFAULT ''`** + **`idx_projects_project_number`** index, creates org-global **`projects_project_number_seq`**, backfills every existing row oldest-first via `row_number() OVER (ORDER BY created_at ASC NULLS LAST, id ASC)`, pins the sequence to `MAX(project_number) + 1`, and installs `set_project_number_if_empty()` as a **`BEFORE INSERT FOR EACH ROW`** trigger — so manually-passed `project_number` values are honored verbatim and only blanks get auto-filled (same contract as **`bids.bid_number`**). Backfill verified: 6 / 6 rows numbered 1–6 in `created_at` order, sequence `last_value=7, is_called=true`. New helper [`src/lib/projectNumberLabel.ts`](src/lib/projectNumberLabel.ts) exposes `formatProjectNumberLabel` (`'Project #42'` or `null`) and `formatProjectNumberBadge` (`'#42'` or `null`), both null-safe + trim-safe; 11 unit tests in [`projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts) cover null / undefined / empty / whitespace / numeric / leading-and-trailing whitespace. Display surfaces: Projects list row (muted grey label inline next to the project name link), Workflow header chip (`Project #N · {name}` with graceful `Project: {name}` fallback when blank), Dashboard subscribed-stages line (`Project #N: {project_name}` with `Project` fallback — `SubscribedStep` extended with `project_number: string | null`, the loader's `select('id, name')` widened to `'id, name, project_number'`, and the in-memory `projectMap` carries `{ name, project_number }`). **Round 2 (editable)** — the read-only blue title-row badge from Round 1 was replaced by a free-text **Project #** input that is now the **first** form field on the Edit Project modal (matches Jobs putting HCP # near the top). Mirrors `housecallpro_number` styling (`INPUT_STYLE` / `LABEL_STYLE` / `HELPER_STYLE`); helper text reads *Auto-assigned when the project is created. Edit if you need to renumber.* Live duplicate-warning effect keyed on `(projectNumber, projectId)` queries `projects.select('id, name').eq('project_number', trimmed).neq('id', projectId).limit(1)` on every keystroke (no debounce — `projects` is a few hundred rows max) and surfaces *Already used by \"{Other Project}\". Save anyway?* under the input in amber `#b45309` via the new `WARNING_HELPER_STYLE` constant. Save still works through the warning (warn-but-allow design choice — no DB uniqueness constraint on `project_number`, consistent with `hcp_number` / `housecallpro_number`); `handleSubmit` payload type extended with `project_number: string` and value populated as `projectNumber.trim()` — blank trims to `''` and `formatProjectNumberLabel` null-fallbacks gracefully so cleared numbers render as `Project: {name}` everywhere downstream. The `BEFORE INSERT` trigger doesn't fire on UPDATE so cleared numbers stay cleared (matches Jobs HCP # cleared = stays cleared). No new RLS — existing `projects` UPDATE policy governs the column. Files: new [`src/lib/projectNumberLabel.ts`](src/lib/projectNumberLabel.ts) + [`projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts), new migration `20260519170221_add_project_number_to_projects.sql`, modified [`EditProjectForm.tsx`](src/components/projects/EditProjectForm.tsx) (state + warning effect + first-position form field + payload extension), [`Projects.tsx`](src/pages/Projects.tsx) (inline label next to the project-name `<Link>`), [`Workflow.tsx`](src/pages/Workflow.tsx) (chip text helper), [`Dashboard.tsx`](src/pages/Dashboard.tsx) (`SubscribedStep` type, projects loader select, projectMap shape, JSX rendering). Verified: `npx tsc -b --noEmit` clean both rounds, 834 / 834 vitest pass, 11 / 11 new helper tests, MCP `apply_migration` returned `{success: true}`, `npm run gen-types:linked` confirms `project_number: string | null` lands on `Database['public']['Tables']['projects']['Row']`."
+  - name: "Previous Version (v2.556)"
+    line: ~1900
     description: "My Schedule photo icon → Dispatch task with Edit Job deep-link. When a field user taps the red customer-photos icon on a My Schedule row that has no `jobs_ledger.job_pictures_link`, the Dashboard now inserts a `dispatch_requests` row tagged `pending_action = 'link_job_pictures'` and fires `notify-dispatch-request` (instead of showing the old *Contact Dispatch and ask them to link a folder…* toast). Inserts are deduplicated per (`job_ledger_id`, `pending_action`, `status='open'`) so a second tap shows *Already sent to Dispatch.* and creates nothing. The dispatch inbox row renders an inline blue-outlined **Add Customer Pictures URL** button on rows with that token; clicking it calls `onLinkJobPictures(jobId)` → `useJobFormModal().openEditJob(jobId, { jobPicturesLinkHighlight: true })` and the Edit Job modal scrolls to the **Customer Pictures** input, focuses it, and flashes a 2.5 s blue highlight (same mechanism as the existing `fixturesSectionHighlight` / `billingCustomerHighlight` patterns). Saving a non-empty `job_pictures_link` on the same job auto-closes any open `link_job_pictures` dispatch rows for that `job_ledger_id` with `closed_note = 'Customer Pictures URL added'`. New migration `20260519171140_dispatch_requests_pending_action` adds the nullable `pending_action` text column + a partial `(job_ledger_id, pending_action)` index gated on `pending_action IS NOT NULL AND status='open'` (keeps the dedupe lookup cheap). Edge `notify-dispatch-request` already tolerates empty `links[]` (no code change needed). DispatchInboxSection extended with `pending_action`, `job_ledger_id`, and an `onLinkJobPictures?` prop; `useDispatchInbox.DISPATCH_REQUEST_SELECT` hydrates the new fields. Wired through Dashboard, Quickfill, and ChecklistReviewInboxes. The missing-icon button copy/title is now *No customer photos link — tap to ask Dispatch to set one* so the affordance reads as an action."
   - name: "Previous Version (v2.555)"
     line: ~1880
@@ -1865,7 +1868,179 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.556)
+## Latest Updates (v2.557)
+
+**Date**: 2026-05-19
+
+### Auto-assigned and editable Project #
+
+Every project now carries an org-global short identifier (`Project #1`, `#2`, …) that the database fills in automatically on insert and that staff can rename later from the Edit Project modal — same contract as `bids.bid_number`, with a non-blocking duplicate warning when two projects collide on the same number.
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant Trigger as projects_set_project_number
+  participant Seq as projects_project_number_seq
+  participant DB as projects table
+  Client->>DB: INSERT (no project_number)
+  DB->>Trigger: BEFORE INSERT FOR EACH ROW
+  Trigger->>Seq: nextval()
+  Seq-->>Trigger: 7
+  Trigger-->>DB: NEW.project_number = '7'
+  DB-->>Client: row with project_number = '7'
+```
+
+#### Round 1 — auto-assign + display
+
+Migration `supabase/migrations/20260519170221_add_project_number_to_projects.sql`:
+
+```sql
+ALTER TABLE public.projects
+  ADD COLUMN IF NOT EXISTS project_number TEXT DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_projects_project_number
+  ON public.projects(project_number);
+
+CREATE SEQUENCE IF NOT EXISTS public.projects_project_number_seq START 1;
+
+WITH numbered AS (
+  SELECT id, row_number() OVER (ORDER BY created_at ASC NULLS LAST, id ASC) AS rn
+  FROM public.projects
+  WHERE project_number IS NULL OR trim(project_number) = ''
+)
+UPDATE public.projects p SET project_number = n.rn::TEXT
+FROM numbered n WHERE p.id = n.id;
+
+SELECT setval(
+  'public.projects_project_number_seq',
+  COALESCE((SELECT MAX(CAST(NULLIF(trim(project_number), '') AS INTEGER))
+            FROM public.projects
+            WHERE project_number ~ '^\s*\d+\s*$'), 0) + 1
+);
+
+CREATE OR REPLACE FUNCTION public.set_project_number_if_empty()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.project_number IS NULL OR trim(COALESCE(NEW.project_number, '')) = '' THEN
+    NEW.project_number := nextval('public.projects_project_number_seq')::TEXT;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS projects_set_project_number ON public.projects;
+CREATE TRIGGER projects_set_project_number
+  BEFORE INSERT ON public.projects
+  FOR EACH ROW EXECUTE FUNCTION public.set_project_number_if_empty();
+```
+
+Backfill verified end-to-end: 6 / 6 existing projects numbered 1 through 6 in ascending `created_at` order; `projects_project_number_seq.last_value = 7, is_called = true`, so the next insert lands at `Project #7`. The trigger only fills when the column is null / blank, so manual override on INSERT is honored verbatim — same contract as `bids.bid_number`. No new RLS — the column inherits existing `projects` policies.
+
+New helper [`src/lib/projectNumberLabel.ts`](src/lib/projectNumberLabel.ts):
+
+```ts
+export function formatProjectNumberLabel(
+  projectNumber: string | null | undefined,
+): string | null {
+  const trimmed = (projectNumber ?? '').trim()
+  if (!trimmed) return null
+  return `Project #${trimmed}`
+}
+
+export function formatProjectNumberBadge(
+  projectNumber: string | null | undefined,
+): string | null {
+  const trimmed = (projectNumber ?? '').trim()
+  if (!trimmed) return null
+  return `#${trimmed}`
+}
+```
+
+11 unit tests in [`src/lib/projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts) cover null / undefined / empty / whitespace-only / numeric / leading-and-trailing whitespace for both formatters.
+
+Display surfaces wired to the helper:
+
+- **Projects list rows** ([`src/pages/Projects.tsx`](src/pages/Projects.tsx)) — muted grey `Project #N` label inline next to the project-name `<Link to={`/workflows/${p.id}`}>`. The list query is already `select('*, customers(name), users!projects_master_user_id_fkey(...)')`, so `p.project_number` arrives without changes to the loader.
+- **Workflow header chip** ([`src/pages/Workflow.tsx`](src/pages/Workflow.tsx)) — chip text changed from `Project: {project.name}` to `Project #N · {project.name}` (with graceful `Project: {project.name}` fallback when `project_number` is blank). `loadProject` already does `select('*')` so `project.project_number` flows through.
+- **Dashboard subscribed-stages line** ([`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx)) — `SubscribedStep` type extended with `project_number: string | null`; the projects loader select widened from `'id, name'` to `'id, name, project_number'`; the in-memory `projectMap` carries `{ name, project_number }` instead of just the name; the JSX renders `{formatProjectNumberLabel(sub.project_number) ?? 'Project'}: {sub.project_name}`.
+
+#### Round 2 — editable
+
+The read-only blue title-row badge from Round 1 was replaced by a free-text **Project #** input that's now the **first form field** on the Edit Project modal (matches Jobs putting HCP # near the top of `JobFormModal`). Implementation in [`src/components/projects/EditProjectForm.tsx`](src/components/projects/EditProjectForm.tsx):
+
+```tsx
+<div>
+  <label htmlFor="project-number" style={LABEL_STYLE}>Project #</label>
+  <input
+    id="project-number"
+    type="text"
+    value={projectNumber}
+    onChange={(e) => setProjectNumber(e.target.value)}
+    placeholder="42"
+    autoComplete="off"
+    style={INPUT_STYLE}
+  />
+  {duplicateWarning && (
+    <div style={WARNING_HELPER_STYLE}>{duplicateWarning}</div>
+  )}
+  <div style={HELPER_STYLE}>
+    Auto-assigned when the project is created. Edit if you need to renumber.
+  </div>
+</div>
+```
+
+Live duplicate-warning effect keyed on `(projectNumber, projectId)` (no debounce — `projects` is a few hundred rows max):
+
+```ts
+useEffect(() => {
+  const trimmed = projectNumber.trim()
+  if (!trimmed) { setDuplicateWarning(null); return }
+  let cancelled = false
+  ;(async () => {
+    const { data } = await supabase
+      .from('projects')
+      .select('id, name')
+      .eq('project_number', trimmed)
+      .neq('id', projectId)
+      .limit(1)
+    if (cancelled) return
+    const other = (data as Array<{ id: string; name: string }> | null)?.[0]
+    setDuplicateWarning(
+      other ? `Already used by "${other.name}". Save anyway?` : null,
+    )
+  })()
+  return () => { cancelled = true }
+}, [projectNumber, projectId])
+```
+
+The warning renders below the input in amber `#b45309` via the new `WARNING_HELPER_STYLE` constant. **Save still works through the warning** — warn-but-allow, no DB uniqueness constraint, consistent with `hcp_number` and `housecallpro_number`. `handleSubmit` payload type extended with `project_number: string` and the value populated as `projectNumber.trim()`. Blank trims to `''` and `formatProjectNumberLabel` null-fallbacks gracefully so cleared numbers render as `Project: {name}` in Workflow / Dashboard and the inline label simply hides on the Projects list. The `BEFORE INSERT` trigger doesn't fire on UPDATE, so cleared numbers stay cleared — matches Jobs HCP # cleared = stays cleared.
+
+#### Edge cases
+
+- **Manual override on INSERT** (advanced flows) — trigger only assigns when blank; passing `project_number: '999'` is honored.
+- **Backfill collisions** — backfill targets only null / blank rows; sequence pinned to `MAX + 1` so the next insert can't collide with a backfilled row.
+- **`created_at IS NULL`** — sorted last (`NULLS LAST`).
+- **Renamed projects** — number is stable across renames (only the BEFORE INSERT trigger fires on INSERT).
+- **Duplicate / re-create** — deletion + recreation gets a new number; historical references in jobs / reports use `project_id` so nothing breaks.
+- **Whitespace-only manual entry** — trimmed to `''` on save; behaves as blank.
+- **Concurrent rename race** — duplicate warning is a snapshot at fetch time; warn-but-allow means saves are still allowed.
+- **Realtime / cached lists** — `Projects.tsx` `onSaved` already fires `setRefreshKey`; `Workflow.tsx` re-fetches via `loadProject(project.id)`; Dashboard subscribed loader runs on next subscription change.
+
+#### Files
+
+- New: [`supabase/migrations/20260519170221_add_project_number_to_projects.sql`](supabase/migrations/20260519170221_add_project_number_to_projects.sql), [`src/lib/projectNumberLabel.ts`](src/lib/projectNumberLabel.ts), [`src/lib/projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts).
+- Modified: [`src/components/projects/EditProjectForm.tsx`](src/components/projects/EditProjectForm.tsx) (state + duplicate-warning effect + first-position form field + payload extension), [`src/pages/Projects.tsx`](src/pages/Projects.tsx) (inline label), [`src/pages/Workflow.tsx`](src/pages/Workflow.tsx) (chip text), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) (`SubscribedStep` type + loader select + map shape + JSX), [`src/types/database.ts`](src/types/database.ts) (regenerated via `npm run gen-types:linked`).
+- Unchanged: `NewProjectForm.tsx` — INSERT payload omits `project_number`, the trigger fills it in. Other surfaces showing project names (Jobs Stages, DetailJobModal, Calendar, ForecastSpecific, People active projects) are intentionally untouched per the visibility decision (Edit Project modal + Projects list + Workflow chip + Dashboard subscribed stages only).
+
+#### Verification
+
+- `npx tsc -b --noEmit` clean both rounds.
+- `npm test -- --run` — 834 / 834 pass (includes 11 new `projectNumberLabel` tests).
+- MCP `apply_migration` returned `{ success: true }`; `npm run gen-types:linked` confirms `project_number: string | null` on `Database['public']['Tables']['projects']['Row']`.
+- Manual database verification: 6 / 6 existing projects numbered 1 through 6 by `created_at` ASC, sequence `last_value=7` so `Project #7` is the next auto-assigned number.
+
+---
+
+## Previous Updates (v2.556)
 
 **Date**: 2026-05-19
 
