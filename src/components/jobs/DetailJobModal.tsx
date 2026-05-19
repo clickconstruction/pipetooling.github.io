@@ -34,11 +34,14 @@ import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { useJobMaterialsCostSnapshot } from '../../hooks/useJobMaterialsCostSnapshot'
 import { useJobDetailScheduleAndSessions } from '../../hooks/useJobDetailScheduleAndSessions'
+import { useJobClockSessionBounds } from '../../hooks/useJobClockSessionBounds'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
+import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { JobDetailMaterialsCostSection } from './JobDetailMaterialsCostSection'
 import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSection'
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import JobReportsModal from '../JobReportsModal'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
 
@@ -124,6 +127,30 @@ const detailRowSoftBoxStyle: CSSProperties = {
   background: '#f9fafb',
   border: '1px solid #e8eaee',
   borderRadius: 8,
+}
+
+function StackedClockSessionTimestamp({
+  parts,
+}: {
+  parts: { date: string; time: string; relative: string } | null
+}) {
+  if (!parts) return <span>—</span>
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        lineHeight: 1.25,
+      }}
+    >
+      <span>{parts.date}</span>
+      <span>{parts.time}</span>
+      <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+        ({parts.relative})
+      </span>
+    </div>
+  )
 }
 
 function DetailRow({
@@ -423,6 +450,7 @@ export default function DetailJobModal({
   const [materialsCostRefreshKey, setMaterialsCostRefreshKey] = useState(0)
   const [scheduleTimeSectionOpen, setScheduleTimeSectionOpen] = useState(false)
   const [jobDetailScheduleSessionsFilter, setJobDetailScheduleSessionsFilter] = useState('')
+  const [reportsModalOpen, setReportsModalOpen] = useState(false)
 
   const loadDetail = useCallback(async () => {
     if (!open || !jobId) return
@@ -486,6 +514,14 @@ export default function DetailJobModal({
     setJobDetailScheduleSessionsFilter('')
   }, [jobId, open])
 
+  useEffect(() => {
+    if (!open) setReportsModalOpen(false)
+  }, [open])
+
+  useEffect(() => {
+    setReportsModalOpen(false)
+  }, [jobId])
+
   const showWorkflowLink = !isSubcontractorLikeRole(authRole as UserRole) && authRole !== null
 
   const modalTitle = useMemo(() => {
@@ -537,6 +573,22 @@ export default function DetailJobModal({
     scheduleTruncated: detailScheduleTruncated,
     sessionsTruncated: detailSessionsTruncated,
   } = useJobDetailScheduleAndSessions(open, jobId ?? null, scheduleSessionsEnabled)
+
+  const clockSessionBoundsEnabled = Boolean(open && jobId && fullJob)
+  const { bounds: clockSessionBounds } = useJobClockSessionBounds(
+    open,
+    jobId ?? null,
+    clockSessionBoundsEnabled,
+    materialsCostRefreshKey,
+  )
+  const jobStartParts = useMemo(
+    () => formatClockSessionTimestampPartsChicago(clockSessionBounds.firstClockedInAt),
+    [clockSessionBounds.firstClockedInAt],
+  )
+  const lastWorkParts = useMemo(
+    () => formatClockSessionTimestampPartsChicago(clockSessionBounds.lastClockedOutAt),
+    [clockSessionBounds.lastClockedOutAt],
+  )
 
   const fullJobRecordedBilling = useMemo(
     () => (fullJob ? deriveRecordedBillingActivityDetail(fullJob) : null),
@@ -1048,6 +1100,38 @@ export default function DetailJobModal({
               )}
             </div>
 
+            <div style={{ marginTop: '1rem', ...jobDetailDateBandStyle }}>
+              <DetailRow label="Job Start" noBottomMargin centered softBox>
+                <StackedClockSessionTimestamp parts={jobStartParts} />
+              </DetailRow>
+              <DetailRow label="Last Work" noBottomMargin centered softBox>
+                <StackedClockSessionTimestamp parts={lastWorkParts} />
+              </DetailRow>
+              <button
+                type="button"
+                onClick={() => setReportsModalOpen(true)}
+                aria-label="Open reports for this job"
+                style={{
+                  ...detailRowSoftBoxStyle,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  color: 'inherit',
+                }}
+              >
+                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 2 }}>
+                  Reports
+                </span>
+                <span style={{ fontSize: '0.9375rem', color: '#2563eb', textDecoration: 'underline' }}>
+                  View all reports
+                </span>
+              </button>
+            </div>
+
             <div style={{ marginTop: '1rem' }}>
               <button
                 type="button"
@@ -1348,6 +1432,20 @@ export default function DetailJobModal({
           </button>
         </div>
       </div>
+
+      {reportsModalOpen && fullJob ? (
+        <JobReportsModal
+          open
+          onClose={() => setReportsModalOpen(false)}
+          jobId={fullJob.id}
+          hcpNumber={fullJob.hcp_number}
+          jobName={fullJob.job_name}
+          jobAddress={fullJob.job_address}
+          authUserId={authUser?.id ?? null}
+          userRole={authRole as UserRole | null}
+          zIndex={1100}
+        />
+      ) : null}
     </div>
   )
 }

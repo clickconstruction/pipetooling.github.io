@@ -64,6 +64,8 @@ import { useHoursAwaitingApprovalCount } from '../hooks/useHoursAwaitingApproval
 import { useSupplyHousesAPTotal } from '../hooks/useSupplyHousesAPTotal'
 import { useSubLaborDueTotal } from '../hooks/useSubLaborDueTotal'
 import { useIsMobile } from '../hooks/useIsMobile'
+import { useNarrowViewport660 } from '../hooks/useNarrowViewport660'
+import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import ClockInOutButton from '../components/ClockInOutButton'
 import { DashboardContractSigningPromptModal } from '../components/DashboardContractSigningPromptModal'
 import TeamFeedbackWizard from '../components/team-feedback/TeamFeedbackWizard'
@@ -533,14 +535,18 @@ function DashboardJobPicturesLinkRow({
   jobPicturesLink,
   layout = 'stacked',
   onMissingClick,
+  size = 'default',
 }: {
   jobPicturesLink: string | null | undefined
   layout?: 'stacked' | 'inline'
   onMissingClick?: () => void
+  /** `large` matches the My Schedule Leave Report button height. */
+  size?: 'default' | 'large'
 }) {
   const url = jobPicturesLink?.trim()
+  const glyphSize = size === 'large' ? '2.5em' : '1.25em'
   const glyph = (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={glyphSize} height={glyphSize} fill="currentColor" aria-hidden="true">
       <path d="M128 160C128 124.7 156.7 96 192 96L512 96C547.3 96 576 124.7 576 160L576 416C576 451.3 547.3 480 512 480L192 480C156.7 480 128 451.3 128 416L128 160zM56 192C69.3 192 80 202.7 80 216L80 512C80 520.8 87.2 528 96 528L456 528C469.3 528 480 538.7 480 552C480 565.3 469.3 576 456 576L96 576C60.7 576 32 547.3 32 512L32 216C32 202.7 42.7 192 56 192zM224 224C241.7 224 256 209.7 256 192C256 174.3 241.7 160 224 160C206.3 160 192 174.3 192 192C192 209.7 206.3 224 224 224zM420.5 235.5C416.1 228.4 408.4 224 400 224C391.6 224 383.9 228.4 379.5 235.5L323.2 327.6L298.7 297C294.1 291.3 287.3 288 280 288C272.7 288 265.8 291.3 261.3 297L197.3 377C191.5 384.2 190.4 394.1 194.4 402.4C198.4 410.7 206.8 416 216 416L488 416C496.7 416 504.7 411.3 508.9 403.7C513.1 396.1 513 386.9 508.4 379.4L420.4 235.4z" />
     </svg>
   )
@@ -1024,6 +1030,8 @@ export default function Dashboard() {
     })
   }, [stripSalariedUserIds])
   const isMobile = useIsMobile()
+  const narrowViewport660 = useNarrowViewport660()
+  const firstAssistantDispatchPhone = useFirstAssistantDispatchPhone(isSubcontractorLikeRole(role))
   const [subscribedSteps, setSubscribedSteps] = useState<SubscribedStep[]>([])
   const [assignedSteps, setAssignedSteps] = useState<AssignedStep[]>([])
   const [todayChecklist, setTodayChecklist] = useState<ChecklistInstance[]>([])
@@ -5651,7 +5659,30 @@ export default function Dashboard() {
               marginBottom: '0.75rem',
             }}
           >
-            <h2 style={{ fontSize: '1.125rem', margin: 0 }}>My schedule</h2>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'nowrap', gap: '0.5rem', minWidth: 0 }}>
+              {firstAssistantDispatchPhone ? (
+                <a
+                  href={`tel:${firstAssistantDispatchPhone.telHref}`}
+                  style={{ color: 'inherit', textDecoration: 'none', whiteSpace: 'nowrap' }}
+                  aria-label={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
+                  title={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
+                >
+                  <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
+                </a>
+              ) : (
+                <h2 style={{ fontSize: '1.125rem', margin: 0, whiteSpace: 'nowrap' }}>My Schedule</h2>
+              )}
+              {firstAssistantDispatchPhone && (
+                <a
+                  href={`tel:${firstAssistantDispatchPhone.telHref}`}
+                  style={{ fontSize: '0.6875rem', color: '#6b7280', textDecoration: 'none', lineHeight: 1.15, whiteSpace: 'nowrap' }}
+                  aria-label={`Schedule wrong? Click to call dispatch at ${firstAssistantDispatchPhone.display}`}
+                  title={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
+                >
+                  (schedule wrong?<br />click to call dispatch)
+                </a>
+              )}
+            </div>
             <Link to="/calendar" style={{ fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
               Calendar →
             </Link>
@@ -5761,6 +5792,7 @@ export default function Dashboard() {
                                 >
                                   <DashboardJobPicturesLinkRow
                                     layout="inline"
+                                    size="large"
                                     jobPicturesLink={fromAssigned?.job_pictures_link}
                                     onMissingClick={() =>
                                       showToast(
@@ -7225,6 +7257,11 @@ export default function Dashboard() {
                           Job: {labelJobsLedgerStatusForDashboard(j.status)}
                         </div>
                       )}
+                      {isSubcontractorLikeRole(role) && narrowViewport660 && j.created_at && (
+                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }} title="Time since job created">
+                          Open {formatTimeSince(j.created_at)}
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       {(j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()) && (
@@ -7391,19 +7428,13 @@ export default function Dashboard() {
                           )}
                         </button>
                       )}
-                      {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
+                      {j.created_at && (!isSubcontractorLikeRole(role) || !narrowViewport660) && (
                         <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
                           <>Open<br />{formatTimeSince(j.created_at)}</>
                         </span>
                       )}
                       {isSubcontractorLikeRole(role) && isMobile && (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
-                          {j.created_at && (
-                          <span>
-                            Open<br />
-                            {formatTimeSince(j.created_at)}
-                          </span>
-                        )}
                           {(() => {
                             const b = subcontractorLastActivityBlock(j)
                             const a11y = [b.line1, b.line2, b.line3].filter(Boolean).join(' ')

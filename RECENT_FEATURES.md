@@ -7,16 +7,37 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-16
-estimated_read_time: 30-40 minutes
+last_updated: 2026-05-18
+estimated_read_time: 30-45 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.547+ (reverse chronological)"
+version_range: "v2.554+ (reverse chronological)"
 
 key_sections:
-  - name: "Latest Version (v2.547)"
-    line: ~1825
+  - name: "Latest Version (v2.554)"
+    line: ~1853
+    description: "Projects → new **Forecast** tab right of Job History — visualizes `project_workflow_steps` as Gantt bars driven by the `scheduled_start_date` / `scheduled_end_date` columns + the actual `started_at` / `ended_at` timestamps from Workflow. Two independent sub-tabs (`?forecastSub=specific|all-stages`, default `specific`). **Specific** — job search typeahead (substring match on HCP / name / address / project name via [`projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts), persists selection to `?forecastJob=` + `localStorage` `projects_forecast_specific_selected_job_v1`) shows one row per stage in `sequence_order` ASC, each row a colored Gantt bar spanning the stage's resolved `[startYmd, endYmd]`; range auto-fits to `min(start) → max(end)` padded ±3 days (user can override via From/To inputs; override persists under `projects_forecast_specific_range_v1`; **Reset to fit** chip restores auto-fit when overridden); click a stage bar or its left-gutter label opens `/workflows/${project_id}#step-${stage_id}` in a new tab. **All Stages** — one row per job-with-project (any `jobs_ledger.status`), stages laid out side-by-side horizontally so dispatchers can spot crew-assignment gaps at a glance; default range today − 7d → today + 90d (forward-leaning, persisted under `projects_forecast_all_range_v1`); **Only show jobs with active stages** checkbox filters out jobs whose every stage is `completed` / `approved` / `skipped` (persisted under `projects_forecast_all_active_only_v1`); job-row label or stage bar deep-links to Workflow. **Pure resolver** [`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) (`resolveForecastStages(stagesIn, todayYmd)`, 19 unit tests) chains every stage: `start = scheduled_start_date ?? prior.endYmd ?? actual(started_at) ?? todayYmd`, `end = scheduled_end_date ?? actual(ended_at) ?? ymdAddDays(start, 1)`, and flags `isUnscheduled = !scheduled_start && !scheduled_end && !started_at && !ended_at` so stages with no dates render as 1-day **grey dashed** placeholders at the chained position (never invisible). `colorKey` honors explicit `skipped` over the inferred `unscheduled` look. **Shared grid** [`ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx) is generic over row shape — sticky 2-tier date header (month run + day digit), today vertical line, weekend tints, optional sticky label gutter, `renderRow` callback so both sub-tabs share day-column math; auto-scrolls to center `todayYmd` on mount. Color map [`projectsForecastColors.ts`](src/lib/projectsForecastColors.ts) mirrors `getStepStatusStyle` from Workflow (green for completed/approved, orange `#E87600` in_progress, red `#b91c1c` rejected, light grey pending, muted strikethrough skipped, grey dashed unscheduled). **Realtime** channel `projects-forecast-${authUserId}` on `project_workflow_steps` with `workflow_id=in.(...)` filter (cap 80, unfiltered fallback) + unfiltered `jobs_ledger`, 280 ms debounce + `useDocumentVisibility` gate — mirrors the Job History pattern. Permissions ride existing `project_workflow_steps` RLS (dev / master see all, assistant / superintendent see via `can_access_project_via_workflow`, subcontractor / helpers see only assigned stages). New files: [`projectsForecastData.ts`](src/lib/projectsForecastData.ts) (`fetchForecastJobs` + `fetchForecastStages` + `groupStagesByWorkflow`), [`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) + tests, [`projectsForecastColors.ts`](src/lib/projectsForecastColors.ts), [`projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts) + 12 unit tests, [`projectsForecastToolbarStyles.ts`](src/lib/projectsForecastToolbarStyles.ts); [`ProjectsForecastTab.tsx`](src/components/projects/ProjectsForecastTab.tsx), [`ProjectsForecastSpecificTab.tsx`](src/components/projects/ProjectsForecastSpecificTab.tsx), [`ProjectsForecastAllStagesTab.tsx`](src/components/projects/ProjectsForecastAllStagesTab.tsx), [`ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx). Modified: [`Projects.tsx`](src/pages/Projects.tsx) (added `'forecast'` to `ProjectsPageTab`, parser, third tab button, mount). Verified: `npx tsc --noEmit` clean, no new lints, 31 / 31 vitest pass across the two new test files (resolver + job search) + 88 / 88 across the wider Projects + Forecast suite."
+  - name: "Previous Version (v2.553)"
+    line: ~1853
+    description: "Projects → **Job Schedule** tab renamed to **Job History** (full namespace rename), plus two small UX changes on the renamed tab: an **Only show jobs with projects** toggle and a flip of the default layout mode from **Expanded** to **Compact**. The rename was done deep so the **Job Schedule** name is free for a future tab — 12 files and every PascalCase / camelCase / snake_case / kebab-case / display-string token was systematically updated: components `ProjectsJobScheduleTab/DayModal/Timeline` → `ProjectsJobHistoryTab/DayModal/Timeline`, libs `projectsJobScheduleData/BarSearch/LanePacking/DayCosts` → `projectsJobHistoryData/BarSearch/LanePacking/DayCosts` (all `.test.ts` files renamed too), fetcher `fetchProjectsJobScheduleClockSessions` → `fetchProjectsJobHistoryClockSessions`. `localStorage` keys, Supabase Realtime channel name, DOM `data-*` attributes, and the `?tab=` URL value all moved to `job-history` so links written before the rename will land on the renamed tab. Toolbar **Only show jobs with projects** — a checkbox below the search bar in [`ProjectsJobHistoryTab.tsx`](src/components/projects/ProjectsJobHistoryTab.tsx); when on, `projectFilteredBars = bars.filter(b => b.projectId != null)` is applied **before** the search filter so the match counter (`k of N matches`) reflects the same population the user sees on screen. `ProjectsJobHistoryJob` and `ProjectsJobHistoryBar` types now carry `project_id`; the `jobs_ledger` SELECT was extended to pull `project_id`; `aggregateClockSessionsToBars` propagates it through to `bar.projectId`. Toggle persists per browser under `localStorage` key `projects_job_history_only_with_projects_v1`. **Default layout = Compact** — [`readProjectsJobHistoryLayoutMode`](src/lib/projectsJobHistoryLanePacking.ts) returns `'compact'` instead of `'expanded'` when the key is unset (or unknown / on SSR); existing user choices in `localStorage` are still honored verbatim (no migration needed — the key value is the same string). The default-compact change is appropriate now that the tab is named **Job History** because the lane-packed view is the more useful at-a-glance read of *what jobs we've worked on recently*. Tests in `projectsJobHistoryLanePacking.test.ts` and `projectsJobHistoryData.test.ts` were updated for the new default and the `project_id`-carrying fixture; 88 / 88 vitest pass. Files: 12 renames (with content rewrite) + new `ONLY_WITH_PROJECTS_STORAGE_KEY` / `readOnlyWithProjects` / `writeOnlyWithProjects` helpers + new `onlyWithProjects` state + filter logic in `ProjectsJobHistoryTab.tsx` + one-line default flip in `projectsJobHistoryLanePacking.ts`. No DB / migration / RLS / Edge changes."
+  - name: "Previous Version (v2.552)"
+    line: ~1853
+    description: "Workflow page (`/workflows/:projectId`) — three additions to every stage card. **(1) Assignee contact popup** — assignees on a stage now render as just their **name** (no inline email / phone) styled as a blue underline button; clicking it opens a small **Person contact info** modal showing **email** and **phone** (sourced from the same maps Workflow already loads). Replaces the older inline `name • email` display so the stage card stays scannable. New `PersonContactInfo` type + `PersonDisplayWithContact` button component + `personContactModal` state in [`src/pages/Workflow.tsx`](src/pages/Workflow.tsx). **(2) Default-collapsed empty notes** — `isSectionDefaultExpanded(step, section)` now returns `false` for `notes` and `privateNotes` when the corresponding `notes` / `private_notes` field is empty / whitespace-only. Tech and Office note sections still default to expanded when they contain content, so existing notes-rich stages look unchanged; pristine stages no longer waste vertical space on three empty *Add note…* fields. **(3) Expected start / end dates** — every stage card now shows an `Expected: Start [date] · End [date]` line under the actual Start / End row (or `Expected: Start set · End set` when one is empty — both words are clickable). Collapsed cards show an abbreviated `Exp: MM/DD → MM/DD` chip. Clicking any of those words opens an **Expected dates** modal with two date inputs and a **Duration (days)** field — typing a duration auto-computes the end date from the start (and vice versa) so dispatchers can say *“rough-in takes 5 days starting Thursday”* and the modal fills in the end automatically. The next stage's `scheduled_start_date` defaults to the prior stage's `scheduled_end_date` when unset (cascade), giving the Forecast Gantt (**v2.554**) a coherent default timeline straight out of the modal. Pure date helpers `ymdFromDateLike`, `formatScheduledDateShort`, `ymdAddDays`, and `ymdDaysBetween` (last two reused from `src/utils/dateUtils.ts`). All three changes ship in [`Workflow.tsx`](src/pages/Workflow.tsx); no DB / migration changes (the `scheduled_start_date` / `scheduled_end_date` columns already existed)."
+  - name: "Previous Version (v2.551)"
+    line: ~1853
+    description: "Projects → toolbar + tab-label polish (follow-ups to v2.550 Compact mode). **(1) Tab rename** — the first tab on `/projects` now reads **Overview** instead of **Stages**. URL param and state value are intentionally still `?tab=stages` so any existing bookmarks / deep links keep working; only the visible button text changed. **(2) Job Schedule search bar** — new rounded `<input type=\"search\">` at the far left of the toolbar matches case-insensitive substrings across the **full display label** (`{prefix}{HCP} · {Job Name}`, e.g. `JP740 · San Marcos`), the **prefix + number** alone (`JP740`), the **raw HCP number** alone (`740`), the **job name**, and the **address**. Works with legacy `J` fallback when a service type has no mapping. Filter applies to both Expanded and Compact lane-packing (Compact mode re-runs `packBarsIntoLanes` on the filtered subset via the existing `useMemo` dep array). Job Detail's job-picker `assignedJobsRows` snapshot also rebuilds from the filtered bars so the in-modal navigation matches what's on screen. New pure helpers in [`src/lib/projectsJobScheduleBarSearch.ts`](src/lib/projectsJobScheduleBarSearch.ts) (`normalizeBarSearchQuery`, `barMatchesSearch`, `filterBarsBySearch` — returns the same array reference when the query is blank so downstream memos don't recompute) covered by **16 unit tests** in `projectsJobScheduleBarSearch.test.ts`. **(3) Counter merged into the search input** — the right-side `N jobs · D days` line was removed; the count now renders as the search input's **placeholder** (`Loading…` / `No working jobs…` / `29 jobs · 91 days` depending on state). When the user starts typing and the placeholder is naturally hidden, the match count surfaces as a small inline `k of N matches` status label next to the input with `aria-live=\"polite\"` for screen-reader announcement. **(4) Toolbar reorder** — the Last 90d / Last 365d / Expanded / Compact controls moved to the **right** of the From / To inputs (previously stacked above them). Toolbar is now one wrapping flex row: `Search | From | To | Last 90d | Last 365d | Expanded | Compact`. Outer container switched from `alignItems: 'flex-end'` + `justify-content: space-between` to `alignItems: 'center'` (no right-side item left to push). **(5) Compact From / To inputs** — both `<input type=\"date\">` instances narrowed to `width: 92px` (`dateInputStyle`) so the browser visually clips the trailing `YYYY` while still showing `MM/DD/` plus the native calendar-picker icon. Underlying `value` remains a full `YYYY-MM-DD` ISO string; full date exposed on hover via the `title` attribute; clicking the field still opens the native picker with year navigation. **(6) Extra breathing column between Compact lane-shared bars** — new `LABEL_BREATHING_COLS = 1` constant in [`ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) adds one empty calendar column on top of every bar's measured `labelDayCols` before packing, so the right edge of one bar and the leading edge of the next bar's label always have at least one empty column (36 px) of visual separation. Without this, lane-shared labels could render flush against the previous bar's day cells. The `MAX_LABEL_DAY_COLS = 14` cap is still applied after the breathing column. Files: edited [`src/pages/Projects.tsx`](src/pages/Projects.tsx) (label rename), [`src/components/projects/ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) (search state + UI + filteredBars memo + new toolbar order, dateInputStyle, removed inputStyle, removed right-side counter, summaryText placeholder, searchMatchStatus inline label), [`src/components/projects/ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) (LABEL_BREATHING_COLS = 1 + comment), new [`src/lib/projectsJobScheduleBarSearch.ts`](src/lib/projectsJobScheduleBarSearch.ts) + new [`src/lib/projectsJobScheduleBarSearch.test.ts`](src/lib/projectsJobScheduleBarSearch.test.ts). Verified: `npx tsc --noEmit` clean, no new lints, 37 / 37 vitest pass across `projectsJobScheduleBarSearch.test.ts` (16) + `projectsJobScheduleLanePacking.test.ts` (21)."
+  - name: "Previous Version (v2.550)"
+    line: ~1847
+    description: "Projects → Job Schedule — **Compact mode** toggle. New segmented control next to the Last 90d / Last 365d chips: **Expanded** (default, one row per job — unchanged) or **Compact** (non-overlapping jobs pack onto shared rows). The pack predicate is **label-width-aware**: each bar reserves a left-side label slot sized from its own label text width (`{HCP} · {Job Name}` measured via a hidden `<canvas>` at the runtime page font), so two bars only share a lane when the calendar gap between them is at least as wide as the later bar's label. Result: labels never overlap previous bars in the same lane, even with long job names. **Pure helper** [`packBarsIntoLanes`](src/lib/projectsJobScheduleLanePacking.ts) (`PackInputBar` ASC by `firstWorkDateYmd`, jobId tie-break, strict `<` predicate against `lastWorkDateYmd`, lane display order by `max(lastWorkDateYmd) DESC` so the lane with the most recent activity sits on top). **`MAX_LABEL_DAY_COLS = 14`** cap so one absurdly long job name can't create a 30-column reservation; clipped labels still render full-text via the existing `title` attribute. Open-ended bars (no closed clock-out yet) have `lastWorkDateYmd = todayYmd` already at the data layer, so the predicate naturally blocks the lane out to today. **Persistence** in `localStorage` under `projects_job_schedule_layout_mode_v1` (read on mount via [`readProjectsJobScheduleLayoutMode`](src/lib/projectsJobScheduleLanePacking.ts), written on toggle via `writeProjectsJobScheduleLayoutMode`; default `'expanded'`; SSR-safe — `typeof window === 'undefined'` short-circuits both helpers). **Refactor** — extracted the per-bar render into a new `<JobBarContent>` subcomponent shared by `<JobRow>` (Expanded) and the new `<CompactLaneRow>` so the three click targets (label → Edit Job, bar background → Job Detail, numbered cell → day-detail modal) behave identically in both modes. Expanded-mode DOM is byte-identical to v2.549. Files: new [`src/lib/projectsJobScheduleLanePacking.ts`](src/lib/projectsJobScheduleLanePacking.ts) (`packBarsIntoLanes`, `labelDayColsFromPx`, `measureLabelWidthPx`, `readProjectsJobScheduleLayoutMode`, `writeProjectsJobScheduleLayoutMode`, `PROJECTS_JOB_SCHEDULE_LAYOUT_MODE_STORAGE_KEY`); new [`src/lib/projectsJobScheduleLanePacking.test.ts`](src/lib/projectsJobScheduleLanePacking.test.ts) (21 unit tests — empty / single / two-bars with gap / two-bars without gap / adjacent / same-start / first-fit three-bars / open-ended / jobId tie-break / lane display order / per-bar label width / generic preservation / pixel-to-cols helpers / measureText fallback / canvas-context happy path / storage round-trip / SSR-safety); edited [`ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) (extracted `JobBarContent`, added `layoutMode` prop, `MAX_LABEL_DAY_COLS` cap, canvas-measured `compactLanes` memo keyed on `[layoutMode, bars, prefixMap]`); edited [`ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) (layoutMode state with localStorage persistence, segmented Expanded/Compact toggle in the toolbar, passes `layoutMode` to the timeline). Verified: `npx tsc --noEmit` clean, no new lints, 69 / 69 vitest pass across `projectsJobScheduleLanePacking.test.ts` (21) + `projectsJobScheduleData.test.ts` (19) + `projectsJobScheduleDayCosts.test.ts` (29)."
+  - name: "Previous Version (v2.549)"
+    line: ~1844
+    description: "Projects → Job Schedule Gantt — three distinct click targets per row + new day-detail modal. (1) **Job name label** (the `{HCP} · {Job Name}` pill that now sits at `position: absolute; right: 100%` *to the left of* the bar instead of floating on top of it) → `useJobFormModal().openEditJob(jobId)` (Edit Job). (2) **Bar background** (any un-highlighted area between numbered cells) → `useJobDetailModal().openJobDetail({...})` (Job Detail). (3) **Numbered day cell** (a highlighted day with a distinct-user count badge) → new [`ProjectsJobScheduleDayModal`](src/components/projects/ProjectsJobScheduleDayModal.tsx) showing: top-of-modal **Open Edit Job** + **Open Job Detail** buttons, a `People & sessions` section listing every person who clocked on that (job, Chicago `work_date`) with each session's clock-in → clock-out times + duration + notes (approved-closed only, `approved_at IS NOT NULL AND rejected_at IS NULL AND revoked_at IS NULL`), and a `Reports filed on this day` section sourced from the `list_reports_with_job_info` RPC filtered to `job_ledger_id === jobId && calendarYmdInAppTzFromIso(created_at) === workDateYmd` and rendered via the shared `ReportDetailBody` component used elsewhere in the app. Modal dismisses on backdrop click / Escape / Close button. Implementation: the timeline bar is now `<div role=\"button\" tabIndex={0}>` (so it can host nested `<button>` children — HTML doesn't allow nested buttons) with Enter/Space keyboard handlers; day cells are now `<button type=\"button\">` with `e.stopPropagation()` (previously `<div>` with `pointerEvents: 'none'`) so a cell click never bubbles up to fire the bar's Job Detail handler; the label is a separate `<button>` with `e.stopPropagation()` so clicking it never opens Job Detail. `ProjectsJobScheduleTab` now owns `dayModal: { bar, workDateYmd } | null` state and exposes three callbacks (`onJobLabelClick`, `onBarClick`, `onDayCellClick`) to the timeline. The day modal's `onOpenEditJob` / `onOpenJobDetail` callbacks close the day modal first then delegate to the global `JobFormModalContext` / `JobDetailModalContext` so the parent modal stacks cleanly without nested overlays. No DB / migration / RLS / RPC / Edge changes — all data comes from existing tables + the existing reports RPC. Files: new [`ProjectsJobScheduleDayModal.tsx`](src/components/projects/ProjectsJobScheduleDayModal.tsx); edited [`ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) (label + bar + cell click structure rewrite); edited [`ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) (three handlers + mount day modal). Verified: `npx tsc --noEmit` clean, no new lints, 656 / 656 vitest pass, `npx vite build` clean."
+  - name: "Previous Version (v2.548)"
+    line: ~1920
+    description: "Projects \u2192 Job Schedule Gantt \u2014 the \"Coming soon.\" placeholder on the Job Schedule tab of `/projects` is replaced with a horizontally-scrollable timeline. Each row is a `jobs_ledger.status = 'working'` job (respecting `?customer=`), each column is one Chicago calendar day (`APP_CALENDAR_TZ`). Bars span from a job's first approved `clock_sessions.work_date` to its last approved + closed `work_date` (`min` and `max` with `approved_at IS NOT NULL AND rejected_at IS NULL AND revoked_at IS NULL`); jobs without a closed clock-out yet extend to today with a **dashed** right edge. Inside each bar, days with approved sessions are shaded by **distinct user count** on a 5-step blue palette (`#dbeafe \u2192 #bfdbfe \u2192 #93c5fd \u2192 #60a5fa \u2192 #3b82f6`, foreground flips to white at count\u00a04+) with a numeric badge; gap days inside the bar show the bar's neutral background. The HCP # + job name pill **floats on the bar** via `position: sticky; left: 8px` inside the row's grid-positioned bar \u2014 when the bar's natural left edge scrolls past the scroll viewport's left edge, the label re-anchors to the visible portion of the bar (the bar's containing block constrains the sticky), and disappears with the bar when it scrolls off entirely. Today is marked with a 2\u00a0px orange vertical accent line and an `inset 0 0 0 1px #fb923c` outline on any bar cell that lands on today. **Range picker** mirrors the People \u2192 Review custom-range UX: two `<input type=\"date\">` From / To inputs with cross-bounding `min` / `max` + the *Pick both dates to set the range.* hint, plus three quick-pick chips (`Last 30d`, `Last 90d`, `Last 365d`). Default seed = Today \u2212 90d \u2192 Today (Chicago); last-used range persists under `localStorage` key `projects_job_schedule_range_v1`. The window is a **viewport** \u2014 not a query filter \u2014 so bar bounds remain correct (the clock-sessions fetch is unbounded by date); bars extending outside the visible window are clipped at the edge with a **dashed** border to signal continuation. **Click a bar** navigates to `/jobs?edit=${jobId}&tab=stages` (same pattern as Projects \u2192 Stages job chips). **Realtime** mirrors [`useDashboardMyTeamSectionState`](src/hooks/useDashboardMyTeamSectionState.ts) lines 833\u2013867: channel `projects-job-schedule-${authUserId}` subscribes to `clock_sessions` with `filter: \\`job_ledger_id=in.(${jobIds.join(',')})\\`` when there are \u2264 80 jobs in scope (unfiltered otherwise), and unfiltered to `jobs_ledger` `event: '*'` so jobs flipping INTO or OUT OF the `working` set re-render the row list. Both paths coalesce into one 280 ms debounce gated on `document.visibilityState === 'visible'`. Trade prefix on the floating label comes from `service_types.ledger_job_prefix` via [`buildLedgerPrefixMap`](src/lib/ledgerDisplayPrefixes.ts) with a `J` fallback. **Files** (all new except `Projects.tsx`): pure data lib [`src/lib/projectsJobScheduleData.ts`](src/lib/projectsJobScheduleData.ts) (`ProjectsJobScheduleBar`, `aggregateClockSessionsToBars`, `peopleCountColor`, `enumerateDaysInRange`) + 19 unit tests in [`projectsJobScheduleData.test.ts`](src/lib/projectsJobScheduleData.test.ts) covering open-ended bar, multi-day distinct-user count, gap days, palette boundaries (0 / 1 / 2 / 3 / 4 / 5+), defensive future-stamp clamp, sort order, blank inputs; chunked fetcher [`src/lib/fetchProjectsJobScheduleClockSessions.ts`](src/lib/fetchProjectsJobScheduleClockSessions.ts) (100 ids per `IN`); orchestration component [`src/components/projects/ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) (jobs + sessions + service-types loader, range state, Realtime subscription, debounced reloads, document-visibility gate); pure presentational [`src/components/projects/ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) (sticky 2-tier header with month-run band + day-digit band, today vertical line, per-job row as CSS grid `repeat(N, 36px)`, bar via `grid-column: start / end + 1`, sticky label inside the bar, absolutely-positioned highlight cells inside the bar at `(idx \u2212 startIdx) \u00d7 36px`); wire-up in [`src/pages/Projects.tsx`](src/pages/Projects.tsx) replacing the `Coming soon.` block at lines 671\u2013674 with `<ProjectsJobScheduleTab customerId={customerId} />`. No DB / migration / RLS / RPC / Edge changes \u2014 all data comes from existing tables; `npx tsc --noEmit` clean."
+  - name: "Previous Version (v2.547)"
+    line: ~1995
     description: "People \u2192 Review **Team Summary** drilldown modals \u2014 uniform layout & visibility polish across all eight modals (**Hours**, **Overhead hours**, **Overhead labor**, **Field hours**, **Gross Revenue**, **Net Revenue**, **Profit (after overhead)**, **Gross Revenue/hr**, **Profit/hr (after overhead)**). **(1) Hours breakdown** \u2014 day list now includes Office and Bid allocations (previously the modal-only `crewByDateForPerson` builder filtered out the configured Office job and didn't read `people_crew_bids` at all, so Paige-shaped *whole day on Office* / *whole day on a bid* days surfaced as `No crew assignment`); each allocation line gets the **address** appended (`(percent) Job # | Job Name - 12921 FM 20 Kingsbury TX`); running total moved into the title (`Hours breakdown \u2014 Abraham \u00b7 50.8 hrs`); the redundant top-and-bottom `Total: N hrs` lines + the `Daily hours` `<h3>` + the `Total = sum of daily hours = N hrs. Each line under a day reads (pct) Job # | Job Name.` legend caption are gone; the *Sub labor hours are not added in this mode \u2014 toggle Only paid jobs in Review to count them.* hint is now always rendered (was previously gated on `subLaborRows.length > 0`, which hid it precisely when discoverability mattered most). **(2) Overhead hours breakdown** \u2014 the static *Bucket | Hours | Share of overhead* table is replaced with a hierarchical session-level layout that matches the Hours breakdown idiom: **`Office \u00b7 17.7 hrs`** + **`Bids \u00b7 12.9 hrs`** centered section headers, per-day blocks underneath each (**`{DOW} {YYYY-MM-DD} \u00b7 N.N hrs`**), and per-session lines indented under each day (Office: `(pct) 8:00 AM \u2192 5:30 PM \u00b7 N hrs`, Bids: `(pct) B249 | Project Name - address \u00b7 N hrs`). Running total moved into the title (`Overhead hours breakdown \u2014 Abraham \u00b7 30.5 hrs`); intro paragraph moved to the bottom as a `.caption`; the *Where overhead fits in this person's work* `<h3>` is hidden (the column headers carry enough context); the **Share of total work** column header + cells are left-aligned within their rightmost column position via inline `text-align: left;` so percentages don't bump up against the right edge of the table. **(3) Overhead labor breakdown** \u2014 intro paragraph moved to the bottom; `Overhead labor: -$X (X hrs \u00d7 $Y/hr)` line is centered; **Share** column header + cells left-aligned within their rightmost column; the *Where it shows up* cell on the Field row trimmed from `Already in Net Revenue via job-level revenue \u2212 parts \u2212 total labor; not added to this column to avoid double-counting.` to just `Already in Net Revenue.` (the long version is still in the bottom captions). **(4) Field hours breakdown** \u2014 running total moved into the title (`Field hours breakdown \u2014 Abraham \u00b7 17.9 hrs`); redundant `Field hrs:` line removed; the `How field hrs is computed` `<h3>` is collapsed into the table's first column header (the column that used to read `Step` is now `How field hrs is computed`); `Where the field hrs went` `<h3>` is centered; **Share of field hrs** column header + cells left-aligned within rightmost column. **(5) Gross Revenue breakdown** \u2014 every column header and every body cell is centered (`text-align: center;` inline on each `<th>` and `<td>`, `font-variant-numeric: tabular-nums` from `class=\"num\"` preserved); running total moved into the title (`Gross Revenue breakdown \u2014 Abraham \u00b7 $872`); explanation paragraph moved to the bottom. **(6) Net Revenue breakdown** \u2014 running total moved into the title (`Net Revenue breakdown \u2014 Abraham \u00b7 $1,766`); explanation paragraph moved to the bottom. **(7) Profit (after overhead) breakdown** \u2014 explanation paragraph moved to the bottom. **(8) Gross Revenue/hr breakdown** \u2014 explanation paragraph moved to the bottom. **(9) Profit/hr (after overhead) breakdown** \u2014 explanation paragraph moved to the bottom. **Cross-cutting typography**: the `· N hrs` muted suffix on per-day headers (`Mon 2026-05-04 · 6.8 hrs`) and on Overhead-hours section headers (`Office · 17.7 hrs`) now inherits the parent's color / weight / size verbatim (only `margin-left: 0.5rem` retained for spacing) so all label-and-total pairings read with one typography rather than two. **Schema / state plumbing** that landed alongside (1) and (2): **`TeamReviewUnion`** gains `periodCrewBidRows: Array<{work_date, person_name, bid_assignments}>`, `bidsById: Map<bid_id, { bid_number, project_name, address }>`, and `overheadSessionsByPerson: Record<person_name, Array<{ sessionId, workDate, bucket, clockedInIso, clockedOutIso, hours, bidId }>>`. **`loadTeamReviewUnion`** adds a period-only `people_crew_bids` fetch to the parallel `Promise.all`, a conditional `get_bids_by_ids` RPC keyed on the union of bid IDs, and a per-person session list collected during the existing `overheadSessionsAllTime` iteration (period-filtered, approved-closed only, open sessions skipped because they have no end time to render). **`HoursBreakdown.dailyRows[].crewAllocations`** widened from `{ hcp, pct, hours }` to `{ hcp, jobName, address, pct, hours }`; the `crewByDateForPerson` builder in `derivePersonTeamSummary` iterates `union.periodCrewRows` (no Office filter) and `union.periodCrewBidRows` directly \u2014 revenue / profit math still uses `crewJobsWithLeadFiltered` so Office and bids stay out of field-revenue allocation. New **`OverheadSessionLine`** type + **`TeamSummaryRow.overheadSessions: OverheadSessionLine[]`**: `derivePersonTeamSummary` formats `clocked_in_at` / `clocked_out_at` to `8:00 AM`-style strings via `Intl.DateTimeFormat` in `APP_CALENDAR_TZ`, resolves bid display fields via `union.bidsById` (`B{bid_number}` with auto-`B` prefix when the raw number doesn't already start with one, `\\u2014` fallback for missing project name), sorts by `(workDate, startTime)` ascending. **`breakdownsPayload`** forwards `overheadSessions`. **New iframe helpers**: `buildOverheadSessionsSection(label, sessions, bucketTotalHrs)` groups sessions by `workDate`, computes `(session.hours / dayBucketTotal) \u00d7 100` for the per-line pct, and reuses the existing `.hours-day-section` / `.hours-day-header` / `.hours-day-allocs` / `.hours-day-alloc` / `.alloc-pct` / `.alloc-jobnum` / `.alloc-jobname` / `.alloc-address` / `.alloc-counted` styles. New CSS: `.modal .hours-day-alloc .alloc-address { color: #6b7280; }`. None of the math changes: revenue / profit / overhead pool / field-hour rate are exactly as they were after **v2.539** Convention 1 + **v2.540** Overhead labor + **v2.544** hierarchical layout. This is purely a presentation pass that makes the modals consistent with each other, surfaces the *whole story* of where someone's hours went (Office and Bids included), and gets totals into titles so the modal headers carry the headline metric. Files: [`src/pages/People.tsx`](src/pages/People.tsx) \u2014 `TeamReviewUnion` type, `loadTeamReviewUnion` (period bids fetch, `get_bids_by_ids`, `overheadSessionsByPerson` populate, return), `HoursBreakdown.dailyRows[].crewAllocations` type, `OverheadSessionLine` type + `TeamSummaryRow.overheadSessions` field, `derivePersonTeamSummary` (`crewByDateForPerson` rewrite, `Intl.DateTimeFormat` + bid metadata resolution for `overheadSessions`), `breakdownsPayload` extended, iframe `<style>` (`.alloc-address`, `.day-hours` typography reset to inherit), iframe `buildHoursBody` / `buildOverheadHoursBody` / `buildOverheadLaborBody` / `buildFieldHoursBody` / `buildGrossBody` / `buildNetBody` / `buildProfitBody` / `buildGrossPerHourBody` / `buildProfitPerHourBody` rewrites, new iframe helper `buildOverheadSessionsSection`, modal `openModal` title constructors for Hours / Overhead-hours / Field / Gross / Net (running totals appended via `\\u00b7` + `fmtH` / `fmtMoney`). Verified: `npx tsc --noEmit` clean; no new lints; 17 / 17 `peopleHoursUnallocatedRows` + 15 / 15 `peopleHoursPendingByCell` unit tests still pass; one additional period-only `people_crew_bids` fetch + one conditional `get_bids_by_ids` RPC added to `loadTeamReviewUnion` (both gated to skip empty inputs, so cost is zero when no bids are crew-linked in the period)."
   - name: "Previous Version (v2.546)"
     line: ~1825
@@ -1838,6 +1859,587 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.554)
+
+**Date**: 2026-05-18
+
+### Projects → Forecast tab (Specific + All Stages sub-tabs)
+
+A new top-level **Forecast** tab on `/projects` (right of **Job History**) that visualizes every project's `project_workflow_steps` as Gantt bars on a date axis. Driven by the `scheduled_start_date` / `scheduled_end_date` columns the **Expected dates** modal writes (v2.552) plus each stage's actual `started_at` / `ended_at` timestamps. Two sub-tabs that share data but keep their own filter state.
+
+**URL**:
+
+```
+/projects?tab=forecast                              # default sub-tab = specific
+/projects?tab=forecast&forecastSub=all-stages
+/projects?tab=forecast&forecastJob=<jobId>          # specific tab only
+```
+
+#### Scope
+
+- **Jobs**: every `jobs_ledger` row with `project_id IS NOT NULL`, any `status` (working / ready_to_bill / billed). RLS on `project_workflow_steps` keeps role-based visibility tight (dev / master see all; assistant / superintendent via `can_access_project_via_workflow`; subcontractor / helpers see only assigned stages — their view will be sparse but still works).
+- **Stages**: every step of each job's workflow, all `status` values.
+- **Unscheduled stages**: render as **1-day grey dashed** placeholders chained to the prior stage's resolved end so they're always positioned somewhere and never invisible.
+
+#### Sub-tab 1: **Specific** — one job, vertical Gantt of its stages
+
+Pick a job from the typeahead at the top of the tab; the rest of the tab redraws as a vertical timeline where each row is one stage in `sequence_order` ASC. Selection persists to `?forecastJob=<jobId>` + `localStorage` (`projects_forecast_specific_selected_job_v1`).
+
+- **Search**: substring match on HCP + name + address + project name via [`projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts) (12 unit tests). Dropdown shows the current selection at the top + 15 other suggestions; outside-click closes.
+- **Range picker**: defaults to **auto-fit** — `[min(resolvedStart), max(resolvedEnd)]` padded ±3 days. User can override via From / To inputs; override persists under `projects_forecast_specific_range_v1`. A **Reset to fit** chip appears once an override is in place and restores the auto-fit.
+- **Stage row**:
+  - Left gutter (sticky) shows the sequence number in a status-colored chip, the stage name (status text-decoration applied — strikethrough for skipped), and the assignee in blue underline.
+  - Body is the Gantt bar spanning `[startYmd, endYmd]`, colored from the status palette; bar label is the stage name with `(inferred)` suffix when at least one of the dates was filled in by the resolver.
+  - Click anywhere on a row → opens `/workflows/${project_id}#step-${stage_id}` in a new tab.
+
+#### Sub-tab 2: **All Stages** — every job, stages laid out horizontally
+
+One row per job-with-project; stages within the row are positioned side-by-side via `gridColumn`. Designed to make crew-assignment gaps obvious — the whitespace between consecutive stage bars on a row is the gap.
+
+- **Range picker**: default **today − 7d → today + 90d** (forward-leaning since you're forecasting), persisted under `projects_forecast_all_range_v1`. **Reset to default** chip restores it. From / To inputs cross-bound via `min` / `max` plus the *Pick both dates to set the range.* hint.
+- **Search**: same substring matcher as Specific; matched rows shown, others hidden; `k of N matches` inline status with `aria-live="polite"`.
+- **Only show jobs with active stages**: checkbox below the range picker; filters out jobs whose every stage is `completed` / `approved` / `skipped`. Persisted under `projects_forecast_all_active_only_v1`.
+- **Row label** (sticky left gutter): `{prefix}{HCP} · {Job Name}` with `{project_name}` on a second line when present. Click → opens `/workflows/${project_id}` (no `#step-` anchor) in a new tab.
+- **Stage bar**: same swatch + tooltip as Specific; clicking a bar opens the same Workflow deep-link with `#step-${stage_id}` for that specific stage.
+
+Row windowing — a row only renders when at least one of its bars overlaps the visible date range (`r.endYmd >= rangeStart && r.startYmd <= rangeEnd`), so a job whose stages are all outside the window doesn't take up a blank line.
+
+#### Pure resolver: [`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts)
+
+Every visible bar comes from `resolveForecastStages(stagesIn, todayYmd)` which walks the stages in `sequence_order` and emits a `ResolvedStageBar[]`. Per stage:
+
+1. `start = scheduled_start_date ?? prior.endYmd ?? actual(started_at) ?? todayYmd`
+2. `end = scheduled_end_date ?? actual(ended_at) ?? ymdAddDays(start, 1)`
+3. `isUnscheduled = !scheduled_start && !scheduled_end && !started_at && !ended_at` → grey dashed 1-day swatch at the chained position.
+4. `isInferred = startInferred || endInferred` — true whenever at least one YMD came from a fallback (so the bar tooltip can show `(some dates inferred)`).
+5. `colorKey` = stage status (`pending` / `in_progress` / `completed` / `approved` / `rejected` / `skipped`), with two overrides: **explicit `skipped` wins over `unscheduled`** (so an intentionally-skipped stage keeps its strikethrough swatch even when it has no dates), and `unscheduled` wins over everything else.
+
+The resolver intentionally **does not clamp** `endYmd >= startYmd` — bad data in the DB (end before start) surfaces as a visibly-flipped bar instead of silently being hidden. It also keeps `skipped` stages in the chain (they need a position) but never compresses them out.
+
+19 unit tests cover: empty input, all-scheduled, none-scheduled chained from today, mixed, only-start / only-end, skipped at various positions, rejected status preservation, completed past stages keep actual dates, `sequence_order` ties preserve input order, out-of-order input is sorted, assignee passthrough, contradictory dates not clamped, and the inferred-flag semantics.
+
+#### Color palette: [`projectsForecastColors.ts`](src/lib/projectsForecastColors.ts)
+
+Mirrors `getStepStatusStyle` from [`Workflow.tsx`](src/pages/Workflow.tsx) so colors map 1:1 between the two pages:
+
+- `pending` → light grey `#e2e8f0` + `#94a3b8` border
+- `in_progress` → orange `#fed7aa` + `#E87600` border
+- `completed` / `approved` → green `#bbf7d0` + `#059669` border
+- `rejected` → red `#fecaca` + `#b91c1c` border
+- `skipped` → muted `#f1f5f9` + `#cbd5e1` border + strikethrough text
+- `unscheduled` → `#f1f5f9` + `#9ca3af` dashed border, exactly 1 calendar day wide
+
+#### Shared grid: [`ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx)
+
+Generic Gantt primitive used by both sub-tabs. Sticky 2-tier date header (month-run band + day-digit band), today vertical line in orange, weekend tints (Sat / Sun light slate backdrop), optional sticky label gutter with caller-controlled width, and a `renderRow(row, idx, ctx)` callback so each sub-tab decides what goes in each row (one bar in Specific; N bars in All Stages). Auto-scrolls to **center** `todayYmd` on mount (or parks at left edge when today is outside the visible range). Bar placement helper `forecastBarColumnSpan(startYmd, endYmd, dayKeyIndex, rangeStart, rangeEnd)` computes the `gridColumn` span and reports `clipLeft` / `clipRight` so callers can dash the appropriate edge.
+
+#### Data loaders: [`projectsForecastData.ts`](src/lib/projectsForecastData.ts)
+
+- `fetchForecastJobs({ customerId })` → `{ jobs: ForecastJob[], workflowByProject: Map<projectId, workflowId> }` — joins `jobs_ledger.project_id` to `projects(name)` to `project_workflows.id` (one workflow per project; ties broken by `id ASC` for determinism). Jobs whose project has no workflow row are dropped.
+- `fetchForecastStages(workflowIds)` → `ForecastStage[]` sorted by `(workflow_id, sequence_order)`. Empty input → no round-trip.
+- `groupStagesByWorkflow(stages)` → `Map<workflowId, ForecastStage[]>` for in-memory join in the sub-tabs.
+
+#### Realtime
+
+Channel `projects-forecast-${authUserId}` (one per session). Subscribes to:
+
+- `project_workflow_steps` filtered by `workflow_id=in.(...)` when ≤ 80 workflows in scope (unfiltered fallback) — debounced refresh of the stages map.
+- `jobs_ledger` unfiltered — catches new jobs flipping into the project-linked set and existing jobs gaining / losing `project_id`. Volume is low compared to `clock_sessions`.
+
+Both paths coalesce into one 280 ms `setTimeout` debounce, gated on `document.visibilityState === 'visible'` via [`useDocumentVisibility`](src/hooks/useDocumentVisibility.ts). Mirrors the Job History pattern from [`ProjectsJobHistoryTab.tsx`](src/components/projects/ProjectsJobHistoryTab.tsx).
+
+#### Permissions
+
+No new RLS or policies — relies entirely on existing `project_workflow_steps` policies:
+
+- dev / master_technician → all stages.
+- assistant / superintendent → stages where `can_access_project_via_workflow(workflow_id)` returns true.
+- subcontractor / helpers → stages where `assigned_to_name = current user's name` (their Forecast view will be sparse but still functional).
+
+The Forecast tab is visible to all roles; what they see in the bars is whatever RLS returns.
+
+#### Files
+
+New:
+
+- [`src/lib/projectsForecastData.ts`](src/lib/projectsForecastData.ts) — types + loaders (`fetchForecastJobs`, `fetchForecastStages`, `groupStagesByWorkflow`).
+- [`src/lib/projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) — pure resolver + `resolvedStagesEnvelope`.
+- [`src/lib/projectsForecastStageResolver.test.ts`](src/lib/projectsForecastStageResolver.test.ts) — 19 unit tests.
+- [`src/lib/projectsForecastColors.ts`](src/lib/projectsForecastColors.ts) — palette + `forecastBarSwatch` / `forecastStageColorKey`.
+- [`src/lib/projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts) — substring matcher.
+- [`src/lib/projectsForecastJobSearch.test.ts`](src/lib/projectsForecastJobSearch.test.ts) — 12 unit tests.
+- [`src/lib/projectsForecastToolbarStyles.ts`](src/lib/projectsForecastToolbarStyles.ts) — shared toolbar `CSSProperties` so both sub-tabs ship identical date / search / chip styles.
+- [`src/components/projects/ProjectsForecastTab.tsx`](src/components/projects/ProjectsForecastTab.tsx) — parent + sub-tab routing + shared data + Realtime channel.
+- [`src/components/projects/ProjectsForecastSpecificTab.tsx`](src/components/projects/ProjectsForecastSpecificTab.tsx) — Specific sub-tab.
+- [`src/components/projects/ProjectsForecastAllStagesTab.tsx`](src/components/projects/ProjectsForecastAllStagesTab.tsx) — All Stages sub-tab.
+- [`src/components/projects/ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx) — generic shared grid + `forecastBarColumnSpan` + `buildForecastDayKeyIndex`.
+
+Modified:
+
+- [`src/pages/Projects.tsx`](src/pages/Projects.tsx) — `ProjectsPageTab` extended to `'stages' | 'job-history' | 'forecast'`, `parseProjectsPageTab` accepts `'forecast'`, third tab button rendered right of **Job History**, `<ProjectsForecastTab customerId={customerId} />` mounts when active.
+
+#### Out of scope for v1
+
+- Inline stage edit from the Forecast view (click → deep-link to Workflow is enough for v1).
+- Drag-to-resize / drag-to-move stages in the Gantt.
+- Cross-job dependency visualization.
+- PDF / print view.
+- Compact lane-packing for All Stages (each job already gets its own row).
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- No new lints across the 12 new / modified files.
+- 31 / 31 vitest pass on the two new test files (resolver 19 + search 12).
+- 88 / 88 vitest pass on the wider Projects + Forecast suite (resolver, search, lane packing, Job History data + bar search).
+
+---
+
+## Previous Updates (v2.553)
+
+**Date**: 2026-05-18
+
+### Projects → Job Schedule renamed to Job History (+ Only-with-projects toggle, default Compact layout)
+
+The **Job Schedule** tab on `/projects` is renamed to **Job History**. The rename was done *deep* — every file, symbol, type, test, `localStorage` key, Supabase Realtime channel name, DOM `data-*` attribute, and URL `?tab=` value moved from the `JobSchedule` namespace to `JobHistory` — so the old name is fully free for a future tab.
+
+#### What moved
+
+12 files renamed (with content rewrite of every internal reference):
+
+| Before | After |
+|---|---|
+| `src/components/projects/ProjectsJobScheduleTab.tsx` | `src/components/projects/ProjectsJobHistoryTab.tsx` |
+| `src/components/projects/ProjectsJobScheduleDayModal.tsx` | `src/components/projects/ProjectsJobHistoryDayModal.tsx` |
+| `src/components/projects/ProjectsJobScheduleTimeline.tsx` | `src/components/projects/ProjectsJobHistoryTimeline.tsx` |
+| `src/lib/projectsJobScheduleData.ts` | `src/lib/projectsJobHistoryData.ts` |
+| `src/lib/projectsJobScheduleData.test.ts` | `src/lib/projectsJobHistoryData.test.ts` |
+| `src/lib/projectsJobScheduleBarSearch.ts` | `src/lib/projectsJobHistoryBarSearch.ts` |
+| `src/lib/projectsJobScheduleBarSearch.test.ts` | `src/lib/projectsJobHistoryBarSearch.test.ts` |
+| `src/lib/projectsJobScheduleLanePacking.ts` | `src/lib/projectsJobHistoryLanePacking.ts` |
+| `src/lib/projectsJobScheduleLanePacking.test.ts` | `src/lib/projectsJobHistoryLanePacking.test.ts` |
+| `src/lib/projectsJobScheduleDayCosts.ts` | `src/lib/projectsJobHistoryDayCosts.ts` |
+| `src/lib/projectsJobScheduleDayCosts.test.ts` | `src/lib/projectsJobHistoryDayCosts.test.ts` |
+| `src/lib/fetchProjectsJobScheduleClockSessions.ts` | `src/lib/fetchProjectsJobHistoryClockSessions.ts` |
+
+Tokens that moved with them: `ProjectsJobSchedule*` → `ProjectsJobHistory*` (types, components, props), `projectsJobSchedule*` → `projectsJobHistory*` (variables, functions), `projects_job_schedule_*` → `projects_job_history_*` (`localStorage` keys including range + layout-mode + the new only-with-projects toggle below), `projects-job-schedule-${authUserId}` → `projects-job-history-${authUserId}` (Supabase Realtime channel name), `data-projects-job-schedule-*` → `data-projects-job-history-*` (DOM attributes used by the day-cell click handler), and the URL value `?tab=job-schedule` → `?tab=job-history`. `parseProjectsPageTab` in [`Projects.tsx`](src/pages/Projects.tsx) was updated accordingly.
+
+#### Toolbar: **Only show jobs with projects**
+
+A new checkbox under the search bar in [`ProjectsJobHistoryTab.tsx`](src/components/projects/ProjectsJobHistoryTab.tsx) filters the visible rows down to jobs that have `jobs_ledger.project_id IS NOT NULL`. Useful for crews working primarily on projects and ignoring one-off jobs. When the toggle is on, the search-match counter (`k of N matches`) and the loaded-row summary text both reflect the filtered population so the user never sees mismatched counts.
+
+Implementation:
+
+- `ProjectsJobHistoryJob` and `ProjectsJobHistoryBar` types gained a `project_id: string | null` field.
+- The `jobs_ledger` SELECT now pulls `project_id` alongside the existing columns.
+- `aggregateClockSessionsToBars` propagates `project_id` through to `bar.projectId` (1 new unit test confirms this).
+- New `projectFilteredBars = useMemo(() => onlyWithProjects ? bars.filter(b => b.projectId != null) : bars, [bars, onlyWithProjects])` is applied **before** the existing search filter so search match counts stay in sync.
+- Toggle state persists per browser under `localStorage` key `projects_job_history_only_with_projects_v1`; default `false`.
+
+#### Default layout mode flipped to **Compact**
+
+[`readProjectsJobHistoryLayoutMode`](src/lib/projectsJobHistoryLanePacking.ts) now returns `'compact'` instead of `'expanded'` when the `localStorage` key is unset, unknown, or on SSR. Users who explicitly chose **Expanded** in the past keep that preference verbatim — the stored value is still the same `'expanded'` / `'compact'` string, no migration needed.
+
+Rationale: now that the tab is named **Job History**, the lane-packed view is the more useful at-a-glance read of *what jobs we've worked on recently*; the one-row-per-job Expanded view was great for the previous **Job Schedule** framing but visually noisy when scanning a 90-day window of mixed jobs.
+
+#### Tests updated
+
+`projectsJobHistoryLanePacking.test.ts` — default-mode assertions flipped to expect `'compact'`; existing `'expanded'` round-trip case unchanged. `projectsJobHistoryData.test.ts` — `JOB_A` / `JOB_B` / `JOB_C` fixtures gained `project_id` (1 with, 1 null, 1 with), plus a new test asserting `aggregateClockSessionsToBars` carries `project_id` → `bar.projectId`. 88 / 88 vitest pass across all renamed test files.
+
+#### Verification
+
+- `npx tsc --noEmit` clean across all 12 renamed files.
+- `git mv` history preserved by IDE so blame chains stay intact.
+- No DB / migration / RLS / Edge changes.
+
+---
+
+## Previous Updates (v2.552)
+
+**Date**: 2026-05-18
+
+### Workflow stage cards — assignee contact popup, default-collapsed empty notes, expected dates with cascade modal
+
+Three layered additions to every stage card on the Workflow page (`/workflows/:projectId`). All ship in [`src/pages/Workflow.tsx`](src/pages/Workflow.tsx); no DB migrations (the `scheduled_start_date` / `scheduled_end_date` columns already existed on `project_workflow_steps`).
+
+#### 1. Assignee contact popup
+
+Stages used to render assignees as `{name} • {email}` inline. That was noisy in stage lists where the email rarely changes anyone's behavior. The new pattern:
+
+- Assignees render as **name only**, styled as a blue underlined `<button>`.
+- Clicking the name opens a **Person contact info** modal showing `email`, `phone`, and a `User` / `Guest` chip.
+- Contact data comes from the same `contacts` map Workflow already loads (no new query). When the assignee isn't found in the lookup, the modal falls back to *(no contact info on file)*.
+
+New `PersonContactInfo` type, `PersonDisplayWithContact` component, and a `personContactModal: PersonContactInfo | null` state on the page. The component is reused in every place a stage shows an assignee (Tech, Office, Inspector, etc.).
+
+#### 2. Empty Tech / Office notes default to collapsed
+
+`isSectionDefaultExpanded(step, section)` previously returned `true` for `notes` and `privateNotes` so the textareas were always visible. New rule:
+
+```ts
+if (section === 'notes')        return !!(step.notes?.trim())
+if (section === 'privateNotes') return !!(step.private_notes?.trim())
+```
+
+Sections collapse by default when the corresponding field is blank, expand when there's content. Existing notes-rich stages look exactly the same; pristine stages no longer waste three lines of vertical space on empty *Add note…* fields. The user can still click the disclosure to expand and add a note — just one extra click instead of always-visible.
+
+#### 3. Expected start / end dates with cascade modal
+
+Each stage card now surfaces an **Expected:** line right below the actual Start / End line:
+
+- **Expanded card**: `Expected: Start [MM/DD/YYYY] · End [MM/DD/YYYY]` when both are set, with the dates as inline clickable buttons; when either side is empty, the missing word becomes `Start set` / `End set` (still clickable). Wording is deliberately compact so the row stays single-line.
+- **Collapsed card**: `Exp: MM/DD → MM/DD` (or `Exp: — → —` when unset).
+
+Clicking any of those words opens the **Expected dates** modal with:
+
+- **Start date** input (`<input type="date">`)
+- **End date** input
+- **Duration (days)** input — typing into this auto-computes the end date from the start (or vice versa: editing the end date auto-fills the duration). Dispatchers can say *"rough-in takes 5 days starting Thursday"* and the modal fills in the end automatically.
+- **Cancel** / **Clear dates** / **Save**.
+
+**Cascade rule**: the next stage's `scheduled_start_date` defaults to the prior stage's `scheduled_end_date` when the next stage doesn't have its own scheduled start yet. So once a user fills in the modal for stage 1, stages 2, 3, … automatically chain off it on the Forecast Gantt (**v2.554**). Updating a stage's `scheduled_end_date` later does **not** silently retroactively rewrite downstream stages — the cascade only fires when downstream is null, so explicit user choices are never overwritten.
+
+`openExpectedDates(step)`, `submitExpectedDates(start, end)`, `clearExpectedDates()` handlers in `Workflow.tsx`. Pure date helpers `ymdFromDateLike`, `formatScheduledDateShort` (renders `MM/DD/YYYY` from a YMD), plus reuse of `ymdAddDays` / `ymdDaysBetween` from `src/utils/dateUtils.ts`. All save paths go through `withSupabaseRetry` and refresh the local steps list in place — no full page reload.
+
+#### Why these three landed together
+
+The Forecast Gantt (**v2.554**) needs every workflow stage to have a position on the timeline, and the cleanest way to give it that information is via expected dates the team already maintains. Items 1 and 2 are quality-of-life polish that landed at the same time because the stage card was already getting a structural rewrite for item 3.
+
+---
+
+## Previous Updates (v2.551)
+
+**Date**: 2026-05-18
+
+### Projects → toolbar polish + tab rename (search bar, compact dates, Overview label)
+
+Six small but user-visible changes layered on top of v2.550 (Compact mode). All polish; no DB / RLS / Edge changes.
+
+#### 1. **Stages** tab → **Overview**
+
+The first tab on `/projects` now reads **Overview** instead of **Stages**. Purely a label change — the URL param (`?tab=stages`) and React state (`activeTab === 'stages'`) intentionally stay the same so anyone who has the route bookmarked or linked from chat / docs still lands on the same tab. The change is one line in [`src/pages/Projects.tsx`](src/pages/Projects.tsx); both the tab button rendering and the conditional `{activeTab === 'stages' ? stagesContent : null}` work exactly as they did. The runtime check (parse `?tab=stages|job-schedule`, default `'stages'`) was left alone.
+
+#### 2. Job Schedule — search bar
+
+A rounded `<input type="search">` now sits at the far left of the Job Schedule toolbar. Match semantics (case-insensitive substring):
+
+- **Full display label** (`{prefix}{HCP} · {Job Name}`, e.g. `JP740 · San Marcos Housing Authority`)
+- **Prefix + HCP number** alone (`JP740`)
+- **Raw HCP number** alone (`740`)
+- **Job name** alone (`San Marcos`)
+- **Address** (`12921 FM 20`)
+
+Works with the legacy `J` fallback when a service type has no prefix mapping. Filter applies to both Expanded and Compact modes — Compact's lane-packing memo automatically re-runs on the filtered subset because its dep array is `[layoutMode, bars, prefixMap]` and the timeline now receives `filteredBars` instead of `bars`. Job Detail's `assignedJobsRows` snapshot also rebuilds from `filteredBars` so the in-modal navigation matches the visible timeline.
+
+New pure helpers in [`src/lib/projectsJobScheduleBarSearch.ts`](src/lib/projectsJobScheduleBarSearch.ts):
+
+- `normalizeBarSearchQuery(raw)` — lowercase, trim, collapse whitespace; returns `''` on blank.
+- `barMatchesSearch(bar, query, prefixMap)` — single-bar predicate.
+- `filterBarsBySearch(bars, query, prefixMap)` — array filter; **returns the same array reference** when the query normalizes to `''` so downstream `useMemo` callsites don't recompute.
+
+16 unit tests in [`src/lib/projectsJobScheduleBarSearch.test.ts`](src/lib/projectsJobScheduleBarSearch.test.ts) cover normalization, all five match fields, case-insensitivity, legacy-`J` fallback, blank fields, and `filterBarsBySearch` referential equality.
+
+#### 3. Counter merged into the search input
+
+The right-hand `N jobs · D days` text was removed. The count now renders **inside the search input as its placeholder**:
+
+- Loading → placeholder = `Loading…`
+- No working jobs in range → placeholder = `No working jobs with approved clock sessions in scope.`
+- Default → placeholder = `29 jobs · 91 days` (or whatever the current totals are)
+
+When the user types and the placeholder is naturally hidden, a small `k of N matches` status label appears next to the input (with `aria-live="polite"` so screen readers announce the result count as the query changes). Clear button (`×`) sits inside the input and wipes the query in one click.
+
+#### 4. Toolbar reorder
+
+The toolbar is now one wrapping flex row, left-to-right:
+
+```
+[ Search ]  [ From ] [ To ]  [ Last 90d ] [ Last 365d ]  [ Expanded | Compact ]
+```
+
+Previously the Last 90d / Last 365d chips and the Expanded / Compact segmented toggle were stacked above From / To in their own row; now they sit to the right of the date inputs. Outer flex container switched from `alignItems: 'flex-end'` + `justify-content: space-between` (which the right-side counter used to anchor against) to `alignItems: 'center'` since nothing pushes to the right anymore.
+
+#### 5. Compact From / To inputs
+
+Both `<input type="date">` instances narrowed from `~140 px` (filling the year) to `92 px` via the new `dateInputStyle`. Native `<input type="date">` doesn't expose a way to hide the year — the browser owns the visible rendering — so the field is sized just wide enough to show `MM/DD/` plus the calendar-picker icon, and the browser visually clips the trailing `YYYY` (default `text-overflow: clip` behavior).
+
+The underlying `value` remains a full `YYYY-MM-DD` ISO string, so all the existing range logic, `localStorage` persistence (`projects_job_schedule_range_v1`), and `aggregateClockSessionsToBars` math keep working. The full date is exposed on hover via the `title` attribute, and clicking the field still opens the native calendar picker with year navigation. The previous shared `inputStyle` was removed (no other callers).
+
+#### 6. Extra breathing column between Compact lane-shared bars
+
+New `LABEL_BREATHING_COLS = 1` constant in [`ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) adds one empty calendar column on top of every bar's measured `labelDayCols` before packing. With `COL_W = 36px`, that puts at least a 36 px visual gap between the previous bar's right edge and the next bar's leading label edge whenever they share a lane.
+
+Without this, the pack predicate (`tail.lastWorkDateYmd < ymdAddDays(bar.firstWorkDateYmd, -labelDayCols)`) would let a bar's label render exactly flush against the previous bar's day cells — visually they'd look like one continuous bar, which defeats the purpose of label separation. The `MAX_LABEL_DAY_COLS = 14` cap still applies *after* the breathing column is added, so a 13-col label still clamps to 14 instead of 15.
+
+If user testing shows the gap is still too tight, bump to `LABEL_BREATHING_COLS = 2` for two empty columns. The lane-packing pure helper is unchanged — this is a cosmetic adjustment at the consumer site.
+
+#### Files
+
+- Edited [`src/pages/Projects.tsx`](src/pages/Projects.tsx) — one-line tab label rename.
+- Edited [`src/components/projects/ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) — `searchQuery` state + `filteredBars` memo + `summaryText` / `searchMatchStatus` derived values; new search input UI with clear button; toolbar reorder; `dateInputStyle` for compact From / To; right-side counter removed; `detailAssignedRows` now sourced from `filteredBars`.
+- Edited [`src/components/projects/ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) — `LABEL_BREATHING_COLS = 1` added to the per-bar `labelDayCols` computation inside the compact-mode pack-inputs builder.
+- New [`src/lib/projectsJobScheduleBarSearch.ts`](src/lib/projectsJobScheduleBarSearch.ts) + [`src/lib/projectsJobScheduleBarSearch.test.ts`](src/lib/projectsJobScheduleBarSearch.test.ts).
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- No new lints across the four touched files.
+- 37 / 37 vitest pass across `projectsJobScheduleBarSearch.test.ts` (16) + `projectsJobScheduleLanePacking.test.ts` (21).
+
+---
+
+## Latest Updates (v2.550)
+
+**Date**: 2026-05-18
+
+### Projects → Job Schedule — Compact mode (label-width-aware lane packing)
+
+**Why this exists.** v2.548 / v2.549 shipped the Job Schedule Gantt with strictly one row per `working` job. That's the right default — staff scanning the timeline always know exactly where to find a specific job — but on accounts with 25+ concurrent working jobs the vertical scroll burden grows quickly, and most of the screen is empty space between bars whose date ranges don't overlap at all. Many of those bars could share a row without any visual ambiguity.
+
+This version adds an opt-in **Compact** layout that packs non-overlapping bars onto shared rows ("lanes") to claw back vertical real estate, while leaving Expanded mode (and its DOM) byte-identical for users who prefer the one-row-per-job invariant.
+
+The tricky bit isn't the lane-packing math itself — it's the **job-name label**. v2.549 moved the label from floating on top of the bar to sitting just outside the bar's left edge (`position: absolute; right: 100%; marginRight: 6`). That works perfectly in Expanded mode because the row is empty to the left of every bar; in Compact mode the empty space to the left of a bar might actually be the right edge of a *previous* bar in the same lane, and then the label would render on top of that bar and look broken. So the pack predicate has to know each bar's label width and use that to decide which bars are allowed to share a lane.
+
+#### The toggle
+
+A two-button segmented control sits inline with the existing **Last 90d** / **Last 365d** date-range chips on the Job Schedule toolbar:
+
+```
+[ Last 90d ] [ Last 365d ]   [ Expanded ][ Compact ]
+```
+
+The active button picks up `background: #dbeafe`, `border: 1px solid #1d4ed8`, `color: #1d4ed8`, and `fontWeight: 700` so it visually distinguishes from the chip aesthetic. Click `Expanded` to revert to one row per job; click `Compact` to pack. Choice persists per browser via `localStorage` (key: `projects_job_schedule_layout_mode_v1`); SSR-safe (helpers short-circuit on `typeof window === 'undefined'`), defaults to `'expanded'` on first visit / corrupted storage.
+
+#### How the packing works
+
+Pure helper [`packBarsIntoLanes`](src/lib/projectsJobScheduleLanePacking.ts) with type-generic input so the timeline can attach the original `ProjectsJobScheduleBar` to each lane entry without losing type safety:
+
+```ts
+type PackInputBar = {
+  jobId: string
+  firstWorkDateYmd: string
+  lastWorkDateYmd: string
+  /** Calendar columns the bar's label occupies to the LEFT of `firstWorkDateYmd`. */
+  labelDayCols: number
+}
+```
+
+Algorithm:
+
+1. **Sort** input bars by `firstWorkDateYmd` ASC, tie-break by `jobId` lexicographic (deterministic across refreshes).
+2. **First-fit** each bar `B` against existing lanes: lane `L` accepts `B` iff `L.lastBar.lastWorkDateYmd < ymdAddDays(B.firstWorkDateYmd, -B.labelDayCols)`. That predicate says *"there must be at least `B.labelDayCols` empty calendar days between the lane's tail and `B`'s first work day"* — exactly the room `B`'s label needs.
+3. On no-fit, append a new lane.
+4. **Display order**: sort lanes by `max(lastWorkDateYmd) DESC` so the lane with the most recent activity appears at the top — matches the "newest first" intuition Expanded mode already uses. Ties resolve by `max(firstWorkDateYmd) DESC` then by first bar's `jobId`.
+
+Edge cases worth calling out:
+
+- **Strict `<` predicate** + `labelDayCols >= 1` guarantee that two bars in the same lane never visually touch (there's always at least one empty calendar column between them, even before considering the label).
+- **Open-ended bars** (no closed clock-out yet) already have `lastWorkDateYmd = todayYmd` at the data layer (`aggregateClockSessionsToBars` does this), so the predicate naturally blocks the lane out to today.
+- **Same-day starts** (two bars where `firstWorkDateYmd` ties): their footprints overlap by definition, so they always land in separate lanes — `jobId` tie-break keeps the resulting order stable across refreshes.
+- **Generic preservation**: bars carry whatever extra fields the caller attaches; the test suite covers this so an HCP number or revenue field can be threaded through without an `as unknown as` cast.
+
+#### Measuring labels
+
+The pack predicate needs `labelDayCols` per bar. Computing that means actually measuring the rendered label text width in pixels and dividing by the column width.
+
+[`measureLabelWidthPx(text, fontCss, paddingAndBorderPx, ctx)`](src/lib/projectsJobScheduleLanePacking.ts) takes a `CanvasRenderingContext2D` and returns `ceil(ctx.measureText(text).width) + paddingAndBorderPx`. When `ctx` is `null` (SSR / very old browsers / unit tests), it falls back to a character-count estimate (`text.length * 7 + paddingAndBorderPx`) so the algorithm still runs deterministically.
+
+[`labelDayColsFromPx(labelPx, colWidthPx)`](src/lib/projectsJobScheduleLanePacking.ts) returns `max(1, ceil(labelPx / colWidthPx))` so a defensive 0-width label still reserves one column (small visual separator).
+
+In the timeline component, the measurement happens once per render inside a `useMemo` keyed on `[layoutMode, bars, prefixMap]`:
+
+- Resolve the runtime font family from `getComputedStyle(document.body).fontFamily` so the canvas measurement matches what the user actually sees (system font on iOS / SF Pro, Roboto on Android, etc.). Fall back to a sensible system-stack default if the lookup fails.
+- Build the canvas font shorthand: `'600 13px {fontFamily}'` — matches the label `<button>`'s `fontSize: '0.8125rem'` (13px at the default 16px root) + `fontWeight: 600`.
+- `paddingAndBorderPx = 6 (padding-left) + 6 (padding-right) + 2 (1px border each side) + 6 (margin-right) = 20`.
+- Apply `MAX_LABEL_DAY_COLS = 14` as a hard ceiling so one absurdly long job name can't reserve 30+ days and defeat the point of Compact mode; the rendered label still shows full text via the existing `title` attribute when text overflow happens.
+
+Expanded mode skips the entire measurement step (the memo returns `null` early).
+
+#### Refactor: `<JobBarContent>` shared subcomponent
+
+The pre-existing `JobRow` rendered both the outer grid row + weekend tints **and** the bar `<div>` (with its day-cell `<button>`s and label `<button>`) inline. To share the bar's DOM exactly between Expanded and Compact modes, the bar's contents were extracted into a `<JobBarContent>` subcomponent. The two row wrappers now look like this:
+
+- **`<JobRow>`** (Expanded): renders one grid row of height `ROW_H`, the weekend column tints, and exactly one `<JobBarContent>`.
+- **`<CompactLaneRow>`** (Compact): renders one grid row of height `ROW_H`, the weekend column tints (once per lane, covering the whole lane width — the bars share the backdrop), and N `<JobBarContent>` placements where each one's `gridColumn: ${barColumnStart} / ${barColumnEnd}` puts it in the right horizontal slot.
+
+The three click targets (`onJobLabelClick` → Edit Job, `onBarClick` → Job Detail, `onDayCellClick` → day-detail modal) live entirely inside `<JobBarContent>`, so they behave identically in both modes with zero duplicated wiring. `e.stopPropagation()` on the label and day-cell buttons keeps the nested `<button>`-inside-`<div role="button">` event model clean.
+
+Expanded mode is intentionally byte-equivalent to v2.549 after this refactor — no visual diff, no behavioral change, no DOM diff except for the `JobBarContent` function in the React tree (which the user can't see).
+
+#### Files
+
+- New [`src/lib/projectsJobScheduleLanePacking.ts`](src/lib/projectsJobScheduleLanePacking.ts) — pure helpers: `packBarsIntoLanes` (first-fit), `labelDayColsFromPx` (pixel → column), `measureLabelWidthPx` (canvas measurement with null-ctx fallback), `readProjectsJobScheduleLayoutMode` / `writeProjectsJobScheduleLayoutMode` (localStorage round-trip, SSR-safe), `PROJECTS_JOB_SCHEDULE_LAYOUT_MODE_STORAGE_KEY` constant. No React, no DOM (the canvas is injected by the caller).
+- New [`src/lib/projectsJobScheduleLanePacking.test.ts`](src/lib/projectsJobScheduleLanePacking.test.ts) — 21 unit tests covering empty input, single bar, two non-overlapping bars with/without sufficient gap, directly adjacent bars, same-day starts, three-bar first-fit (`A` + `C` share lane while `B` is alone), open-ended bars blocking a lane to today, `jobId` tie-break determinism, lane display order, per-bar `labelDayCols` variation (a fat label forces a separate lane that a thin one would have fit), generic field preservation, `labelDayColsFromPx` edge cases (zero, negative, NaN, `ceil` boundaries), `measureLabelWidthPx` fallback estimate + ctx happy path, and storage helpers (default, round-trip, gibberish guard, SSR-safety).
+- Edited [`src/components/projects/ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) — extracted `<JobBarContent>` subcomponent; added `layoutMode?: 'expanded' | 'compact'` prop (defaults to `'expanded'`); added `compactLanes` `useMemo` keyed on `[layoutMode, bars, prefixMap]` that resolves the runtime font, creates a hidden canvas + 2d context, measures each bar's label, applies the `MAX_LABEL_DAY_COLS` cap, and calls `packBarsIntoLanes`; render path branches once on `layoutMode` to choose between mapping over `bars` (Expanded) or `compactLanes` (Compact); added `CompactLaneRow` row wrapper that mirrors `JobRow`'s weekend backdrop + grid layout but places N bars per row.
+- Edited [`src/components/projects/ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) — `layoutMode` state seeded from `readProjectsJobScheduleLayoutMode()`, `setLayoutMode` callback that updates state + writes to storage in one shot, segmented `<button>` toggle inside the existing chips row with `aria-pressed` + `title` per side, `layoutModeToggleStyle(active, side)` helper for the segmented border-radius (`999px 0 0 999px` left / `0 999px 999px 0` right) and inset blue active state, `layoutMode={layoutMode}` passed to `<ProjectsJobScheduleTimeline>`.
+
+#### Constraints / non-goals
+
+- The day-detail modal's own `DayContextMiniGantt` is unchanged — it shows a single job, so lane packing isn't relevant there.
+- No drag-to-reorder lanes (lane assignment is fully deterministic from the input bar order + `jobId` tie-break).
+- No per-user (DB) persistence — `localStorage` only, matches `projects_job_schedule_range_v1`.
+- No "N jobs · K lanes" footer text on the toolbar — Expanded and Compact both show the same `N jobs · D days` summary. Lane count is trivial to add later if it turns out to be useful.
+- No mobile-specific tap tooltip for clipped labels — the existing `title` attribute already exposes the full label, and the bar-click → Job Detail flow already shows the full name in the modal.
+- No `box-shadow` / colored vertical accent to visually group lane-internal bars — relied on the calendar-column gap (enforced by the pack predicate) for visual separation. Easy to add later if user testing shows confusion.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- No new lints across the four touched files.
+- 69 / 69 vitest pass across `projectsJobScheduleLanePacking.test.ts` (21), `projectsJobScheduleData.test.ts` (19), `projectsJobScheduleDayCosts.test.ts` (29).
+- Manual review confirmed `JobBarContent` extraction is a pure refactor — Expanded mode renders the same DOM (outer grid row → weekend tints → bar `<div role="button">` → day-cell `<button>`s → label `<button>`) as v2.549. Compact mode adds `CompactLaneRow` rows that share the same `<JobBarContent>`.
+
+---
+
+## Latest Updates (v2.549)
+
+**Date**: 2026-05-18
+
+### Projects → Job Schedule Gantt — three distinct click targets per row + day-detail modal
+
+**Why this exists.** v2.548 shipped the Job Schedule Gantt with a single click target per row: clicking *anywhere* on a bar navigated to `/jobs?edit=…&tab=stages`. That conflated three distinct user intents the team actually has when reading the timeline:
+
+1. *"Tell me about this job overall"* (open Job Detail — the same modal staff already use everywhere else in the app for at-a-glance reads).
+2. *"Take me into the job editor"* (open Edit Job — what the existing deep-link did, but only when the user is intentionally heading to edit).
+3. *"Who worked this specific cell, what did they say in their notes, and what reports did they file?"* (a per-day investigation that previously required leaving the Gantt entirely, opening the job in Stages, scrolling thread notes, etc.).
+
+This version splits the row into three click targets and adds a focused day-detail modal for the third intent. It also moves the HCP # / Job Name pill from floating *on top of* the bar (`position: sticky; left: 8px` overlaying the highlight cells) to sitting *just outside* the bar's left edge (`position: absolute; right: 100%`) so the pill never occludes the data it labels.
+
+#### Click target #1 — Job name label → Edit Job
+
+The label (`{HCP} · {Job Name}`) is now its own `<button>` positioned at `position: absolute; right: 100%; marginRight: 6` inside the bar's containing `<div>`. Because the bar is `position: relative`, the label anchors to the bar's left edge with a 6 px gap — it scrolls with the bar in lock-step but never overlaps a cell.
+
+Clicking it calls `useJobFormModal().openEditJob(bar.jobId)`. `e.stopPropagation()` keeps the click from also firing the bar background's handler.
+
+#### Click target #2 — Bar background → Job Detail
+
+The bar wrapper changed from `<button>` to `<div role="button" tabIndex={0}>` so it can host nested `<button>` children (HTML doesn't allow a button inside a button). It still owns the `cursor: pointer`, the dashed/solid border edges, and the grid placement (`grid-column: ${barColumnStart} / ${barColumnEnd}`).
+
+Clicking any un-highlighted area (the neutral `#f1f5f9` background between numbered cells, or to either side of the label) opens `useJobDetailModal().openJobDetail({ jobId, prefillRowLabel, prefillAddress, scheduleContext: null, assignedJobsRows })`. The `assignedJobsRows` snapshot was already being built off `bars` (v2.548's `detailAssignedRows`) so Job Detail's job-picker has the full Gantt context to navigate between jobs without re-querying. `Enter` / `Space` on the focused bar trigger the same handler.
+
+#### Click target #3 — Numbered day cell → day-detail modal
+
+Each highlighted (numbered) cell — previously a `<div>` with `pointer-events: none` so the click bubbled to the bar's link — is now a `<button type="button">` that calls `onDayCellClick(bar, ymd)` with `e.stopPropagation()`. The `pointer-events: none` is gone; cells are first-class click targets.
+
+The handler opens a new modal: [`ProjectsJobScheduleDayModal`](src/components/projects/ProjectsJobScheduleDayModal.tsx). Layout from top to bottom:
+
+1. **Header.** `{HCP} · {Job Name}` (the same prefix-resolved label that floats on the bar) + the long-form Chicago date (`Wednesday, May 13, 2026`) + a Close button. ESC, backdrop click, and Close all dismiss; the dialog uses `role="dialog"` / `aria-modal="true"`.
+2. **Action row.** Two buttons at the very top of the modal body:
+   - **Open Edit Job** (primary blue) → closes the day modal and calls `useJobFormModal().openEditJob(jobId)`.
+   - **Open Job Detail** (outlined blue) → closes the day modal and calls `useJobDetailModal().openJobDetail({...})` with the same prefill context used by the bar background click.
+   Closing first means the parent modal opens on a clean stack instead of overlapping the day modal — no nested overlays, no z-index gymnastics.
+3. **People & sessions.** A single Supabase query (`clock_sessions` with `job_ledger_id=eq.{jobId} AND work_date=eq.{ymd} AND approved_at IS NOT NULL AND rejected_at IS NULL AND revoked_at IS NULL`, ordered by `clocked_in_at` asc) plus a `fetchUserNamesForIds` call resolves to sessions grouped by user. Each user shows their name once and lists every session under it with `7:32 AM → 4:15 PM · 8h 43m` and the session's `notes` text on a second line if present (`white-space: pre-wrap` so multi-line notes survive). Sessions still open (`clocked_out_at` null) show `— still clocked in` instead of an arrow and skip the duration. The list is `<ul>` / `<li>` so screen readers announce the group structure cleanly.
+4. **Reports filed on this day.** A single `list_reports_with_job_info` RPC call is filtered to `job_ledger_id === jobId && calendarYmdInAppTzFromIso(created_at) === workDateYmd` — the same Chicago-day predicate the rest of the app uses for cross-day correctness during the central-time DST transitions. Each report renders as an expandable card (default expanded so the user lands on the data) with the template name, author, full timestamp, and the shared [`ReportDetailBody`](src/components/ReportViewModal.tsx) component — so the modal shows the *same* report body the user sees in Job Reports modal or Report View modal, without re-implementing field rendering.
+
+All three sections respect a single `loading` / `error` state; failures from either query surface as a `role="alert"` line above the sections.
+
+#### Data flow
+
+- `ProjectsJobScheduleTab` now owns `dayModal: { bar, workDateYmd } | null` and exposes three callbacks to the timeline:
+  - `onJobLabelClick(bar)` → `jobFormModal.openEditJob(bar.jobId)`
+  - `onBarClick(bar)` → `jobDetailModal.openJobDetail({...})`
+  - `onDayCellClick(bar, ymd)` → `setDayModal({ bar, workDateYmd: ymd })`
+- A pure `buildJobLabel(bar)` helper consolidates the prefix lookup (`resolveJobLedgerPrefix(serviceTypeId, prefixMap)` + `formatJobLedgerNumberLabel`) so the bar, the label, the Job Detail prefill, and the day modal title all agree on one canonical string.
+- `useAuth().role` is now read alongside `user` so the day modal can pass `userRole` into `displayReportTemplateName` (legacy *Superintendent Report* → *Status Report* aliasing) for the role-aware report names already used by the rest of the app.
+
+#### Files
+
+- New [`src/components/projects/ProjectsJobScheduleDayModal.tsx`](src/components/projects/ProjectsJobScheduleDayModal.tsx) — the focused per-cell modal described above. Pure read view: no mutation. Reuses `ReportDetailBody` from `ReportViewModal.tsx`, `fetchUserNamesForIds` from `scheduleDispatchHub.ts`, `calendarYmdInAppTzFromIso` from `dateUtils.ts`, `displayReportTemplateName` from `reportTemplateDisplayName.ts`.
+- Edited [`src/components/projects/ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) — bar wrapper changed from `<button>` to `<div role="button" tabIndex={0}>` with `onKeyDown` handling Enter/Space; day cells changed from `<div>` (`pointer-events: none`) to `<button type="button">` with `stopPropagation`; label moved from `position: sticky; left: 8px` to `position: absolute; right: 100%; marginRight: 6` and changed from `<span pointerEvents: none>` to `<button>` with `stopPropagation`. Props rewritten from a single `onJobClick` to `onJobLabelClick` / `onBarClick` / `onDayCellClick`.
+- Edited [`src/components/projects/ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) — three click handlers, `buildJobLabel` helper, `dayModal` state, `closeDayModal` / `onDayModalOpenEditJob` / `onDayModalOpenJobDetail` callbacks, mount of `<ProjectsJobScheduleDayModal>` at the bottom of the JSX, `useJobFormModal` import, `role` from `useAuth`.
+
+#### Constraints / non-goals
+
+- No DB / migration / RLS / RPC / Edge changes. Sessions come from `clock_sessions` directly; reports come from the pre-existing `list_reports_with_job_info` SECURITY DEFINER RPC.
+- No in-modal report creation. If staff want to file a report from the day modal, they go through the Edit Job → Reports flow that already exists (or click **Open Job Detail** then the existing Reports button — both are one click from the day modal's action row). The `authUserId` prop is reserved for a future *Add report on this day* affordance.
+- The day modal does not show *scheduled* (`job_schedule_blocks`) bands — it only reflects what was actually clocked. Schedule planning lives in Schedule Dispatch.
+- No client-side filter for which reports show. The same Chicago-day predicate the rest of the app uses (`calendarYmdInAppTzFromIso`) handles all DST / midnight boundary cases.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- No new lints reported across the three touched files.
+- 656 / 656 vitest pass (no new tests required — the new modal is presentational glue over the existing aggregator + RPC, and the click-target restructure doesn't change any pure helper).
+- `npx vite build` clean — 12.1 s build, 70 modules transformed, no warnings except the pre-existing `chunkSizeWarningLimit` advisory.
+
+---
+
+## Latest Updates (v2.548)
+
+**Date**: 2026-05-18
+
+### Projects → Job Schedule Gantt
+
+**Why this exists.** The Projects page has always been a stage-tracker view: each row shows a `working` job's customer / address / pictures count and lets staff jump into Stages or Workflow. There was no surface in the app that answered the simpler "what is the team currently spread across, and how concentrated were each of those jobs?" question — that read requires walking `clock_sessions` and grouping by job and day, which the Stages list doesn't visualize. The Projects → Job Schedule tab was added as a placeholder (`Coming soon.`) in the previous Projects re-tab pass; this version fills it in.
+
+#### What it shows
+
+- **Rows**: every job with `jobs_ledger.status = 'working'`. The customer filter from the URL (`?customer=…`) is respected so the page reduces to a single customer's working jobs when navigated from a customer link. Jobs with zero approved `clock_sessions` are omitted (no bar to draw).
+- **Columns**: one Chicago calendar day each, 36 px wide.
+- **Bars**: span from the earliest `clock_sessions.work_date` for the job to the latest `work_date` whose `clocked_out_at IS NOT NULL`. If no closed clock-out exists yet, the bar extends to today and renders a **dashed** right edge (open-ended). The session query is filtered to `approved_at IS NOT NULL AND rejected_at IS NULL AND revoked_at IS NULL` so pending / rejected / revoked sessions cannot move a bar.
+- **Per-day highlight inside the bar**: each `work_date` with at least one matching session paints a sub-cell. Background scales with the **distinct user count** that day on a 5-step blue palette (`peopleCountColor`):
+  - `1` → `#dbeafe` / dark-blue text
+  - `2` → `#bfdbfe` / dark-blue text
+  - `3` → `#93c5fd` / dark-blue text
+  - `4` → `#60a5fa` / white text
+  - `≥5` → `#3b82f6` / white text
+  Each highlighted cell shows the count as a small bold digit; gap days inside the bar show through the bar's neutral background (`#f1f5f9`) so the eye can immediately separate "scheduled but no clock activity" from "actually worked".
+- **Floating job label**: the HCP + job name pill sits at the bar's left edge by default; when the user scrolls horizontally past the bar's start, the pill *re-anchors* to the left edge of the scroll viewport via `position: sticky; left: 8 px`. Because the sticky element's containing block is the bar itself (CSS-grid-positioned, `position: relative`), the pill can never exceed the bar's bounds — it slides along with the visible portion of the bar and disappears once the bar scrolls off entirely. HCP prefix comes from `service_types.ledger_job_prefix` via `buildLedgerPrefixMap` (defaults to `J`).
+- **Today**: a 2 px orange (`#fb923c`) vertical accent line drops through the timeline at today's column; any bar cell that lands on today also gets an `inset 0 0 0 1px #fb923c` outline so it's still distinguishable when the bar's background is bright blue.
+- **Click a bar**: navigates to `/jobs?edit=${jobId}&tab=stages` — same affordance as the Projects → Stages job chips.
+
+#### Range picker
+
+Mirrors the People → Review custom-range block: two `<input type="date">` From / To fields with cross-bounding `min` / `max` so the inputs can't produce an inverted range, plus the *"Pick both dates to set the range."* hint when either is empty. Three quick-pick chips (`Last 30d`, `Last 90d`, `Last 365d`) seed both inputs from today. Defaults to Today − 90d → Today on first load. The chosen range persists under `localStorage` key `projects_job_schedule_range_v1` (validated against `^\d{4}-\d{2}-\d{2}$` on read).
+
+The range is a **viewport, not a query filter** — the underlying `clock_sessions` fetch is unbounded by date so bar `firstWorkDateYmd` / `lastWorkDateYmd` are always correct. Bars whose start or end fall outside the visible window are *clipped* at the edge and the clipped side renders a **dashed** border to signal continuation; bars entirely outside the window are not rendered.
+
+#### Realtime
+
+Mirrors `useDashboardMyTeamSectionState` lines 833–867. Channel name `projects-job-schedule-${authUserId}`. When `jobIds.length <= 80` the `clock_sessions` subscription uses `filter: \`job_ledger_id=in.(${idsSorted.join(',')})\``; otherwise it falls back to unfiltered. A second listener subscribes **unfiltered** to `jobs_ledger` `event: '*'` so jobs flipping INTO `working` (not yet in the IN-list) and OUT of `working` (would still match the IN-list at the moment of the update) both trigger a re-paint. Both callbacks coalesce into a single 280 ms debounce keyed on `document.visibilityState === 'visible'` so background tabs don't re-fetch.
+
+#### Data model + aggregation
+
+```ts
+type ProjectsJobScheduleBar = {
+  jobId: string
+  hcpNumber: string
+  jobName: string
+  serviceTypeId: string | null
+  firstWorkDateYmd: string
+  lastWorkDateYmd: string  // = today if openEnded
+  openEnded: boolean
+  perDayCounts: Map<string, number>  // YMD → distinct users, > 0 only
+}
+```
+
+The reducer (`aggregateClockSessionsToBars`) takes the working-jobs roster + the approved-session rows + a Chicago `todayYmd`. Per job it computes `firstWorkDate = min(work_date)`, `lastClosedWorkDate = max(work_date WHERE clocked_out_at IS NOT NULL)`, and a `Map<YMD, Set<userId>>` deduplicating sessions where the same person clocked twice on the same day. Bars sort `firstWorkDate` descending then HCP numerically for tie stability across refreshes.
+
+#### Files
+
+- New [`src/lib/projectsJobScheduleData.ts`](src/lib/projectsJobScheduleData.ts) — types, `aggregateClockSessionsToBars`, `peopleCountColor`, `enumerateDaysInRange`. Hard caps `enumerateDaysInRange` at 4 years of daily columns so a degenerate range can't melt the browser.
+- New [`src/lib/projectsJobScheduleData.test.ts`](src/lib/projectsJobScheduleData.test.ts) — 19 unit tests covering inclusive single-day range, month/year rollover, blank inputs, palette boundaries (0 / 1 / 2 / 3 / 4 / 5+), open-ended bar extending to today, defensive future-stamp clamp (`lastWorkDate >= firstWorkDate`), distinct-user dedup, jobs with no matching sessions omitted, sort order, partition of unknown-job sessions.
+- New [`src/lib/fetchProjectsJobScheduleClockSessions.ts`](src/lib/fetchProjectsJobScheduleClockSessions.ts) — chunked Supabase fetch (100 ids per `IN`) returning only `{ job_ledger_id, user_id, work_date, clocked_out_at }`. `withSupabaseRetry` wrapped, errors surfaced as `{ ok: false, error }`.
+- New [`src/components/projects/ProjectsJobScheduleTab.tsx`](src/components/projects/ProjectsJobScheduleTab.tsx) — orchestration component. Loads working jobs (with `customerId` filter), loads `service_types` once for the prefix map, loads sessions, builds bars, owns range state + Realtime + debounce, surfaces a count line (`{N} jobs · {M} days`) or `No working jobs with approved clock sessions in scope.` when empty.
+- New [`src/components/projects/ProjectsJobScheduleTimeline.tsx`](src/components/projects/ProjectsJobScheduleTimeline.tsx) — pure presentational. Full-bleed scroll wrapper (`marginLeft/Right: calc(-1 * (var(--app-main-pad) + 1.25rem))`) matches the Schedule Dispatch grid pattern. Sticky 2-tier header (month-run band + day-digit band) anchored with `position: sticky; top: 0; zIndex: 3`. Today vertical line as an absolutely-positioned `<div>` below the header. Each row is `display: grid; grid-template-columns: repeat(N, 36px)`; the bar is a grid child with `grid-column: ${startIdx + 1} / ${endIdx + 2}` and `position: relative` so the sticky label and absolutely-positioned highlight cells use it as their containing block. Weekend tint is rendered as empty grid cells layered behind the bar.
+- Edited [`src/pages/Projects.tsx`](src/pages/Projects.tsx) — single edit: replaced the `Coming soon.` placeholder at the original lines 671–674 with `<ProjectsJobScheduleTab customerId={customerId} />` and added the import. No other change.
+
+#### Constraints / non-goals
+
+- No new tables / migrations / RLS / RPCs / Edge functions. All data comes from existing `jobs_ledger`, `clock_sessions`, and `service_types`.
+- No vertical virtualization — working job counts are typically < 50, so DOM weight stays trivial.
+- No planned-schedule overlay (`job_schedule_blocks` ghost cells underneath the actual-session highlights) — deferred.
+- No per-day session detail popover on cell click — deferred. The hover `aria-label` on each highlight cell (`{N} people on {YMD}`) gives screen readers and pointer hover users the same count info.
+- No `DetailJobModal` mounted in-place — clicking a bar uses the standard `/jobs?edit=` deep-link the rest of the app uses.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- 19 / 19 new unit tests pass (`npx vitest run src/lib/projectsJobScheduleData.test.ts`).
+- No new lints reported by IDE / `ReadLints` across the five new files + the one-line `Projects.tsx` edit.
+
+---
+
 ## Latest Updates (v2.547)
 
 **Date**: 2026-05-16
@@ -2002,7 +2604,7 @@ The `ComputeUnallocatedFieldRowsArgs.peopleHours` field is kept optional + docum
 
 #### What changed
 
-A new toggle ("Job Mode") sits at the top of the gear-icon dropdown (only visible to roles that can leave field reports — `dev`, `master_technician`, `assistant`, `helpers`, `subcontractor`, `primary`, `superintendent` per `canLeaveJobFieldReport`). It writes a per-user localStorage key (`dashboard_job_mode_${userId}`) so a shared phone doesn't leak the toggle between accounts and a tab change syncs via the `storage` event.
+A new toggle ("Job Mode") sits at the top of the gear-icon dropdown (visible to every role that can leave field reports — all 8 roles: `dev`, `master_technician`, `assistant`, `helpers`, `subcontractor`, `estimator`, `primary`, `superintendent` per **[`canLeaveJobFieldReport(role)`](src/lib/canLeaveJobFieldReport.ts)**). It writes a per-user localStorage key (`dashboard_job_mode_${userId}`) so a shared phone doesn't leak the toggle between accounts and a tab change syncs via the `storage` event.
 
 When the flag is on, [`Dashboard.tsx`](src/pages/Dashboard.tsx) takes an early-return code path. Above the fold the user sees:
 

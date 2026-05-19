@@ -234,7 +234,7 @@ export default function PeopleTeamsTab({ authUserId, authUserRole }: PeopleTeams
 
   return (
     <div>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0, maxWidth: 720 }}>
+      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
         Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard →
         My Team. Any account role can be leader or member. A member can have more than one leader. The member list skips
         people already linked to the leader you pick.

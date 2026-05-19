@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
-import type { Database } from '../types/database'
+import type { Database, Json } from '../types/database'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { mercuryDebitCardIdFromRaw } from './mercuryRawDebitCard'
 
 export type OverheadPartsSource = 'mercury' | 'supply' | 'tally'
 
@@ -10,6 +11,21 @@ export type OverheadPartsDetailLine = {
   amountUsd: number
   label: string
   sortKey: string
+  /**
+   * Mercury debit card UUID (lowercase, hyphenated) when this line came
+   * from a Mercury allocation whose transaction `raw` JSON exposed a
+   * debit-card-info object. `null` for non-Mercury lines or when no
+   * debit card was used (e.g. ACH/wire/check). UI layers can resolve it
+   * to a nickname via `useMercuryLedgerNicknames().nicknameByDebitCard`.
+   */
+  mercuryDebitCardId?: string | null
+  /**
+   * Underlying `mercury_transactions.id` for Mercury allocation lines.
+   * `null` for supply / tally lines. UI layers use this to look up the
+   * transaction's Banking → Accounting drag-sort label assignment and
+   * bucket the line accordingly.
+   */
+  mercuryTransactionId?: string | null
 }
 
 export type OverheadOfficePartsByDayResult = {
@@ -47,15 +63,15 @@ export async function fetchOverheadOfficePartsByDay(args: {
       async () =>
         supabase
           .from('mercury_transaction_job_allocations')
-          .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name)')
+          .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, raw)')
           .eq('job_id', officeJobLedgerId)
           .order('created_at', { ascending: true }),
       'overhead office parts mercury',
     )
     for (const row of raw ?? []) {
       const txNested = row.mercury_transactions as
-        | { posted_at: string | null; counterparty_name: string | null }
-        | { posted_at: string | null; counterparty_name: string | null }[]
+        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }
+        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }[]
         | null
       const tx = Array.isArray(txNested) ? txNested[0] : txNested
       const posted = tx?.posted_at
@@ -65,7 +81,15 @@ export async function fetchOverheadOfficePartsByDay(args: {
       const amt = Math.abs(Number(row.amount))
       if (!Number.isFinite(amt) || amt <= 0) continue
       const cp = tx?.counterparty_name?.trim() || row.note?.trim() || 'Mercury'
-      addLine(ymd, { source: 'mercury', amountUsd: amt, label: cp, sortKey: `mercury:${row.id}` })
+      const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
+      addLine(ymd, {
+        source: 'mercury',
+        amountUsd: amt,
+        label: cp,
+        sortKey: `mercury:${row.id}`,
+        mercuryDebitCardId: debitCardId,
+        mercuryTransactionId: row.mercury_transaction_id ?? null,
+      })
     }
   } catch {
     /* RLS or network */
@@ -181,7 +205,7 @@ export async function fetchOtherJobsPartsByDay(args: {
       async () => {
         let q = supabase
           .from('mercury_transaction_job_allocations')
-          .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name)')
+          .select('id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, raw)')
           .order('created_at', { ascending: true })
         if (officeJobLedgerId) q = q.neq('job_id', officeJobLedgerId)
         return q
@@ -190,8 +214,8 @@ export async function fetchOtherJobsPartsByDay(args: {
     )
     for (const row of raw ?? []) {
       const txNested = row.mercury_transactions as
-        | { posted_at: string | null; counterparty_name: string | null }
-        | { posted_at: string | null; counterparty_name: string | null }[]
+        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }
+        | { posted_at: string | null; counterparty_name: string | null; raw: Json | null }[]
         | null
       const tx = Array.isArray(txNested) ? txNested[0] : txNested
       const posted = tx?.posted_at
@@ -201,7 +225,15 @@ export async function fetchOtherJobsPartsByDay(args: {
       const amt = Math.abs(Number(row.amount))
       if (!Number.isFinite(amt) || amt <= 0) continue
       const cp = tx?.counterparty_name?.trim() || row.note?.trim() || 'Mercury'
-      addLine(ymd, { source: 'mercury', amountUsd: amt, label: cp, sortKey: `mercury:${row.id}` })
+      const debitCardId = mercuryDebitCardIdFromRaw(tx?.raw ?? null)
+      addLine(ymd, {
+        source: 'mercury',
+        amountUsd: amt,
+        label: cp,
+        sortKey: `mercury:${row.id}`,
+        mercuryDebitCardId: debitCardId,
+        mercuryTransactionId: row.mercury_transaction_id ?? null,
+      })
     }
   } catch {
     /* RLS or network */

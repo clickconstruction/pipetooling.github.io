@@ -17,6 +17,14 @@ export type OverheadClockSessionRow = {
   rejected_at: string | null
   revoked_at: string | null
   users: { name: string | null } | null
+  /**
+   * Free-text notes captured at clock-in / clock-out. Optional on the input row
+   * so consumers that only do hour math (e.g. `peopleHoursUnallocatedRows`,
+   * Quickfill's unassigned-field-time loader) don't have to fetch or carry
+   * the column. Overhead-display consumers should select `notes` from
+   * `clock_sessions` and pass it through.
+   */
+  notes?: string | null
 }
 
 export type OverheadSessionDetailLine = {
@@ -29,6 +37,8 @@ export type OverheadSessionDetailLine = {
   missingWage: boolean
   jobLedgerId: string | null
   bidId: string | null
+  /** Session notes (trimmed; null/empty when nothing was captured). */
+  notes: string | null
 }
 
 /** Scope for overhead breakdown modal (labor buckets + office materials + combined total + other jobs). */
@@ -152,6 +162,8 @@ export type OtherJobsLaborDetailLine = {
   laborUsd: number
   missingWage: boolean
   jobLedgerId: string
+  /** Session notes (trimmed; null/empty when nothing was captured). */
+  notes: string | null
 }
 
 /** Approved closed clock labor on any jobs_ledger except `officeJobLedgerId` (all jobs if office null). Bid-only sessions excluded (no job_ledger_id). */
@@ -189,6 +201,7 @@ export function buildOtherJobsLaborByDay(args: {
     laborUsdByDay.set(wd, (laborUsdByDay.get(wd) ?? 0) + laborUsd)
     laborHoursByDay.set(wd, (laborHoursByDay.get(wd) ?? 0) + hours)
 
+    const trimmedNotes = (s.notes ?? '').trim()
     const line: OtherJobsLaborDetailLine = {
       sessionId: s.id,
       workDate: wd,
@@ -197,6 +210,7 @@ export function buildOtherJobsLaborByDay(args: {
       laborUsd,
       missingWage,
       jobLedgerId: jid,
+      notes: trimmedNotes.length > 0 ? trimmedNotes : null,
     }
     const list = detailByDay.get(wd) ?? []
     list.push(line)
@@ -351,6 +365,7 @@ export function buildOverheadDailyLabor(args: {
       dayBid.set(wd, (dayBid.get(wd) ?? 0) + laborUsd)
     }
 
+    const trimmedNotes = (s.notes ?? '').trim()
     const line: OverheadSessionDetailLine = {
       sessionId: s.id,
       workDate: wd,
@@ -361,6 +376,7 @@ export function buildOverheadDailyLabor(args: {
       missingWage,
       jobLedgerId: s.job_ledger_id,
       bidId: s.bid_id,
+      notes: trimmedNotes.length > 0 ? trimmedNotes : null,
     }
     const list = detailByDay.get(wd) ?? []
     list.push(line)

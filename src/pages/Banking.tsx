@@ -26,6 +26,8 @@ import { BankingSortingConfigModal } from '../components/BankingSortingConfigMod
 import { BankingUserCardLinkModal } from '../components/BankingUserCardLinkModal'
 import { BankingMercuryDragSortTab } from '../components/banking/BankingMercuryDragSortTab'
 import { BankingMercuryAccountingTab } from '../components/banking/BankingMercuryAccountingTab'
+import { BankingMercuryUserReviewTab } from '../components/banking/BankingMercuryUserReviewTab'
+import { BankingMercuryCategoryReviewTab } from '../components/banking/BankingMercuryCategoryReviewTab'
 import {
   mercuryTxHasNotePreview,
   MercuryTxNotesEditorPanel,
@@ -74,7 +76,7 @@ const DEBIT_CARD_RECENT_TX_CAP = 50
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
 
 type BankingProduct = 'mercury' | 'stripe'
-type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting'
+type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review'
 type StripeBankingTab = 'invoices' | 'data'
 
 type BankingView = {
@@ -102,9 +104,13 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
         ? 'drag_sort'
         : tabRaw === 'accounting'
           ? 'accounting'
-          : tabRaw === 'sorting'
-            ? 'sorting'
-            : 'accounting'
+          : tabRaw === 'user_review'
+            ? 'user_review'
+            : tabRaw === 'category_review'
+              ? 'category_review'
+              : tabRaw === 'sorting'
+                ? 'sorting'
+                : 'accounting'
     return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
   if (role !== 'dev') {
@@ -126,6 +132,8 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
   if (tabRaw === 'sorting') mercuryTab = 'sorting'
   else if (tabRaw === 'drag_sort') mercuryTab = 'drag_sort'
   else if (tabRaw === 'accounting') mercuryTab = 'accounting'
+  else if (tabRaw === 'user_review') mercuryTab = 'user_review'
+  else if (tabRaw === 'category_review') mercuryTab = 'category_review'
   else if (tabRaw === 'ledger') mercuryTab = 'ledger'
   else if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
 
@@ -1071,7 +1079,7 @@ export default function Banking() {
           if (product === 'mercury') {
             p.set('product', 'mercury')
             const t = prev.get('tab')
-            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort' || t === 'accounting') p.set('tab', t)
+            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort' || t === 'accounting' || t === 'user_review' || t === 'category_review') p.set('tab', t)
             else p.set('tab', 'ledger')
           } else {
             p.set('product', 'stripe')
@@ -1130,13 +1138,32 @@ export default function Banking() {
     if (myRole !== 'master_technician' && myRole !== 'assistant') return
     const product = searchParams.get('product')
     const tab = searchParams.get('tab')
-    if ((tab === 'sorting' || tab === 'drag_sort' || tab === 'accounting') && product !== 'stripe' && (product === null || product === 'mercury')) {
+    if (
+      (tab === 'sorting' ||
+        tab === 'drag_sort' ||
+        tab === 'accounting' ||
+        tab === 'user_review' ||
+        tab === 'category_review') &&
+      product !== 'stripe' &&
+      (product === null || product === 'mercury')
+    ) {
       if (product === null) {
         setSearchParams(
           (prev) => {
             const p = new URLSearchParams(prev)
             p.set('product', 'mercury')
-            p.set('tab', tab === 'drag_sort' ? 'drag_sort' : tab === 'accounting' ? 'accounting' : 'sorting')
+            p.set(
+              'tab',
+              tab === 'drag_sort'
+                ? 'drag_sort'
+                : tab === 'accounting'
+                  ? 'accounting'
+                  : tab === 'user_review'
+                    ? 'user_review'
+                    : tab === 'category_review'
+                      ? 'category_review'
+                      : 'sorting',
+            )
             return p
           },
           { replace: true },
@@ -1857,6 +1884,26 @@ export default function Banking() {
                     >
                       Accounting
                     </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.mercuryTab === 'user_review'}
+                      id="banking-tab-user-review"
+                      onClick={() => setMercurySubTab('user_review')}
+                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'user_review')}
+                    >
+                      User Review
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.mercuryTab === 'category_review'}
+                      id="banking-tab-category-review"
+                      onClick={() => setMercurySubTab('category_review')}
+                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'category_review')}
+                    >
+                      Category Review
+                    </button>
                   </>
                 ) : (
                   <>
@@ -2172,6 +2219,36 @@ export default function Banking() {
             onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
             orgNotesByTxId={orgNotesByTxId}
             onOrgNoteUpdated={onOrgNoteUpdated}
+          />
+        </div>
+      ) : null}
+
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'user_review' && canAccessBanking ? (
+        <div role="tabpanel" id="banking-panel-mercury-user-review" aria-labelledby="banking-tab-user-review">
+          <BankingMercuryUserReviewTab
+            filteredTransactions={filteredSorted}
+            loading={loading}
+            loadError={error}
+            mercurySearchNicknameCtx={nicknameCtx}
+            userIdByTxId={userIdByTxId}
+            personIdByTxId={personIdByTxId}
+            userNameById={userNameById}
+            personNameById={personNameById}
+          />
+        </div>
+      ) : null}
+
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'category_review' && canAccessBanking ? (
+        <div role="tabpanel" id="banking-panel-mercury-category-review" aria-labelledby="banking-tab-category-review">
+          <BankingMercuryCategoryReviewTab
+            filteredTransactions={filteredSorted}
+            loading={loading}
+            loadError={error}
+            mercurySearchNicknameCtx={nicknameCtx}
+            userIdByTxId={userIdByTxId}
+            personIdByTxId={personIdByTxId}
+            userNameById={userNameById}
+            personNameById={personNameById}
           />
         </div>
       ) : null}

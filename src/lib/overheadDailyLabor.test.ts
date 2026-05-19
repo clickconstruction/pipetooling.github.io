@@ -24,6 +24,7 @@ function detailLine(p: Partial<OverheadSessionDetailLine> & Pick<OverheadSession
     missingWage: false,
     jobLedgerId: null,
     bidId: null,
+    notes: null,
     ...p,
   }
 }
@@ -434,6 +435,7 @@ describe('aggregateOtherJobsLaborByPerson', () => {
         laborUsd: 20,
         missingWage: false,
         jobLedgerId: 'j1',
+        notes: null,
       },
       {
         sessionId: '2',
@@ -443,6 +445,7 @@ describe('aggregateOtherJobsLaborByPerson', () => {
         laborUsd: 10,
         missingWage: false,
         jobLedgerId: 'j2',
+        notes: null,
       },
     ]
     expect(aggregateOtherJobsLaborByPerson(lines)).toEqual([

@@ -169,7 +169,23 @@ Individual work phase in a project workflow (e.g., "Rough In", "Inspection", "To
 
 **Alias**: "Stage" and "Step" used interchangeably
 
-**Statuses**: pending, in_progress, completed, approved, rejected (rejected displays as "Previous work incomplete")
+**Statuses**: pending, in_progress, completed, approved, rejected (rejected displays as "Previous work incomplete"), skipped
+
+**Expected dates** (**v2.552**): `project_workflow_steps.scheduled_start_date` / `scheduled_end_date` (YMD `date` columns) hold the **expected** Start / End the team set via the **Expected dates** modal on the Workflow page stage card — distinct from `started_at` / `ended_at` (instants when work actually began / finished). Modal includes a **Duration (days)** field that auto-computes the end from the start (or vice versa). When a stage's scheduled end is set and the next stage's scheduled start is still null, the next stage's scheduled start **defaults to** the prior stage's scheduled end (defaults-only cascade — explicit downstream choices are never overwritten). These columns drive the **Forecast tab** below.
+
+### Forecast tab (Projects)
+A top-level tab on `/projects` (right of **Job History**, **v2.554**) that visualizes every workflow stage on every project-linked job as Gantt bars. Two independent sub-tabs share data + Realtime but keep their own filter state.
+
+**Sub-tabs** (`?forecastSub=specific|all-stages`, default `specific`):
+
+- **Specific** — one job, vertical stack of stage bars in `sequence_order`. Job picked via typeahead (substring match on HCP / name / address / project name); selection persists to `?forecastJob=` + `localStorage` `projects_forecast_specific_selected_job_v1`. Range auto-fits to the job's stage span ±3 days; user override persists under `projects_forecast_specific_range_v1` with a **Reset to fit** chip. Click a bar → opens `/workflows/${project_id}#step-${stage_id}` in a new tab.
+- **All Stages** — one row per job-with-project, stages laid out side-by-side horizontally so dispatchers can spot crew-assignment gaps at a glance. Default range today − 7d → today + 90d (forward-leaning), persisted under `projects_forecast_all_range_v1`. **Only show jobs with active stages** checkbox filters out jobs whose every stage is `completed` / `approved` / `skipped`, persisted under `projects_forecast_all_active_only_v1`.
+
+**Pure resolver** [`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) walks each workflow's stages and emits a `ResolvedStageBar` per stage: `start = scheduled_start_date ?? prior.endYmd ?? actual(started_at) ?? todayYmd`; `end = scheduled_end_date ?? actual(ended_at) ?? ymdAddDays(start, 1)`. Stages with **no expected and no actual dates** render as **1-day grey dashed placeholders** chained at the prior stage's end (never invisible). Explicit `skipped` wins over the inferred `unscheduled` look so intentional skips keep their muted strikethrough swatch.
+
+**Permissions**: relies entirely on existing `project_workflow_steps` RLS — dev / master see all; assistant / superintendent via `can_access_project_via_workflow`; subcontractor / helpers see only assigned stages (sparse but functional). No new RPCs.
+
+**Scope**: jobs with `project_id IS NOT NULL` (any `status`); every stage of each job's workflow (every status).
 
 ### Template
 Reusable workflow definition. Masters and devs can create templates with pre-defined stages. When creating a project, can select a template to auto-generate workflow stages.
@@ -203,7 +219,7 @@ A per-user, per-device toggle in the header gear menu (**[`Layout.tsx`](src/comp
 
 **Storage** — `localStorage` key `dashboard_job_mode_${userId}` (per-user suffix so a shared phone doesn't leak between accounts), with the `storage` event syncing across tabs. Mirrors the **`dashboard_clock_strip_scope`** pattern; toggle implemented in **[`jobModeToggle.ts`](src/lib/jobModeToggle.ts)** + **[`useJobModeEnabled.ts`](src/hooks/useJobModeEnabled.ts)**.
 
-**Visibility** — toggle gated by **`canLeaveJobFieldReport(role)`** in the gear dropdown (dev, master_technician, assistant, helpers, subcontractor, primary, superintendent). Without that capability the buttons would be useless.
+**Visibility** — toggle gated by **`canLeaveJobFieldReport(role)`** in the gear dropdown (all 8 roles: dev, master_technician, assistant, helpers, subcontractor, estimator, primary, superintendent). Without that capability the buttons would be useless.
 
 **Realtime / day rollover** — the card subscribes to `postgres_changes` on `clock_sessions` (this user) and `job_schedule_blocks` (this user, this `work_date`); a 1-minute interval re-checks `denverCalendarDayKey(Date.now())` so a long-open page rolls over at midnight. The picker is fully unit-tested (14 cases) so adding new state branches is safe.
 

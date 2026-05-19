@@ -1,5 +1,14 @@
 import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import { SearchableSelect, type SearchableSelectSelectableOption } from '../components/SearchableSelect'
+import {
+  TeamSummaryInline,
+  type TeamSummaryInlineHandle,
+} from '../components/people/teamSummary/TeamSummaryInline'
+import { enrichTeamSummaryRowsForInline } from '../components/people/teamSummary/formatters'
+import type {
+  OverheadRateDecomp,
+  TeamSummaryBreakdown,
+} from '../components/people/teamSummary/types'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
 import type { WriteupListRow } from '../components/writeups/WriteupEditorModal'
 import type { NcnsListRow } from '../components/writeups/writeupsTimelineTypes'
@@ -72,6 +81,7 @@ import { PayStubAdditionalModal } from '../components/pay/PayStubAdditionalModal
 import { PayStubLessModal } from '../components/pay/PayStubLessModal'
 import { type PersonOffsetInitialDraft, PersonOffsetFormModal } from '../components/pay/PersonOffsetFormModal'
 import { DraftPayrollModal } from '../components/pay/DraftPayrollModal'
+import { PayrollForecastModal, type PayrollForecastUnpaidRow } from '../components/pay/PayrollForecastModal'
 import { DraftPayrollPersonHoursBreakdownModal } from '../components/pay/DraftPayrollPersonHoursBreakdownModal'
 import {
   type PayStubAdditionalLineRow,
@@ -111,6 +121,13 @@ import { resolveManagerUserIdForFeedback } from '../lib/teamFeedback'
 import { loginAsUser } from '../lib/loginAsUser'
 import { useAuth } from '../hooks/useAuth'
 import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
+import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
+import { formatMercuryDebitCardIdCompact } from '../lib/mercuryRawDebitCard'
+import {
+  bucketOverheadPartsLinesByAccountingLabel,
+  overheadPartsAccountingBucketFromDefaultKey,
+  type OverheadPartsAccountingBucketKey,
+} from '../lib/overheadPartsAccountingBuckets'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
@@ -771,6 +788,7 @@ export default function People() {
   const [generatingPayStubPerson, setGeneratingPayStubPerson] = useState<string | null>(null)
   const [bulkGeneratingPayStubs, setBulkGeneratingPayStubs] = useState(false)
   const [draftPayrollModalOpen, setDraftPayrollModalOpen] = useState(false)
+  const [forecastModalOpen, setForecastModalOpen] = useState(false)
   const [draftPayrollHoursBreakdownPerson, setDraftPayrollHoursBreakdownPerson] = useState<string | null>(null)
   const [draftPayrollPendingApprovalCount, setDraftPayrollPendingApprovalCount] = useState<number | null>(null)
   const [draftPayrollPendingApprovalLoading, setDraftPayrollPendingApprovalLoading] = useState(false)
@@ -819,6 +837,18 @@ export default function People() {
     authRole !== null && ['dev', 'master_technician'].includes(authRole)
   const canDeletePeopleContracts =
     authRole !== null && ['dev', 'master_technician'].includes(authRole)
+
+  /**
+   * Mercury debit-card nicknames used by the Overhead tab's Materials
+   * drilldowns to display which card a Mercury allocation was purchased
+   * on (e.g. "Mercury · Lowes — Robert's card · $123.45"). Gated on the
+   * tab being active so we don't fetch nickname maps for users sitting
+   * on other tabs. The hook itself is also role-gated internally and
+   * returns empty maps for roles outside dev/master/assistant.
+   */
+  const { nicknameByDebitCard: overheadMercuryNicknameByDebitCard } = useMercuryLedgerNicknames({
+    enabled: activeTab === 'overhead' && canAccessOverheadTab,
+  })
 
   const [overheadDateStart, setOverheadDateStart] = useState(() => {
     const d = new Date()
@@ -883,6 +913,20 @@ export default function People() {
     Map<string, OverheadPartsDetailLine[]>
   >(() => new Map())
   const [overheadOtherJobsPartsLoading, setOverheadOtherJobsPartsLoading] = useState(false)
+  /**
+   * Banking → Accounting drag-sort label bucket for each Mercury transaction
+   * referenced by `overheadOtherJobsPartsDetailByDay` (i.e. every Mercury
+   * line that surfaces in the Field Total ($) / Hours modal's Materials
+   * (field / non-office jobs) dropdown for any day in the active window).
+   *
+   * Computed once per change to the per-day detail map, not per-modal-open,
+   * so flipping between days inside the modal is instant. Tx ids that have
+   * no assignment row are absent from the map; the renderer defaults those
+   * to the `'other'` bucket via `bucketForOverheadPartsLine`.
+   */
+  const [overheadOtherJobsAccountingBucketByTxId, setOverheadOtherJobsAccountingBucketByTxId] = useState<
+    Map<string, OverheadPartsAccountingBucketKey>
+  >(() => new Map())
   const [overheadBreakdownModal, setOverheadBreakdownModal] = useState<null | { workDate: string; scope: OverheadDetailScope }>(
     null,
   )
@@ -1360,19 +1404,15 @@ export default function People() {
     | 'last_90_days'
     | 'this_year'
     | 'custom'
-  const [selectedReviewPersonIndex, setSelectedReviewPersonIndex] = useState(0)
+  // -1 = no person expanded. The Team Summary table acts as the picker;
+  // clicking a name in it toggles the per-person panel into view (v2.X).
+  // Replaces the legacy "← Prev | Person ▾ | Next →" row.
+  const [selectedReviewPersonIndex, setSelectedReviewPersonIndex] = useState<number>(-1)
   const [reviewPeriod, setReviewPeriod] = useState<ReviewPeriod>('last_week')
   // Custom range — only consulted when reviewPeriod === 'custom'. Defaults seed
   // when the user first selects Custom from the dropdown (see UI below).
   const [reviewCustomRangeStart, setReviewCustomRangeStart] = useState<string>('')
   const [reviewCustomRangeEnd, setReviewCustomRangeEnd] = useState<string>('')
-  const [viewportHeight, setViewportHeight] = useState<number>(typeof window === 'undefined' ? 800 : window.innerHeight)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const onResize = () => setViewportHeight(window.innerHeight)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
   const [reviewLoading, setReviewLoading] = useState(false)
   type ReviewLaborJob = {
     source: 'labor'
@@ -1481,19 +1521,39 @@ export default function People() {
     fieldHours90d: null,
     fieldLaborUsd90d: null,
   })
-  const [teamSummaryHtml, setTeamSummaryHtml] = useState<string | null>(null)
+  // Inline Team Summary (React component) — rows fetched by
+  // `openTeamSummaryWindow('inline')` are stored here and the
+  // `<TeamSummaryInline>` component renders directly from them (no
+  // iframe, no HTML string). The popup path still builds an HTML doc
+  // because a `window.open()` target needs a standalone document.
+  const [teamSummaryRows, setTeamSummaryRows] = useState<TeamSummaryRow[] | null>(null)
   const [teamSummaryLoading, setTeamSummaryLoading] = useState<boolean>(false)
   const [teamSummaryError, setTeamSummaryError] = useState<string | null>(null)
-  const [teamSummaryIframeHeight, setTeamSummaryIframeHeight] = useState<number>(120)
   const teamSummaryReqIdRef = useRef(0)
-  // Drilldown modal awareness: while a modal is open inside the iframe we
-  // defer any data-driven refresh so the user's current investigation isn't
-  // wiped out (the entire `srcDoc` would otherwise be replaced). When the
-  // modal closes we drain any pending refresh by re-running the effect's
-  // body via a bumped trigger.
+  // Drilldown modal awareness: while a drilldown modal is open we defer
+  // any data-driven refresh so the user's current investigation isn't
+  // wiped out (the React table would re-sort and the open modal's body
+  // would re-derive on the new rows mid-read). When the modal closes
+  // we drain any pending refresh by bumping `teamSummaryDrainTick`.
   const teamSummaryModalOpenRef = useRef(false)
   const teamSummaryRefreshPendingRef = useRef(false)
   const [teamSummaryDrainTick, setTeamSummaryDrainTick] = useState(0)
+  // Review → Hours-breakdown → click day-header bridge. The TeamSummaryInline
+  // component calls `onOpenDayEditor(personName, workDate)`; we mount
+  // DashboardMyTimeDayEditorModal via the shared `hoursMyTimeEditor` state.
+  // After save we refresh the Team Summary AND re-open the Hours drilldown
+  // for that person so updated numbers show immediately:
+  //   1. `reviewHoursDayEditorPersonRef` remembers which person triggered the
+  //      editor; set on open, read in onSaved, cleared on close.
+  //   2. On save we bust `teamSummaryDataCacheRef`, flip `teamSummaryModalOpenRef`
+  //      off (so the deferred-refresh guard doesn't skip), bump
+  //      `teamSummaryDrainTick`, and stash personName in
+  //      `reviewHoursReopenAfterLoadRef`.
+  //   3. After the new rows render we call `teamSummaryInlineRef.openDrilldown`
+  //      directly — no postMessage round-trip the iframe needed.
+  const teamSummaryInlineRef = useRef<TeamSummaryInlineHandle | null>(null)
+  const reviewHoursDayEditorPersonRef = useRef<string | null>(null)
+  const reviewHoursReopenAfterLoadRef = useRef<string | null>(null)
   // v2.542 — cache the rows the inline iframe just rendered so the popup
   // ("Open in new window") doesn't re-issue `loadTeamSummaryData()` against
   // Supabase for the exact same period. The auto-refresh effect clears this
@@ -6297,32 +6357,57 @@ export default function People() {
     }
   }, [activeTab, isDev])
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const onMessage = (e: MessageEvent) => {
-      const data = e.data as { type?: string; height?: number } | null
-      if (!data) return
-      if (data.type === 'team-summary-resize' && typeof data.height === 'number') {
-        const maxH = Math.max(320, Math.floor(window.innerHeight * 0.85))
-        setTeamSummaryIframeHeight(Math.min(maxH, Math.max(60, data.height + 2)))
+  // ---- Inline Team Summary callbacks (replace the old iframe postMessage handlers) ----
+  //
+  // The React `<TeamSummaryInline>` component calls these directly when
+  // the user clicks a name cell or a day header inside the Hours
+  // breakdown drilldown. Behavior parity with the iframe version is
+  // intentional: name-click toggles the per-person panel below the
+  // table, day-click opens DashboardMyTimeDayEditorModal (looking up
+  // the linked user from `usersRef`).
+  const handleInlineTogglePerson = useCallback(
+    (personName: string) => {
+      const trimmed = personName.trim()
+      if (!trimmed) return
+      const idx = showPeopleForReviewRef.current.indexOf(trimmed)
+      if (idx < 0) return
+      setSelectedReviewPersonIndex((cur) => (cur === idx ? -1 : idx))
+    },
+    [],
+  )
+  const handleInlineOpenDayEditor = useCallback(
+    (personName: string, workDate: string) => {
+      const trimmedName = personName.trim()
+      const trimmedDate = workDate.trim()
+      if (!trimmedName || !trimmedDate) return
+      const u = usersRef.current.find(
+        (x) => (x.name ?? '').trim() === trimmedName,
+      )
+      if (!u?.id) {
+        showToast(
+          `No user account is linked to "${trimmedName}". Link the roster name in People → Users to open My Time.`,
+          'error',
+        )
         return
       }
-      if (data.type === 'team-summary-modal-open') {
-        teamSummaryModalOpenRef.current = true
-        return
-      }
-      if (data.type === 'team-summary-modal-close') {
-        teamSummaryModalOpenRef.current = false
-        if (teamSummaryRefreshPendingRef.current) {
-          teamSummaryRefreshPendingRef.current = false
-          // Trigger a re-run of the auto-refresh effect with current deps.
-          setTeamSummaryDrainTick((n) => n + 1)
-        }
-        return
-      }
+      reviewHoursDayEditorPersonRef.current = trimmedName
+      setHoursMyTimeEditor({
+        subjectUserId: u.id,
+        subjectDisplayName: u.name?.trim() ?? trimmedName,
+        dateStr: trimmedDate,
+      })
+    },
+    [showToast],
+  )
+  // Drilldown modal open/close — defer auto-refresh while a modal is
+  // open so the user's open breakdown doesn't get re-derived under
+  // them. Mirrors the iframe `team-summary-modal-open/close` bridge.
+  const handleInlineDrilldownOpenChange = useCallback((open: boolean) => {
+    teamSummaryModalOpenRef.current = open
+    if (!open && teamSummaryRefreshPendingRef.current) {
+      teamSummaryRefreshPendingRef.current = false
+      setTeamSummaryDrainTick((n) => n + 1)
     }
-    window.addEventListener('message', onMessage)
-    return () => window.removeEventListener('message', onMessage)
   }, [])
 
   useEffect(() => {
@@ -6534,7 +6619,7 @@ export default function People() {
         let q = supabase
           .from('clock_sessions')
           .select(
-            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, notes, users!clock_sessions_user_id_fkey(name)',
           )
           .gte('work_date', overheadDateStart)
           .lte('work_date', overheadDateEnd)
@@ -6573,7 +6658,7 @@ export default function People() {
         let q = supabase
           .from('clock_sessions')
           .select(
-            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, users!clock_sessions_user_id_fkey(name)',
+            'id, user_id, work_date, clocked_in_at, clocked_out_at, job_ledger_id, bid_id, approved_at, rejected_at, revoked_at, notes, users!clock_sessions_user_id_fkey(name)',
           )
           .gte('work_date', overheadDateStart)
           .lte('work_date', overheadDateEnd)
@@ -6677,6 +6762,80 @@ export default function People() {
     overheadDateStart,
     overheadDateEnd,
   ])
+
+  /**
+   * Resolve Banking → Accounting drag-sort label buckets for every
+   * Mercury transaction that surfaces as a field/non-office-job Materials
+   * line in the active overhead window. Runs whenever the per-day detail
+   * map is rebuilt (date range change, office job change, parts refresh).
+   *
+   * Two-step query: first read the assignment rows for the visible tx ids,
+   * then bulk-resolve label `default_key` for the assigned label ids. We
+   * skip the second fetch when there are no assignments (no in-clause on
+   * an empty array, no wasted RPC).
+   */
+  useEffect(() => {
+    if (activeTab !== 'overhead' || !canAccessOverheadTab || !authUser?.id) return
+    const txIds: string[] = []
+    for (const lines of overheadOtherJobsPartsDetailByDay.values()) {
+      for (const ln of lines) {
+        if (ln.source === 'mercury' && ln.mercuryTransactionId) {
+          txIds.push(ln.mercuryTransactionId)
+        }
+      }
+    }
+    if (txIds.length === 0) {
+      setOverheadOtherJobsAccountingBucketByTxId(new Map())
+      return
+    }
+    const uniqueTxIds = Array.from(new Set(txIds))
+    let cancelled = false
+    void (async () => {
+      try {
+        const assignmentsRaw = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_transaction_drag_sort_assignments')
+              .select('mercury_transaction_id, label_id')
+              .in('mercury_transaction_id', uniqueTxIds),
+          'load overhead other jobs accounting assignments',
+        )
+        if (cancelled) return
+        const assignments = (assignmentsRaw ?? []) as Array<{
+          mercury_transaction_id: string
+          label_id: string
+        }>
+        if (assignments.length === 0) {
+          setOverheadOtherJobsAccountingBucketByTxId(new Map())
+          return
+        }
+        const labelIds = Array.from(new Set(assignments.map((a) => a.label_id)))
+        const labelsRaw = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_drag_sort_labels')
+              .select('id, default_key')
+              .in('id', labelIds),
+          'load overhead other jobs accounting labels',
+        )
+        if (cancelled) return
+        const labels = (labelsRaw ?? []) as Array<{ id: string; default_key: string | null }>
+        const defaultKeyByLabelId = new Map<string, string | null>()
+        for (const l of labels) defaultKeyByLabelId.set(l.id, l.default_key ?? null)
+        const next = new Map<string, OverheadPartsAccountingBucketKey>()
+        for (const a of assignments) {
+          const defaultKey = defaultKeyByLabelId.get(a.label_id) ?? null
+          next.set(a.mercury_transaction_id, overheadPartsAccountingBucketFromDefaultKey(defaultKey))
+        }
+        setOverheadOtherJobsAccountingBucketByTxId(next)
+      } catch {
+        if (!cancelled) setOverheadOtherJobsAccountingBucketByTxId(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [activeTab, canAccessOverheadTab, authUser?.id, overheadOtherJobsPartsDetailByDay])
 
   useEffect(() => {
     if (activeTab !== 'overhead' || !canAccessOverheadTab || !authUser?.id) return
@@ -7407,6 +7566,52 @@ export default function People() {
         .sort((a, b) => a.localeCompare(b)),
     [payConfig, archivedUserNames, externalOnlyPayConfigNamesLower]
   )
+  // Stale-closure-safe mirror for the inline Team Summary callbacks
+  // (handleInlineTogglePerson is created with `useCallback([])`) so it
+  // can read the latest roster without a re-create churn.
+  const showPeopleForReviewRef = useRef<string[]>([])
+  showPeopleForReviewRef.current = showPeopleForReview
+
+  // Derived view-models passed to `<TeamSummaryInline>`. Kept as memos
+  // so the table doesn't reflow on unrelated People state changes.
+  const teamSummarySelectedPersonName = useMemo<string | null>(
+    () =>
+      selectedReviewPersonIndex >= 0
+        ? showPeopleForReview[selectedReviewPersonIndex] ?? null
+        : null,
+    [selectedReviewPersonIndex, showPeopleForReview],
+  )
+  const teamSummaryOverheadDecomp = useMemo<OverheadRateDecomp>(
+    () => ({
+      ratePerHour: reviewOverheadRates.ratePerHour,
+      ratePerRevenueDecimal: reviewOverheadRates.ratePerRevenueDecimal,
+      ratePerLaborDollar: reviewOverheadRates.ratePerLaborDollar,
+      windowStart: reviewOverheadRates.windowStart,
+      windowEnd: reviewOverheadRates.windowEnd,
+      officeLabor90d: reviewOverheadRates.officeLabor90d ?? 0,
+      bidLabor90d: reviewOverheadRates.bidLabor90d ?? 0,
+      officeParts90d: reviewOverheadRates.officeParts90d ?? 0,
+      invoices90d: reviewOverheadRates.invoices90d ?? 0,
+      fieldHours90d: reviewOverheadRates.fieldHours90d ?? 0,
+      fieldLaborUsd90d: reviewOverheadRates.fieldLaborUsd90d ?? 0,
+    }),
+    [reviewOverheadRates],
+  )
+  // Build the breakdowns payload from the loaded rows. Equivalent to
+  // the per-rebuild work `openTeamSummaryWindow('inline')` used to do
+  // before encoding it into the iframe `srcDoc`.
+  const teamSummaryBreakdowns = useMemo<TeamSummaryBreakdown[]>(() => {
+    if (!teamSummaryRows) return []
+    return enrichTeamSummaryRowsForInline(
+      teamSummaryRows,
+      reviewOverheadRates.ratePerHour,
+      (name) => {
+        const cfg = payConfig[name]
+        if (!cfg) return 'unknown'
+        return cfg.is_salary ? 'salary' : 'hourly'
+      },
+    )
+  }, [teamSummaryRows, reviewOverheadRates.ratePerHour, payConfig])
 
   useEffect(() => {
     if (activeTab !== 'review' || !isDev) return
@@ -7417,7 +7622,7 @@ export default function People() {
     teamSummaryDataCacheRef.current = null
     if (showPeopleForReview.length === 0) {
       teamSummaryReqIdRef.current += 1
-      setTeamSummaryHtml(null)
+      setTeamSummaryRows(null)
       setTeamSummaryError(null)
       setTeamSummaryLoading(false)
       teamSummaryRefreshPendingRef.current = false
@@ -7522,6 +7727,47 @@ export default function People() {
     }
   }, [
     ledgerFilteredPayStubs,
+    payStubPaymentsByStubId,
+    payStubDeductionsByStubId,
+    payStubAdditionalByStubId,
+  ])
+
+  /**
+   * Unpaid pay-stub rows surfaced into the Payroll Forecast modal.
+   * Same net-pay math the Ledger summary uses, but emits one row per
+   * stub instead of aggregate counts. Sorted by oldest balance first
+   * so the most urgent obligations show at the top of the table — the
+   * forecast UX is "which old balances will this incoming bar cover?"
+   */
+  const forecastUnpaidRows = useMemo<PayrollForecastUnpaidRow[]>(() => {
+    const rows: PayrollForecastUnpaidRow[] = []
+    for (const stub of payStubs) {
+      const payRows = payStubPaymentsByStubId[stub.id] ?? []
+      const paidSum = sumPayStubPaymentAmounts(payRows)
+      const lessSum = sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? [])
+      const addSumLedger = sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? [])
+      const netPayLedger = stubNetPay(stub.gross_pay, lessSum, addSumLedger)
+      if (isPayStubFullyPaid(netPayLedger, paidSum)) continue
+      const rem = remainingPayStubBalance(netPayLedger, paidSum)
+      if (rem <= 0) continue
+      rows.push({
+        stubId: stub.id,
+        personName: stub.person_name,
+        // `period_end` reads naturally as "balance from this date" — it
+        // marks when the work was complete and the obligation crystallized.
+        balanceCreatedYmd: stub.period_end,
+        remaining: rem,
+      })
+    }
+    rows.sort((a, b) => {
+      if (a.balanceCreatedYmd !== b.balanceCreatedYmd) {
+        return a.balanceCreatedYmd < b.balanceCreatedYmd ? -1 : 1
+      }
+      return a.personName.localeCompare(b.personName)
+    })
+    return rows
+  }, [
+    payStubs,
     payStubPaymentsByStubId,
     payStubDeductionsByStubId,
     payStubAdditionalByStubId,
@@ -8311,9 +8557,18 @@ export default function People() {
 
   useEffect(() => {
     if (activeTab !== 'review' || showPeopleForReview.length === 0) return
-    const idx = Math.max(0, Math.min(selectedReviewPersonIndex, showPeopleForReview.length - 1))
-    if (idx !== selectedReviewPersonIndex) setSelectedReviewPersonIndex(idx)
-    const personName = showPeopleForReview[idx]
+    // Default state for the new toggleable Team Summary: nothing selected.
+    // The detail panel below the table only renders once the user clicks a
+    // name in the iframe (handled in onMessage below).
+    if (selectedReviewPersonIndex < 0) return
+    // Clamp when the roster shrinks (member removed from pay config) so the
+    // index can't dangle past the end. Selecting `-1` is the only way to
+    // mean "no selection"; we never silently fall back to person 0 here.
+    if (selectedReviewPersonIndex >= showPeopleForReview.length) {
+      setSelectedReviewPersonIndex(-1)
+      return
+    }
+    const personName = showPeopleForReview[selectedReviewPersonIndex]
     if (personName) void loadReviewData(personName, false, reviewOnlyPaidInFull)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedReviewPersonIndex, reviewPeriod, reviewCustomRangeStart, reviewCustomRangeEnd, reviewOnlyPaidInFull, showPeopleForReview, users])
@@ -9167,7 +9422,7 @@ export default function People() {
     if (showPeopleForReview.length === 0) {
       if (isEmbedded) {
         teamSummaryReqIdRef.current += 1
-        setTeamSummaryHtml(null)
+        setTeamSummaryRows(null)
         setTeamSummaryError(null)
         setTeamSummaryLoading(false)
       } else {
@@ -9232,6 +9487,27 @@ export default function People() {
         // on the next popup click.
         if (isEmbedded) {
           teamSummaryDataCacheRef.current = { rows, cacheKey: currentCacheKey }
+          // The inline path renders via `<TeamSummaryInline>` reading from
+          // `teamSummaryRows` — no HTML string to build, no iframe to seed.
+          // The React component does its own sort/filter/click-cell work.
+          setTeamSummaryRows(rows)
+          setTeamSummaryLoading(false)
+          // Re-open the Hours drilldown if the user just saved a day from
+          // it (set by the `hoursMyTimeEditor.onSaved` flow). Defer one
+          // microtask so the rows commit + the component re-renders
+          // before we ask it to mount the drilldown.
+          const pn = reviewHoursReopenAfterLoadRef.current
+          if (pn) {
+            reviewHoursReopenAfterLoadRef.current = null
+            window.setTimeout(() => {
+              try {
+                teamSummaryInlineRef.current?.openDrilldown(pn, 'hours')
+              } catch {
+                /* component unmounted before re-open landed — ignore */
+              }
+            }, 50)
+          }
+          return
         }
         try {
           // Number/HTML formatting now lives inside the iframe IIFE; the
@@ -9242,7 +9518,11 @@ export default function People() {
             profitPerHourAfterOverhead: number | null
           }
           const enriched: DisplayRow[] = rows.map((r) => {
-            const profitAfterOverhead = overheadRate != null ? r.profit - r.fieldHours * overheadRate : null
+            // Charge overhead on ALL hours (field + office + bid) so the
+            // popup's Team Summary column matches the inline path
+            // (formatters.ts) and the Profit (after overhead) breakdown
+            // modal's bottom-line total. See enrichTeamSummaryRowsForInline.
+            const profitAfterOverhead = overheadRate != null ? r.profit - r.totalHours * overheadRate : null
             const profitPerHourAfterOverhead =
               profitAfterOverhead != null && r.totalHours > 0 ? profitAfterOverhead / r.totalHours : null
             return { ...r, profitAfterOverhead, profitPerHourAfterOverhead }
@@ -9297,6 +9577,15 @@ export default function People() {
           const breakdownsJson = JSON.stringify(breakdownsPayload).replace(/</g, '\\u003c')
           const overheadRateJson = overheadRate == null ? 'null' : String(overheadRate)
           const overheadDecompJson = JSON.stringify(overheadDecomp).replace(/</g, '\\u003c')
+          // Embedded only: the currently-expanded person name (or null) so the
+          // iframe paints the highlighted row on first render without a
+          // postMessage round-trip. The popup window has no per-person
+          // detail panel so we always send null there.
+          const initialSelectedPersonName =
+            isEmbedded && selectedReviewPersonIndex >= 0
+              ? showPeopleForReview[selectedReviewPersonIndex] ?? null
+              : null
+          const selectedPersonNameJson = JSON.stringify(initialSelectedPersonName).replace(/</g, '\\u003c')
 
           const embeddedResizeScript = isEmbedded
             ? `<script>(function(){
@@ -9346,7 +9635,30 @@ export default function People() {
       tbody.empty-state td { padding: 1rem 0.75rem; text-align: center; color: #6b7280; font-style: italic; background: #fafafa; }
       .click-cell:hover { background: #eff6ff; }
       .click-cell:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
-      .footer-caption { color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem; max-width: 60em; }
+      /* Toggleable name cell — picks the person to expand below the table
+         (the iframe posts team-summary-select-person and the parent React
+         app mounts the per-person panel). Whole row tints when selected so
+         the eye sees the active person instantly even on wide tables. */
+      .person-name-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        background: none;
+        border: 0;
+        padding: 0;
+        margin: 0;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        text-align: left;
+      }
+      .person-name-btn .chevron { color: #6b7280; font-size: 0.8em; width: 0.7em; display: inline-block; }
+      .person-name-btn:hover .person-name-text { color: #2563eb; }
+      .person-name-btn:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; border-radius: 2px; }
+      tbody tr.selected-person td { background: #dbeafe; }
+      tbody tr.selected-person .person-name-btn .person-name-text { font-weight: 700; color: #1e3a8a; }
+      tbody tr.selected-person .person-name-btn .chevron { color: #1e3a8a; }
+      .footer-caption { color: #6b7280; font-size: 0.8rem; margin-top: 0.5rem; }
       .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; z-index: 9; }
       .modal-backdrop.open { display: block; }
       .modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 1rem 1.5rem 1.5rem; max-width: 90vw; max-height: 85vh; overflow: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.25); display: none; z-index: 10; min-width: 400px; }
@@ -9373,6 +9685,34 @@ export default function People() {
       /* Match the date's typography exactly so "6.8 hrs" reads the same as
          "Mon 2026-05-04"; only nudge for spacing. */
       .modal .hours-day-header .day-hours { margin-left: 0.5rem; }
+      /* Clickable day-header variant: the whole row is a <button> that bridges
+         out to the parent app to open DashboardMyTimeDayEditorModal for that
+         (person, work_date). Only the date text gets the underline so the
+         affordance is obvious without making the whole row visually noisy. */
+      .modal button.hours-day-header.day-link {
+        display: block;
+        width: 100%;
+        text-align: left;
+        background: none;
+        border: 0;
+        padding: 0.15rem 0.35rem;
+        margin: -0.15rem -0.35rem;
+        font: inherit;
+        color: inherit;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .modal button.hours-day-header.day-link .day-link-date {
+        color: #2563eb;
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
+      }
+      .modal button.hours-day-header.day-link:hover { background: #eff6ff; }
+      .modal button.hours-day-header.day-link:hover .day-link-date { color: #1d4ed8; }
+      .modal button.hours-day-header.day-link:focus-visible {
+        outline: 2px solid #2563eb;
+        outline-offset: 1px;
+      }
       .modal .hours-day-allocs { margin-left: 1.5rem; margin-top: 0.25rem; color: #374151; font-size: 0.9rem; line-height: 1.5; }
       .modal .hours-day-alloc { padding: 0.02rem 0; }
       .modal .hours-day-alloc .alloc-pct { display: inline-block; min-width: 3.4rem; color: #6b7280; font-variant-numeric: tabular-nums; }
@@ -9456,6 +9796,12 @@ export default function People() {
         var breakdowns = ${breakdownsJson};
         var overheadRate = ${overheadRateJson};
         var overheadDecomp = ${overheadDecompJson};
+        // Currently-expanded person (or null). Set by the parent at render
+        // time (initial paint) and mutated locally on toggle clicks; the
+        // parent re-affirms it on each iframe srcDoc refresh by re-encoding
+        // it into this JSON literal, so an auto-refresh never loses the
+        // highlight or accidentally surfaces a stale selection.
+        var selectedPersonName = ${selectedPersonNameJson};
         function escH(s){ return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
         function fmtH(n){ return (Math.round(n*10)/10).toFixed(1); }
         function fmtPct(n){ return Math.round(n) + '%'; }
@@ -9471,7 +9817,41 @@ export default function People() {
         function plainMoneyTd(n){ return '<td style="' + CELL_STYLE_BASE + negS(n) + '">' + fmtMoney(n) + '</td>'; }
         function plainHoursTd(n){ return '<td style="' + CELL_STYLE_BASE + '">' + fmtH(n) + '</td>'; }
         function moneyOrDashTd(n){ return n == null ? dashTd() : plainMoneyTd(n); }
-        function nameTd(s){ return '<td style="' + CELL_STYLE_NAME + '">' + escH(s) + '</td>'; }
+        // The name cell renders either as plain text (popup mode -- no
+        // per-person detail panel exists outside the iframe) or as a toggle
+        // button (embedded mode) that asks the parent React app to expand
+        // the per-person panel below the Team Summary. We can't compute
+        // nameClickable up here because bridgeTarget() hasn't been
+        // defined yet during hoisting; we check at render time instead.
+        function nameTd(s){
+          if (!nameToggleableForRender()) {
+            return '<td style="' + CELL_STYLE_NAME + '">' + escH(s) + '</td>';
+          }
+          var isSel = (selectedPersonName != null && s === selectedPersonName);
+          // \u25BE = ▾ (expanded), \u25B8 = ▸ (collapsed). Mirrors the chevron
+          // convention used in other collapse/expand toggles in the app.
+          var chev = isSel ? '\u25BE' : '\u25B8';
+          var title = isSel ? 'Hide breakdown' : 'Show breakdown';
+          return '<td style="' + CELL_STYLE_NAME + '">'
+            + '<button type="button" class="person-name-btn"'
+            + ' data-action="toggle-person" data-person="' + escH(s) + '"'
+            + ' aria-pressed="' + (isSel ? 'true' : 'false') + '"'
+            + ' title="' + escH(title) + '">'
+            + '<span class="chevron" aria-hidden="true">' + chev + '</span>'
+            + '<span class="person-name-text">' + escH(s) + '</span>'
+            + '</button></td>';
+        }
+        // Lazily checks the bridge so we don't depend on definition order
+        // inside the IIFE. Embedded iframe -> true; popup window -> false
+        // (no detail panel lives outside the popup, so a toggle would be a
+        // dead button).
+        function nameToggleableForRender(){
+          // bridgeTarget() is defined later in this IIFE; function
+          // declarations are hoisted so this works even when invoked from
+          // buildRowHtml() called during initial renderTable().
+          var bt = bridgeTarget();
+          return !!(bt && bt.kind === 'parent');
+        }
         // Clickable + keyboard-focusable cell. type drives modal routing; ariaLabel
         // is the screen-reader description (e.g. "Hours breakdown for Robert: 38.5").
         function clickCellTd(opts){
@@ -9483,10 +9863,20 @@ export default function People() {
             + '" style="' + CELL_STYLE_BASE + 'cursor:pointer;' + color + dec + (opts.extraStyle || '') + '">'
             + opts.content + '</td>';
         }
-        function hoursClickableTd(n, idx, name, label){
-          return clickCellTd({ idx: idx, type: 'hours', content: fmtH(n),
-            ariaLabel: 'Hours breakdown for ' + name + ': ' + fmtH(n) + ' hours',
-            title: 'Click for breakdown' });
+        function hoursClickableTd(n, idx, name, isSalary){
+          // For salaried people we render "(s)" instead of the assumed
+          // 8 hrs/weekday total — see TeamSummaryInline.Row for the
+          // matching inline-component logic. The numeric value still
+          // flows through r.totalHours, so the footer keeps summing.
+          var content = isSalary ? '(s)' : fmtH(n);
+          var aria = isSalary
+            ? 'Hours breakdown for ' + name + ': salary (' + fmtH(n) + ' hours assumed)'
+            : 'Hours breakdown for ' + name + ': ' + fmtH(n) + ' hours';
+          var title = isSalary
+            ? 'Salaried \u2014 ' + fmtH(n) + ' hrs assumed (8 hrs/weekday). Click for breakdown.'
+            : 'Click for breakdown';
+          return clickCellTd({ idx: idx, type: 'hours', content: content,
+            ariaLabel: aria, title: title });
         }
         function overheadHoursClickableTd(n, idx, name){
           if (n <= 0) return dashTd();
@@ -9542,9 +9932,15 @@ export default function People() {
         function buildRowHtml(r){
           var i = r.idx;
           var hasHours = r.totalHours > 0;
-          return '<tr>'
+          // Light-blue row tint marks the currently-expanded person so the
+          // eye finds them even on wide tables. Matches .person-name-btn
+          // bold/blue text via the tr.selected-person selector.
+          var rowAttrs = (selectedPersonName != null && r.name === selectedPersonName)
+            ? ' class="selected-person"'
+            : '';
+          return '<tr' + rowAttrs + '>'
             + nameTd(r.name)
-            + hoursClickableTd(r.totalHours, i, r.name)
+            + hoursClickableTd(r.totalHours, i, r.name, r.payConfigSource === 'salary')
             + overheadHoursClickableTd(r.overheadHours, i, r.name)
             + overheadLaborClickableTd(r.overheadLaborCost, i, r.name)
             + fieldHoursClickableTd(r.fieldHours, i, r.name)
@@ -9571,7 +9967,7 @@ export default function People() {
           var n = visibleRows.length;
           var totalN = breakdowns.length;
           var label = (n === totalN)
-            ? 'Team total \u00b7 ' + n + ' ' + (n === 1 ? 'person' : 'people')
+            ? n + ' ' + (n === 1 ? 'person' : 'people')
             : 'Filtered total \u00b7 ' + n + ' of ' + totalN + ' ' + (totalN === 1 ? 'person' : 'people');
           var teamGrossPerHr = totals.hours > 0 ? totals.gross / totals.hours : 0;
           var teamNetPerHr = totals.hours > 0 ? totals.net / totals.hours : 0;
@@ -9740,13 +10136,29 @@ export default function People() {
         }
         function buildDaySectionHtml(d, opts){
           var html = '<div class="hours-day-section">';
-          html += '<div class="hours-day-header">' + dayHeaderLabel(d.date)
+          var headerInner = '<span class="day-link-date">' + dayHeaderLabel(d.date) + '</span>'
             + '<span class="day-hours">\u00b7 ' + fmtH(d.hours) + ' hrs</span>';
           if (opts && opts.showCounted) {
             var counted = d.crewAllocations.reduce(function(s,a){ return s + a.hours; }, 0);
-            html += '<span class="day-hours">\u00b7 ' + fmtH(counted) + ' hrs counted</span>';
+            headerInner += '<span class="day-hours">\u00b7 ' + fmtH(counted) + ' hrs counted</span>';
           }
-          html += '</div>';
+          // Render the header as a <button> when the parent app is reachable
+          // (embedded mode, or popup that still has window.opener). Clicking
+          // the button posts a message asking the parent to open
+          // DashboardMyTimeDayEditorModal for (personName, d.date).
+          var clickable = opts && opts.clickableDay && opts.personName;
+          if (clickable) {
+            html += '<button type="button" class="hours-day-header day-link"'
+              + ' data-action="open-day-editor"'
+              + ' data-person="' + escH(opts.personName) + '"'
+              + ' data-date="' + escH(d.date) + '"'
+              + ' title="Open My Time for this day"'
+              + ' aria-label="Open My Time for ' + escH(opts.personName) + ' on ' + escH(d.date) + '">'
+              + headerInner
+              + '</button>';
+          } else {
+            html += '<div class="hours-day-header">' + headerInner + '</div>';
+          }
           html += '<div class="hours-day-allocs">';
           if (d.crewAllocations.length === 0) {
             html += '<div class="hours-day-noalloc">No crew assignment</div>';
@@ -9762,7 +10174,15 @@ export default function People() {
           html += '</div>';
           return html;
         }
-        function buildHoursBody(hb){
+        function buildHoursBody(hb, modalOpts){
+          // modalOpts: { personName, clickableDay } — flows from openModal()
+          // into buildDaySectionHtml so day headers can render as clickable
+          // buttons that bridge to DashboardMyTimeDayEditorModal in the parent.
+          var personName = (modalOpts && modalOpts.personName) || '';
+          var clickableDay = !!(modalOpts && modalOpts.clickableDay && personName);
+          var sectionOpts = function(showCounted){
+            return { showCounted: showCounted, clickableDay: clickableDay, personName: personName };
+          };
           var srcLabel = hb.source === 'salary' ? 'Salaried (8 hrs/weekday)' : hb.source === 'hourly' ? 'Hourly (from people_hours / clock sessions)' : 'Unknown (no pay config row)';
           var modeLabel = hb.onlyPaidJobs ? 'Only paid jobs (sub labor + crew assignments)' : 'All days in period (clocked / salary)';
           var html = '';
@@ -9780,7 +10200,7 @@ export default function People() {
               for (var i = 0; i < sortedDailyRows.length; i++) {
                 var d = sortedDailyRows[i];
                 if (d.crewAllocations.length === 0) continue;
-                html += buildDaySectionHtml(d, { showCounted: true });
+                html += buildDaySectionHtml(d, sectionOpts(true));
               }
               html += '</div>';
               html += '<div class="hours-day-total">Crew subtotal: ' + fmtH(hb.totals.crew) + ' hrs</div>';
@@ -9800,7 +10220,7 @@ export default function People() {
             if (sortedDailyRows.length > 0) {
               html += '<div class="hours-day-list">';
               for (var i2 = 0; i2 < sortedDailyRows.length; i2++) {
-                html += buildDaySectionHtml(sortedDailyRows[i2], { showCounted: false });
+                html += buildDaySectionHtml(sortedDailyRows[i2], sectionOpts(false));
               }
               html += '</div>';
             } else {
@@ -9916,27 +10336,33 @@ export default function People() {
           }
           var fieldHrs = (pb.fieldHours != null ? pb.fieldHours : pb.totalHours);
           var overheadHrs = (pb.overheadHours != null ? pb.overheadHours : 0);
-          var totalOverhead = fieldHrs * overheadRate;
+          // Overhead is charged on every hour worked in the period (field
+          // + office + bid). See enrichTeamSummaryRowsForInline and
+          // drilldowns.tsx ProfitBody — same math so the popup column,
+          // inline column, and breakdown total all reconcile.
+          var fieldOverhead = fieldHrs * overheadRate;
+          var overheadHoursOverhead = overheadHrs * overheadRate;
+          var totalOverhead = fieldOverhead + overheadHoursOverhead;
           var totalProfit = pb.totalNet - totalOverhead;
-          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per field hour</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per hour</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(pb.totalNet) + '</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(pb.totalHours) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(pb.totalHours) + ' (field ' + fmtH(fieldHrs) + (overheadHrs > 0.005 ? ' + overhead ' + fmtH(overheadHrs) : '') + ')</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>&minus; Overhead deduction:</strong> ' + fmtH(pb.totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + '</div>';
           if (overheadHrs > 0.005) {
-            html += '<div style="margin-bottom:0.25rem;color:#374151;"><strong>&minus; Overhead hours (office + bid):</strong> ' + fmtH(overheadHrs) + ' (excluded from deduction)</div>';
+            html += '<div style="margin-bottom:0.25rem;padding-left:1.5rem;color:#6b7280;">(' + fmtMoney(fieldOverhead) + ' field + ' + fmtMoney(overheadHoursOverhead) + ' overhead hours)</div>';
           }
-          html += '<div style="margin-bottom:0.25rem;"><strong>= Field hours:</strong> ' + fmtH(fieldHrs) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
           html += '<div style="font-size:1.05rem;"><strong>Profit (after overhead): <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></strong></div>';
           html += '</div>';
-          if (!pb.jobs || pb.jobs.length === 0) {
-            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
-            return html;
-          }
-          var rows = pb.jobs.map(function(j){
+          var rows = (pb.jobs || []).map(function(j){
             var oh = j.hoursInPeriod * overheadRate;
             var profit = j.allocatedNet - oh;
             return { hcp: j.hcp, jobName: j.jobName, allocatedNet: j.allocatedNet, hoursInPeriod: j.hoursInPeriod, overhead: oh, profit: profit };
           });
           rows.sort(function(a, b){ return b.profit - a.profit; });
+          if (rows.length === 0 && overheadHrs < 0.005 && pb.unaccountedHours < 0.01) {
+            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
+            return html;
+          }
           html += '<table>';
           html += '<thead><tr>';
           html += '<th class="num">HCP</th>';
@@ -9957,6 +10383,16 @@ export default function People() {
             html += '<td class="num"' + (r.profit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(r.profit) + '</td>';
             html += '</tr>';
           }
+          if (overheadHrs > 0.005) {
+            html += '<tr style="background:#f9fafb;">';
+            html += '<td class="num">&mdash;</td>';
+            html += '<td><em>Overhead hours</em></td>';
+            html += '<td class="num">' + fmtMoney(0) + '</td>';
+            html += '<td class="num">' + fmtH(overheadHrs) + '</td>';
+            html += '<td class="num">' + fmtMoney(overheadHoursOverhead) + '</td>';
+            html += '<td class="num" style="color:#b91c1c;">' + fmtMoney(-overheadHoursOverhead) + '</td>';
+            html += '</tr>';
+          }
           if (pb.unaccountedHours > 0.01) {
             var unOh = pb.unaccountedHours * overheadRate;
             html += '<tr style="background:#fff7ed;">';
@@ -9970,15 +10406,15 @@ export default function People() {
           }
           html += '</tbody>';
           html += '<tfoot><tr>';
-          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total (field hours only)</td>';
+          html += '<td colspan="2" style="text-align:right;font-weight:600;">Total<br>(all hours)</td>';
           html += '<td class="num" style="font-weight:600;">' + fmtMoney(pb.totalNet) + '</td>';
-          html += '<td class="num" style="font-weight:600;">' + fmtH(fieldHrs) + '</td>';
+          html += '<td class="num" style="font-weight:600;">' + fmtH(pb.totalHours) + '</td>';
           html += '<td class="num" style="font-weight:600;">' + fmtMoney(totalOverhead) + '</td>';
           html += '<td class="num"' + (totalProfit < 0 ? ' style="color:#b91c1c;font-weight:600;"' : ' style="font-weight:600;"') + '>' + fmtMoney(totalProfit) + '</td>';
           html += '</tr></tfoot>';
           html += '</table>';
-          html += '<p class="caption">Overhead per job = your hours on that job &times; rate. Profit (job) = Allocated Net Rev &minus; Overhead. Sorted by profit. <strong>Office and bid hours (' + fmtH(overheadHrs) + ') are not charged overhead</strong> &mdash; they are the overhead pool, not consumers of it.</p>';
-          html += '<p class="caption">Profit (after overhead) = Net Revenue &minus; (<strong>field hours</strong> &times; rate). The rate is dollars per <em>field</em> hour, so office and bid hours are excluded from the deduction &mdash; those hours are already part of the overhead pool that funds the rate.</p>';
+          html += '<p class="caption">Per-job overhead = your hours on that job &times; rate. Profit (job) = Allocated Net Rev &minus; Overhead. Job rows sorted by profit. Overhead hours (' + fmtH(overheadHrs) + ') are charged the same rate as field hours but contribute no revenue, so they appear as a single deduction-only row.</p>';
+          html += '<p class="caption">Profit (after overhead) = Net Revenue &minus; (<strong>all hours</strong> &times; rate). The rate is the rolling 90-day overhead spend per field hour; we apply it to every hour the person worked (field + office + bid) so the deduction reflects this person\\'s full share of the overhead burden.</p>';
           return html;
         }
         function fmtMoneyPerHr(n) { return fmtMoney(n) + '/hr'; }
@@ -10123,32 +10559,37 @@ export default function People() {
             html += '<div><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
             return html;
           }
-          var totalOverhead = fieldHrs * overheadRate;
+          // Charge overhead on all hours (field + office + bid) so the
+          // popup Profit/hr drilldown stays in sync with ProfitBody and
+          // ProfitPerHourBody in drilldowns.tsx + the parent column math.
+          var fieldOverhead = fieldHrs * overheadRate;
+          var overheadHoursOverhead = overheadHrs * overheadRate;
+          var totalOverhead = fieldOverhead + overheadHoursOverhead;
           var totalProfit = totalNet - totalOverhead;
           var rate = totalHours > 0 ? totalProfit / totalHours : 0;
-          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per field hour</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Overhead rate (Method A):</strong> $' + overheadRate.toFixed(2) + ' per hour</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Net Revenue:</strong> ' + fmtMoney(totalNet) + '</div>';
-          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + '</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>Total hours:</strong> ' + fmtH(totalHours) + ' (field ' + fmtH(fieldHrs) + (overheadHrs > 0.005 ? ' + overhead ' + fmtH(overheadHrs) : '') + ')</div>';
+          html += '<div style="margin-bottom:0.25rem;"><strong>&minus; Overhead deduction:</strong> ' + fmtH(totalHours) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + '</div>';
           if (overheadHrs > 0.005) {
-            html += '<div style="margin-bottom:0.25rem;color:#374151;"><strong>&minus; Overhead hours (office + bid):</strong> ' + fmtH(overheadHrs) + ' (excluded from deduction)</div>';
+            html += '<div style="margin-bottom:0.25rem;padding-left:1.5rem;color:#6b7280;">(' + fmtMoney(fieldOverhead) + ' field + ' + fmtMoney(overheadHoursOverhead) + ' overhead hours)</div>';
           }
-          html += '<div style="margin-bottom:0.25rem;"><strong>= Field hours:</strong> ' + fmtH(fieldHrs) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(totalOverhead) + ' overhead</div>';
           html += '<div style="margin-bottom:0.25rem;"><strong>Profit (after overhead):</strong> <span' + (totalProfit < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoney(totalProfit) + '</span></div>';
           html += '<div style="font-size:1.05rem;"><strong>Profit/hr (after overhead): <span' + (rate < 0 ? ' style="color:#b91c1c;"' : '') + '>' + fmtMoneyPerHr(rate) + '</span></strong></div>';
           html += '</div>';
-          if (!nb.jobs || nb.jobs.length === 0) {
-            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
-            return html;
-          }
           var hoursByJob = {};
           for (var i = 0; i < pb.jobs.length; i++) hoursByJob[pb.jobs[i].jobId] = pb.jobs[i].hoursInPeriod;
-          var rows = nb.jobs.map(function(j){
+          var rows = (nb.jobs || []).map(function(j){
             var h = hoursByJob[j.jobId] || 0;
             var netPerHr = h > 0 ? j.allocatedNet / h : null;
             var profitPerHr = netPerHr == null ? null : netPerHr - overheadRate;
             return { hcp: j.hcp, jobName: j.jobName, allocatedNet: j.allocatedNet, hoursInPeriod: h, netPerHr: netPerHr, profitPerHr: profitPerHr };
           });
           rows.sort(function(a, b){ return (b.profitPerHr == null ? -Infinity : b.profitPerHr) - (a.profitPerHr == null ? -Infinity : a.profitPerHr); });
+          if (rows.length === 0 && overheadHrs < 0.005 && pb.unaccountedHours < 0.01) {
+            html += '<p class="caption">No jobs contributed to net revenue in this period.</p>';
+            return html;
+          }
           html += '<table>';
           html += '<thead><tr>';
           html += '<th class="num">HCP</th>';
@@ -10169,6 +10610,16 @@ export default function People() {
             html += '<td class="num">' + fmtH(r.hoursInPeriod) + '</td>';
             html += '</tr>';
           }
+          if (overheadHrs > 0.005) {
+            html += '<tr style="background:#f9fafb;">';
+            html += '<td class="num">&mdash;</td>';
+            html += '<td><em>Overhead hours</em><div style="color:#6b7280;font-size:0.8rem;">Office + bid time. No revenue, but still charged the overhead rate now that overhead hours are included in the deduction.</div></td>';
+            html += '<td class="num">' + fmtMoneyPerHr(0) + '</td>';
+            html += '<td class="num">$' + overheadRate.toFixed(2) + '/hr</td>';
+            html += '<td class="num" style="color:#b91c1c;">' + fmtMoneyPerHr(-overheadRate) + '</td>';
+            html += '<td class="num">' + fmtH(overheadHrs) + '</td>';
+            html += '</tr>';
+          }
           if (pb.unaccountedHours > 0.01) {
             html += '<tr style="background:#fff7ed;">';
             html += '<td class="num">&mdash;</td>';
@@ -10186,8 +10637,8 @@ export default function People() {
           html += '<td class="num" style="font-weight:600;">' + fmtH(totalHours) + '</td>';
           html += '</tr></tfoot>';
           html += '</table>';
-          html += '<p class="caption">Per-job: Profit/hr = (Allocated Net &divide; Your hours) &minus; Overhead rate. Headline rate = (Net Revenue &minus; Total overhead) &divide; Total hours, where <strong>total overhead = Field hours &times; rate</strong> (office and bid hours are not charged). Sorted by per-job profit/hr.</p>';
-          html += '<p class="caption">Profit/hr (after overhead) divides your <strong>Profit (after overhead)</strong> by your <strong>total hours</strong>. The overhead deduction itself is <strong>field hours &times; rate</strong> &mdash; office and bid hours are not charged overhead (they fund it).</p>';
+          html += '<p class="caption">Per-job: Profit/hr = (Allocated Net &divide; Your hours) &minus; Overhead rate. Headline rate = (Net Revenue &minus; Total overhead) &divide; Total hours, where <strong>total overhead = All hours &times; rate</strong> (every hour the person worked &mdash; field + office + bid &mdash; is charged the rate). Sorted by per-job profit/hr.</p>';
+          html += '<p class="caption">Profit/hr (after overhead) divides your <strong>Profit (after overhead)</strong> by your <strong>total hours</strong>. The overhead deduction is <strong>all hours &times; rate</strong> &mdash; office and bid hours are charged the same per-hour overhead as field hours even though they earn no revenue, which is why those rows show a flat &minus;$ rate per hour.</p>';
           return html;
         }
         function buildOverheadSessionsSection(label, sessions, bucketTotalHrs) {
@@ -10285,7 +10736,7 @@ export default function People() {
           html += '</tbody>';
           html += '<tfoot><tr><td style="text-align:right;font-weight:600;">Total work</td><td class="num" style="font-weight:600;">' + fmtH(totalWork) + '</td><td></td></tr></tfoot>';
           html += '</table>';
-          html += '<p class="caption">Field hrs = Total work hrs &minus; Overhead hrs. For salaried people, total work is their weekday salary days (8 hrs/weekday); for hourly, it is people_hours / clock sessions. <strong>Only field hrs are charged overhead in the &ldquo;Profit (after overhead)&rdquo; column</strong> &mdash; overhead hrs already fund the rate.</p>';
+          html += '<p class="caption">Field hrs = Total work hrs &minus; Overhead hrs. For salaried people, total work is their weekday salary days (8 hrs/weekday); for hourly, it is people_hours / clock sessions. <strong>Every hour worked is charged the per-hour overhead in the &ldquo;Profit (after overhead)&rdquo; column</strong> &mdash; field, office, and bid hours all incur the same rate.</p>';
           html += '<p class="caption">Overhead hours are approved clock sessions on the configured Office job or on any bid &mdash; the same buckets that feed the rolling 90-day overhead rate.</p>';
           return html;
         }
@@ -10326,7 +10777,7 @@ export default function People() {
             html += '<p class="caption" style="color:#b45309;">No <code>hourly_wage</code> is set for this person in <code>people_pay_config</code>, so the cost columns above show as $0. Set their wage on the People \u2192 Hours \u2192 Pay config row to make this column meaningful.</p>';
           }
           html += '<p class="caption">Overhead labor is what the company paid this person for hours that are <strong>not</strong> billed to a field job \u2014 the configured Office job and any time clocked into a bid. Field labor is excluded here on purpose: it is already subtracted at the per-job level inside Net Revenue (<code>job net = revenue \u2212 parts \u2212 total labor</code>), so showing it again would visually double-count.</p>';
-          html += '<p class="caption">Office and bid hours fund the rolling 90-day overhead pool (office labor + bid labor + office parts), which is then deducted from field workers as <code>field hours \u00d7 rate</code> in the &ldquo;Profit (after overhead)&rdquo; column. This Overhead labor column simply makes that contribution visible in each person\\'s own row \u2014 it does <strong>not</strong> change Gross, Net, or Profit numbers.</p>';
+          html += '<p class="caption">Office and bid hours fund the rolling 90-day overhead pool (office labor + bid labor + office parts), which is then deducted from every person as <code>total hours \u00d7 rate</code> in the &ldquo;Profit (after overhead)&rdquo; column \u2014 every hour worked (field + office + bid) is charged the per-hour overhead. This Overhead labor column simply makes the office + bid wage contribution visible in each person\\'s own row \u2014 it does <strong>not</strong> change Gross, Net, or Profit numbers.</p>';
           return html;
         }
         function buildFieldHoursBody(entry) {
@@ -10350,7 +10801,7 @@ export default function People() {
             ? 'Only paid jobs (sub labor + crew assignments on jobs marked paid in full)'
             : 'All days in period (clocked / salary, minus office + bid)';
           var ohRateNote = (typeof overheadRate === 'number' && overheadRate != null)
-            ? '$' + overheadRate.toFixed(2) + ' per field hour &times; ' + fmtH(fieldHrs) + ' = ' + fmtMoney(fieldHrs * overheadRate) + ' overhead charged in &ldquo;Profit (after overhead)&rdquo;'
+            ? '$' + overheadRate.toFixed(2) + ' per hour &times; ' + fmtH(fieldHrs + officeHrs + bidHrs) + ' all hours = ' + fmtMoney((fieldHrs + officeHrs + bidHrs) * overheadRate) + ' overhead charged in &ldquo;Profit (after overhead)&rdquo; (field component: ' + fmtH(fieldHrs) + ' &times; $' + overheadRate.toFixed(2) + ' = ' + fmtMoney(fieldHrs * overheadRate) + ')'
             : 'Overhead rate unavailable &mdash; reload Review.';
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
@@ -10418,7 +10869,7 @@ export default function People() {
           var ratePerRevenueDecimal = d.ratePerRevenueDecimal;
           var html = '';
           html += '<div style="margin-bottom:0.75rem;color:#374151;">';
-          html += '<div style="margin-bottom:0.5rem;">Rolling 90-day overhead rate. Method A is <strong>$ per field hour</strong>: it spreads the overhead pool (office labor, bid labor, office parts) over the hours that actually produce billable field work. The Team Summary deducts <code>field hours &times; rate</code> from each person &mdash; office and bid hours are not charged because they are already counted in the numerator.</div>';
+          html += '<div style="margin-bottom:0.5rem;">Rolling 90-day overhead rate. Method A is <strong>$ per field hour</strong>: it spreads the overhead pool (office labor, bid labor, office parts) over the hours that actually produce billable field work. The Team Summary applies this rate against <code>all hours &times; rate</code> when deducting overhead from each person in the &ldquo;Profit (after overhead)&rdquo; column &mdash; office and bid hours fund the pool but are still charged the per-hour overhead so every hour the person worked reflects its full share of the overhead burden.</div>';
           if (d.windowStart && d.windowEnd) {
             html += '<div style="margin-bottom:0.25rem;"><strong>Window:</strong> ' + escH(d.windowStart) + ' &rarr; ' + escH(d.windowEnd) + '</div>';
           }
@@ -10449,7 +10900,7 @@ export default function People() {
           html += '<h3>Resulting rates</h3>';
           html += '<table>';
           html += '<thead><tr><th>Rate</th><th class="num">Value</th><th>How it is used</th></tr></thead><tbody>';
-          html += '<tr><td>Method A &mdash; per field hour</td><td class="num">' + (ratePerHour == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerHour).toFixed(2) + '/hr') + '</td><td>Used to deduct overhead in the Team Summary: Profit after overhead = Net &minus; <strong>field hours</strong> &times; rate. Office and bid hours are not charged (they fund the rate).</td></tr>';
+          html += '<tr><td>Method A &mdash; per field hour</td><td class="num">' + (ratePerHour == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerHour).toFixed(2) + '/hr') + '</td><td>Used to deduct overhead in the Team Summary: Profit after overhead = Net &minus; <strong>all hours</strong> &times; rate. Every hour the person worked (field + office + bid) is charged the per-hour overhead.</td></tr>';
           html += '<tr><td>Method B &mdash; per field labor $</td><td class="num">' + (ratePerLaborDollar == null ? '<span style="color:#9ca3af;">&mdash;</span>' : '$' + Number(ratePerLaborDollar).toFixed(2) + ' / $1 labor') + '</td><td>Reference only: ratio of overhead pool to field labor dollars.</td></tr>';
           html += '<tr><td>Method C &mdash; per revenue $ (invoices sent)</td><td class="num">' + (ratePerRevenueDecimal == null ? '<span style="color:#9ca3af;">&mdash;</span>' : (Number(ratePerRevenueDecimal) * 100).toFixed(1) + '% of revenue') + '</td><td>Reference only: invoices sent in window = ' + fmtMoney(invoices) + '.</td></tr>';
           html += '</tbody></table>';
@@ -10459,10 +10910,106 @@ export default function People() {
         // Track which cell opened the modal so we can return focus to it on close
         // (keyboard a11y: never trap focus, never lose the trigger after closing).
         var lastFocusedTrigger = null;
+        // Embedded-parent only: used by team-summary-modal-open/close so the
+        // popup window doesn't accidentally toggle the embedded iframe's
+        // refresh guard via its own opener. Day-editor dispatch goes through
+        // postBridge() below, which DOES post to opener in popup mode.
         function postParent(type){
           if (window.parent === window) return;
           try { parent.postMessage({ type: type }, '*'); } catch(e) {}
         }
+        // Popup-only build: no live bridge back to the React app exists
+        // any more (the inline path renders via <TeamSummaryInline> and
+        // talks to the parent directly without postMessage). Returning
+        // null here makes nameToggleableForRender()/hasBridge below
+        // resolve to false, so the popup renders name cells + Hours-day
+        // headers as static text — appropriate for a "Open in new window"
+        // surface whose job is print/share, not further interaction.
+        function bridgeTarget(){
+          return null;
+        }
+        function postBridge(type, payload){
+          var bt = bridgeTarget();
+          if (!bt) return null;
+          var msg = { type: type };
+          if (payload) {
+            for (var k in payload) {
+              if (Object.prototype.hasOwnProperty.call(payload, k)) msg[k] = payload[k];
+            }
+          }
+          try { bt.win.postMessage(msg, '*'); } catch(e) {}
+          return bt;
+        }
+        // Day-header click bridge (Hours breakdown -> DashboardMyTimeDayEditorModal).
+        // Delegated from document so it survives openModal() innerHTML resets;
+        // no per-render re-attachment needed.
+        function isDayLinkEl(el){
+          return !!(el && el.nodeType === 1 && el.getAttribute && el.getAttribute('data-action') === 'open-day-editor');
+        }
+        // Name-cell toggle bridge (Team Summary row -> per-person detail panel
+        // in the parent React app). Optimistically mutates selectedPersonName
+        // and re-renders the table so the highlight feels instant; the parent
+        // listener updates selectedReviewPersonIndex on its end.
+        function isPersonToggleEl(el){
+          return !!(el && el.nodeType === 1 && el.getAttribute && el.getAttribute('data-action') === 'toggle-person');
+        }
+        function dispatchDayEditorFromEl(el){
+          var person = el.getAttribute('data-person') || '';
+          var dateStr = el.getAttribute('data-date') || '';
+          if (!person || !dateStr) return;
+          var bt = postBridge('team-summary-open-day-editor', { personName: person, workDate: dateStr });
+          if (!bt) return;
+          // Popup: bring the original tab forward so the user sees the modal
+          // mount on the People page they opened the summary from.
+          if (bt.kind === 'opener') {
+            try { bt.win.focus(); } catch(e) {}
+          }
+        }
+        function dispatchPersonToggleFromEl(el){
+          var person = el.getAttribute('data-person') || '';
+          if (!person) return;
+          // Toggle off when clicking the already-expanded row; matches the
+          // parent's reducer so we and the parent never diverge.
+          selectedPersonName = (selectedPersonName === person) ? null : person;
+          renderTable();
+          postBridge('team-summary-select-person', { personName: person });
+        }
+        document.addEventListener('click', function(e){
+          var t = e.target;
+          // Walk up a few levels in case the click landed on an inner <span>.
+          for (var i = 0; i < 4 && t; i++) {
+            if (isDayLinkEl(t)) { e.preventDefault(); dispatchDayEditorFromEl(t); return; }
+            if (isPersonToggleEl(t)) { e.preventDefault(); dispatchPersonToggleFromEl(t); return; }
+            t = t.parentNode;
+          }
+        });
+        document.addEventListener('keydown', function(e){
+          if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+          var t = document.activeElement;
+          if (isDayLinkEl(t)) { e.preventDefault(); dispatchDayEditorFromEl(t); return; }
+          if (isPersonToggleEl(t)) { e.preventDefault(); dispatchPersonToggleFromEl(t); return; }
+        });
+        // Parent -> iframe: re-open the Hours drilldown for a specific person
+        // after the editor saves and the Team Summary re-renders with fresh
+        // numbers. The parent stashes personName in a ref and posts this
+        // message from the iframe's onLoad once the new srcDoc has painted.
+        window.addEventListener('message', function(e){
+          var d = e.data;
+          if (!d || typeof d !== 'object') return;
+          if (d.type !== 'team-summary-open-hours-drilldown') return;
+          var pn = typeof d.personName === 'string' ? d.personName : '';
+          if (!pn) return;
+          var idx = -1;
+          for (var i = 0; i < breakdowns.length; i++) {
+            if (breakdowns[i].name === pn) { idx = i; break; }
+          }
+          if (idx >= 0) openModal(idx, 'hours');
+        });
+        // True when this window can reach the parent app to mount the editor
+        // (embedded iframe -> parent, popup -> opener). Day headers in the
+        // Hours breakdown render as <button> when true, plain <div> otherwise
+        // (so a popup whose opener was already closed stays inert).
+        var hasBridge = !!bridgeTarget();
         function openModal(idx, type) {
           var entry = breakdowns[idx];
           if (!entry && type !== 'overhead_rate') return;
@@ -10473,7 +11020,7 @@ export default function People() {
             // breakdown -- Abraham . 50.8 hrs"); the redundant Total: N hrs
             // line is dropped from buildHoursBody so the value appears once.
             title = 'Hours breakdown \\u2014 ' + entry.name + ' \\u00b7 ' + fmtH(entry.hb.totals.totalHours) + ' hrs';
-            body = buildHoursBody(entry.hb);
+            body = buildHoursBody(entry.hb, { personName: entry.name, clickableDay: hasBridge });
           } else if (type === 'overhead_hours') {
             // v2.547 -- running total moved into the title (matches Hours
             // breakdown), and the per-bucket totals move into the Office /
@@ -10487,7 +11034,14 @@ export default function People() {
             title = 'Field hours breakdown \\u2014 ' + entry.name + ' \\u00b7 ' + fmtH(entry.fieldHours || 0) + ' hrs';
             body = buildFieldHoursBody(entry);
           } else if (type === 'overhead_labor') {
-            title = 'Overhead labor breakdown \\u2014 ' + entry.name;
+            // Append the hourly_wage to the title so reviewers see the
+            // rate driving the cost column without opening the modal.
+            // Matches TeamSummaryInline.drilldownTitleFor.
+            var olWage = entry.hourlyWage || 0;
+            var olWageSuffix = olWage > 0
+              ? ' \\u00b7 $' + olWage.toFixed(2) + '/hr'
+              : ' \\u00b7 no wage configured';
+            title = 'Overhead labor breakdown \\u2014 ' + entry.name + olWageSuffix;
             body = buildOverheadLaborBody(entry);
           } else if (type === 'gross') {
             // v2.547 -- running total moved into the title to match Hours /
@@ -10615,10 +11169,9 @@ export default function People() {
       })();</script>
       ${embeddedResizeScript}
     </body></html>`
-          if (isEmbedded) {
-            setTeamSummaryHtml(html)
-            setTeamSummaryLoading(false)
-          } else if (win) {
+          // Popup-only render — the inline path was already handled
+          // above (see `if (isEmbedded) { … setTeamSummaryRows(rows); return }`).
+          if (win) {
             win.document.open()
             win.document.write(html)
             win.document.close()
@@ -10626,12 +11179,7 @@ export default function People() {
           }
         } catch (writeErr) {
           console.error('Team Summary write error:', writeErr)
-          if (isEmbedded) {
-            setTeamSummaryError('Failed to build Team Summary')
-            setTeamSummaryLoading(false)
-          } else {
-            showToast('Failed to display Team Summary. The window may have been closed.', 'error')
-          }
+          showToast('Failed to display Team Summary. The window may have been closed.', 'error')
         }
       })
       .catch((err) => {
@@ -10872,6 +11420,43 @@ export default function People() {
       overheadOtherJobsPartsUsdByDay,
     ],
   )
+
+  /**
+   * Period totals across every visible row of the Overhead tab table.
+   * Renders as a single bold `<tfoot>` row so the user can see the
+   * range-wide sums without exporting / eyeballing daily columns. The
+   * footer Overhead % is a period-aggregated ratio (sum office total
+   * $ ÷ sum field total $) — not an average of daily percentages —
+   * which is the weighted-correct way to express "what share of field
+   * revenue went to overhead across the whole window."
+   */
+  const overheadTableTotals = useMemo(() => {
+    let bidLaborUsd = 0
+    let officeLaborUsd = 0
+    let officePartsUsd = 0
+    let totalUsd = 0
+    let totalLaborHours = 0
+    let otherJobsUsd = 0
+    let otherJobsLaborHours = 0
+    for (const row of overheadMergedByDay) {
+      bidLaborUsd += row.bidLaborUsd
+      officeLaborUsd += row.officeLaborUsd
+      officePartsUsd += row.officePartsUsd
+      totalUsd += row.totalUsd
+      totalLaborHours += row.totalLaborHours
+      otherJobsUsd += row.otherJobsUsd
+      otherJobsLaborHours += row.otherJobsLaborHours
+    }
+    return {
+      bidLaborUsd,
+      officeLaborUsd,
+      officePartsUsd,
+      totalUsd,
+      totalLaborHours,
+      otherJobsUsd,
+      otherJobsLaborHours,
+    }
+  }, [overheadMergedByDay])
 
   const overheadTableColCount = overheadTableSimpleView ? 4 : 7
 
@@ -12188,6 +12773,108 @@ export default function People() {
                     })
                   )}
                 </tbody>
+                {overheadMergedByDay.length > 0 ? (
+                  (() => {
+                    // Period-aggregated Overhead % — sum of office totals
+                    // divided by sum of field totals across the visible
+                    // range. Re-uses the same helper that powers the per-
+                    // day cell so null-handling (field total = $0) stays
+                    // identical at the footer.
+                    const totalOverheadFactor = overheadFactorTotalOverOtherJobs(
+                      overheadTableTotals.totalUsd,
+                      overheadTableTotals.otherJobsUsd,
+                    )
+                    const footerCellBase = {
+                      padding: '0.5rem',
+                      borderTop: '2px solid #d1d5db',
+                      background: '#f9fafb',
+                      fontWeight: 600,
+                    } as const
+                    return (
+                      <tfoot>
+                        <tr>
+                          <td style={footerCellBase}>Total</td>
+                          {!overheadTableSimpleView ? (
+                            <>
+                              <td style={footerCellBase}>
+                                {formatCurrency(overheadTableTotals.bidLaborUsd)}
+                              </td>
+                              <td style={footerCellBase}>
+                                {formatCurrency(overheadTableTotals.officeLaborUsd)}
+                              </td>
+                              <td style={footerCellBase}>
+                                {formatCurrency(overheadTableTotals.officePartsUsd)}
+                              </td>
+                            </>
+                          ) : null}
+                          {overheadTableSimpleView ? (
+                            <>
+                              <td
+                                style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}
+                                aria-label={
+                                  totalOverheadFactor == null
+                                    ? 'Period total Overhead %: not available (field total dollars is zero)'
+                                    : `Period total Overhead %: ${Math.round(
+                                        totalOverheadFactor * 100,
+                                      )} percent, total office total divided by total field total dollars`
+                                }
+                              >
+                                {totalOverheadFactor == null
+                                  ? '—'
+                                  : `${Math.round(totalOverheadFactor * 100)}%`}
+                              </td>
+                              <td style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}>
+                                {formatCurrency(overheadTableTotals.totalUsd)}
+                                <span style={{ fontWeight: 400 }}>
+                                  {' '}
+                                  · {overheadTableTotals.totalLaborHours.toFixed(2)}h
+                                </span>
+                              </td>
+                              <td style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}>
+                                {formatCurrency(overheadTableTotals.otherJobsUsd)}
+                                <span style={{ fontWeight: 400 }}>
+                                  {' '}
+                                  · {overheadTableTotals.otherJobsLaborHours.toFixed(2)}h
+                                </span>
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td style={footerCellBase}>
+                                {formatCurrency(overheadTableTotals.totalUsd)}
+                                <span style={{ fontWeight: 400 }}>
+                                  {' '}
+                                  · {overheadTableTotals.totalLaborHours.toFixed(2)}h
+                                </span>
+                              </td>
+                              <td
+                                style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}
+                                aria-label={
+                                  totalOverheadFactor == null
+                                    ? 'Period total Overhead %: not available (field total dollars is zero)'
+                                    : `Period total Overhead %: ${Math.round(
+                                        totalOverheadFactor * 100,
+                                      )} percent, total office total divided by total field total dollars`
+                                }
+                              >
+                                {totalOverheadFactor == null
+                                  ? '—'
+                                  : `${Math.round(totalOverheadFactor * 100)}%`}
+                              </td>
+                              <td style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}>
+                                {formatCurrency(overheadTableTotals.otherJobsUsd)}
+                                <span style={{ fontWeight: 400 }}>
+                                  {' '}
+                                  · {overheadTableTotals.otherJobsLaborHours.toFixed(2)}h
+                                </span>
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      </tfoot>
+                    )
+                  })()
+                ) : null}
               </table>
             </div>
           )}
@@ -12242,11 +12929,7 @@ export default function People() {
                     </>
                   ) : overheadBreakdownModalModel.scope === 'total' ? (
                     <>
-                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
-                        <strong>Labor:</strong> approved, closed sessions — hours × pay config wage. <strong>Materials:</strong> office
-                        job parts (same rules as <strong>Office parts ($)</strong> column).
-                      </p>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
+                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
                         Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
                         {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
                       </p>
@@ -12259,13 +12942,7 @@ export default function People() {
                     </>
                   ) : overheadBreakdownModalModel.scope === 'otherJobs' ? (
                     <>
-                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
-                        Not included in overhead <strong>Office Total ($)</strong>. <strong>Labor:</strong> approved, closed clock time on{' '}
-                        <strong>jobs ledger</strong> work other than the office overhead job when one is configured (bid-only
-                        time remains in <strong>Bid labor ($)</strong> only). <strong>Materials:</strong> Mercury, supply, and
-                        tally on those jobs — same dating rules as the office parts column.
-                      </p>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
+                      <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem' }}>
                         Labor: {overheadBreakdownModalModel.totalHours.toFixed(2)}h —{' '}
                         {formatCurrency(overheadBreakdownModalModel.totalLaborUsd)}
                       </p>
@@ -12353,7 +13030,7 @@ export default function People() {
                         </table>
                       )}
 
-                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
                         <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail (labor)</summary>
                         {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
                           <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
@@ -12362,29 +13039,68 @@ export default function People() {
                             {overheadBreakdownModalModel.sortedSessions.map((ln) => (
                               <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
                                 {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
-                                {formatCurrency(ln.laborUsd)}
+                                ${formatCurrency(ln.laborUsd)}
                                 {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                                {ln.notes ? (
+                                  <span style={{ color: '#6b7280' }}> | {ln.notes}</span>
+                                ) : null}
                               </li>
                             ))}
                           </ul>
                         )}
                       </details>
 
-                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
                         <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Materials (office job)</summary>
                         {overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
                           <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
                         ) : (
                           <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
-                            {overheadBreakdownModalModel.sortedPartLines.map((ln) => (
-                              <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
-                                {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
-                                {formatCurrency(ln.amountUsd)}
-                              </li>
-                            ))}
+                            {overheadBreakdownModalModel.sortedPartLines.map((ln) => {
+                              // Mercury lines carry an optional debit-card UUID from the
+                              // transaction's raw JSON. Resolve via nickname map; fall back
+                              // to a compact hex preview ("abc...xyz") so the user can still
+                              // tell *which* card was used even when no nickname is saved.
+                              // Non-Mercury (supply / tally) lines and Mercury lines with no
+                              // card (ACH / wire / check) render exactly as before.
+                              const cardLabel =
+                                ln.source === 'mercury' && ln.mercuryDebitCardId
+                                  ? overheadMercuryNicknameByDebitCard[
+                                      ln.mercuryDebitCardId.toLowerCase()
+                                    ]?.trim() ||
+                                    `card ${formatMercuryDebitCardIdCompact(ln.mercuryDebitCardId)}`
+                                  : ''
+                              return (
+                                <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
+                                  {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label}
+                                  {cardLabel ? (
+                                    <span style={{ color: '#6b7280' }}> · on {cardLabel}</span>
+                                  ) : null}
+                                  {' — '}
+                                  ${formatCurrency(ln.amountUsd)}
+                                </li>
+                              )
+                            })}
                           </ul>
                         )}
                       </details>
+
+                      <div
+                        style={{
+                          marginTop: '1.25rem',
+                          paddingTop: '0.75rem',
+                          borderTop: '1px solid #e5e7eb',
+                          fontSize: '0.8125rem',
+                          color: '#6b7280',
+                        }}
+                      >
+                        <p style={{ margin: 0 }}>
+                          <strong>Labor:</strong> approved, closed sessions — hours × pay config wage.
+                        </p>
+                        <p style={{ margin: '0.25rem 0 0 0' }}>
+                          <strong>Materials:</strong> office job parts (same rules as <strong>Office parts ($)</strong> column).
+                        </p>
+                      </div>
                     </>
                   ) : overheadBreakdownModalModel.scope === 'otherJobs' ? (
                     <>
@@ -12421,7 +13137,7 @@ export default function People() {
                         </table>
                       )}
 
-                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
                         <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail (labor)</summary>
                         {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
                           <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
@@ -12429,31 +13145,87 @@ export default function People() {
                           <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
                             {overheadBreakdownModalModel.sortedSessions.map((ln) => (
                               <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
-                                {ln.userName} — {ln.hours.toFixed(2)}h — {formatCurrency(ln.laborUsd)}
+                                {ln.userName} — {ln.hours.toFixed(2)}h — ${formatCurrency(ln.laborUsd)}
                                 {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                                {ln.notes ? (
+                                  <span style={{ color: '#6b7280' }}> | {ln.notes}</span>
+                                ) : null}
                               </li>
                             ))}
                           </ul>
                         )}
                       </details>
 
-                      <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
                         <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
                           {overheadOfficeJobLedgerId ? 'Materials (field / non-office jobs)' : 'Materials (all jobs)'}
                         </summary>
                         {overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
                           <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
                         ) : (
-                          <ul style={{ margin: '0.5rem 0 0 0', paddingLeft: '1.1rem' }}>
-                            {overheadBreakdownModalModel.sortedPartLines.map((ln) => (
-                              <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
-                                {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
-                                {formatCurrency(ln.amountUsd)}
-                              </li>
+                          <>
+                            {bucketOverheadPartsLinesByAccountingLabel(
+                              overheadBreakdownModalModel.sortedPartLines,
+                              overheadOtherJobsAccountingBucketByTxId,
+                            ).map((section) => (
+                              <div key={section.key} style={{ marginTop: '0.5rem' }}>
+                                <div
+                                  style={{
+                                    fontWeight: 600,
+                                    color: '#374151',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'baseline',
+                                    gap: '0.5rem',
+                                  }}
+                                >
+                                  <span>
+                                    {section.label} ({section.lines.length})
+                                  </span>
+                                  <span style={{ fontWeight: 500, color: '#6b7280' }}>
+                                    ${formatCurrency(section.totalUsd)}
+                                  </span>
+                                </div>
+                                {section.lines.length === 0 ? (
+                                  <p style={{ margin: '0.15rem 0 0 1.1rem', color: '#9ca3af' }}>None</p>
+                                ) : (
+                                  <ul style={{ margin: '0.15rem 0 0 0', paddingLeft: '1.1rem' }}>
+                                    {section.lines.map((ln) => (
+                                      <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
+                                        {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
+                                        ${formatCurrency(ln.amountUsd)}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
                             ))}
-                          </ul>
+                          </>
                         )}
                       </details>
+
+                      <div
+                        style={{
+                          marginTop: '1.25rem',
+                          paddingTop: '0.75rem',
+                          borderTop: '1px solid #e5e7eb',
+                          fontSize: '0.8125rem',
+                          color: '#6b7280',
+                        }}
+                      >
+                        <p style={{ margin: 0 }}>
+                          Not included in overhead <strong>Office Total ($)</strong>.
+                        </p>
+                        <p style={{ margin: '0.25rem 0 0 0' }}>
+                          <strong>Labor:</strong> approved, closed clock time on{' '}
+                          <strong>jobs ledger</strong> work other than the office overhead job when one is configured (bid-only
+                          time remains in <strong>Bid labor ($)</strong> only).
+                        </p>
+                        <p style={{ margin: '0.25rem 0 0 0' }}>
+                          <strong>Materials:</strong> Mercury, supply, and tally on those jobs — same dating rules as the office parts
+                          column.
+                        </p>
+                      </div>
                     </>
                   ) : overheadBreakdownModalModel.personRows.length === 0 ? (
                     <p style={{ margin: 0, color: '#6b7280' }}>No sessions in this category for this date.</p>
@@ -12486,7 +13258,7 @@ export default function People() {
                   {overheadBreakdownModalModel.scope !== 'officeParts' &&
                   overheadBreakdownModalModel.scope !== 'total' &&
                   overheadBreakdownModalModel.scope !== 'otherJobs' ? (
-                    <details style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                    <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
                       <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail</summary>
                       {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
                         <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
@@ -12495,8 +13267,11 @@ export default function People() {
                           {overheadBreakdownModalModel.sortedSessions.map((ln) => (
                             <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
                               {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
-                              {formatCurrency(ln.laborUsd)}
+                              ${formatCurrency(ln.laborUsd)}
                               {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                              {ln.notes ? (
+                                <span style={{ color: '#6b7280' }}> | {ln.notes}</span>
+                              ) : null}
                             </li>
                           ))}
                         </ul>
@@ -12809,52 +13584,85 @@ export default function People() {
           ) : (
             <>
               {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-              <section style={{ marginBottom: '2rem' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '0.75rem',
-                    width: '100%',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const { periodStart, periodEnd } = getPriorWeekPayStubRangeEnCa()
-                      setPayStubPeriodStart(periodStart)
-                      setPayStubPeriodEnd(periodEnd)
-                      setDraftPayrollModalOpen(true)
-                    }}
-                    disabled={showPeopleForHours.length === 0}
-                    title={showPeopleForHours.length === 0 ? 'In Hours, open People pay config and check Show in Hours for people to track' : undefined}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      fontSize: '0.9375rem',
-                      background: showPeopleForHours.length === 0 ? '#9ca3af' : '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 6,
-                      cursor: showPeopleForHours.length === 0 ? 'not-allowed' : 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Draft Payroll
-                  </button>
-                </div>
-              </section>
               <section>
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
-                  {payStubs.length > 0 && ledgerFilteredPayStubs.length > 0 ? (
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }} aria-live="polite">
-                      {ledgerOpenBalanceSummary.openCount > 0
-                        ? `${ledgerOpenBalanceSummary.openCount} open · $${formatCurrency(ledgerOpenBalanceSummary.totalRemaining)} remaining`
-                        : 'All paid'}
-                    </p>
-                  ) : null}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-end',
+                      gap: '0.75rem',
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
+                      <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
+                      {payStubs.length > 0 && ledgerFilteredPayStubs.length > 0 ? (
+                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }} aria-live="polite">
+                          {ledgerOpenBalanceSummary.openCount > 0
+                            ? `${ledgerOpenBalanceSummary.openCount} open · $${formatCurrency(ledgerOpenBalanceSummary.totalRemaining)} remaining`
+                            : 'All paid'}
+                        </p>
+                      ) : null}
+                    </div>
+                    {/* Right-side action cluster: Forecast (planning tool)
+                        sits immediately left of Draft Payroll so the two
+                        flows are visually paired. Forecast is dev/admin
+                        territory — it doesn't write anything, just lets
+                        you plan how to allocate incoming cash across
+                        unpaid balances when the well is running dry. */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                      <button
+                        type="button"
+                        onClick={() => setForecastModalOpen(true)}
+                        disabled={forecastUnpaidRows.length === 0}
+                        title={
+                          forecastUnpaidRows.length === 0
+                            ? 'Nothing to forecast — all pay stubs are fully paid.'
+                            : 'Plan how upcoming cash bars will be split across unpaid balances'
+                        }
+                        style={{
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.9375rem',
+                          background: 'white',
+                          color: forecastUnpaidRows.length === 0 ? '#9ca3af' : '#374151',
+                          border: `1px solid ${forecastUnpaidRows.length === 0 ? '#e5e7eb' : '#d1d5db'}`,
+                          borderRadius: 6,
+                          cursor: forecastUnpaidRows.length === 0 ? 'not-allowed' : 'pointer',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Forecast
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const { periodStart, periodEnd } = getPriorWeekPayStubRangeEnCa()
+                          setPayStubPeriodStart(periodStart)
+                          setPayStubPeriodEnd(periodEnd)
+                          setDraftPayrollModalOpen(true)
+                        }}
+                        disabled={showPeopleForHours.length === 0}
+                        title={
+                          showPeopleForHours.length === 0
+                            ? 'In Hours, open People pay config and check Show in Hours for people to track'
+                            : undefined
+                        }
+                        style={{
+                          padding: '0.5rem 1rem',
+                          fontSize: '0.9375rem',
+                          background: showPeopleForHours.length === 0 ? '#9ca3af' : '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 6,
+                          cursor: showPeopleForHours.length === 0 ? 'not-allowed' : 'pointer',
+                          fontWeight: 500,
+                        }}
+                      >
+                        Draft Payroll
+                      </button>
+                    </div>
+                  </div>
                   <input
                     id="ledger-person-search"
                     type="search"
@@ -13454,6 +14262,15 @@ export default function People() {
             </div>
           </div>
         </div>
+      )}
+
+      {forecastModalOpen && activeTab === 'pay_stubs' && canAccessPay && (
+        <PayrollForecastModal
+          open
+          onClose={() => setForecastModalOpen(false)}
+          unpaidRows={forecastUnpaidRows}
+          zIndex={Z_PEOPLE_PAY_MODAL}
+        />
       )}
 
       {draftPayrollModalOpen && activeTab === 'pay_stubs' && canAccessPay && (
@@ -18101,187 +18918,191 @@ export default function People() {
         </div>
       )}
 
-      {activeTab === 'review' && isDev && (
+      {activeTab === 'review' && isDev && (() => {
+        // Lifted-out Team Summary meta — same data + click handler as
+        // the inline render path, but rendered next to the controls
+        // column (right column of the top two-column layout) instead
+        // of stacked above the table. TeamSummaryInline.showInlineMeta
+        // is set to false below so the meta isn't rendered twice.
+        const reviewTeamSummaryRowCount = teamSummaryBreakdowns.length
+        const reviewTeamSummaryNoun = reviewTeamSummaryRowCount === 1 ? 'person' : 'people'
+        const reviewOverheadRate = reviewOverheadRates.ratePerHour
+        const reviewOverheadLoading = reviewOverheadRates.loading
+        const reviewOverheadMetaText = reviewOverheadLoading
+          ? 'Overhead Method A: loading…'
+          : reviewOverheadRate == null
+            ? 'Overhead Method A: unavailable'
+            : `Overhead Method A: $${reviewOverheadRate.toFixed(2)} per field hour (rolling 90-day rate)`
+        const reviewOverheadMetaClickable = !reviewOverheadLoading && reviewOverheadRate != null
+        return (
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-            <select
-              value={reviewPeriod}
-              onChange={(e) => {
-                const next = e.target.value as ReviewPeriod
-                // Seed custom range with the current effective range when the
-                // user first switches to Custom — gives them somewhere sensible
-                // to start tweaking instead of empty inputs.
-                if (next === 'custom' && !reviewCustomRangeStart && !reviewCustomRangeEnd) {
-                  const [seedStart, seedEnd] = getReviewDateRange()
-                  setReviewCustomRangeStart(seedStart)
-                  setReviewCustomRangeEnd(seedEnd)
-                }
-                setReviewPeriod(next)
-              }}
-              style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-            >
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="this_week">This week (running)</option>
-              <option value="last_week">Last week</option>
-              <option value="last_two_weeks">Last two weeks</option>
-              <option value="last_30_days">Last 30 days</option>
-              <option value="last_90_days">Last 90 days</option>
-              <option value="this_year">This year</option>
-              <option value="custom">Custom range…</option>
-            </select>
-            {reviewPeriod === 'custom' && (
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}
-                role="group"
-                aria-label="Custom date range"
-              >
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
-                  From
-                  <input
-                    type="date"
-                    value={reviewCustomRangeStart}
-                    onChange={(e) => setReviewCustomRangeStart(e.target.value)}
-                    aria-label="Custom range start date"
-                    max={reviewCustomRangeEnd || undefined}
-                    style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-                  />
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
-                  To
-                  <input
-                    type="date"
-                    value={reviewCustomRangeEnd}
-                    onChange={(e) => setReviewCustomRangeEnd(e.target.value)}
-                    aria-label="Custom range end date"
-                    min={reviewCustomRangeStart || undefined}
-                    style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
-                  />
-                </label>
-                {(!reviewCustomRangeStart || !reviewCustomRangeEnd) && (
-                  <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    Pick both dates to set the range.
-                  </span>
-                )}
+          {/* Top section: Team Summary header info on the left (takes
+              the flex space), period controls pushed to the right
+              edge of the page. Wraps cleanly on narrow viewports.
+              Bottom margin kept tight so the toolbar (Search /
+              Reset / Print / Open in new window) sits visually
+              close to the Overhead Method A meta line. */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '2rem',
+              alignItems: 'flex-start',
+              marginBottom: '0.5rem',
+            }}
+          >
+            {showPeopleForReview.length > 0 && (
+              <div style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <h2 style={{ margin: 0, marginBottom: '0.25rem', fontSize: '1.05rem', color: '#374151' }}>Team Summary</h2>
+                {/* Reuse the same .team-summary-meta / .team-summary-meta-sub
+                    CSS classes the inline render path uses — the stylesheet
+                    is injected by TeamSummaryInline (mounted below) so the
+                    rules apply once the table mounts. The info-button click
+                    bridges back to the table via openOverheadRateDrilldown
+                    on the imperative handle. */}
+                <div className="team-summary-meta">
+                  {getReviewPeriodLabel()} &middot; {reviewTeamSummaryRowCount} {reviewTeamSummaryNoun}
+                </div>
+                <div className="team-summary-meta-sub">
+                  {reviewOverheadMetaClickable ? (
+                    <button
+                      type="button"
+                      className="team-summary-meta-sub-btn"
+                      title="Click for rate decomposition"
+                      onClick={(e) =>
+                        teamSummaryInlineRef.current?.openOverheadRateDrilldown(e.currentTarget)
+                      }
+                    >
+                      {reviewOverheadMetaText} <span aria-hidden="true">&#9432;</span>
+                    </button>
+                  ) : (
+                    reviewOverheadMetaText
+                  )}
+                </div>
               </div>
             )}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-              <input
-                type="checkbox"
-                checked={reviewOnlyPaidInFull}
-                onChange={(e) => setReviewOnlyPaidInFull(e.target.checked)}
-              />
-              Only Count Jobs Marked Paid in Full
-            </label>
+
+            {/* Period + filter controls pushed to the right edge.
+                `marginLeft: auto` keeps them flush right even when
+                the Team Summary header column is missing (empty
+                roster) and the row would otherwise collapse. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-end', marginLeft: 'auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <select
+                  value={reviewPeriod}
+                  onChange={(e) => {
+                    const next = e.target.value as ReviewPeriod
+                    // Seed custom range with the current effective range when the
+                    // user first switches to Custom — gives them somewhere sensible
+                    // to start tweaking instead of empty inputs.
+                    if (next === 'custom' && !reviewCustomRangeStart && !reviewCustomRangeEnd) {
+                      const [seedStart, seedEnd] = getReviewDateRange()
+                      setReviewCustomRangeStart(seedStart)
+                      setReviewCustomRangeEnd(seedEnd)
+                    }
+                    setReviewPeriod(next)
+                  }}
+                  style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                >
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="this_week">This week (running)</option>
+                  <option value="last_week">Last week</option>
+                  <option value="last_two_weeks">Last two weeks</option>
+                  <option value="last_30_days">Last 30 days</option>
+                  <option value="last_90_days">Last 90 days</option>
+                  <option value="this_year">This year</option>
+                  <option value="custom">Custom range…</option>
+                </select>
+                {reviewPeriod === 'custom' && (
+                  <div
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}
+                    role="group"
+                    aria-label="Custom date range"
+                  >
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
+                      From
+                      <input
+                        type="date"
+                        value={reviewCustomRangeStart}
+                        onChange={(e) => setReviewCustomRangeStart(e.target.value)}
+                        aria-label="Custom range start date"
+                        max={reviewCustomRangeEnd || undefined}
+                        style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                      />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
+                      To
+                      <input
+                        type="date"
+                        value={reviewCustomRangeEnd}
+                        onChange={(e) => setReviewCustomRangeEnd(e.target.value)}
+                        aria-label="Custom range end date"
+                        min={reviewCustomRangeStart || undefined}
+                        style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                      />
+                    </label>
+                    {(!reviewCustomRangeStart || !reviewCustomRangeEnd) && (
+                      <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                        Pick both dates to set the range.
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              {/* Filter checkbox sits on its own row below the period
+                  dropdown so it has visual breathing room and reads
+                  as a modifier on the selected period rather than an
+                  inline option next to it. */}
+              <div>
+                <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={reviewOnlyPaidInFull}
+                    onChange={(e) => setReviewOnlyPaidInFull(e.target.checked)}
+                  />
+                  Only Count Jobs Marked Paid in Full
+                </label>
+              </div>
+            </div>
           </div>
 
           {showPeopleForReview.length > 0 && (
             <div style={{ marginBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0, fontSize: '1.05rem', color: '#374151' }}>Team Summary</h2>
-                <button
-                  type="button"
-                  onClick={() => openTeamSummaryWindow('popup')}
-                  disabled={teamSummaryLoading && !teamSummaryHtml}
-                  style={{
-                    padding: '0.25rem 0.6rem',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 4,
-                    background: '#fff',
-                    fontSize: '0.8rem',
-                    color: '#374151',
-                    cursor: teamSummaryLoading && !teamSummaryHtml ? 'not-allowed' : 'pointer',
-                  }}
-                  title="Open the same fully-interactive summary in a new browser window (handy for printing or sharing)"
-                >
-                  Open in new window
-                </button>
-              </div>
               {teamSummaryError ? (
                 <p style={{ color: '#b91c1c', padding: '0.75rem 1rem', margin: 0, border: '1px solid #fca5a5', borderRadius: 6, background: '#fef2f2' }}>
                   {teamSummaryError}
                 </p>
+              ) : teamSummaryRows ? (
+                <TeamSummaryInline
+                  handleRef={teamSummaryInlineRef}
+                  breakdowns={teamSummaryBreakdowns}
+                  overheadRate={reviewOverheadRates.ratePerHour}
+                  overheadRateLoading={reviewOverheadRates.loading}
+                  overheadDecomp={teamSummaryOverheadDecomp}
+                  periodLabel={getReviewPeriodLabel()}
+                  selectedPersonName={teamSummarySelectedPersonName}
+                  onTogglePerson={handleInlineTogglePerson}
+                  onOpenDayEditor={handleInlineOpenDayEditor}
+                  onDrilldownOpenChange={handleInlineDrilldownOpenChange}
+                  refreshing={teamSummaryLoading}
+                  showInlineMeta={false}
+                  onOpenInNewWindow={() => openTeamSummaryWindow('popup')}
+                />
               ) : (
-                <div style={{ position: 'relative' }}>
-                  {teamSummaryHtml ? (
-                    <iframe
-                      title="Team Summary"
-                      srcDoc={teamSummaryHtml}
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        height: teamSummaryIframeHeight,
-                        border: 0,
-                        background: 'transparent',
-                        transition: 'height 0.15s ease-out',
-                      }}
-                    />
-                  ) : (
-                    <div style={{ padding: '0.5rem 0', color: '#6b7280', fontSize: '0.85rem' }}>
-                      {teamSummaryLoading ? 'Loading Team Summary…' : 'Team Summary will appear here.'}
-                    </div>
-                  )}
-                  {teamSummaryLoading && teamSummaryHtml ? (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 4,
-                        right: 4,
-                        fontSize: '0.75rem',
-                        color: '#6b7280',
-                        background: 'rgba(255,255,255,0.85)',
-                        padding: '0.15rem 0.4rem',
-                        borderRadius: 4,
-                      }}
-                    >
-                      Refreshing…
-                    </div>
-                  ) : null}
+                <div style={{ padding: '0.5rem 0', color: '#6b7280', fontSize: '0.85rem' }}>
+                  {teamSummaryLoading ? 'Loading Team Summary…' : 'Team Summary will appear here.'}
                 </div>
               )}
             </div>
           )}
 
-          {showPeopleForReview.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => setSelectedReviewPersonIndex((i) => Math.max(0, i - 1))}
-                disabled={showPeopleForReview.length === 0 || selectedReviewPersonIndex <= 0}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: selectedReviewPersonIndex <= 0 ? 'not-allowed' : 'pointer', opacity: selectedReviewPersonIndex <= 0 ? 0.6 : 1 }}
-              >
-                ← Prev
-              </button>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontWeight: 500 }}>Person:</span>
-                <div style={{ minWidth: 200 }}>
-                  <SearchableSelect
-                    value={showPeopleForReview[selectedReviewPersonIndex] ?? ''}
-                    onChange={(name) => {
-                      if (!name) return
-                      const idx = showPeopleForReview.indexOf(name)
-                      if (idx >= 0) setSelectedReviewPersonIndex(idx)
-                    }}
-                    options={showPeopleForReview.map((n) => ({ value: n, label: n }))}
-                    placeholder="Select person…"
-                    listAriaLabel="Pick person to review"
-                    listMaxHeightPx={Math.max(200, viewportHeight - 240)}
-                  />
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedReviewPersonIndex((i) => Math.min(showPeopleForReview.length - 1, i + 1))}
-                disabled={showPeopleForReview.length === 0 || selectedReviewPersonIndex >= showPeopleForReview.length - 1}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: selectedReviewPersonIndex >= showPeopleForReview.length - 1 ? 'not-allowed' : 'pointer', opacity: selectedReviewPersonIndex >= showPeopleForReview.length - 1 ? 0.6 : 1 }}
-              >
-                Next →
-              </button>
-            </div>
-          )}
-
           {showPeopleForReview.length === 0 ? (
             <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>No people in pay config. Add people in People pay config (Hours tab) first.</p>
+          ) : selectedReviewPersonIndex < 0 ? (
+            // No one expanded yet — the Team Summary above acts as the
+            // picker. Click a name to expand that person's panel here.
+            null
           ) : reviewLoading ? (
             <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>Loading…</p>
           ) : (
@@ -19615,7 +20436,8 @@ export default function People() {
             )
           })()}
         </div>
-      )}
+      )
+      })()}
 
       {activeTab === 'feedback' && isDev && (
         <div>
@@ -20401,11 +21223,32 @@ export default function People() {
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={hoursAllowNcnsFromMyTime}
-          onClose={() => setHoursMyTimeEditor(null)}
+          onClose={() => {
+            // Cancelling without saving: nothing changed, no Team Summary
+            // refresh needed. Just clear the review-origin marker so a
+            // subsequent unrelated open doesn't accidentally trigger a
+            // re-open of the Hours drilldown.
+            reviewHoursDayEditorPersonRef.current = null
+            setHoursMyTimeEditor(null)
+          }}
           onSaved={() => {
+            const reopenPersonName = reviewHoursDayEditorPersonRef.current
+            reviewHoursDayEditorPersonRef.current = null
             setHoursMyTimeEditor(null)
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()
+            // Review → Hours drilldown bridge: refresh the Team Summary
+            // rows so the numbers reflect the save, then re-open the
+            // Hours drilldown for the same person. After the new rows
+            // commit, `openTeamSummaryWindow('inline')` calls
+            // `teamSummaryInlineRef.openDrilldown(pn, 'hours')` and
+            // clears the ref — see the early-return inline branch.
+            if (reopenPersonName) {
+              teamSummaryDataCacheRef.current = null
+              teamSummaryModalOpenRef.current = false
+              reviewHoursReopenAfterLoadRef.current = reopenPersonName
+              setTeamSummaryDrainTick((n) => n + 1)
+            }
           }}
           onLinkedSessionsUpdated={() => {
             loadAllClockSessionsRef.current?.()

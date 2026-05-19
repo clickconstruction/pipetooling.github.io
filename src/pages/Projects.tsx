@@ -1,9 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useNewProjectModal } from '../contexts/NewProjectModalContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
+import { ProjectsJobHistoryTab } from '../components/projects/ProjectsJobHistoryTab'
+import { ProjectsForecastTab } from '../components/projects/ProjectsForecastTab'
+import { RemoveProjectSuperintendentConfirmModal } from '../components/projects/RemoveProjectSuperintendentConfirmModal'
+import {
+  PROJECT_STATUS_ORDER,
+  projectStatusLabel,
+  projectStatusPillStyle,
+  type ProjectStatus,
+} from '../lib/projectStatusDisplay'
+import {
+  PROJECTS_MUTED_GREY,
+  projectsInlineLinkButtonStyle,
+  projectsPrimaryButtonStyle,
+  projectsSecondaryLinkColor,
+} from '../lib/projectsPageStyles'
 import type { Database } from '../types/database'
 
 type Project = Database['public']['Tables']['projects']['Row']
@@ -13,17 +30,47 @@ type ProjectWithCustomer = Project & {
 }
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'subcontractor' | 'helpers' | 'superintendent'
 
+type ProjectsPageTab = 'stages' | 'job-history' | 'forecast'
+
+function parseProjectsPageTab(value: string | null): ProjectsPageTab {
+  if (value === 'job-history') return 'job-history'
+  if (value === 'forecast') return 'forecast'
+  return 'stages'
+}
+
+type WorkflowStepRow = { name: string; status: string; sequence_order: number }
+type WorkflowRow = {
+  id: string
+  project_id: string
+  project_workflow_steps: WorkflowStepRow[] | null
+}
+
+type ProjectStepInfo = {
+  steps: Array<{ name: string; status: string }>
+  current: { name: string; position: number } | null
+  total: number
+}
+
 export default function Projects() {
   const { user: authUser } = useAuth()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const customerId = searchParams.get('customer')
+  const activeTab = parseProjectsPageTab(searchParams.get('tab'))
   const newProjectModal = useNewProjectModal()
+
+  function setActiveTab(next: ProjectsPageTab) {
+    const nextParams = new URLSearchParams(searchParams)
+    if (next === 'stages') {
+      nextParams.delete('tab')
+    } else {
+      nextParams.set('tab', next)
+    }
+    setSearchParams(nextParams, { replace: true })
+  }
 
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [projects, setProjects] = useState<ProjectWithCustomer[]>([])
-  const [activeSteps, setActiveSteps] = useState<Record<string, { name: string; position: number }>>({})
-  const [stepSummaries, setStepSummaries] = useState<Record<string, Array<{ name: string; status: string }>>>({})
-  const [totalSteps, setTotalSteps] = useState<Record<string, number>>({})
+  const [workflowsRaw, setWorkflowsRaw] = useState<WorkflowRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [customerName, setCustomerName] = useState<string | null>(null)
@@ -38,8 +85,92 @@ export default function Projects() {
   const [projectSuperintendentSaving, setProjectSuperintendentSaving] = useState(false)
   const [addSuperintendentProject, setAddSuperintendentProject] = useState<{ id: string; name: string } | null>(null)
   const [selectedSuperintendentId, setSelectedSuperintendentId] = useState('')
+  const [removeTarget, setRemoveTarget] = useState<{
+    projectId: string
+    projectName: string
+    superintendent: { id: string; name: string | null; email: string | null }
+  } | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<Set<ProjectStatus>>(new Set())
 
   const canAssignSuperintendents = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
+  const narrow = useNarrowViewport640()
+
+  const visibleProjects = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return projects.filter((p) => {
+      if (statusFilter.size > 0 && !statusFilter.has(p.status)) return false
+      if (!q) return true
+      const hay = [
+        p.name,
+        p.customers?.name,
+        p.housecallpro_number,
+        p.address,
+        p.description,
+        p.master_user?.name,
+        p.master_user?.email,
+      ]
+        .filter((v): v is string => !!v)
+        .join(' ')
+        .toLowerCase()
+      return hay.includes(q)
+    })
+  }, [projects, searchQuery, statusFilter])
+
+  const projectStepInfo = useMemo<Record<string, ProjectStepInfo>>(() => {
+    const byProject: Record<string, ProjectStepInfo> = {}
+    for (const w of workflowsRaw) {
+      const sorted = [...(w.project_workflow_steps ?? [])].sort(
+        (a, b) => a.sequence_order - b.sequence_order
+      )
+      if (sorted.length === 0) continue
+      const steps = sorted.map((s) => ({ name: s.name, status: s.status }))
+      const firstRejected = sorted.find((s) => s.status === 'rejected')
+      let current: ProjectStepInfo['current'] = null
+      if (firstRejected) {
+        const position = sorted.findIndex((s) => s.sequence_order === firstRejected.sequence_order) + 1
+        current = { name: firstRejected.name, position }
+      } else {
+        const inProgress = sorted.find((s) => s.status === 'in_progress')
+        const firstActive = inProgress ?? sorted.find((s) => s.status === 'pending')
+        if (firstActive) {
+          const position = sorted.findIndex((s) => s.sequence_order === firstActive.sequence_order) + 1
+          current = { name: firstActive.name, position }
+        }
+      }
+      byProject[w.project_id] = { steps, current, total: sorted.length }
+    }
+    return byProject
+  }, [workflowsRaw])
+
+  const hasActiveFilter = searchQuery.trim().length > 0 || statusFilter.size > 0
+
+  function toggleStatusFilter(status: ProjectStatus) {
+    setStatusFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
+
+  function clearFilters() {
+    setSearchQuery('')
+    setStatusFilter(new Set())
+  }
+
+  useEffect(() => {
+    if (!addSuperintendentProject) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && !projectSuperintendentSaving) {
+        setAddSuperintendentProject(null)
+        setSelectedSuperintendentId('')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [addSuperintendentProject, projectSuperintendentSaving])
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -52,50 +183,46 @@ export default function Projects() {
   }, [authUser?.id])
 
   useEffect(() => {
+    let cancelled = false
     async function fetchProjects() {
+      setLoading(true)
       setError(null)
 
-      // Parallelize: fetch customer name and projects together when filtering by customer
-      let projectsWithMasters: ProjectWithCustomer[]
-      if (customerId) {
-        const [customerRes, projectsRes] = await Promise.all([
-          supabase.from('customers').select('name').eq('id', customerId).single(),
-          supabase
-            .from('projects')
-            .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
-            .order('name')
-            .eq('customer_id', customerId),
-        ])
-        setCustomerName((customerRes.data as { name?: string } | null)?.name ?? null)
-        const { data, error: err } = projectsRes
-        if (err) {
-          setError(err.message)
-          setLoading(false)
-          return
-        }
-        const rows = (data ?? []) as Array<Project & { customers: { name: string } | null; users: { id: string; name: string | null; email: string | null } | null }>
-        projectsWithMasters = rows.map((row) => {
-          const { users, ...rest } = row
-          return { ...rest, master_user: users ?? null }
-        })
-      } else {
-        setCustomerName(null)
-        const q = supabase
-          .from('projects')
-          .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
-          .order('name')
-        const { data, error: err } = await q
-        if (err) {
-          setError(err.message)
-          setLoading(false)
-          return
-        }
-        const rows = (data ?? []) as Array<Project & { customers: { name: string } | null; users: { id: string; name: string | null; email: string | null } | null }>
-        projectsWithMasters = rows.map((row) => {
-          const { users, ...rest } = row
-          return { ...rest, master_user: users ?? null }
-        })
+      // Parallelize: fetch customer name (when filtering) and projects together
+      let projectsQuery = supabase
+        .from('projects')
+        .select('*, customers(name), users!projects_master_user_id_fkey(id, name, email)')
+        .order('name')
+      if (customerId) projectsQuery = projectsQuery.eq('customer_id', customerId)
+
+      const [customerRes, projectsRes] = await Promise.all([
+        customerId
+          ? supabase.from('customers').select('name').eq('id', customerId).single()
+          : Promise.resolve({ data: null as { name: string } | null }),
+        projectsQuery,
+      ])
+      if (cancelled) return
+
+      setCustomerName(
+        customerId ? ((customerRes.data as { name?: string } | null)?.name ?? null) : null
+      )
+
+      const { data, error: err } = projectsRes
+      if (err) {
+        setError(err.message)
+        setLoading(false)
+        return
       }
+      const rows = (data ?? []) as Array<
+        Project & {
+          customers: { name: string } | null
+          users: { id: string; name: string | null; email: string | null } | null
+        }
+      >
+      const projectsWithMasters: ProjectWithCustomer[] = rows.map((row) => {
+        const { users, ...rest } = row
+        return { ...rest, master_user: users ?? null }
+      })
 
       setProjects(projectsWithMasters)
       setLoading(false)
@@ -103,6 +230,7 @@ export default function Projects() {
       if (projectsWithMasters.length === 0) {
         setSuperintendentsByProject({})
         setProjectSuperintendentIdsByProject({})
+        setWorkflowsRaw([])
       }
 
       // Load active steps, step summaries, and superintendent access in background
@@ -115,12 +243,12 @@ export default function Projects() {
           supabase
             .from('project_workflows')
             .select('id, project_id, project_workflow_steps(name, status, sequence_order)')
-            .in('project_id', projectIds)
-            .limit(100),
+            .in('project_id', projectIds),
           supabase.from('project_superintendents').select('project_id, superintendent_id').in('project_id', projectIds),
           masterIds.length > 0 ? supabase.from('master_superintendents').select('master_id, superintendent_id').in('master_id', masterIds) : Promise.resolve({ data: [] as { master_id: string; superintendent_id: string }[] }),
           supabase.from('jobs_ledger').select('id, hcp_number, job_name, project_id, status').in('project_id', projectIds),
         ])
+        if (cancelled) return
 
         const { data: workflows, error: workflowsErr } = workflowsRes
         const psData = (psRes as { data: { project_id: string; superintendent_id: string }[] | null }).data ?? []
@@ -131,6 +259,7 @@ export default function Projects() {
         let usersMap: Record<string, { id: string; name: string | null; email: string | null }> = {}
         if (superintendentIds.length > 0) {
           const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', superintendentIds)
+          if (cancelled) return
           const users = (usersData ?? []) as Array<{ id: string; name: string | null; email: string | null }>
           users.forEach((u) => {
             usersMap[u.id] = u
@@ -161,111 +290,14 @@ export default function Projects() {
         if (workflowsErr) {
           console.error('Projects: workflows+steps query failed', workflowsErr)
         }
-
-        if (workflows && workflows.length > 0) {
-          // Flatten nested steps with project_id
-          type StepRow = { name: string; status: string; sequence_order: number }
-          const allSteps: Array<StepRow & { workflow_id: string; project_id: string }> = []
-          workflows.forEach((w) => {
-            const steps = (w as { project_workflow_steps?: StepRow[] }).project_workflow_steps ?? []
-            steps.forEach((s) => {
-              allSteps.push({ ...s, workflow_id: w.id, project_id: w.project_id })
-            })
-          })
-          allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
-
-          if (allSteps.length > 0) {
-            const stepsByProject: Record<string, Array<{ name: string; status: string; sequence_order: number }>> = {}
-            const activeStepsByProject: Record<string, Array<{ name: string; status: string; sequence_order: number }>> = {}
-            const rejectedStepsByProject: Record<string, Array<{ name: string; status: string; sequence_order: number }>> = {}
-
-            allSteps.forEach((s) => {
-              const projectId = s.project_id
-              if (projectId) {
-                if (!stepsByProject[projectId]) stepsByProject[projectId] = []
-                stepsByProject[projectId].push(s as { name: string; status: string; sequence_order: number })
-                
-                // Track rejected steps separately (to stop progress at rejected stage)
-                if (s.status === 'rejected') {
-                  if (!rejectedStepsByProject[projectId]) rejectedStepsByProject[projectId] = []
-                  rejectedStepsByProject[projectId].push(s as { name: string; status: string; sequence_order: number })
-                }
-                
-                // Track active steps (pending/in_progress) - but only if no rejected stages exist
-                if (s.status === 'pending' || s.status === 'in_progress') {
-                  if (!activeStepsByProject[projectId]) activeStepsByProject[projectId] = []
-                  activeStepsByProject[projectId].push(s as { name: string; status: string; sequence_order: number })
-                }
-              }
-            })
-            
-            // Build summaries: all steps with their statuses
-            const summaries: Record<string, Array<{ name: string; status: string }>> = {}
-            Object.entries(stepsByProject).forEach(([projectId, stepList]) => {
-              const sorted = stepList.sort((a, b) => a.sequence_order - b.sequence_order)
-              summaries[projectId] = sorted.map((s) => ({ name: s.name, status: s.status }))
-            })
-            setStepSummaries(summaries)
-            
-            // Build active steps map with position (1-indexed) and total steps count
-            // Priority: rejected stages stop progress, then in_progress, then pending
-            const active: Record<string, { name: string; position: number }> = {}
-            const totals: Record<string, number> = {}
-            
-            // Build total steps count first
-            Object.entries(stepsByProject).forEach(([projectId, stepList]) => {
-              totals[projectId] = stepList.length
-            })
-            
-            // First, check for rejected stages - they stop progress
-            Object.entries(rejectedStepsByProject).forEach(([projectId, rejectedList]) => {
-              if (rejectedList.length > 0) {
-                // Use the first rejected stage (lowest sequence_order)
-                const sorted = rejectedList.sort((a, b) => a.sequence_order - b.sequence_order)
-                const firstRejected = sorted[0]
-                if (firstRejected) {
-                  // Find position in sorted list of all steps
-                  const allSteps = stepsByProject[projectId]
-                  if (allSteps) {
-                    const sortedAll = allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
-                    const position = sortedAll.findIndex(s => s.sequence_order === firstRejected.sequence_order) + 1
-                    active[projectId] = { name: firstRejected.name, position }
-                  }
-                }
-              }
-            })
-            
-            // Then, for projects without rejected stages, use active steps (pending/in_progress)
-            Object.entries(activeStepsByProject).forEach(([projectId, stepList]) => {
-              // Only set if we haven't already set a rejected stage for this project
-              if (!active[projectId] && stepList.length > 0) {
-                // Sort: in_progress first, then by sequence_order
-                const sorted = stepList.sort((a, b) => {
-                  if (a.status === 'in_progress' && b.status !== 'in_progress') return -1
-                  if (a.status !== 'in_progress' && b.status === 'in_progress') return 1
-                  return a.sequence_order - b.sequence_order
-                })
-                const firstStep = sorted[0]
-                if (firstStep) {
-                  // Find position in sorted list of all steps
-                  const allSteps = stepsByProject[projectId]
-                  if (allSteps) {
-                    const sortedAll = allSteps.sort((a, b) => a.sequence_order - b.sequence_order)
-                    const position = sortedAll.findIndex(s => s.sequence_order === firstStep.sequence_order) + 1
-                    active[projectId] = { name: firstStep.name, position }
-                  }
-                }
-              }
-            })
-            
-            setActiveSteps(active)
-            setTotalSteps(totals)
-          }
-        }
+        setWorkflowsRaw((workflows ?? []) as WorkflowRow[])
       }
     }
-    fetchProjects()
-  }, [customerId])
+    void fetchProjects()
+    return () => {
+      cancelled = true
+    }
+  }, [customerId, refreshKey])
 
   useEffect(() => {
     if (!canAssignSuperintendents || projects.length === 0) return
@@ -336,38 +368,131 @@ export default function Projects() {
     setProjectSuperintendentSaving(false)
   }
 
-  if (loading) return <p>Loading projects…</p>
-  if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
-
-  return (
-    <div>
+  const stagesContent = loading ? (
+    <p>Loading projects…</p>
+  ) : error ? (
+    <p style={{ color: '#b91c1c' }}>{error}</p>
+  ) : (
+    <>
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '1rem' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '0.5rem',
+            marginBottom: '1rem',
+            flexWrap: 'wrap',
+          }}
+        >
           <button
             type="button"
             onClick={() =>
               newProjectModal?.openNewProjectModal({
                 prefill: customerId ? { customerId } : undefined,
+                onCreated: () => setRefreshKey((k) => k + 1),
               })
             }
-            style={{
-              padding: '0.5rem 1rem',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
+            style={projectsPrimaryButtonStyle()}
           >
             New Project
           </button>
+          {myRole === 'dev' && (
+            <Link
+              to="/templates"
+              style={{
+                padding: '0.35rem 0.75rem',
+                fontSize: '0.875rem',
+                color: PROJECTS_MUTED_GREY,
+                textDecoration: 'none',
+              }}
+            >
+              Edit templates
+            </Link>
+          )}
         </div>
       )}
       {customerId && (
         <p style={{ marginBottom: '1rem' }}>
           <Link to="/projects">Show all projects</Link>
         </p>
+      )}
+      {projects.length > 0 && (
+        <div style={{ marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <input
+            type="search"
+            placeholder="Search by name, customer, HCP, or address..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            aria-label="Search projects"
+            style={{
+              width: '100%',
+              padding: '0.35rem 0.75rem',
+              border: '1px solid #d1d5db',
+              borderRadius: 4,
+              boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+            {PROJECT_STATUS_ORDER.map((status) => {
+              const active = statusFilter.has(status)
+              const activeStyle = projectStatusPillStyle(status)
+              return (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => toggleStatusFilter(status)}
+                  aria-pressed={active}
+                  style={
+                    active
+                      ? {
+                          ...activeStyle,
+                          padding: '0.2rem 0.6rem',
+                          cursor: 'pointer',
+                          font: 'inherit',
+                        }
+                      : {
+                          display: 'inline-block',
+                          padding: '0.2rem 0.6rem',
+                          borderRadius: 999,
+                          fontSize: '0.75rem',
+                          fontWeight: 500,
+                          background: '#fff',
+                          color: '#374151',
+                          border: '1px solid #d1d5db',
+                          cursor: 'pointer',
+                          font: 'inherit',
+                        }
+                  }
+                >
+                  {projectStatusLabel(status)}
+                </button>
+              )
+            })}
+            {hasActiveFilter && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                style={{
+                  ...projectsInlineLinkButtonStyle(),
+                  padding: '0.2rem 0.6rem',
+                  fontSize: '0.75rem',
+                }}
+              >
+                Clear filters
+              </button>
+            )}
+            {hasActiveFilter && (
+              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#6b7280' }}>
+                Showing {visibleProjects.length} of {projects.length} projects
+              </span>
+            )}
+          </div>
+        </div>
       )}
       {projects.length === 0 ? (
         <p>
@@ -383,71 +508,79 @@ export default function Projects() {
             onClick={() =>
               newProjectModal?.openNewProjectModal({
                 prefill: customerId ? { customerId } : undefined,
+                onCreated: () => setRefreshKey((k) => k + 1),
               })
             }
-            style={{
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              color: '#2563eb',
-              textDecoration: 'underline',
-              cursor: 'pointer',
-              font: 'inherit',
-            }}
+            style={projectsInlineLinkButtonStyle()}
           >
             Add one
           </button>
           .
         </p>
+      ) : visibleProjects.length === 0 ? (
+        <p style={{ color: '#6b7280' }}>
+          No projects match this search or filter.{' '}
+          <button
+            type="button"
+            onClick={clearFilters}
+            style={projectsInlineLinkButtonStyle()}
+          >
+            Clear filters
+          </button>
+          .
+        </p>
       ) : (
         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {projects.map((p) => (
+          {visibleProjects.map((p) => (
             <li
               key={p.id}
               style={{
                 padding: '0.75rem 0',
                 borderBottom: '1px solid #e5e7eb',
                 display: 'flex',
-                justifyContent: 'space-between',
+                flexDirection: narrow ? 'column' : 'row',
+                justifyContent: narrow ? 'flex-start' : 'space-between',
                 alignItems: 'flex-start',
+                gap: narrow ? '0.5rem' : 0,
               }}
             >
               <div>
                 <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
                 <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  {p.customers?.name ?? '—'} · {p.status}
-                  {activeSteps[p.id] && (
+                  {p.customers?.name ?? '—'}{' '}·{' '}
+                  <span style={projectStatusPillStyle(p.status)}>{projectStatusLabel(p.status)}</span>
+                  {projectStepInfo[p.id]?.current && (
                     <span>
                       {' · Current stage: '}
-                      {activeSteps[p.id]!.name}
-                      {totalSteps[p.id] && (
-                        <span> [{activeSteps[p.id]!.position} / {totalSteps[p.id]!}]</span>
+                      {projectStepInfo[p.id]!.current!.name}
+                      {projectStepInfo[p.id]!.total > 0 && (
+                        <span> [{projectStepInfo[p.id]!.current!.position} / {projectStepInfo[p.id]!.total}]</span>
                       )}
                     </span>
                   )}
                 </div>
                 {p.description && <div style={{ fontSize: '0.875rem', marginTop: 2 }}>{p.description}</div>}
-                {stepSummaries[p.id] && stepSummaries[p.id]!.length > 0 && (
+                {projectStepInfo[p.id] && projectStepInfo[p.id]!.steps.length > 0 && (
                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
-                    {stepSummaries[p.id]!.map((step, i) => {
-                      let color = '#6b7280' // default gray
+                    {projectStepInfo[p.id]!.steps.map((step, i) => {
+                      let color = '#6b7280'
                       let fontWeight: 'normal' | 'bold' = 'normal'
                       if (step.status === 'completed' || step.status === 'approved') {
-                        color = '#059669' // green
+                        color = '#059669'
                       } else if (step.status === 'skipped') {
-                        color = '#6b7280' // neutral gray
+                        color = '#6b7280'
                       } else if (step.status === 'rejected') {
-                        color = '#b91c1c' // red
+                        color = '#b91c1c'
                       } else if (step.status === 'in_progress') {
-                        color = '#E87600' // strong orange
-                        fontWeight = 'bold' // bold if started but not completed
+                        color = '#E87600'
+                        fontWeight = 'bold'
                       }
                       return (
                         <span key={i}>
                           <span style={{ color, fontWeight }}>
                             {step.name}
                           </span>
-                          {i < stepSummaries[p.id]!.length - 1 && <span> → </span>}
+                          {i < projectStepInfo[p.id]!.steps.length - 1 && <span> → </span>}
                         </span>
                       )
                     })}
@@ -471,19 +604,23 @@ export default function Projects() {
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
+                        aria-label={`View ${p.address} on map`}
+                        title={`View ${p.address} on map`}
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          color: '#2563eb',
+                          gap: '0.25rem',
+                          color: projectsSecondaryLinkColor(),
                           textDecoration: 'none',
                           cursor: 'pointer',
                         }}
-                        title={`View ${p.address} on map`}
                       >
+                        <span>{p.address}</span>
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 640 640"
-                          style={{ width: '16px', height: '16px', fill: 'currentColor' }}
+                          aria-hidden="true"
+                          style={{ width: '14px', height: '14px', fill: 'currentColor', flexShrink: 0 }}
                         >
                           <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
                         </svg>
@@ -496,13 +633,14 @@ export default function Projects() {
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  alignItems: 'flex-end',
+                  alignItems: narrow ? 'flex-start' : 'flex-end',
                   gap: '0.5rem',
-                  minWidth: 200,
+                  minWidth: narrow ? undefined : 200,
                   flexShrink: 0,
-                  paddingLeft: '1rem',
-                  marginLeft: '1rem',
-                  borderLeft: '1px solid #e5e7eb',
+                  paddingLeft: narrow ? 0 : '1rem',
+                  marginLeft: narrow ? 0 : '1rem',
+                  borderLeft: narrow ? 'none' : '1px solid #e5e7eb',
+                  width: narrow ? '100%' : undefined,
                 }}
               >
                 <Link to={`/projects/${p.id}/edit`}>Edit</Link>
@@ -512,7 +650,7 @@ export default function Projects() {
                   </span>
                 )}
                 {canAssignSuperintendents && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end', alignItems: 'center' }}>
                     <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Superintendents:</span>
                     {(superintendentsByProject[p.id] ?? []).length === 0 && (
                       <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>None</span>
@@ -535,10 +673,15 @@ export default function Projects() {
                         {projectSuperintendentIdsByProject[p.id]?.has(s.id) && (
                           <button
                             type="button"
-                            onClick={() => removeProjectSuperintendent(p.id, s.id)}
+                            onClick={() => setRemoveTarget({
+                              projectId: p.id,
+                              projectName: p.name ?? 'this project',
+                              superintendent: s,
+                            })}
                             disabled={projectSuperintendentSaving}
                             style={{ background: 'none', border: 'none', padding: 0, cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer', color: 'inherit', fontSize: '0.9em', lineHeight: 1 }}
                             title="Remove"
+                            aria-label={`Remove ${s.name || s.email || 'superintendent'} from ${p.name ?? 'project'}`}
                           >
                             {"\u00d7"}
                           </button>
@@ -556,6 +699,7 @@ export default function Projects() {
                           }}
                           disabled={projectSuperintendentSaving}
                           title="Add superintendent"
+                          aria-label={`Add superintendent to ${p.name ?? 'project'}`}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -579,7 +723,7 @@ export default function Projects() {
                   </div>
                 )}
                 {!canAssignSuperintendents && (superintendentsByProject[p.id]?.length ?? 0) > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
                     <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Superintendents:</span>
                     {(superintendentsByProject[p.id] ?? []).map((s) => (
                       <span key={s.id} style={{ padding: '0.2rem 0.5rem', background: '#f0fdf4', borderRadius: 4, fontSize: '0.8125rem' }}>
@@ -589,7 +733,7 @@ export default function Projects() {
                   </div>
                 )}
                 {(jobsByProject[p.id]?.length ?? 0) > 0 ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
                     <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Jobs:</span>
                     {(jobsByProject[p.id] ?? []).map((j) => (
                       <Link
@@ -620,27 +764,81 @@ export default function Projects() {
           ))}
         </ul>
       )}
-      {myRole === 'dev' && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '1.5rem' }}>
-          <Link to="/templates" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', color: '#6b7280', textDecoration: 'none' }}>
-            Edit templates
-          </Link>
-        </div>
-      )}
+    </>
+  )
+
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          style={pageUnderlineTabStyle(activeTab === 'stages')}
+          onClick={() => setActiveTab('stages')}
+        >
+          Stages
+        </button>
+        <button
+          type="button"
+          style={pageUnderlineTabStyle(activeTab === 'job-history')}
+          onClick={() => setActiveTab('job-history')}
+        >
+          Job History
+        </button>
+        <button
+          type="button"
+          style={pageUnderlineTabStyle(activeTab === 'forecast')}
+          onClick={() => setActiveTab('forecast')}
+        >
+          Forecast
+        </button>
+      </div>
+
+      {activeTab === 'stages' ? stagesContent : null}
+      {activeTab === 'job-history' ? (
+        <ProjectsJobHistoryTab customerId={customerId} />
+      ) : null}
+      {activeTab === 'forecast' ? (
+        <ProjectsForecastTab customerId={customerId} myRole={myRole} />
+      ) : null}
 
       {addSuperintendentProject && (
         <div
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1004,
+          }}
           onClick={() => {
+            if (projectSuperintendentSaving) return
             setAddSuperintendentProject(null)
             setSelectedSuperintendentId('')
           }}
+          role="presentation"
         >
           <div
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-superintendent-title"
+            style={{
+              background: '#fff',
+              borderRadius: 8,
+              padding: '1.25rem',
+              maxWidth: 440,
+              width: '92%',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ marginTop: 0 }}>Add superintendent to {addSuperintendentProject.name}</h3>
+            <h3
+              id="add-superintendent-title"
+              style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}
+            >
+              Add superintendent to {addSuperintendentProject.name}
+            </h3>
             {(() => {
               const available = allSuperintendents.filter((s) =>
                 !(superintendentsByProject[addSuperintendentProject.id] ?? []).some((ps) => ps.id === s.id)
@@ -649,7 +847,16 @@ export default function Projects() {
                 <select
                   value={selectedSuperintendentId}
                   onChange={(e) => setSelectedSuperintendentId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
+                  style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    marginBottom: '1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    fontSize: '0.875rem',
+                    background: '#fff',
+                  }}
+                  aria-label="Choose superintendent"
                 >
                   <option value="">Choose superintendent...</option>
                   {available.map((s) => (
@@ -662,7 +869,25 @@ export default function Projects() {
                 <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No superintendents available</p>
               )
             })()}
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                disabled={projectSuperintendentSaving}
+                onClick={() => {
+                  setAddSuperintendentProject(null)
+                  setSelectedSuperintendentId('')
+                }}
+                style={{
+                  padding: '0.45rem 1rem',
+                  fontSize: '0.875rem',
+                  background: '#f3f4f6',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 onClick={async () => {
@@ -673,22 +898,35 @@ export default function Projects() {
                   }
                 }}
                 disabled={!selectedSuperintendentId || projectSuperintendentSaving}
-              >
-                Add
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAddSuperintendentProject(null)
-                  setSelectedSuperintendentId('')
+                style={{
+                  padding: '0.45rem 1rem',
+                  fontSize: '0.875rem',
+                  background: !selectedSuperintendentId || projectSuperintendentSaving ? '#e5e7eb' : '#2563eb',
+                  color: !selectedSuperintendentId || projectSuperintendentSaving ? '#6b7280' : '#fff',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: !selectedSuperintendentId || projectSuperintendentSaving ? 'not-allowed' : 'pointer',
                 }}
               >
-                Cancel
+                {projectSuperintendentSaving ? 'Adding\u2026' : 'Add'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      <RemoveProjectSuperintendentConfirmModal
+        open={!!removeTarget}
+        busy={projectSuperintendentSaving}
+        personLabel={removeTarget ? (removeTarget.superintendent.name || removeTarget.superintendent.email || 'This superintendent') : ''}
+        projectName={removeTarget?.projectName ?? ''}
+        onCancel={() => setRemoveTarget(null)}
+        onConfirm={async () => {
+          if (!removeTarget) return
+          await removeProjectSuperintendent(removeTarget.projectId, removeTarget.superintendent.id)
+          setRemoveTarget(null)
+        }}
+      />
     </div>
   )
 }

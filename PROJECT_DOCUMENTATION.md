@@ -1930,7 +1930,11 @@ user_id = auth.uid()
 
 ### 2. Project Management
 - **Page**: `Projects.tsx`, `ProjectForm.tsx`
-- **Features**:
+- **Tabs** (top of page, `pageUnderlineTabStyle`, `?tab=stages|job-history|forecast`, default `stages`):
+  - **Overview** (rendered label as of **v2.551** — internal state + URL param still `stages` so existing bookmarks keep working) — the project listing UI described below.
+  - **Job History** (renamed from **Job Schedule** in **v2.553** — URL value is now `job-history`) — horizontally-scrollable Gantt of working jobs (see "Job History Tab" subsection below).
+  - **Forecast** (added **v2.554**, two sub-tabs `?forecastSub=specific|all-stages`) — forward-looking Gantt driven by `project_workflow_steps.scheduled_start_date` / `scheduled_end_date` plus actual `started_at` / `ended_at`. See "Forecast Tab" subsection.
+- **Features (Overview tab)**:
   - List projects with status, customer, active stage, **project owner (master)**
   - Create/edit projects
   - **Project owner automatically matches customer owner** - cannot be changed or selected separately
@@ -1947,6 +1951,138 @@ user_id = auth.uid()
   - **Click project name** to view workflow (removed redundant "Workflow" link)
   - **Empty state**: When filtering by customer, shows `**[Customer Name]** has no projects yet. Add one.`
 - **Data**: Name, description, status, customer, master_user_id (project owner, matches customer owner), address, external references
+
+#### Job History Tab (v2.548–v2.553)
+
+A horizontally-scrollable Gantt that answers *"what jobs has the team worked on, and how concentrated were each of those jobs?"* — a read that the Overview list doesn't visualize. Renamed from **Job Schedule** → **Job History** in **v2.553** (deep namespace rename: all components / libs / tests / `localStorage` keys / Realtime channel name / URL `?tab=` value). Lives at `/projects?tab=job-history` (respects `?customer=` for single-customer scope).
+
+- **Rows**: every job with `jobs_ledger.status = 'working'`. Jobs with zero approved `clock_sessions` are omitted (no bar to draw).
+- **Columns**: one Chicago calendar day (`APP_CALENDAR_TZ`), 36 px wide.
+- **Bars** span from a job's earliest approved `clock_sessions.work_date` to its latest approved + closed `work_date` (`clocked_out_at IS NOT NULL`). Open-ended jobs (no closed clock-out yet) extend to today with a **dashed** right edge. Bars whose start or end fall outside the visible window are clipped at the edge with a dashed border to signal continuation.
+- **Per-day highlight inside the bar**: each day with at least one matching session paints a sub-cell, background scaling with the **distinct user count** that day on a 5-step blue palette (`#dbeafe → #bfdbfe → #93c5fd → #60a5fa → #3b82f6`, foreground flips to white at count ≥ 4). The count renders as a small bold digit and is its own `<button>` so a click opens the day-detail modal (v2.549) without bubbling to the bar's Job Detail handler; gap days inside the bar show the bar's neutral background (`#f1f5f9`) so the eye distinguishes "scheduled but no clock activity" from "actually worked".
+- **Job label** (v2.549): `{trade-prefix}{HCP} · {Job Name}` (trade prefix from `service_types.ledger_job_prefix` via `buildLedgerPrefixMap`, defaults to `J`). Positioned at `position: absolute; right: 100%; marginRight: 6` so it sits **just outside** the bar's left edge — scrolls in lock-step with the bar but never overlaps a day cell. The label is its own `<button>`; clicking it opens **Edit Job** (separate from the bar background click → Job Detail).
+- **Today** marker: 2 px orange (`#fb923c`) vertical accent line; bar cells on today get an `inset 0 0 0 1px #fb923c` outline.
+- **Three click targets per bar** (v2.549):
+  - **Label** (`{HCP} · {Job Name}` pill) → `useJobFormModal().openEditJob(jobId)`.
+  - **Bar background** (any un-highlighted area) → `useJobDetailModal().openJobDetail({...})`.
+  - **Numbered day cell** → opens [`ProjectsJobHistoryDayModal`](src/components/projects/ProjectsJobHistoryDayModal.tsx) with People & sessions, costs, mini-Gantt, and report viewer for that (job, work_date).
+- **Default scroll position**: on mount and on range change, the timeline imperatively parks `scrollLeft` at the right edge so the most recent days are visible.
+
+**Layout toggle** (v2.550, default flipped to **Compact** in v2.553): a segmented `[ Expanded | Compact ]` control in the toolbar.
+
+- **Expanded**: one row per job — the v2.548–v2.549 layout, byte-equivalent.
+- **Compact** (default as of v2.553): non-overlapping bars pack onto shared rows ("lanes") via [`packBarsIntoLanes`](src/lib/projectsJobHistoryLanePacking.ts). The pack predicate is **label-width-aware** — each bar reserves a left-side label slot sized from the bar's actual label text width (`{HCP} · {Job Name}` measured via a hidden `<canvas>` at the runtime page font), so two bars only share a lane when the calendar gap between them is at least as wide as the later bar's label plus a one-column **breathing margin** (`LABEL_BREATHING_COLS = 1`, v2.551). `MAX_LABEL_DAY_COLS = 14` caps any one absurdly long job name. Lane display order is `max(lastWorkDateYmd) DESC` so the lane with the most recent activity sits on top. Choice persists per browser via `localStorage` key `projects_job_history_layout_mode_v1`; default `'compact'` as of v2.553 (existing explicit `'expanded'` choices are still honored verbatim).
+
+**Toolbar** (v2.551 layout — left-to-right, single wrapping flex row; v2.553 added the **Only show jobs with projects** checkbox below the search):
+
+```
+[ Search ]  [ From ] [ To ]  [ Last 90d ] [ Last 365d ]  [ Expanded | Compact ]
+[ ☐ Only show jobs with projects ]
+```
+
+- **Search** (v2.551): client-side substring filter across the full display label, prefix+number, raw HCP number, job name, and address. Predicate in [`projectsJobHistoryBarSearch.ts`](src/lib/projectsJobHistoryBarSearch.ts). The search input's **placeholder doubles as the count summary** (`Loading…` / `No working jobs…` / `29 jobs · 91 days`); when the user types, a small `k of N matches` inline label appears next to the input (with `aria-live="polite"` for screen readers). Clear button (`×`) inside the input.
+- **Only show jobs with projects** (v2.553): checkbox under the search bar. When on, `projectFilteredBars = bars.filter(b => b.projectId != null)` is applied **before** the search filter so the match counter (`k of N matches`) and loaded-row summary text both reflect the same filtered population the user sees on screen. Toggle persists per browser under `localStorage` key `projects_job_history_only_with_projects_v1`; default `false`.
+- **From / To** (v2.551 compact width): both `<input type="date">` instances are styled to `width: 92px` (`dateInputStyle`) so the browser visually clips the trailing `YYYY` while preserving the full `YYYY-MM-DD` value. Calendar picker on click works as normal; hover shows the full date via `title`.
+- **Quick-pick chips**: `Last 90d`, `Last 365d`.
+- **Layout toggle**: `Expanded` / `Compact` segmented buttons (active = inset blue, `aria-pressed="true"`).
+
+**Range picker** mirrors People → Review's custom-range UX: From / To `<input type="date">` with cross-bounding `min` / `max` + *"Pick both dates to set the range."* hint when one input is empty. Defaults to Today − 90d → Today (Chicago); last-used range persists under `localStorage` key `projects_job_history_range_v1`. The range is a **viewport**, not a query filter — the underlying `clock_sessions` fetch is unbounded by date so bar bounds stay correct regardless of selection.
+
+**Realtime**: channel `projects-job-history-${authUserId}` subscribes to `clock_sessions` with `filter: \`job_ledger_id=in.(${jobIds.join(',')})\`` when ≤ 80 jobs in scope (unfiltered fallback), and unfiltered to `jobs_ledger` `event: '*'` so jobs flipping INTO or OUT OF `working` are caught. Both paths coalesce into a single 280 ms debounce gated on `document.visibilityState === 'visible'`.
+
+**Files**:
+- [`src/lib/projectsJobHistoryData.ts`](src/lib/projectsJobHistoryData.ts) — `ProjectsJobHistoryBar` (carries `projectId` as of v2.553), `aggregateClockSessionsToBars`, `peopleCountColor`, `enumerateDaysInRange` (pure; 20 unit tests).
+- [`src/lib/projectsJobHistoryLanePacking.ts`](src/lib/projectsJobHistoryLanePacking.ts) — `packBarsIntoLanes`, `labelDayColsFromPx`, `measureLabelWidthPx`, layout-mode storage helpers (21 unit tests; default flipped to `'compact'` in v2.553).
+- [`src/lib/projectsJobHistoryBarSearch.ts`](src/lib/projectsJobHistoryBarSearch.ts) — `normalizeBarSearchQuery`, `barMatchesSearch`, `filterBarsBySearch` (16 unit tests).
+- [`src/lib/projectsJobHistoryDayCosts.ts`](src/lib/projectsJobHistoryDayCosts.ts) — day-detail cost aggregator (29 unit tests).
+- [`src/lib/fetchProjectsJobHistoryClockSessions.ts`](src/lib/fetchProjectsJobHistoryClockSessions.ts) — chunked Supabase fetch (100 ids per `IN`).
+- [`src/components/projects/ProjectsJobHistoryTab.tsx`](src/components/projects/ProjectsJobHistoryTab.tsx) — orchestration (jobs + sessions + service-types loader, range state, search state, **only-with-projects state**, layout-mode state, Realtime subscription, day-modal state).
+- [`src/components/projects/ProjectsJobHistoryTimeline.tsx`](src/components/projects/ProjectsJobHistoryTimeline.tsx) — pure presentational (sticky 2-tier header, today vertical line, CSS-grid rows, `JobBarContent` subcomponent shared between Expanded and Compact modes, canvas-measured compact-mode pack inputs).
+- [`src/components/projects/ProjectsJobHistoryDayModal.tsx`](src/components/projects/ProjectsJobHistoryDayModal.tsx) — focused per-cell modal.
+- [`src/pages/Projects.tsx`](src/pages/Projects.tsx) — wires `<ProjectsJobHistoryTab customerId={customerId} />` into the Job History tab.
+
+No DB / migration / RLS / RPC / Edge changes; all data comes from existing `jobs_ledger`, `clock_sessions`, `service_types`, plus `mercury_transaction_job_allocations` / `supply_house_invoice_job_allocations` / `people_pay_config` for day-detail costs and the existing `list_reports_with_job_info` RPC for day-detail reports.
+
+#### Forecast Tab (v2.554)
+
+A forward-looking Gantt of every workflow stage on every project-linked job. Driven by `project_workflow_steps.scheduled_start_date` / `scheduled_end_date` (the **Expected dates** modal added in v2.552 writes these) plus each stage's actual `started_at` / `ended_at`. Lives at `/projects?tab=forecast` with two independent sub-tabs.
+
+**URL params**:
+
+```
+?tab=forecast                              # default sub-tab = specific
+?tab=forecast&forecastSub=all-stages
+?tab=forecast&forecastJob=<jobId>          # specific tab only — selected job
+```
+
+**Scope** (both sub-tabs):
+
+- **Jobs**: every `jobs_ledger` row with `project_id IS NOT NULL`, **any `status`** (working / ready_to_bill / billed). RLS on `project_workflow_steps` keeps role-based visibility tight (dev / master see all; assistant / superintendent via `can_access_project_via_workflow`; subcontractor / helpers see only assigned stages).
+- **Stages**: every step of each job's workflow, **all `status` values**.
+- **Unscheduled stages** (no expected, no actual dates): render as **1-day grey dashed** placeholders chained to the prior stage's resolved end so they're always positioned somewhere instead of invisible.
+
+##### Sub-tab: **Specific**
+
+One job, vertical Gantt. Pick a job via the typeahead at the top of the tab; the rest of the tab redraws as one row per stage in `sequence_order` ASC. Selection persists to `?forecastJob=` + `localStorage` key `projects_forecast_specific_selected_job_v1`.
+
+- **Search**: substring match on HCP / name / address / project name via [`projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts); dropdown shows the current selection at the top + 15 other suggestions.
+- **Range picker**: defaults to **auto-fit** `[min(resolvedStart), max(resolvedEnd)]` padded ±3 days. User can override via From / To; override persists under `projects_forecast_specific_range_v1`. **Reset to fit** chip restores the auto-fit.
+- **Stage row**: sticky left gutter shows sequence number (status-colored chip) + stage name + assignee (blue underline). Body is the colored Gantt bar spanning `[startYmd, endYmd]`. Click anywhere on the row → opens `/workflows/${project_id}#step-${stage_id}` in a new tab.
+
+##### Sub-tab: **All Stages**
+
+One row per job-with-project, stages laid out side-by-side horizontally. Designed to make crew-assignment gaps obvious — the whitespace between consecutive stage bars on a row is the gap.
+
+- **Range picker**: default **today − 7d → today + 90d** (forward-leaning), persisted under `projects_forecast_all_range_v1`. **Reset to default** chip restores it.
+- **Search**: same substring matcher as Specific; matched rows shown, others hidden; `k of N matches` inline status with `aria-live="polite"`.
+- **Only show jobs with active stages** (default `false`): checkbox below the range picker; filters out jobs whose every stage is `completed` / `approved` / `skipped`. Persisted under `projects_forecast_all_active_only_v1`.
+- **Row label** (sticky left gutter): `{prefix}{HCP} · {Job Name}` with `{project_name}` on a second line when present. Click → opens `/workflows/${project_id}` (no `#step-` anchor).
+- **Stage bar**: clicking opens the same Workflow deep-link with `#step-${stage_id}` for that specific stage.
+
+Row windowing — a row only renders when at least one of its bars overlaps the visible date range, so a job whose stages are all outside the window doesn't take up a blank line.
+
+##### Pure stage resolver: [`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts)
+
+Every visible bar comes from `resolveForecastStages(stagesIn, todayYmd)`, which walks stages in `sequence_order` and emits a `ResolvedStageBar[]`:
+
+1. `start = scheduled_start_date ?? prior.endYmd ?? actual(started_at) ?? todayYmd`
+2. `end = scheduled_end_date ?? actual(ended_at) ?? ymdAddDays(start, 1)`
+3. `isUnscheduled = !scheduled_start && !scheduled_end && !started_at && !ended_at` → grey dashed 1-day swatch at the chained position.
+4. `colorKey` = stage status, with `skipped` winning over `unscheduled` (intentional skips keep their muted strikethrough swatch even with no dates), and `unscheduled` winning over everything else.
+
+Does not clamp `endYmd >= startYmd` — bad data surfaces as a visibly-flipped bar rather than being silently hidden. 19 unit tests; companion [`projectsForecastJobSearch.test.ts`](src/lib/projectsForecastJobSearch.test.ts) covers 12 search cases.
+
+##### Color palette: [`projectsForecastColors.ts`](src/lib/projectsForecastColors.ts)
+
+Mirrors `getStepStatusStyle` from [`Workflow.tsx`](src/pages/Workflow.tsx) so colors map 1:1 between the two pages: pending (light grey), in_progress (orange `#E87600`), completed / approved (green `#059669`), rejected (red `#b91c1c`), skipped (muted with strikethrough), unscheduled (grey dashed border, exactly 1 day wide).
+
+##### Shared grid: [`ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx)
+
+Generic Gantt primitive used by both sub-tabs. Sticky 2-tier date header (month-run band + day-digit band), today vertical line in orange, weekend tints, optional sticky label gutter with caller-controlled width, and a `renderRow(row, idx, ctx)` callback. Auto-scrolls to **center** `todayYmd` on mount. `forecastBarColumnSpan(...)` helper computes `gridColumn` spans and `clipLeft` / `clipRight` flags so callers can dash the appropriate edge.
+
+##### Data loaders: [`projectsForecastData.ts`](src/lib/projectsForecastData.ts)
+
+- `fetchForecastJobs({ customerId })` joins `jobs_ledger.project_id` → `projects(name)` → `project_workflows.id` (one workflow per project; ties broken by `id ASC`). Jobs whose project has no workflow row are dropped.
+- `fetchForecastStages(workflowIds)` returns `ForecastStage[]` sorted by `(workflow_id, sequence_order)`. Empty input short-circuits to no round-trip.
+- `groupStagesByWorkflow(stages)` returns `Map<workflowId, ForecastStage[]>` for in-memory join.
+
+##### Realtime
+
+Channel `projects-forecast-${authUserId}` subscribes to `project_workflow_steps` filtered by `workflow_id=in.(...)` when ≤ 80 workflows in scope (unfiltered fallback), and unfiltered to `jobs_ledger event: '*'` for jobs flipping into / out of the project-linked set. 280 ms debounce + `document.visibilityState === 'visible'` gate via [`useDocumentVisibility`](src/hooks/useDocumentVisibility.ts). Mirrors the Job History pattern.
+
+**Files** (all new):
+- [`src/lib/projectsForecastData.ts`](src/lib/projectsForecastData.ts)
+- [`src/lib/projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) + tests (19 cases)
+- [`src/lib/projectsForecastColors.ts`](src/lib/projectsForecastColors.ts)
+- [`src/lib/projectsForecastJobSearch.ts`](src/lib/projectsForecastJobSearch.ts) + tests (12 cases)
+- [`src/lib/projectsForecastToolbarStyles.ts`](src/lib/projectsForecastToolbarStyles.ts)
+- [`src/components/projects/ProjectsForecastTab.tsx`](src/components/projects/ProjectsForecastTab.tsx)
+- [`src/components/projects/ProjectsForecastSpecificTab.tsx`](src/components/projects/ProjectsForecastSpecificTab.tsx)
+- [`src/components/projects/ProjectsForecastAllStagesTab.tsx`](src/components/projects/ProjectsForecastAllStagesTab.tsx)
+- [`src/components/projects/ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx)
+- Modified: [`src/pages/Projects.tsx`](src/pages/Projects.tsx) (added `'forecast'` to `ProjectsPageTab`, parser update, third tab button, mount).
+
+No DB / migration / RLS / RPC / Edge changes — relies entirely on the existing `project_workflow_steps` columns (`scheduled_start_date`, `scheduled_end_date`, `started_at`, `ended_at`, `status`) and existing RLS.
 
 ### 3. Workflow Management
 - **Page**: `Workflow.tsx` (~1,500+ lines - most complex component)
@@ -1989,7 +2125,7 @@ user_id = auth.uid()
 **Person Assignment**:
   - Assign people to steps from roster or user list
   - Display assigned person on right side of card
-  - Show contact info (email/phone) as clickable links next to name
+  - **v2.552**: assignees render as **name only** styled as a blue underlined `<button>`; clicking opens a **Person contact info** modal showing **email**, **phone**, and a **User** / **Guest** chip. (Previously the email was shown inline as `name • email`, which was noisy in stage lists.) Reuses the `contacts` map Workflow already loads — no new query. New `PersonContactInfo` type + `PersonDisplayWithContact` component + `personContactModal` state on the page.
   - Current user always appears first in assignment modal (highlighted with "(You)" label)
   - Excludes current user from roster list to prevent duplicates
 
@@ -2009,6 +2145,8 @@ user_id = auth.uid()
     - Sends notifications to subscribed users
   - **Step States**: `pending` → `in_progress` → `completed` / `rejected` / `approved`
   - **Time Tracking**: `started_at`, `ended_at` (shows "unknown" if null)
+  - **Expected dates** (**v2.552**): every stage card shows an `Expected:` line under the actual Start / End row backed by `project_workflow_steps.scheduled_start_date` / `scheduled_end_date`. Expanded view renders `Expected: Start [MM/DD/YYYY] · End [MM/DD/YYYY]` with each date as a clickable button (when unset, the missing word becomes `Start set` / `End set`, still clickable). Collapsed view renders an abbreviated `Exp: MM/DD → MM/DD`. Clicking any of those opens the **Expected dates** modal with two `<input type="date">` fields plus a **Duration (days)** field that **auto-computes** the end from the start (or vice versa) — dispatchers can say *"rough-in takes 5 days starting Thursday"* and the modal fills in the end automatically. **Cascade rule**: the next stage's `scheduled_start_date` defaults to the prior stage's `scheduled_end_date` when the next stage doesn't have its own scheduled start yet (defaults-only — explicit user choices on downstream stages are never silently overwritten). These expected dates feed the **Forecast** tab (`/projects?tab=forecast`, **v2.554**).
+  - **Default-collapsed empty notes** (**v2.552**): the **Tech notes** and **Office notes** disclosure sections inside a stage card now default to **collapsed** when the corresponding `notes` / `private_notes` field is empty / whitespace-only. Sections with content still default to expanded so existing notes-rich stages look unchanged. Controlled by `isSectionDefaultExpanded(step, section)` in [`Workflow.tsx`](src/pages/Workflow.tsx).
 
 **Financial Tracking**:
   - **Line Items For Office**: Track actual expenses/credits per stage
@@ -2223,7 +2361,7 @@ user_id = auth.uid()
 - **Layout**: No page title; content starts with pinned links and sections
 - **Features**:
   - **Clock In/Out** (all authenticated users): Full-width safety orange Clock In button; clicking opens modal with required "What are you working on?" notes and optional unified job/bid search below. Single search input searches both jobs (`search_jobs_ledger`) and bids (`search_bids_for_clock`); matching rows can show **trade** color pills (**`[plum]`** / **`[elec]`** / **`[hvac]`**) for Plumbing, Electrical, and HVAC when **`service_type_name`** is present (**`list_assigned_jobs_for_dashboard`** default list + typed search; shared **[`serviceTypeTagForUnifiedRow`](src/utils/unifiedJobBidSearch.ts)**; bid-only service-type toggles still filter **`search_bids_for_clock`** only — see **`RECENT_FEATURES`** **v2.433**). Results show as `J123 · [job name] - [address]` or `B456 · [project name] - [address]` (ledger letter/prefix per **`service_types`** — **v2.432**). **Assigned jobs list** loads automatically when **Clock In**, **Update Focus**, or **Review before clock out** opens via `list_assigned_jobs_for_dashboard` (with loading state in the results panel), in parallel with **`fetchDispatchScheduledJobsForAssigneeDay`** for **On schedule:** quick-picks from **`job_schedule_blocks`** (company **today** for clock-in/update-focus; **open session `work_date`** for clock-out review). **Job/bid summary + Clear** — **Clock In** (orange): shown only after a **typed** unified-search pick (**`associationChipFromSearch`**). **Update Focus** (gray): shown after a typed pick **or**, once dispatch/working lists have loaded, when the hydrated session job/bid is **not** on those quick picks (**`showUpdateFocusAssociationChip`**). **Review before clock out** (gray): chip only after typed search (**`associationChipFromSearch`**). **Dispatch**, **Working**, **Use last**, and hydrated **`selectedAssociation`** use row highlights when IDs match; **Update Focus** and **Review before clock out** hydrate **`selectedAssociation`** from **`openSession`**. **Complete Clock In** with empty required notes shows the validation toast and refocuses the notes textarea (**`clockInNotesRef`**, deferred via **`queueMicrotask`**). **Review before clock out** can list **Missing reports from today (click to make report):** for schedule jobs missing a same-day field report (roles per **`canLeaveJobFieldReport`**); each row opens **`AdditionalReportModal`**. **Update Focus** shows the salaried explainer line only when on a salary session; hourly users no longer see the subtitle about closing and reopening a session. Jobs that appear on the schedule are removed from the assigned default list to avoid duplicates. No separate control. When the user has **multiple** service types for bid filtering, an optional dropdown filters bids (estimator/primary/subcontractor rules per role); when there is **exactly one** type, that type still applies but the **“Filtering by: …”** label is not shown. Notes and search fields use a **2px** slate border; **Clock In** field focus ring is orange (`#ff6600`); **Update Focus** notes/search focus ring is blue (`#3b82f6`). When clocked in, shows total hours worked today (sum of all sessions), solid red Clock Out button (white text), and solid blue Update Focus button (white text). Update Focus modal starts blank with cursor in notes; includes the same unified job/bid search and assigned-job prefetch. When **not** clocked in but **today’s `work_date`** already has at least one **clock_sessions** row (same query as the clock button’s “today” list), **Dashboard** passes **`onOpenMyTimeDayEditor`** into **[`ClockInOutButton`](src/components/ClockInOutButton.tsx)** so a compact blue **clock** icon (**View today’s time**) opens **[`DashboardMyTimeDayEditorModal`](src/components/DashboardMyTimeDayEditorModal.tsx)** in **read-only punch** mode (`clockTimesReadOnly`, **`openMyTimePreviewFromClock`** in [`Dashboard.tsx`](src/pages/Dashboard.tsx)): same-day timeline editing, assignments, and **Save on close** when the date is in the dashboard edit window; **Adjust times**, force clock-out, reject, and NCNS stay disabled; modal title includes **— punch times locked**. Body scroll lock when modal open (iOS/Android). Requires user name in Settings. Optionally captures GPS location at clock-in and clock-out (shown in People Hours pending sessions). **My Roles Goals**: After the **first successful clock-in of the calendar day**, if the user has at least one row in `user_dashboard_goals`, a full-screen **“My Roles Goals”** overlay appears (large checkboxes per goal, **Continue**); **Continue** records `user_daily_goals_ack` for that day so the gate stays dismissed until the next calendar day. Dev, master, and assistant edit per-user goals in Settings.
-  - **Job Mode** (per-user toggle in the header gear menu, gated by **`canLeaveJobFieldReport(role)`** — dev, master_technician, assistant, helpers, subcontractor, primary, superintendent): Mobile-first focused view. Per-user `localStorage` (**[`jobModeToggle.ts`](src/lib/jobModeToggle.ts)**, **[`useJobModeEnabled.ts`](src/hooks/useJobModeEnabled.ts)**); when on, **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** takes an early-return path that renders only the tally / pinned-tabs banner, **[`DashboardJobModeCard`](src/components/jobMode/DashboardJobModeCard.tsx)**, the existing `AdditionalReportModal` mount, and a **Show full dashboard** link (component-local state, resets every page load). The card shows three stacked lines (HCP number / Job Name / Address — derived from the user's open clock session and today's `job_schedule_blocks`) and two large side-by-side buttons: **Leave Report** (blue) and **Next Job** (green). Pure picker **[`pickCurrentAndNextScheduleBlock`](src/lib/jobModePickCurrentNext.ts)** decides the state — `no-clock-no-schedule`, `not-clocked-in-with-schedule`, `on-scheduled-job-not-last`, `on-scheduled-job-last`, `on-off-schedule-job`, `on-bid` — which drives the right button label (Clock In, Start First Job, Next Job, Last job of the day, Switch to Scheduled Job, Start First Scheduled Job, or Choose Next Job that opens the existing Update Focus modal). Multi-window same-job continuations are skipped — Next Job means a different `job_id`. Tapping Next Job opens **[`JobModeAdvanceNotesModal`](src/components/jobMode/JobModeAdvanceNotesModal.tsx)** (single-line notes, **Cancel** / **Skip notes** / **Confirm**, Enter submits, Escape cancels). Confirm calls `applyUpdateFocusDirect` on **[`UpdateFocusOpenerBridgeContext`](src/contexts/UpdateFocusOpenerBridgeContext.tsx)**, which **[`ClockInOutButton`](src/components/ClockInOutButton.tsx)** registers — same close-and-insert mutation the existing Update Focus modal uses (or in-place `UPDATE` for salaried users; or `INSERT`-only when there's no open session and the user is starting their first job of the day). Realtime subscriptions on `clock_sessions` (this user) and `job_schedule_blocks` (this user, this work_date) keep the card current; a 1-minute interval re-checks `denverCalendarDayKey(Date.now())` so the day rolls over automatically. **Schedule blocks are jobs only — there is no `bid_id` on `job_schedule_blocks`** — so when the user is clocked into a bid, the card shows "Clocked into a bid" and Next Job points at the first scheduled block of the day. Toggle persists per device, not per user account; matches the **`dashboard_clock_strip_scope`** pattern. See **`RECENT_FEATURES`** **v2.545**.
+  - **Job Mode** (per-user toggle in the header gear menu, gated by **`canLeaveJobFieldReport(role)`** — all 8 roles: dev, master_technician, assistant, helpers, subcontractor, estimator, primary, superintendent): Mobile-first focused view. Per-user `localStorage` (**[`jobModeToggle.ts`](src/lib/jobModeToggle.ts)**, **[`useJobModeEnabled.ts`](src/hooks/useJobModeEnabled.ts)**); when on, **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** takes an early-return path that renders only the tally / pinned-tabs banner, **[`DashboardJobModeCard`](src/components/jobMode/DashboardJobModeCard.tsx)**, the existing `AdditionalReportModal` mount, and a **Show full dashboard** link (component-local state, resets every page load). The card shows three stacked lines (HCP number / Job Name / Address — derived from the user's open clock session and today's `job_schedule_blocks`) and two large side-by-side buttons: **Leave Report** (blue) and **Next Job** (green). Pure picker **[`pickCurrentAndNextScheduleBlock`](src/lib/jobModePickCurrentNext.ts)** decides the state — `no-clock-no-schedule`, `not-clocked-in-with-schedule`, `on-scheduled-job-not-last`, `on-scheduled-job-last`, `on-off-schedule-job`, `on-bid` — which drives the right button label (Clock In, Start First Job, Next Job, Last job of the day, Switch to Scheduled Job, Start First Scheduled Job, or Choose Next Job that opens the existing Update Focus modal). Multi-window same-job continuations are skipped — Next Job means a different `job_id`. Tapping Next Job opens **[`JobModeAdvanceNotesModal`](src/components/jobMode/JobModeAdvanceNotesModal.tsx)** (single-line notes, **Cancel** / **Skip notes** / **Confirm**, Enter submits, Escape cancels). Confirm calls `applyUpdateFocusDirect` on **[`UpdateFocusOpenerBridgeContext`](src/contexts/UpdateFocusOpenerBridgeContext.tsx)**, which **[`ClockInOutButton`](src/components/ClockInOutButton.tsx)** registers — same close-and-insert mutation the existing Update Focus modal uses (or in-place `UPDATE` for salaried users; or `INSERT`-only when there's no open session and the user is starting their first job of the day). Realtime subscriptions on `clock_sessions` (this user) and `job_schedule_blocks` (this user, this work_date) keep the card current; a 1-minute interval re-checks `denverCalendarDayKey(Date.now())` so the day rolls over automatically. **Schedule blocks are jobs only — there is no `bid_id` on `job_schedule_blocks`** — so when the user is clocked into a bid, the card shows "Clocked into a bid" and Next Job points at the first scheduled block of the day. Toggle persists per device, not per user account; matches the **`dashboard_clock_strip_scope`** pattern. See **`RECENT_FEATURES`** **v2.545**.
   - **Quick-action buttons** (dev, master_technician, assistant): Job, Job Labor, Bid, Project, Part, Assembly, New Prospect. Each opens the corresponding create flow. **Dashboard button visibility**: Users can configure which buttons to show in Settings → Dashboard buttons (checkboxes for each).
   - **User day schedule modal** (global **[`UserDayScheduleModal`](src/components/UserDayScheduleModal.tsx)**, provider **[`UserDayScheduleModalContext`](src/contexts/UserDayScheduleModalContext.tsx)** in [`App.tsx`](src/App.tsx), rendered in [`Layout.tsx`](src/components/Layout.tsx)): Opened by clicking a person **name** in **[`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)**. One assignee, one calendar day: **`job_schedule_blocks`** and clock sessions (**[`usePersonDayScheduleData`](src/hooks/usePersonDayScheduleData.ts)**), **[`QuickfillScheduleUserRow`](src/components/schedule/QuickfillScheduleUserRow.tsx)** (no in-row name column; title shows **displayName**). **Header** uses **`useNarrowViewport640`** and **`min-width: 900px`** for where the weekday+date line lives; **Today** and optional **My Time** on the name. **Day prev/next** sit on the same row as the **8 AM / 12 PM / 4 PM** labels above the grey timeline, at the strip edges, so time marks stay width-aligned with the track. **Footer**: **Dispatch** (Schedule Dispatch deep link; label **Dispatch**), centered **+** to add a block when the role can edit, **Close**. See [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.399.
   - **Email schedule** (dev, master_technician, assistant when **`enableScheduleDayEmail`** on **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** — same strip as **Mix** / scope toggle): **[`DashboardTeamActiveClockStrip`](src/components/DashboardTeamActiveClockStrip.tsx)** **Email schedule** opens **[`ScheduleDayEmailModal`](src/components/ScheduleDayEmailModal.tsx)** for the strip’s **`work_date`**. Queues **one** Resend send per **`recipient_user_id` + `work_date`** (**`schedule_day_email_requests`**; pending rows deduped). **Schedule** picks a future **Central** wall time (**`send_at`** UTC); **Queue soon** sets **`send_at`** to now so the row is due on the next pg_cron run (~15 minutes). Edge **[`schedule-day-email-dispatch`](supabase/functions/schedule-day-email-dispatch/index.ts)** sends when **`send_at` ≤ now**; content uses **`list_job_schedule_blocks_for_schedule_email`** (same visibility idea as Schedule Dispatch for that recipient). **Master** / **assistant**: always self. **Dev**: optional **Send to** another non-archived user (**RLS** **`schedule_day_email_requests_insert_dev_any_recipient`**). See **`RECENT_FEATURES.md`** v2.522–**v2.523**, **`ACCESS_CONTROL.md`**, **`EDGE_FUNCTIONS.md`**, **`MIGRATIONS.md`** (`20270522120000`, `20270523120000`).

@@ -82,6 +82,42 @@ function formatLineItemDate(isoDate: string | null | undefined): string {
   return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+function ymdFromDateLike(value: string | null | undefined): string {
+  if (!value) return ''
+  return value.slice(0, 10)
+}
+
+function formatScheduledDateShort(value: string | null | undefined): string {
+  const ymd = ymdFromDateLike(value)
+  if (!ymd) return '\u2014'
+  const d = new Date(`${ymd}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return '\u2014'
+  return d.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: '2-digit' })
+}
+
+function ymdAddDays(ymd: string, days: number): string {
+  if (!ymd) return ''
+  const parts = ymd.split('-').map(Number)
+  if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return ''
+  const [y, m, d] = parts as [number, number, number]
+  const dt = new Date(y, m - 1, d)
+  dt.setDate(dt.getDate() + days)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`
+}
+
+function ymdDaysBetween(startYmd: string, endYmd: string): number | null {
+  if (!startYmd || !endYmd) return null
+  const a = startYmd.split('-').map(Number)
+  const b = endYmd.split('-').map(Number)
+  if (a.length !== 3 || b.length !== 3 || a.some((n) => Number.isNaN(n)) || b.some((n) => Number.isNaN(n))) return null
+  const [ay, am, ad] = a as [number, number, number]
+  const [by, bm, bd] = b as [number, number, number]
+  const start = new Date(ay, am - 1, ad)
+  const end = new Date(by, bm - 1, bd)
+  return Math.round((end.getTime() - start.getTime()) / 86400000)
+}
+
 function getStepStatusStyle(status: StepStatus | null): { color: string; fontWeight: 'normal' | 'bold' } {
   if (status === 'completed' || status === 'approved') return { color: '#059669', fontWeight: 'normal' }
   if (status === 'in_progress') return { color: '#E87600', fontWeight: 'bold' }
@@ -89,44 +125,61 @@ function getStepStatusStyle(status: StepStatus | null): { color: string; fontWei
   return { color: '#6b7280', fontWeight: 'normal' }
 }
 
-function PersonDisplayWithContact({ name, contacts, userNames }: { name: string | null; contacts: Record<string, { email: string | null; phone: string | null }>; userNames: Set<string> }) {
+type PersonContactInfo = {
+  name: string
+  email: string | null
+  phone: string | null
+  isUser: boolean
+}
+
+function PersonDisplayWithContact({
+  name,
+  contacts,
+  userNames,
+  onOpenContact,
+}: {
+  name: string | null
+  contacts: Record<string, { email: string | null; phone: string | null }>
+  userNames: Set<string>
+  onOpenContact: (info: PersonContactInfo) => void
+}) {
   if (!name || !name.trim()) {
     return <span>Assigned to: unknown</span>
   }
   const trimmedName = name.trim()
   const contact = contacts[trimmedName]
-  const hasEmail = contact?.email
-  const hasPhone = contact?.phone
   const isUser = userNames.has(trimmedName.toLowerCase())
-  
-  if (!hasEmail && !hasPhone) {
-    return (
-      <span>
-        {trimmedName}
-        {!isUser && <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.25rem' }}>(not a user)</span>}
-      </span>
-    )
-  }
-  
+
   return (
     <span>
-      {trimmedName}
+      <button
+        type="button"
+        data-stop
+        onClick={(e) => {
+          e.stopPropagation()
+          onOpenContact({
+            name: trimmedName,
+            email: contact?.email ?? null,
+            phone: contact?.phone ?? null,
+            isUser,
+          })
+        }}
+        title="View contact information"
+        aria-label={`View contact information for ${trimmedName}`}
+        style={{
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
+          color: '#2563eb',
+          textDecoration: 'underline',
+          cursor: 'pointer',
+          font: 'inherit',
+          textAlign: 'left',
+        }}
+      >
+        {trimmedName}
+      </button>
       {!isUser && <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.25rem' }}>(not a user)</span>}
-      <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-        {hasEmail && (
-          <>
-            <a href={`mailto:${contact.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-              {contact.email}
-            </a>
-            {hasPhone && ' \u00B7 '}
-          </>
-        )}
-        {hasPhone && (
-          <a href={`tel:${contact.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-            {contact.phone}
-          </a>
-        )}
-      </span>
     </span>
   )
 }
@@ -165,6 +218,16 @@ export default function Workflow() {
   const [stepActions, setStepActions] = useState<Record<string, StepAction[]>>({})
   const [personContacts, setPersonContacts] = useState<Record<string, { email: string | null; phone: string | null }>>({})
   const [userNames, setUserNames] = useState<Set<string>>(new Set())
+  const [personContactModal, setPersonContactModal] = useState<PersonContactInfo | null>(null)
+  const [expectedDatesStep, setExpectedDatesStep] = useState<{
+    step: Step
+    expectedStart: string
+    expectedEnd: string
+    lengthDays: string
+    updateNextStage: boolean
+    hasNextStage: boolean
+    seededFromPrior: boolean
+  } | null>(null)
 
   const [templates, setTemplates] = useState<{ id: string; name: string }[]>([])
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
@@ -221,9 +284,11 @@ export default function Workflow() {
     return !hasAssignee && !hasNotes && !hasPrivateNotes && !hasLineItems && !hasStarted && isPending
   }
 
-  function isSectionDefaultExpanded(_step: Step, section: 'notify' | 'notes' | 'privateNotes' | 'lineItems'): boolean {
+  function isSectionDefaultExpanded(step: Step, section: 'notify' | 'notes' | 'privateNotes' | 'lineItems'): boolean {
     if (section === 'notify') return false
-    if (section === 'notes' || section === 'privateNotes' || section === 'lineItems') return true
+    if (section === 'notes') return !!(step.notes?.trim())
+    if (section === 'privateNotes') return !!(step.private_notes?.trim())
+    if (section === 'lineItems') return true
     return false
   }
 
@@ -1734,6 +1799,95 @@ export default function Workflow() {
     setSetStartStep(null)
   }
 
+  function openExpectedDates(step: Step) {
+    const idx = steps.findIndex((s) => s.id === step.id)
+    const prev = idx > 0 ? steps[idx - 1] : null
+    const next = idx >= 0 && idx < steps.length - 1 ? steps[idx + 1] : null
+    const currentStart = ymdFromDateLike(step.scheduled_start_date)
+    const currentEnd = ymdFromDateLike(step.scheduled_end_date)
+    const priorEnd = ymdFromDateLike(prev?.scheduled_end_date)
+    const seededFromPrior = !currentStart && !!priorEnd
+    const startVal = currentStart || priorEnd
+    const length = startVal && currentEnd ? ymdDaysBetween(startVal, currentEnd) : null
+    setExpectedDatesStep({
+      step,
+      expectedStart: startVal,
+      expectedEnd: currentEnd,
+      lengthDays: length != null ? String(length) : '',
+      updateNextStage: !!next,
+      hasNextStage: !!next,
+      seededFromPrior,
+    })
+  }
+
+  async function submitExpectedDates() {
+    if (!expectedDatesStep) return
+    const { step, expectedStart, expectedEnd, updateNextStage } = expectedDatesStep
+    const startVal = expectedStart.trim() || null
+    const endVal = expectedEnd.trim() || null
+
+    const { error } = await supabase
+      .from('project_workflow_steps')
+      .update({
+        scheduled_start_date: startVal,
+        scheduled_end_date: endVal,
+      })
+      .eq('id', step.id)
+    if (error) {
+      showToast(`Failed to save expected dates: ${error.message}`, 'error')
+      return
+    }
+
+    setSteps((prev) =>
+      prev.map((s) =>
+        s.id === step.id
+          ? { ...s, scheduled_start_date: startVal, scheduled_end_date: endVal }
+          : s
+      )
+    )
+
+    const idx = steps.findIndex((s) => s.id === step.id)
+    const nextStep = idx >= 0 && idx < steps.length - 1 ? steps[idx + 1] : null
+    if (updateNextStage && endVal && nextStep) {
+      const { error: nextError } = await supabase
+        .from('project_workflow_steps')
+        .update({ scheduled_start_date: endVal })
+        .eq('id', nextStep.id)
+      if (nextError) {
+        showToast(`Saved this stage; failed to update next stage: ${nextError.message}`, 'error')
+      } else {
+        setSteps((prev) =>
+          prev.map((s) =>
+            s.id === nextStep.id ? { ...s, scheduled_start_date: endVal } : s
+          )
+        )
+      }
+    }
+
+    setExpectedDatesStep(null)
+  }
+
+  async function clearExpectedDates() {
+    if (!expectedDatesStep) return
+    const { step } = expectedDatesStep
+    const { error } = await supabase
+      .from('project_workflow_steps')
+      .update({ scheduled_start_date: null, scheduled_end_date: null })
+      .eq('id', step.id)
+    if (error) {
+      showToast(`Failed to clear expected dates: ${error.message}`, 'error')
+      return
+    }
+    setSteps((prev) =>
+      prev.map((s) =>
+        s.id === step.id
+          ? { ...s, scheduled_start_date: null, scheduled_end_date: null }
+          : s
+      )
+    )
+    setExpectedDatesStep(null)
+  }
+
   async function markCompleted(step: Step) {
     await updateStepStatus(step, 'completed', { ended_at: new Date().toISOString() })
     await recordAction(step.id, 'completed')
@@ -2658,7 +2812,7 @@ export default function Workflow() {
                       </span>
                       <span style={{ color: '#9ca3af' }}>·</span>
                       <span style={{ color: '#374151' }}>
-                        <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} />
+                        <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} onOpenContact={setPersonContactModal} />
                       </span>
                       {canManageStages && !isCollapsed && (
                         <button type="button" data-stop onClick={(e) => { e.stopPropagation(); setAssignPersonStep(s) }} className="wf-btn-ghost">Assign</button>
@@ -2705,6 +2859,7 @@ export default function Workflow() {
                       )}
                       {isCollapsed && (() => {
                         const pillStyle = { display: 'inline-flex' as const, alignItems: 'center' as const, padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.7rem', color: '#6b7280', background: '#f3f4f6' }
+                        const expectedPillStyle = { ...pillStyle, background: '#eff6ff', color: '#1e3a8a' }
                         const items = lineItems[s.id] || []
                         const count = items.length
                         const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
@@ -2712,11 +2867,17 @@ export default function Workflow() {
                         const privateWords = (s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length
                         const d = s.status === 'in_progress' ? daysOpen(s.started_at, s.ended_at) : daysBetween(s.started_at, s.ended_at)
                         const daysPrefix = d != null ? `[${d === 1 ? '1 day' : `${d} days`}] ` : ''
+                        const hasExpected = !!s.scheduled_start_date || !!s.scheduled_end_date
                         return (
                           <div style={{ flexBasis: '100%', minWidth: 0, marginTop: 4, marginLeft: 20, display: 'flex', gap: '0.35rem', flexWrap: 'wrap', alignItems: 'center', alignSelf: 'flex-start' }}>
                             <span style={pillStyle}>
                               {daysPrefix}{formatDateShort(s.started_at)} → {formatDateShort(s.ended_at)}
                             </span>
+                            {hasExpected && (
+                              <span style={expectedPillStyle} title="Expected start → Expected end">
+                                Exp: {formatScheduledDateShort(s.scheduled_start_date)} → {formatScheduledDateShort(s.scheduled_end_date)}
+                              </span>
+                            )}
                             {canManageStages && count > 0 && (
                               <span style={pillStyle}>
                                 {count} {count === 1 ? 'item' : 'items'} · {formatAmount(total)}
@@ -2773,6 +2934,68 @@ export default function Workflow() {
                     )}
                   </div>
                 )}
+                {/* Row 2b: Expected (planned) start/end - always visible when expanded */}
+                {!isCollapsed && (() => {
+                  const canEditExpected = canManageStages || s.assigned_to_name === currentUserName
+                  const startYmd = ymdFromDateLike(s.scheduled_start_date)
+                  const endYmd = ymdFromDateLike(s.scheduled_end_date)
+                  const lengthDays = startYmd && endYmd ? ymdDaysBetween(startYmd, endYmd) : null
+                  const lengthLabel = lengthDays != null
+                    ? lengthDays === 1
+                      ? '1 day planned'
+                      : `${lengthDays} days planned`
+                    : null
+                  const linkButtonStyle = {
+                    padding: 0,
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#2563eb',
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                  } as const
+                  const renderField = (ymd: string, label: string) => {
+                    if (ymd) {
+                      const text = formatScheduledDateShort(ymd)
+                      return canEditExpected ? (
+                        <button
+                          type="button"
+                          onClick={() => openExpectedDates(s)}
+                          style={linkButtonStyle}
+                          title={`Edit expected ${label}`}
+                          aria-label={`Edit expected ${label}`}
+                        >
+                          {text}
+                        </button>
+                      ) : (
+                        <span>{text}</span>
+                      )
+                    }
+                    return canEditExpected ? (
+                      <button
+                        type="button"
+                        onClick={() => openExpectedDates(s)}
+                        style={linkButtonStyle}
+                        title={`Set expected ${label}`}
+                        aria-label={`Set expected ${label}`}
+                      >
+                        set
+                      </button>
+                    ) : (
+                      <span>{'\u2014'}</span>
+                    )
+                  }
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: '#6b7280' }}>
+                      <span style={{ marginLeft: 'auto' }}>
+                        Expected: Start {renderField(startYmd, 'start')}
+                        {' \u00B7 '}
+                        End {renderField(endYmd, 'end')}
+                        {lengthLabel ? ` · ${lengthLabel}` : null}
+                      </span>
+                    </div>
+                  )
+                })()}
                 {/* Collapsed body - hidden when collapsed */}
                 {!isCollapsed && (
                 <>
@@ -3338,6 +3561,150 @@ export default function Workflow() {
         </div>
       )}
 
+      {expectedDatesStep && (() => {
+        const current = expectedDatesStep
+        const setField = (patch: Partial<typeof current>) => {
+          setExpectedDatesStep((prev) => (prev ? { ...prev, ...patch } : null))
+        }
+        const handleStartChange = (value: string) => {
+          const len = current.lengthDays.trim()
+          const lenNum = len === '' ? NaN : Number(len)
+          if (value && len !== '' && Number.isFinite(lenNum)) {
+            setField({ expectedStart: value, expectedEnd: ymdAddDays(value, lenNum), seededFromPrior: false })
+          } else if (value && current.expectedEnd) {
+            const newLen = ymdDaysBetween(value, current.expectedEnd)
+            setField({ expectedStart: value, lengthDays: newLen != null ? String(newLen) : '', seededFromPrior: false })
+          } else {
+            setField({ expectedStart: value, seededFromPrior: false })
+          }
+        }
+        const handleEndChange = (value: string) => {
+          if (value && current.expectedStart) {
+            const newLen = ymdDaysBetween(current.expectedStart, value)
+            setField({ expectedEnd: value, lengthDays: newLen != null ? String(newLen) : '' })
+          } else {
+            setField({ expectedEnd: value })
+          }
+        }
+        const handleLengthChange = (value: string) => {
+          const trimmed = value.trim()
+          if (trimmed === '') {
+            setField({ lengthDays: '' })
+            return
+          }
+          const num = Number(trimmed)
+          if (!Number.isFinite(num)) {
+            setField({ lengthDays: value })
+            return
+          }
+          if (current.expectedStart) {
+            setField({ lengthDays: value, expectedEnd: ymdAddDays(current.expectedStart, num) })
+          } else {
+            setField({ lengthDays: value })
+          }
+        }
+        const lengthNum = current.lengthDays.trim() === '' ? null : Number(current.lengthDays)
+        const lengthInvalid = current.lengthDays.trim() !== '' && (!Number.isFinite(lengthNum ?? NaN) || (lengthNum != null && lengthNum < 0))
+        const endBeforeStart = !!current.expectedStart && !!current.expectedEnd && (ymdDaysBetween(current.expectedStart, current.expectedEnd) ?? 0) < 0
+        return (
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Expected dates for ${current.step.name}`}
+            onClick={() => setExpectedDatesStep(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 340, maxWidth: '95%' }}
+            >
+              <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>Expected dates: {current.step.name}</h3>
+              <p style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                Plan the expected start and end. Type a length in days to auto-compute the end from the start.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: '0.8125rem', color: '#374151' }}>Expected start</span>
+                  <input
+                    type="date"
+                    value={current.expectedStart}
+                    onChange={(e) => handleStartChange(e.target.value)}
+                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: '0.8125rem', color: '#374151' }}>Expected end</span>
+                  <input
+                    type="date"
+                    value={current.expectedEnd}
+                    onChange={(e) => handleEndChange(e.target.value)}
+                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                  />
+                </label>
+              </div>
+              <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                  Length (days){' '}
+                  <span style={{ color: '#6b7280', fontWeight: 400 }}>· auto-computes end from start</span>
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  inputMode="numeric"
+                  placeholder="e.g. 5"
+                  value={current.lengthDays}
+                  onChange={(e) => handleLengthChange(e.target.value)}
+                  style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db', maxWidth: 160 }}
+                />
+              </label>
+              {current.seededFromPrior && (
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#1e3a8a' }}>
+                  Start was prefilled from the previous stage's expected end.
+                </p>
+              )}
+              {lengthInvalid && (
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#b91c1c' }}>
+                  Length must be a non-negative number.
+                </p>
+              )}
+              {endBeforeStart && (
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#b91c1c' }}>
+                  Expected end is before expected start.
+                </p>
+              )}
+              {current.hasNextStage && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  <input
+                    type="checkbox"
+                    checked={current.updateNextStage}
+                    onChange={(e) => setField({ updateNextStage: e.target.checked })}
+                  />
+                  Also set the next stage's expected start to this stage's expected end
+                </label>
+              )}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={clearExpectedDates}
+                  className="wf-btn-modal-secondary"
+                  disabled={!current.step.scheduled_start_date && !current.step.scheduled_end_date}
+                  title="Remove the expected start and end from this stage"
+                >
+                  Clear
+                </button>
+                <button type="button" onClick={() => setExpectedDatesStep(null)} className="wf-btn-modal-secondary">
+                  Cancel
+                </button>
+                <button type="button" onClick={submitExpectedDates} className="wf-btn-modal-primary">
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {assignPersonStep && (
         <div
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
@@ -3755,6 +4122,63 @@ export default function Workflow() {
               <button
                 type="button"
                 onClick={() => setViewingInvoice(null)}
+                className="wf-btn-modal-secondary"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Person Contact Info Modal */}
+      {personContactModal && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Contact information for ${personContactModal.name}`}
+          onClick={() => setPersonContactModal(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>{personContactModal.name}</h3>
+            {!personContactModal.isUser && (
+              <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>Not a user</div>
+            )}
+            <div style={{ fontSize: '0.9375rem', display: 'grid', gap: '0.5rem', marginBottom: '1rem' }}>
+              <div>
+                <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Email:</span>
+                {personContactModal.email ? (
+                  <a href={`mailto:${personContactModal.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                    {personContactModal.email}
+                  </a>
+                ) : (
+                  <span style={{ color: '#9ca3af' }}>—</span>
+                )}
+              </div>
+              <div>
+                <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Phone:</span>
+                {personContactModal.phone ? (
+                  <a href={`tel:${personContactModal.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                    {personContactModal.phone}
+                  </a>
+                ) : (
+                  <span style={{ color: '#9ca3af' }}>—</span>
+                )}
+              </div>
+              {!personContactModal.email && !personContactModal.phone && (
+                <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                  No contact information on file.
+                </div>
+              )}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setPersonContactModal(null)}
                 className="wf-btn-modal-secondary"
               >
                 Close
