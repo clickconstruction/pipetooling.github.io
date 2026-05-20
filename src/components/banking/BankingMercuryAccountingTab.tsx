@@ -16,11 +16,19 @@ import {
   clearAccountingLedgerFiltersStorage,
   readAccountingHideLabeledTransactions,
   readAccountingLedgerFiltersRaw,
+  readAccountingLedgerSort,
   readAccountingRulesSectionExpanded,
   writeAccountingHideLabeledTransactions,
   writeAccountingLedgerFiltersRaw,
+  writeAccountingLedgerSort,
   writeAccountingRulesSectionExpanded,
 } from '../../lib/bankingDragSortStorage'
+import {
+  compareMercuryLedgerRows,
+  DEFAULT_MERCURY_LEDGER_SORT,
+  nextMercuryLedgerSortState,
+  type MercuryLedgerSortState,
+} from '../../lib/bankingMercuryLedgerTableSort'
 import {
   activeBankingAccountingLedgerFilterCount,
   defaultBankingAccountingLedgerFilters,
@@ -68,6 +76,7 @@ import {
   type AccountingRuleFormState,
   type AccountingRuleSaveDraft,
 } from './AccountingRuleFormModal'
+import { AccountingLabelQuickAssignModal } from './AccountingLabelQuickAssignModal'
 import { BankingMercuryAccountingLedgerFilterModal } from './BankingMercuryAccountingLedgerFilterModal'
 import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequencyModal'
 
@@ -174,6 +183,8 @@ export function BankingMercuryAccountingTab({
   const [applyRulesBusy, setApplyRulesBusy] = useState(false)
   const [approveAllBusy, setApproveAllBusy] = useState(false)
   const [notesExpandedTxId, setNotesExpandedTxId] = useState<string | null>(null)
+  const [quickAssignTxId, setQuickAssignTxId] = useState<string | null>(null)
+  const [quickAssignBusy, setQuickAssignBusy] = useState(false)
 
   const [ledgerFiltersApplied, setLedgerFiltersApplied] = useState<BankingAccountingLedgerFiltersV1>(() =>
     defaultBankingAccountingLedgerFilters(),
@@ -183,6 +194,7 @@ export function BankingMercuryAccountingTab({
   const [ledgerFilterDraft, setLedgerFilterDraft] = useState<BankingAccountingLedgerFiltersV1>(() =>
     defaultBankingAccountingLedgerFilters(),
   )
+  const [ledgerSort, setLedgerSort] = useState<MercuryLedgerSortState>(() => DEFAULT_MERCURY_LEDGER_SORT)
 
   const [ruleModalOpen, setRuleModalOpen] = useState(false)
   const [ruleModalMountKey, setRuleModalMountKey] = useState(0)
@@ -208,6 +220,10 @@ export function BankingMercuryAccountingTab({
 
   useEffect(() => {
     setLedgerFiltersApplied(parseBankingAccountingLedgerFiltersJson(readAccountingLedgerFiltersRaw(userId)))
+  }, [userId])
+
+  useEffect(() => {
+    setLedgerSort(readAccountingLedgerSort(userId))
   }, [userId])
 
   const accountingSearchNorm = useMemo(() => accountingSearchText.trim(), [accountingSearchText])
@@ -458,6 +474,12 @@ export function BankingMercuryAccountingTab({
     return afterLedgerFilters.filter((tx) => !assignmentLabelByTxId.has(tx.id))
   }, [hideLabeledTransactions, afterLedgerFilters, assignmentLabelByTxId])
 
+  const sortedDisplayTransactions = useMemo(() => {
+    const copy = [...displayTransactions]
+    copy.sort((a, b) => compareMercuryLedgerRows(a, b, ledgerSort.key, ledgerSort.dir))
+    return copy
+  }, [displayTransactions, ledgerSort])
+
   const counterpartyFrequencyByKey = useMemo(
     () => counterpartyFrequencyCountMap(displayTransactions),
     [displayTransactions],
@@ -496,6 +518,44 @@ export function BankingMercuryAccountingTab({
     },
     [assignmentLabelByTxId, removeAssignment, showToast],
   )
+
+  const closeQuickAssign = useCallback(() => {
+    if (quickAssignBusy) return
+    setQuickAssignTxId(null)
+  }, [quickAssignBusy])
+
+  const handleQuickAssignLabel = useCallback(
+    async (labelId: string) => {
+      const txId = quickAssignTxId
+      if (!txId || quickAssignBusy) return
+      const prevMap = new Map(assignmentLabelByTxId)
+      const next = new Map(prevMap)
+      next.set(txId, labelId)
+      setAssignmentLabelByTxId(next)
+      setQuickAssignBusy(true)
+      try {
+        await upsertDragAssignment(txId, labelId)
+        showToast('Accounting label applied.', 'success')
+        setQuickAssignTxId(null)
+      } catch (e) {
+        setAssignmentLabelByTxId(prevMap)
+        showToast(e instanceof Error ? e.message : 'Could not assign label', 'error')
+      } finally {
+        setQuickAssignBusy(false)
+      }
+    },
+    [assignmentLabelByTxId, quickAssignBusy, quickAssignTxId, showToast, upsertDragAssignment],
+  )
+
+  const quickAssignTransactionSummary = useMemo(() => {
+    if (!quickAssignTxId) return undefined
+    const tx =
+      sortedDisplayTransactions.find((t) => t.id === quickAssignTxId) ??
+      displayTransactions.find((t) => t.id === quickAssignTxId) ??
+      filteredTransactions.find((t) => t.id === quickAssignTxId)
+    if (!tx) return undefined
+    return `${formatUsd(Number(tx.amount))} · ${tx.counterparty_name ?? '—'}`
+  }, [quickAssignTxId, sortedDisplayTransactions, displayTransactions, filteredTransactions])
 
   const handleApprove = useCallback(
     async (p: PendingApproval, chosenLabelId: string) => {
@@ -1374,10 +1434,18 @@ export function BankingMercuryAccountingTab({
               <BankingMercuryDragSortLedgerThead
                 showDragHandle={ledgerShowDrag}
                 showRuleShortcutColumn
+                sortState={ledgerSort}
+                onSortColumn={(key) => {
+                  setLedgerSort((cur) => {
+                    const next = nextMercuryLedgerSortState(cur, key)
+                    writeAccountingLedgerSort(userId, next)
+                    return next
+                  })
+                }}
                 onCounterpartyHeaderClick={() => setCounterpartyFrequencyModalOpen(true)}
               />
               <tbody>
-                {displayTransactions.map((r) => {
+                {sortedDisplayTransactions.map((r) => {
                   const assignId = assignmentLabelByTxId.get(r.id)
                   const assignedLabel = assignId ? labelById.get(assignId) : undefined
                   const assignName = assignedLabel?.name ?? '—'
@@ -1433,6 +1501,9 @@ export function BankingMercuryAccountingTab({
                           labelsLoading || labels.length === 0 || !(r.counterparty_name ?? '').trim()
                         }
                         onRuleShortcut={() => openNewRuleFromCounterparty(r.counterparty_name ?? '')}
+                        showQuickAssignLabel
+                        quickAssignDisabled={labelsLoading || labels.length === 0}
+                        onQuickAssignLabel={() => setQuickAssignTxId(r.id)}
                       />
                       {showDragSortBankNoteBand && !editorOpen ? (
                         <BankingMercuryDragSortLedgerNotesPreviewRow
@@ -1516,6 +1587,17 @@ export function BankingMercuryAccountingTab({
             <strong>More filters</strong>, and <strong>Hide labeled transactions</strong> when that option is on).
           </>
         }
+      />
+
+      <AccountingLabelQuickAssignModal
+        open={quickAssignTxId !== null}
+        txId={quickAssignTxId}
+        transactionSummary={quickAssignTransactionSummary}
+        labels={labels}
+        labelAssignmentCountById={labelAssignmentCountById}
+        busy={quickAssignBusy}
+        onAssign={(labelId) => void handleQuickAssignLabel(labelId)}
+        onClose={closeQuickAssign}
       />
 
       {ruleModalOpen ? (

@@ -1,7 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { Database } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
-import { SearchableSelect, type SearchableSelectSelectableOption } from '../SearchableSelect'
+import { SearchableSelect } from '../SearchableSelect'
+import { buildSortedAccountingLabelSelectOptions } from '../../lib/accountingLabelSelectOptions'
 import {
   type AccountingLabelRuleCriteriaV1,
   accountingRuleEffectiveClauseCount,
@@ -137,19 +138,10 @@ export function AccountingRuleFormModal({
 
   const controlsDisabled = submitBusy || applyRulesBusy
 
-  const sortedLabelSelectOptions = useMemo((): SearchableSelectSelectableOption[] => {
-    const rows = [...labels]
-    rows.sort((a, b) => {
-      const ca = labelAssignmentCountById[a.id] ?? 0
-      const cb = labelAssignmentCountById[b.id] ?? 0
-      if (cb !== ca) return cb - ca
-      if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order
-      const nm = a.name.localeCompare(b.name)
-      if (nm !== 0) return nm
-      return a.id.localeCompare(b.id)
-    })
-    return rows.map((L) => ({ value: L.id, label: L.name }))
-  }, [labels, labelAssignmentCountById])
+  const sortedLabelSelectOptions = useMemo(
+    () => buildSortedAccountingLabelSelectOptions(labels, labelAssignmentCountById),
+    [labels, labelAssignmentCountById],
+  )
 
   useEffect(() => {
     if (editingRuleId === null) {
@@ -327,22 +319,22 @@ export function AccountingRuleFormModal({
             <legend style={{ fontSize: '0.85rem', fontWeight: 600 }}>Amount (USD)</legend>
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               <label style={{ flex: '1 1 6rem', fontSize: '0.8rem' }}>
-                Min
-                <input
-                  type="number"
-                  step="any"
-                  value={form.amountMin}
-                  onChange={(e) => setForm((f) => ({ ...f, amountMin: e.target.value }))}
-                  style={{ width: '100%', marginTop: 4 }}
-                />
-              </label>
-              <label style={{ flex: '1 1 6rem', fontSize: '0.8rem' }}>
                 Max
                 <input
                   type="number"
                   step="any"
                   value={form.amountMax}
                   onChange={(e) => setForm((f) => ({ ...f, amountMax: e.target.value }))}
+                  style={{ width: '100%', marginTop: 4 }}
+                />
+              </label>
+              <label style={{ flex: '1 1 6rem', fontSize: '0.8rem' }}>
+                Min
+                <input
+                  type="number"
+                  step="any"
+                  value={form.amountMin}
+                  onChange={(e) => setForm((f) => ({ ...f, amountMin: e.target.value }))}
                   style={{ width: '100%', marginTop: 4 }}
                 />
               </label>

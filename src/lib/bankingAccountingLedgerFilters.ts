@@ -17,6 +17,8 @@ export type BankingAccountingLedgerFiltersV1 = {
   kinds: string[]
   /** Case-insensitive substring matches on `counterparty_name`; row excluded if any phrase matches */
   excludeCounterpartyContains: string[]
+  /** When true, hide rows with null/empty/unparseable `posted_at` (default). */
+  excludeNoPostedDate: boolean
 }
 
 export type BankingAccountingLedgerFilterTx = Pick<
@@ -41,7 +43,13 @@ export function defaultBankingAccountingLedgerFilters(): BankingAccountingLedger
     personUnassignedOnly: false,
     kinds: [],
     excludeCounterpartyContains: [],
+    excludeNoPostedDate: true,
   }
+}
+
+function txHasPostedDate(iso: string | null): boolean {
+  if (iso == null || iso === '') return false
+  return calendarYmdInAppTzFromIso(iso) !== ''
 }
 
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -145,6 +153,7 @@ export function parseBankingAccountingLedgerFiltersJson(raw: string | null): Ban
     const personUnassignedOnly = v.personUnassignedOnly === true
     const kinds = parseKindsFromJson(v.kinds)
     const excludeCounterpartyContains = parseExcludeCounterpartyContainsFromJson(v.excludeCounterpartyContains)
+    const excludeNoPostedDate = v.excludeNoPostedDate !== false
     return {
       v: 1,
       postedFromYmd,
@@ -155,6 +164,7 @@ export function parseBankingAccountingLedgerFiltersJson(raw: string | null): Ban
       personUnassignedOnly,
       kinds,
       excludeCounterpartyContains,
+      excludeNoPostedDate,
     }
   } catch {
     return def
@@ -173,7 +183,8 @@ export function bankingAccountingLedgerFiltersEqual(
     a.jobSplit === b.jobSplit &&
     a.personUnassignedOnly === b.personUnassignedOnly &&
     kindsArrayEqual(a.kinds, b.kinds) &&
-    kindsArrayEqual(a.excludeCounterpartyContains, b.excludeCounterpartyContains)
+    kindsArrayEqual(a.excludeCounterpartyContains, b.excludeCounterpartyContains) &&
+    a.excludeNoPostedDate === b.excludeNoPostedDate
   )
 }
 
@@ -188,11 +199,12 @@ export function activeBankingAccountingLedgerFilterCount(f: BankingAccountingLed
   if (f.personUnassignedOnly) n += 1
   if (f.kinds.length > 0) n += 1
   if (f.excludeCounterpartyContains.length > 0) n += 1
+  if (f.excludeNoPostedDate === false) n += 1
   return n
 }
 
 export function isDefaultBankingAccountingLedgerFilters(f: BankingAccountingLedgerFiltersV1): boolean {
-  return activeBankingAccountingLedgerFilterCount(f) === 0
+  return bankingAccountingLedgerFiltersEqual(f, defaultBankingAccountingLedgerFilters())
 }
 
 export function applyBankingAccountingLedgerFilters(
@@ -200,6 +212,8 @@ export function applyBankingAccountingLedgerFilters(
   f: BankingAccountingLedgerFiltersV1,
   ctx: BankingAccountingLedgerFilterCtx,
 ): boolean {
+  if (f.excludeNoPostedDate && !txHasPostedDate(tx.posted_at)) return false
+
   const from = f.postedFromYmd.trim()
   const to = f.postedToYmd.trim()
   if (from !== '' || to !== '') {
@@ -256,7 +270,7 @@ export function filterRowsByAccountingLedgerFilters<T extends BankingAccountingL
   f: BankingAccountingLedgerFiltersV1,
   ctx: BankingAccountingLedgerFilterCtx,
 ): T[] {
-  if (isDefaultBankingAccountingLedgerFilters(f)) return rows
+  if (!f.excludeNoPostedDate && activeBankingAccountingLedgerFilterCount(f) === 0) return rows
   return rows.filter((tx) => applyBankingAccountingLedgerFilters(tx, f, ctx))
 }
 

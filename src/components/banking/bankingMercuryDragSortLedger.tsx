@@ -1,6 +1,7 @@
 import { memo } from 'react'
 import { useDraggable } from '@dnd-kit/core'
 import type { Database } from '../../types/database'
+import type { MercuryLedgerSortDir, MercuryLedgerSortKey } from '../../lib/bankingMercuryLedgerTableSort'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { shortUuidPrefix } from '../../lib/shortUuidPrefix'
 import {
@@ -177,6 +178,9 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   showRuleShortcutColumn,
   ruleShortcutDisabled,
   onRuleShortcut,
+  showQuickAssignLabel,
+  quickAssignDisabled,
+  onQuickAssignLabel,
   counterpartyOccurrenceCount,
 }: {
   row: MercuryTxRowBankingLedger
@@ -199,6 +203,10 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   showRuleShortcutColumn?: boolean
   ruleShortcutDisabled?: boolean
   onRuleShortcut?: () => void
+  /** Accounting Sorting Ledger: quick-assign label via + (unlabeled rows only). */
+  showQuickAssignLabel?: boolean
+  quickAssignDisabled?: boolean
+  onQuickAssignLabel?: () => void
   /** When set (e.g. Accounting Sorting Ledger), append ` (n)` for occurrences in the visible list. */
   counterpartyOccurrenceCount?: number
 }) {
@@ -378,6 +386,36 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
             >
               <span aria-hidden>×</span>
             </button>
+          ) : showQuickAssignLabel ? (
+            <button
+              type="button"
+              disabled={quickAssignDisabled === true}
+              onClick={(e) => {
+                e.stopPropagation()
+                onQuickAssignLabel?.()
+              }}
+              aria-label="Assign accounting label"
+              title={
+                quickAssignDisabled === true
+                  ? 'Accounting labels not ready yet'
+                  : 'Assign accounting label'
+              }
+              style={{
+                flexShrink: 0,
+                padding: '2px 6px',
+                fontSize: '0.8rem',
+                lineHeight: 1,
+                fontWeight: 700,
+                color: quickAssignDisabled === true ? '#94a3b8' : '#2563eb',
+                background: '#fff',
+                border: `1px solid ${quickAssignDisabled === true ? '#e5e7eb' : '#bfdbfe'}`,
+                borderRadius: 6,
+                cursor: quickAssignDisabled === true ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              +
+            </button>
           ) : null}
           <span
             style={{
@@ -435,23 +473,173 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   )
 })
 
+const ledgerThBaseStyle = {
+  borderBottom: '1px solid #e5e7eb',
+} as const
+
+type SortableLedgerThProps = {
+  label: string
+  sortKey: MercuryLedgerSortKey
+  currentKey: MercuryLedgerSortKey
+  currentDir: MercuryLedgerSortDir
+  onClick: () => void
+  align: 'left' | 'right'
+}
+
+function SortableLedgerTh({ label, sortKey, currentKey, currentDir, onClick, align }: SortableLedgerThProps) {
+  const isActive = currentKey === sortKey
+  const indicator = isActive ? (currentDir === 'desc' ? ' ▼' : ' ▲') : ''
+  return (
+    <th
+      scope="col"
+      aria-sort={isActive ? (currentDir === 'desc' ? 'descending' : 'ascending') : 'none'}
+      style={{
+        ...ledgerThBaseStyle,
+        textAlign: align,
+        padding: 0,
+      }}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        style={{
+          all: 'unset',
+          display: 'block',
+          width: '100%',
+          padding: '0.5rem 0.75rem',
+          textAlign: align,
+          fontWeight: 600,
+          fontSize: 'inherit',
+          color: 'inherit',
+          cursor: 'pointer',
+          boxSizing: 'border-box',
+        }}
+      >
+        <span>{label}</span>
+        <span aria-hidden style={{ color: isActive ? '#374151' : 'transparent' }}>
+          {isActive ? indicator : ' ▾'}
+        </span>
+      </button>
+    </th>
+  )
+}
+
 export function BankingMercuryDragSortLedgerThead({
   showDragHandle,
   showRuleShortcutColumn,
   onCounterpartyHeaderClick,
+  sortState,
+  onSortColumn,
 }: {
   showDragHandle: boolean
   showRuleShortcutColumn?: boolean
   /** When set, Counterparty header opens e.g. frequency modal (Drag Sort). */
   onCounterpartyHeaderClick?: () => void
+  /** When set with `onSortColumn`, Posted / Amount / Counterparty headers sort the ledger. */
+  sortState?: { key: MercuryLedgerSortKey; dir: MercuryLedgerSortDir }
+  onSortColumn?: (key: MercuryLedgerSortKey) => void
 }) {
+  const sortable = sortState != null && onSortColumn != null
+
   return (
     <thead>
       <tr style={{ background: '#f9fafb' }}>
-        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Posted</th>
-        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-        <th style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}>
-          {onCounterpartyHeaderClick ? (
+        {sortable ? (
+          <SortableLedgerTh
+            label="Posted"
+            sortKey="posted_at"
+            currentKey={sortState.key}
+            currentDir={sortState.dir}
+            onClick={() => onSortColumn('posted_at')}
+            align="left"
+          />
+        ) : (
+          <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', ...ledgerThBaseStyle }}>Posted</th>
+        )}
+        {sortable ? (
+          <SortableLedgerTh
+            label="Amount"
+            sortKey="amount"
+            currentKey={sortState.key}
+            currentDir={sortState.dir}
+            onClick={() => onSortColumn('amount')}
+            align="right"
+          />
+        ) : (
+          <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', ...ledgerThBaseStyle }}>Amount</th>
+        )}
+        <th style={{ textAlign: 'left', padding: 0, ...ledgerThBaseStyle }}>
+          {sortable ? (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '0.35rem 0.5rem',
+                padding: '0.35rem 0.75rem',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => onSortColumn('counterparty_name')}
+                aria-sort={
+                  sortState.key === 'counterparty_name'
+                    ? sortState.dir === 'desc'
+                      ? 'descending'
+                      : 'ascending'
+                    : 'none'
+                }
+                style={{
+                  all: 'unset',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 2,
+                  fontWeight: 600,
+                  fontSize: 'inherit',
+                  color: 'inherit',
+                  cursor: 'pointer',
+                }}
+              >
+                <span>Counterparty</span>
+                <span
+                  aria-hidden
+                  style={{
+                    color: sortState.key === 'counterparty_name' ? '#374151' : 'transparent',
+                  }}
+                >
+                  {sortState.key === 'counterparty_name'
+                    ? sortState.dir === 'desc'
+                      ? ' ▼'
+                      : ' ▲'
+                    : ' ▾'}
+                </span>
+              </button>
+              {onCounterpartyHeaderClick ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onCounterpartyHeaderClick()
+                  }}
+                  title="Counterparties with more than two transactions in this view"
+                  aria-label="Counterparty frequency in this view"
+                  style={{
+                    padding: 0,
+                    font: 'inherit',
+                    fontSize: '0.8125rem',
+                    fontWeight: 600,
+                    color: '#2563eb',
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Frequency
+                </button>
+              ) : null}
+            </div>
+          ) : onCounterpartyHeaderClick ? (
             <button
               type="button"
               onClick={onCounterpartyHeaderClick}
@@ -479,20 +667,18 @@ export function BankingMercuryDragSortLedgerThead({
           )}
         </th>
         <th
-          style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
+          style={{ textAlign: 'left', padding: '0.5rem 0.75rem', ...ledgerThBaseStyle }}
           title="Job allocations and linked person"
         >
           Job
         </th>
-        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
-          Accounting Label
-        </th>
+        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', ...ledgerThBaseStyle }}>Accounting Label</th>
         {showRuleShortcutColumn ? (
           <th
             style={{
               textAlign: 'left',
               padding: '0.5rem 0.5rem',
-              borderBottom: '1px solid #e5e7eb',
+              ...ledgerThBaseStyle,
               width: '1%',
               whiteSpace: 'nowrap',
             }}
@@ -506,7 +692,7 @@ export function BankingMercuryDragSortLedgerThead({
               width: '1%',
               whiteSpace: 'nowrap',
               padding: '0.5rem 0.2rem',
-              borderBottom: '1px solid #e5e7eb',
+              ...ledgerThBaseStyle,
             }}
             aria-label="Drag"
           />

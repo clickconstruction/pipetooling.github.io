@@ -1765,18 +1765,16 @@ export default function Banking() {
           paddingBottom: '1rem',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'flex-start',
-            justifyContent: 'space-between',
-            gap: '0.75rem',
-          }}
-        >
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <h1 style={{ margin: '0 0 0.75rem', fontSize: '1.5rem', fontWeight: 700 }}>Banking</h1>
-            {isDevBanking ? (
+        {isDevBanking ? (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              marginBottom: '0.5rem',
+            }}
+          >
+            <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
               <div
                 role="tablist"
                 aria-label="Banking data source"
@@ -1784,10 +1782,7 @@ export default function Banking() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: 0,
-                  marginBottom: '0.5rem',
                   width: 'max-content',
-                  overflowX: 'auto',
-                  WebkitOverflowScrolling: 'touch',
                 }}
               >
                 <button
@@ -1811,7 +1806,31 @@ export default function Banking() {
                   Stripe
                 </button>
               </div>
-            ) : null}
+            </div>
+            <h1
+              style={{
+                flexShrink: 0,
+                margin: 0,
+                marginLeft: '0.5rem',
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                color: '#111827',
+              }}
+            >
+              Banking
+            </h1>
+          </div>
+        ) : null}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '0.75rem',
+          }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div
               style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
               role="presentation"
@@ -1913,6 +1932,20 @@ export default function Banking() {
               </div>
             </div>
           </div>
+          {!isDevBanking ? (
+            <h1
+              style={{
+                flexShrink: 0,
+                margin: 0,
+                marginLeft: '0.5rem',
+                fontSize: '1.5rem',
+                fontWeight: 700,
+                color: '#111827',
+              }}
+            >
+              Banking
+            </h1>
+          ) : null}
           {bankingView.product === 'mercury' && bankingView.mercuryTab === 'sorting' && (isDevBanking || canAccessBanking) ? (
             <div
               role="region"

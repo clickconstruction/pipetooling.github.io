@@ -1,3 +1,9 @@
+import {
+  DEFAULT_MERCURY_LEDGER_SORT,
+  parseMercuryLedgerSortJson,
+  type MercuryLedgerSortState,
+} from './bankingMercuryLedgerTableSort'
+
 /** Per-user preference: Drag Sort table hides rows that already have an Accounting Label. */
 const STORAGE_PREFIX = 'banking_drag_sort_hide_labeled_v1_'
 
@@ -111,6 +117,37 @@ export function writeAccountingLedgerFiltersRaw(userId: string, json: string | n
 
 export function clearAccountingLedgerFiltersStorage(userId: string): void {
   writeAccountingLedgerFiltersRaw(userId, null)
+}
+
+/** Per-user JSON for Accounting Sorting Ledger column sort (`MercuryLedgerSortState`). */
+const ACCOUNTING_LEDGER_SORT_PREFIX = 'banking_accounting_ledger_sort_v1_'
+
+export function readAccountingLedgerSort(userId: string): MercuryLedgerSortState {
+  if (typeof window === 'undefined') return DEFAULT_MERCURY_LEDGER_SORT
+  try {
+    return parseMercuryLedgerSortJson(
+      window.localStorage.getItem(ACCOUNTING_LEDGER_SORT_PREFIX + userId),
+    )
+  } catch {
+    return DEFAULT_MERCURY_LEDGER_SORT
+  }
+}
+
+export function writeAccountingLedgerSort(userId: string, state: MercuryLedgerSortState): void {
+  if (typeof window === 'undefined') return
+  const key = ACCOUNTING_LEDGER_SORT_PREFIX + userId
+  try {
+    if (
+      state.key === DEFAULT_MERCURY_LEDGER_SORT.key &&
+      state.dir === DEFAULT_MERCURY_LEDGER_SORT.dir
+    ) {
+      window.localStorage.removeItem(key)
+    } else {
+      window.localStorage.setItem(key, JSON.stringify(state))
+    }
+  } catch {
+    /* quota or private mode */
+  }
 }
 
 /** Per-user: Banking Mercury Accounting **Rules** section shows the rules table (default expanded). **`'0'`** = collapsed body; header actions stay visible. Same pattern as **`readDragSortLabelsCardsExpanded`**. */

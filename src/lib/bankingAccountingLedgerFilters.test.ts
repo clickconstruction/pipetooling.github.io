@@ -48,6 +48,7 @@ describe('bankingAccountingLedgerFilters', () => {
     const ctx = emptyCtx()
     ctx.allocationsByTxId.set('a', [{ job_id: 'j', amount: 1 }])
     const f = defaultBankingAccountingLedgerFilters()
+    f.excludeNoPostedDate = false
     f.jobSplit = 'has'
     expect(applyBankingAccountingLedgerFilters({ id: 'a', amount: 1, posted_at: null, kind: 't', counterparty_name: null }, f, ctx)).toBe(true)
     expect(applyBankingAccountingLedgerFilters({ id: 'b', amount: 1, posted_at: null, kind: 't', counterparty_name: null }, f, ctx)).toBe(false)
@@ -60,19 +61,33 @@ describe('bankingAccountingLedgerFilters', () => {
     const ctx = emptyCtx()
     ctx.userIdByTxId.set('u', 'user-1')
     const f = defaultBankingAccountingLedgerFilters()
+    f.excludeNoPostedDate = false
     f.personUnassignedOnly = true
     expect(applyBankingAccountingLedgerFilters({ id: 'u', amount: 1, posted_at: null, kind: 't', counterparty_name: null }, f, ctx)).toBe(false)
     expect(applyBankingAccountingLedgerFilters({ id: 'x', amount: 1, posted_at: null, kind: 't', counterparty_name: null }, f, ctx)).toBe(true)
   })
 
-  it('filterRows no-ops when default', () => {
+  it('filterRows excludes unposted when default excludeNoPostedDate', () => {
+    const rows = [
+      { id: '1', amount: 1, posted_at: null, kind: 't', counterparty_name: null },
+      { id: '2', amount: 1, posted_at: '2026-01-01T12:00:00Z', kind: 't', counterparty_name: null },
+    ]
+    const out = filterRowsByAccountingLedgerFilters(rows, defaultBankingAccountingLedgerFilters(), emptyCtx())
+    expect(out).toHaveLength(1)
+    expect(out[0]?.id).toBe('2')
+  })
+
+  it('filterRows no-ops when exclude off and no other filters', () => {
     const rows = [{ id: '1', amount: 1, posted_at: null, kind: 't', counterparty_name: null }]
-    expect(filterRowsByAccountingLedgerFilters(rows, defaultBankingAccountingLedgerFilters(), emptyCtx())).toBe(rows)
+    const f = defaultBankingAccountingLedgerFilters()
+    f.excludeNoPostedDate = false
+    expect(filterRowsByAccountingLedgerFilters(rows, f, emptyCtx())).toStrictEqual(rows)
   })
 
   it('kind filter includes only selected API kinds', () => {
     const ctx = emptyCtx()
     const f = defaultBankingAccountingLedgerFilters()
+    f.excludeNoPostedDate = false
     f.kinds = ['debit']
     expect(applyBankingAccountingLedgerFilters({ id: '1', amount: 1, posted_at: null, kind: 'debit', counterparty_name: null }, f, ctx)).toBe(true)
     expect(applyBankingAccountingLedgerFilters({ id: '1', amount: 1, posted_at: null, kind: 'credit', counterparty_name: null }, f, ctx)).toBe(false)
@@ -95,6 +110,7 @@ describe('bankingAccountingLedgerFilters', () => {
   it('excludes rows when counterparty contains any phrase (case-insensitive)', () => {
     const ctx = emptyCtx()
     const f = defaultBankingAccountingLedgerFilters()
+    f.excludeNoPostedDate = false
     f.excludeCounterpartyContains = ['amazon']
     expect(
       applyBankingAccountingLedgerFilters(
@@ -138,5 +154,49 @@ describe('bankingAccountingLedgerFilters', () => {
 
   it('normalizeExcludeCounterpartyContainsFromLines drops blank lines between phrases', () => {
     expect(normalizeExcludeCounterpartyContainsFromLines('amazon\n\npaypal')).toEqual(['amazon', 'paypal'])
+  })
+
+  it('default excludes null and empty posted_at', () => {
+    const ctx = emptyCtx()
+    const f = defaultBankingAccountingLedgerFilters()
+    const row = { id: '1', amount: 1, posted_at: null, kind: 't', counterparty_name: null }
+    expect(applyBankingAccountingLedgerFilters(row, f, ctx)).toBe(false)
+    expect(applyBankingAccountingLedgerFilters({ ...row, posted_at: '' }, f, ctx)).toBe(false)
+    expect(
+      applyBankingAccountingLedgerFilters(
+        { ...row, posted_at: '2026-01-01T12:00:00Z' },
+        f,
+        ctx,
+      ),
+    ).toBe(true)
+  })
+
+  it('excludeNoPostedDate false includes unposted rows', () => {
+    const ctx = emptyCtx()
+    const f = defaultBankingAccountingLedgerFilters()
+    f.excludeNoPostedDate = false
+    expect(
+      applyBankingAccountingLedgerFilters(
+        { id: '1', amount: 1, posted_at: null, kind: 't', counterparty_name: null },
+        f,
+        ctx,
+      ),
+    ).toBe(true)
+  })
+
+  it('active count is 1 when user includes unposted rows', () => {
+    const f = defaultBankingAccountingLedgerFilters()
+    f.excludeNoPostedDate = false
+    expect(activeBankingAccountingLedgerFilterCount(f)).toBe(1)
+  })
+
+  it('parse JSON without excludeNoPostedDate defaults to true', () => {
+    const parsed = parseBankingAccountingLedgerFiltersJson('{"v":1,"postedFromYmd":""}')
+    expect(parsed.excludeNoPostedDate).toBe(true)
+  })
+
+  it('parse JSON with excludeNoPostedDate false', () => {
+    const parsed = parseBankingAccountingLedgerFiltersJson('{"v":1,"excludeNoPostedDate":false}')
+    expect(parsed.excludeNoPostedDate).toBe(false)
   })
 })

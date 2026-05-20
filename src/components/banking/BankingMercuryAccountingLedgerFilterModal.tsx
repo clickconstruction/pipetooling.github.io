@@ -145,6 +145,38 @@ export function BankingMercuryAccountingLedgerFilterModal({
                 />
               </label>
             </div>
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+                fontSize: '0.875rem',
+                cursor: 'pointer',
+                marginTop: '0.65rem',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={draft.excludeNoPostedDate}
+                onChange={(e) => onDraftChange({ ...draft, excludeNoPostedDate: e.target.checked })}
+                style={{ marginTop: 2 }}
+              />
+              <span>
+                Exclude transactions with no posted date
+                <span
+                  style={{
+                    display: 'block',
+                    marginTop: 4,
+                    fontSize: '0.75rem',
+                    color: '#64748b',
+                    lineHeight: 1.35,
+                    fontWeight: 400,
+                  }}
+                >
+                  Failed or unposted Mercury transactions often have no posted date.
+                </span>
+              </span>
+            </label>
           </fieldset>
 
           <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
