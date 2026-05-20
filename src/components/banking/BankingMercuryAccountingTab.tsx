@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
+import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import {
   buildMercuryTxSearchHaystackWithJobPerson,
   mercuryTxMatchesSearchQuery,
@@ -417,6 +418,12 @@ export function BankingMercuryAccountingTab({
     return m
   }, [labels])
 
+  const ruleById = useMemo(() => {
+    const m = new Map<string, RuleRow>()
+    for (const r of rules) m.set(r.id, r)
+    return m
+  }, [rules])
+
   const rulesSearchNorm = useMemo(() => rulesTableSearchText.trim().toLowerCase(), [rulesTableSearchText])
 
   const rulesFilteredForTable = useMemo(() => {
@@ -593,14 +600,17 @@ export function BankingMercuryAccountingTab({
     setLedgerFilterModalOpen(true)
   }, [ledgerFiltersApplied])
 
-  const applyLedgerFilterModal = useCallback(() => {
-    const normalized = withLedgerFilterKindsNormalizedIfAllSelected(ledgerFilterDraft, accountingKindOptions)
-    setLedgerFiltersApplied(normalized)
-    const raw = serializeBankingAccountingLedgerFiltersForStorage(normalized)
-    if (raw == null) clearAccountingLedgerFiltersStorage(userId)
-    else writeAccountingLedgerFiltersRaw(userId, raw)
-    setLedgerFilterModalOpen(false)
-  }, [ledgerFilterDraft, userId, accountingKindOptions])
+  const applyLedgerFilterModal = useCallback(
+    (finalDraft: BankingAccountingLedgerFiltersV1) => {
+      const normalized = withLedgerFilterKindsNormalizedIfAllSelected(finalDraft, accountingKindOptions)
+      setLedgerFiltersApplied(normalized)
+      const raw = serializeBankingAccountingLedgerFiltersForStorage(normalized)
+      if (raw == null) clearAccountingLedgerFiltersStorage(userId)
+      else writeAccountingLedgerFiltersRaw(userId, raw)
+      setLedgerFilterModalOpen(false)
+    },
+    [userId, accountingKindOptions],
+  )
 
   const cancelLedgerFilterModal = useCallback(() => {
     setLedgerFilterModalOpen(false)
@@ -718,12 +728,27 @@ export function BankingMercuryAccountingTab({
     [],
   )
 
-  const openEditRuleModal = (rule: RuleRow) => {
-    setRuleModalInitial(ruleRowToForm(rule, labels[0]?.id ?? rule.label_id))
-    setEditingRuleId(rule.id)
-    setRuleModalMountKey((k) => k + 1)
-    setRuleModalOpen(true)
-  }
+  const openEditRuleModal = useCallback(
+    (rule: RuleRow) => {
+      setRuleModalInitial(ruleRowToForm(rule, labels[0]?.id ?? rule.label_id))
+      setEditingRuleId(rule.id)
+      setRuleModalMountKey((k) => k + 1)
+      setRuleModalOpen(true)
+    },
+    [labels],
+  )
+
+  const openEditRuleById = useCallback(
+    (ruleId: string) => {
+      const rule = ruleById.get(ruleId)
+      if (!rule) {
+        showToast('Could not open that rule. Try reloading the page.', 'error')
+        return
+      }
+      openEditRuleModal(rule)
+    },
+    [openEditRuleModal, ruleById, showToast],
+  )
 
   const runTestFromCriteria = useCallback(
     (c: AccountingLabelRuleCriteriaV1) => {
@@ -898,7 +923,12 @@ export function BankingMercuryAccountingTab({
           <div style={{ color: '#64748b' }}>No pending suggestions.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {pendingApprovals.map((p) => (
+            {pendingApprovals.map((p) => {
+              const debitCardId = p.tx ? mercuryDebitCardIdFromRaw(p.tx.raw) : null
+              const debitCardLabel = debitCardId
+                ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)
+                : null
+              return (
               <div
                 key={p.suggestionId}
                 style={{
@@ -916,8 +946,34 @@ export function BankingMercuryAccountingTab({
                         : `Transaction ${p.txId.slice(0, 8)}… (not in current list)`}
                     </div>
                     <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
-                      Rule: {p.ruleName} · Suggested: {p.suggestedLabelName}
+                      Rule:{' '}
+                      <button
+                        type="button"
+                        disabled={approveAllBusy || rulesLoading}
+                        onClick={() => openEditRuleById(p.ruleId)}
+                        aria-label={`Edit rule ${p.ruleName}`}
+                        title="Edit rule"
+                        style={{
+                          padding: 0,
+                          border: 'none',
+                          background: 'none',
+                          color: '#2563eb',
+                          cursor: approveAllBusy || rulesLoading ? 'not-allowed' : 'pointer',
+                          textDecoration: 'underline',
+                          font: 'inherit',
+                          fontSize: 'inherit',
+                        }}
+                      >
+                        {p.ruleName}
+                      </button>
+                      {' · Suggested: '}
+                      {p.suggestedLabelName}
                     </div>
+                    {debitCardLabel ? (
+                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
+                        Card: {debitCardLabel}
+                      </div>
+                    ) : null}
                     {p.tx ? (
                       <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
                         Posted {formatBankingDate(p.tx.posted_at)} · Bank: {mercuryBankDescriptionFromRaw(p.tx.raw) ?? '—'}
@@ -925,7 +981,6 @@ export function BankingMercuryAccountingTab({
                     ) : null}
                   </div>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
-                    <span>Accounting Label</span>
                     <select
                       value={p.suggestedLabelId}
                       disabled={approveAllBusy}
@@ -945,6 +1000,7 @@ export function BankingMercuryAccountingTab({
                         </option>
                       ))}
                     </select>
+                    <span>Accounting Label</span>
                   </label>
                   <button
                     type="button"
@@ -980,7 +1036,7 @@ export function BankingMercuryAccountingTab({
                   </button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </section>

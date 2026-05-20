@@ -74,6 +74,13 @@ export const DRAG_SORT_DEFAULT_LABELS: DragSortDefaultLabelDef[] = [
     description: 'Paper, postage, software subscriptions, general office supplies',
   },
   {
+    defaultKey: 'employee_benefits',
+    name: 'Employee Benefits',
+    scheduleCLine: '19',
+    description:
+      'deductible contributions you made as an employer to certain employee benefit programs for your employees (not for yourself as the sole proprietor)',
+  },
+  {
     defaultKey: 'rent_lease_20a',
     name: 'Equipment Lease',
     scheduleCLine: '20a',

@@ -27,7 +27,6 @@ import { counterpartyFrequenciesAboveMin } from '../../lib/bankingMercuryCounter
 import { ensureDragSortDefaultLabels } from '../../lib/dragSortDefaultLabels'
 import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
 import { mercuryTxDragSortBankNoteRowVisible } from './MercuryTxNotesDisclosure'
-import { ListOrdered } from 'lucide-react'
 import BankingMercuryDragSortFocusModal from './BankingMercuryDragSortFocusModal'
 import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequencyModal'
 import { DragSortLabelBucketCard } from './dragSortLabelBucketCard'
@@ -310,6 +309,7 @@ export function BankingMercuryDragSortTab({
   const [counterpartyFrequencyModalOpen, setCounterpartyFrequencyModalOpen] = useState(false)
   const [dragSortHelpOpen, setDragSortHelpOpen] = useState(false)
   const [quickLabelModalOpen, setQuickLabelModalOpen] = useState(false)
+  const [labelsSidebarSearchText, setLabelsSidebarSearchText] = useState('')
   const [quickLabelUndoStack, setQuickLabelUndoStack] = useState<Array<{ txId: string; prevLabelId: string | null }>>(
     () => [],
   )
@@ -349,6 +349,17 @@ export function BankingMercuryDragSortTab({
     for (const L of labels) m.set(L.id, L)
     return m
   }, [labels])
+
+  const labelsSidebarSearchNorm = useMemo(() => labelsSidebarSearchText.trim().toLowerCase(), [labelsSidebarSearchText])
+
+  const filteredLabelsForSidebar = useMemo(() => {
+    if (labelsSidebarSearchNorm === '') return labels
+    return labels.filter((L) => {
+      const nm = L.name.toLowerCase()
+      const sc = (L.schedule_c_line ?? '').toLowerCase()
+      return nm.includes(labelsSidebarSearchNorm) || sc.includes(labelsSidebarSearchNorm)
+    })
+  }, [labels, labelsSidebarSearchNorm])
 
   const loadLabels = useCallback(async () => {
     setLabelsLoading(true)
@@ -700,43 +711,44 @@ export function BankingMercuryDragSortTab({
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: 4,
                   flex: '1 1 14rem',
                   minWidth: 0,
                 }}
               >
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Search</span>
                 <input
                   type="search"
                   value={bankingSearchText}
                   onChange={(e) => setBankingSearchText(e.target.value)}
                   autoComplete="off"
-                  placeholder="Counterparty, memo, id, job, person…"
+                  placeholder="Search for counterparty, memo, id, job, person…"
                   aria-label="Search transactions"
                   style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
                 />
               </label>
               <button
                 type="button"
-                title="Quick label transactions one at a time"
+                title="Quick Sort — label transactions one at a time"
                 onClick={() => setQuickLabelModalOpen(true)}
-                aria-label="Open one-at-a-time labeling"
+                aria-label="Quick Sort — label transactions one at a time"
                 style={{
                   flexShrink: 0,
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: 40,
                   minHeight: 38,
-                  padding: 0,
-                  border: '1px solid #d1d5db',
+                  padding: '0.5rem 1rem',
+                  border: '1px solid #1d4ed8',
                   borderRadius: 4,
-                  background: '#fff',
+                  background: '#2563eb',
+                  color: '#fff',
+                  fontWeight: 600,
+                  fontSize: '0.875rem',
                   cursor: 'pointer',
                   boxSizing: 'border-box',
+                  whiteSpace: 'nowrap',
                 }}
               >
-                <ListOrdered size={20} aria-hidden strokeWidth={2} color="#374151" />
+                Quick Sort
               </button>
             </div>
           </div>
@@ -836,7 +848,7 @@ export function BankingMercuryDragSortTab({
                   whiteSpace: 'nowrap',
                 }}
               >
-                help
+                how to drag
               </button>
             </div>
           </div>
@@ -1035,11 +1047,40 @@ export function BankingMercuryDragSortTab({
               {labelsCardsExpanded ? 'Collapse' : 'Expand'}
             </button>
           </div>
+          <label
+            style={{
+              display: 'block',
+              marginBottom: '0.75rem',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            <input
+              type="search"
+              value={labelsSidebarSearchText}
+              onChange={(e) => setLabelsSidebarSearchText(e.target.value)}
+              autoComplete="off"
+              aria-label="Search accounting labels"
+              placeholder="Search labels…"
+              style={{
+                width: '100%',
+                padding: '6px 8px',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                boxSizing: 'border-box',
+                fontSize: '0.875rem',
+              }}
+            />
+          </label>
           <div id="drag-sort-label-cards-region">
             {labelsLoading ? (
               <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading Accounting labels…</div>
+            ) : filteredLabelsForSidebar.length === 0 ? (
+              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                {labelsSidebarSearchNorm === '' ? 'No Accounting labels.' : 'No labels match this search.'}
+              </div>
             ) : (
-              labels.map((L) => {
+              filteredLabelsForSidebar.map((L) => {
                 const stats = bucketStats.byLabel.get(L.id) ?? { count: 0, sum: 0 }
                 return (
                   <LabelDropZone

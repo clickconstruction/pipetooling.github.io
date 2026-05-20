@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import {
   LEDGER_FILTER_EXCLUDE_COUNTERPARTY_PHRASES_MAX,
@@ -12,7 +12,7 @@ export type BankingMercuryAccountingLedgerFilterModalProps = {
   draft: BankingAccountingLedgerFiltersV1
   kindOptions: string[]
   onDraftChange: (next: BankingAccountingLedgerFiltersV1) => void
-  onApply: () => void
+  onApply: (finalDraft: BankingAccountingLedgerFiltersV1) => void
   onCancel: () => void
   onClearAll: () => void
 }
@@ -26,6 +26,13 @@ export function BankingMercuryAccountingLedgerFilterModal({
   onCancel,
   onClearAll,
 }: BankingMercuryAccountingLedgerFilterModalProps) {
+  const [excludeCounterpartyText, setExcludeCounterpartyText] = useState('')
+
+  useEffect(() => {
+    if (!open) return
+    setExcludeCounterpartyText(draft.excludeCounterpartyContains.join('\n'))
+  }, [open, draft.excludeCounterpartyContains])
+
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -62,6 +69,13 @@ export function BankingMercuryAccountingLedgerFilterModal({
     if (checked) next.add(kind)
     else next.delete(kind)
     onDraftChange({ ...draft, kinds: [...next].sort() })
+  }
+
+  const handleApply = () => {
+    onApply({
+      ...draft,
+      excludeCounterpartyContains: normalizeExcludeCounterpartyContainsFromLines(excludeCounterpartyText),
+    })
   }
 
   return (
@@ -191,15 +205,11 @@ export function BankingMercuryAccountingLedgerFilterModal({
               {LEDGER_FILTER_EXCLUDE_COUNTERPARTY_PHRASES_MAX} phrases.
             </p>
             <textarea
-              value={draft.excludeCounterpartyContains.join('\n')}
-              onChange={(e) =>
-                onDraftChange({
-                  ...draft,
-                  excludeCounterpartyContains: normalizeExcludeCounterpartyContainsFromLines(e.target.value),
-                })
-              }
+              value={excludeCounterpartyText}
+              onChange={(e) => setExcludeCounterpartyText(e.target.value)}
               rows={4}
               autoComplete="off"
+              aria-label="Exclude counterparty phrases"
               placeholder="e.g. amazon.com"
               style={{
                 width: '100%',
@@ -286,7 +296,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
           </button>
           <button
             type="button"
-            onClick={onApply}
+            onClick={handleApply}
             style={{
               padding: '0.45rem 0.85rem',
               fontSize: '0.875rem',

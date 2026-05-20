@@ -24,6 +24,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { findEarliestTxLocalityIndex } from '../lib/txLocalityAddressSplit'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
+import { normalizeUrl } from '../lib/projectsForecastStageLineItems'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -261,6 +262,7 @@ type LaborJob = {
   created_at: string | null
   distance_miles?: number | null
   paid_at?: string | null
+  invoice_link?: string | null
   items?: Array<{
     fixture: string
     count: number
@@ -525,6 +527,13 @@ function laborJobSubCost(lj: LaborJob, mileageCost: number, timePerMile: number)
         ? miles * mileageCost
         : 0
   return lineTotal + driveCost
+}
+
+function resolvedLaborInvoiceLink(raw: string): string | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  const normalized = normalizeUrl(trimmed)
+  return normalized || null
 }
 
 /** Sub Labor modal crew search: empty query leaves list unchanged. */
@@ -992,6 +1001,10 @@ export default function Jobs() {
   const [laborModalInternalSubsOpen, setLaborModalInternalSubsOpen] = useState(false)
   const [laborModalOfficeTeamOpen, setLaborModalOfficeTeamOpen] = useState(false)
   const [laborCrewSearch, setLaborCrewSearch] = useState('')
+  const [laborInvoiceLinkExpanded, setLaborInvoiceLinkExpanded] = useState(false)
+  const [laborInvoiceLinkDraft, setLaborInvoiceLinkDraft] = useState('')
+  const [laborInvoiceLinkCommitted, setLaborInvoiceLinkCommitted] = useState('')
+  const [laborInvoiceLinkSaving, setLaborInvoiceLinkSaving] = useState(false)
   const [driveSettingsOpen, setDriveSettingsOpen] = useState(false)
   const [driveMileageCost, setDriveMileageCost] = useState<number | null>(null)
   const [driveTimePerMile, setDriveTimePerMile] = useState<number | null>(null)
@@ -2390,7 +2403,7 @@ export default function Jobs() {
     setError(null)
     const { data: jobs, error: jobsErr } = await supabase
       .from('people_labor_jobs')
-      .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles')
+      .select('id, assigned_to_name, address, job_number, labor_rate, job_date, created_at, distance_miles, invoice_link')
       .order('created_at', { ascending: false })
     if (jobsErr) {
       setError(jobsErr.message)
@@ -2936,6 +2949,7 @@ export default function Jobs() {
         labor_rate: firstRowRate,
         job_date: laborDate.trim() ? laborDate.trim() : null,
         distance_miles: parseFloat(laborDistance) || 0,
+        invoice_link: resolvedLaborInvoiceLink(laborInvoiceLinkCommitted),
       })
       .select('id')
       .single()
@@ -3083,6 +3097,9 @@ export default function Jobs() {
     setLaborModalInternalSubsOpen(false)
     setLaborModalOfficeTeamOpen(false)
     setLaborCrewSearch('')
+    setLaborInvoiceLinkExpanded(false)
+    setLaborInvoiceLinkDraft('')
+    setLaborInvoiceLinkCommitted('')
   }
 
   function closeLaborModal() {
@@ -3129,7 +3146,42 @@ export default function Jobs() {
         ? rows
         : [{ id: crypto.randomUUID(), fixture: '', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: defaultRate, direct_labor_amount: null }],
     )
+    const invoiceLink = job.invoice_link?.trim() ?? ''
+    setLaborInvoiceLinkCommitted(invoiceLink)
+    setLaborInvoiceLinkDraft(invoiceLink)
+    setLaborInvoiceLinkExpanded(false)
     setError(null)
+  }
+
+  async function saveLaborInvoiceLinkDraft() {
+    const resolved = resolvedLaborInvoiceLink(laborInvoiceLinkDraft)
+    const committedDisplay = resolved ?? ''
+    setLaborInvoiceLinkCommitted(committedDisplay)
+    setLaborInvoiceLinkDraft(committedDisplay)
+    setLaborInvoiceLinkExpanded(false)
+    if (!editingLaborJob) return
+    setLaborInvoiceLinkSaving(true)
+    setError(null)
+    const { error: err } = await supabase
+      .from('people_labor_jobs')
+      .update({ invoice_link: resolved })
+      .eq('id', editingLaborJob.id)
+    setLaborInvoiceLinkSaving(false)
+    if (err) {
+      setError(err.message)
+      setLaborInvoiceLinkCommitted(editingLaborJob.invoice_link?.trim() ?? '')
+      setLaborInvoiceLinkDraft(editingLaborJob.invoice_link?.trim() ?? '')
+      return
+    }
+    setEditingLaborJob((prev) => (prev ? { ...prev, invoice_link: resolved } : prev))
+    setLaborJobs((prev) =>
+      prev.map((j) => (j.id === editingLaborJob.id ? { ...j, invoice_link: resolved } : j)),
+    )
+  }
+
+  function cancelLaborInvoiceLinkDraft() {
+    setLaborInvoiceLinkDraft(laborInvoiceLinkCommitted)
+    setLaborInvoiceLinkExpanded(false)
   }
 
   function openNewLaborJob() {
@@ -3216,6 +3268,7 @@ export default function Jobs() {
         labor_rate: firstRowRate,
         job_date: laborDate.trim() ? laborDate.trim() : null,
         distance_miles: parseFloat(laborDistance) || 0,
+        invoice_link: resolvedLaborInvoiceLink(laborInvoiceLinkCommitted),
       })
       .eq('id', editingLaborJob.id)
     if (jobErr) {
@@ -9470,6 +9523,21 @@ ${totalsHtml}
                                   <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 500 }}>
                                     Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)}
                                   </p>
+                                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Invoice link</h4>
+                                  {job.invoice_link?.trim() ? (
+                                    <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
+                                      <a
+                                        href={normalizeUrl(job.invoice_link)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ color: '#2563eb', textDecoration: 'none' }}
+                                      >
+                                        {job.invoice_link}
+                                      </a>
+                                    </p>
+                                  ) : (
+                                    <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#9ca3af' }}>No invoice linked.</p>
+                                  )}
                                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Specific Work (Line Items)</h4>
                                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
@@ -13519,12 +13587,46 @@ ${totalsHtml}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'flex-end',
+                          justifyContent: 'space-between',
                           flexWrap: 'wrap',
                           gap: '0.75rem',
                           marginTop: '0.75rem',
                         }}
                       >
+                        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', minWidth: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (laborInvoiceLinkExpanded) {
+                                cancelLaborInvoiceLinkDraft()
+                              } else {
+                                setLaborInvoiceLinkDraft(laborInvoiceLinkCommitted)
+                                setLaborInvoiceLinkExpanded(true)
+                              }
+                            }}
+                            style={{
+                              padding: '0.5rem 1.25rem',
+                              background: laborInvoiceLinkExpanded ? '#e5e7eb' : '#fff',
+                              color: '#374151',
+                              border: '1px solid #d1d5db',
+                              borderRadius: 6,
+                              fontSize: '0.875rem',
+                              fontWeight: 500,
+                              cursor: 'pointer',
+                              flexShrink: 0,
+                            }}
+                          >
+                            Link Invoice
+                          </button>
+                          {!laborInvoiceLinkExpanded && laborInvoiceLinkCommitted.trim() ? (
+                            <span
+                              style={{ fontSize: '0.8125rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'min(100%, 280px)' }}
+                              title={laborInvoiceLinkCommitted}
+                            >
+                              Linked
+                            </span>
+                          ) : null}
+                        </div>
                         <button
                           type="button"
                           onClick={addLaborFixtureRow}
@@ -13543,6 +13645,63 @@ ${totalsHtml}
                           Add line item
                         </button>
                       </div>
+                      {laborInvoiceLinkExpanded ? (
+                        <div
+                          style={{
+                            marginTop: '0.75rem',
+                            padding: '0.75rem',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 6,
+                            background: '#f9fafb',
+                          }}
+                        >
+                          <label htmlFor="labor-invoice-link" style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>
+                            Invoice link
+                          </label>
+                          <input
+                            id="labor-invoice-link"
+                            type="url"
+                            value={laborInvoiceLinkDraft}
+                            onChange={(e) => setLaborInvoiceLinkDraft(e.target.value)}
+                            placeholder="https://..."
+                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.75rem' }}
+                          />
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                            <button
+                              type="button"
+                              onClick={cancelLaborInvoiceLinkDraft}
+                              disabled={laborInvoiceLinkSaving}
+                              style={{
+                                padding: '0.35rem 0.75rem',
+                                background: '#f3f4f6',
+                                color: '#374151',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 4,
+                                cursor: laborInvoiceLinkSaving ? 'not-allowed' : 'pointer',
+                                fontSize: '0.875rem',
+                              }}
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void saveLaborInvoiceLinkDraft()}
+                              disabled={laborInvoiceLinkSaving}
+                              style={{
+                                padding: '0.35rem 0.75rem',
+                                background: '#3b82f6',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: laborInvoiceLinkSaving ? 'not-allowed' : 'pointer',
+                                fontSize: '0.875rem',
+                              }}
+                            >
+                              {laborInvoiceLinkSaving ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
                     </>
                   )
                 })()}

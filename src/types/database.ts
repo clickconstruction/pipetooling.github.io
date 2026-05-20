@@ -5731,6 +5731,7 @@ export type Database = {
           created_at: string | null
           distance_miles: number | null
           id: string
+          invoice_link: string | null
           job_date: string | null
           job_number: string | null
           labor_rate: number | null
@@ -5743,6 +5744,7 @@ export type Database = {
           created_at?: string | null
           distance_miles?: number | null
           id?: string
+          invoice_link?: string | null
           job_date?: string | null
           job_number?: string | null
           labor_rate?: number | null
@@ -5755,6 +5757,7 @@ export type Database = {
           created_at?: string | null
           distance_miles?: number | null
           id?: string
+          invoice_link?: string | null
           job_date?: string | null
           job_number?: string | null
           labor_rate?: number | null

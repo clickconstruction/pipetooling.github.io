@@ -131,4 +131,12 @@ describe('bankingAccountingLedgerFilters', () => {
     const out = normalizeExcludeCounterpartyContainsFromLines(`a\nb\na\n${many}`)
     expect(out.length).toBe(50)
   })
+
+  it('normalizeExcludeCounterpartyContainsFromLines keeps trailing newline phrase at apply', () => {
+    expect(normalizeExcludeCounterpartyContainsFromLines('amazon\n')).toEqual(['amazon'])
+  })
+
+  it('normalizeExcludeCounterpartyContainsFromLines drops blank lines between phrases', () => {
+    expect(normalizeExcludeCounterpartyContainsFromLines('amazon\n\npaypal')).toEqual(['amazon', 'paypal'])
+  })
 })
