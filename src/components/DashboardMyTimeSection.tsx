@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { displayNameFromAuthUser } from '../lib/displayNameFromAuthUser'
 import { useAuth } from '../hooks/useAuth'
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { DashboardMyTimeDayEditorModal } from './DashboardMyTimeDayEditorModal'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
@@ -629,19 +630,24 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
     void loadData()
   }, [loadData])
 
-  useEffect(() => {
-    if (!userId) return
-    const channel = supabase
-      .channel('dashboard-my-time-clock-sessions')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, (payload) => {
-        const row = payload.new as { user_id?: string } | null
-        if (row?.user_id === userId) void loadData()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [userId, loadData])
+  // Server-side filter so we only receive this user's clock_sessions events.
+  // Previously we filtered the payload client-side which still required every
+  // user's row event to land in the browser.
+  const myTimeFilters = useMemo(
+    () => (userId
+      ? [{ event: '*' as const, schema: 'public', table: 'clock_sessions', filter: `user_id=eq.${userId}` }]
+      : []),
+    [userId],
+  )
+  useRealtimeChannel(
+    !!userId,
+    'dashboard-my-time-clock-sessions',
+    myTimeFilters,
+    () => {
+      void loadData()
+    },
+    { debounceMs: 500 },
+  )
 
   const handleToggleLastWeek = () => setShowLastWeek((prev) => !prev)
 

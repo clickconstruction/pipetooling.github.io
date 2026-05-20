@@ -142,6 +142,7 @@
 5. **Wrap Supabase calls** — Use `withSupabaseRetry()` from `@/utils/errorHandling`
 6. **Test all 8 roles** — dev, master, assistant, subcontractor, helpers (UI label **Helper**), estimator, primary, superintendent
 7. **Company time zone** — Use **`APP_CALENDAR_TZ`** from [`src/utils/dateUtils.ts`](./src/utils/dateUtils.ts) (or Edge [`_shared/appTimeZone.ts`](./supabase/functions/_shared/appTimeZone.ts)); do not introduce new `'America/Chicago'` string literals in app/Edge TS (see [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md), `npm run check:timezone`).
+8. **Realtime subscriptions** — Use **`useRealtimeChannel`** from [`src/hooks/useRealtimeChannel.ts`](./src/hooks/useRealtimeChannel.ts) for every `postgres_changes` listener; do not call `supabase.channel(...).on('postgres_changes', …)` directly in feature code. Filter rows server-side via the `filter` string, not client-side from the payload. Do not add a table to the **`supabase_realtime`** publication unless a subscriber lands in the same PR. Full rules in [.cursor/rules/supabase-realtime.mdc](./.cursor/rules/supabase-realtime.mdc); background in **`RECENT_FEATURES.md`** v2.454 / Tier 1.
 
 ---
 

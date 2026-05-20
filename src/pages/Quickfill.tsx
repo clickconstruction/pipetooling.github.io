@@ -566,36 +566,11 @@ function QuickfillPage() {
     }
   }, [])
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('quickfill-app-settings')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings' },
-        (payload) => {
-          const row = payload.new as { key?: string; value_text?: string | null; value_num?: number | null } | null
-          if (!row?.key) return
-          if (row.key === APP_SETTINGS_KEY_QUICKFILL_HIDDEN) {
-            setHiddenSectionIds(parseHiddenSectionIdsFromValueText(row.value_text))
-          } else if (row.key === APP_SETTINGS_KEY_QUICKFILL_MIN_HCP && row.value_num != null) {
-            const n = Number(row.value_num)
-            if (Number.isFinite(n) && n >= 0) setJobsBillingMinHcp(Math.floor(n))
-          } else if (row.key === APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER) {
-            setSectionOrderIds(normalizeQuickfillSectionOrderFromValueText(row.value_text))
-          } else if (row.key === APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS) {
-            const next = parseQuickfillSectionBannersFromValueText(row.value_text)
-            setSectionBanners(next)
-            setSectionBannerDrafts(
-              Object.fromEntries(SECTIONS.map((s) => [s.sectionId, next[s.sectionId] ?? ''] as const)),
-            )
-          }
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [])
+  // app_settings is not part of the supabase_realtime publication, so the
+  // previous postgres_changes listener here was always a no-op on the wire.
+  // Layout settings are read once on mount above; navigation and a hard
+  // reload pick up cross-tab edits. Removing the dead listener is a Tier 1
+  // realtime cleanup item (see RECENT_FEATURES v2.560).
 
   function isSectionVisible(sectionId: string): boolean {
     return !hiddenSectionIds.has(sectionId)

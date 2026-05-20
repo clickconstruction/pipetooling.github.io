@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
@@ -1744,39 +1745,38 @@ export default function Dashboard() {
     loadEstimatorRequests()
   }, [authUser?.id, estimatorInboxEligible, loadEstimatorRequests])
 
-  useEffect(() => {
-    if (!authUser?.id || !estimatorInboxEligible) return
-    const channel = supabase
-      .channel('dashboard-estimator-requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'estimator_requests' }, () => {
-        loadEstimatorRequests()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, estimatorInboxEligible, loadEstimatorRequests])
+  const dashboardEstimatorEnabled = !!authUser?.id && estimatorInboxEligible
+  const dashboardEstimatorRequestFilters = useMemo(
+    () => [{ event: '*' as const, schema: 'public', table: 'estimator_requests' }],
+    [],
+  )
+  useRealtimeChannel(
+    dashboardEstimatorEnabled,
+    'dashboard-estimator-requests',
+    dashboardEstimatorRequestFilters,
+    () => {
+      loadEstimatorRequests()
+    },
+    { debounceMs: 400 },
+  )
 
-  useEffect(() => {
-    if (!authUser?.id || !estimatorInboxEligible) return
-    const channel = supabase
-      .channel('dashboard-estimator-request-notes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'estimator_request_notes' },
-        (payload) => {
-          const rid = (payload.new as { request_id?: string } | null)?.request_id
-          if (rid && expandedEstimatorRequestIdRef.current === rid) {
-            void loadEstimatorNotesForRequest(rid)
-          }
-          loadEstimatorRequests()
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, estimatorInboxEligible, loadEstimatorNotesForRequest, loadEstimatorRequests])
+  // See useEstimatorInbox: drop the per-payload optimization in favour of "if
+  // expanded, reload its notes". Volume on estimator_request_notes is low.
+  const dashboardEstimatorNoteFilters = useMemo(
+    () => [{ event: 'INSERT' as const, schema: 'public', table: 'estimator_request_notes' }],
+    [],
+  )
+  useRealtimeChannel(
+    dashboardEstimatorEnabled,
+    'dashboard-estimator-request-notes',
+    dashboardEstimatorNoteFilters,
+    () => {
+      const expandedId = expandedEstimatorRequestIdRef.current
+      if (expandedId) void loadEstimatorNotesForRequest(expandedId)
+      loadEstimatorRequests()
+    },
+    { debounceMs: 400 },
+  )
 
   useEffect(() => {
     if (!authUser?.id) {
@@ -1856,32 +1856,10 @@ export default function Dashboard() {
     }
   }, [authUser?.id, role])
 
-  useEffect(() => {
-    if (!authUser?.id || (role !== 'dev' && role !== 'master_technician' && role !== 'assistant')) return
-    const channel = supabase
-      .channel('user-dashboard-preferences')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_dashboard_preferences',
-          filter: `user_id=eq.${authUser.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === 'DELETE' || !payload.new) {
-            setQuickButtonsPlacement('top')
-            return
-          }
-          const next = (payload.new as { quick_buttons_placement?: string }).quick_buttons_placement
-          if (next === 'with_pins' || next === 'top') setQuickButtonsPlacement(next)
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, role])
+  // user_dashboard_preferences was dropped from supabase_realtime as part of
+  // the Tier 1 mitigation (see migration 20260520172210). Cross-tab sync of
+  // quick_buttons_placement is gone, but the value is rarely changed and the
+  // initial fetch elsewhere in this file covers first-paint. Listener removed.
 
   useEffect(() => {
     return () => {
@@ -1913,42 +1891,31 @@ export default function Dashboard() {
     }
   }, [authUser?.id])
 
-  useEffect(() => {
-    if (!authUser?.id) return
-    const channel = supabase
-      .channel('user-pinned-tabs')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'user_pinned_tabs',
-        filter: `user_id=eq.${authUser.id}`,
-      }, () => { refreshPinned() })
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
-  }, [authUser?.id])
+  // user_pinned_tabs was dropped from supabase_realtime as part of the Tier 1
+  // mitigation (see migration 20260520172210). The window-focus and
+  // pipetooling-pins-changed listeners above already trigger refreshPinned()
+  // on the surfaces that matter; cross-tab realtime sync was nice-to-have.
 
-  // Realtime: refresh financial pin totals when underlying data changes
-  useEffect(() => {
-    if (!authUser?.id || (!hasBilledPin && !hasSupplyHousesAPPin && !hasSubLaborDuePin)) return
-    const channel = supabase
-      .channel('dashboard-financial-pins')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger' }, scheduleFinancialPinsRefreshFromRealtime)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'jobs_ledger_invoices' }, scheduleFinancialPinsRefreshFromRealtime)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'supply_house_invoices' }, scheduleFinancialPinsRefreshFromRealtime)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_jobs' }, scheduleFinancialPinsRefreshFromRealtime)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_payments' }, scheduleFinancialPinsRefreshFromRealtime)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_labor_job_items' }, scheduleFinancialPinsRefreshFromRealtime)
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [
-    authUser?.id,
-    hasBilledPin,
-    hasSupplyHousesAPPin,
-    hasSubLaborDuePin,
-    scheduleFinancialPinsRefreshFromRealtime,
-  ])
+  // Realtime: refresh financial pin totals when underlying data changes.
+  // Only jobs_ledger_invoices is in supabase_realtime today. If
+  // supply_house_invoices, people_labor_jobs, people_labor_job_payments,
+  // people_labor_job_items, or jobs_ledger are added to the publication
+  // later, add them here in the same PR per
+  // .cursor/rules/supabase-realtime.mdc — subscribing to a non-published
+  // table is a silent no-op and misleads future readers.
+  const dashboardFinancialPinsEnabled =
+    !!authUser?.id && (hasBilledPin || hasSupplyHousesAPPin || hasSubLaborDuePin)
+  const dashboardFinancialPinsFilters = useMemo(
+    () => [{ event: '*' as const, schema: 'public', table: 'jobs_ledger_invoices' }],
+    [],
+  )
+  useRealtimeChannel(
+    dashboardFinancialPinsEnabled,
+    'dashboard-financial-pins',
+    dashboardFinancialPinsFilters,
+    () => scheduleFinancialPinsRefreshFromRealtime(),
+    { debounceMs: 500 },
+  )
 
   useEffect(() => {
     if (!authUser?.id) return
@@ -2411,19 +2378,21 @@ export default function Dashboard() {
     })
   }, [myBids])
 
-  useEffect(() => {
-    const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
-    if (!showRecent) return
-    const channel = supabase
-      .channel('dashboard-reports-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reports' }, () => {
-        loadRecentReportsRef.current?.()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [role, isReportEnabledOnlyUser])
+  const dashboardReportsEnabled =
+    role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+  const dashboardReportsFilters = useMemo(
+    () => [{ event: '*' as const, schema: 'public', table: 'reports' }],
+    [],
+  )
+  useRealtimeChannel(
+    dashboardReportsEnabled,
+    'dashboard-reports-changes',
+    dashboardReportsFilters,
+    () => {
+      loadRecentReportsRef.current?.()
+    },
+    { debounceMs: 500 },
+  )
 
   useEffect(() => {
     const visible = recentReports.filter((r) => !hiddenReportIds.has(r.id))

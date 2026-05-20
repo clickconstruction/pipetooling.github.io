@@ -12,7 +12,7 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { useMercuryOrgNotesByTxId } from '../hooks/useMercuryOrgNotesByTxId'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -996,7 +996,6 @@ function BankingMercuryTable({
 
 export default function Banking() {
   const { user } = useAuth()
-  const isDocVisible = useDocumentVisibility()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const { showToast } = useToastContext()
@@ -1034,7 +1033,6 @@ export default function Banking() {
   const [jobLabelByIdBanking, setJobLabelByIdBanking] = useState<Record<string, string>>({})
   const [usersSelectOptions, setUsersSelectOptions] = useState<SearchableSelectOption[]>([])
   const [allocModalTx, setAllocModalTx] = useState<MercuryTxRow | null>(null)
-  const bankingMercuryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isDevBanking = myRole === 'dev'
   const canAccessBanking = myRole === 'dev' || myRole === 'assistant' || myRole === 'master_technician'
@@ -1267,36 +1265,19 @@ export default function Banking() {
     void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])
   }, [myRole, loadRows, loadNicknames, loadDebitCardNicknames])
 
-  useEffect(() => {
-    if (!canAccessBanking || !user?.id) return
-
-    const scheduleRefetch = () => {
-      if (!isDocVisible) return
-      if (bankingMercuryDebounceRef.current) clearTimeout(bankingMercuryDebounceRef.current)
-      bankingMercuryDebounceRef.current = setTimeout(() => {
-        bankingMercuryDebounceRef.current = null
-        if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
-        void loadRows({ silent: true })
-      }, 800)
-    }
-
-    const channel = supabase
-      .channel(`banking-mercury-transactions-${user.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'mercury_transactions' },
-        scheduleRefetch,
-      )
-      .subscribe()
-
-    return () => {
-      if (bankingMercuryDebounceRef.current) {
-        clearTimeout(bankingMercuryDebounceRef.current)
-        bankingMercuryDebounceRef.current = null
-      }
-      void supabase.removeChannel(channel)
-    }
-  }, [canAccessBanking, user?.id, loadRows, isDocVisible])
+  const bankingMercuryFilters = useMemo(
+    () => [{ event: '*' as const, schema: 'public', table: 'mercury_transactions' }],
+    [],
+  )
+  useRealtimeChannel(
+    !!canAccessBanking && !!user?.id,
+    `banking-mercury-transactions-${user?.id ?? 'none'}`,
+    bankingMercuryFilters,
+    () => {
+      void loadRows({ silent: true })
+    },
+    { debounceMs: 800 },
+  )
 
   useEffect(() => {
     if (!canAccessBanking) return

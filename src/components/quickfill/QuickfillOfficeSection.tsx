@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
@@ -245,34 +246,33 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     }
   }, [loadOfficeSettings, showToast])
 
-  useEffect(() => {
-    const channel = supabase.channel(`quickfill-office-${variant}-sync`)
-    channel.on(
-      'postgres_changes',
-      { event: '*', schema: 'public', table: 'app_settings' },
-      (payload) => {
-        const key =
-          (payload.new as { key?: string } | null)?.key ?? (payload.old as { key?: string } | null)?.key
-        if (!key) return
-        if (key === itemsKey || (!isArriving && key === doneKey)) {
-          void loadOfficeSettings()
-        }
-      },
-    )
-    if (isArriving) {
-      channel.on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'quickfill_office_arriving_daily_checks' },
-        () => {
-          void loadOfficeSettings()
-        },
-      )
-    }
-    channel.subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [loadOfficeSettings, itemsKey, doneKey, variant, isArriving])
+  // app_settings is not in the supabase_realtime publication, so the previous
+  // listener on this table was always a no-op. Office layout settings are
+  // refetched via the existing focus/visibility handler below; the realtime
+  // channel here is now scoped to quickfill_office_arriving_daily_checks (the
+  // one published table this section actually receives events for).
+  const officeSyncFilters = useMemo(
+    () =>
+      isArriving
+        ? [
+            {
+              event: '*' as const,
+              schema: 'public',
+              table: 'quickfill_office_arriving_daily_checks',
+            },
+          ]
+        : [],
+    [isArriving],
+  )
+  useRealtimeChannel(
+    isArriving,
+    `quickfill-office-${variant}-sync`,
+    officeSyncFilters,
+    () => {
+      void loadOfficeSettings()
+    },
+    { debounceMs: 400 },
+  )
 
   useEffect(() => {
     if (!isArriving) return

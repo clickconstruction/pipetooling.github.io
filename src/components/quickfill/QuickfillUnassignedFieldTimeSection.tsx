@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import {
@@ -407,24 +408,23 @@ export function QuickfillUnassignedFieldTimeSection() {
     void loadAll()
   }, [loadAll])
 
-  useEffect(() => {
-    if (!canAccess) return
-    const ch = supabase
-      .channel('quickfill-unassigned-field-time')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_crew_jobs' }, () => {
-        void loadAllRef.current()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_crew_bids' }, () => {
-        void loadAllRef.current()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
-        void loadAllRef.current()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(ch)
-    }
-  }, [canAccess])
+  const unassignedFieldTimeFilters = useMemo(
+    () => [
+      { event: '*' as const, schema: 'public', table: 'people_crew_jobs' },
+      { event: '*' as const, schema: 'public', table: 'people_crew_bids' },
+      { event: '*' as const, schema: 'public', table: 'clock_sessions' },
+    ],
+    [],
+  )
+  useRealtimeChannel(
+    canAccess,
+    'quickfill-unassigned-field-time',
+    unassignedFieldTimeFilters,
+    () => {
+      void loadAllRef.current()
+    },
+    { debounceMs: 500 },
+  )
 
   const payConfigForHelper: PeopleHoursUnallocatedPayConfigInput[] = useMemo(
     () =>

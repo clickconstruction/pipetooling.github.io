@@ -10,6 +10,7 @@ import { getBillingStripeModePref, stripeModeInvokeBody, type BillingStripeModeP
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { supabase } from '../../lib/supabase'
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { matchedFixtureIdsForFieldQueue } from '../../lib/fieldQueueFixtureStripeLineMatch'
 import {
   parseStripeInvoiceDetailsResponse,
@@ -530,33 +531,32 @@ export default function DashboardFieldCollectPaymentQueue({
     void load()
   }, [load])
 
+  const fieldCollectPaymentFilters = useMemo(
+    () => [
+      { event: '*' as const, schema: 'public', table: 'job_collect_payment_flows' },
+      { event: '*' as const, schema: 'public', table: 'jobs_ledger_invoices' },
+      { event: '*' as const, schema: 'public', table: 'jobs_ledger_fixtures' },
+    ],
+    [],
+  )
+  useRealtimeChannel(
+    true,
+    `dashboard-field-collect-payment-queue-${realtimeChannelId}`,
+    fieldCollectPaymentFilters,
+    () => scheduleReload(),
+    { debounceMs: 400 },
+  )
+
+  // Cancel the local debounce timer on unmount; useRealtimeChannel handles
+  // its own debounce/teardown internally.
   useEffect(() => {
-    const ch = supabase
-      .channel(`dashboard-field-collect-payment-queue-${realtimeChannelId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'job_collect_payment_flows' },
-        () => scheduleReload(),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'jobs_ledger_invoices' },
-        () => scheduleReload(),
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'jobs_ledger_fixtures' },
-        () => scheduleReload(),
-      )
-      .subscribe()
     return () => {
       if (debounceTimerRef.current) {
         clearTimeout(debounceTimerRef.current)
         debounceTimerRef.current = null
       }
-      void supabase.removeChannel(ch)
     }
-  }, [realtimeChannelId, scheduleReload])
+  }, [])
 
   useEffect(() => {
     const onVis = () => {

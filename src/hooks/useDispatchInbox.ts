@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from './useAuth'
+import { useRealtimeChannel } from './useRealtimeChannel'
 import type {
   DispatchInboxDismissedRow,
   DispatchInboxRow,
@@ -239,39 +240,38 @@ export function useDispatchInbox() {
     loadDispatchRequests()
   }, [authUser?.id, dispatchInboxEligible, loadDispatchRequests])
 
-  useEffect(() => {
-    if (!authUser?.id || !dispatchInboxEligible) return
-    const channel = supabase
-      .channel('dispatch-inbox-requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'dispatch_requests' }, () => {
-        loadDispatchRequests()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, dispatchInboxEligible, loadDispatchRequests])
+  const dispatchInboxEnabled = !!authUser?.id && dispatchInboxEligible
+  const dispatchRequestsFilters = useMemo(
+    () => [{ event: '*' as const, schema: 'public', table: 'dispatch_requests' }],
+    [],
+  )
+  useRealtimeChannel(
+    dispatchInboxEnabled,
+    'dispatch-inbox-requests',
+    dispatchRequestsFilters,
+    () => {
+      loadDispatchRequests()
+    },
+    { debounceMs: 400 },
+  )
 
-  useEffect(() => {
-    if (!authUser?.id || !dispatchInboxEligible) return
-    const channel = supabase
-      .channel('dispatch-inbox-notes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'dispatch_request_notes' },
-        (payload) => {
-          const rid = (payload.new as { request_id?: string } | null)?.request_id
-          if (rid && expandedDispatchRequestIdRef.current === rid) {
-            void loadDispatchNotesForRequest(rid)
-          }
-          loadDispatchRequests()
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, dispatchInboxEligible, loadDispatchNotesForRequest, loadDispatchRequests])
+  // See useEstimatorInbox: we drop the per-payload optimization in favour of a
+  // simple "if expanded, reload its notes" strategy. Volume is low.
+  const dispatchNotesFilters = useMemo(
+    () => [{ event: 'INSERT' as const, schema: 'public', table: 'dispatch_request_notes' }],
+    [],
+  )
+  useRealtimeChannel(
+    dispatchInboxEnabled,
+    'dispatch-inbox-notes',
+    dispatchNotesFilters,
+    () => {
+      const expandedId = expandedDispatchRequestIdRef.current
+      if (expandedId) void loadDispatchNotesForRequest(expandedId)
+      loadDispatchRequests()
+    },
+    { debounceMs: 400 },
+  )
 
   function toggleExpandDispatchRequest(requestId: string) {
     setExpandedDispatchRequestId((prev) => (prev === requestId ? null : requestId))

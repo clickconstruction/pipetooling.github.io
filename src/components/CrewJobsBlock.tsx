@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDateWithRelativeLabel } from '../lib/format'
 import { useAuth } from '../hooks/useAuth'
+import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { loadTeamLaborData, type TeamLaborRow } from '../utils/teamLabor'
 import {
   fetchApprovedClosedClockSessionsForJobLedger,
@@ -483,36 +484,21 @@ export function CrewJobsBlock({
     if (canAccess || canEditProp) loadCrewJobs(crewJobsDate)
   }, [canAccess, canEditProp, crewJobsDate])
 
-  useEffect(() => {
-    if (!(canAccess || canEditProp)) return
-    const dateFilter = crewJobsDate
-    const channel = supabase
-      .channel(`crew-jobs-block-${dateFilter}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'people_crew_jobs',
-          filter: `work_date=eq.${dateFilter}`,
-        },
-        () => refreshCrewFromRealtimeRef.current()
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'people_crew_bids',
-          filter: `work_date=eq.${dateFilter}`,
-        },
-        () => refreshCrewFromRealtimeRef.current()
-      )
-      .subscribe()
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [canAccess, canEditProp, crewJobsDate])
+  const crewJobsChannelEnabled = !!(canAccess || canEditProp)
+  const crewJobsChannelFilters = useMemo(
+    () => [
+      { event: '*' as const, schema: 'public', table: 'people_crew_jobs', filter: `work_date=eq.${crewJobsDate}` },
+      { event: '*' as const, schema: 'public', table: 'people_crew_bids', filter: `work_date=eq.${crewJobsDate}` },
+    ],
+    [crewJobsDate],
+  )
+  useRealtimeChannel(
+    crewJobsChannelEnabled,
+    `crew-jobs-block-${crewJobsDate}`,
+    crewJobsChannelFilters,
+    () => refreshCrewFromRealtimeRef.current(),
+    { debounceMs: 400 },
+  )
 
   useEffect(() => {
     if (canAccess || canEditProp) doLoadTeamLaborData()

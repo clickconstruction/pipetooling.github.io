@@ -436,30 +436,9 @@ export default function JobTally() {
     }
   }, [authUser?.id])
 
-  useEffect(() => {
-    const channel = supabase
-      .channel('job-tally-app-settings')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'app_settings' },
-        (payload) => {
-          const keyFromNew = (payload.new as { key?: string } | null)?.key
-          const keyFromOld = (payload.old as { key?: string } | null)?.key
-          const key = keyFromNew ?? keyFromOld
-          if (key !== APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD) return
-          if (payload.eventType === 'DELETE') {
-            setTallyGlobalMinPostedYmd(null)
-            return
-          }
-          const vt = (payload.new as { value_text?: string | null }).value_text
-          setTallyGlobalMinPostedYmd(normalizeJobTallyMinPostedYmd(vt ?? null))
-        },
-      )
-      .subscribe()
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [])
+  // app_settings is not in the supabase_realtime publication, so this
+  // listener was always a no-op. The min-posted YMD is read once on mount;
+  // a route reload picks up cross-tab changes. Removed in Tier 1 cleanup.
 
   useEffect(() => {
     const t = searchParams.get('tab')

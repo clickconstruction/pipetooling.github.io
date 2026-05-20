@@ -1,0 +1,29 @@
+---
+description: Always use useRealtimeChannel for postgres_changes; do not add tables to supabase_realtime without a subscriber in the same PR.
+alwaysApply: true
+---
+
+# Supabase Realtime — client subscription rules
+
+## Subscribing from the client
+
+- **Use [`src/hooks/useRealtimeChannel.ts`](../../src/hooks/useRealtimeChannel.ts)** for every `postgres_changes` subscription. The hook bundles the four required mitigations from `RECENT_FEATURES` v2.454 / Tier 1: debounce, document-visibility gate, global epoch dep (drops channels after long hidden intervals via [`src/contexts/RealtimeLifecycleContext.tsx`](../../src/contexts/RealtimeLifecycleContext.tsx)), and a clean `removeChannel` cleanup.
+- **Filter at the server.** Pass a Postgres-style `filter` string (e.g. `user_id=eq.<uuid>`, `id=in.(a,b,c)`, `rejected_at=not.is.null`). Filtering rows client-side from the payload is forbidden — the row already crossed the wire. Realtime supports a single column filter per subscription; if you need a compound predicate, pick the most selective column and accept that the debounced refetch will read the full state.
+- **Do not call `supabase.channel(...).on('postgres_changes', …)` directly** in feature code. The only acceptable use of the raw API is inside this repo's shared infrastructure (currently just `useRealtimeChannel` itself and the lifecycle provider); a new direct call requires explicit justification in the PR description and must still implement debounce + visibility gate + server-side filter + `removeChannel` cleanup.
+
+## Adding tables to the publication
+
+- **Do not** add a table to `supabase_realtime` (`ALTER PUBLICATION supabase_realtime ADD TABLE …`) unless a `useRealtimeChannel` subscriber for that table lands in the same PR. Tables in the publication that nobody listens to are pure wire waste — that was the source of the Tier 1 cleanup migration.
+- **Drop dead listeners** when a table is removed from the publication. Subscribing to a non-published table is a silent no-op that misleads future readers.
+
+## Pattern reminder
+
+```ts
+const filters = useMemo(
+  () => [{ event: '*' as const, schema: 'public', table: 'clock_sessions', filter: `user_id=eq.${userId}` }],
+  [userId],
+)
+useRealtimeChannel(!!userId, `feature-name-${userId}`, filters, () => { void refresh() }, { debounceMs: 400 })
+```
+
+The `enabled` flag should encode every gate (auth, role, prerequisite data); the channel name should include any keyed scoping so subscriptions don't clash across mounts.

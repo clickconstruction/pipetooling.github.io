@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useUpdateFocusOpenerBridge } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { useLedgerDisplayPrefixes } from '../../contexts/LedgerDisplayPrefixContext'
 import {
@@ -307,34 +308,30 @@ export default function DashboardJobModeCard({ userId, onLeaveReport }: Props) {
     void reload()
   }, [reload])
 
-  // Realtime: refresh when this user's clock_sessions or job_schedule_blocks change.
-  useEffect(() => {
-    if (!userId) return
-    const channel = supabase
-      .channel(`dashboard-job-mode-${userId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, (payload) => {
-        const row =
-          (payload.new as { user_id?: string } | null) ??
-          (payload.old as { user_id?: string } | null)
-        if (row?.user_id === userId) void reload()
-      })
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'job_schedule_blocks' },
-        (payload) => {
-          const row =
-            (payload.new as { assignee_user_id?: string; work_date?: string } | null) ??
-            (payload.old as { assignee_user_id?: string; work_date?: string } | null)
-          if (row?.assignee_user_id !== userId) return
-          if (row?.work_date && row.work_date !== workDateYmd) return
-          void reload()
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [userId, workDateYmd, reload])
+  // Realtime: refresh when this user's clock_sessions or job_schedule_blocks
+  // change. Realtime only supports a single column filter per subscription, so
+  // we scope schedule-block events to this user's assignee_user_id and accept
+  // that other-day rows still trigger a refetch (which is fine — reload() reads
+  // the current day's rows). clock_sessions is filtered to the user.
+  const jobModeFilters = useMemo(
+    () =>
+      userId
+        ? [
+            { event: '*' as const, schema: 'public', table: 'clock_sessions', filter: `user_id=eq.${userId}` },
+            { event: '*' as const, schema: 'public', table: 'job_schedule_blocks', filter: `assignee_user_id=eq.${userId}` },
+          ]
+        : [],
+    [userId],
+  )
+  useRealtimeChannel(
+    !!userId,
+    `dashboard-job-mode-${userId ?? 'none'}`,
+    jobModeFilters,
+    () => {
+      void reload()
+    },
+    { debounceMs: 400 },
+  )
 
   // Roll the work date over at midnight without a page reload.
   useEffect(() => {

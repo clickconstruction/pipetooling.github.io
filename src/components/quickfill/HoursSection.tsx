@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CLOCK_SESSION_LIST_SELECT } from '../../lib/clockSessionSelect'
 import { approveClockSessions } from '../../lib/approveClockSessions'
 import { supabase } from '../../lib/supabase'
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../../constants/hoursGridFirstCol'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
@@ -362,30 +363,39 @@ export function HoursSection() {
     ]).finally(() => setLoading(false))
   }, [canAccessHours, hoursDateStart, hoursDateEnd])
 
-  useEffect(() => {
-    if (!canAccessHours) return
-    const channel = supabase
-      .channel('quickfill-people-hours-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_hours' }, () => {
-        loadPeopleHoursRef.current?.()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'hours_days_correct' }, () => {
-        loadHoursDaysCorrectRef.current?.()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_crew_jobs' }, () => {
-        loadCrewJobsRef.current?.()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'people_crew_bids' }, () => {
-        loadCrewJobsRef.current?.()
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
-        loadAllClockSessionsRef.current?.()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [canAccessHours])
+  const peopleHoursChannelFilters = useMemo(
+    () => [
+      { event: '*' as const, schema: 'public', table: 'people_hours' },
+      { event: '*' as const, schema: 'public', table: 'hours_days_correct' },
+      { event: '*' as const, schema: 'public', table: 'people_crew_jobs' },
+      { event: '*' as const, schema: 'public', table: 'people_crew_bids' },
+      { event: '*' as const, schema: 'public', table: 'clock_sessions' },
+    ],
+    [],
+  )
+  useRealtimeChannel(
+    canAccessHours,
+    'quickfill-people-hours-changes',
+    peopleHoursChannelFilters,
+    (event) => {
+      switch (event.table) {
+        case 'people_hours':
+          loadPeopleHoursRef.current?.()
+          break
+        case 'hours_days_correct':
+          loadHoursDaysCorrectRef.current?.()
+          break
+        case 'people_crew_jobs':
+        case 'people_crew_bids':
+          loadCrewJobsRef.current?.()
+          break
+        case 'clock_sessions':
+          loadAllClockSessionsRef.current?.()
+          break
+      }
+    },
+    { debounceMs: 500 },
+  )
 
   const showPeopleForHours = Object.keys(payConfig)
     .filter((n) => payConfig[n]?.show_in_hours ?? false)

@@ -7,16 +7,19 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-20 (v2.563)
+last_updated: 2026-05-20 (v2.564)
 estimated_read_time: 30-45 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.563+ (reverse chronological)"
+version_range: "v2.564+ (reverse chronological)"
 
 key_sections:
-  - name: "Latest Version (v2.563)"
-    line: ~1886
+  - name: "Latest Version (v2.564)"
+    line: ~1889
+    description: "Tier 1 Realtime load mitigation — migration `20260520172210_drop_unused_realtime_publication_tables.sql` drops 5 zero-subscriber tables from `supabase_realtime`; new `RealtimeLifecycleProvider` in [`src/contexts/RealtimeLifecycleContext.tsx`](src/contexts/RealtimeLifecycleContext.tsx) drops all channels after 5 min hidden and bumps a `realtimeEpoch` on resume; new [`src/hooks/useRealtimeChannel.ts`](src/hooks/useRealtimeChannel.ts) bundles debounce + visibility gate + epoch dep + `removeChannel`; ~14 unmitigated listeners converted (HoursSection, useDevRejectedSessionsCount, QuickfillUnassignedFieldTimeSection, DashboardMyTimeSection, CrewJobsBlock, QuickfillScheduleSection, usePersonDayScheduleData, DashboardJobModeCard, useEstimatorInbox, useDispatchInbox, DashboardFieldCollectPaymentQueue, Banking, Dashboard estimator/financial-pins/reports). Dead listeners on `app_settings` / `user_dashboard_preferences` / `user_pinned_tabs` removed (those tables are no longer in / never were in the publication). Codified by always-applied Cursor rule `.cursor/rules/supabase-realtime.mdc` and AGENTS.md Critical Constraint #8."
+  - name: "Previous Version (v2.563)"
+    line: ~1953
     description: "Jobs **Sub Labor** **Link Invoice** — optional subcontractor invoice URL on `people_labor_jobs.invoice_link` (migration **`20260520151915`**). New/Edit Sub Labor modal: **Link Invoice** button left of **Add line item** below Specific Work; expands inline URL field with **Save** / **Cancel** (Edit inline Save persists immediately; New commits locally until main **Save**). Expanded Sub Labor table row shows clickable **Invoice link** or *No invoice linked.* Uses shared **`normalizeUrl`** from [`projectsForecastStageLineItems.ts`](src/lib/projectsForecastStageLineItems.ts)."
   - name: "Latest Version (v2.562)"
     line: ~1883
@@ -1884,6 +1887,30 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.564)
+
+**Date**: 2026-05-20
+
+### Tier 1 Realtime load mitigation — publication trim, global hidden-tab gate, useRealtimeChannel
+
+Same crash class as **v2.454** (Realtime tenant terminating with `queue_timeout`, then 522 fan-out across REST). v2.454 narrowed individual subscriptions; this round attacks the structural drivers.
+
+- **Migration `20260520172210_drop_unused_realtime_publication_tables.sql`** drops five tables from `supabase_realtime` that had **zero** client `postgres_changes` subscribers — pure wire waste: `team_leader_assignments`, `user_pinned_tabs`, `user_dashboard_preferences`, `bid_working_board_columns`, `bid_working_board_placements`. Each `DROP TABLE` wrapped in `DO $$ ... EXCEPTION WHEN undefined_object THEN NULL` so the migration is idempotent.
+- **Global hidden-tab gate** — new [`src/contexts/RealtimeLifecycleContext.tsx`](src/contexts/RealtimeLifecycleContext.tsx) (mounted as outermost provider inside `ProtectedRoute` in [`src/App.tsx`](src/App.tsx)) starts a 5-minute timer on `visibilitychange → hidden`; if it fires, all Supabase channels are dropped via `removeAllChannels()` and a **`realtimeEpoch`** counter is bumped on next resume. No more zombie WebSockets in background tabs holding pool slots for hours.
+- **New hook [`src/hooks/useRealtimeChannel.ts`](src/hooks/useRealtimeChannel.ts)** bundles the four required mitigations into a single API: debounce (default 250 ms), `useDocumentVisibility` gate, `realtimeEpoch` in the effect dep array (so the global drop rebuilds cleanly on resume), and `removeChannel` cleanup. Filter strings are Postgres-style (`user_id=eq.<uuid>`, `id=in.(a,b,c)`, `rejected_at=not.is.null`); the hook accepts an array of filters per channel and dispatches per-table via the `event.table` payload. `JSON.stringify(filters)` fingerprint avoids identity churn.
+- **Listener migrations.** Every unmitigated client `postgres_changes` subscription was converted: [`src/components/quickfill/HoursSection.tsx`](src/components/quickfill/HoursSection.tsx) (5-table channel), [`src/hooks/useDevRejectedSessionsCount.ts`](src/hooks/useDevRejectedSessionsCount.ts) (full-table → `rejected_at=not.is.null`), [`src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx) (3-table channel), [`src/components/DashboardMyTimeSection.tsx`](src/components/DashboardMyTimeSection.tsx) (client-side `user_id` filter → server-side), [`src/components/CrewJobsBlock.tsx`](src/components/CrewJobsBlock.tsx), [`src/components/quickfill/QuickfillScheduleSection.tsx`](src/components/quickfill/QuickfillScheduleSection.tsx) (work_date filter), [`src/hooks/usePersonDayScheduleData.ts`](src/hooks/usePersonDayScheduleData.ts), [`src/components/jobMode/DashboardJobModeCard.tsx`](src/components/jobMode/DashboardJobModeCard.tsx) (single-column server filter), [`src/hooks/useEstimatorInbox.ts`](src/hooks/useEstimatorInbox.ts), [`src/hooks/useDispatchInbox.ts`](src/hooks/useDispatchInbox.ts), [`src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx), [`src/pages/Banking.tsx`](src/pages/Banking.tsx) (drops the bespoke `bankingMercuryDebounceRef` / `isDocVisible` glue), and [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) (estimator inbox, financial pins, recent reports). Dead listeners that targeted tables not in the publication (`app_settings` listeners in [`src/pages/Quickfill.tsx`](src/pages/Quickfill.tsx) / [`src/pages/JobTally.tsx`](src/pages/JobTally.tsx) / [`src/components/quickfill/QuickfillOfficeSection.tsx`](src/components/quickfill/QuickfillOfficeSection.tsx); `user_dashboard_preferences` and `user_pinned_tabs` listeners in [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx)) were removed; comments at the call sites point at this changelog and the migration.
+- **Codified the rule.** New always-applied Cursor rule [`.cursor/rules/supabase-realtime.mdc`](.cursor/rules/supabase-realtime.mdc): use `useRealtimeChannel` for every `postgres_changes` subscription; filter at the server, not from `payload.new`; do not add a table to `supabase_realtime` unless a subscriber lands in the same PR. [`AGENTS.md`](AGENTS.md) Critical Constraint **#8** added pointing at the rule.
+
+Trade-offs accepted:
+- Per-payload state-update optimizations (e.g. estimator/dispatch note inserts that previously updated only the affected request) are gone — on event we always refetch the open request's notes plus the requests list. Volume on those tables is low so this is cheap and dramatically reduces the surface area where a missed `useDocumentVisibility` gate could re-introduce the crash class.
+- Realtime supports a single column filter per subscription, so [`src/components/jobMode/DashboardJobModeCard.tsx`](src/components/jobMode/DashboardJobModeCard.tsx) scopes by `assignee_user_id` and refetches when an unrelated date's row arrives (small fan-in).
+
+Verified: `npx tsc --noEmit` clean across the project.
+
+Files: see above.
+
 ---
 
 ## Latest Updates (v2.563)

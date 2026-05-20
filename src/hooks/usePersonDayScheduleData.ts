@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchScheduleBlocksForAssigneesOnDay, type JobScheduleBlockRow } from '../lib/jobScheduleBlocks'
+import { useRealtimeChannel } from './useRealtimeChannel'
 import {
   fetchJobsLedgerForScheduleDispatchHub,
   formatScheduleDispatchHubJobTitle,
@@ -144,26 +145,22 @@ export function usePersonDayScheduleData(
     void load()
   }, [load])
 
-  useEffect(() => {
-    if (!workDateYmd) return
-    const channel = supabase
-      .channel(`user-day-schedule-blocks-${workDateYmd}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'job_schedule_blocks' },
-        (payload) => {
-          const row =
-            (payload.new as { work_date?: string } | null) ?? (payload.old as { work_date?: string } | null)
-          const wd = row?.work_date
-          if (wd != null && wd !== workDateYmd) return
-          void load({ quiet: true })
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [workDateYmd, load])
+  const personDayScheduleFilters = useMemo(
+    () =>
+      workDateYmd
+        ? [{ event: '*' as const, schema: 'public', table: 'job_schedule_blocks', filter: `work_date=eq.${workDateYmd}` }]
+        : [],
+    [workDateYmd],
+  )
+  useRealtimeChannel(
+    !!workDateYmd,
+    `user-day-schedule-blocks-${workDateYmd ?? 'none'}`,
+    personDayScheduleFilters,
+    () => {
+      void load({ quiet: true })
+    },
+    { debounceMs: 400 },
+  )
 
   return {
     loading,

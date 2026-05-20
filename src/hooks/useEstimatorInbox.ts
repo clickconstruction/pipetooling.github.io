@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from './useAuth'
+import { useRealtimeChannel } from './useRealtimeChannel'
 import type { EstimatorInboxRow, EstimatorThreadNoteRow } from '../components/EstimatorInboxSection'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
@@ -162,39 +163,42 @@ export function useEstimatorInbox() {
     loadEstimatorRequests()
   }, [authUser?.id, estimatorInboxEligible, loadEstimatorRequests])
 
-  useEffect(() => {
-    if (!authUser?.id || !estimatorInboxEligible) return
-    const channel = supabase
-      .channel('checklist-estimator-requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'estimator_requests' }, () => {
-        loadEstimatorRequests()
-      })
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, estimatorInboxEligible, loadEstimatorRequests])
+  const estimatorInboxEnabled = !!authUser?.id && estimatorInboxEligible
+  const estimatorRequestsFilters = useMemo(
+    () => [{ event: '*' as const, schema: 'public', table: 'estimator_requests' }],
+    [],
+  )
+  useRealtimeChannel(
+    estimatorInboxEnabled,
+    'checklist-estimator-requests',
+    estimatorRequestsFilters,
+    () => {
+      loadEstimatorRequests()
+    },
+    { debounceMs: 400 },
+  )
 
-  useEffect(() => {
-    if (!authUser?.id || !estimatorInboxEligible) return
-    const channel = supabase
-      .channel('checklist-estimator-request-notes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'estimator_request_notes' },
-        (payload) => {
-          const rid = (payload.new as { request_id?: string } | null)?.request_id
-          if (rid && expandedEstimatorRequestIdRef.current === rid) {
-            void loadEstimatorNotesForRequest(rid)
-          }
-          loadEstimatorRequests()
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [authUser?.id, estimatorInboxEligible, loadEstimatorNotesForRequest, loadEstimatorRequests])
+  // We can't filter at the server because the relevant request_id changes as
+  // the user expands/collapses items. Volume on `estimator_request_notes` is
+  // low, so on any insert we reload the requests list and (if a request is
+  // expanded) its notes. The previous per-payload optimization is gone; a
+  // small extra fetch when the insert is unrelated to the expanded request is
+  // an acceptable trade for the visibility/debounce/epoch protections.
+  const estimatorNotesFilters = useMemo(
+    () => [{ event: 'INSERT' as const, schema: 'public', table: 'estimator_request_notes' }],
+    [],
+  )
+  useRealtimeChannel(
+    estimatorInboxEnabled,
+    'checklist-estimator-request-notes',
+    estimatorNotesFilters,
+    () => {
+      const expandedId = expandedEstimatorRequestIdRef.current
+      if (expandedId) void loadEstimatorNotesForRequest(expandedId)
+      loadEstimatorRequests()
+    },
+    { debounceMs: 400 },
+  )
 
   function toggleExpandEstimatorRequest(requestId: string) {
     setExpandedEstimatorRequestId((prev) => (prev === requestId ? null : requestId))

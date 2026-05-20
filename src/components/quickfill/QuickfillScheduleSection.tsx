@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
+import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { fetchScheduleBlocksForAssigneesOnDay, type JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
@@ -580,24 +581,21 @@ export function QuickfillScheduleSection({
     void loadData()
   }, [loadData])
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`quickfill-schedule-blocks-${workDate}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'job_schedule_blocks' },
-        (payload) => {
-          const row = (payload.new as { work_date?: string } | null) ?? (payload.old as { work_date?: string } | null)
-          const wd = row?.work_date
-          if (wd != null && wd !== workDate) return
-          void loadData({ quiet: true })
-        },
-      )
-      .subscribe()
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [workDate, loadData])
+  const scheduleBlocksFilters = useMemo(
+    () => [
+      { event: '*' as const, schema: 'public', table: 'job_schedule_blocks', filter: `work_date=eq.${workDate}` },
+    ],
+    [workDate],
+  )
+  useRealtimeChannel(
+    true,
+    `quickfill-schedule-blocks-${workDate}`,
+    scheduleBlocksFilters,
+    () => {
+      void loadData({ quiet: true })
+    },
+    { debounceMs: 400 },
+  )
 
   return (
     <div>

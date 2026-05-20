@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { getDefaultWeekRange } from '../utils/dateUtils'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { useRealtimeChannel } from './useRealtimeChannel'
 
 /**
  * Org-wide rejected clock sessions count for the current calendar week (dev dashboard).
@@ -66,18 +67,22 @@ export function useDevRejectedSessionsCount(enabled: boolean): {
     return () => window.removeEventListener('focus', onFocus)
   }, [enabled, bump])
 
-  useEffect(() => {
-    if (!enabled) return
-    const channel = supabase
-      .channel('dashboard-dev-rejected-count')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clock_sessions' }, () => {
-        bump()
-      })
-      .subscribe()
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [enabled, bump])
+  // Server-side filter so we only receive UPDATEs that actually transition a
+  // session into the rejected set (and INSERTs that already arrive rejected).
+  // Cuts the wire traffic substantially on a busy day.
+  const realtimeFilters = useMemo(
+    () => [
+      { event: '*' as const, schema: 'public', table: 'clock_sessions', filter: 'rejected_at=not.is.null' },
+    ],
+    [],
+  )
+  useRealtimeChannel(
+    enabled,
+    'dashboard-dev-rejected-count',
+    realtimeFilters,
+    bump,
+    { debounceMs: 500 },
+  )
 
   return { count, loading }
 }

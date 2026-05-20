@@ -41,6 +41,7 @@ import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixConte
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
 import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
+import { RealtimeLifecycleProvider } from './contexts/RealtimeLifecycleContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
 import { DispatchTaskModalProvider } from './contexts/DispatchTaskModalContext'
 import { EstimatorTaskModalProvider } from './contexts/EstimatorTaskModalContext'
@@ -166,39 +167,41 @@ function AppContent() {
           path="/"
           element={
             <ProtectedRoute>
-              <ForceReloadProvider>
-                <ChecklistAddModalProvider>
-                  <DispatchTaskModalProvider>
-                    <EstimatorTaskModalProvider>
-                      <NewCustomerModalProvider>
-                        <NewProjectModalProvider>
-                          <EditCustomerModalProvider>
-                            <EditProjectModalProvider>
-                              <BillCustomerModalProvider>
-                                <JobFormModalProvider>
-                                  <BidPreviewModalProvider>
-                                    <DailyGoalsGateProvider>
-                                      <JobsListCacheProvider>
-                                        <UpdateFocusOpenerBridgeProvider>
-                                          <JobDetailModalProvider>
-                                            <UserDayScheduleModalProvider>
-                                              <Layout />
-                                            </UserDayScheduleModalProvider>
-                                          </JobDetailModalProvider>
-                                        </UpdateFocusOpenerBridgeProvider>
-                                      </JobsListCacheProvider>
-                                    </DailyGoalsGateProvider>
-                                  </BidPreviewModalProvider>
-                                </JobFormModalProvider>
-                              </BillCustomerModalProvider>
-                            </EditProjectModalProvider>
-                          </EditCustomerModalProvider>
-                        </NewProjectModalProvider>
-                      </NewCustomerModalProvider>
-                    </EstimatorTaskModalProvider>
-                  </DispatchTaskModalProvider>
-                </ChecklistAddModalProvider>
-              </ForceReloadProvider>
+              <RealtimeLifecycleProvider>
+                <ForceReloadProvider>
+                  <ChecklistAddModalProvider>
+                    <DispatchTaskModalProvider>
+                      <EstimatorTaskModalProvider>
+                        <NewCustomerModalProvider>
+                          <NewProjectModalProvider>
+                            <EditCustomerModalProvider>
+                              <EditProjectModalProvider>
+                                <BillCustomerModalProvider>
+                                  <JobFormModalProvider>
+                                    <BidPreviewModalProvider>
+                                      <DailyGoalsGateProvider>
+                                        <JobsListCacheProvider>
+                                          <UpdateFocusOpenerBridgeProvider>
+                                            <JobDetailModalProvider>
+                                              <UserDayScheduleModalProvider>
+                                                <Layout />
+                                              </UserDayScheduleModalProvider>
+                                            </JobDetailModalProvider>
+                                          </UpdateFocusOpenerBridgeProvider>
+                                        </JobsListCacheProvider>
+                                      </DailyGoalsGateProvider>
+                                    </BidPreviewModalProvider>
+                                  </JobFormModalProvider>
+                                </BillCustomerModalProvider>
+                              </EditProjectModalProvider>
+                            </EditCustomerModalProvider>
+                          </NewProjectModalProvider>
+                        </NewCustomerModalProvider>
+                      </EstimatorTaskModalProvider>
+                    </DispatchTaskModalProvider>
+                  </ChecklistAddModalProvider>
+                </ForceReloadProvider>
+              </RealtimeLifecycleProvider>
             </ProtectedRoute>
           }
         >
