@@ -336,6 +336,15 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubUserTimeOffByCell, setHubUserTimeOffByCell] = useState<Map<string, UserTimeOffCellInfo>>(
     () => new Map(),
   )
+  /**
+   * Tracks the `(weekStart, weekEnd, rosterKey)` that `loadHub` last seeded `hubUserTimeOffByCell` for.
+   * The standalone `refreshHubUserTimeOff` effect consults this to skip the immediate redundant
+   * refetch after a fresh `loadHub` (it still fires for later roster changes — e.g., a quiet
+   * refresh that introduces a new assignee).
+   */
+  const hubUserTimeOffPrimedRef = useRef<
+    { weekStart: string; weekEnd: string; rosterKey: string } | null
+  >(null)
 
   const hubVisibleUserIdsSerialized = useMemo(
     () => [...hubAllPeopleRows.map((r) => r.userId)].sort().join('|'),
@@ -356,8 +365,18 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   }, [hubAllPeopleRows, weekStart, weekEnd])
 
   useEffect(() => {
+    const primed = hubUserTimeOffPrimedRef.current
+    if (
+      primed &&
+      primed.weekStart === weekStart &&
+      primed.weekEnd === weekEnd &&
+      primed.rosterKey === hubVisibleUserIdsSerialized
+    ) {
+      // `loadHub` just seeded the cell map for this exact (week, roster); skip the refetch.
+      return
+    }
     void refreshHubUserTimeOff()
-  }, [refreshHubUserTimeOff, hubVisibleUserIdsSerialized])
+  }, [refreshHubUserTimeOff, hubVisibleUserIdsSerialized, weekStart, weekEnd])
 
   const hubUserIdsWithBlocksThisWeek = useMemo(
     () => new Set(hubWeekBlocks.map((b) => b.assignee_user_id)),
@@ -424,9 +443,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       setHubSummariesError(null)
       setHubSalariedUserIds(new Set())
 
-      const [jr, br] = await Promise.all([
+      // Phase A: jobs ledger + week blocks + users-tab roster — fully independent, parallel.
+      const [jr, br, usersTabRes] = await Promise.all([
         fetchJobsLedgerForScheduleDispatchHub(),
         fetchJobScheduleBlocksForHubDateRange(weekStart, weekEnd),
+        fetchUsersTabUserIdsForScheduleDispatchHub(role === 'dev'),
       ])
 
       let hubJobsData: ScheduleDispatchHubJobRow[] = []
@@ -437,18 +458,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         hubJobsData = jr.data
         setHubJobs(jr.data)
       }
-
-      const jobIds = hubJobsData.map((j) => j.id)
-      const teamRes = await fetchTeamMemberUserIdsForJobIds(jobIds)
-      const teamIds = teamRes.error ? [] : teamRes.data
-      if (teamRes.error) showToast(`Team roster: ${teamRes.error}`, 'warning')
-
-      const usersTabRes = await fetchUsersTabUserIdsForScheduleDispatchHub(role === 'dev')
-      const usersTabIds = usersTabRes.error ? [] : usersTabRes.data
-      if (usersTabRes.error) showToast(`Dispatch people list: ${usersTabRes.error}`, 'warning')
-
-      const mergedHubBaseIds = [...new Set([...teamIds, ...usersTabIds])]
-      setHubTeamMemberUserIds(mergedHubBaseIds)
 
       let blocksData: JobScheduleBlockRow[] = []
       if (br.error) {
@@ -461,62 +470,95 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
         setHubWeekBlocks(br.data)
       }
 
+      const usersTabIds = usersTabRes.error ? [] : usersTabRes.data
+      if (usersTabRes.error) showToast(`Dispatch people list: ${usersTabRes.error}`, 'warning')
+
+      // Phase B: team-members for the ledger job ids (needs jobIds from phase A).
+      const jobIds = hubJobsData.map((j) => j.id)
+      const teamRes = await fetchTeamMemberUserIdsForJobIds(jobIds)
+      const teamIds = teamRes.error ? [] : teamRes.data
+      if (teamRes.error) showToast(`Team roster: ${teamRes.error}`, 'warning')
+
+      const mergedHubBaseIds = [...new Set([...teamIds, ...usersTabIds])]
+      setHubTeamMemberUserIds(mergedHubBaseIds)
+
       const assigneeIds = [...new Set(blocksData.map((b) => b.assignee_user_id))]
       const rosterIds = [...new Set([...mergedHubBaseIds, ...assigneeIds])]
-      const { data: nameMap, error: nameErr } = await fetchUserNamesForIds(rosterIds)
-      setHubPeopleNameById(nameMap)
-      if (nameErr) showToast(`People names: ${nameErr}`, 'warning')
 
-      const archivedSet = await fetchArchivedUserIdSetForIds(rosterIds)
+      // Phase C: names + archived + time-off in parallel (all depend only on rosterIds).
+      const [nameRes, archivedSet, timeOffRes] = await Promise.all([
+        fetchUserNamesForIds(rosterIds),
+        fetchArchivedUserIdSetForIds(rosterIds),
+        fetchUserTimeOffForUsersInRange(rosterIds, weekStart, weekEnd),
+      ])
+      setHubPeopleNameById(nameRes.data)
+      if (nameRes.error) showToast(`People names: ${nameRes.error}`, 'warning')
       setHubArchivedUserIds(archivedSet)
 
-      try {
-        const salaried = await fetchSalariedUserIdSetFromUserIds(rosterIds)
-        setHubSalariedUserIds(salaried)
-      } catch (e) {
-        setHubSalariedUserIds(new Set())
-        showToast(`Salary flags: ${formatErrorMessage(e)}`, 'warning')
+      const dayKeys: string[] = []
+      for (let i = 0; i < 7; i += 1) dayKeys.push(ymdAddDays(weekStart, i))
+      if (!timeOffRes.error) {
+        setHubUserTimeOffByCell(buildUserTimeOffByCell(timeOffRes.data, dayKeys))
+      }
+      // Record what the time-off map was just primed for so the standalone refresh effect
+      // can skip the immediate duplicate fetch (it still fires for later roster changes).
+      hubUserTimeOffPrimedRef.current = {
+        weekStart,
+        weekEnd,
+        rosterKey: [...rosterIds].sort().join('|'),
       }
 
-      if (!canShowHubExpectedManpowerPayroll) {
-        setHubHourlyWageByUserId(new Map())
-      } else {
+      // Phase D: salaried + wages in parallel — both keyed by the already-fetched name map,
+      // so no extra `users` round-trip. `Promise.allSettled` keeps a wages failure from
+      // dropping the salaried set and vice versa (mirrors the previous try/catch granularity).
+      const nameMap = nameRes.data
+      const wagesPromise: Promise<Map<string, number>> = (async () => {
+        if (!canShowHubExpectedManpowerPayroll) return new Map()
         const names = new Set<string>()
         for (const uid of rosterIds) {
           const raw = nameMap.get(uid)?.trim()
           if (raw && raw !== 'Unknown') names.add(raw)
         }
         const nameList = [...names]
-        if (nameList.length === 0) {
-          setHubHourlyWageByUserId(new Map())
-        } else {
-          try {
-            const payData = await withSupabaseRetry(
-              async () =>
-                supabase
-                  .from('people_pay_config')
-                  .select('person_name, hourly_wage')
-                  .in('person_name', nameList),
-              'scheduleDispatchHubPeoplePayWages',
-            )
-            const wageByName = new Map<string, number>()
-            for (const r of (payData ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
-              const pn = r.person_name?.trim()
-              if (!pn) continue
-              const w = r.hourly_wage
-              wageByName.set(pn, typeof w === 'number' && Number.isFinite(w) ? w : 0)
-            }
-            const wageByUserId = new Map<string, number>()
-            for (const uid of rosterIds) {
-              const nm = nameMap.get(uid)?.trim()
-              wageByUserId.set(uid, nm ? (wageByName.get(nm) ?? 0) : 0)
-            }
-            setHubHourlyWageByUserId(wageByUserId)
-          } catch (e) {
-            setHubHourlyWageByUserId(new Map())
-            showToast(`Pay rates: ${formatErrorMessage(e)}`, 'warning')
-          }
+        if (nameList.length === 0) return new Map()
+        const payData = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('people_pay_config')
+              .select('person_name, hourly_wage')
+              .in('person_name', nameList),
+          'scheduleDispatchHubPeoplePayWages',
+        )
+        const wageByName = new Map<string, number>()
+        for (const r of (payData ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
+          const pn = r.person_name?.trim()
+          if (!pn) continue
+          const w = r.hourly_wage
+          wageByName.set(pn, typeof w === 'number' && Number.isFinite(w) ? w : 0)
         }
+        const wageByUserId = new Map<string, number>()
+        for (const uid of rosterIds) {
+          const nm = nameMap.get(uid)?.trim()
+          wageByUserId.set(uid, nm ? (wageByName.get(nm) ?? 0) : 0)
+        }
+        return wageByUserId
+      })()
+
+      const [salariedResult, wagesResult] = await Promise.allSettled([
+        fetchSalariedUserIdSetFromUserIds(rosterIds, { nameByUserId: nameMap }),
+        wagesPromise,
+      ])
+      if (salariedResult.status === 'fulfilled') {
+        setHubSalariedUserIds(salariedResult.value)
+      } else {
+        setHubSalariedUserIds(new Set())
+        showToast(`Salary flags: ${formatErrorMessage(salariedResult.reason)}`, 'warning')
+      }
+      if (wagesResult.status === 'fulfilled') {
+        setHubHourlyWageByUserId(wagesResult.value)
+      } else {
+        setHubHourlyWageByUserId(new Map())
+        showToast(`Pay rates: ${formatErrorMessage(wagesResult.reason)}`, 'warning')
       }
     } catch (err) {
       showToast(formatErrorMessage(err), 'error')

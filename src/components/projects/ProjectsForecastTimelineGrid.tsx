@@ -19,13 +19,45 @@
  * keeps the grid presentation-only (no knowledge of stages or jobs).
  */
 
-import { useEffect, useMemo, useRef, type ReactNode } from 'react'
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  type ForwardedRef,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 
 export const FORECAST_COL_W = 36
 export const FORECAST_ROW_H = 44
 export const FORECAST_HEADER_MONTH_H = 22
 export const FORECAST_HEADER_DAY_H = 22
+/** Width (px) of each sticky pan-pillar button rendered at the timeline's left/right
+ *  edges when `onPanLeft` / `onPanRight` are provided. Wide enough to read the chevron
+ *  glyph at a glance, narrow enough that it only overlays one day column of the rail. */
+const PAN_PILLAR_W_PX = 36
+
+/** Imperative handle exposed to callers that need to programmatically adjust the
+ *  timeline scroller's horizontal position. Forecast Specific uses this to preserve
+ *  the user's visual position after a `←` pan-pillar click: clicking `←` inserts
+ *  new day columns at the START of the rail, which (with the browser's default
+ *  scroll behavior) shifts every existing cell to the right relative to `scrollLeft`.
+ *  Without an explicit adjustment, the user would suddenly be looking at the freshly-
+ *  loaded historical days instead of the cells they were reading a moment ago. The
+ *  parent calls `adjustScrollLeftByPx(addedDays * COL_W)` from a `useLayoutEffect`
+ *  AFTER the new columns have laid out so the visible cells stay in the same
+ *  on-screen position. `→` pan clicks don't need any adjustment — they extend the
+ *  rail to the right, beyond the visible viewport, so `scrollLeft` is naturally
+ *  preserved. */
+export interface ForecastTimelineGridHandle {
+  /** Add `deltaPx` to the scroller's `scrollLeft`, clamping to a minimum of 0. Used
+   *  by Forecast Specific's `←` pan-pillar to keep the user's visual position fixed
+   *  after the rail grows on the left. */
+  adjustScrollLeftByPx(deltaPx: number): void
+}
 
 type Props<TRow> = {
   rows: readonly TRow[]
@@ -48,6 +80,33 @@ type Props<TRow> = {
   renderRow: (row: TRow, idx: number, ctx: { gridTemplateColumns: string }) => ReactNode
   /** Optional pinned message shown when `rows` is empty — e.g. "Pick a job above to view its stages." */
   emptyState?: ReactNode
+  /** Optional content for the sticky left gutter header (the strip directly above the row
+   *  labels, aligned to the 2-tier timeline header). When omitted the gutter header stays
+   *  empty (the default for All Stages). Forecast Specific passes a right-aligned `%` to
+   *  label its per-row percent-complete cell. The caller is responsible for matching the
+   *  cell's right-aligned positioning so the header sits over the value column. */
+  gutterHeader?: ReactNode
+  /** When provided, the grid renders an in-line `←` pillar column at the START of the
+   *  day rail (the first flex child inside the scroller). It scrolls WITH the rail, so
+   *  the user only sees it after scrolling all the way to the left edge — then a click
+   *  extends the visible window 90 days back. Omit (the default) to suppress the pillar
+   *  entirely — All Stages doesn't have a pannable window. */
+  onPanLeft?: () => void
+  /** Mirror of `onPanLeft` for the END of the day rail. The `→` pillar is the LAST flex
+   *  child inside the scroller; it appears when the user has scrolled all the way to
+   *  the right edge of the rail (e.g. `... | 22 | 23 | 24 | →`). */
+  onPanRight?: () => void
+  /** aria-label + tooltip for the left pillar. Defaults to "Load 90 more days back". */
+  panLeftLabel?: string
+  /** aria-label + tooltip for the right pillar. Defaults to "Load 90 more days forward". */
+  panRightLabel?: string
+  /** When set, the auto-center-on-today effect re-fires ONLY when this key changes.
+   *  Forecast Specific passes `selectedJobId` so pan clicks (which mutate `dayKeys` but
+   *  not the job) don't yank the scroll position back to today after every pan; the tab
+   *  uses the imperative `scrollToEdge` handle to position scroll after a pan instead.
+   *  When `undefined` (All Stages), the legacy `[rangeStart, rangeEnd, todayIndex]`
+   *  deps are used so existing behavior is unchanged. */
+  autoCenterTodayResetKey?: string
 }
 
 type MonthRun = { startIdx: number; endIdx: number; label: string }
@@ -110,16 +169,25 @@ export function forecastBarColumnSpan(
   return { startCol: startIdx + 1, endCol: endIdx + 2, clipLeft, clipRight }
 }
 
-export function ProjectsForecastTimelineGrid<TRow>({
-  rows,
-  rowKey,
-  dayKeys,
-  todayYmd,
-  rowLabel,
-  labelGutterWidth = 220,
-  renderRow,
-  emptyState,
-}: Props<TRow>) {
+function ProjectsForecastTimelineGridInner<TRow>(
+  {
+    rows,
+    rowKey,
+    dayKeys,
+    todayYmd,
+    rowLabel,
+    labelGutterWidth = 220,
+    renderRow,
+    emptyState,
+    gutterHeader,
+    onPanLeft,
+    onPanRight,
+    panLeftLabel,
+    panRightLabel,
+    autoCenterTodayResetKey,
+  }: Props<TRow>,
+  ref: ForwardedRef<ForecastTimelineGridHandle>,
+) {
   const totalWidth = dayKeys.length * FORECAST_COL_W
   const monthRuns = useMemo(() => buildMonthRuns(dayKeys, APP_CALENDAR_TZ), [dayKeys])
   const weekendFlags = useMemo(() => buildWeekendFlags(dayKeys, APP_CALENDAR_TZ), [dayKeys])
@@ -134,21 +202,58 @@ export function ProjectsForecastTimelineGrid<TRow>({
   const todayIndex = dayKeyIndex.get(todayYmd) ?? -1
   const gridTemplateColumns = `repeat(${dayKeys.length}, ${FORECAST_COL_W}px)`
 
-  // Auto-scroll to center "today" the first time the range lands, mirroring Job History's
-  // "park at right edge" idiom but biased so today is visible without losing forward context.
   const scrollerRef = useRef<HTMLDivElement | null>(null)
   const rangeStart = dayKeys[0] ?? ''
   const rangeEnd = dayKeys[dayKeys.length - 1] ?? ''
+
+  // Imperative scroll handle. Used by Forecast Specific to preserve the user's
+  // visual position after a `←` pan-pillar click (see the handle's JSDoc). Reading
+  // / writing `scrollLeft` here works inside the parent's `useLayoutEffect` because
+  // the new columns have already been laid out by the time the parent invokes us —
+  // React commits DOM mutations before useLayoutEffect runs.
+  useImperativeHandle(
+    ref,
+    () => ({
+      adjustScrollLeftByPx(deltaPx) {
+        const el = scrollerRef.current
+        if (!el) return
+        el.scrollLeft = Math.max(0, el.scrollLeft + deltaPx)
+      },
+    }),
+    [],
+  )
+
+  // The `todayIndex` ref decouples the "re-center on key change" effect below from
+  // `todayIndex` itself — when the parent extends the range, `todayIndex` shifts but
+  // we DON'T want to re-fire the centering effect. Reading the ref inside the effect
+  // closure picks up the latest index without making the effect depend on it.
+  const todayIndexRef = useRef(todayIndex)
+  todayIndexRef.current = todayIndex
+
+  // When the optional `←` pan pillar is rendered it sits as the FIRST flex child
+  // inside the scroller, so the day-grid block's horizontal origin shifts right by
+  // PAN_PILLAR_W_PX. The auto-center math has to add that offset so "today" still
+  // visually lands at the center of the viewport (without it the rail would be
+  // off-center by half a pillar width). The right pillar doesn't contribute here
+  // — it's beyond the day grid, so it doesn't move "today" horizontally.
+  const leftPillarOffsetPx = onPanLeft != null ? PAN_PILLAR_W_PX : 0
+
+  // Legacy auto-scroll (All Stages and any caller that doesn't opt into the Specific
+  // reset-key behavior): re-center "today" any time the range changes. This is what
+  // the grid did before the pan-pillar feature shipped — preserved here so All Stages
+  // behaves identically.
   useEffect(() => {
+    if (autoCenterTodayResetKey !== undefined) return
     const el = scrollerRef.current
     if (!el) return
     const apply = () => {
-      // If today is inside the range, center it; otherwise park at left edge so the user sees
-      // the earliest visible content.
       if (todayIndex >= 0) {
         const target = Math.max(
           0,
-          todayIndex * FORECAST_COL_W - el.clientWidth / 2 + FORECAST_COL_W / 2,
+          leftPillarOffsetPx +
+            todayIndex * FORECAST_COL_W -
+            el.clientWidth / 2 +
+            FORECAST_COL_W / 2,
         )
         el.scrollLeft = Math.min(target, Math.max(0, el.scrollWidth - el.clientWidth))
       } else {
@@ -158,7 +263,35 @@ export function ProjectsForecastTimelineGrid<TRow>({
     apply()
     const raf = requestAnimationFrame(apply)
     return () => cancelAnimationFrame(raf)
-  }, [rangeStart, rangeEnd, todayIndex])
+  }, [autoCenterTodayResetKey, rangeStart, rangeEnd, todayIndex, leftPillarOffsetPx])
+
+  // Forecast Specific auto-scroll: re-center "today" ONLY when the reset key changes
+  // (e.g. the user switches to a different job). Pan clicks change `rangeStart` /
+  // `rangeEnd` but keep the reset key stable, so the scroll position survives a pan
+  // (and the parent's `scrollToEdge` handle then snaps to the freshly-loaded edge).
+  useEffect(() => {
+    if (autoCenterTodayResetKey === undefined) return
+    const el = scrollerRef.current
+    if (!el) return
+    const apply = () => {
+      const idx = todayIndexRef.current
+      if (idx >= 0) {
+        const target = Math.max(
+          0,
+          leftPillarOffsetPx +
+            idx * FORECAST_COL_W -
+            el.clientWidth / 2 +
+            FORECAST_COL_W / 2,
+        )
+        el.scrollLeft = Math.min(target, Math.max(0, el.scrollWidth - el.clientWidth))
+      } else {
+        el.scrollLeft = 0
+      }
+    }
+    apply()
+    const raf = requestAnimationFrame(apply)
+    return () => cancelAnimationFrame(raf)
+  }, [autoCenterTodayResetKey, leftPillarOffsetPx])
 
   const showGutter = !!rowLabel
   const gutter = showGutter ? labelGutterWidth : 0
@@ -195,14 +328,18 @@ export function ProjectsForecastTimelineGrid<TRow>({
             flexDirection: 'column',
           }}
         >
-          {/* Gutter header — empty, sized to match the timeline's 2-tier header so rows align. */}
+          {/* Gutter header — empty by default; if `gutterHeader` is provided it's rendered
+              into a height-matched cell aligned with the 2-tier timeline header. Used by
+              Forecast Specific to label its right-side `%` column. */}
           <div
             style={{
               height: FORECAST_HEADER_MONTH_H + FORECAST_HEADER_DAY_H,
               borderBottom: '1px solid #e5e7eb',
               background: '#f8fafc',
             }}
-          />
+          >
+            {gutterHeader ?? null}
+          </div>
           {rows.length === 0 ? (
             <div style={{ height: FORECAST_ROW_H, borderBottom: '1px solid #f1f5f9' }} />
           ) : (
@@ -244,13 +381,61 @@ export function ProjectsForecastTimelineGrid<TRow>({
           overflowY: 'hidden',
         }}
       >
+        {/* Pan-pillar layout: the day-grid block sits between two optional pan-pillar
+            buttons (`←` start of rail, `→` end of rail). All three are inline-flex
+            children of this container so the pillars scroll WITH the rail — the user
+            only sees them when scrolled all the way to the corresponding edge. The
+            `minWidth: '100%'` was previously on the day-grid block; lifting it here
+            preserves the "rail fills viewport when content is narrower than scroller"
+            behavior for the whole row (pillars + grid). `alignItems: 'stretch'` makes
+            the pillars match the day-grid block's full height (header + all rows). */}
         <div
           style={{
-            width: totalWidth,
+            display: 'flex',
+            alignItems: 'stretch',
             minWidth: '100%',
-            position: 'relative',
           }}
         >
+          {onPanLeft != null && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPanLeft()
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label={panLeftLabel ?? 'Load 90 more days back'}
+              title={panLeftLabel ?? 'Load 90 more days back'}
+              style={{
+                flex: `0 0 ${PAN_PILLAR_W_PX}px`,
+                background: '#f8fafc',
+                border: 'none',
+                borderRight: '1px solid #e5e7eb',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: '#475569',
+                padding: 0,
+              }}
+            >
+              {'\u2190'}
+            </button>
+          )}
+          <div
+            style={{
+              // `flex: 1 0 auto` so the day-grid block grows to fill any space left over
+              // when the pillars + totalWidth come in under the viewport width (rare,
+              // since the default 180-day window is usually wider than the viewport).
+              // `width: totalWidth` sets the natural size; flex-grow only matters in
+              // that narrow-rail edge case.
+              flex: '1 0 auto',
+              width: totalWidth,
+              position: 'relative',
+            }}
+          >
           {/* Sticky 2-tier header */}
           <div
             style={{
@@ -388,11 +573,49 @@ export function ProjectsForecastTimelineGrid<TRow>({
               </div>
             ))
           )}
+          </div>
+          {onPanRight != null && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onPanRight()
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              aria-label={panRightLabel ?? 'Load 90 more days forward'}
+              title={panRightLabel ?? 'Load 90 more days forward'}
+              style={{
+                flex: `0 0 ${PAN_PILLAR_W_PX}px`,
+                background: '#f8fafc',
+                border: 'none',
+                borderLeft: '1px solid #e5e7eb',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '1.25rem',
+                fontWeight: 600,
+                color: '#475569',
+                padding: 0,
+              }}
+            >
+              {'\u2192'}
+            </button>
+          )}
         </div>
       </div>
     </div>
   )
 }
+
+// `forwardRef` erases generics, so we re-cast the exported binding to preserve the
+// `<TRow>` parameter for callers. This is the standard React+TypeScript pattern for
+// "generic component with a forwarded ref"; see the React docs on `forwardRef` typing.
+export const ProjectsForecastTimelineGrid = forwardRef(
+  ProjectsForecastTimelineGridInner,
+) as <TRow>(
+  props: Props<TRow> & { ref?: ForwardedRef<ForecastTimelineGridHandle> },
+) => ReactElement | null
 
 /** Helper for callers that need access to the same `dayKeyIndex` the grid builds internally,
  *  e.g. to pre-compute bar spans before render. */

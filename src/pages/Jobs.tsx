@@ -3002,22 +3002,6 @@ export default function Jobs() {
     }
   }
 
-  const [editingLaborJobDistanceId, setEditingLaborJobDistanceId] = useState<string | null>(null)
-  const [editingLaborJobDistanceValue, setEditingLaborJobDistanceValue] = useState('')
-
-  async function updateLaborJobDistance(jobId: string, value: string) {
-    setError(null)
-    const trimmed = value.trim()
-    const num = trimmed === '' ? null : parseFloat(trimmed)
-    if (num != null && (isNaN(num) || num < 0)) return
-    const { error: err } = await supabase.from('people_labor_jobs').update({ distance_miles: num }).eq('id', jobId)
-    if (err) setError(err.message)
-    else {
-      setLaborJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, distance_miles: num } : j)))
-    }
-    setEditingLaborJobDistanceId(null)
-  }
-
   async function recordLaborJobPayment(jobId: string, amount: number, memo: string | null) {
     setError(null)
     const { data: existing } = await supabase.from('people_labor_job_payments').select('sequence_order').eq('job_id', jobId).order('sequence_order', { ascending: false }).limit(1)
@@ -9358,7 +9342,6 @@ ${totalsHtml}
                     <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractor</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Distance</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Due</th>
                     <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sub Sheet</th>
@@ -9432,51 +9415,6 @@ ${totalsHtml}
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                          {editingLaborJobDistanceId === job.id ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.1}
-                                value={editingLaborJobDistanceValue}
-                                onChange={(e) => setEditingLaborJobDistanceValue(e.target.value)}
-                                onBlur={() => {
-                                  const v = editingLaborJobDistanceValue.trim()
-                                  updateLaborJobDistance(job.id, v)
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    const v = editingLaborJobDistanceValue.trim()
-                                    updateLaborJobDistance(job.id, v)
-                                  }
-                                  if (e.key === 'Escape') setEditingLaborJobDistanceId(null)
-                                }}
-                                autoFocus
-                                style={{ width: 56, padding: '0.2rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                              />
-                              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>mi</span>
-                            </span>
-                          ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              {job.distance_miles != null && !Number.isNaN(Number(job.distance_miles)) ? `${Number(job.distance_miles)} mi` : '—'}
-                              {(Number(job.distance_miles) || 0) === 0 ? (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setEditingLaborJobDistanceId(job.id)
-                                    setEditingLaborJobDistanceValue(job.distance_miles != null ? String(job.distance_miles) : '')
-                                  }}
-                                  title="Edit distance"
-                                  style={{ padding: '0.15rem 0.35rem', background: '#f3f4f6', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem' }}
-                                >
-                                  Edit
-                                </button>
-                              ) : null}
-                            </span>
-                          )}
-                        </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
                           {totalCost > 0 ? (
@@ -9502,30 +9440,32 @@ ${totalsHtml}
                             style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
                           />
                         </td>
-                        <td style={{ padding: '0.75rem', display: 'flex', gap: '0.35rem', flexWrap: 'nowrap', alignItems: 'center' }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => { setMakePaymentAmount(balance > 0 ? String(balance) : ''); setMakePaymentMemo(''); setMakePaymentLaborJob({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid, outstanding: Math.max(0, balance) }) }}
-                            style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                          >
-                            Payment
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeLaborJob({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid }) }}
-                            style={{ padding: '0.25rem 0.5rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                          >
-                            Backcharge
-                          </button>
-                          <button type="button" onClick={() => openEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
-                            Edit
-                          </button>
+                        <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'stretch' }}>
+                            <button
+                              type="button"
+                              onClick={() => { setMakePaymentAmount(balance > 0 ? String(balance) : ''); setMakePaymentMemo(''); setMakePaymentLaborJob({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid, outstanding: Math.max(0, balance) }) }}
+                              style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                            >
+                              Payment
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeLaborJob({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid }) }}
+                              style={{ padding: '0.25rem 0.5rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                            >
+                              Backcharge
+                            </button>
+                            <button type="button" onClick={() => openEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                              Edit
+                            </button>
+                          </div>
                         </td>
                       </tr>,
                       ...(expanded
                         ? [
                             <tr key={`${job.id}-expand`}>
-                              <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                              <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
                                 <div onClick={(e) => e.stopPropagation()} style={{ padding: '1rem' }}>
                                   <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 500 }}>
                                     Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)}

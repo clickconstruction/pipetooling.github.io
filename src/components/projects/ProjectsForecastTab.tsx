@@ -208,8 +208,9 @@ export function ProjectsForecastTab({ customerId, myRole = null }: Props) {
       stagesByWorkflow,
       prefixMap,
       loading: loadingJobs || loadingStages,
+      refreshStages: () => void loadStages(true),
     }),
-    [jobs, workflowByProject, stagesByWorkflow, prefixMap, loadingJobs, loadingStages],
+    [jobs, workflowByProject, stagesByWorkflow, prefixMap, loadingJobs, loadingStages, loadStages],
   )
 
   return (

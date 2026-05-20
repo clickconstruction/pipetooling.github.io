@@ -49,6 +49,10 @@ type Props = {
   emptyState?: ReactNode
   /** Pixel width reserved for the gutter. Defaults to 260px (matches the dense grid). */
   labelGutterWidth?: number
+  /** Optional content rendered in the sticky gutter header (sized to match the 2-tier
+   *  timeline header so rows stay aligned). When omitted the header stays empty. Used by
+   *  Forecast Specific to label its per-row percent-complete cell with `%`. */
+  gutterHeader?: ReactNode
 }
 
 type MonthRun = { startIdx: number; endIdx: number; label: string }
@@ -146,6 +150,7 @@ export function ProjectsForecastSpecificGrid({
   onOpenWorkflow,
   emptyState,
   labelGutterWidth = 260,
+  gutterHeader,
 }: Props) {
   const monthRuns = useMemo(() => buildMonthRuns(columns), [columns])
   const weekendFlags = useMemo(() => buildWeekendFlags(columns), [columns])
@@ -215,7 +220,9 @@ export function ProjectsForecastSpecificGrid({
             borderBottom: '1px solid #e5e7eb',
             background: '#f8fafc',
           }}
-        />
+        >
+          {gutterHeader ?? null}
+        </div>
         {stages.length === 0 ? (
           <div style={{ height: FORECAST_SPECIFIC_ROW_H, borderBottom: '1px solid #f1f5f9' }} />
         ) : (

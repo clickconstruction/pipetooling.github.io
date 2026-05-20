@@ -11,6 +11,12 @@ import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
 import { ScheduleDispatchBlockNoteIcon } from '../icons/ScheduleDispatchBlockNoteIcon'
 import { ScheduleDispatchLinkedChainsIcon } from '../icons/ScheduleDispatchLinkedChainsIcon'
+import { useDispatchNoteRequirements } from '../../contexts/DispatchNoteRequirementsContext'
+import {
+  editNoteIconColorForBlock,
+  effectiveNoteRequirement,
+  surroundingIconColorForRequirement,
+} from '../../lib/dispatchNoteRequirements'
 import type { JobScheduleBlockRow, ScheduleTeamMember } from '../../lib/jobScheduleBlocks'
 import {
   userTimeOffCellKey,
@@ -49,6 +55,7 @@ export type ScheduleDispatchCardPlacementMode = { sourceBlockId: string; variant
 
 function ScheduleDispatchBlockCard({
   block,
+  scheduleTodayYmd,
   canEdit,
   cardPlacementMode,
   plusMenuOpen,
@@ -60,6 +67,7 @@ function ScheduleDispatchBlockCard({
   onRequestEditBlockNote,
 }: {
   block: JobScheduleBlockRow
+  scheduleTodayYmd: string
   canEdit: boolean
   cardPlacementMode: ScheduleDispatchCardPlacementMode | null
   plusMenuOpen: boolean
@@ -71,6 +79,20 @@ function ScheduleDispatchBlockCard({
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
 }) {
   const { showToast } = useToastContext()
+  const { requirementForBlock } = useDispatchNoteRequirements()
+  const noteRequirement = requirementForBlock({
+    userId: block.assignee_user_id,
+    jobId: block.job_id,
+  })
+  const isPastWorkDate = block.work_date < scheduleTodayYmd
+  const effectiveRequirement = effectiveNoteRequirement(noteRequirement, isPastWorkDate)
+  const editNoteColor = editNoteIconColorForBlock({
+    requirement: effectiveRequirement,
+    hasNote: Boolean(block.note),
+  })
+  const chainsColor = surroundingIconColorForRequirement(effectiveRequirement, '#1d4ed8')
+  const minusColor = surroundingIconColorForRequirement(effectiveRequirement, '#b91c1c')
+  const plusColor = surroundingIconColorForRequirement(effectiveRequirement, '#1d4ed8')
   const plusButtonRef = useRef<HTMLButtonElement>(null)
   const dragDisabled = !canEdit
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -212,7 +234,7 @@ function ScheduleDispatchBlockCard({
                 padding: 0,
                 border: 'none',
                 background: 'transparent',
-                color: '#1d4ed8',
+                color: editNoteColor,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 margin: 0,
@@ -249,7 +271,7 @@ function ScheduleDispatchBlockCard({
                 justifyContent: 'center',
                 width: 20,
                 height: 20,
-                color: '#1d4ed8',
+                color: chainsColor,
                 marginRight: showMinusPlusButtons ? -4 : 0,
                 filter:
                   'drop-shadow(0 0 1px rgba(255,255,255,0.9)) drop-shadow(0 0 2px rgba(255,255,255,0.7))',
@@ -279,7 +301,7 @@ function ScheduleDispatchBlockCard({
                   borderRadius: 4,
                   border: 'none',
                   background: 'transparent',
-                  color: '#b91c1c',
+                  color: minusColor,
                   cursor: 'pointer',
                   ...scheduleBlockActionTextButtonStyle,
                 }}
@@ -307,7 +329,7 @@ function ScheduleDispatchBlockCard({
                     borderRadius: 4,
                     border: 'none',
                     background: 'transparent',
-                    color: '#1d4ed8',
+                    color: plusColor,
                     cursor: 'pointer',
                     ...scheduleBlockActionTextButtonStyle,
                   }}
@@ -469,6 +491,7 @@ function ScheduleDispatchCell({
             <ScheduleDispatchBlockCard
               key={b.id}
               block={b}
+              scheduleTodayYmd={scheduleTodayYmd}
               canEdit={canEdit}
               cardPlacementMode={cardPlacementMode}
               plusMenuOpen={plusMenuBlockId === b.id}

@@ -1,6 +1,9 @@
 import { supabase } from './supabase'
 import type { JobScheduleBlockRow } from './jobScheduleBlocks'
+import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+
+type SupabaseUserRole = Database['public']['Enums']['user_role']
 
 /** PostgREST GET URL stays safe vs one giant `.in('job_id', …)` — same magnitude as Jobs Stages schedule search chunks. */
 const JOBS_LEDGER_TEAM_MEMBERS_JOB_ID_CHUNK = 150
@@ -67,48 +70,36 @@ export async function fetchTeamMemberUserIdsForJobIds(
   }
 }
 
+const USERS_TAB_BASE_ROLES: readonly SupabaseUserRole[] = [
+  'assistant',
+  'master_technician',
+  'subcontractor',
+  'helpers',
+  'estimator',
+  'primary',
+  'superintendent',
+]
+
 /** Same auth `users` cohort as People → Users (non-archived). Includes `dev` when `includeDevUsers` (viewer is dev). */
 export async function fetchUsersTabUserIdsForScheduleDispatchHub(
   includeDevUsers: boolean,
 ): Promise<{ data: string[]; error: string | null }> {
   try {
-    const baseRows = await withSupabaseRetry(
+    const allowedRoles: SupabaseUserRole[] = includeDevUsers
+      ? ['dev', ...USERS_TAB_BASE_ROLES]
+      : [...USERS_TAB_BASE_ROLES]
+    const rows = await withSupabaseRetry(
       async () =>
-        await supabase
-          .from('users')
-          .select('id')
-          .is('archived_at', null)
-          .in('role', [
-            'assistant',
-            'master_technician',
-            'subcontractor',
-            'helpers',
-            'estimator',
-            'primary',
-            'superintendent',
-          ]),
+        await supabase.from('users').select('id').is('archived_at', null).in('role', allowedRoles),
       'fetchUsersTabUserIdsForScheduleDispatchHub',
     )
     const seen = new Set<string>()
     const ids: string[] = []
-    for (const row of (baseRows ?? []) as Array<{ id: string }>) {
+    for (const row of (rows ?? []) as Array<{ id: string }>) {
       const id = row.id
       if (!id || seen.has(id)) continue
       seen.add(id)
       ids.push(id)
-    }
-    if (includeDevUsers) {
-      const devRows = await withSupabaseRetry(
-        async () =>
-          await supabase.from('users').select('id').is('archived_at', null).eq('role', 'dev'),
-        'fetchUsersTabUserIdsForScheduleDispatchHubDev',
-      )
-      for (const row of (devRows ?? []) as Array<{ id: string }>) {
-        const id = row.id
-        if (!id || seen.has(id)) continue
-        seen.add(id)
-        ids.push(id)
-      }
     }
     return { data: ids, error: null }
   } catch (e) {
@@ -123,45 +114,26 @@ export async function fetchUsersTabRosterForScheduleDispatchHub(
   includeDevUsers: boolean,
 ): Promise<{ data: ScheduleDispatchHubRosterRow[]; error: string | null }> {
   try {
-    const baseRows = await withSupabaseRetry(
+    const allowedRoles: SupabaseUserRole[] = includeDevUsers
+      ? ['dev', ...USERS_TAB_BASE_ROLES]
+      : [...USERS_TAB_BASE_ROLES]
+    const rows = await withSupabaseRetry(
       async () =>
         await supabase
           .from('users')
           .select('id, role')
           .is('archived_at', null)
-          .in('role', [
-            'assistant',
-            'master_technician',
-            'subcontractor',
-            'helpers',
-            'estimator',
-            'primary',
-            'superintendent',
-          ]),
+          .in('role', allowedRoles),
       'fetchUsersTabRosterForScheduleDispatchHub',
     )
     const seen = new Set<string>()
     const out: ScheduleDispatchHubRosterRow[] = []
-    for (const row of (baseRows ?? []) as Array<{ id: string; role: string | null }>) {
+    for (const row of (rows ?? []) as Array<{ id: string; role: string | null }>) {
       const id = row.id
       const roleVal = row.role
       if (!id || seen.has(id) || typeof roleVal !== 'string' || roleVal === '') continue
       seen.add(id)
       out.push({ id, role: roleVal })
-    }
-    if (includeDevUsers) {
-      const devRows = await withSupabaseRetry(
-        async () =>
-          await supabase.from('users').select('id, role').is('archived_at', null).eq('role', 'dev'),
-        'fetchUsersTabRosterForScheduleDispatchHubDev',
-      )
-      for (const row of (devRows ?? []) as Array<{ id: string; role: string | null }>) {
-        const id = row.id
-        const roleVal = row.role
-        if (!id || seen.has(id) || typeof roleVal !== 'string' || roleVal === '') continue
-        seen.add(id)
-        out.push({ id, role: roleVal })
-      }
     }
     return { data: out, error: null }
   } catch (e) {

@@ -58,6 +58,7 @@ import {
 } from '../../lib/fetchForecastStageDetail'
 import type { ResolvedStageBar } from '../../lib/projectsForecastStageResolver'
 import { ProjectsForecastStageLineItemsSection } from './ProjectsForecastStageLineItemsSection'
+import { parsePercentCompleteInput } from '../../lib/parsePercentCompleteInput'
 
 type Props = {
   /** The clicked stage's bar data — used for the modal header (color swatch, name, seq,
@@ -202,6 +203,11 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
   const [privateNotesExpanded, setPrivateNotesExpanded] = useState<boolean | null>(null)
   const [savingNotes, setSavingNotes] = useState<boolean>(false)
   const [savingPrivateNotes, setSavingPrivateNotes] = useState<boolean>(false)
+  // Header `Complete: [N] %` editor — saves on blur, independent of the bundled Save
+  // button, same pattern the notes textareas use. Mirrors the Forecast Specific gutter
+  // cell at `ProjectsForecastSpecificTab.tsx` so a user can flip between the gutter
+  // and the modal header without re-learning the affordance.
+  const [savingPercent, setSavingPercent] = useState<boolean>(false)
   // Bump to force the line-items section to refetch after the bundled Save (which may
   // have changed the step row; line items aren't actually affected but a refetch is
   // cheap and keeps everything consistent if a deletion happens elsewhere).
@@ -488,6 +494,35 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
     [detail, load, showToast],
   )
 
+  // Persist `percent_complete` from the header editor. Skips when the new value equals
+  // the current persisted value to avoid no-op writes (mirrors the gutter cell). Same
+  // null-on-zero semantic as the shared `parsePercentCompleteInput` helper — typing 0
+  // clears the cell. On failure we surface a toast and let the input re-key off the
+  // unchanged persisted value (no inline error UI to keep the header compact).
+  const savePercent = useCallback(
+    async (next: number | null) => {
+      if (!detail) return
+      if (next === (detail.step.percent_complete ?? null)) return
+      setSavingPercent(true)
+      try {
+        const { error } = await supabase
+          .from('project_workflow_steps')
+          .update({ percent_complete: next })
+          .eq('id', detail.step.id)
+        if (error) {
+          showToast(`Failed to save %: ${error.message}`, 'error')
+          return
+        }
+        await load()
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Failed to save %'), 'error')
+      } finally {
+        setSavingPercent(false)
+      }
+    },
+    [detail, load, showToast],
+  )
+
   const handleClearDates = async () => {
     if (!detail) return
     setSaving(true)
@@ -658,6 +693,25 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
               )}
             </div>
           </div>
+          {/* Header `Complete: [N] %` — placed top-right between the title block and
+              the close button so the user can change progress without scrolling into
+              the body editor. Only renders once `step` (i.e. `detail`) has loaded so
+              we know whether `percent_complete` is null or a real number; before that
+              the slot is empty and the close button sits at the right edge as before.
+              Mirrors the Forecast Specific gutter cell at
+              `ProjectsForecastSpecificTab.tsx`'s `StageGutterLabel` — typing 0 clears
+              via the shared `parsePercentCompleteInput`, the input re-keys off the
+              persisted value, and the visual blank covers the `0 -> null` no-op-commit
+              case. */}
+          {step ? (
+            <HeaderPercentCompleteEditor
+              stageId={stage.stageId}
+              percentComplete={step.percent_complete ?? null}
+              canEdit={canEdit}
+              savingPercent={savingPercent}
+              savePercent={savePercent}
+            />
+          ) : null}
           <button
             type="button"
             onClick={onBackdropClick}
@@ -1172,6 +1226,93 @@ function NotesCollapsible({
   )
 }
 
+/**
+ * Compact `Complete: [N] %` editor that lives in the modal header (top-right, between
+ * the title block and the close button). Two modes:
+ *
+ *   - `canEdit === true`  — uncontrolled `<input type="number">` re-keyed off the
+ *     persisted value so a realtime refresh or a save+reload swaps the visible value
+ *     without forcing us into a controlled-value dance. Saves on blur via the parent's
+ *     `savePercent`, which itself runs input through the shared
+ *     `parsePercentCompleteInput` (the helper maps `0`, empty, negatives, and
+ *     fractionals that round to `0` all to null, so typing `0` clears the cell). We
+ *     also imperatively blank the DOM value when the parser returned null but the
+ *     field still shows non-empty text — covers the case where the user typed `0`
+ *     over a real value (input would briefly show "0" until the realtime re-key
+ *     arrived) and the case where the user typed `0` into an already-null cell
+ *     (the `next === persisted` early-return inside `savePercent` skips the commit,
+ *     so without this the field would keep showing the stale "0").
+ *
+ *   - `canEdit === false` — renders a plain `45%` label when the value is non-null,
+ *     and renders nothing when it is null (keeps the header compact for roles that
+ *     can't change the value and aren't tracking it).
+ *
+ * `stopPropagation` on the click / mousedown / keydown handlers prevents typing from
+ * bubbling up and triggering anything else that might be listening on the header
+ * (e.g. focus-trap shortcuts), matching the gutter cell pattern.
+ */
+function HeaderPercentCompleteEditor({
+  stageId,
+  percentComplete,
+  canEdit,
+  savingPercent,
+  savePercent,
+}: {
+  stageId: string
+  percentComplete: number | null
+  canEdit: boolean
+  savingPercent: boolean
+  savePercent: (next: number | null) => void | Promise<void>
+}) {
+  if (!canEdit) {
+    if (percentComplete == null) return null
+    return (
+      <div style={headerPercentReadOnlyStyle} aria-label={`Percent complete: ${percentComplete}%`}>
+        <span style={headerPercentLabelStyle}>Complete</span>
+        <span style={headerPercentReadOnlyValueStyle}>{percentComplete}%</span>
+      </div>
+    )
+  }
+
+  return (
+    <label style={headerPercentEditorStyle}>
+      <span style={headerPercentLabelStyle}>
+        Complete
+        {savingPercent ? <span style={headerPercentSavingStyle}> · saving…</span> : null}
+      </span>
+      <span style={headerPercentInputRowStyle}>
+        <input
+          key={`pct-header-${stageId}-${percentComplete ?? 'null'}`}
+          type="number"
+          className="no-spinner"
+          min={0}
+          max={100}
+          inputMode="numeric"
+          defaultValue={percentComplete == null ? '' : String(percentComplete)}
+          aria-label="Percent complete"
+          title="Optional 0-100 progress estimate. Type 0 or leave empty to clear."
+          disabled={savingPercent}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+          }}
+          onBlur={(e) => {
+            const next = parsePercentCompleteInput(e.currentTarget.value)
+            if (next == null && e.currentTarget.value !== '') {
+              e.currentTarget.value = ''
+            }
+            void savePercent(next)
+          }}
+          style={headerPercentInputStyle}
+        />
+        <span style={headerPercentSuffixStyle}>%</span>
+      </span>
+    </label>
+  )
+}
+
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
@@ -1248,4 +1389,76 @@ const footerPrimaryStyle = {
   fontSize: '0.8125rem',
   fontWeight: 600,
   cursor: 'pointer',
+} as const
+
+// Header `Complete: [N] %` editor styles — small, calm, and visually paired with the
+// existing close button to its right. The label is uppercase mini-caps so it reads
+// as a field hint rather than competing with the stage title; the input row uses the
+// same light card chrome the body's "Adjust stage" editor uses so the two surfaces
+// feel related.
+const headerPercentEditorStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-end',
+  gap: 2,
+  flexShrink: 0,
+  marginTop: 2,
+} as const
+
+const headerPercentLabelStyle = {
+  fontSize: '0.625rem',
+  color: '#475569',
+  fontWeight: 600,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+} as const
+
+const headerPercentSavingStyle = {
+  color: '#9ca3af',
+  fontWeight: 400,
+  textTransform: 'none',
+  letterSpacing: 0,
+} as const
+
+const headerPercentInputRowStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 2,
+  background: '#ffffff',
+  border: '1px solid #cbd5e1',
+  borderRadius: 4,
+  padding: '0.1rem 0.35rem',
+} as const
+
+const headerPercentInputStyle = {
+  width: 36,
+  padding: 0,
+  fontSize: '0.875rem',
+  textAlign: 'right',
+  border: 'none',
+  background: 'transparent',
+  color: '#0f172a',
+  outline: 'none',
+  fontWeight: 600,
+} as const
+
+const headerPercentSuffixStyle = {
+  fontSize: '0.875rem',
+  color: '#475569',
+  fontWeight: 600,
+} as const
+
+const headerPercentReadOnlyStyle = {
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-end',
+  gap: 2,
+  flexShrink: 0,
+  marginTop: 2,
+} as const
+
+const headerPercentReadOnlyValueStyle = {
+  fontSize: '0.875rem',
+  color: '#0f172a',
+  fontWeight: 600,
 } as const

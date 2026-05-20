@@ -1547,127 +1547,92 @@ export default function ClockInOutButton({
     </button>
   ) : null
 
+  const topRowContent = hasOpenSession ? (
+    <>
+      {salaryUiActive ? null : (
+      <button
+        type="button"
+        onClick={handleClockOutClick}
+        disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
+        title={clockOutTallyGateLoading ? 'Checking card assignments…' : 'Clock out'}
+        style={{
+          padding: '0.5rem 1rem',
+          fontSize: '1rem',
+          fontWeight: 600,
+          border: '2px solid #dc2626',
+          borderRadius: 8,
+          background: '#dc2626',
+          color: 'white',
+          cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {clockOutTallyGateLoading ? 'Checking…' : `${formatElapsed(totalSecondsToday)} — Clock Out`}
+      </button>
+      )}
+      <button
+        type="button"
+        onClick={handleOpenUpdateFocusModal}
+        disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
+        title={
+          salaryUiActive
+            ? 'Change job or bid focus for this shift'
+            : 'Switch to a new focus (clocks out and starts new session)'
+        }
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: '0.5rem 1rem',
+          fontSize: '1rem',
+          fontWeight: 600,
+          border: '2px solid #3b82f6',
+          borderRadius: 8,
+          background: '#3b82f6',
+          color: 'white',
+          cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
+        }}
+      >
+        Update Focus
+      </button>
+    </>
+  ) : salaryUiActive ? (
+    myTimePreviewButton
+  ) : (
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', width: '100%' }}>
+      <button
+        type="button"
+        onClick={handleOpenClockInModal}
+        disabled={!canClockIn || actionLoading}
+        title={!userName?.trim() ? 'Set your name in Settings to clock in' : 'Clock in'}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          padding: '0 1.5rem',
+          minHeight: 48,
+          height: 48,
+          boxSizing: 'border-box',
+          fontSize: '1.125rem',
+          fontWeight: 600,
+          border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
+          borderRadius: 8,
+          background: canClockIn ? CLOCK_IN_ACCENT_ORANGE : '#f3f4f6',
+          color: canClockIn ? 'white' : '#9ca3af',
+          cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
+        }}
+      >
+        Clock In
+      </button>
+      {myTimePreviewButton}
+    </div>
+  )
+
   return (
     <>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%' }}>
-      {hasOpenSession ? (
-        <>
-          {salaryUiActive ? (
-            <div
-              style={{
-                padding: '0.5rem 1rem',
-                fontSize: '1rem',
-                fontWeight: 600,
-                border: '2px solid #15803d',
-                borderRadius: 8,
-                background: '#dcfce7',
-                color: '#14532d',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-              title="Salaried shift from your Settings workday"
-            >
-              On shift — {formatElapsed(totalSecondsToday)}
-            </div>
-          ) : (
-          <button
-            type="button"
-            onClick={handleClockOutClick}
-            disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
-            title={clockOutTallyGateLoading ? 'Checking card assignments…' : 'Clock out'}
-            style={{
-              padding: '0.5rem 1rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              border: '2px solid #dc2626',
-              borderRadius: 8,
-              background: '#dc2626',
-              color: 'white',
-              cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {clockOutTallyGateLoading ? 'Checking…' : `${formatElapsed(totalSecondsToday)} — Clock Out`}
-          </button>
-          )}
-          <button
-            type="button"
-            onClick={handleOpenUpdateFocusModal}
-            disabled={actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading}
-            title={
-              salaryUiActive
-                ? 'Change job or bid focus for this shift'
-                : 'Switch to a new focus (clocks out and starts new session)'
-            }
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: '0.5rem 1rem',
-              fontSize: '1rem',
-              fontWeight: 600,
-              border: '2px solid #3b82f6',
-              borderRadius: 8,
-              background: '#3b82f6',
-              color: 'white',
-              cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
-            }}
-          >
-            Update Focus
-          </button>
-        </>
-      ) : salaryUiActive ? (
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', width: '100%' }}>
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: '0 1.5rem',
-              minHeight: 48,
-              height: 48,
-              boxSizing: 'border-box',
-              fontSize: '1rem',
-              fontWeight: 600,
-              border: '2px solid #d1d5db',
-              borderRadius: 8,
-              background: '#f9fafb',
-              color: '#6b7280',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title="Outside your scheduled shift windows (see Settings → Salaried workday)"
-          >
-            Off shift
-          </div>
-          {myTimePreviewButton}
-        </div>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'stretch', gap: '0.5rem', width: '100%' }}>
-          <button
-            type="button"
-            onClick={handleOpenClockInModal}
-            disabled={!canClockIn || actionLoading}
-            title={!userName?.trim() ? 'Set your name in Settings to clock in' : 'Clock in'}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: '0 1.5rem',
-              minHeight: 48,
-              height: 48,
-              boxSizing: 'border-box',
-              fontSize: '1.125rem',
-              fontWeight: 600,
-              border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
-              borderRadius: 8,
-              background: canClockIn ? CLOCK_IN_ACCENT_ORANGE : '#f3f4f6',
-              color: canClockIn ? 'white' : '#9ca3af',
-              cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
-            }}
-          >
-            Clock In
-          </button>
-          {myTimePreviewButton}
-        </div>
-      )}
+    {topRowContent ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: '100%', marginBottom: '1rem' }}>
+      {topRowContent}
+    </div>
+    ) : null}
       {error && (
         <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>{error}</span>
       )}
@@ -2211,7 +2176,6 @@ export default function ClockInOutButton({
           </div>
         </div>
       )}
-    </div>
     {clockOutLeaveReportJob ? (
       <AdditionalReportModal
         open

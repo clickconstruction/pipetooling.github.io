@@ -46,6 +46,15 @@ export const APP_SETTINGS_KEY_BILL_CUSTOMER_MEMO_PRESETS_V1 = 'bill_customer_mem
  */
 export const APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1 = 'physical_invoice_issuer_v1' as const
 
+/**
+ * JSON in `value_text`: `DispatchNoteRequirementsConfigV1` — org-wide per-user schedule-block note
+ * requirements (require-note vs skip-note assignee lists). Dispatch staff write via the
+ * /schedule-dispatch "Dispatch Settings" modal; all authenticated read.
+ * @see `src/lib/dispatchNoteRequirements.ts`
+ */
+export const APP_SETTINGS_KEY_DISPATCH_NOTE_REQUIREMENT_CONFIG =
+  'dispatch_note_requirement_config_v1' as const
+
 export function isValidYmd(s: string): boolean {
   return /^(\d{4})-(\d{2})-(\d{2})$/.test(s.trim())
 }

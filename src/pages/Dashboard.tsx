@@ -563,7 +563,7 @@ function DashboardJobPicturesLinkRow({
           e.preventDefault()
           openInExternalBrowser(url)
         }}
-        style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', textDecoration: 'none' }}
+        style={{ display: 'inline-flex', alignItems: 'center', color: '#3b82f6', textDecoration: 'none' }}
       >
         {/* Font Awesome Free 7.x — images (OFL) */}
         {glyph}
@@ -1110,6 +1110,7 @@ export default function Dashboard() {
   const [subScheduleRows, setSubScheduleRows] = useState<JobScheduleBlockRow[]>([])
   const [subScheduleLoading, setSubScheduleLoading] = useState(false)
   const [subScheduleLabels, setSubScheduleLabels] = useState<Map<string, string>>(() => new Map())
+  const [subSchedulePhones, setSubSchedulePhones] = useState<Map<string, string | null>>(() => new Map())
   const [scheduleReminderNow, setScheduleReminderNow] = useState(() => new Date())
   const [readyToBillInvoices, setReadyToBillInvoices] = useState<InvoiceForDashboard[]>([])
   const [readyToBillJobs, setReadyToBillJobs] = useState<JobForDashboard[]>([])
@@ -2774,6 +2775,39 @@ export default function Dashboard() {
       cancelled = true
     }
   }, [role, authUser?.id, subScheduleRows, assignedJobs, assignedReadyToBillJobs])
+
+  useEffect(() => {
+    if (!isSubcontractorLikeRole(role) || !authUser?.id) {
+      setSubSchedulePhones(new Map())
+      return
+    }
+    if (subScheduleRows.length === 0) {
+      setSubSchedulePhones(new Map())
+      return
+    }
+    const jobIds = [...new Set(subScheduleRows.map((b) => b.job_id))]
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            await supabase.from('jobs_ledger').select('id, customer_phone').in('id', jobIds),
+          'dashboardSubScheduleJobPhones',
+        )
+        if (cancelled) return
+        const m = new Map<string, string | null>()
+        for (const r of (rows ?? []) as Array<{ id: string; customer_phone: string | null }>) {
+          m.set(r.id, r.customer_phone)
+        }
+        setSubSchedulePhones(m)
+      } catch {
+        if (!cancelled) setSubSchedulePhones(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, authUser?.id, subScheduleRows])
 
   const subScheduleDayPartition = useMemo(() => {
     const todayYmd = scheduleTodayDateKey()
@@ -4636,15 +4670,13 @@ export default function Dashboard() {
         </div>
       )}
       {authUser?.id && (
-        <div style={{ marginBottom: '1rem' }}>
-          <ClockInOutButton
-            userId={authUser.id}
-            userName={clockDisplayName}
-            onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
-            onClockInSuccess={handleClockInSuccessContractPrompt}
-            onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
-          />
-        </div>
+        <ClockInOutButton
+          userId={authUser.id}
+          userName={clockDisplayName}
+          onOpenMyTimeDayEditor={dashboardSelfIsSalary ? undefined : openMyTimePreviewFromClock}
+          onClockInSuccess={handleClockInSuccessContractPrompt}
+          onFieldReportSaved={() => void refreshDashboardAssignedJobLists()}
+        />
       )}
       {authUser?.id && teamFeedbackHomeEnabled && (
         <div style={{ marginBottom: '1rem' }}>
@@ -5855,7 +5887,70 @@ export default function Dashboard() {
                                 }}
                               >
                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div style={{ fontWeight: 500 }}>{rowLabel}</div>
+                                  <div
+                                    style={{
+                                      fontWeight: 500,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.5rem',
+                                      minWidth: 0,
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        minWidth: 0,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                      }}
+                                    >
+                                      {rowLabel}
+                                    </span>
+                                    {(() => {
+                                      const phone = (subSchedulePhones.get(b.job_id) ?? '').trim()
+                                      if (!phone) return null
+                                      return (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            openInExternalBrowser(`tel:${phone}`)
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                              e.stopPropagation()
+                                            }
+                                          }}
+                                          aria-label={`Call customer at ${phone}`}
+                                          title={`Call customer at ${phone}`}
+                                          style={{
+                                            flexShrink: 0,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            padding: '0.2rem',
+                                            cursor: 'pointer',
+                                            color: '#2563eb',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                          }}
+                                        >
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 640 640"
+                                            width={16}
+                                            height={16}
+                                            aria-hidden
+                                            focusable={false}
+                                            style={{ display: 'block' }}
+                                          >
+                                            <path
+                                              fill="currentColor"
+                                              d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7 536 416.7 573.1C493 589.3 555.5 534 573.1 469.4L574.6 463.9C580 444.2 569.9 423.6 551.1 415.8L453.8 375.3C437.3 368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 241.3 341 208.8 269.3L253 233.3C266.9 222 271.6 202.9 264.8 186.3L224.2 89z"
+                                            />
+                                          </svg>
+                                        </button>
+                                      )
+                                    })()}
+                                  </div>
                                   <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
                                     {scheduleFormatWindow(b.time_start, b.time_end)}
                                   </div>

@@ -1,20 +1,38 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 
-/** `user_id`s whose `users.name` (trim) matches `people_pay_config.person_name` (trim) with `is_salary` true. */
-export async function fetchSalariedUserIdSetFromUserIds(userIds: string[]): Promise<Set<string>> {
+/**
+ * `user_id`s whose `users.name` (trim) matches `people_pay_config.person_name` (trim) with
+ * `is_salary` true.
+ *
+ * When `opts.nameByUserId` is provided, the helper skips the `users` lookup and reuses the
+ * caller's already-fetched id-to-name map. Callers like Schedule Dispatch Hub fetch this map
+ * a few lines earlier; passing it in removes a redundant round-trip.
+ */
+export async function fetchSalariedUserIdSetFromUserIds(
+  userIds: string[],
+  opts?: { nameByUserId?: ReadonlyMap<string, string> },
+): Promise<Set<string>> {
   const unique = [...new Set(userIds)]
   if (unique.length === 0) return new Set()
 
-  const usersData = await withSupabaseRetry(
-    async () => supabase.from('users').select('id, name').in('id', unique),
-    'users names for salary pay gate',
-  )
   const idToPayName = new Map<string, string>()
-  for (const r of usersData ?? []) {
-    const row = r as { id: string; name: string | null }
-    const n = row.name?.trim()
-    if (n) idToPayName.set(row.id, n)
+  const provided = opts?.nameByUserId
+  if (provided) {
+    for (const uid of unique) {
+      const n = provided.get(uid)?.trim()
+      if (n) idToPayName.set(uid, n)
+    }
+  } else {
+    const usersData = await withSupabaseRetry(
+      async () => supabase.from('users').select('id, name').in('id', unique),
+      'users names for salary pay gate',
+    )
+    for (const r of usersData ?? []) {
+      const row = r as { id: string; name: string | null }
+      const n = row.name?.trim()
+      if (n) idToPayName.set(row.id, n)
+    }
   }
 
   const names = [...new Set(idToPayName.values())]

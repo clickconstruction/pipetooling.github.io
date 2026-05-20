@@ -6278,6 +6278,7 @@ export type Database = {
           notify_assigned_when_started: boolean | null
           notify_next_assignee_when_complete_or_approved: boolean | null
           notify_prior_assignee_when_rejected: boolean | null
+          percent_complete: number | null
           private_notes: string | null
           rejection_reason: string | null
           scheduled_end_date: string | null
@@ -6310,6 +6311,7 @@ export type Database = {
           notify_assigned_when_started?: boolean | null
           notify_next_assignee_when_complete_or_approved?: boolean | null
           notify_prior_assignee_when_rejected?: boolean | null
+          percent_complete?: number | null
           private_notes?: string | null
           rejection_reason?: string | null
           scheduled_end_date?: string | null
@@ -6342,6 +6344,7 @@ export type Database = {
           notify_assigned_when_started?: boolean | null
           notify_next_assignee_when_complete_or_approved?: boolean | null
           notify_prior_assignee_when_rejected?: boolean | null
+          percent_complete?: number | null
           private_notes?: string | null
           rejection_reason?: string | null
           scheduled_end_date?: string | null
@@ -9701,6 +9704,7 @@ export type Database = {
           notify_assigned_when_started: boolean | null
           notify_next_assignee_when_complete_or_approved: boolean | null
           notify_prior_assignee_when_rejected: boolean | null
+          percent_complete: number | null
           private_notes: string | null
           rejection_reason: string | null
           scheduled_end_date: string | null

@@ -53,6 +53,11 @@ export type ForecastStageInput = {
   started_at: string | null
   ended_at: string | null
   skipped_reason?: string | null
+  /** Optional 0-100 progress estimate stored on the DB row. Omitted (undefined) by
+   *  legacy callers; null when explicitly cleared. The resolver passes it through
+   *  unchanged so downstream UIs (Forecast Specific gutter, Workflow card) can render
+   *  the same number from a single source. */
+  percent_complete?: number | null
 }
 
 export type ResolvedStageBar = {
@@ -71,6 +76,10 @@ export type ResolvedStageBar = {
    *  grey dashed placeholder. */
   isUnscheduled: boolean
   colorKey: ForecastBarColorKey
+  /** Optional 0-100 progress estimate. Null when the team hasn't tracked one. Currently
+   *  rendered only in Forecast Specific's gutter; All Stages loads it but doesn't display
+   *  it. */
+  percentComplete: number | null
 }
 
 const YMD_RX = /^\d{4}-\d{2}-\d{2}$/
@@ -185,6 +194,7 @@ export function resolveForecastStages(
       isInferred,
       isUnscheduled,
       colorKey: forecastStageColorKey(s.status, isUnscheduled),
+      percentComplete: s.percent_complete ?? null,
     })
 
     // Chain pointer = the end we just resolved (the next stage's start defaults to this

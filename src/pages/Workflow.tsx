@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState, useRef } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { parseWorkflowLineItemPaste } from '../lib/parseWorkflowLineItemPaste'
+import { parsePercentCompleteInput } from '../lib/parsePercentCompleteInput'
 import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { useEditProjectModal } from '../contexts/EditProjectModalContext'
@@ -1824,6 +1825,25 @@ export default function Workflow() {
     })
   }
 
+  // Persist an inline percent-complete edit from the expanded stage card. Mirrors
+  // `submitExpectedDates` (single-column update + optimistic `setSteps` merge). The Forecast
+  // Specific tab has its own equivalent — both surfaces commit identically because the
+  // user's keystrokes flow through the shared `parsePercentCompleteInput` helper before
+  // landing here.
+  async function updatePercentComplete(step: Step, value: number | null) {
+    const { error } = await supabase
+      .from('project_workflow_steps')
+      .update({ percent_complete: value })
+      .eq('id', step.id)
+    if (error) {
+      showToast(`Failed to save % complete: ${error.message}`, 'error')
+      return
+    }
+    setSteps((prev) =>
+      prev.map((s) => (s.id === step.id ? { ...s, percent_complete: value } : s)),
+    )
+  }
+
   async function submitExpectedDates() {
     if (!expectedDatesStep) return
     const { step, expectedStart, expectedEnd, updateNextStage } = expectedDatesStep
@@ -3009,6 +3029,64 @@ export default function Workflow() {
                         {' \u00B7 '}
                         End {renderField(endYmd, 'end')}
                         {lengthLabel ? ` · ${lengthLabel}` : null}
+                      </span>
+                    </div>
+                  )
+                })()}
+                {/* Row 2c: Percent complete - same edit gate as Expected dates (assignee
+                    or manager). Uncontrolled input re-keys off the persisted value so a
+                    Forecast Specific edit elsewhere propagates here automatically. Empty
+                    field == null in the DB (== "not tracked"). */}
+                {!isCollapsed && (() => {
+                  const canEditPct = canManageStages || s.assigned_to_name === currentUserName
+                  const pct = s.percent_complete ?? null
+                  return (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: '#6b7280' }}>
+                      <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        Complete:{' '}
+                        {canEditPct ? (
+                          <>
+                            <input
+                              key={`pct-workflow-${s.id}-${pct ?? 'null'}`}
+                              type="number"
+                              // `no-spinner` matches the Forecast Specific gutter cell —
+                              // hides the browser's up/down stepper arrows for a quieter
+                              // input that fits the small `Complete:` row.
+                              className="no-spinner"
+                              min={0}
+                              max={100}
+                              inputMode="numeric"
+                              defaultValue={pct == null ? '' : String(pct)}
+                              placeholder="—"
+                              aria-label={`Percent complete for ${s.name}`}
+                              title="Optional 0-100 progress estimate. Leave empty when not tracked."
+                              onBlur={(e) => {
+                                const next = parsePercentCompleteInput(e.currentTarget.value)
+                                if (next === pct) return
+                                void updatePercentComplete(s, next)
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur()
+                              }}
+                              style={{
+                                width: '3rem',
+                                padding: '0.1rem 0.25rem',
+                                fontSize: '0.75rem',
+                                textAlign: 'right',
+                                border: 'none',
+                                borderBottom: '1px solid #d1d5db',
+                                borderRadius: 0,
+                                background: 'transparent',
+                                color: '#0f172a',
+                              }}
+                            />
+                            <span style={{ color: '#6b7280' }}>%</span>
+                          </>
+                        ) : (
+                          <span style={{ color: pct == null ? '#94a3b8' : '#0f172a' }}>
+                            {pct == null ? '\u2014' : `${pct}%`}
+                          </span>
+                        )}
                       </span>
                     </div>
                   )

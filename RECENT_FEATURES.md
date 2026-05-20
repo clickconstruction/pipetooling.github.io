@@ -7,16 +7,28 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-19
+last_updated: 2026-05-19 (v2.561)
 estimated_read_time: 30-45 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.557+ (reverse chronological)"
+version_range: "v2.561+ (reverse chronological)"
 
 key_sections:
-  - name: "Latest Version (v2.557)"
-    line: ~1868
+  - name: "Latest Version (v2.561)"
+    line: ~1880
+    description: "Schedule Dispatch Hub fast first paint — `loadHub` in [`ScheduleDispatchHubPage.tsx`](src/components/schedule/ScheduleDispatchHubPage.tsx) reshaped from a serial chain into 4 awaited phases (A: jobs ledger + week blocks + users-tab roster in parallel; B: team-members for the resolved `jobIds`; C: names + archived set + `user_time_off` in parallel; D: salaried set + `people_pay_config` wages in parallel, both keyed by the already-fetched name map). [`fetchSalariedUserIdSetFromUserIds`](src/lib/salaryPayConfigGate.ts) now accepts an optional `opts.nameByUserId?: ReadonlyMap<string, string>` and, when provided, skips its own `users` round-trip and reuses the caller's id→name map (back-compat: all five existing callers — `Dashboard.tsx`, `ScheduleDispatchJobWeek.tsx`, `PeopleHoursDashboardClockStrip.tsx`, `useDashboardMyTeamSectionState.ts`, and the updated hub page — keep working). [`fetchUsersTabUserIdsForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts) + [`fetchUsersTabRosterForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts) collapse the dev-viewer branch's second `users` query into a single `.in('role', allowedRoles)` over the union (`['dev', ...USERS_TAB_BASE_ROLES]` when `includeDevUsers`, base roles otherwise); shared typed const `USERS_TAB_BASE_ROLES: readonly SupabaseUserRole[]` is used by both functions. New `hubUserTimeOffPrimedRef: useRef<{ weekStart, weekEnd, rosterKey } | null>` records which `(week, roster)` `loadHub` just seeded `hubUserTimeOffByCell` for; the standalone time-off refresh effect now consults the ref and short-circuits when the trio matches (so first paint no longer issues a second `user_time_off` request immediately after `loadHub` already loaded it). The effect still fires on later roster changes (quiet refreshes, new assignee dropped in, etc.). Phase D uses `Promise.allSettled` so a wages failure no longer drops the salaried set and vice versa — mirrors the previous try/catch granularity. Toast strings + error paths unchanged. **Net: sequential first-paint round-trips drop from ~7–8 to 4; dev viewers' `users` queries drop from 2 to 1; first paint includes time-off chips in the same step (no flash of empty cells, no double `user_time_off` network call).** No DB / migration / RLS / RPC / Edge changes. Verified: `npx vitest run` — 918/918 pass (no test file changes needed; the helper signature change is back-compatible); `npx tsc --noEmit` clean after clearing the stale `tsconfig.tsbuildinfo`; `npm run build` clean."
+  - name: "Previous Version (v2.560)"
+    line: ~1953
+    description: "Forecast Specific dense calendar is now anchored to **today** with a 180-day window centered on it (`[today − 90, today + 90]`) instead of the resolved-bar envelope, and the timeline grows in 90-day chunks via in-line `←` / `→` pillar columns sitting AT the rail's start / end (visible only when scrolled to the corresponding edge — e.g. `... | 22 | 23 | 24 | →`). Defaults to today centered on every job switch (no persistence, `reset_per_job`); a toolbar `Today` button (left of `Edit`) re-applies the same reset on demand. New helper [`src/lib/projectsForecastSpecificWindow.ts`](src/lib/projectsForecastSpecificWindow.ts) exposes `computeForecastSpecificDefaultWindow(today) → { startYmd, endYmd }`, `computeForecastSpecificEffectiveWindow(today, extendedLeftYmd, extendedRightYmd)` (per-edge override that only-grows from the default — defensive guard ignores any override that would shrink the window), `extendForecastSpecificWindowLeft(currentStartYmd)` and `extendForecastSpecificWindowRight(currentEndYmd)` (both add `FORECAST_SPECIFIC_EXTEND_DAYS = 90`), plus exported `FORECAST_SPECIFIC_DEFAULT_BACK_DAYS = 90` and `FORECAST_SPECIFIC_DEFAULT_FORWARD_DAYS = 90` constants — 13 unit tests in `projectsForecastSpecificWindow.test.ts` cover defaults, single-edge overrides, both-edge overrides, only-grow guard for each side, and chained extensions. `ProjectsForecastTimelineGrid` is now wrapped with `forwardRef` and exposes a `ForecastTimelineGridHandle` with `scrollToEdge(side: 'left' | 'right')` so the Specific tab can snap the scroller to the freshly-loaded edge inside `useLayoutEffect` after a pan (no flash of 'stuck at old edge'). Two new optional grid props gate the pillar UI: `onPanLeft` / `onPanRight` (each renders a `position: absolute` button at its edge — left at `gutter`, right at `0` (full-bleed), height matches the timeline, `zIndex: 5`, `e.stopPropagation()` on click + pointerdown so future drag handlers can't pick up pillar clicks; `aria-label` / `title` default to `'Load 90 more days back'` / `'Load 90 more days forward'`). Auto-scroll behavior is now branched on a new optional `autoCenterTodayResetKey` prop — when provided (Specific passes `selectedJobId ?? ''`), the grid re-centers today **only** when the key changes (via `todayIndexRef` so the effect doesn't depend on `todayIndex`); when omitted (All Stages), the legacy `[rangeStart, rangeEnd, todayIndex]` deps run, preserving existing behavior unchanged. `ProjectsForecastSpecificTab` adds two `useState<string | null>` for the pan overrides, a `useRef<ForecastTimelineGridHandle | null>` for the grid handle, a `useRef<'left' | 'right' | null>` for the pending scroll intent, and a `useLayoutEffect` keyed on `denseDayKeys.length` that consumes the intent. The existing `selectedJobId`-reset effect was extended to also clear both pan overrides (so every job opens at the default window). `SHOW_DATES_TRAILING_DAYS`, the `denseEnvelope` memo, the `resolvedStagesEnvelope` import, and the `ymdAddDays` import in the tab all dropped — `denseDayKeys` now derives from `computeForecastSpecificEffectiveWindow(todayYmd, extendedRangeLeftYmd, extendedRangeRightYmd)` + `enumerateDaysInRange`. Trade-off: stages outside `[today − 90, today + 90]` are hidden until panned to — acceptable per the chosen `90 days from today` UX answer; the pillars give explicit, discoverable access to historical and future stages. Sparse mode (`showDates === false`) is unchanged — no day rail means no pillars. Verified: `npx tsc --noEmit` clean (only two unrelated pre-existing `ChipsWithSearchPicker.tsx` errors remain), `ReadLints` clean on all four touched files, 918 / 918 tests pass."
+  - name: "Previous Version (v2.559)"
+    line: ~1874
+    description: "Workflow step `percent_complete` (0-100 INT, nullable) on `project_workflow_steps` (migration `20260519214147_add_percent_complete_to_project_workflow_steps.sql`, CHECK 0-100). Editable from two surfaces: (1) Forecast Specific gutter (`/projects?tab=forecast`, Specific sub-tab) — right-aligned cell inside `StageGutterLabel` with a `%` column header in the sticky gutter header; Forecast All Stages stays unchanged. Edit gate **`dragEdit && canAlignStages(myRole)`** — the page's Edit toggle has to be on too, so by default every role sees the same muted read-only `NN%` text. **Hide-when-empty**: when the selected job has no `percent_complete` values anywhere AND the user isn't in Edit mode, the entire column (header + per-row cells) is omitted via `showPercentColumn = dragEdit || resolvedBars.some(...)` and `labelGutterWidth` drops back to **260** so the stage name reclaims the freed space. Once any value exists, the column shows for every role (read-only included). Toggling Edit on a job with at least one value doesn't reflow the timeline. Uncontrolled `<input type=number>` re-keyed off persisted value so realtime refresh updates the defaultValue without a controlled-value dance; `e.stopPropagation()` on click/mousedown/keydown so typing doesn't open the stage detail modal. `labelGutterWidth` bumped from 260 to 300 on both `ProjectsForecastTimelineGrid` and `ProjectsForecastSpecificGrid` to fit the cell + `+` button. (2) Workflow expanded stage card — new `Complete: [ N ] %` row directly under the existing Expected dates row, gated `canManageStages || s.assigned_to_name === currentUserName` so assignees can update their own progress without manager rights. Both surfaces share `parsePercentCompleteInput(raw): number | null` (empty/non-numeric -> null; **`0` and anything that clamps/rounds to 0 — explicit `0`, negatives, `0.4` — also map to null so typing `0` clears the cell, matching the semantic that a 0% progress estimate is functionally identical to "not tracked"**; > 100 clamps to 100; fractionals rounded) — 14 unit tests. The Forecast Specific gutter's `onBlur` also imperatively blanks the DOM value when the helper returned null but the field still shows non-empty text, so typing `0` over a real value doesn't flash "0" until the realtime re-key arrives, and typing `0` into an already-null cell still visually clears even though the early-return below skips the no-op commit. **Third edit surface**: the Forecast Specific stage detail modal (`ProjectsForecastSpecificStageModal.tsx`, opens when the user clicks a stage in the Specific sub-tab's Gantt) now exposes a compact `Complete [N] %` editor in its **top-right header**, between the title block and the close button. Same uncontrolled-input + save-on-blur + `parsePercentCompleteInput` + visual-clear pattern as the gutter, hooked to a parent-level `savePercent` `useCallback` (Supabase `.update({ percent_complete: next }).eq('id', step.id)` + `formatErrorMessage` toast on failure + `await load()` refetch) and a `savingPercent` boolean that disables the input + appends a muted `· saving…` to the label while in flight. Permission gate matches the rest of the modal's editor section (`canEditExpectedDates(myRole)` = dev / master_technician / assistant / superintendent); roles outside that set see a read-only `Complete 45%` when the value is non-null and **nothing** in the header when it's null (keeps the header tight for view-only roles that aren't tracking it). Only renders once `step` (i.e. `detail`) has loaded so the slot stays empty during the initial fetch and the close button stays at the right edge as before. Forecast pipeline: `ForecastStage` SELECT widened; `ForecastStageInput.percent_complete?` optional for legacy callers; `ResolvedStageBar.percentComplete: number | null` required; optimistic-inserted bar gains `percentComplete: null`. Grids get an opt-in `gutterHeader?: ReactNode` prop (no caller change for All Stages = header stays empty). Forecast Specific commits via `withSupabaseRetry(supabase.from('project_workflow_steps').update({ percent_complete: next }).eq('id', stageId))` with `formatErrorMessage(err)` toast on failure; no optimistic overlay needed because the uncontrolled input already shows the typed value locally and the parent's realtime channel reconciles within ~280ms. Workflow page has its own optimistic `setSteps` merge inside `updatePercentComplete(step, value)` (mirrors `submitExpectedDates` shape). Verified: `npx tsc --noEmit` clean, `ReadLints` clean on all modified files, 884/884 tests pass (was 869; +15 new tests), MCP `apply_migration` returned `{success: true}`, `npm run gen-types:linked` confirms `percent_complete: number | null` on Row/Insert/Update."
+  - name: "Previous Version (v2.558)"
+    line: ~1965
+    description: "Calendar page polish — the **My Day** single-day card (previously mobile-only) now renders on **both** mobile and desktop above the month grid, full-width, with prev/next arrows that scrub one calendar day at a time, a centered heading (`My Day · Today / Yesterday / Tomorrow / Weekday Mon DD`), and the shared `renderPlannedWorkChips` planned-work list (long-form `573 · Johnny Ingram` / `8:00 AM–12:00 PM` labels, dispatch notes rendered as a muted indigo subline under each time row, chip click → `JobDetailModalContext.openJobDetail`). The card auto-bumps `currentMonth` when scrubbing crosses a month boundary so the existing planned-work load effect refreshes `plannedByWorkDate` for the new range; **Today** in the header resets `myDayKey` alongside `currentMonth`. **Show weekends** toggle now defaults to **viewport** state (`useState(() => !mobileCalendarLayout)`) with **no localStorage hydration or persistence** — every page open the mobile viewport starts unchecked and desktop starts checked; in-session flips work but are forgotten on refresh, so per-viewport behavior is consistent across devices. **Show my workday** and **Show recorded time** both default to `false` (still persisted per user under `calendar_show_my_workday_{uid}` / `calendar_show_recorded_time_{uid}`). On narrow viewports (`max-width: 640px`, **`CALENDAR_MOBILE_CHROME_MQ`**), all three toggles move from the month-header row to a centered flex cluster **below** the grid. Planned-work mini-chips inside the calendar grid cells use a viewport-conditional compact format on mobile only (`573 Johnny Ingram` with a space separator + `8 AM – 12 PM` via new `compactScheduleWindow` helper that drops `:00` minutes and adds spaces around an en-dash); desktop grid cells, the My Day card, and the day-detail modal all keep the long-form `573 · Johnny Ingram` / `8:00 AM–12:00 PM` label. Dispatch notes (`job_schedule_blocks.note`) now flow through the planned-block fetch (`PlannedBlockRow.note: string | null`) and render under the time line inside `renderPlannedWorkChips`, matching how the Dashboard My Schedule subcontractor surface displays them. Empty-state copy **No planned work.** is centered (`textAlign: 'center'` on the `<p>` inside `renderPlannedWorkChips`) — applies to both the My Day card and the day-detail modal because the renderer is shared. Dashboard **My Schedule** section gets two minor centering tweaks for symmetry with the Calendar work: the **Today** / **Tomorrow** `<h3>` headers now have `textAlign: 'center'` and the **No blocks scheduled.** `<p>` placeholder is centered too. Files: [`src/pages/Calendar.tsx`](src/pages/Calendar.tsx) (new helpers `compactScheduleWindow`, `shiftYmd`, `formatMyDayHeadingLabel`, `PlannedBlockRow.note` field, `note` column added to the `job_schedule_blocks` SELECT, `renderShowMyWorkdayToggle` / `renderShowRecordedTimeToggle` / `renderShowWeekendsToggle` extracted, `renderPlannedWorkChips` extracted and reused in the My Day card + day-detail modal, ungated My Day card, `showWeekends` initial state `() => !mobileCalendarLayout` with no hydration effect and no `localStorage.setItem` write, mobile-conditional compact mini-chip in the grid cells, `useEffect` that bumps `currentMonth` when `myDayKey` falls outside `[gridStart, gridEnd]`, `today()` resets `myDayKey` to today's date), [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) (`textAlign: 'center'` on the My Schedule day `<h3>` and on the `No blocks scheduled.` `<p>`). No DB / migration / RLS / RPC / Edge changes. Verified: no new lints in either touched file; `mobileCalendarLayout` is still actively referenced for the below-grid toggle cluster and for the compact mini-chip predicate so the existing import and state remain in use."
+  - name: "Previous Version (v2.557)"
+    line: ~1900
     description: "Auto-assigned and now-editable **Project #**. Two rounds in one session. **Round 1 (auto-assign + display)** — new migration `20260519170221_add_project_number_to_projects.sql` adds **`projects.project_number TEXT DEFAULT ''`** + **`idx_projects_project_number`** index, creates org-global **`projects_project_number_seq`**, backfills every existing row oldest-first via `row_number() OVER (ORDER BY created_at ASC NULLS LAST, id ASC)`, pins the sequence to `MAX(project_number) + 1`, and installs `set_project_number_if_empty()` as a **`BEFORE INSERT FOR EACH ROW`** trigger — so manually-passed `project_number` values are honored verbatim and only blanks get auto-filled (same contract as **`bids.bid_number`**). Backfill verified: 6 / 6 rows numbered 1–6 in `created_at` order, sequence `last_value=7, is_called=true`. New helper [`src/lib/projectNumberLabel.ts`](src/lib/projectNumberLabel.ts) exposes `formatProjectNumberLabel` (`'Project #42'` or `null`) and `formatProjectNumberBadge` (`'#42'` or `null`), both null-safe + trim-safe; 11 unit tests in [`projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts) cover null / undefined / empty / whitespace / numeric / leading-and-trailing whitespace. Display surfaces: Projects list row (muted grey label inline next to the project name link), Workflow header chip (`Project #N · {name}` with graceful `Project: {name}` fallback when blank), Dashboard subscribed-stages line (`Project #N: {project_name}` with `Project` fallback — `SubscribedStep` extended with `project_number: string | null`, the loader's `select('id, name')` widened to `'id, name, project_number'`, and the in-memory `projectMap` carries `{ name, project_number }`). **Round 2 (editable)** — the read-only blue title-row badge from Round 1 was replaced by a free-text **Project #** input that is now the **first** form field on the Edit Project modal (matches Jobs putting HCP # near the top). Mirrors `housecallpro_number` styling (`INPUT_STYLE` / `LABEL_STYLE` / `HELPER_STYLE`); helper text reads *Auto-assigned when the project is created. Edit if you need to renumber.* Live duplicate-warning effect keyed on `(projectNumber, projectId)` queries `projects.select('id, name').eq('project_number', trimmed).neq('id', projectId).limit(1)` on every keystroke (no debounce — `projects` is a few hundred rows max) and surfaces *Already used by \"{Other Project}\". Save anyway?* under the input in amber `#b45309` via the new `WARNING_HELPER_STYLE` constant. Save still works through the warning (warn-but-allow design choice — no DB uniqueness constraint on `project_number`, consistent with `hcp_number` / `housecallpro_number`); `handleSubmit` payload type extended with `project_number: string` and value populated as `projectNumber.trim()` — blank trims to `''` and `formatProjectNumberLabel` null-fallbacks gracefully so cleared numbers render as `Project: {name}` everywhere downstream. The `BEFORE INSERT` trigger doesn't fire on UPDATE so cleared numbers stay cleared (matches Jobs HCP # cleared = stays cleared). No new RLS — existing `projects` UPDATE policy governs the column. Files: new [`src/lib/projectNumberLabel.ts`](src/lib/projectNumberLabel.ts) + [`projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts), new migration `20260519170221_add_project_number_to_projects.sql`, modified [`EditProjectForm.tsx`](src/components/projects/EditProjectForm.tsx) (state + warning effect + first-position form field + payload extension), [`Projects.tsx`](src/pages/Projects.tsx) (inline label next to the project-name `<Link>`), [`Workflow.tsx`](src/pages/Workflow.tsx) (chip text helper), [`Dashboard.tsx`](src/pages/Dashboard.tsx) (`SubscribedStep` type, projects loader select, projectMap shape, JSX rendering). Verified: `npx tsc -b --noEmit` clean both rounds, 834 / 834 vitest pass, 11 / 11 new helper tests, MCP `apply_migration` returned `{success: true}`, `npm run gen-types:linked` confirms `project_number: string | null` lands on `Database['public']['Tables']['projects']['Row']`."
   - name: "Previous Version (v2.556)"
     line: ~1900
@@ -1868,7 +1880,366 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.557)
+## Latest Updates (v2.561)
+
+**Date**: 2026-05-19
+
+### Schedule Dispatch Hub — fast first paint (4 parallel phases, dropped redundant `users` + `user_time_off` round-trips)
+
+Opening `/schedule-dispatch` (Hub) used to walk through ~7–8 awaited Supabase round-trips before the People grid and time-off chips were both populated:
+
+```text
+loadHub start → Promise.all [jobs + blocks]
+  → fetchTeamMemberUserIdsForJobIds
+  → fetchUsersTabUserIdsForScheduleDispatchHub   (+ 2nd users query for dev viewers)
+  → fetchUserNamesForIds
+  → fetchArchivedUserIdSetForIds
+  → fetchSalariedUserIdSetFromUserIds            (users + pay_config — 2 RTs)
+  → people_pay_config wages query (conditional)
+  → done
+       └─ effect later: refreshHubUserTimeOff    (user_time_off RT)
+```
+
+The biggest cost wasn't any one query — it was that everything was strung together with `await`. After this change, the body of `loadHub` in [`ScheduleDispatchHubPage.tsx`](src/components/schedule/ScheduleDispatchHubPage.tsx) is reshaped into four awaited **phases** that each run their independent reads in parallel, and the standalone time-off effect skips its initial duplicate fetch once `loadHub` has already seeded the cell map for the same `(week, roster)`:
+
+```text
+loadHub start → Phase A: Promise.all [jobs + blocks + usersTab roster]
+  → Phase B: fetchTeamMemberUserIdsForJobIds  (depends on jobIds)
+  → Phase C: Promise.all [names + archived + user_time_off]
+  → Phase D: Promise.allSettled [salaried (reuses nameMap) + wages (reuses nameMap)]
+  → done   (time-off chips already painted in Phase C — no follow-up effect round-trip)
+```
+
+**Sequential awaits drop from ~7–8 to 4. Dev viewers' `users` queries drop from 2 to 1. First paint includes time-off chips in the same step (no flash of empty cells, no double `user_time_off` request).** No DB / migration / RLS / RPC / Edge changes. No user-visible behavior change other than the page being noticeably snappier on first open and on every week-nav.
+
+#### Phase-by-phase what's parallelized
+
+- **Phase A (`Promise.all`)** — jobs ledger preload ([`fetchJobsLedgerForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts), kept unfiltered per the latest UX choice so the Jobs tab still shows every status), week-wide blocks fetch ([`fetchJobScheduleBlocksForHubDateRange`](src/lib/jobScheduleBlocks.ts)), and the users-tab roster ([`fetchUsersTabUserIdsForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts) with the viewer-role flag). These three are fully independent on entry to `loadHub`.
+- **Phase B** — team-members for the resolved `jobIds` ([`fetchTeamMemberUserIdsForJobIds`](src/lib/scheduleDispatchHub.ts)). Sequential because it depends on phase A's `hubJobsData`.
+- **Phase C (`Promise.all`)** — names ([`fetchUserNamesForIds`](src/lib/fetchUserNamesForIds.ts)), archived-user set ([`fetchArchivedUserIdSetForIds`](src/lib/scheduleDispatchHub.ts)), and **time-off rows** ([`fetchUserTimeOffForUsersInRange`](src/lib/userTimeOffByCell.ts)) all keyed by the same `rosterIds`. The time-off cell map is built inline via the existing `buildUserTimeOffByCell` helper and dropped straight into `setHubUserTimeOffByCell`, so the chips render in the very first paint pass — no flash of empty cells. The hub then stamps `hubUserTimeOffPrimedRef.current = { weekStart, weekEnd, rosterKey }` to tell the standalone effect "I already loaded this exact `(week, roster)`."
+- **Phase D (`Promise.allSettled`)** — salaried-user set ([`fetchSalariedUserIdSetFromUserIds`](src/lib/salaryPayConfigGate.ts)) + the conditional `people_pay_config` wages lookup (gated on `canShowHubExpectedManpowerPayroll`). `allSettled` (not `all`) so a wages failure no longer drops the salaried set and vice versa — mirrors the granularity of the previous nested try/catch blocks. Toast strings and error paths are unchanged.
+
+#### Drop the redundant `users` query inside the salary gate
+
+[`fetchSalariedUserIdSetFromUserIds`](src/lib/salaryPayConfigGate.ts) used to issue its own `supabase.from('users').select('id, name').in('id', unique)` query before joining against `people_pay_config`, even though `loadHub` had just fetched the exact same `id → name` map from `fetchUserNamesForIds`. The helper now accepts an optional `opts?: { nameByUserId?: ReadonlyMap<string, string> }` argument; when provided, the inner `users` lookup is skipped and `idToPayName` is built from the caller's map with the same `.trim()` / non-empty filter the helper already used. When `opts` is omitted, behavior is unchanged — so the five existing callers ([`Dashboard.tsx`](src/pages/Dashboard.tsx), [`ScheduleDispatchJobWeek.tsx`](src/components/schedule/ScheduleDispatchJobWeek.tsx), [`PeopleHoursDashboardClockStrip.tsx`](src/components/people/PeopleHoursDashboardClockStrip.tsx), and three call sites in [`useDashboardMyTeamSectionState.ts`](src/hooks/useDashboardMyTeamSectionState.ts)) all keep working. Only the updated `ScheduleDispatchHubPage.tsx` passes `{ nameByUserId: nameRes.data }`. The wages branch on Phase D reads from the same `nameRes.data` map for the same reason.
+
+#### Collapse the dev-viewer branch into one `users` query
+
+[`fetchUsersTabUserIdsForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts) + [`fetchUsersTabRosterForScheduleDispatchHub`](src/lib/scheduleDispatchHub.ts) previously issued a second `users` query when `includeDevUsers` was true (one `.in('role', [...base roles])` for non-dev, then a separate `.eq('role', 'dev')`). Both helpers now compute `allowedRoles: SupabaseUserRole[] = includeDevUsers ? ['dev', ...USERS_TAB_BASE_ROLES] : [...USERS_TAB_BASE_ROLES]` and run a single `.in('role', allowedRoles)`. Shared typed const `USERS_TAB_BASE_ROLES: readonly SupabaseUserRole[]` lives at module scope. The set of returned ids is identical to before (the union is the same); dev viewers' `users` round-trips drop from 2 to 1.
+
+`SupabaseUserRole` is `Database['public']['Enums']['user_role']` — the Supabase-generated enum (broader than the app-side `UserRole` from `src/hooks/useAuth.ts` because it also includes legacy `owner` / `master`). Typing the array as `readonly SupabaseUserRole[]` keeps `.in('role', …)` type-safe and matches the pattern already used in [`BidsEstimatorsTab.tsx`](src/components/bids/BidsEstimatorsTab.tsx) and [`BidsEstimatorsExtraUsersModal.tsx`](src/components/bids/BidsEstimatorsExtraUsersModal.tsx).
+
+#### Fold the initial time-off fetch into `loadHub`
+
+Previously the time-off chips were filled by a standalone `useEffect` that called `refreshHubUserTimeOff()` whenever `hubVisibleUserIdsSerialized` changed. On first paint of the Hub this meant two `user_time_off` round-trips back-to-back: the initial fire when the roster IDs first materialized, then the effect re-firing (and re-fetching) every time `loadHub`'s state updates churned the serialized roster string. The effect now consults a new `hubUserTimeOffPrimedRef` and short-circuits when its tracked `(weekStart, weekEnd, rosterKey)` exactly matches the current `(weekStart, weekEnd, hubVisibleUserIdsSerialized)`:
+
+```ts
+useEffect(() => {
+  const primed = hubUserTimeOffPrimedRef.current
+  if (
+    primed &&
+    primed.weekStart === weekStart &&
+    primed.weekEnd === weekEnd &&
+    primed.rosterKey === hubVisibleUserIdsSerialized
+  ) {
+    // `loadHub` just seeded the cell map for this exact (week, roster); skip the refetch.
+    return
+  }
+  void refreshHubUserTimeOff()
+}, [refreshHubUserTimeOff, hubVisibleUserIdsSerialized, weekStart, weekEnd])
+```
+
+The effect still fires for everything else it used to handle — quiet refreshes that surface a new assignee, a block edit that brings a new user into the roster, a week-nav that pre-empts `loadHub` mid-flight — because in all those cases the primed `(weekStart, weekEnd, rosterKey)` won't match the new triple and the early-return is bypassed. Just the immediate first-paint duplicate goes away.
+
+#### Files
+
+- [`src/components/schedule/ScheduleDispatchHubPage.tsx`](src/components/schedule/ScheduleDispatchHubPage.tsx) — `loadHub` rewritten into Phases A / B / C / D (90+ line diff); new `hubUserTimeOffPrimedRef` adjacent to the existing `hubUserTimeOffByCell` state; the standalone time-off effect rewritten to consult the ref and include `weekStart` / `weekEnd` in its dep array so a week-nav between the seed and the next render still works.
+- [`src/lib/salaryPayConfigGate.ts`](src/lib/salaryPayConfigGate.ts) — `fetchSalariedUserIdSetFromUserIds(userIds, opts?)` signature change. When `opts.nameByUserId` is provided, the helper builds `idToPayName` from the passed-in map; otherwise behavior matches the pre-change implementation byte-for-byte.
+- [`src/lib/scheduleDispatchHub.ts`](src/lib/scheduleDispatchHub.ts) — new `SupabaseUserRole` alias (`Database['public']['Enums']['user_role']`), shared `USERS_TAB_BASE_ROLES: readonly SupabaseUserRole[]` const, both users-tab helpers rewritten to use a single `.in('role', allowedRoles)` query.
+
+#### Verification
+
+- `npx vitest run` — **918 / 918 tests pass** (the helper signature change is back-compatible — no test file edits needed).
+- `npx tsc --noEmit` — clean after clearing the stale `tsconfig.tsbuildinfo` (the incremental cache was a step behind the on-disk `appSettingsKeys.ts`; the constant referenced by `dispatchNoteRequirements.ts` is in fact exported on line 55 of [`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts), so a fresh full build runs clean).
+- `npm run build` — clean.
+- Manual sanity expectations on `/schedule-dispatch`: first open paints the People grid + time-off chips in a single visible step (no flash of empty cells); DevTools Network panel shows no double `user_time_off` request on first open; dev viewers still see `dev`-role users on the People grid; wage-gated columns still populate for `dev` and approved `master_technician`; week-nav refreshes both the grid and the time-off chips in one paint.
+
+#### Out of scope
+
+- The `pay_approved_masters` effect (fires once per `authUser?.id`, not per week) was left alone — it doesn't block first paint after the first render.
+- Job-week view (`ScheduleDispatchJobWeek`) was untouched; this round targeted only the Hub.
+- The `jobs_ledger` preload remains unfiltered (the Jobs tab still shows every status). A status filter was explicitly NOT applied per the latest UX choice.
+- No client-side cross-visit cache yet. That's the next planned round when this lands.
+
+---
+
+## Previous Updates (v2.560)
+
+**Date**: 2026-05-19
+
+### Forecast Specific — today-centered window + in-line `←` / `→` pan-pillar columns at rail ends + `Today` toolbar button
+
+The dense calendar on **Forecast Specific** (`/projects?tab=forecast`, **Specific** sub-tab) no longer derives its column range from the selected job's stage envelope. It opens at a fixed 180-day window centered on today (`[today − 90, today + 90]`), with in-line `←` / `→` pillar columns sitting at the rail's start and end — the user only sees them after scrolling all the way to the corresponding edge (`... | 22 | 23 | 24 | →`). Each click loads another 90 days in that direction. Resets to the default window on every job switch — no persistence. A `Today` toolbar button (left of `Edit`) re-runs the same reset on demand: clear both pan overrides, snap the window back to `[today − 90, today + 90]`, and re-center the scroller on today.
+
+**Why this is a change worth scoping**: previously, opening a historical job (e.g. one with an Approved stage from a year ago) scrolled the rail back to that stage every time, even when the user just wanted to see "what's happening now." Now every job opens at the same temporal anchor (today centered), and stages outside the visible window are reached explicitly by clicking the pillar buttons. This makes job-to-job comparison predictable and surfaces "the recent past + the near future" by default.
+
+#### Behavior
+
+| | Default open | Click `→` once | Click `→` twice | Click `←` once |
+|---|---|---|---|---|
+| Visible window | `[today − 90, today + 90]` | `[today − 90, today + 180]` | `[today − 90, today + 270]` | `[today − 180, today + 90]` |
+| Scroll position after | Centered on today | Visually unchanged (`scrollLeft` preserved) | Visually unchanged | Visually unchanged (`scrollLeft += 90 × COL_W` to cancel the left-insertion shift) |
+| Pillar visible | Neither | None (pillar is now off-screen 90 days to the right) | None | None (pillar is now off-screen 90 days to the left) |
+| Day cells obscured | None | None | None | None |
+
+Each pan-pillar click adds 90 days to one edge and **deliberately does NOT snap the scroller** to the freshly-loaded edge — the user explicitly asked for "load the days but don't move me." `→` clicks need no scroll adjustment (new columns appear off-screen to the right, so already-visible cells stay put). `←` clicks need an explicit `scrollLeft += 90 × FORECAST_COL_W` adjustment because inserting columns at the START of the rail shifts every existing cell right by the same amount; the parent applies this via `ForecastTimelineGridHandle.adjustScrollLeftByPx` from a `useLayoutEffect` so the cells the user was reading stay at the same on-screen position. To see the freshly-loaded days, the user scrolls in that direction manually. Window only grows — no slide semantic, no upper bound, no decreasing the window size. Because the pillars are in-line columns at the ends of the rail (not floating overlays), no day cells are ever obscured.
+
+Reset trigger: when `selectedJobId` changes, both pan overrides clear to `null`. The next render uses the default `[today − 90, today + 90]` and the grid's auto-center-on-today effect re-fires.
+
+Gating: only in dense mode (`showDates === true`). Sparse mode (the column-per-stage layout when `showDates` is off) has no day rail, so the pillars don't render.
+
+#### Pure helpers
+
+New helper [`src/lib/projectsForecastSpecificWindow.ts`](src/lib/projectsForecastSpecificWindow.ts) exposes:
+
+- `computeForecastSpecificDefaultWindow(todayYmd: string): { startYmd, endYmd }` — returns `[ymdAddDays(today, -90), ymdAddDays(today, +90)]`. Pure.
+- `computeForecastSpecificEffectiveWindow(todayYmd, extendedLeftYmd, extendedRightYmd): { startYmd, endYmd }` — per-edge override that **only grows** from the default. Defensive guard: any override that would shrink the window is ignored, so corrupted state can't produce a window narrower than `[today − 90, today + 90]`.
+- `extendForecastSpecificWindowLeft(currentStartYmd): string` — returns `ymdAddDays(currentStartYmd, -FORECAST_SPECIFIC_EXTEND_DAYS)`.
+- `extendForecastSpecificWindowRight(currentEndYmd): string` — returns `ymdAddDays(currentEndYmd, +FORECAST_SPECIFIC_EXTEND_DAYS)`.
+- Exported constants `FORECAST_SPECIFIC_DEFAULT_BACK_DAYS = 90`, `FORECAST_SPECIFIC_DEFAULT_FORWARD_DAYS = 90`, `FORECAST_SPECIFIC_EXTEND_DAYS = 90` so math and UI copy share the same anchors.
+
+13 unit tests in [`projectsForecastSpecificWindow.test.ts`](src/lib/projectsForecastSpecificWindow.test.ts) cover default math, single-edge overrides, both-edge overrides, the only-grow guard on each edge, chained extensions, and a round-trip through `computeForecastSpecificEffectiveWindow`.
+
+#### Grid changes (`ProjectsForecastTimelineGrid`)
+
+The grid is now wrapped with `forwardRef` and exposes `ForecastTimelineGridHandle { adjustScrollLeftByPx(deltaPx: number): void }` so callers can shift the scroller's horizontal position by a relative pixel delta (used by Forecast Specific's `←` pan to preserve visual position after the rail extends on the left). Generics are preserved via the standard `forwardRef(...) as <TRow>(...) => ReactElement | null` re-cast.
+
+Four new optional props (all backward-compatible — All Stages omits all of them and behaves identically):
+
+- `onPanLeft?: () => void` / `onPanRight?: () => void` — when provided, the grid renders an in-line pillar column at the START / END of the day rail. Inside the horizontal scroller, the day-grid block is wrapped in a `display: flex` container (`alignItems: 'stretch', minWidth: '100%'`); the left pillar is the first flex child, the day-grid block the middle child (`flex: '1 0 auto', width: totalWidth, position: relative`), the right pillar the last. The pillars scroll WITH the rail, so the user only sees them after scrolling to the corresponding edge. Each pillar is 36px wide (`flex: '0 0 36px'`), stretches the full container height (no `top`/`bottom`/`zIndex`/`position: absolute` needed), with a centered chevron glyph and `e.stopPropagation()` on `onClick` + `onPointerDown` so future drag handlers can't pick up pillar clicks as drag starts. The outer flex container that hosts the gutter + scroller no longer needs `position: relative` (the absolute-positioned overlay model is gone).
+- `panLeftLabel?: string` / `panRightLabel?: string` — `aria-label` + `title` text. Defaults: `'Load 90 more days back'` / `'Load 90 more days forward'`.
+- `autoCenterTodayResetKey?: string` — when set, the grid's auto-center-on-today effect re-fires **only** when this key changes. Forecast Specific passes `selectedJobId ?? ''`; pan clicks mutate `rangeStart` / `rangeEnd` but keep the key stable, so the scroll position survives a pan (the parent then applies a relative `scrollLeft` adjustment via `adjustScrollLeftByPx` on `←` clicks to preserve visual position — `→` clicks need no adjustment). When omitted (All Stages), the legacy `[rangeStart, rangeEnd, todayIndex]` deps are used — existing behavior preserved. The new-style effect closes over a `todayIndexRef` so `todayIndex` itself isn't in the deps (it would shift on every pan and defeat the purpose). Both auto-center effects also add a `leftPillarOffsetPx = onPanLeft != null ? PAN_PILLAR_W_PX : 0` term to the scroll-target math so "today" still visually centers in the viewport when the left pillar (a 36px-wide leading sibling) is present.
+
+#### Tab changes (`ProjectsForecastSpecificTab`)
+
+- Two new `useState<string | null>` (`extendedRangeLeftYmd`, `extendedRangeRightYmd`), both default `null`.
+- One `useRef<ForecastTimelineGridHandle | null>` (`denseGridRef`) attached to the dense grid; sparse grid doesn't need it (no day rail).
+- One `useRef<number | null>` (`pendingScrollAdjustPxRef`) — a one-shot relative-pixel delta set by the pan callbacks and consumed by a `useLayoutEffect` keyed on `denseDayKeys.length`. Non-null means "add this many px to `scrollLeft` after the rail re-flows so the visible cells stay in the same on-screen position." A ref instead of state because the signal is a side-effect cue, not something that should trigger a re-render.
+- Two `useCallback` handlers (`onPanLeft`, `onPanRight`) that set their respective override (using the current value, or the default's edge when `null`). `onPanLeft` stamps `FORECAST_SPECIFIC_EXTEND_DAYS * FORECAST_COL_W` (= 90 × 36 = 3240 px) so the visual-preservation effect cancels the left-insertion shift; `onPanRight` stamps nothing because new columns appear off-screen to the right and no already-visible cell moves.
+- One `useState<number>` (`todayResetTick`) + one `useCallback` (`onTodayClick`) for the toolbar's new `Today` button. `onTodayClick` clears both pan overrides and bumps `todayResetTick`. The grid's `autoCenterTodayResetKey` is composed as `` `${selectedJobId ?? ''}::${todayResetTick}` ``, so two paths re-fire the auto-center-on-today effect: (a) switching jobs (legacy), and (b) clicking `Today`. The button is gated on `hasJob && showDates` (no day rail in sparse mode → nothing to recenter), rendered to the left of `Edit` in the right-side toolbar cluster.
+- The existing `selectedJobId`-reset effect was extended to also clear both pan overrides on job switch (alongside the existing drag overrides / pending inserts / pending sequence-order bumps clears).
+- `denseDayKeys` derivation rewritten: `if (!showDates) return []; eff = computeForecastSpecificEffectiveWindow(todayYmd, extendedRangeLeftYmd, extendedRangeRightYmd); return enumerateDaysInRange(eff.startYmd, eff.endYmd)`. Stable across drags because the window only changes on job switch or explicit pan; drag overrides modify bar positions, not column structure.
+
+Dropped: `SHOW_DATES_TRAILING_DAYS` constant, the `denseEnvelope` memo, the `resolvedStagesEnvelope` import, and the `ymdAddDays` import in the tab — all rendered dead by the new window derivation.
+
+#### Files
+
+- New: [`src/lib/projectsForecastSpecificWindow.ts`](src/lib/projectsForecastSpecificWindow.ts), [`src/lib/projectsForecastSpecificWindow.test.ts`](src/lib/projectsForecastSpecificWindow.test.ts).
+- Modified: [`src/components/projects/ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx) (forwardRef + `adjustScrollLeftByPx` handle, new optional props, branched auto-center effect with `leftPillarOffsetPx` term, in-line pillar columns as flex siblings of the day-grid block inside the scroller), [`src/components/projects/ProjectsForecastSpecificTab.tsx`](src/components/projects/ProjectsForecastSpecificTab.tsx) (pan state + callbacks + visual-preservation layout effect on `←`, new `denseDayKeys` derivation, reset effect extended, dead imports/constants removed, grid call site gets `ref={denseGridRef}`, `onPanLeft`, `onPanRight`, `autoCenterTodayResetKey={selectedJobId ?? ''}`).
+
+#### Verification
+
+- `npx tsc --noEmit` clean for all four touched files; two unrelated pre-existing errors in `ChipsWithSearchPicker.tsx` remain (not on this change).
+- `ReadLints` clean on `projectsForecastSpecificWindow.ts`, `projectsForecastSpecificWindow.test.ts`, `ProjectsForecastTimelineGrid.tsx`, `ProjectsForecastSpecificTab.tsx`.
+- `npm test`: 918 / 918 tests pass across 95 files (was 884 / 95; +13 new tests for the window helpers and 21 unrelated tests from other recent work).
+
+---
+
+## Previous Updates (v2.559)
+
+**Date**: 2026-05-19
+
+### Workflow step percent complete — Forecast Specific `%` column + Workflow expanded `Complete:` row
+
+New optional `percent_complete` (0–100 INT, nullable) on `project_workflow_steps`, editable from two surfaces:
+
+- **Forecast Specific gutter** (`/projects?tab=forecast`, **Specific** sub-tab) — new right-aligned cell inside the sticky left gutter on every row, with a `%` column header in the gutter header (Forecast Specific only — All Stages is unchanged). Click the field, type a number, blur → saves. Empty = `NULL` (not tracked).
+- **Workflow expanded stage card** (`/workflow/<projectId>`) — new `Complete: [ N ] %` row directly under the existing `Expected: Start ... · End ... · N days planned` row in every expanded stage. Same edit gate as the Expected dates row (`canManageStages || assignee === currentUserName`), so assignees can update their own % progress without needing manager rights.
+
+Designed so a single source of truth flows both ways: an edit on either surface lands in the same column, the Forecast tab's realtime subscription on `project_workflow_steps` re-fetches within `REALTIME_DEBOUNCE_MS` (~280ms) and re-keys both inputs, and the Workflow page's optimistic `setSteps` keeps its own input snappy.
+
+#### Migration + shared validation helper
+
+New migration `20260519214147_add_percent_complete_to_project_workflow_steps.sql` adds `percent_complete INTEGER NULL` with a `CHECK (percent_complete IS NULL OR (percent_complete BETWEEN 0 AND 100))` constraint and a column comment. Append-only per the migrations rule (no edit to existing files, no second file sharing the same `YYYYMMDDHHMMSS` prefix). Applied via Supabase MCP `apply_migration` after generating the file with `supabase migration new`; `npm run gen-types:linked` confirmed `percent_complete: number | null` on Row / Insert / Update.
+
+New shared helper [`src/lib/parsePercentCompleteInput.ts`](src/lib/parsePercentCompleteInput.ts) (`parsePercentCompleteInput(raw: string): number | null`) — empty/whitespace/non-numeric → `null`, **`0` (explicit, or anything that clamps/rounds to 0 such as negatives and `0.4`) → `null` (treated as "clear" — a 0% progress estimate is functionally identical to "not tracked," and the user explicitly asked that typing `0` clear the cell on the Forecast Specific gutter; the rule lives in the helper so the Workflow `Complete:` input behaves identically with no per-call-site logic)**, `> 100` → `100`, fractionals → `Math.round`. Used by **both** the Forecast Specific gutter cell and the Workflow expanded `Complete:` input so they produce identical persisted values for identical keystrokes. 14 unit tests in [`parsePercentCompleteInput.test.ts`](src/lib/parsePercentCompleteInput.test.ts) cover empty / whitespace / non-numeric / in-range / negative-clears-via-0 / over-100-clamp / round-down / round-up / explicit-`0`-clears / fractional-rounds-to-0-clears / boundary `100` / `100.4` / `NaN`.
+
+#### Forecast pipeline
+
+- [`src/lib/projectsForecastData.ts`](src/lib/projectsForecastData.ts) — added `percent_complete: number | null` to `ForecastStage` and to the explicit SELECT in `fetchForecastStages`. All Forecast tabs now load the field; only Specific renders it.
+- [`src/lib/projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts) — added `percent_complete?: number | null` to `ForecastStageInput` (optional so legacy callers stay compatible) and `percentComplete: number | null` to `ResolvedStageBar`. Resolver passes the value through unchanged (`s.percent_complete ?? null`). 3 new unit tests in [`projectsForecastStageResolver.test.ts`](src/lib/projectsForecastStageResolver.test.ts) confirm round-trip of a set value, normalization of `undefined` → `null`, and pass-through of explicit `null`.
+- [`src/components/projects/ProjectsForecastSpecificTab.tsx`](src/components/projects/ProjectsForecastSpecificTab.tsx) — the optimistic-inserted bar (from the existing v2.5xx "Add stage" flow) now includes `percentComplete: null` to satisfy the new required field on `ResolvedStageBar`.
+
+#### Shared grid header opt-in
+
+Both grid components got an optional `gutterHeader?: ReactNode` prop:
+
+- [`src/components/projects/ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx) — renders into the previously-empty sticky gutter header spacer (above the row labels, height-matched to the 2-tier date header). All Stages tab keeps its default (no prop = empty header, preserving current visuals).
+- [`src/components/projects/ProjectsForecastSpecificGrid.tsx`](src/components/projects/ProjectsForecastSpecificGrid.tsx) — same prop on the sparse grid so both layout modes (Show dates ON / OFF) render the header consistently.
+
+Forecast Specific passes a small `<PercentColumnGutterHeader />` (right-aligned `%`, padded `PERCENT_HEADER_RIGHT_PADDING_PX = 28` to sit over the per-row percent cell which itself sits before the optional `+` insert button + 2px gap).
+
+#### Forecast Specific gutter cell
+
+[`StageGutterLabel`](src/components/projects/ProjectsForecastSpecificTab.tsx) widened with `percentComplete: number | null`, `percentEditable: boolean`, and `onPercentCommit: (next: number | null) => void`. Layout becomes a 3-zone flex row:
+
+```
+[ button (chip + name + assignee)  flex 1, minWidth 0 ]   [ % cell  PERCENT_CELL_WIDTH_PX=58 ]   [ "+" 18x18 ]
+```
+
+The percent cell renders an uncontrolled `<input type="number" min={0} max={100}>` with `defaultValue={percentComplete ?? ''}` and a stable `key={\`pct-${stageId}-${percentComplete ?? 'null'}\`}` so an incoming realtime refresh re-keys the input and picks up the new persisted value without us managing a controlled value. `e.stopPropagation()` on click / mousedown / keydown keeps typing from triggering the surrounding gutter button (which opens the stage detail modal). Enter blurs to commit. On blur, `parsePercentCompleteInput` runs (which itself maps `0` and clear → null), then we imperatively blank the DOM value when the parser returned null but the field still shows non-empty text (covers two flaky cases: (a) user typed `0` over a real value — the field would briefly flash "0" until the ~280ms realtime re-key arrived; (b) user typed `0` into an already-empty cell — the `next === percentComplete` early-return below skips the commit, so the field would otherwise keep showing the stale "0"). After the visual clear, `onPercentCommit(next)` is only called when `next !== percentComplete` to avoid pointless writes. Read-only mode (`percentEditable: false`) renders `45%` or empty.
+
+Edit gate: **`dragEdit && canAlignStages(myRole)`** — both the role set (`dev / master_technician / assistant / superintendent`) that owns drag-edit and insert on this tab AND the page's Edit toggle have to be on (mirrors the `+` insert button's gate). When Edit is off, every role sees the same muted read-only `NN%` text — the column header stays visible so values are still legible, and `labelGutterWidth: 300` stays constant across Edit toggles to avoid a horizontal reflow of the entire timeline.
+
+**Hide-when-empty** (also v2.559): when the currently-selected job has **no** stage with a `percent_complete` value AND the user isn't in Edit mode, the entire column (header + per-row cells) is omitted and `labelGutterWidth` drops back to the pre-v2.559 **260**, reclaiming the freed space into the stage name's ellipsis budget. Driven by `showPercentColumn = dragEdit || resolvedBars.some(b => b.percentComplete != null)`, plumbed through `renderGutterLabel` as a new `showPercentCell` prop on `StageGutterLabel` (defaults to `true` so any future caller keeps the original contract). The flip only fires on `dragEdit` change or when the per-job presence signal changes, so toggling Edit on a job that already has at least one value does **not** reflow the timeline — once the column is unlocked it stays unlocked while the user keeps editing. The persistence callback `onCommitPercentComplete(stageId, next)` is a tiny `withSupabaseRetry(supabase.from('project_workflow_steps').update({ percent_complete: next }).eq('id', stageId))`; on error it surfaces `formatErrorMessage(err)` as a toast. No optimistic overlay needed — the uncontrolled input already shows the typed value locally and realtime reconciles the persisted value within ~280ms.
+
+The `labelGutterWidth` for Forecast Specific was bumped from `260` → `300` (on both grid call sites — dense `ProjectsForecastTimelineGrid` and sparse `ProjectsForecastSpecificGrid`) so the new % cell + `+` button fit without squeezing the stage name's ellipsis budget.
+
+#### Workflow expanded card
+
+[`src/pages/Workflow.tsx`](src/pages/Workflow.tsx) — new "Row 2c: Percent complete" rendered directly under the existing Expected dates row inside every expanded stage card. Same `canManageStages || s.assigned_to_name === currentUserName` gate as the Expected row, so an assignee can update their own % without manager rights. Edit affordance is identical to the Forecast Specific cell (uncontrolled input, re-keyed off the persisted value, `parsePercentCompleteInput` on blur, Enter blurs to commit, `placeholder="—"` so the field has visible affordance when null). Read-only mode renders `Complete: 45%` or `Complete: —`.
+
+New `updatePercentComplete(step: Step, value: number | null)` function next to `submitExpectedDates` — same shape (Supabase `.update()` with error toast on failure, then optimistic `setSteps` merge). The Workflow page does NOT subscribe to realtime on `project_workflow_steps`, so the optimistic merge is the only fast-path; a Forecast Specific edit will land here on the next `refreshSteps()` (manual / next mount).
+
+#### Where it does NOT show up (intentional)
+
+- **Forecast All Stages** — column not rendered; gutter header stays empty (the `gutterHeader` prop is omitted). `ResolvedStageBar.percentComplete` is still loaded into the resolver for that tab but unused.
+- **Collapsed Workflow stage rows** — only expanded cards show the field, matching the existing Expected dates pattern.
+- **No bar fill in Forecast Specific** — numeric display only. A future enhancement could overlay a darker shade across N% of the bar's width, but for now the gutter cell is the single visual signal.
+
+#### Verification
+
+- New migration applied via MCP (`{success: true}`); `npm run gen-types:linked` regenerated `database.ts` with the new column on Row / Insert / Update.
+- `npx tsc --noEmit` clean after every step.
+- `ReadLints` clean on every modified file.
+- `npm test` → **884 / 884** tests pass (was 869; +12 helper tests + +3 resolver tests = +15 new tests).
+- Manual smoke checklist: set % from Forecast Specific → reload → value persists; set from Workflow expanded card → reload → persists; Forecast All Stages still has no `%` header; collapsed Workflow rows do not render `Complete:`.
+
+### Calendar — My Day card on every viewport, viewport-default Show weekends, dispatch notes on planned work
+
+Continued polish of the `/calendar` page that started in the prior conversation thread, plus two paired centering tweaks on Dashboard **My Schedule** for visual symmetry with the Calendar's empty-state line. No DB / migration / RLS / RPC / Edge changes — all four feature areas ship inside [`src/pages/Calendar.tsx`](src/pages/Calendar.tsx) (and a two-line tweak in [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx)).
+
+#### My Day single-day card now renders on both viewports
+
+The **My Day** card that sits above the month grid was previously gated to `mobileCalendarLayout` only. It now renders for every authenticated user on both desktop and mobile, sized to the full width of the calendar container so the left/right arrows sit at the far edges with the centered heading floating in the middle:
+
+```tsx
+{authUser?.id ? (
+  <div aria-label="My day planned work" style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem', marginBottom: '1rem', background: '#fff' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+      <button type="button" aria-label="Previous day" onClick={() => setMyDayKey((k) => shiftYmd(k, -1))}>←</button>
+      <div style={{ flex: 1, textAlign: 'center', fontWeight: 600, fontSize: '0.9375rem' }}>
+        My Day · {formatMyDayHeadingLabel(myDayKey, todayKey)}
+      </div>
+      <button type="button" aria-label="Next day" onClick={() => setMyDayKey((k) => shiftYmd(k, 1))}>→</button>
+    </div>
+    {renderPlannedWorkChips(plannedByWorkDate[myDayKey] ?? [])}
+  </div>
+) : null}
+```
+
+Heading label comes from a new `formatMyDayHeadingLabel(ymd, todayKey)` helper that resolves to `Today` / `Yesterday` / `Tomorrow` for ±1 day around `todayKey` (Chicago) and otherwise falls back to a localized `weekday, MMM D` (with the year appended only when the target year differs from today's). `shiftYmd(ymd, delta)` does the day math directly on the `YYYY-MM-DD` calendar key with no timezone conversion. When the user scrubs past the grid range, the existing month-load effect refreshes `plannedByWorkDate` because a `useEffect` watching `myDayKey` bumps `currentMonth` to the month containing the new key:
+
+```ts
+useEffect(() => {
+  const { gridStart, gridEnd } = getVisibleGridDateRange(currentMonth)
+  if (myDayKey < gridStart || myDayKey > gridEnd) {
+    const parts = myDayKey.split('-').map(Number)
+    const y = parts[0] ?? currentMonth.getFullYear()
+    const m = parts[1] ?? currentMonth.getMonth() + 1
+    setCurrentMonth(new Date(y, m - 1, 1))
+  }
+}, [myDayKey, currentMonth])
+```
+
+**Today** in the header resets both `currentMonth` and `myDayKey` to today's date. The chip list is rendered by a new shared helper `renderPlannedWorkChips(planned, opts?)` so the My Day card and the day-detail modal display identical chips (long-form `573 · Johnny Ingram` label + `8:00 AM–12:00 PM` time + optional dispatch note); clicking a chip calls `useJobDetailModal().openJobDetail({ jobId })`, and the day-modal callsite passes an `onChipClick` that also closes the modal first.
+
+#### Show weekends — viewport default, no persistence
+
+`showWeekends` was previously seeded from a `localStorage` key (`calendar_show_weekends_${uid}`) that overrode the viewport default after auth landed. That meant toggling weekends off on mobile would also hide weekends on desktop the next time the user opened the page, which broke the natural per-viewport expectation. The hydration `useEffect` and the matching `localStorage.setItem` write inside the toggle handler are both **gone**:
+
+```ts
+const [showWeekends, setShowWeekends] = useState(() => !mobileCalendarLayout)
+```
+
+Every page open the toggle is recomputed from the current `useMatchMedia(CALENDAR_MOBILE_CHROME_MQ)` reading — mobile (`max-width: 640px`) starts **unchecked**, desktop starts **checked**. In-session flips still work (`setShowWeekends(e.target.checked)`), but a refresh resets to the viewport default. Nothing else in the codebase reads the dropped storage key, so old keys sitting in user `localStorage` are harmless dead data.
+
+#### Show my workday / Show recorded time defaults to off
+
+Both `showMyWorkday` and `showRecordedTime` now initialize to `false` (`useState(false)`) instead of `true`. Each still persists per user under `calendar_show_my_workday_${uid}` / `calendar_show_recorded_time_${uid}` so once a user opts in, the choice sticks across sessions on that device.
+
+#### Mobile-only toggle placement and compact mini-chip format
+
+On narrow viewports (`CALENDAR_MOBILE_CHROME_MQ = '(max-width: 640px)'`), the **Show my workday** / **Show recorded time** / **Show weekends** cluster moves from the month-header row to a centered flex group **below** the grid (`marginTop: 0.75rem`, `flexWrap: 'wrap'`, `justify-content: center`). Three render helpers were extracted (`renderShowMyWorkdayToggle`, `renderShowRecordedTimeToggle`, `renderShowWeekendsToggle`) so the same checkbox can mount in either location.
+
+Inside the month grid cells (only — My Day card and day-detail modal keep the long form), the planned-work mini-chip uses a new `compactScheduleWindow` helper on mobile to drop the `:00` minutes and add spaces around the en-dash:
+
+```ts
+function compactScheduleWindow(timeStart: string, timeEnd: string): string {
+  const start = scheduleFormatTimeHm(timeStart).replace(':00 ', ' ')
+  const end = scheduleFormatTimeHm(timeEnd).replace(':00 ', ' ')
+  return `${start} – ${end}`
+}
+```
+
+The mini-chip label separator also flips per viewport:
+
+```ts
+const labelSeparator = mobileCalendarLayout ? ' ' : ' · '
+const timeWindow = mobileCalendarLayout
+  ? compactScheduleWindow(p.time_start, p.time_end)
+  : scheduleFormatWindow(p.time_start, p.time_end)
+```
+
+So on a phone, a cell that would have read `573 · Johnny Ingram` / `8:00 AM–12:00 PM` renders as `573 Johnny Ingram` / `8 AM – 12 PM` — the kind of two-character savings that lets three planned blocks actually fit inside a 120 px grid cell without truncating. Desktop grid cells, the My Day card chips, and the day-detail modal chips all keep the long form (which has higher information density and reads naturally at wider widths).
+
+#### Dispatch notes on planned-work chips
+
+`PlannedBlockRow` gains `note: string | null`, and the `job_schedule_blocks` SELECT was widened to include the `note` column. `renderPlannedWorkChips` renders the trimmed note as a muted indigo subline under the time row when present:
+
+```tsx
+{noteText ? (
+  <div style={{ marginTop: 6, whiteSpace: 'pre-wrap', wordBreak: 'break-word', color: '#4338ca', fontSize: '0.8125rem' }}>
+    {noteText}
+  </div>
+) : null}
+```
+
+This matches how the Dashboard **My Schedule** surfaces dispatch notes on its own schedule rows so a dispatcher's free-text *"Bring the snake — basement access from the side"* is visible from either entry point.
+
+#### Centered empty-state text
+
+The empty-state line `No planned work.` inside `renderPlannedWorkChips` is now `textAlign: 'center'` on its `<p>`, applying to both the My Day card (when a scrubbed day has nothing scheduled) and the day-detail modal (when the user opens a day with no planned work).
+
+#### Dashboard My Schedule — matching centering tweaks
+
+For visual symmetry with the Calendar's centered empty state, the Dashboard **My Schedule** section now centers its day headers (`Today` / `Tomorrow`) and its own `No blocks scheduled.` placeholder:
+
+```tsx
+<h3 style={{ ..., textAlign: 'center' }}>
+  {dayTitle}
+  <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
+    {scheduleFormatWeekdayLong(ymd)}
+  </span>
+</h3>
+{sorted.length === 0 ? (
+  <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
+) : ( /* … */ )}
+```
+
+#### Files touched
+
+- [`src/pages/Calendar.tsx`](src/pages/Calendar.tsx) — new helpers (`compactScheduleWindow`, `shiftYmd`, `formatMyDayHeadingLabel`), `PlannedBlockRow.note` field, `note` column on the `job_schedule_blocks` SELECT, three extracted toggle render helpers, extracted `renderPlannedWorkChips` (shared between My Day card and day-detail modal), ungated My Day card, `showWeekends` initial state changed to `() => !mobileCalendarLayout` with the localStorage hydration `useEffect` and the `setItem` write both removed, `showMyWorkday` / `showRecordedTime` initial state flipped to `false`, mobile-conditional compact mini-chip format, scroll-to-month `useEffect` keyed on `myDayKey`, `today()` resets `myDayKey`.
+- [`src/pages/Dashboard.tsx`](src/pages/Dashboard.tsx) — `textAlign: 'center'` on the My Schedule `Today` / `Tomorrow` `<h3>` headers and the `No blocks scheduled.` `<p>`.
+
+#### Notes
+
+- `mobileCalendarLayout = useMatchMedia(CALENDAR_MOBILE_CHROME_MQ)` is still actively used (toggle-cluster placement, compact mini-chip predicate), so the existing import / state stay in place.
+- The `calendar_show_weekends_${uid}` localStorage key is no longer read or written; old keys in user storage are harmless dead data.
+
+---
+
+## Previous Updates (v2.557)
 
 **Date**: 2026-05-19
 

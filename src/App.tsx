@@ -38,6 +38,7 @@ import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import ContractAccept from './pages/ContractAccept'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
+import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
 import { registerSW } from 'virtual:pwa-register'
 import { ForceReloadProvider } from './contexts/ForceReloadContext'
 import { ChecklistAddModalProvider } from './contexts/ChecklistAddModalContext'
@@ -241,11 +242,22 @@ function LedgerDisplayPrefixBridge({ children }: { children: React.ReactNode }) 
   return <LedgerDisplayPrefixProvider authUserId={user?.id ?? null}>{children}</LedgerDisplayPrefixProvider>
 }
 
+function DispatchNoteRequirementsBridge({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth()
+  return (
+    <DispatchNoteRequirementsProvider authUserId={user?.id ?? null}>
+      {children}
+    </DispatchNoteRequirementsProvider>
+  )
+}
+
 export default function App() {
   return (
     <ToastProvider>
       <LedgerDisplayPrefixBridge>
-        <AppContent />
+        <DispatchNoteRequirementsBridge>
+          <AppContent />
+        </DispatchNoteRequirementsBridge>
       </LedgerDisplayPrefixBridge>
     </ToastProvider>
   )

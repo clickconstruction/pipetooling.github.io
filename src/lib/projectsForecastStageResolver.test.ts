@@ -353,6 +353,54 @@ describe('resolveForecastStages', () => {
     // start = actual day (NOT inferred), end = +1 day (inferred) → isInferred = true.
     expect(out[0]?.isInferred).toBe(true)
   })
+
+  it('round-trips percent_complete into resolved bar percentComplete (set value)', () => {
+    const out = resolveForecastStages(
+      [
+        stage({
+          id: 's1',
+          sequence_order: 1,
+          name: 'A',
+          scheduled_start_date: '2026-05-10',
+          percent_complete: 45,
+        }),
+      ],
+      TODAY,
+    )
+    expect(out[0]?.percentComplete).toBe(45)
+  })
+
+  it('normalizes a missing percent_complete (undefined) to null on the resolved bar', () => {
+    const out = resolveForecastStages(
+      [
+        stage({
+          id: 's1',
+          sequence_order: 1,
+          name: 'A',
+          scheduled_start_date: '2026-05-10',
+          // percent_complete intentionally omitted (legacy caller shape)
+        }),
+      ],
+      TODAY,
+    )
+    expect(out[0]?.percentComplete).toBeNull()
+  })
+
+  it('passes an explicit null percent_complete through unchanged', () => {
+    const out = resolveForecastStages(
+      [
+        stage({
+          id: 's1',
+          sequence_order: 1,
+          name: 'A',
+          scheduled_start_date: '2026-05-10',
+          percent_complete: null,
+        }),
+      ],
+      TODAY,
+    )
+    expect(out[0]?.percentComplete).toBeNull()
+  })
 })
 
 describe('resolvedStagesEnvelope', () => {

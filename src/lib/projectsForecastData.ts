@@ -53,6 +53,7 @@ export type ForecastStage = {
   started_at: string | null
   ended_at: string | null
   skipped_reason: string | null
+  percent_complete: number | null
 }
 
 type JobsLedgerRow = {
@@ -160,7 +161,7 @@ export async function fetchForecastStages(workflowIds: readonly string[]): Promi
       supabase
         .from('project_workflow_steps')
         .select(
-          'id, workflow_id, sequence_order, name, status, assigned_to_name, scheduled_start_date, scheduled_end_date, started_at, ended_at, skipped_reason',
+          'id, workflow_id, sequence_order, name, status, assigned_to_name, scheduled_start_date, scheduled_end_date, started_at, ended_at, skipped_reason, percent_complete',
         )
         .in('workflow_id', uniq)
         .order('workflow_id', { ascending: true })

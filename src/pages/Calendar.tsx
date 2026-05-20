@@ -351,16 +351,6 @@ export default function Calendar() {
   }, [authUser?.id])
 
   useEffect(() => {
-    if (!authUser?.id) return
-    try {
-      const v = localStorage.getItem(`calendar_show_weekends_${authUser.id}`)
-      if (v !== null) setShowWeekends(v === 'true')
-    } catch {
-      /* ignore */
-    }
-  }, [authUser?.id])
-
-  useEffect(() => {
     const uid = authUser?.id
     if (!uid) {
       setNcnsByWorkDate(new Map())
@@ -870,15 +860,7 @@ export default function Calendar() {
           type="checkbox"
           checked={showWeekends}
           onChange={(e) => {
-            const on = e.target.checked
-            setShowWeekends(on)
-            if (authUser?.id) {
-              try {
-                localStorage.setItem(`calendar_show_weekends_${authUser.id}`, String(on))
-              } catch {
-                /* ignore */
-              }
-            }
+            setShowWeekends(e.target.checked)
           }}
         />
         Show weekends
@@ -889,7 +871,7 @@ export default function Calendar() {
   function renderPlannedWorkChips(planned: PlannedBlockRow[], opts?: { onChipClick?: () => void }) {
     if (planned.length === 0) {
       return (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No planned work.</p>
+        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>No planned work.</p>
       )
     }
     return (
@@ -1005,7 +987,7 @@ export default function Calendar() {
       
       {!loading && (
         <>
-          {authUser?.id && mobileCalendarLayout ? (
+          {authUser?.id ? (
             <div
               aria-label="My day planned work"
               style={{

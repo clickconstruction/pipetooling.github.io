@@ -49,7 +49,13 @@ import {
   type UserTimeOffCellInfo,
 } from '../../lib/userTimeOffByCell'
 import { ScheduleDispatchTimeOffChip } from './ScheduleDispatchTimeOffChip'
-
+import { DispatchSettingsModal, type DispatchSettingsModalRosterRow } from './DispatchSettingsModal'
+import { useDispatchNoteRequirements } from '../../contexts/DispatchNoteRequirementsContext'
+import {
+  editNoteIconColorForBlock,
+  effectiveNoteRequirement,
+  surroundingIconColorForRequirement,
+} from '../../lib/dispatchNoteRequirements'
 const hubExpectedManpowerSrOnly: CSSProperties = {
   position: 'absolute',
   width: 1,
@@ -350,6 +356,7 @@ const hubPeopleSalarySuffix: CSSProperties = {
 function HubPeopleBlockCard({
   block,
   workDate,
+  scheduleTodayYmd,
   canEdit,
   hubMultiCellAddActive,
   linkPeerCount,
@@ -368,6 +375,7 @@ function HubPeopleBlockCard({
 }: {
   block: JobScheduleBlockRow
   workDate: string
+  scheduleTodayYmd: string
   canEdit: boolean
   hubMultiCellAddActive: boolean
   linkPeerCount: number
@@ -385,6 +393,20 @@ function HubPeopleBlockCard({
   onRequestEditBlockNote?: (b: JobScheduleBlockRow) => void
 }) {
   const { showToast } = useToastContext()
+  const { requirementForBlock } = useDispatchNoteRequirements()
+  const noteRequirement = requirementForBlock({
+    userId: block.assignee_user_id,
+    jobId: block.job_id,
+  })
+  const isPastWorkDate = block.work_date < scheduleTodayYmd
+  const effectiveRequirement = effectiveNoteRequirement(noteRequirement, isPastWorkDate)
+  const editNoteColor = editNoteIconColorForBlock({
+    requirement: effectiveRequirement,
+    hasNote: Boolean(block.note),
+  })
+  const chainsColor = surroundingIconColorForRequirement(effectiveRequirement, '#1d4ed8')
+  const minusColor = surroundingIconColorForRequirement(effectiveRequirement, '#b91c1c')
+  const plusColor = surroundingIconColorForRequirement(effectiveRequirement, '#1d4ed8')
   const plusButtonRef = useRef<HTMLButtonElement>(null)
   const placementPickingActive = cardPlacementMode != null
   const dragDisabled = !canEdit || hubMultiCellAddActive
@@ -575,7 +597,7 @@ function HubPeopleBlockCard({
                 minHeight: 51,
                 boxSizing: 'border-box',
                 padding: 0,
-                color: '#1d4ed8',
+                color: editNoteColor,
                 cursor: 'pointer',
                 fontFamily: 'inherit',
                 margin: 0,
@@ -617,7 +639,7 @@ function HubPeopleBlockCard({
             margin: 0,
             border: 'none',
             background: 'transparent',
-            color: '#1d4ed8',
+            color: chainsColor,
             cursor: placementPickingActive ? 'default' : 'pointer',
             fontFamily: 'inherit',
             filter:
@@ -651,7 +673,7 @@ function HubPeopleBlockCard({
             borderRadius: 4,
             border: 'none',
             background: 'transparent',
-            color: '#b91c1c',
+            color: minusColor,
             cursor: 'pointer',
             ...scheduleBlockActionTextButtonStyle,
           }}
@@ -688,7 +710,7 @@ function HubPeopleBlockCard({
               borderRadius: 4,
               border: 'none',
               background: 'transparent',
-              color: '#1d4ed8',
+              color: plusColor,
               cursor: 'pointer',
               ...scheduleBlockActionTextButtonStyle,
             }}
@@ -919,6 +941,7 @@ function HubPeopleDayCell({
               key={b.id}
               block={b}
               workDate={workDate}
+              scheduleTodayYmd={scheduleTodayYmd}
               canEdit={canEdit}
               hubMultiCellAddActive={hubMultiCellAddActive}
               linkPeerCount={linkPeerCount}
@@ -1236,6 +1259,38 @@ function HubPeoplePanel({
     summariesError,
   ])
 
+  const missingNoteDayYmd = columnFocusDayYmd || scheduleTodayYmd
+
+  const { requirementForBlock: noteRequirementForBlockFromContext } = useDispatchNoteRequirements()
+
+  const missingNoteCount = useMemo(() => {
+    if (!missingNoteDayYmd) return 0
+    // Past-day columns: the missing-notes indicator is part of the "needs attention"
+    // surface alongside per-card colors, and both gate on `block.work_date < scheduleTodayYmd`
+    // returning to default. History never lights up red.
+    if (missingNoteDayYmd < scheduleTodayYmd) return 0
+    let n = 0
+    for (const person of filteredAssignees) {
+      const blocks = personDayBlocks.get(hubPersonDayKey(person.userId, missingNoteDayYmd)) ?? []
+      for (const b of blocks) {
+        if (b.note) continue
+        const req = noteRequirementForBlockFromContext({
+          userId: person.userId,
+          jobId: b.job_id,
+        })
+        if (req === 'skip') continue
+        n++
+      }
+    }
+    return n
+  }, [
+    missingNoteDayYmd,
+    scheduleTodayYmd,
+    filteredAssignees,
+    personDayBlocks,
+    noteRequirementForBlockFromContext,
+  ])
+
   return (
     <>
       {jobsError ? (
@@ -1373,7 +1428,32 @@ function HubPeoplePanel({
                   }}
                   title={dk}
                 >
-                  {hubDayColumnHeaderLabel(dk)}
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span>{hubDayColumnHeaderLabel(dk)}</span>
+                    {dk === missingNoteDayYmd && missingNoteCount > 0 ? (
+                      <span
+                        title={`${missingNoteCount} card${missingNoteCount === 1 ? '' : 's'} missing a note for ${hubDayColumnHeaderLabel(dk)}`}
+                        aria-label={`${missingNoteCount} card${missingNoteCount === 1 ? '' : 's'} missing a note for ${hubDayColumnHeaderLabel(dk)}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 2,
+                          color: '#dc2626',
+                          fontWeight: 700,
+                        }}
+                      >
+                        <ScheduleDispatchBlockNoteIcon size={12} />
+                        <span>{missingNoteCount}</span>
+                      </span>
+                    ) : null}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -2104,6 +2184,12 @@ export function ScheduleDispatchHub({
   const hubJobsColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-jobs-${tabForKey}`
   const hubPeopleColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-people-${tabForKey}`
 
+  const [dispatchSettingsOpen, setDispatchSettingsOpen] = useState(false)
+  const dispatchSettingsRoster = useMemo<DispatchSettingsModalRosterRow[]>(
+    () => allPeopleRows.map((r) => ({ userId: r.userId, displayName: r.displayName })),
+    [allPeopleRows],
+  )
+
   return (
     <div style={{ padding: '1rem 1.25rem', maxWidth: '100%' }}>
       {showWeekNavigation ? (
@@ -2119,7 +2205,15 @@ export function ScheduleDispatchHub({
         <div
           role="tablist"
           aria-label="Hub view"
-          style={{ display: 'flex', gap: 4, marginBottom: '1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: 2 }}
+          style={{
+            display: 'flex',
+            gap: 4,
+            marginBottom: '1rem',
+            borderBottom: '1px solid #e5e7eb',
+            paddingBottom: 2,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+          }}
         >
           <button
             type="button"
@@ -2178,6 +2272,27 @@ export function ScheduleDispatchHub({
           >
             Day
           </button>
+          {canEdit ? (
+            <button
+              type="button"
+              onClick={() => setDispatchSettingsOpen(true)}
+              title="Dispatch settings"
+              aria-label="Open dispatch settings"
+              style={{
+                marginLeft: 'auto',
+                padding: '0.4rem 0.85rem',
+                fontSize: '0.8125rem',
+                background: '#fff',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                color: '#374151',
+                cursor: 'pointer',
+                fontWeight: 500,
+              }}
+            >
+              Dispatch Settings
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -2302,6 +2417,11 @@ export function ScheduleDispatchHub({
           onRequestUndoNotComingIn={onRequestUndoNotComingIn}
         />
       )}
+      <DispatchSettingsModal
+        open={dispatchSettingsOpen}
+        onClose={() => setDispatchSettingsOpen(false)}
+        roster={dispatchSettingsRoster}
+      />
     </div>
   )
 }
