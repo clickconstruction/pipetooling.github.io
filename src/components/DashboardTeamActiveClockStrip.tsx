@@ -20,7 +20,7 @@ import { approveClockSessions } from '../lib/approveClockSessions'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverCalendarDayKey } from '../utils/dateUtils'
-import { useUserDayScheduleModal } from '../contexts/UserDayScheduleModalContext'
+import { useUserReviewModal } from '../contexts/UserReviewModalContext'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
@@ -740,16 +740,16 @@ export function DashboardTeamActiveClockStrip({
   const prefixMap = useLedgerPrefixMap()
   const clockStripWorkDateResolved =
     clockStripWorkDateYmd ?? new Date().toLocaleDateString('en-CA')
-  const userDayScheduleModal = useUserDayScheduleModal()
-  const openUserDaySchedule = useCallback(
+  const userReviewModal = useUserReviewModal()
+  const openUserReview = useCallback(
     (userId: string, displayName: string) => {
-      userDayScheduleModal?.open({
+      userReviewModal?.open({
         userId,
         displayName,
         workDateYmd: clockStripWorkDateYmd ?? denverCalendarDayKey(Date.now()),
       })
     },
-    [userDayScheduleModal, clockStripWorkDateYmd],
+    [userReviewModal, clockStripWorkDateYmd],
   )
   const stripNameAsScheduleButtonStyle: CSSProperties = {
     margin: 0,
@@ -1476,12 +1476,12 @@ export function DashboardTeamActiveClockStrip({
                 <tr key={s.id}>
                   <td style={{ ...td, ...stripCurrentlyInFirstCol }}>
                     <span style={stripCurrentlyInNameWithSuffix}>
-                    {userDayScheduleModal ? (
+                    {userReviewModal ? (
                       <button
                         type="button"
-                        onClick={() => openUserDaySchedule(s.user_id, personName(s))}
-                        title="View day schedule and add blocks"
-                        aria-label={`Day schedule for ${personName(s)}`}
+                        onClick={() => openUserReview(s.user_id, personName(s))}
+                        title="View day schedule, transactions, and add blocks"
+                        aria-label={`User review for ${personName(s)}`}
                         style={{ ...stripNameAsScheduleButtonStyle, whiteSpace: 'nowrap' }}
                       >
                         {personName(s)}
@@ -1733,12 +1733,12 @@ export function DashboardTeamActiveClockStrip({
                               flexWrap: 'wrap',
                             }}
                           >
-                            {userDayScheduleModal ? (
+                            {userReviewModal ? (
                               <button
                                 type="button"
-                                onClick={() => openUserDaySchedule(row.userId, row.displayName)}
-                                title="View day schedule and add blocks"
-                                aria-label={`Day schedule for ${rowLabel}`}
+                                onClick={() => openUserReview(row.userId, row.displayName)}
+                                title="View day schedule, transactions, and add blocks"
+                                aria-label={`User review for ${rowLabel}`}
                                 style={stripNameAsScheduleButtonStyle}
                               >
                                 {rowLabel}

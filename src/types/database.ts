@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       _freeze_crew_lead_bids_backup: {
@@ -10322,6 +10297,28 @@ export type Database = {
           quantity: number
         }[]
       }
+      list_user_mercury_review_window: {
+        Args: {
+          p_end_ymd: string
+          p_include_person_attributed?: boolean
+          p_start_ymd: string
+          p_user_id: string
+        }
+        Returns: {
+          allocation_amount: number
+          allocation_id: string
+          amount: number
+          attribution_person_id: string
+          attribution_source: string
+          counterparty_name: string
+          created_at: string
+          job_id: string
+          label_id: string
+          label_name: string
+          mercury_transaction_id: string
+          posted_at: string
+        }[]
+      }
       list_users_for_banking_attribution: {
         Args: never
         Returns: {
@@ -10979,9 +10976,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       estimate_status: [

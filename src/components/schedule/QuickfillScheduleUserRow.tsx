@@ -1,4 +1,4 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, type CSSProperties, type ReactNode } from 'react'
 import {
   DISPATCH_ADD_BLOCK_SLOT_COUNT,
   dispatchMinutesToHHmm,
@@ -8,7 +8,9 @@ import {
   timeInputToMinutesSafe,
 } from '../../lib/dispatchAddBlockTime'
 import {
+  DISPATCH_ADD_BLOCK_ORIENTATION_MARKS,
   DispatchAddBlockTimeRange,
+  dispatchAddBlockTrackThumbLeftPct,
   type DispatchOccupiedBand,
   type DispatchSecondaryBand,
 } from './DispatchAddBlockTimeRange'
@@ -25,6 +27,72 @@ export const QUICKFILL_SCHEDULE_ROW_GAP = '0.5rem'
 
 const noopSlot = () => {}
 
+/**
+ * Renders the shared "8 AM / 12 PM / 4 PM" orientation labels above one or more
+ * `QuickfillScheduleUserRow` strips, using the same flex layout (leading name
+ * column spacer and optional trailing add-column spacer) so the labels line up
+ * with the slider track underneath.
+ */
+export function QuickfillScheduleOrientationLabelsRow({
+  showNameColumn,
+  showAddColumn = false,
+  marginBottom = '0.15rem',
+}: {
+  /** Mirrors the strip's `showNameColumn`. When true, inserts a leading spacer. */
+  showNameColumn: boolean
+  /** Mirrors the presence of `onScheduleAddClick`. When true, inserts a trailing spacer. */
+  showAddColumn?: boolean
+  marginBottom?: CSSProperties['marginBottom']
+}) {
+  return (
+    <div
+      aria-hidden
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: QUICKFILL_SCHEDULE_ROW_GAP,
+        width: '100%',
+        marginBottom,
+        pointerEvents: 'none',
+      }}
+    >
+      {showNameColumn ? (
+        <div style={{ width: QUICKFILL_SCHEDULE_NAME_COL_WIDTH, flexShrink: 0 }} />
+      ) : null}
+      <div
+        style={{
+          position: 'relative',
+          flex: 1,
+          minWidth: 0,
+          height: 12,
+        }}
+      >
+        {DISPATCH_ADD_BLOCK_ORIENTATION_MARKS.filter(
+          (m) => m.slotIndex <= DISPATCH_ADD_BLOCK_SLOT_COUNT - 1,
+        ).map(({ slotIndex, label }) => (
+          <span
+            key={slotIndex}
+            style={{
+              position: 'absolute',
+              left: dispatchAddBlockTrackThumbLeftPct(slotIndex, DISPATCH_ADD_BLOCK_SLOT_COUNT),
+              transform: 'translateX(-50%)',
+              fontSize: '0.65rem',
+              color: '#9ca3af',
+              lineHeight: 1.2,
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {label}
+          </span>
+        ))}
+      </div>
+      {showAddColumn ? (
+        <div style={{ width: QUICKFILL_SCHEDULE_ADD_COL_WIDTH, flexShrink: 0 }} />
+      ) : null}
+    </div>
+  )
+}
+
 export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   userId,
   displayName,
@@ -36,6 +104,9 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   onOpenPersonMyTime,
   onOccupiedBandClick,
   showNameColumn = true,
+  nameColumnLabel,
+  nameColumnSubline,
+  compactRow = false,
 }: {
   userId: string
   displayName: string
@@ -50,6 +121,18 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   onOccupiedBandClick?: (band: DispatchOccupiedBand) => void
   /** When false, only the track (+ optional add column) is shown; use when the name is shown elsewhere (e.g. modal title). */
   showNameColumn?: boolean
+  /** Visible text override for the leading name column. Defaults to `displayName`.
+      The underlying My-Time button, title, aria-label, and groupAriaLabel still use displayName. */
+  nameColumnLabel?: string
+  /** Optional softer subline rendered below `nameColumnLabel` in the leading name column.
+      Used by the User Review modal's Week/Month day rows to surface a relative-day phrase
+      like "(3 days ago)" under "Sat · 05/16". When the name column is rendered as a button,
+      the subline sits inside the same button so the entire chip remains one click target. */
+  nameColumnSubline?: ReactNode
+  /** When true, the row uses tighter vertical padding (0.15rem 0) and drops the
+      bottom hairline. Used by surfaces that already provide their own separation
+      (e.g. the User Review modal's week-mode day list, which uses grid gap). */
+  compactRow?: boolean
 }) {
   const occupiedBands = useMemo(() => segmentsToOccupiedBands(segments), [segments])
 
@@ -73,8 +156,8 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
         display: 'flex',
         alignItems: 'center',
         gap: QUICKFILL_SCHEDULE_ROW_GAP,
-        padding: '0.45rem 0',
-        borderBottom: '1px solid #f3f4f6',
+        padding: compactRow ? '0.15rem 0' : '0.45rem 0',
+        borderBottom: compactRow ? 'none' : '1px solid #f3f4f6',
       }}
     >
       {showNameColumn ? (
@@ -85,9 +168,8 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
             fontSize: '0.8125rem',
             fontWeight: 600,
             color: '#111827',
-            whiteSpace: 'nowrap',
+            whiteSpace: 'normal',
             overflow: 'hidden',
-            textOverflow: 'ellipsis',
             lineHeight: 1.2,
             padding: '0.15rem 0.25rem',
           }}
@@ -111,14 +193,17 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
                 textAlign: 'left',
                 cursor: 'pointer',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
+                whiteSpace: 'normal',
               }}
             >
-              {displayName}
+              {nameColumnLabel ?? displayName}
+              {nameColumnSubline}
             </button>
           ) : (
-            displayName
+            <>
+              {nameColumnLabel ?? displayName}
+              {nameColumnSubline}
+            </>
           )}
         </div>
       ) : null}

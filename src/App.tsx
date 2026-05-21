@@ -57,7 +57,7 @@ import { DailyGoalsGateProvider } from './contexts/DailyGoalsGateContext'
 import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
 import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
-import { UserDayScheduleModalProvider } from './contexts/UserDayScheduleModalContext'
+import { UserReviewModalProvider } from './contexts/UserReviewModalContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -183,9 +183,9 @@ function AppContent() {
                                         <JobsListCacheProvider>
                                           <UpdateFocusOpenerBridgeProvider>
                                             <JobDetailModalProvider>
-                                              <UserDayScheduleModalProvider>
+                                              <UserReviewModalProvider>
                                                 <Layout />
-                                              </UserDayScheduleModalProvider>
+                                              </UserReviewModalProvider>
                                             </JobDetailModalProvider>
                                           </UpdateFocusOpenerBridgeProvider>
                                         </JobsListCacheProvider>
