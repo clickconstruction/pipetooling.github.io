@@ -8,6 +8,14 @@ import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { usePersonWeekScheduleData } from '../../hooks/usePersonWeekScheduleData'
 import { QuickfillScheduleOrientationLabelsRow } from '../schedule/QuickfillScheduleUserRow'
 import { UserScheduleDayRow } from './UserScheduleDayRow'
+import {
+  applyRailWindowMinFloor,
+  computeUserReviewSharedSlotWindow,
+  USER_REVIEW_RAIL_MIN_FLOOR_SLOTS,
+  type SharedSlotWindowRowInput,
+} from '../../lib/userReviewSharedSlotWindow'
+import { blocksToSegments, segmentsToOccupiedBands } from '../../lib/quickfillScheduleSegments'
+import { clockSessionsToDispatchSecondaryBands } from '../../lib/clockSessionsToDispatchSecondaryBands'
 import { ScheduleBlockPreviewModal } from './ScheduleBlockPreviewModal'
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
 import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
@@ -48,6 +56,14 @@ export type UserWeekScheduleSectionProps = {
   titleId: string
   belowScheduleSlot?: ReactNode
   headerExtras?: ReactNode
+  /**
+   * When provided, the name in the title is rendered as a button that
+   * opens the User Review switch-user modal. When omitted the name is
+   * plain text (the existing fallback for non-staff viewers).
+   */
+  onOpenSwitchUser?: () => void
+  /** When true, the switcher affordance (caret) is shown next to the name. */
+  canSwitchUser?: boolean
 }
 
 export function UserWeekScheduleSection({
@@ -59,6 +75,8 @@ export function UserWeekScheduleSection({
   titleId,
   belowScheduleSlot,
   headerExtras,
+  onOpenSwitchUser,
+  canSwitchUser,
 }: UserWeekScheduleSectionProps) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
@@ -111,6 +129,29 @@ export function UserWeekScheduleSection({
 
   const jobLabelsRecord = useMemo(() => Object.fromEntries(jobTitleById), [jobTitleById])
   const bidLabelsRecord = useMemo(() => Object.fromEntries(bidTitleById), [bidTitleById])
+
+  const sharedRailWindow = useMemo(() => {
+    const jobMap = new Map(jobTitleById)
+    const bidMap = new Map(bidTitleById)
+    const rows: SharedSlotWindowRowInput[] = daysYmd.map((d) => {
+      const blocks = blocksByDayYmd.get(d) ?? []
+      const sessions = sessionsByDayYmd.get(d) ?? []
+      const occ = segmentsToOccupiedBands(blocksToSegments(blocks, jobMap))
+      const sec = clockSessionsToDispatchSecondaryBands(sessions, d, nowMs, jobMap, bidMap)
+      return {
+        occupiedStartHiSlots: occ.map((s) => ({
+          startSlotIndex: s.startSlotIndex,
+          endSlotIndex: s.endSlotIndex,
+        })),
+        secondaryStartHiSlots: sec.map((b) => ({
+          startSlotIndex: b.startSlotIndex,
+          endSlotIndex: b.endSlotIndex,
+        })),
+      }
+    })
+    const raw = computeUserReviewSharedSlotWindow(rows)
+    return applyRailWindowMinFloor(raw, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS)
+  }, [daysYmd, blocksByDayYmd, sessionsByDayYmd, jobTitleById, bidTitleById, nowMs])
 
   const handleMarkNotComingIn = useCallback(async () => {
     const editor = scheduleMyTimeEditor
@@ -174,7 +215,34 @@ export function UserWeekScheduleSection({
         whiteSpace: 'nowrap',
       }}
     >
-      {displayName}
+      {onOpenSwitchUser ? (
+        <button
+          type="button"
+          onClick={() => onOpenSwitchUser()}
+          title={`Switch user from ${displayName}`}
+          aria-label={`Switch user from ${displayName}`}
+          style={{
+            display: 'inline',
+            margin: 0,
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            font: 'inherit',
+            color: 'inherit',
+            textAlign: 'left',
+            cursor: 'pointer',
+          }}
+        >
+          {displayName}
+          {canSwitchUser ? (
+            <span aria-hidden style={{ marginLeft: '0.35rem', color: '#9ca3af', fontWeight: 400 }}>
+              ▾
+            </span>
+          ) : null}
+        </button>
+      ) : (
+        displayName
+      )}
     </h2>
   )
 
@@ -262,7 +330,11 @@ export function UserWeekScheduleSection({
           minHeight: 0,
         }}
       >
-        <QuickfillScheduleOrientationLabelsRow showNameColumn={!narrow} marginBottom="0.4rem" />
+        <QuickfillScheduleOrientationLabelsRow
+          showNameColumn={!narrow}
+          marginBottom="0.4rem"
+          railTrimWindow={sharedRailWindow}
+        />
 
         {loading ? (
           <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
@@ -281,8 +353,10 @@ export function UserWeekScheduleSection({
                 nowMs={nowMs}
                 showOpenMyTime={showStripSubjectMyTimeEditor}
                 onOccupiedBandClick={(band) => openBlockPreviewForDay(dayYmd, band.blockId)}
+                onOpenBlockPreviewForBlock={(blockId) => openBlockPreviewForDay(dayYmd, blockId)}
                 narrow={narrow}
                 onOpenMyTimeForSessionStrip={openMyTimeForDay}
+                railTrimWindow={sharedRailWindow}
               />
             ))}
           </div>

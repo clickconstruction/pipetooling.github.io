@@ -11,6 +11,9 @@ import { UserDayScheduleSection } from './userReview/UserDayScheduleSection'
 import { UserWeekScheduleSection } from './userReview/UserWeekScheduleSection'
 import { UserMonthScheduleSection } from './userReview/UserMonthScheduleSection'
 import { UserMercuryWindowSection } from './userReview/UserMercuryWindowSection'
+import { UserReviewSwitchUserModal } from './userReview/UserReviewSwitchUserModal'
+import { useUserReviewRoster } from '../hooks/useUserReviewRoster'
+import { buildSwitchUserOptions } from '../lib/userReviewSwitchOptions'
 
 const MODAL_Z = 1200
 const TITLE_ID = 'user-review-modal-title'
@@ -20,6 +23,12 @@ const PRINT_SCOPE_CLASS = 'user-review-modal-print-scope'
 const PRINT_STYLE_ID = 'user-review-modal-print-style'
 
 const BANKING_ROLES = new Set(['dev', 'master_technician', 'assistant'])
+const SWITCH_SUBJECT_ROLES = new Set([
+  'dev',
+  'master_technician',
+  'assistant',
+  'superintendent',
+])
 
 const PRINT_STYLE_CSS = `
 @media print {
@@ -199,6 +208,48 @@ export default function UserReviewModal() {
   }, [isOpen])
 
   const showTransactionsSection = role != null && BANKING_ROLES.has(role)
+  const canSwitchUser = role != null && SWITCH_SUBJECT_ROLES.has(role)
+
+  const [switchOpen, setSwitchOpen] = useState(false)
+
+  // Always reset the switcher when the parent modal closes or the subject
+  // changes (re-opening it after picking a user) so a stale dialog doesn't
+  // linger over the new subject.
+  useEffect(() => {
+    if (!isOpen) setSwitchOpen(false)
+  }, [isOpen])
+  useEffect(() => {
+    setSwitchOpen(false)
+  }, [payload?.userId])
+
+  const { roster: switchRoster, loading: switchLoading, error: switchError } =
+    useUserReviewRoster({
+      enabled: switchOpen && canSwitchUser,
+      currentUserId: payload?.userId ?? '',
+      currentDisplayName: payload?.displayName ?? '',
+    })
+  const switchOptions = useMemo(
+    () => buildSwitchUserOptions(switchRoster, payload?.userId ?? ''),
+    [switchRoster, payload?.userId],
+  )
+
+  const handleOpenSwitchUser = useCallback(() => {
+    if (!canSwitchUser) return
+    setSwitchOpen(true)
+  }, [canSwitchUser])
+  const handleCloseSwitchUser = useCallback(() => setSwitchOpen(false), [])
+  const handlePickSwitchUser = useCallback(
+    ({ userId, displayName }: { userId: string; displayName: string }) => {
+      setSwitchOpen(false)
+      // Re-open the parent modal for the new subject while preserving the
+      // current anchor day. RangeMode is local state and is intentionally
+      // not threaded through `open` so toggling Day/Week/Month survives.
+      modal?.open({ userId, displayName, workDateYmd })
+    },
+    [modal, workDateYmd],
+  )
+
+  const switchUserHandler = canSwitchUser ? handleOpenSwitchUser : undefined
 
   // Week mode anchor: the company-week Sunday containing workDateYmd.
   const weekStartYmd = useMemo(
@@ -320,6 +371,8 @@ export default function UserReviewModal() {
             titleId={TITLE_ID}
             headerExtras={rangeToggleNode}
             belowScheduleSlot={transactionsSlot}
+            onOpenSwitchUser={switchUserHandler}
+            canSwitchUser={canSwitchUser}
           />
         ) : rangeMode === 'week' ? (
           <UserWeekScheduleSection
@@ -331,6 +384,8 @@ export default function UserReviewModal() {
             titleId={TITLE_ID}
             headerExtras={rangeToggleNode}
             belowScheduleSlot={transactionsSlot}
+            onOpenSwitchUser={switchUserHandler}
+            canSwitchUser={canSwitchUser}
           />
         ) : (
           <UserMonthScheduleSection
@@ -342,9 +397,21 @@ export default function UserReviewModal() {
             titleId={TITLE_ID}
             headerExtras={rangeToggleNode}
             belowScheduleSlot={transactionsSlot}
+            onOpenSwitchUser={switchUserHandler}
+            canSwitchUser={canSwitchUser}
           />
         )}
       </div>
+
+      <UserReviewSwitchUserModal
+        open={switchOpen}
+        onClose={handleCloseSwitchUser}
+        currentDisplayName={payload.displayName}
+        options={switchOptions}
+        loading={switchLoading}
+        error={switchError}
+        onPick={handlePickSwitchUser}
+      />
     </div>
   )
 }

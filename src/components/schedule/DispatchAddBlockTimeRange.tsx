@@ -11,50 +11,133 @@ export const DISPATCH_ADD_BLOCK_ORIENTATION_MARKS: ReadonlyArray<{ slotIndex: nu
   { slotIndex: 24, label: '4 PM' },
 ]
 
-/** Same horizontal position as range thumbs / occupied bands for a given slot (matches track inset). */
-export function dispatchAddBlockTrackThumbLeftPct(slotIndex: number, slotCount: number): string {
-  const maxIdx = Math.max(0, slotCount - 1)
-  if (maxIdx === 0) return '50%'
-  const t = slotIndex / maxIdx
-  return `calc(${THUMB_HALF}px + (100% - ${THUMB_PX}px) * ${t})`
-}
+type RailWindow = { loSlotIndex: number; hiSlotIndex: number } | null | undefined
 
 function clampInt(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, n))
 }
 
-function clientXToSlotIndex(clientX: number, rect: DOMRect, slotCount: number): number {
+/**
+ * Forward map: slot index → fraction (0..1) along the visible track.
+ *
+ * - When `window` is `undefined` or `null`, the slot range
+ *   `[0, slotCount - 1]` is mapped linearly across the whole track.
+ * - When `window` is `{ loSlotIndex, hiSlotIndex }`, the slot range
+ *   `[lo, hi]` is stretched edge-to-edge across the track so the User
+ *   Review modal can magnify the active part of the day. Inputs are
+ *   clamped to `[lo, hi]` so out-of-window slots collapse to the
+ *   window edge (kept defensive — the User Review orchestrators only
+ *   pass windows that contain every band they render).
+ */
+function slotToTrackT(slotIndex: number, slotCount: number, window: RailWindow): number {
+  const maxIdx = Math.max(0, slotCount - 1)
+  if (maxIdx === 0) return 0
+  if (!window) {
+    return clampInt(slotIndex / maxIdx, 0, 1)
+  }
+  const lo = Math.max(0, Math.min(window.loSlotIndex, maxIdx))
+  const hi = Math.max(lo, Math.min(window.hiSlotIndex, maxIdx))
+  if (hi === lo) return 0
+  const clamped = Math.max(lo, Math.min(slotIndex, hi))
+  return (clamped - lo) / (hi - lo)
+}
+
+/** Inverse of `slotToTrackT`: track fraction (0..1) → slot index. */
+function trackTToSlotIndex(t: number, slotCount: number, window: RailWindow): number {
+  const maxIdx = Math.max(0, slotCount - 1)
+  if (maxIdx === 0) return 0
+  const tt = clampInt(t, 0, 1)
+  if (!window) {
+    return clampInt(Math.round(tt * maxIdx), 0, maxIdx)
+  }
+  const lo = Math.max(0, Math.min(window.loSlotIndex, maxIdx))
+  const hi = Math.max(lo, Math.min(window.hiSlotIndex, maxIdx))
+  if (hi === lo) return lo
+  return clampInt(Math.round(lo + tt * (hi - lo)), 0, maxIdx)
+}
+
+/**
+ * Same horizontal position as range thumbs / occupied bands for a given slot.
+ *
+ * `window` is optional; default-undefined preserves existing Quickfill /
+ * Schedule Dispatch callsites that don't rescale. User Review threads
+ * `railTrimWindow` through so labels/bands land at their wall-time x in
+ * the rescaled strip.
+ */
+export function dispatchAddBlockTrackThumbLeftPct(
+  slotIndex: number,
+  slotCount: number,
+  window?: RailWindow,
+): string {
+  const maxIdx = Math.max(0, slotCount - 1)
+  if (maxIdx === 0) return '50%'
+  const t = slotToTrackT(slotIndex, slotCount, window)
+  return `calc(${THUMB_HALF}px + (100% - ${THUMB_PX}px) * ${t})`
+}
+
+function clientXToSlotIndex(
+  clientX: number,
+  rect: DOMRect,
+  slotCount: number,
+  window: RailWindow,
+): number {
   const maxIdx = Math.max(0, slotCount - 1)
   if (maxIdx === 0) return 0
   const usableW = rect.width - 2 * THUMB_HALF
   const usableLeft = rect.left + THUMB_HALF
   const t = usableW <= 0 ? 0 : clampInt((clientX - usableLeft) / usableW, 0, 1)
-  return clampInt(Math.round(t * maxIdx), 0, maxIdx)
+  return trackTToSlotIndex(t, slotCount, window)
 }
 
-/** Linear map across the track to dispatch wall minutes (4:00–20:00). */
-function clientXToDispatchMinutes(clientX: number, rect: DOMRect): number {
+/**
+ * Linear map across the track to dispatch wall minutes (4:00–20:00).
+ *
+ * When `window` is provided the visible strip spans only
+ * `[dispatchSlotIndexToMinutes(lo), dispatchSlotIndexToMinutes(hi)]`,
+ * so a pointer at the right edge resolves to `hi`'s wall-time rather
+ * than 8 PM. User Review strips are read-only so this is defensive
+ * insurance against a future interactive caller threading a window.
+ */
+function clientXToDispatchMinutes(
+  clientX: number,
+  rect: DOMRect,
+  slotCount: number,
+  window: RailWindow,
+): number {
   const usableW = rect.width - 2 * THUMB_HALF
   const usableLeft = rect.left + THUMB_HALF
   const t = usableW <= 0 ? 0 : clampInt((clientX - usableLeft) / usableW, 0, 1)
-  return Math.round(MIN_MIN + t * (MAX_MIN - MIN_MIN))
+  if (!window) {
+    return Math.round(MIN_MIN + t * (MAX_MIN - MIN_MIN))
+  }
+  const maxIdx = Math.max(0, slotCount - 1)
+  if (maxIdx === 0) return MIN_MIN
+  const lo = Math.max(0, Math.min(window.loSlotIndex, maxIdx))
+  const hi = Math.max(lo, Math.min(window.hiSlotIndex, maxIdx))
+  const loMin = dispatchSlotIndexToMinutes(lo)
+  const hiMin = dispatchSlotIndexToMinutes(hi)
+  return Math.round(loMin + t * (hiMin - loMin))
 }
 
-function thumbPixelX(startSlotIndex: number, endSlotIndex: number, slotCount: number, rect: DOMRect): {
+function thumbPixelX(
+  startSlotIndex: number,
+  endSlotIndex: number,
+  slotCount: number,
+  rect: DOMRect,
+  window: RailWindow,
+): {
   startX: number
   endX: number
   usableLeft: number
   usableW: number
 } {
-  const maxIdx = Math.max(0, slotCount - 1)
   const usableW = rect.width - 2 * THUMB_HALF
   const usableLeft = rect.left + THUMB_HALF
-  if (maxIdx === 0) {
-    return { startX: usableLeft, endX: usableLeft, usableLeft, usableW }
-  }
+  const startT = slotToTrackT(startSlotIndex, slotCount, window)
+  const endT = slotToTrackT(endSlotIndex, slotCount, window)
   return {
-    startX: usableLeft + (startSlotIndex / maxIdx) * usableW,
-    endX: usableLeft + (endSlotIndex / maxIdx) * usableW,
+    startX: usableLeft + startT * usableW,
+    endX: usableLeft + endT * usableW,
     usableLeft,
     usableW,
   }
@@ -117,6 +200,19 @@ export type DispatchAddBlockTimeRangeProps = {
   secondaryBands?: DispatchSecondaryBand[]
   /** When set, secondary bands are clickable (e.g. open My Time); use `stopPropagation` so the range control does not capture. */
   onSecondaryBandClick?: (band: DispatchSecondaryBand) => void
+  /**
+   * Clips the grey rail underlay to a slot fraction of the track.
+   * - `undefined` (default): rail spans the full track (existing behavior).
+   * - `null`: rail is hidden entirely (use for empty-view rows where no
+   *   bands exist anywhere in the surrounding view).
+   * - `{ loSlotIndex, hiSlotIndex }`: rail spans only that slot range.
+   *
+   * Bands, thumbs, proposed-range fill, orientation labels, and click
+   * handlers are **not** affected — they stay on the full track so
+   * wall-time x-coordinates remain consistent across rows that share a
+   * trim window (used by the User Review modal to align per-day rails).
+   */
+  railTrimWindow?: { loSlotIndex: number; hiSlotIndex: number } | null
 }
 
 /**
@@ -140,6 +236,7 @@ export function DispatchAddBlockTimeRange({
   showProposedRange = true,
   secondaryBands,
   onSecondaryBandClick,
+  railTrimWindow,
 }: DispatchAddBlockTimeRangeProps) {
   const regionRef = useRef<HTMLDivElement>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -195,11 +292,11 @@ export function DispatchAddBlockTimeRange({
       const el = trackRef.current
       if (!el || disabled) return
       const rect = el.getBoundingClientRect()
-      const idx = clientXToSlotIndex(e.clientX, rect, slotCount)
+      const idx = clientXToSlotIndex(e.clientX, rect, slotCount, railTrimWindow)
       if (mode === 'start') onStartChange(idx)
       else onEndChange(idx)
     },
-    [disabled, onEndChange, onStartChange, slotCount],
+    [disabled, onEndChange, onStartChange, slotCount, railTrimWindow],
   )
 
   const onRegionPointerDown = (e: PointerEvent) => {
@@ -215,7 +312,7 @@ export function DispatchAddBlockTimeRange({
       const band = occupiedBands.find((b) => b.blockId === occId)
       if (!band) return
       const rect = track.getBoundingClientRect()
-      const minuteAtDown = clientXToDispatchMinutes(e.clientX, rect)
+      const minuteAtDown = clientXToDispatchMinutes(e.clientX, rect, slotCount, railTrimWindow)
       const lo = Math.min(band.startSlotIndex, band.endSlotIndex)
       const blockStartMin = dispatchSlotIndexToMinutes(lo)
       const grabOffsetMin = minuteAtDown - blockStartMin
@@ -240,7 +337,7 @@ export function DispatchAddBlockTimeRange({
     } else {
       // Nearest thumb along the track (pixel space)
       const rect = track.getBoundingClientRect()
-      const { startX, endX } = thumbPixelX(startSlotIndex, endSlotIndex, slotCount, rect)
+      const { startX, endX } = thumbPixelX(startSlotIndex, endSlotIndex, slotCount, rect, railTrimWindow)
       const x = e.clientX
       mode = Math.abs(x - startX) <= Math.abs(x - endX) ? 'start' : 'end'
     }
@@ -256,7 +353,7 @@ export function DispatchAddBlockTimeRange({
     const occ = occDragRef.current
     if (occ && occ.pointerId === e.pointerId && onOccupiedAbsoluteStart && trackRef.current) {
       const rect = trackRef.current.getBoundingClientRect()
-      const minuteNow = clientXToDispatchMinutes(e.clientX, rect)
+      const minuteNow = clientXToDispatchMinutes(e.clientX, rect, slotCount, railTrimWindow)
       onOccupiedAbsoluteStart(occ.blockId, minuteNow - occ.grabOffsetMin)
       return
     }
@@ -264,14 +361,19 @@ export function DispatchAddBlockTimeRange({
     applyDrag(e, dragModeRef.current)
   }
 
-  const thumbLeftPct = (idx: number): string => dispatchAddBlockTrackThumbLeftPct(idx, slotCount)
+  const thumbLeftPct = (idx: number): string =>
+    dispatchAddBlockTrackThumbLeftPct(idx, slotCount, railTrimWindow)
 
   const fillStyle = (): CSSProperties => {
     if (maxIdx === 0) {
       return { display: 'none' }
     }
-    const loT = paintLo / maxIdx
-    const spanT = (paintHi - paintLo) / maxIdx
+    const loT = slotToTrackT(paintLo, slotCount, railTrimWindow)
+    const hiT = slotToTrackT(paintHi, slotCount, railTrimWindow)
+    const spanT = hiT - loT
+    if (spanT <= 0) {
+      return { display: 'none' }
+    }
     return {
       position: 'absolute' as const,
       left: `calc(${THUMB_HALF}px + (100% - ${THUMB_PX}px) * ${loT})`,
@@ -286,18 +388,26 @@ export function DispatchAddBlockTimeRange({
     }
   }
 
-  const railStyle: CSSProperties = {
-    position: 'absolute',
-    left: THUMB_HALF,
-    right: THUMB_HALF,
-    top: trackCenterTop,
-    height: 6,
-    marginTop: -3,
-    borderRadius: 3,
-    background: '#e5e7eb',
-    pointerEvents: 'none',
-    zIndex: 0,
-  }
+  const railStyle: CSSProperties = (() => {
+    if (railTrimWindow === null) {
+      return { display: 'none' }
+    }
+    // Under the rescale, `{ lo, hi }` makes the visible strip *be* the
+    // window, so the rail spans full track width either way. Edge-clipping
+    // here would double-trim.
+    return {
+      position: 'absolute',
+      top: trackCenterTop,
+      height: 6,
+      marginTop: -3,
+      borderRadius: 3,
+      background: '#e5e7eb',
+      pointerEvents: 'none',
+      zIndex: 0,
+      left: THUMB_HALF,
+      right: THUMB_HALF,
+    }
+  })()
 
   const thumbStyle = (which: 'start' | 'end', idx: number): CSSProperties => ({
     position: 'absolute',
@@ -328,8 +438,14 @@ export function DispatchAddBlockTimeRange({
     else onEndChange(next)
   }
 
-  const orientationMarks =
-    maxIdx > 0 ? DISPATCH_ADD_BLOCK_ORIENTATION_MARKS.filter((m) => m.slotIndex <= maxIdx) : []
+  const orientationMarks = (() => {
+    if (maxIdx === 0) return []
+    const baseFiltered = DISPATCH_ADD_BLOCK_ORIENTATION_MARKS.filter((m) => m.slotIndex <= maxIdx)
+    if (!railTrimWindow) return baseFiltered
+    const lo = Math.max(0, Math.min(railTrimWindow.loSlotIndex, maxIdx))
+    const hi = Math.max(lo, Math.min(railTrimWindow.hiSlotIndex, maxIdx))
+    return baseFiltered.filter((m) => m.slotIndex >= lo && m.slotIndex <= hi)
+  })()
 
   return (
     <div
@@ -353,8 +469,9 @@ export function DispatchAddBlockTimeRange({
         {occupiedBands?.map((b) => {
           const lo = Math.min(b.startSlotIndex, b.endSlotIndex)
           const hi = Math.max(b.startSlotIndex, b.endSlotIndex)
-          const loT = maxIdx === 0 ? 0 : lo / maxIdx
-          const spanT = maxIdx === 0 ? 0 : (hi - lo) / maxIdx
+          const loT = slotToTrackT(lo, slotCount, railTrimWindow)
+          const hiT = slotToTrackT(hi, slotCount, railTrimWindow)
+          const spanT = Math.max(0, hiT - loT)
           const canDrag = Boolean(onOccupiedAbsoluteStart) && !disabled
           const canClickOccupied = Boolean(onOccupiedBandClick) && !canDrag
           const occPointerEvents = canDrag || canClickOccupied ? 'auto' : 'none'
@@ -525,8 +642,9 @@ export function DispatchAddBlockTimeRange({
         {secondaryBands?.map((band) => {
           const lo = Math.min(band.startSlotIndex, band.endSlotIndex)
           const hi = Math.max(band.startSlotIndex, band.endSlotIndex)
-          const loT = maxIdx === 0 ? 0 : lo / maxIdx
-          const spanT = maxIdx === 0 ? 0 : (hi - lo) / maxIdx
+          const loT = slotToTrackT(lo, slotCount, railTrimWindow)
+          const hiT = slotToTrackT(hi, slotCount, railTrimWindow)
+          const spanT = Math.max(0, hiT - loT)
           const shellStyle = {
             position: 'absolute' as const,
             left: `calc(${THUMB_HALF}px + (100% - ${THUMB_PX}px) * ${loT})`,

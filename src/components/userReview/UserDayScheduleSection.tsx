@@ -20,7 +20,7 @@ import {
 } from '../../lib/scheduleDispatchAddBlockTimeline'
 import { scheduleTimeToMinutesFromMidnight } from '../../lib/jobScheduleOverlap'
 import { scheduleFormatWeekdayLong } from '../../lib/jobScheduleChicago'
-import { blocksToSegments } from '../../lib/quickfillScheduleSegments'
+import { blocksToSegments, segmentsToOccupiedBands } from '../../lib/quickfillScheduleSegments'
 import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import { formatScheduleDispatchHubJobTitle } from '../../lib/scheduleDispatchHub'
 import { clockSessionsToDispatchSecondaryBands } from '../../lib/clockSessionsToDispatchSecondaryBands'
@@ -28,6 +28,11 @@ import {
   dispatchMinutesToHHmm,
   timeInputToPg,
 } from '../../lib/dispatchAddBlockTime'
+import {
+  applyRailWindowMinFloor,
+  computeUserReviewSharedSlotWindow,
+  USER_REVIEW_RAIL_MIN_FLOOR_SLOTS,
+} from '../../lib/userReviewSharedSlotWindow'
 import { ScheduleDispatchAddBlockModal } from '../schedule/ScheduleDispatchAddBlockModal'
 import { ScheduleDispatchAssignJobPickerModal } from '../schedule/ScheduleDispatchAssignJobPickerModal'
 import {
@@ -130,6 +135,14 @@ export type UserDayScheduleSectionProps = {
   belowScheduleSlot?: ReactNode
   /** When provided, overrides the default header title node (e.g. for Day/Week toggle in v2). */
   headerExtras?: ReactNode
+  /**
+   * When provided, the name `<h2>` opens the User Review switch-user
+   * modal instead of the per-user MyTime editor. MyTime is still
+   * reachable one click deeper via the clock strip's session bands.
+   */
+  onOpenSwitchUser?: () => void
+  /** When true, the name button advertises the switcher affordance (caret + aria copy). */
+  canSwitchUser?: boolean
 }
 
 export function UserDayScheduleSection({
@@ -141,6 +154,8 @@ export function UserDayScheduleSection({
   titleId,
   belowScheduleSlot,
   headerExtras,
+  onOpenSwitchUser,
+  canSwitchUser,
 }: UserDayScheduleSectionProps) {
   const { user: authUser, role } = useAuth()
   const { showToast } = useToastContext()
@@ -199,6 +214,23 @@ export function UserDayScheduleSection({
       ),
     [sessions, workDateYmd, nowMs, jobTitleById, bidTitleById],
   )
+
+  const sharedRailWindow = useMemo(() => {
+    const occupied = segmentsToOccupiedBands(segments)
+    const raw = computeUserReviewSharedSlotWindow([
+      {
+        occupiedStartHiSlots: occupied.map((s) => ({
+          startSlotIndex: s.startSlotIndex,
+          endSlotIndex: s.endSlotIndex,
+        })),
+        secondaryStartHiSlots: secondaryBands.map((b) => ({
+          startSlotIndex: b.startSlotIndex,
+          endSlotIndex: b.endSlotIndex,
+        })),
+      },
+    ])
+    return applyRailWindowMinFloor(raw, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS)
+  }, [segments, secondaryBands])
 
   const openMyTimeForSessionStrip = useCallback((uid: string, name: string) => {
     setScheduleMyTimeEditor({ subjectUserId: uid, subjectDisplayName: name })
@@ -472,12 +504,24 @@ export function UserDayScheduleSection({
         overflow: 'hidden',
       }}
     >
-      {showStripSubjectMyTimeEditor ? (
+      {onOpenSwitchUser || showStripSubjectMyTimeEditor ? (
         <button
           type="button"
-          onClick={() => openMyTimeForSessionStrip(userId, displayName)}
-          title={`Time and attendance for ${displayName} (${workDateYmd})`}
-          aria-label={`Time and attendance for ${displayName} on ${workDateYmd}`}
+          onClick={
+            onOpenSwitchUser
+              ? () => onOpenSwitchUser()
+              : () => openMyTimeForSessionStrip(userId, displayName)
+          }
+          title={
+            onOpenSwitchUser
+              ? `Switch user from ${displayName}`
+              : `Time and attendance for ${displayName} (${workDateYmd})`
+          }
+          aria-label={
+            onOpenSwitchUser
+              ? `Switch user from ${displayName}`
+              : `Time and attendance for ${displayName} on ${workDateYmd}`
+          }
           style={{
             display: 'block',
             maxWidth: '100%',
@@ -497,6 +541,11 @@ export function UserDayScheduleSection({
           }}
         >
           {displayName}
+          {canSwitchUser ? (
+            <span aria-hidden style={{ marginLeft: '0.35rem', color: '#9ca3af', fontWeight: 400 }}>
+              ▾
+            </span>
+          ) : null}
         </button>
       ) : (
         <span
@@ -605,7 +654,10 @@ export function UserDayScheduleSection({
           minHeight: 0,
         }}
       >
-        <QuickfillScheduleOrientationLabelsRow showNameColumn={false} />
+        <QuickfillScheduleOrientationLabelsRow
+          showNameColumn={false}
+          railTrimWindow={sharedRailWindow}
+        />
 
         {loading ? (
           <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
@@ -621,6 +673,7 @@ export function UserDayScheduleSection({
               showStripSubjectMyTimeEditor ? openMyTimeForSessionStrip : undefined
             }
             onOccupiedBandClick={(band) => openBlockPreview(band.blockId)}
+            railTrimWindow={sharedRailWindow}
           />
         )}
 

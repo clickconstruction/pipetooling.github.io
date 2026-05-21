@@ -1,4 +1,4 @@
-import { useMemo, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties } from 'react'
 import {
   clockSessionsToDispatchSecondaryBands,
   type ClockSessionForDispatchBand,
@@ -14,6 +14,7 @@ import {
   formatDenverWeekday,
   referenceDateForWorkDateYmd,
 } from '../../utils/dateUtils'
+import { UserDaySummaryModal } from './UserDaySummaryModal'
 
 const relativeDaySublineStyle: CSSProperties = {
   display: 'block',
@@ -45,7 +46,17 @@ export type UserScheduleDayRowProps = {
   /** Called with the row's own dayYmd so callers (Week/Month) can open My Time keyed to the clicked day. */
   onOpenMyTimeForSessionStrip: (uid: string, name: string, dayYmd: string) => void
   onOccupiedBandClick: (band: DispatchOccupiedBand) => void
+  /** Called when the user clicks a Scheduled-blocks row inside the per-day
+      Summary modal. Wired to the parent section's existing
+      `openBlockPreviewForDay(dayYmd, blockId)` so the block preview modal
+      reuses the same singleton state managed in Week/Month sections. */
+  onOpenBlockPreviewForBlock?: (blockId: string) => void
   narrow: boolean
+  /** Shared trim window forwarded into the strip's grey rail. The User
+      Review Day / Week / Month sections compute this from every row in
+      view so band x-coordinates stay aligned across rails. `null` hides
+      the rail; `undefined` leaves the strip's default (full track). */
+  railTrimWindow?: { loSlotIndex: number; hiSlotIndex: number } | null
 }
 
 export function UserScheduleDayRow({
@@ -60,8 +71,12 @@ export function UserScheduleDayRow({
   showOpenMyTime,
   onOpenMyTimeForSessionStrip,
   onOccupiedBandClick,
+  onOpenBlockPreviewForBlock,
   narrow,
+  railTrimWindow,
 }: UserScheduleDayRowProps) {
+  const [summaryOpen, setSummaryOpen] = useState(false)
+
   const segments = useMemo(
     () => blocksToSegments(blocks, new Map(jobTitleById)),
     [blocks, jobTitleById],
@@ -92,16 +107,29 @@ export function UserScheduleDayRow({
   return (
     <div>
       {narrowDateHeader ? (
-        <div
+        <button
+          type="button"
+          onClick={() => setSummaryOpen(true)}
+          title={`Open day summary for ${displayName} (${dayYmd})`}
+          aria-label={`Open day summary for ${displayName} on ${dayYmd}`}
           style={{
+            display: 'block',
+            width: '100%',
+            margin: 0,
+            marginBottom: '0.1rem',
+            padding: 0,
+            border: 'none',
+            background: 'none',
+            font: 'inherit',
             fontSize: '0.8125rem',
             color: '#374151',
-            marginBottom: '0.1rem',
+            textAlign: 'left',
+            cursor: 'pointer',
           }}
         >
           <span style={{ fontWeight: 600, color: '#111827' }}>{narrowDateHeader}</span>
           {subline}
-        </div>
+        </button>
       ) : null}
       <QuickfillScheduleUserRow
         userId={userId}
@@ -118,12 +146,28 @@ export function UserScheduleDayRow({
             ? (uid, name) => onOpenMyTimeForSessionStrip(uid, name, dayYmd)
             : undefined
         }
-        onOpenPersonMyTime={
-          showOpenMyTime
-            ? (uid, name) => onOpenMyTimeForSessionStrip(uid, name, dayYmd)
-            : undefined
-        }
+        onNameColumnClick={() => setSummaryOpen(true)}
         onOccupiedBandClick={onOccupiedBandClick}
+        railTrimWindow={railTrimWindow}
+      />
+      <UserDaySummaryModal
+        open={summaryOpen}
+        onClose={() => setSummaryOpen(false)}
+        dayYmd={dayYmd}
+        blocks={blocks}
+        sessions={sessions}
+        jobTitleById={jobTitleById}
+        bidTitleById={bidTitleById}
+        nowMs={nowMs}
+        showOpenMyTime={showOpenMyTime}
+        onSelectBlock={(b) => {
+          setSummaryOpen(false)
+          onOpenBlockPreviewForBlock?.(b.id)
+        }}
+        onSelectSession={() => {
+          setSummaryOpen(false)
+          onOpenMyTimeForSessionStrip(userId, displayName, dayYmd)
+        }}
       />
     </div>
   )

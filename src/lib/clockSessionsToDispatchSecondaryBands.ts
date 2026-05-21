@@ -39,10 +39,16 @@ function formatClockTimeLabel(iso: string, timeZone: string): string {
   }).format(new Date(iso))
 }
 
-function associationLabel(
+/**
+ * Resolves the human label for a clock session, preferring the linked job's
+ * title, falling back to the linked bid's title, and finally returning
+ * `'No job'` when neither is present. Exported so other surfaces (the User
+ * Review Day Summary modal in particular) reuse the same fallback semantics.
+ */
+export function associationLabel(
   s: ClockSessionForDispatchBand,
-  jobTitleById: Map<string, string>,
-  bidTitleById: Map<string, string>,
+  jobTitleById: Map<string, string> | ReadonlyMap<string, string>,
+  bidTitleById: Map<string, string> | ReadonlyMap<string, string>,
 ): string {
   if (s.job_ledger_id) {
     const t = jobTitleById.get(s.job_ledger_id)?.trim()

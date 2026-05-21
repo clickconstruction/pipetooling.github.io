@@ -37,13 +37,31 @@ export function QuickfillScheduleOrientationLabelsRow({
   showNameColumn,
   showAddColumn = false,
   marginBottom = '0.15rem',
+  railTrimWindow,
 }: {
   /** Mirrors the strip's `showNameColumn`. When true, inserts a leading spacer. */
   showNameColumn: boolean
   /** Mirrors the presence of `onScheduleAddClick`. When true, inserts a trailing spacer. */
   showAddColumn?: boolean
   marginBottom?: CSSProperties['marginBottom']
+  /** Mirrors `<QuickfillScheduleUserRow railTrimWindow>` so the shared
+      header labels track the same rescale as the strips below. Default
+      `undefined` keeps existing un-rescaled positions; `null` (empty
+      view) renders no labels because the strip has nothing to align to. */
+  railTrimWindow?: { loSlotIndex: number; hiSlotIndex: number } | null
 }) {
+  const slotCount = DISPATCH_ADD_BLOCK_SLOT_COUNT
+  const maxIdx = slotCount - 1
+  const visibleMarks =
+    railTrimWindow === null
+      ? []
+      : DISPATCH_ADD_BLOCK_ORIENTATION_MARKS.filter((m) => {
+          if (m.slotIndex > maxIdx) return false
+          if (!railTrimWindow) return true
+          const lo = Math.max(0, Math.min(railTrimWindow.loSlotIndex, maxIdx))
+          const hi = Math.max(lo, Math.min(railTrimWindow.hiSlotIndex, maxIdx))
+          return m.slotIndex >= lo && m.slotIndex <= hi
+        })
   return (
     <div
       aria-hidden
@@ -67,14 +85,12 @@ export function QuickfillScheduleOrientationLabelsRow({
           height: 12,
         }}
       >
-        {DISPATCH_ADD_BLOCK_ORIENTATION_MARKS.filter(
-          (m) => m.slotIndex <= DISPATCH_ADD_BLOCK_SLOT_COUNT - 1,
-        ).map(({ slotIndex, label }) => (
+        {visibleMarks.map(({ slotIndex, label }) => (
           <span
             key={slotIndex}
             style={{
               position: 'absolute',
-              left: dispatchAddBlockTrackThumbLeftPct(slotIndex, DISPATCH_ADD_BLOCK_SLOT_COUNT),
+              left: dispatchAddBlockTrackThumbLeftPct(slotIndex, slotCount, railTrimWindow),
               transform: 'translateX(-50%)',
               fontSize: '0.65rem',
               color: '#9ca3af',
@@ -102,11 +118,13 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   onScheduleAddClick,
   onOpenMyTimeForSessionStrip,
   onOpenPersonMyTime,
+  onNameColumnClick,
   onOccupiedBandClick,
   showNameColumn = true,
   nameColumnLabel,
   nameColumnSubline,
   compactRow = false,
+  railTrimWindow,
 }: {
   userId: string
   displayName: string
@@ -118,6 +136,12 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
   onOpenMyTimeForSessionStrip?: (uid: string, name: string) => void
   /** Opens My Time day editor (NCNS / Not coming in) from the person name — same handler as strip when provided. */
   onOpenPersonMyTime?: (uid: string, name: string) => void
+  /** Generic name-column click handler. When provided, takes precedence over
+      `onOpenPersonMyTime`: the name column renders as a button calling this
+      handler with neutral title / aria copy. Used by the User Review modal's
+      Week / Month day rows to surface the per-day Summary modal instead of
+      jumping straight to My Time. */
+  onNameColumnClick?: (uid: string, name: string) => void
   onOccupiedBandClick?: (band: DispatchOccupiedBand) => void
   /** When false, only the track (+ optional add column) is shown; use when the name is shown elsewhere (e.g. modal title). */
   showNameColumn?: boolean
@@ -133,6 +157,11 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
       bottom hairline. Used by surfaces that already provide their own separation
       (e.g. the User Review modal's week-mode day list, which uses grid gap). */
   compactRow?: boolean
+  /** Clips the underlying grey rail to a slot window (or hides it when `null`).
+      Threaded directly into `<DispatchAddBlockTimeRange railTrimWindow>`. Used
+      by the User Review modal to align rails across rows; default-undefined
+      preserves Quickfill / Schedule Dispatch full-rail behavior. */
+  railTrimWindow?: { loSlotIndex: number; hiSlotIndex: number } | null
 }) {
   const occupiedBands = useMemo(() => segmentsToOccupiedBands(segments), [segments])
 
@@ -174,7 +203,32 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
             padding: '0.15rem 0.25rem',
           }}
         >
-          {onOpenPersonMyTime ? (
+          {onNameColumnClick ? (
+            <button
+              type="button"
+              onClick={() => onNameColumnClick(userId, displayName)}
+              title={`Open day summary for ${displayName} (${scheduleDayYmd})`}
+              aria-label={`Open day summary for ${displayName} on ${scheduleDayYmd}`}
+              style={{
+                display: 'block',
+                width: '100%',
+                margin: 0,
+                padding: 0,
+                border: 'none',
+                background: 'none',
+                font: 'inherit',
+                fontWeight: 600,
+                color: 'inherit',
+                textAlign: 'left',
+                cursor: 'pointer',
+                overflow: 'hidden',
+                whiteSpace: 'normal',
+              }}
+            >
+              {nameColumnLabel ?? displayName}
+              {nameColumnSubline}
+            </button>
+          ) : onOpenPersonMyTime ? (
             <button
               type="button"
               onClick={() => onOpenPersonMyTime(userId, displayName)}
@@ -234,6 +288,7 @@ export const QuickfillScheduleUserRow = memo(function QuickfillScheduleUserRow({
               : undefined
           }
           onOccupiedBandClick={onOccupiedBandClick}
+          railTrimWindow={railTrimWindow}
         />
       </div>
       {onScheduleAddClick ? (

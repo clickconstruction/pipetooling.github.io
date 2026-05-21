@@ -7,16 +7,31 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-20 (v2.564)
+last_updated: 2026-05-21 (v2.569)
 estimated_read_time: 30-45 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.564+ (reverse chronological)"
+version_range: "v2.569+ (reverse chronological)"
 
 key_sections:
-  - name: "Latest Version (v2.564)"
-    line: ~1889
+  - name: "Latest Version (v2.569)"
+    line: ~1900
+    description: "User Review modal — **schedule-rail stretch** (extends v2.568). The grey rail no longer just clips, it **rescales**: when a view (Day / Week per-day rows / Month per-day rows) has activity, every strip stretches its visible `[lo, hi]` window edge-to-edge so the user can see more of the active part of the day. The shared-window invariant is preserved (one window per view, every row gets the same window) so wall-time x-coords still line up across rows (`9 AM` lands at the same screen x on every visible row in Week / Month). Three coordinated changes inside the shared rail component [`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx): (1) new internal **`slotToTrackT(slotIndex, slotCount, window)`** and **`trackTToSlotIndex(t, slotCount, window)`** helpers centralize the slot↔track mapping — when `window` is undefined the math is the un-rescaled `slotIndex / maxIdx` (Quickfill / Schedule Dispatch path unchanged); when window is `{ lo, hi }` the math is `(clamp(slotIndex, lo, hi) - lo) / (hi - lo)` so `lo` lands at t=0 and `hi` at t=1. Forward exports `dispatchAddBlockTrackThumbLeftPct` and inverse helpers `clientXToSlotIndex` / `clientXToDispatchMinutes` / `thumbPixelX` all route through these helpers (inverse mappings update too — User Review strips are `disabled` so drag is unreachable, but the inverse stays honest for future interactive opt-in). (2) Rail under the rescale spans full track width when `{ lo, hi }` is provided (the visible strip *is* the window now — edge-clipping would double-trim); `null` still hides, `undefined` still draws the full un-trimmed rail. (3) Occupied / secondary bands and proposed-range fill all use `slotToTrackT` so they paint at their wall-time x in the rescaled strip; defensive `display: none` when `hi <= lo` after rescale. Orientation labels (the bottom row in `DispatchAddBlockTimeRange` and the shared header **`QuickfillScheduleOrientationLabelsRow`** above the strips) **filter** to inside-window marks only and **reposition** to their wall-time x in the rescaled space — so a stretched view that only covers 7 AM–11 AM shows just `8 AM` at the correct rescaled x, not all three labels at original positions. **4-hour minimum window floor** via new helper **`applyRailWindowMinFloor(window, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS = 8)`** in [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts) — `null` passes through (empty view stays empty), already-wide windows pass through, otherwise expands symmetrically around the midpoint then re-clamps to `[0, DISPATCH_ADD_BLOCK_SLOT_COUNT - 1]` with deficit-shift to the opposite side when clamping shrinks one edge (so a 30-min punch at 9 AM expands to ~7 AM-11 AM and a 30-min punch at 4 AM expands to 4 AM-8 AM, never to a misleading sliver). The floor lives at the **orchestrator boundary** — each of `UserDayScheduleSection.tsx`, `UserWeekScheduleSection.tsx`, `UserMonthScheduleSection.tsx` wraps the existing `computeUserReviewSharedSlotWindow(...)` `useMemo` result with `applyRailWindowMinFloor(raw, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS)`. **`QuickfillScheduleOrientationLabelsRow`** gains an optional `railTrimWindow` prop (default-undefined keeps existing Quickfill positioning) so the User Review section headers track the rescale too. **Intentional reversal of v2.568's non-goal**: v2.568 explicitly kept bands and labels on the un-rescaled track to preserve absolute wall-time x; v2.569 rescales them but maintains the cross-row alignment via the shared-window invariant. Empty view: window is still `null`, rail still hidden, no rescale, no labels — v2.568 behavior preserved on empty days. Quickfill, Schedule Dispatch hub / job week, schedule-block modals stay untouched because none of them pass `railTrimWindow` — `slotToTrackT(idx, count, undefined)` returns the original `idx / maxIdx` math byte-for-byte. New helper + constant in [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts) (6 new unit tests; 14 total in file — null passthrough, already-wide passthrough, symmetric expand around mid with room, left-edge clamp with right shift, right-edge clamp with left shift, floor exceeding track → returns full `[0, maxIdx]`). Modified: [`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx) (helper extraction + widened exported helper + rescaled bands / fill / rail / orientation marks / inverse mappings), [`QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx) (`QuickfillScheduleOrientationLabelsRow` accepts `railTrimWindow`), [`UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx) + [`UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx) + [`UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx) (apply floor + thread window into the header). No DB / migration / RLS / RPC / Edge changes. Verified: `npx tsc --noEmit` clean; **14 / 14** unit tests in `userReviewSharedSlotWindow.test.ts` pass (6 new); **1014 / 1014** total tests pass; zero new lints on touched files."
+  - name: "Previous Version (v2.568)"
+    line: ~1900
+    description: "User Review modal — **shared schedule-rail trim** across Day / Week / Month per-day rows. The grey rail under each row's schedule strip now clips to the earliest band start and the latest band end across **every row in the view** (Day = 1 row, Week = 7 rows, Month = active days), so a wall-time x-coordinate like `9 AM` lines up identically on every row's bands. Each orchestrator computes one `{ loSlotIndex, hiSlotIndex } | null` via the new pure helper **`computeUserReviewSharedSlotWindow(rows)`** from the day's already-derived `segments` (`blocksToSegments` → `segmentsToOccupiedBands`) + `secondaryBands` (`clockSessionsToDispatchSecondaryBands`), normalizing reversed `(start > end)` bands via `Math.min` / `Math.max` and clamping to `[0, DISPATCH_ADD_BLOCK_SLOT_COUNT - 1]`. Returns `null` when zero bands exist anywhere — every rail then hides. Bands, thumbs, proposed-range fill, orientation labels (8 AM / 12 PM / 4 PM chips), and click handlers stay on the full track unchanged — the load-bearing constraint that keeps cross-row alignment honest. **(Note: v2.569 deliberately reverses this fixed-x behavior by rescaling the window edge-to-edge while preserving cross-row alignment via the shared-window invariant.)** Opt-in additive prop **`railTrimWindow?: { loSlotIndex; hiSlotIndex } | null`** on `DispatchAddBlockTimeRange` (default `undefined` = current full-rail behavior, `null` = hide rail, `{ lo, hi }` = clip to `left: calc(THUMB_HALF + (100% - THUMB_PX) * lo/maxIdx)` / `right: calc(THUMB_HALF + (100% - THUMB_PX) * (1 - hi/maxIdx))`); threaded passthrough on **`QuickfillScheduleUserRow`** and **`UserScheduleDayRow`**. Quickfill, Schedule Dispatch hub / job week, and every other consumer of the shared range component stay untouched because they don't pass the prop. New files [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts) + [`src/lib/userReviewSharedSlotWindow.test.ts`](src/lib/userReviewSharedSlotWindow.test.ts) (8 unit tests — empty input, occupied-only, secondary-only, multi-row union, mixed empty/populated rows, reversed-band normalization, defensive out-of-range clamp). Modified: [`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx) (railStyle branch on the new prop), [`QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx), [`UserScheduleDayRow.tsx`](src/components/userReview/UserScheduleDayRow.tsx), [`UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx), [`UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx), [`UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx). No DB / migration / RLS / RPC / Edge changes. Verified: `npx tsc --noEmit` clean; **8 / 8** new unit tests pass; zero lints on touched files."
+  - name: "Previous Version (v2.567)"
+    line: ~1953
+    description: "User Review modal — **switch-user modal** mounted above the parent. Clicking the subject's name in the title (Day / Week / Month modes, both viewports) opens a new **`UserReviewSwitchUserModal`** for staff viewers (`dev` / `master_technician` / `assistant` / `superintendent`); other roles render the name as plain text with no caret affordance. The picker is a single **`SearchableSelect`** seeded from a new lazy **`useUserReviewRoster`** hook that fetches distinct **`clock_sessions.user_id`** values over the last 30 days (Chicago calendar via `denverCalendarDayKey` + `ymdAddDays`) in parallel with a **`users.archived_at`** lookup to drop archived people; display names resolve via the existing **`fetchUserNamesForIds`**. Roster is cached in a ref keyed on `(authUserId, currentUserId)` for the lifetime of the parent modal session so re-opening the switcher within one session is instant (no network). The current subject is omitted from the dropdown (the modal title already names them) — `SearchableSelect` doesn't support per-option `disabled`, so omission is the cleanest way to mark current as not-a-destination. Picking a user calls `modal.open({ userId, displayName, workDateYmd })` with the existing anchor day; `rangeMode` is local state and is intentionally not threaded through `open` so toggling Day / Week / Month survives the swap. Day-mode behavior change: the name `<h2>` button on Day used to open `DashboardMyTimeDayEditorModal` directly for staff — it now prefers the switcher (with a MyTime fallback retained for the unlikely path where `onOpenSwitchUser` isn't wired); MyTime remains one click deeper via clock-band clicks on the dispatch strip. Week / Month name headers are newly clickable for staff (previously plain text). Z-index stacking: parent overlay 1200, switcher dialog 1310, dropdown panel 1320. New helper **`buildSwitchUserOptions`** (pure transformer, sorts case-insensitive ascending with deterministic id tiebreak, skips empty names) covered by **8** unit tests. New files **`src/lib/userReviewSwitchOptions.ts`**, **`src/lib/userReviewSwitchOptions.test.ts`**, **`src/hooks/useUserReviewRoster.ts`**, **`src/components/userReview/UserReviewSwitchUserModal.tsx`**. Modified: **`UserReviewModal.tsx`**, **`UserDayScheduleSection.tsx`**, **`UserWeekScheduleSection.tsx`**, **`UserMonthScheduleSection.tsx`** (each adds optional `onOpenSwitchUser` / `canSwitchUser` props). No DB / migration / RLS / RPC / Edge changes. Verified: `npx tsc --noEmit` clean; **8 / 8** new unit tests pass; zero lints on touched files."
+  - name: "Previous Version (v2.566)"
+    line: ~1953
+    description: "User Review modal — per-day **User Day Summary modal** opened by clicking the **`Sat · 05/16 (3 days ago)`** date header in **Week** and **Month** modes (both desktop and mobile). The modal is read-only and lists every **`job_schedule_blocks`** row (sorted by `time_start` asc, label = job title, optional muted note) and every **`clock_sessions`** row (sorted by `clocked_in_at` asc, label via the newly-exported `associationLabel`, with a duration chip on the right) for that one person-day. Row click-through: a scheduled-block row closes Summary then opens the existing **`ScheduleBlockPreviewModal`**; a clock-session row closes Summary then opens **`DashboardMyTimeDayEditorModal`** — but **only when** `showOpenMyTime === true` (dev / master_technician / assistant / superintendent), so non-staff roles see the same session list as read-only `<div>` rows. The trigger replaces the desktop name-column click that previously opened MyTime editor directly — staff lose a one-click MyTime path but gain a one-click view of *what was supposed to happen vs what actually happened* on that day; MyTime stays reachable one click deeper via the clock-session rows. On mobile (≤640px) the date header `<div>` becomes a `<button>` styled identically (looks like text), so the date is now tappable on a viewport where it previously did nothing. **Day mode is intentionally skipped** (already a single-day focus view, no per-day trigger needed). New file [`src/components/userReview/UserDaySummaryModal.tsx`](src/components/userReview/UserDaySummaryModal.tsx) — pure presentational; chrome mirrors `ScheduleBlockPreviewModal` (`zIndex: 1300`, backdrop click + Escape close, `role=\"dialog\"`, footer Close button). New file [`src/lib/userDaySummaryFormat.ts`](src/lib/userDaySummaryFormat.ts) with `formatSessionTimeRange(clockedInAt, clockedOutAt, dayYmd, todayYmd)` (mirrors the open-punch convention from `clockSessionsToDispatchSecondaryBands`: open punch today → `…–now`, open punch past day → `…–no clock out`, closed → `…–end`), `formatSessionDuration(ms)` (`Xh Ym` / `Ym` / `0m`), and `computeSessionDurationMs(...)` (returns `null` for open punches on past days so the caller decides whether to render a duration); helpers take `todayYmd` as a string instead of computing it internally so they're deterministic across Intl/ICU environments (test environment's `en-CA` returns `05/21/2026` not `2026-05-21`). New tests [`src/lib/userDaySummaryFormat.test.ts`](src/lib/userDaySummaryFormat.test.ts) — 15 tests covering open punch on today, open punch on past day, closed sessions, midnight boundary in `APP_CALENDAR_TZ`, duration formatting (hours+min, min-only, zero/negative/NaN, sub-minute floor), `computeSessionDurationMs` branches, and re-exported `associationLabel` smoke (job hit, bid hit, both null → `'No job'`). Helper extraction in [`src/lib/clockSessionsToDispatchSecondaryBands.ts`](src/lib/clockSessionsToDispatchSecondaryBands.ts) — the previously-private `associationLabel` is now an `export function` accepting `Map | ReadonlyMap` so Summary modal callers can pass the read-only `jobTitleById` / `bidTitleById` props through without copying into a writable Map. Additive prop in [`src/components/schedule/QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx) — new `onNameColumnClick?: (uid, name) => void` takes precedence over `onOpenPersonMyTime` in the name-column ternary with neutral `Open day summary for {name} ({dayYmd})` `title` / `aria-label`. Strictly additive: Quickfill and Schedule Dispatch callsites that still pass `onOpenPersonMyTime` keep current behavior. Main wiring in [`src/components/userReview/UserScheduleDayRow.tsx`](src/components/userReview/UserScheduleDayRow.tsx) — adds local `summaryOpen` state + new optional `onOpenBlockPreviewForBlock?: (blockId: string) => void` prop, converts the mobile narrow header `<div>` to a `<button>` (zero visual change — `font: inherit`, no border, no background), passes `onNameColumnClick={() => setSummaryOpen(true)}` to `QuickfillScheduleUserRow` instead of `onOpenPersonMyTime`, mounts `<UserDaySummaryModal>` with the day's blocks/sessions/maps and wires `onSelectBlock` to `setSummaryOpen(false)` + `onOpenBlockPreviewForBlock?.(b.id)` and `onSelectSession` to `setSummaryOpen(false)` + `onOpenMyTimeForSessionStrip(userId, displayName, dayYmd)` (Summary closes first so the next modal never z-index-stacks behind it). Wiring in [`src/components/userReview/UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx) and [`src/components/userReview/UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx) — each passes `onOpenBlockPreviewForBlock={(blockId) => openBlockPreviewForDay(dayYmd, blockId)}` through to `<UserScheduleDayRow>`, reusing the singleton block-preview state the sections already manage for occupied-band clicks. Empty Month days render through `UserScheduleEmptyDayRow` so they remain non-clickable (no Summary trigger on a day with zero activity). No DB / migration / RLS / RPC / Edge changes. Verified: `npx tsc --noEmit` clean; **57 / 57** unit tests pass across `userDaySummaryFormat` (15) + `buildUserJobLabelBreakdown` (28) + `relativeDayPhrase` (14); zero lints on every touched file."
+  - name: "Previous Version (v2.565)"
+    line: ~1944
+    description: "User Review modal Transactions section — three coordinated tweaks. (1) Segmented **By Job / By Label / By Date** sort directly below the centered `Transactions: -$X · N tx` total, mirroring `RangeToggle` (`aria-pressed`, `role=\"group\"`, `aria-label=\"Transaction sort\"`); default `'job'`, persisted under `localStorage` key `user_review_tx_sort_v1`. **By Label** collapses Unallocated into a synthetic `Unlabeled` bucket and hides the pinned red Unallocated card; **By Date** is a flat list sorted newest-first with one row per distinct tx (multi-allocation winner = largest `|allocation_amount|`, tiebreak by `allocation_id` asc, muted `split` pill on the Job cell). Three pure pivots in [`src/lib/buildUserJobLabelBreakdown.ts`](src/lib/buildUserJobLabelBreakdown.ts) share a private `scanDistinctTxs(rows)` first-pass scan so `grandTotal` / `totals.byUser` / `totals.byPerson` are byte-identical across modes — the centered total never changes when sort mode flips. New exports: `buildUserLabelTopBreakdown`, `buildUserDateFlatBreakdown`, `UserReviewBreakdownTxWithJob`, `UserReviewLabelTopRow`, `UserReviewLabelBreakdown`, `UserReviewDateRow`, `UserReviewDateBreakdown`. All three breakdowns are `useMemo`-ized off the same `rows` so sort-mode switches are instant. (2) Shared `TransactionsTable` columns reordered from `Posted | Counterparty | Job | Label | Amount | Edit` to **`Amount | Posted | Counterparty | Job | Label | Edit`**; Amount stays right-aligned `tabular-nums` bold. Applies to all four call sites (By-Job per-label rows, By-Label cards, By-Date flat list, Unallocated card). (3) `formatBankingDate` drops `year: 'numeric'` so Posted cells now read **`May 8`** instead of `May 8, 2026`. `TransactionsTable` was also widened to `<R extends UserReviewBreakdownTx>` with optional `showJobColumn` + `jobLabelOf` + `hasMultipleAllocationsOf` accessors so the four call sites stay strictly typed without unions; new local `LabelCard` component (near-copy of `JobCard`'s top row, italic muted when `labelId == null`). 15 new unit tests + cross-helper consistency block = **28 / 28** pass. Files: [`src/components/userReview/UserMercuryWindowSection.tsx`](src/components/userReview/UserMercuryWindowSection.tsx), [`src/lib/buildUserJobLabelBreakdown.ts`](src/lib/buildUserJobLabelBreakdown.ts), [`src/lib/buildUserJobLabelBreakdown.test.ts`](src/lib/buildUserJobLabelBreakdown.test.ts). No DB / migration / RLS / RPC / Edge changes. `npx tsc --noEmit` clean; zero lints on touched files."
+  - name: "Previous Version (v2.564)"
+    line: ~1942
     description: "Tier 1 Realtime load mitigation — migration `20260520172210_drop_unused_realtime_publication_tables.sql` drops 5 zero-subscriber tables from `supabase_realtime`; new `RealtimeLifecycleProvider` in [`src/contexts/RealtimeLifecycleContext.tsx`](src/contexts/RealtimeLifecycleContext.tsx) drops all channels after 5 min hidden and bumps a `realtimeEpoch` on resume; new [`src/hooks/useRealtimeChannel.ts`](src/hooks/useRealtimeChannel.ts) bundles debounce + visibility gate + epoch dep + `removeChannel`; ~14 unmitigated listeners converted (HoursSection, useDevRejectedSessionsCount, QuickfillUnassignedFieldTimeSection, DashboardMyTimeSection, CrewJobsBlock, QuickfillScheduleSection, usePersonDayScheduleData, DashboardJobModeCard, useEstimatorInbox, useDispatchInbox, DashboardFieldCollectPaymentQueue, Banking, Dashboard estimator/financial-pins/reports). Dead listeners on `app_settings` / `user_dashboard_preferences` / `user_pinned_tabs` removed (those tables are no longer in / never were in the publication). Codified by always-applied Cursor rule `.cursor/rules/supabase-realtime.mdc` and AGENTS.md Critical Constraint #8."
   - name: "Previous Version (v2.563)"
     line: ~1953
@@ -1516,6 +1531,10 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.568 — **User Review modal** — **shared schedule-rail trim** across **Day** / **Week** / **Month** per-day rows. The grey rail under each strip now clips to the earliest band start and latest band end across **every row in the view** via the new pure helper **`computeUserReviewSharedSlotWindow`** ([`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts), 8 unit tests) — one shared `{ loSlotIndex, hiSlotIndex } | null` window per view so a wall-time x-coordinate like `9 AM` lines up identically on every row's bands. Empty view → window is `null` → every rail hides. Bands, thumbs, proposed-range fill, orientation labels, and click handlers stay on the full track (load-bearing constraint that keeps cross-row alignment). Opt-in additive **`railTrimWindow?: { loSlotIndex; hiSlotIndex } | null`** prop on **`DispatchAddBlockTimeRange`** (default `undefined` = full rail, `null` = hide rail, `{ lo, hi }` = clip), passthroughs on **`QuickfillScheduleUserRow`** and **`UserScheduleDayRow`**. Quickfill / Schedule Dispatch / every other consumer untouched (none pass the prop). Each User Review section adds one `useMemo` over its already-computed segments + secondary bands](#latest-updates-v2568)
+**New:** [v2.567 — **User Review modal** — **switch-user modal** mounted above the parent. Clicking the subject's name in the title (Day / Week / Month modes, both viewports) opens a new **`UserReviewSwitchUserModal`** for staff viewers (`dev` / `master_technician` / `assistant` / `superintendent`); other roles render the name as plain text with no caret affordance. The picker is a single **`SearchableSelect`** seeded from a new lazy **`useUserReviewRoster`** hook that fetches distinct **`clock_sessions.user_id`** over the last 30 days (Chicago calendar) in parallel with **`users.archived_at`** to drop archived people; roster is ref-cached for the parent modal session so re-opening is instant. Picking re-opens the parent via `modal.open({ userId, displayName, workDateYmd })` — preserves Day/Week/Month tab and the anchor day. Day-mode name now opens the switcher instead of MyTime (MyTime still one click deeper via clock-band clicks); Week/Month names newly clickable for staff. New helper **`buildSwitchUserOptions`** + **8 / 8** unit tests](#latest-updates-v2567)
+**New:** [v2.566 — **User Review modal** — per-day **User Day Summary modal** opened by clicking the **`Sat · 05/16 (3 days ago)`** date header in **Week** and **Month** modes (both desktop and mobile). Read-only list of scheduled blocks + clock sessions for the day; rows close Summary then open the existing **`ScheduleBlockPreviewModal`** / **`DashboardMyTimeDayEditorModal`** (session rows gated by staff `showOpenMyTime` role). Replaces the desktop name-column click that previously jumped straight to MyTime editor — MyTime stays reachable one click deeper inside Summary; mobile gains a tappable date header that previously did nothing. **Day mode** untouched (already a single-day focus view). New **`UserDaySummaryModal.tsx`**; new helpers **`userDaySummaryFormat.ts`** (`formatSessionTimeRange` / `formatSessionDuration` / `computeSessionDurationMs`, 15 tests); **`associationLabel`** now exported from **`clockSessionsToDispatchSecondaryBands.ts`**; additive **`onNameColumnClick`** prop on **`QuickfillScheduleUserRow.tsx`** preserves all existing Quickfill / Schedule-Dispatch callsites. **57 / 57** unit tests pass](#latest-updates-v2566)
+**New:** [v2.565 — **User Review modal Transactions** — segmented **By Job / By Label / By Date** sort (default `'job'`, persisted via **`user_review_tx_sort_v1`**); **Amount-first** column reorder (`Amount | Posted | Counterparty | Job | Label | Edit`); **`formatBankingDate`** drops year so Posted reads **`May 8`**. New pure pivots **`buildUserLabelTopBreakdown`** + **`buildUserDateFlatBreakdown`** share a private **`scanDistinctTxs`** first-pass scan so `grandTotal` / `totals.byUser` / `totals.byPerson` stay byte-identical across modes; **`TransactionsTable`** widened to `<R extends UserReviewBreakdownTx>` with `showJobColumn` + `jobLabelOf` + `hasMultipleAllocationsOf` accessors; new local **`LabelCard`** component. **28 / 28** unit tests pass](#previous-updates-v2565)
 **New:** [v2.545 — **Dashboard** **Job Mode** — **gear-menu toggle** (per-user `localStorage`, **[`useJobModeEnabled`](src/hooks/useJobModeEnabled.ts)** + **[`jobModeToggle.ts`](src/lib/jobModeToggle.ts)**) replaces top of Dashboard with **[`DashboardJobModeCard`](src/components/jobMode/DashboardJobModeCard.tsx)**: stacked **HCP / Job Name / Address** header, big **Leave Report** + **Next Job** buttons. Clock-driven advance — Leave Report opens existing **`AdditionalReportModal`**; Next Job opens **[`JobModeAdvanceNotesModal`](src/components/jobMode/JobModeAdvanceNotesModal.tsx)** (single-line notes, Skip notes / Confirm) and calls **`applyUpdateFocusDirect`** on **[`UpdateFocusOpenerBridgeContext`](src/contexts/UpdateFocusOpenerBridgeContext.tsx)**, which `ClockInOutButton` registers — closes the open `clock_sessions` row and inserts a new one for the next scheduled `job_schedule_blocks` block (or clocks in to the first block when no open session). Pure picker **[`pickCurrentAndNextScheduleBlock`](src/lib/jobModePickCurrentNext.ts)** + **14** unit tests cover empty schedule, clocked-on-first/middle/last, off-schedule job, on-bid, multi-window same job. Rest of Dashboard hidden until **Show full dashboard** (component-local, resets every load). Toggle gated by **`canLeaveJobFieldReport(role)`**](#latest-updates-v2545)
 **New:** [v2.518 — **Bids** — **Working-board archive** — single entry **Archive from board** in **[`BidFormModal`](src/components/bids/BidFormModal.tsx)** footer (next to **Delete bid**); visibility from **saved** **`editingBid`** only (**[`bidEligibleForWorkingBoardArchive`](src/lib/workingBoardArchiveEligibility.ts)**, **`canUserArchiveBidOnWorkingBoard`**); **`promptArchiveWorkingBoardBid`** confirm overlay **`z-index` 1005** above the form; removed **Archive** from **[`BidsWorkingBoard`](src/components/bids/BidsWorkingBoard.tsx)** cards, Bid Board row, Submission **unsent** table; **`archiveWorkingBoardBid`** merges **`editingBid`** after **`loadBids`** when the form stays open](#latest-updates-v2518)
 **New:** [v2.517 — **Bids** — **Unsent/Working** **archive** — **`bids.working_board_archived_at`** / **`_by`** (**`20260511015410`**); **Bid Board** toolbar **Archived** modal (**[`BidWorkingBoardArchivedModal.tsx`](src/components/bids/BidWorkingBoardArchivedModal.tsx)**) + **Un-archive**; **eligible** vs **visible** bids in **[`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx)** preserves **placements** for archived rows; **Clock In** quick picks (**[`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts)**) + inbox badge + Bid Board **Unsent / Working Bids** + Submission **unsent** omit archived; deep link toast when archived](#latest-updates-v2517)
@@ -1889,7 +1908,379 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
-## Latest Updates (v2.564)
+## Latest Updates (v2.569)
+
+**Date**: 2026-05-21
+
+### User Review modal — schedule-rail stretch (extends v2.568)
+
+The shared rail trim from **v2.568** evolves from *clipping* into *rescaling*: when a view has activity, every strip stretches its visible `[lo, hi]` window edge-to-edge so the user sees the active part of the day at full size. Cross-row alignment is preserved by the same shared-window invariant — every row in a Week / Month view gets the same window, so a band at `9 AM` still lights up at the same screen x on every row.
+
+This deliberately reverses v2.568's "bands stay at their wall-time x" non-goal. The new invariant is: *every row in the same view uses the same rescale, so wall-time stays aligned across rows within a view (but not across Day / Week / Month switches).*
+
+#### Centralized slot↔track mapping
+
+[`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx) gains a single forward helper `slotToTrackT(slotIndex, slotCount, window)` and an inverse `trackTToSlotIndex(t, slotCount, window)`:
+
+```ts
+function slotToTrackT(slotIndex, slotCount, window): number {
+  const maxIdx = Math.max(0, slotCount - 1)
+  if (maxIdx === 0) return 0
+  if (!window) return clampInt(slotIndex / maxIdx, 0, 1)  // legacy path, unchanged
+  const lo = Math.max(0, Math.min(window.loSlotIndex, maxIdx))
+  const hi = Math.max(lo, Math.min(window.hiSlotIndex, maxIdx))
+  if (hi === lo) return 0
+  return (Math.max(lo, Math.min(slotIndex, hi)) - lo) / (hi - lo)
+}
+```
+
+- `undefined` window → original `slotIndex / maxIdx` math byte-for-byte, so every non-User-Review caller stays on the existing geometry.
+- `null` window → still hides the rail (v2.568 empty-view behavior preserved).
+- `{ lo, hi }` window → `lo` lands at t=0, `hi` lands at t=1, the visible strip *is* the window.
+
+Forward helpers (`dispatchAddBlockTrackThumbLeftPct`, the internal `thumbLeftPct`, occupied-band positioning, secondary-band positioning, proposed-range `fillStyle`, inline tick marks, the bottom-row orientation labels) all route through `slotToTrackT`. Inverse helpers (`clientXToSlotIndex`, `clientXToDispatchMinutes`, `thumbPixelX`) all route through `trackTToSlotIndex` — User Review strips are `disabled` so drag is unreachable, but the inverse stays honest in case a future interactive caller threads a window.
+
+The exported `dispatchAddBlockTrackThumbLeftPct(slotIndex, slotCount, window?)` gains an optional third arg. Default-`undefined` keeps existing Quickfill and Schedule Dispatch callsites on the un-rescaled path with zero edits.
+
+#### Rail goes full-width inside the rescaled window
+
+Under v2.568, `{ lo, hi }` meant *clip the rail to those slot positions on the un-rescaled track*. Under v2.569, `{ lo, hi }` means *the visible strip IS the window*, so the rail simply spans full track width:
+
+```ts
+if (railTrimWindow === null) return { display: 'none' }
+return { left: THUMB_HALF, right: THUMB_HALF, ...baseStyle }
+```
+
+Edge-clipping here would double-trim because the bands have already been pushed to the strip edges by the rescale.
+
+#### Orientation labels filter and reposition
+
+`8 AM` / `12 PM` / `4 PM` chips filter to inside-window marks only and use `dispatchAddBlockTrackThumbLeftPct` so they land at their wall-time x in the rescaled strip. A view stretched to cover 7 AM-11 AM shows just `8 AM` at the correct rescaled position, not all three labels at original positions.
+
+The shared header [`QuickfillScheduleOrientationLabelsRow`](src/components/schedule/QuickfillScheduleUserRow.tsx) (which renders the chips above the per-strip rows in Week / Month) gains an optional `railTrimWindow` prop so it tracks the same rescale as the strips below. Default-`undefined` keeps existing Quickfill positioning unchanged.
+
+#### 4-hour minimum window floor
+
+A single 30-min punch at 9 AM shouldn't rescale into a misleading sliver. New helper in [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts):
+
+```ts
+export const USER_REVIEW_RAIL_MIN_FLOOR_SLOTS = 8 // 4 hours at 30-min granularity
+
+export function applyRailWindowMinFloor(
+  window: SharedSlotWindow | null,
+  minSpanSlots: number,
+): SharedSlotWindow | null
+```
+
+- `null` passes through (empty view stays empty).
+- Already-wide windows pass through unchanged.
+- Otherwise expands symmetrically around the original midpoint, then defensively re-clamps to `[0, DISPATCH_ADD_BLOCK_SLOT_COUNT - 1]`. If clamping shrinks one side, the deficit shifts to the other so the final span hits the floor whenever the track is wide enough (16h track vs 4h floor → 12h of slack, so this almost always succeeds; the only exception is `minSpanSlots` larger than the entire track, which returns the full `[0, maxIdx]`).
+
+So:
+- 30-min punch at 9 AM → window `[18, 19]` → floor expands to `[15, 22]` → user sees 7:30 AM-11 AM.
+- 30-min punch at 4 AM → window `[0, 1]` → floor expands to ideal `[-3, 4]` → clamp left to `0`, shift 3 right → `[0, 7]` → user sees 4 AM-8 AM.
+- 30-min punch at 8 PM (last slot 32) → window `[31, 32]` → ideal `[28, 35]` → clamp right to `32`, shift 3 left → `[25, 32]` → user sees 4:30 PM-8 PM.
+
+The floor lives at the **orchestrator boundary** — each User Review section wraps the existing `useMemo` result:
+
+```ts
+const sharedRailWindow = useMemo(() => {
+  const raw = computeUserReviewSharedSlotWindow(rows)
+  return applyRailWindowMinFloor(raw, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS)
+}, [/* same deps as v2.568 */])
+```
+
+This keeps the prop opt-in: any future non-User-Review caller of `DispatchAddBlockTimeRange` would get the raw window (or its own floor choice).
+
+#### Files
+
+- New constant + helper in [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts).
+- 6 new unit tests in [`src/lib/userReviewSharedSlotWindow.test.ts`](src/lib/userReviewSharedSlotWindow.test.ts) (14 total in file): null passthrough, already-wide passthrough, symmetric expand around mid with room on both sides, left-edge clamp with right shift, right-edge clamp with left shift, floor exceeding track → full `[0, maxIdx]`.
+- Modified [`src/components/schedule/DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx) — new `slotToTrackT` / `trackTToSlotIndex` helpers, widened `dispatchAddBlockTrackThumbLeftPct` (optional `window?`), rail full-width inside the window, bands / fill / orientation marks / inverse mappings all rescaled, defensive `display: none` when `hi <= lo` after rescale.
+- Modified [`src/components/schedule/QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx) — `QuickfillScheduleOrientationLabelsRow` accepts optional `railTrimWindow`.
+- Modified [`src/components/userReview/UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx), [`src/components/userReview/UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx), [`src/components/userReview/UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx) — wrap `computeUserReviewSharedSlotWindow` result with `applyRailWindowMinFloor`, thread the floored window into the shared `QuickfillScheduleOrientationLabelsRow`.
+
+#### Trade-offs
+
+- **Cross-view x meaning shifts**: `9 AM` lives at different screen x in Day vs Week vs Month because each view's window can differ. Inside any one view, x is consistent.
+- **Read-only assumption**: User Review strips are `disabled` + `showProposedRange={false}`. Interactive paths (thumb drag, proposed-range fill) are inert there. The inverse-mapping update keeps a future interactive caller honest.
+- **Quickfill / Schedule Dispatch unchanged**: every non-User-Review consumer hits `slotToTrackT(idx, count, undefined)`, which returns the original `slotIndex / maxIdx` math byte-for-byte.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npx vitest run src/lib/userReviewSharedSlotWindow.test.ts` → **14 / 14** pass (6 new for the floor helper, plus the 8 from v2.568).
+- `npx vitest run` (full suite) → **1014 / 1014** pass.
+- No new lints on any touched file.
+
+---
+
+## Latest Updates (v2.568)
+
+**Date**: 2026-05-21
+
+### User Review modal — shared schedule-rail trim
+
+The grey schedule rail under each per-day strip in the User Review modal now clips to the active part of the day — from the earliest band start to the latest band end across **every row in the current view** — instead of always spanning the full **4 AM → 8 PM** track. One shared `{ loSlotIndex, hiSlotIndex } | null` window is computed per view (Day = 1 row, Week = 7 rows, Month = active days) and threaded into every row's strip, so wall-time x-coordinates stay aligned across rows: a band at `9 AM` lights up at the same screen x on every visible row.
+
+#### What stays on the full track
+
+Only the grey **rail underlay** is clipped. **Bands** (occupied + secondary), **thumbs**, **proposed-range fill**, **orientation labels** (`8 AM` / `12 PM` / `4 PM` chips), **click handlers**, and **keyboard nav** all stay positioned against the full 4 AM → 8 PM slot grid. This is the load-bearing constraint: if bands re-scaled into the trim window, the same wall time would land at different x-coords per row and cross-row alignment would break.
+
+#### Pure helper
+
+New module [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts):
+
+```ts
+computeUserReviewSharedSlotWindow(rows: ReadonlyArray<{
+  occupiedStartHiSlots: ReadonlyArray<{ startSlotIndex: number; endSlotIndex: number }>
+  secondaryStartHiSlots: ReadonlyArray<{ startSlotIndex: number; endSlotIndex: number }>
+}>): { loSlotIndex: number; hiSlotIndex: number } | null
+```
+
+- Returns `null` when zero bands exist across all rows (callers treat as "hide every rail" — `<DispatchAddBlockTimeRange railTrimWindow={null}>`).
+- Otherwise returns the min/max slot indices across the union of occupied + secondary bands from every row.
+- Normalizes reversed `(start > end)` bands via `Math.min` / `Math.max` so a defensive band can't invert the window.
+- Defensive clamp to `[0, DISPATCH_ADD_BLOCK_SLOT_COUNT - 1]` so out-of-range inputs can't escape the legal slot space.
+
+Covered by **8** unit tests in [`src/lib/userReviewSharedSlotWindow.test.ts`](src/lib/userReviewSharedSlotWindow.test.ts): empty input → `null`, all-empty rows → `null`, occupied-only single row, secondary-only single row, multi-row union (min from row A, max from row C), mixed empty + populated rows (empties don't pollute), reversed-band normalization, defensive out-of-range clamp.
+
+#### Opt-in additive prop on the shared range component
+
+[`src/components/schedule/DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx) gets one new optional prop:
+
+```ts
+railTrimWindow?: { loSlotIndex: number; hiSlotIndex: number } | null
+```
+
+- **`undefined`** (default) — rail spans the full track. Quickfill, Schedule Dispatch hub, Schedule Dispatch job week, and every other consumer keep their existing full-rail behavior because none of them pass the prop.
+- **`null`** — rail is hidden entirely (`display: none`). Used by empty views where no bands exist on any row.
+- **`{ lo, hi }`** — rail is positioned with `left: calc(THUMB_HALF + (100% - THUMB_PX) * lo/maxIdx)` and `right: calc(THUMB_HALF + (100% - THUMB_PX) * (1 - hi/maxIdx))`, defensively clamped to `[0, maxIdx]` with `lo ≤ hi`.
+
+Nothing else in the component changes: bands, thumbs, proposed-range fill (`fillStyle`), orientation labels, occupied/secondary click handlers, keyboard nav are all untouched. The User Review strips already pass `showProposedRange={false}` so the proposed-range path is inert anyway.
+
+#### Wrapper plumbing (strictly additive)
+
+[`src/components/schedule/QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx) and [`src/components/userReview/UserScheduleDayRow.tsx`](src/components/userReview/UserScheduleDayRow.tsx) each add the same optional `railTrimWindow?: { loSlotIndex; hiSlotIndex } | null` prop, threaded directly into the inner component (the row down to the range component, the range component onto its rail). Both default `undefined` so non-User-Review callsites stay untouched.
+
+#### Orchestrator wiring
+
+All three User Review sections add one `useMemo` that derives the shared window from the data they already hold:
+
+- **Day** ([`UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx)) — reuses the already-computed `segments` (run through `segmentsToOccupiedBands` to get slot indices) + `secondaryBands` and feeds a one-element row array.
+- **Week** ([`UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx)) — walks `daysYmd`, runs `blocksToSegments` + `segmentsToOccupiedBands` + `clockSessionsToDispatchSecondaryBands` per day, builds an N-row array.
+- **Month** ([`UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx)) — identical shape to Week. Empty days render through `UserScheduleEmptyDayRow` and never reach the strip, so they're naturally excluded.
+
+Each section passes the resulting `sharedRailWindow` into every `<UserScheduleDayRow railTrimWindow={sharedRailWindow}>` (Week / Month) or directly into its inline `<QuickfillScheduleUserRow railTrimWindow={sharedRailWindow}>` (Day).
+
+#### Duplicate band computation
+
+Week and Month orchestrators re-run `blocksToSegments` + `clockSessionsToDispatchSecondaryBands` to derive the window, while `UserScheduleDayRow` still runs them internally for render. Arrays are small (one user, 1 – 30 days) and both calls are memoized, so the cost is negligible. Lifting band ownership to the orchestrators would eliminate the duplication but is a bigger refactor than this feature warrants.
+
+#### Files
+
+- **New** [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts) — pure helper.
+- **New** [`src/lib/userReviewSharedSlotWindow.test.ts`](src/lib/userReviewSharedSlotWindow.test.ts) — 8 unit tests.
+- **Modified** [`src/components/schedule/DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx) — new opt-in `railTrimWindow` prop; railStyle branched on the new prop.
+- **Modified** [`src/components/schedule/QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx) — passthrough prop.
+- **Modified** [`src/components/userReview/UserScheduleDayRow.tsx`](src/components/userReview/UserScheduleDayRow.tsx) — passthrough prop.
+- **Modified** [`src/components/userReview/UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx) — `useMemo` for shared window; passes to its inline strip.
+- **Modified** [`src/components/userReview/UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx) — `useMemo` over `daysYmd`; passes to every day row.
+- **Modified** [`src/components/userReview/UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx) — same pattern as Week.
+
+#### Verification
+
+- `npx tsc --noEmit` — clean.
+- `npx vitest run src/lib/userReviewSharedSlotWindow.test.ts` — **8 / 8** pass.
+- Zero new lints on any of the seven touched files.
+- No DB / migration / RLS / RPC / Edge changes.
+
+---
+
+## Latest Updates (v2.567)
+
+**Date**: 2026-05-21
+
+### User Review modal — switch-user modal
+
+Clicking the subject's name in the User Review modal title now opens a new **`UserReviewSwitchUserModal`** that lets a staff viewer jump to another recently-active user without closing the parent modal. Works in **Day**, **Week**, and **Month** modes, on both desktop and mobile (`≤640px`). Non-staff viewers see the name as plain text — no caret, no clickable affordance, no roster fetch.
+
+#### Viewer gate
+
+`dev` / `master_technician` / `assistant` / `superintendent` — matches the existing **`SWITCH_SUBJECT_ROLES`** cohort. Helpers, subcontractors, estimators, and primaries get the read-only plain-text name; the switcher hook stays idle for them so there's zero network overhead.
+
+#### Roster source
+
+New lazy hook **`useUserReviewRoster`** in [`src/hooks/useUserReviewRoster.ts`](src/hooks/useUserReviewRoster.ts) — no-op until `enabled` flips to `true`. On first open for a given `(authUserId, currentUserId)`:
+
+- **Distinct user IDs** from **`clock_sessions.user_id`** with **`work_date >= today − 30d`** (Chicago calendar via `denverCalendarDayKey(Date.now())` + `ymdAddDays(today, -30)`) — same shape and indexes that already power People Hours / Dashboard strip queries.
+- **`users.archived_at`** for those IDs in parallel — archived rows are dropped from the result.
+- **Display names** via the existing **`fetchUserNamesForIds`** helper (drops anything that resolves to `Unnamed` / `Unknown` so the picker never shows a label-less option).
+- **Current subject** is always appended if not already in the result — defensive guard so the picker is never empty when someone's viewing a user with zero recent activity.
+- **Ref cache** keyed on `(authUserId, currentUserId)` for the lifetime of the parent modal session — re-opening the switcher within one session paints instantly, no network.
+
+#### Helper: `buildSwitchUserOptions`
+
+New pure transformer in [`src/lib/userReviewSwitchOptions.ts`](src/lib/userReviewSwitchOptions.ts):
+
+- Omits the current user from the dropdown (the modal title already names them; `SearchableSelect` doesn't support per-option `disabled`, so omission is the cleanest way to mark current as not-a-destination).
+- Skips entries with empty / whitespace-only names (would break `filterSearchableSelectOptionsByQuery`'s substring match).
+- Sorts by `name` ascending case-insensitive; deterministic tiebreak by `id` ascending so the order is stable across reloads.
+- Returns `SearchableSelectSelectableOption[]` ready to feed directly into the picker.
+
+Covered by **8** unit tests in [`src/lib/userReviewSwitchOptions.test.ts`](src/lib/userReviewSwitchOptions.test.ts): empty roster, current omitted, current kept when `currentUserId` is empty, case-insensitive sort, deterministic id tiebreak on identical names, empty / whitespace name skipping, empty id skipping, label whitespace trim.
+
+#### Modal chrome
+
+New component in [`src/components/userReview/UserReviewSwitchUserModal.tsx`](src/components/userReview/UserReviewSwitchUserModal.tsx) — pure presentational, mirrors the chrome of `UserDaySummaryModal` so the two switcher / summary dialogs feel consistent:
+
+- **Z-index stacking**: parent modal overlay `1200`, this dialog `1310`, dropdown panel `1320` (via `portalZIndex` on the `SearchableSelect`). The summary modal `1300` and the switcher `1310` are mutually exclusive triggers so they can never coexist.
+- **Dismiss**: backdrop click, `Escape` (with `stopPropagation` so it doesn't bubble to the parent's own Escape handler), or footer **Close** button.
+- **Loading / error / empty states** are surfaced inline above the picker. The picker itself only renders when `options.length > 0`; otherwise an `"No other users with recent activity."` helper line shows under the current-user breadcrumb.
+- **Picker**: single `SearchableSelect` with `searchReplacesTrigger` (the search field replaces the trigger when open — same UX as Dispatch's assignee picker), `listAriaLabel="Switch user"`, placeholder `"Pick a user…"`. On change, the modal resolves the option label and calls `onPick({ userId, displayName })` so the parent re-opens the User Review modal for the new subject in one round-trip.
+
+#### Wiring in `UserReviewModal`
+
+[`src/components/UserReviewModal.tsx`](src/components/UserReviewModal.tsx) adds:
+
+- Module-scope `SWITCH_SUBJECT_ROLES = new Set(['dev', 'master_technician', 'assistant', 'superintendent'])`.
+- `const [switchOpen, setSwitchOpen] = useState(false)` plus two defensive effects: close switcher when parent closes, close switcher when subject changes (so a stale switcher dialog never hangs over a freshly-opened subject).
+- `const { roster, loading, error } = useUserReviewRoster({ enabled: switchOpen && canSwitchUser, currentUserId, currentDisplayName })` — hook stays idle for non-staff and stays idle while the switcher is closed.
+- Memoized `switchOptions = buildSwitchUserOptions(roster, currentUserId)`.
+- `handlePickSwitchUser` calls `modal?.open({ userId, displayName, workDateYmd })` — re-using the current `workDateYmd` from local state preserves the date; `rangeMode` is local state and is intentionally not threaded through `open` so Day / Week / Month toggle state survives the payload swap.
+- `<UserReviewSwitchUserModal>` mounted at the bottom of the JSX, outside the parent dialog's inner `<div>` so it overlays cleanly.
+
+#### Header buttons
+
+All three sections thread two new optional props — `onOpenSwitchUser?: () => void` and `canSwitchUser?: boolean`:
+
+- **Day** ([`UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx)) — the `<h2>` already wraps the name in a `<button>` for staff via `showStripSubjectMyTimeEditor`. Re-pointed: `onClick` prefers `onOpenSwitchUser` (with a MyTime-editor fallback retained for the unlikely path where the handler isn't wired). `title` / `aria-label` switch to `Switch user from {displayName}` when the switcher is wired; muted `▾` glyph appended to the right of the name as an affordance hint when `canSwitchUser`.
+- **Week** ([`UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx)) and **Month** ([`UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx)) — name in the title was previously plain text; now wrapped in an identically-styled `<button>` (`font: inherit`, no border / background / padding, `cursor: pointer`) when `onOpenSwitchUser` is provided. Same `title` / `aria-label` and `▾` glyph as Day mode. Falls back to plain text for non-staff.
+
+#### Behavior change for staff on desktop
+
+The Day-mode name `<h2>` button used to open `DashboardMyTimeDayEditorModal` directly — it now opens the switcher. Staff lose a one-click MyTime path from the Day name chip, but **MyTime stays reachable one click deeper** via a clock-band click on the dispatch strip (the existing `onOpenMyTimeForSessionStrip` path). Week and Month modes had already moved this affordance to the band click in v2.566, so Day now matches the rest.
+
+#### Files
+
+- **New** [`src/lib/userReviewSwitchOptions.ts`](src/lib/userReviewSwitchOptions.ts) — pure helper (`buildSwitchUserOptions`, `SwitchableUser` type).
+- **New** [`src/lib/userReviewSwitchOptions.test.ts`](src/lib/userReviewSwitchOptions.test.ts) — 8 unit tests.
+- **New** [`src/hooks/useUserReviewRoster.ts`](src/hooks/useUserReviewRoster.ts) — lazy roster fetch hook with ref cache.
+- **New** [`src/components/userReview/UserReviewSwitchUserModal.tsx`](src/components/userReview/UserReviewSwitchUserModal.tsx) — presentational dialog.
+- **Modified** [`src/components/UserReviewModal.tsx`](src/components/UserReviewModal.tsx) — state, hook call, memo, prop threading, mount.
+- **Modified** [`src/components/userReview/UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx) — new optional `onOpenSwitchUser` / `canSwitchUser` props; `<h2>` button repointed; affordance caret.
+- **Modified** [`src/components/userReview/UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx) — same prop pattern; name wrapped in a button for staff.
+- **Modified** [`src/components/userReview/UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx) — same prop pattern; name wrapped in a button for staff.
+
+#### Verification
+
+- `npx tsc --noEmit` — clean.
+- `npx vitest run src/lib/userReviewSwitchOptions.test.ts` — **8 / 8** pass.
+- Zero new lints on any of the eight touched files.
+- No DB / migration / RLS / RPC / Edge changes.
+
+---
+
+## Latest Updates (v2.566)
+
+**Date**: 2026-05-21
+
+### User Review modal — per-day User Day Summary modal
+
+Clicking the **`Sat · 05/16 (3 days ago)`** date header in **Week** or **Month** mode of the User Review modal now opens a new read-only **User Day Summary modal** for that one person-day. Works on both desktop and mobile (`≤640px`). Applies to **Week** and **Month** only — **Day** mode is unchanged (already a single-day focus view, no per-day trigger needed).
+
+#### What the modal shows
+
+Two stacked sections, both populated from the day's already-loaded data in the parent section (no extra fetch):
+
+- **Scheduled blocks** — sorted by `time_start` asc. Each row is a `<button>` showing `scheduleFormatWindow(time_start, time_end)` on the left (`tabular-nums`), the job title from the parent's `jobTitleById` map on the right (ellipsized at the row edge), and an optional muted note subline underneath. Empty state: *No scheduled blocks.*
+- **Clock sessions** — sorted by `clocked_in_at` asc. Each row shows the time range (via the new `formatSessionTimeRange` helper — open punch on today renders as `8:00 AM–now`, open punch on a past day renders as `8:00 AM–no clock out`, closed sessions render as `8:00 AM–12:11 PM`, all in `APP_CALENDAR_TZ`), the association label from the newly-exported `associationLabel` (`'JP740 · San Marcos'`, `'B249 · Diamondback'`, or `'No job'` fallback), a duration chip on the right via `formatSessionDuration(ms)` (`4h 8m` / `45m` / `0m`; `null` for open punches on past days so the chip is omitted), and an optional muted note subline underneath. Empty state: *No clock sessions.*
+
+The title carries the same weekday-and-date-with-relative-phrase pattern as the inline rows: **`Sat · 05/16 (3 days ago)`** (computed via `formatDenverWeekday` + `formatDateMdYDisplay` + `formatRelativeDayPhrase`).
+
+#### Click-through behavior
+
+Each row in the modal is a click target that closes Summary first then opens the existing next-level modal so there's never any z-index stacking:
+
+- **Block row** → `setSummaryOpen(false)` + `onOpenBlockPreviewForBlock?.(b.id)` → **`ScheduleBlockPreviewModal`** (Week / Month section already mounts this for the occupied-band click path, so we reuse its singleton state).
+- **Clock-session row** → `setSummaryOpen(false)` + `onOpenMyTimeForSessionStrip(userId, displayName, dayYmd)` → **`DashboardMyTimeDayEditorModal`**. **But only when `showOpenMyTime === true`** (dev / master_technician / assistant / superintendent) — non-staff roles see the same session list rendered as read-only `<div>` rows (no button, no cursor change, no click handler), matching the existing role gate on the dispatch strip itself.
+
+#### Behavior change for staff on desktop
+
+The desktop name-column click used to open `DashboardMyTimeDayEditorModal` directly. It now opens the Summary modal instead — staff lose a one-click MyTime path from the name chip, but gain a one-click view of *what was supposed to happen vs what actually happened* on that day. MyTime stays reachable one click deeper inside Summary via any clock-session row. Session-strip clicks on the strip itself (`onOpenMyTimeForSessionStrip` on a clock band) remain a one-click path, so the every-day MyTime workflow still has direct access.
+
+Mobile (`≤640px`) wasn't tappable on the date line before — that header was a plain `<div>` — so this change is purely additive on mobile.
+
+#### Files
+
+- **New** [`src/components/userReview/UserDaySummaryModal.tsx`](src/components/userReview/UserDaySummaryModal.tsx) — pure presentational. Chrome mirrors [`src/components/userReview/ScheduleBlockPreviewModal.tsx`](src/components/userReview/ScheduleBlockPreviewModal.tsx) (`zIndex: 1300`, backdrop click + Escape close, `role="dialog"`, footer Close button).
+- **New** [`src/lib/userDaySummaryFormat.ts`](src/lib/userDaySummaryFormat.ts) — `formatSessionTimeRange(clockedInAt, clockedOutAt, dayYmd, todayYmd)`, `formatSessionDuration(ms)`, `computeSessionDurationMs(clockedInAt, clockedOutAt, nowMs, dayYmd, todayYmd)`. Helpers take `todayYmd` as a string instead of computing it from `nowMs` internally — caller derives it once via `denverCalendarDayKey(nowMs)` (same pattern as `clockSessionsToDispatchSecondaryBands`) and threads it through. This makes the helpers deterministic across Intl/ICU environments (the test environment's `en-CA` Intl format returns `05/21/2026`, not `2026-05-21`, so an internal `denverCalendarDayKey` call would have caused tests to fail in CI / vitest).
+- **New** [`src/lib/userDaySummaryFormat.test.ts`](src/lib/userDaySummaryFormat.test.ts) — **15** unit tests across `formatSessionTimeRange` (closed, open-today, open-past-day, midnight-boundary), `formatSessionDuration` (hours+min, min-only, zero / negative / NaN, sub-minute floor), `computeSessionDurationMs` (closed diff, open-on-today now-start, open-on-past-day returns null, invalid timestamp), and re-exported `associationLabel` smoke (job hit, bid hit, both null → `'No job'`).
+- **Modified** [`src/lib/clockSessionsToDispatchSecondaryBands.ts`](src/lib/clockSessionsToDispatchSecondaryBands.ts) — `associationLabel` promoted from private to `export function`; signature widened to accept `Map<string, string> | ReadonlyMap<string, string>` so Summary modal callers can pass the read-only `jobTitleById` / `bidTitleById` props through without copying into a writable Map. Existing in-file callsite still works (writable `Map` satisfies the union).
+- **Modified** [`src/components/schedule/QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx) — strictly additive new optional prop `onNameColumnClick?: (uid: string, name: string) => void`. When set, takes precedence over `onOpenPersonMyTime` in the name-column ternary and renders the same `<button>` with neutral `title="Open day summary for {name} ({dayYmd})"` and `aria-label="Open day summary for {name} on {dayYmd}"`. Quickfill and Schedule Dispatch callsites that still pass `onOpenPersonMyTime` keep current behavior — they never set `onNameColumnClick`, so the ternary falls through unchanged.
+- **Modified** [`src/components/userReview/UserScheduleDayRow.tsx`](src/components/userReview/UserScheduleDayRow.tsx) — adds local `const [summaryOpen, setSummaryOpen] = useState(false)`, new optional prop `onOpenBlockPreviewForBlock?: (blockId: string) => void`, converts the mobile narrow header `<div>` to a `<button>` styled identically (`font: inherit`, no border, no background — looks like text), passes `onNameColumnClick={() => setSummaryOpen(true)}` to `QuickfillScheduleUserRow` instead of `onOpenPersonMyTime`, mounts `<UserDaySummaryModal>` at the bottom of the returned JSX with the day's blocks/sessions/maps and wires `onSelectBlock` / `onSelectSession` to close Summary first then call the parent.
+- **Modified** [`src/components/userReview/UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx) and [`src/components/userReview/UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx) — each passes `onOpenBlockPreviewForBlock={(blockId) => openBlockPreviewForDay(dayYmd, blockId)}` to its `<UserScheduleDayRow>`, reusing the singleton block-preview state the sections already manage for occupied-band clicks. No new state, no new effects.
+- **Empty Month days** stay non-clickable — they render through `UserScheduleEmptyDayRow` which doesn't include the `<UserScheduleDayRow>` wiring, so there's no Summary trigger on a day with zero activity.
+
+#### Verification
+
+- `npx tsc --noEmit` — clean.
+- `npx vitest run src/lib/userDaySummaryFormat.test.ts src/lib/buildUserJobLabelBreakdown.test.ts src/lib/relativeDayPhrase.test.ts` — **57 / 57** pass.
+- No new lints on any of the six touched files.
+- No DB / migration / RLS / RPC / Edge changes.
+
+---
+
+## Previous Updates (v2.565)
+
+**Date**: 2026-05-21
+
+### User Review modal — Transactions section: sort modes, Amount-first column, short Posted date
+
+Three coordinated tweaks to the Transactions section of the User Review modal (opened from the Dashboard clock strip when you click a name). All three flow through the same shared `TransactionsTable` in [`src/components/userReview/UserMercuryWindowSection.tsx`](src/components/userReview/UserMercuryWindowSection.tsx).
+
+#### Sort modes — By Job (default) / By Label / By Date
+
+Segmented control directly below the centered `Transactions: -$X · N tx` total (mirrors `RangeToggle` from [`src/components/UserReviewModal.tsx`](src/components/UserReviewModal.tsx) — rounded segmented buttons, `aria-pressed`, `role="group"`, `aria-label="Transaction sort"`). Default `'job'`; persisted per user under `localStorage` key **`user_review_tx_sort_v1`**; `readSortModeFromStorage` / `writeSortModeToStorage` helpers + write-through effect.
+
+- **By Job** (unchanged) — pinned red Unallocated card at the top when count > 0, then a list of `JobCard`s, each expanding into accounting-label sub-groups.
+- **By Label** — top-level cards are accounting labels across all jobs (sorted by `|totalAmount|` desc, name asc); each expanded card shows per-tx rows with a Job column. Unallocated txs fall into the synthetic **`Unlabeled`** bucket here — the pinned red Unallocated card is hidden in this mode.
+- **By Date** — flat scrollable list, **one row per distinct `mercury_transaction_id`**, sorted by `posted_at` desc with `created_at` fallback and tx id tiebreak. Multi-allocation txs surface once and pick the largest `|allocation_amount|` for their display Job / Label (tiebreak by `allocation_id` asc); a muted **`split`** pill on the Job cell flags them, and the existing **Edit…** button opens the full `MercuryTransactionAllocationsModal` split.
+
+Three pure pivots in [`src/lib/buildUserJobLabelBreakdown.ts`](src/lib/buildUserJobLabelBreakdown.ts) share a private **`scanDistinctTxs(rows)`** first-pass scan so `grandTotal` / `totals.byUser` / `totals.byPerson` are byte-identical across all three modes — the centered total never changes when you flip sort mode. New exports: **`buildUserLabelTopBreakdown`**, **`buildUserDateFlatBreakdown`**, plus types **`UserReviewBreakdownTxWithJob`**, **`UserReviewLabelTopRow`**, **`UserReviewLabelBreakdown`**, **`UserReviewDateRow`**, **`UserReviewDateBreakdown`**. The existing `buildUserJobLabelBreakdown` was refactored to consume the shared scan — behavior-identical.
+
+All three breakdowns are `useMemo`-ized off the same `rows`, so switching sort modes is instant (no refetch); Realtime edits to `mercury_transaction_attributions` / `mercury_transaction_job_allocations` refresh all three together.
+
+#### Amount-first column reorder
+
+`TransactionsTable` columns reordered from `Posted | Counterparty | Job | Label | Amount | Edit` to **`Amount | Posted | Counterparty | Job | Label | Edit`**. Amount stays right-aligned (`textAlign: 'right'`, `tabular-nums`, bold) per banking convention. Single component, applies to all four call sites: By-Job per-label rows (`Amount Posted Counterparty Edit`), By-Label cards (`Amount Posted Counterparty Job Edit`), By-Date flat list (`Amount Posted Counterparty Job Label Edit`), and the pinned Unallocated card body in By-Job (`Amount Posted Counterparty Label Edit`). `<th>` and `<td>` moves are identical promote-to-position-0 so header and body stay aligned; conditional columns (`showJobColumn` / `showLabelColumn`) keep their relative positions.
+
+#### Short Posted date
+
+`formatBankingDate` dropped `year: 'numeric'` from its `Intl.DateTimeFormat` config, so Posted cells now read **`May 8`** instead of `May 8, 2026`. Year is gone everywhere `TransactionsTable` is mounted — same component, same helper.
+
+#### Generic widening of `TransactionsTable`
+
+Component is now `<R extends UserReviewBreakdownTx>` with three optional knobs:
+- **`showJobColumn?: boolean`** — when true, renders a `<th>Job</th>` after Counterparty.
+- **`jobLabelOf?: (row: R) => string | null`** — accessor for the Job cell; required when `showJobColumn` is true.
+- **`hasMultipleAllocationsOf?: (row: R) => boolean`** — when provided, returns true for txs with 2+ allocations so the Job cell can render the muted `split` pill.
+
+Keeps the four call sites strictly typed without forcing every row shape through a union.
+
+#### New local component `LabelCard`
+
+Near-copy of `JobCard`'s top row, body is a single `TransactionsTable<UserReviewBreakdownTxWithJob>` with `showLabelColumn={false}`, `showJobColumn={true}`, `amountField="allocation"`. Italic muted styling when the bucket is the synthetic `Unlabeled` (i.e. `labelId == null`).
+
+#### Tests
+
+15 new unit tests in [`src/lib/buildUserJobLabelBreakdown.test.ts`](src/lib/buildUserJobLabelBreakdown.test.ts) (**28 total, all green**) cover By-Label bucket splitting / `Unlabeled` fallback / `jobLabel` resolution / sort ordering, By-Date single-row-per-tx invariant / multi-alloc winner / allocation_id tiebreak / unallocated rendering / sort with `createdAt` fallback, and a cross-helper consistency block proving the three helpers' `grandTotal` and `totals` are exactly equal for the same input.
+
+Files: [`src/components/userReview/UserMercuryWindowSection.tsx`](src/components/userReview/UserMercuryWindowSection.tsx), [`src/lib/buildUserJobLabelBreakdown.ts`](src/lib/buildUserJobLabelBreakdown.ts), [`src/lib/buildUserJobLabelBreakdown.test.ts`](src/lib/buildUserJobLabelBreakdown.test.ts). No DB / migration / RLS / RPC / Edge changes. No `database.ts` regeneration. Verified: `npx tsc --noEmit` clean; **28 / 28** unit tests pass; zero lints on the three touched files.
+
+---
+
+## Previous Updates (v2.564)
 
 **Date**: 2026-05-20
 
