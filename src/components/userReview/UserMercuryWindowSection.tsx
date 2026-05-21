@@ -82,7 +82,6 @@ function formatBankingDate(iso: string | null): string {
       timeZone: APP_CALENDAR_TZ,
       month: 'short',
       day: 'numeric',
-      year: 'numeric',
     }).format(d)
   } catch {
     return '—'
@@ -946,11 +945,11 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
         <thead>
           <tr style={{ background: '#f9fafb' }}>
+            <th style={{ ...detailThStyle, textAlign: 'right' }}>Amount</th>
             <th style={detailThStyle}>Posted</th>
             <th style={detailThStyle}>Counterparty</th>
             {showJobColumn ? <th style={detailThStyle}>Job</th> : null}
             {showLabelColumn ? <th style={detailThStyle}>Label</th> : null}
-            <th style={{ ...detailThStyle, textAlign: 'right' }}>Amount</th>
             <th style={{ ...detailThStyle, textAlign: 'right' }}>{/* Edit */}</th>
           </tr>
         </thead>
@@ -965,6 +964,23 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
             const isSplit = hasMultipleAllocationsOf ? hasMultipleAllocationsOf(r) : false
             return (
               <tr key={r.rowKey} style={{ borderTop: '1px solid #f3f4f6' }}>
+                <td
+                  style={{
+                    ...detailTdStyle,
+                    textAlign: 'right',
+                    fontVariantNumeric: 'tabular-nums',
+                    color: amountColor(displayAmount),
+                    fontWeight: 500,
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {formatUsd(displayAmount)}
+                  {amountField === 'allocation' && r.allocationAmount != null && r.allocationAmount !== r.amount ? (
+                    <span style={{ display: 'block', fontSize: '0.6875rem', color: '#9ca3af', fontWeight: 400 }}>
+                      of {formatUsd(r.amount)}
+                    </span>
+                  ) : null}
+                </td>
                 <td style={detailTdStyle}>{formatBankingDate(r.postedAt ?? r.createdAt)}</td>
                 <td style={detailTdStyle}>
                   {r.counterpartyName?.trim() || <span style={{ color: '#9ca3af' }}>—</span>}
@@ -1003,23 +1019,6 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
                     </span>
                   </td>
                 ) : null}
-                <td
-                  style={{
-                    ...detailTdStyle,
-                    textAlign: 'right',
-                    fontVariantNumeric: 'tabular-nums',
-                    color: amountColor(displayAmount),
-                    fontWeight: 500,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {formatUsd(displayAmount)}
-                  {amountField === 'allocation' && r.allocationAmount != null && r.allocationAmount !== r.amount ? (
-                    <span style={{ display: 'block', fontSize: '0.6875rem', color: '#9ca3af', fontWeight: 400 }}>
-                      of {formatUsd(r.amount)}
-                    </span>
-                  ) : null}
-                </td>
                 <td style={{ ...detailTdStyle, textAlign: 'right' }}>
                   <button
                     type="button"
