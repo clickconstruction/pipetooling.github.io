@@ -12,6 +12,31 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       _freeze_crew_lead_bids_backup: {
@@ -373,6 +398,80 @@ export type Database = {
             columns: ["price_book_version_id"]
             isOneToOne: false
             referencedRelation: "price_book_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_pricing_package_sends: {
+        Row: {
+          bid_id: string
+          created_at: string
+          id: string
+          plans_link: string | null
+          price_book_version_id: string
+          recipient_email: string
+          recipient_user_id: string
+          resend_id: string | null
+          revenue_total_cents: number
+          row_count: number
+          sent_by_user_id: string
+          sent_via: string
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          id?: string
+          plans_link?: string | null
+          price_book_version_id: string
+          recipient_email: string
+          recipient_user_id: string
+          resend_id?: string | null
+          revenue_total_cents: number
+          row_count: number
+          sent_by_user_id: string
+          sent_via: string
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          id?: string
+          plans_link?: string | null
+          price_book_version_id?: string
+          recipient_email?: string
+          recipient_user_id?: string
+          resend_id?: string | null
+          revenue_total_cents?: number
+          row_count?: number
+          sent_by_user_id?: string
+          sent_via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_pricing_package_sends_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_pricing_package_sends_price_book_version_id_fkey"
+            columns: ["price_book_version_id"]
+            isOneToOne: false
+            referencedRelation: "price_book_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_pricing_package_sends_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_pricing_package_sends_sent_by_user_id_fkey"
+            columns: ["sent_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -10326,6 +10425,18 @@ export type Database = {
           name: string
         }[]
       }
+      log_bid_pricing_package_send: {
+        Args: {
+          p_bid_id: string
+          p_plans_link: string
+          p_price_book_version_id: string
+          p_recipient_email: string
+          p_recipient_user_id: string
+          p_revenue_total_cents: number
+          p_row_count: number
+        }
+        Returns: string
+      }
       log_estimate_customer_event: {
         Args: {
           p_client_ip: string
@@ -10976,6 +11087,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       estimate_status: [

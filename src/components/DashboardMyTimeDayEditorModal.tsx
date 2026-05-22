@@ -75,6 +75,7 @@ import { forceClockOutDefaultOutIso } from '../lib/forceClockOutDefaultOut'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, DatabaseError, withSupabaseRetry } from '../utils/errorHandling'
 import {
+  APP_CALENDAR_TZ,
   denverCalendarDayKey,
   formatDenverBlockDateHeader,
   formatDenverTimeOnly,
@@ -83,7 +84,12 @@ import {
   getThisAndLastWeekRange,
 } from '../utils/dateUtils'
 import type { UnifiedSearchResult } from '../utils/unifiedJobBidSearch'
-import { isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
+import {
+  DRAFT_PEOPLE_HOURS_SESSION_ID_PREFIX,
+  isDraftPeopleHoursSessionId,
+} from '../lib/peopleHoursManualDraftSession'
+import { salaryZonedWallClockToUtcMs } from '../lib/salaryZonedWallClock'
+import { AddDisjointSessionModal } from './my-time-day-editor/AddDisjointSessionModal'
 import { partitionMixedClusterSingleSegmentToRowIntervals } from '../lib/myTimeMixedClusterSingleSegmentPartition'
 import { syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import {
@@ -371,14 +377,24 @@ export function DashboardMyTimeDayEditorModal({
   const [stripEmptyDayHint, setStripEmptyDayHint] = useState<'time_off' | 'no_work' | null>(null)
   const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
   const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
+  const [addDisjointOpen, setAddDisjointOpen] = useState<{
+    defaultClockInIso: string
+    defaultClockOutIso: string
+  } | null>(null)
   const [rejectSessionConfirm, setRejectSessionConfirm] = useState<DayEditorSession | null>(null)
   const [rejectSessionBusyId, setRejectSessionBusyId] = useState<string | null>(null)
+  /** Per-sub-flow error so reject failures show inside the reject dialog (not behind it). */
+  const [rejectSessionError, setRejectSessionError] = useState<string | null>(null)
   type NcnsUiPhase = 'off' | 'simple' | 'approved_warn' | 'approved_confirm'
   const [ncnsUi, setNcnsUi] = useState<NcnsUiPhase>('off')
   const [ncnsPayrollAck, setNcnsPayrollAck] = useState(false)
   const [ncnsDetails, setNcnsDetails] = useState('')
   const [ncnsBusy, setNcnsBusy] = useState(false)
+  /** Per-sub-flow error shown inside the NCNS dialog (simple / approved_confirm). */
+  const [ncnsError, setNcnsError] = useState<string | null>(null)
   const [ncnsPrecloseOpenSessions, setNcnsPrecloseOpenSessions] = useState<DayEditorSession[] | null>(null)
+  /** Per-sub-flow error shown inside the NCNS pre-close dialog while the force-clock-out sweep runs. */
+  const [ncnsPrecloseError, setNcnsPrecloseError] = useState<string | null>(null)
   /** When staff may record NCNS: true if assignee has a job_schedule_blocks row on dateStr (null = loading). */
   const [subjectHasScheduleBlocksForDay, setSubjectHasScheduleBlocksForDay] = useState<boolean | null>(null)
 
@@ -441,6 +457,7 @@ export function DashboardMyTimeDayEditorModal({
         )
         return
       }
+      setRejectSessionError(null)
       setRejectSessionConfirm(session)
     },
     [showToast],
@@ -448,6 +465,7 @@ export function DashboardMyTimeDayEditorModal({
 
   const closeRejectSessionModal = useCallback(() => {
     if (rejectSessionBusyId != null) return
+    setRejectSessionError(null)
     setRejectSessionConfirm(null)
   }, [rejectSessionBusyId])
 
@@ -459,7 +477,7 @@ export function DashboardMyTimeDayEditorModal({
         return
       }
       setRejectSessionBusyId(session.id)
-      setError(null)
+      setRejectSessionError(null)
       try {
         await withSupabaseRetry(
           async () =>
@@ -479,7 +497,7 @@ export function DashboardMyTimeDayEditorModal({
           onSaved()
         }
       } catch (e: unknown) {
-        setError(formatErrorMessage(e, 'Could not reject session'))
+        setRejectSessionError(formatErrorMessage(e, 'Could not reject session'))
       } finally {
         setRejectSessionBusyId(null)
       }
@@ -953,6 +971,73 @@ export function DashboardMyTimeDayEditorModal({
     [sortedSessions, nowTick],
   )
 
+  const addDisjointExistingIntervals = useMemo(
+    () =>
+      sortedSessions.map((s) => ({
+        startMs: new Date(s.clocked_in_at).getTime(),
+        endMs: s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : null,
+      })),
+    [sortedSessions],
+  )
+
+  /**
+   * "Add disjoint session" defaults: last session end + 1h gap; +2h duration.
+   * Empty day -> 8 AM wall (APP_CALENDAR_TZ) + 2h. If the computed window slips
+   * into the future, the inner modal's "no future" validator will surface it.
+   */
+  const computeAddDisjointDefaults = useCallback(() => {
+    const last = sortedSessions[sortedSessions.length - 1]
+    const lastEndMs = last
+      ? last.clocked_out_at
+        ? new Date(last.clocked_out_at).getTime()
+        : nowTick
+      : null
+    const baseInMs =
+      lastEndMs != null
+        ? lastEndMs + 60 * 60 * 1000
+        : (salaryZonedWallClockToUtcMs(dateStr, 8, 0, 0, APP_CALENDAR_TZ) ?? Date.now())
+    const baseOutMs = baseInMs + 2 * 60 * 60 * 1000
+    return {
+      defaultClockInIso: new Date(baseInMs).toISOString(),
+      defaultClockOutIso: new Date(baseOutMs).toISOString(),
+    }
+  }, [sortedSessions, nowTick, dateStr])
+
+  /**
+   * Pushes a new closed draft session into local state. Save persists it via the
+   * existing `isDraftPeopleHoursSessionId` INSERT branch in `persistDirtyChangesAsync`.
+   * Only safe when the modal owns its sessions (`sessionsProp.length === 0`); the
+   * "+" button is gated accordingly.
+   */
+  const handleAddDisjointConfirm = useCallback(
+    ({
+      clockedInIso,
+      clockedOutIso,
+      workDateYmd,
+    }: {
+      clockedInIso: string
+      clockedOutIso: string
+      workDateYmd: string
+    }) => {
+      const draft = normalizeDayEditorSession({
+        id: `${DRAFT_PEOPLE_HOURS_SESSION_ID_PREFIX}${crypto.randomUUID()}`,
+        clocked_in_at: clockedInIso,
+        clocked_out_at: clockedOutIso,
+        work_date: workDateYmd,
+        // Non-empty default keeps the existing draft INSERT path happy: buildPayloads
+        // rejects blank notes, and we deliberately omit a notes field from the inner
+        // modal. Users can refine via the per-segment textarea before / after Save.
+        notes: 'Disjoint session',
+        job_ledger_id: null,
+        bid_id: null,
+        approved_at: null,
+      })
+      setFetchedSessions((prev) => [...(prev ?? []), draft])
+      setAddDisjointOpen(null)
+    },
+    [],
+  )
+
   const dayTotalClockedMs = useMemo(() => {
     let total = 0
     for (const s of sortedSessions) {
@@ -1234,7 +1319,7 @@ export function DashboardMyTimeDayEditorModal({
   const runRecordNcns = useCallback(async () => {
     if (!effectiveSubjectUserId) return
     setNcnsBusy(true)
-    setError(null)
+    setNcnsError(null)
     const trimmedDetails = ncnsDetails.trim()
     try {
       const data = await withSupabaseRetry(
@@ -1250,7 +1335,7 @@ export function DashboardMyTimeDayEditorModal({
         | { rejected_count: number; had_approved_sessions: boolean; error_message: string | null }
         | undefined
       if (row?.error_message) {
-        setError(row.error_message)
+        setNcnsError(row.error_message)
         return
       }
       setNcnsUi('off')
@@ -1259,7 +1344,7 @@ export function DashboardMyTimeDayEditorModal({
       onSaved()
       onClose()
     } catch (e: unknown) {
-      setError(formatErrorMessage(e, 'Could not record NCNS'))
+      setNcnsError(formatErrorMessage(e, 'Could not record NCNS'))
     } finally {
       setNcnsBusy(false)
     }
@@ -1268,7 +1353,7 @@ export function DashboardMyTimeDayEditorModal({
   const enterNcnsDialogFromSessions = useCallback((rows: DayEditorSession[]) => {
     setNcnsPayrollAck(false)
     setNcnsDetails('')
-    setError(null)
+    setNcnsError(null)
     if (rows.some((s) => s.approved_at)) setNcnsUi('approved_warn')
     else setNcnsUi('simple')
   }, [])
@@ -1276,7 +1361,7 @@ export function DashboardMyTimeDayEditorModal({
   const forceClockOutOpenSessionsThenOpenNcns = useCallback(
     async (openSessions: DayEditorSession[]) => {
       setNcnsBusy(true)
-      setError(null)
+      setNcnsPrecloseError(null)
       try {
         for (const s of openSessions) {
           const outIso = forceClockOutDefaultOutIso(s.clocked_in_at)
@@ -1290,7 +1375,7 @@ export function DashboardMyTimeDayEditorModal({
         const rows = await fetchDaySessionsForEditor()
         if (rows.some((s) => !s.clocked_out_at)) {
           const msg = 'Could not close all sessions. Try again.'
-          setError(msg)
+          setNcnsPrecloseError(msg)
           showToast(msg, 'error')
           return
         }
@@ -1298,7 +1383,7 @@ export function DashboardMyTimeDayEditorModal({
         enterNcnsDialogFromSessions(rows)
       } catch (e: unknown) {
         const msg = formatErrorMessage(e, 'Could not clock out before NCNS')
-        setError(msg)
+        setNcnsPrecloseError(msg)
         showToast(msg, 'error')
       } finally {
         setNcnsBusy(false)
@@ -1314,6 +1399,7 @@ export function DashboardMyTimeDayEditorModal({
 
   const closeNcnsPrecloseModal = useCallback(() => {
     if (ncnsBusy) return
+    setNcnsPrecloseError(null)
     setNcnsPrecloseOpenSessions(null)
   }, [ncnsBusy])
 
@@ -1341,6 +1427,7 @@ export function DashboardMyTimeDayEditorModal({
       return
     }
     const openSessions = sortedSessions.filter((s) => !s.clocked_out_at)
+    setNcnsPrecloseError(null)
     setNcnsPrecloseOpenSessions(openSessions)
   }, [
     ncnsClickAllowed,
@@ -1538,7 +1625,7 @@ export function DashboardMyTimeDayEditorModal({
       const last = c[c.length - 1]!
       const payloads = buildPayloads(last, split, now)
       if (!payloads || payloads.length < 2) {
-        setError('Add focus notes to each segment before assigning jobs per segment.')
+        showToast('Add focus notes to each segment before assigning jobs per segment.', 'warning')
         return null
       }
 
@@ -1572,15 +1659,16 @@ export function DashboardMyTimeDayEditorModal({
           bid_id: row.bid_id,
         }
       } catch (e: unknown) {
-        setError(
-          formatErrorMessage(e, e instanceof DatabaseError ? e.message : 'Could not prepare segment for assign')
+        showToast(
+          formatErrorMessage(e, e instanceof DatabaseError ? e.message : 'Could not prepare segment for assign'),
+          'error',
         )
         return null
       } finally {
         setSaving(false)
       }
     },
-    [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated]
+    [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated, showToast]
   )
 
   const endBoundaryDragListenersRef = useRef(() => {})
@@ -2151,38 +2239,19 @@ export function DashboardMyTimeDayEditorModal({
     ]
   )
 
-  const requestClose = useCallback(async () => {
-    if (saving) return
-    if (ncnsUi !== 'off') {
-      setNcnsUi('off')
-      setNcnsPayrollAck(false)
-      setNcnsDetails('')
-      return
-    }
-    if (ncnsPrecloseOpenSessions) {
-      setNcnsPrecloseOpenSessions(null)
-      return
-    }
-    if (mergeJobChoice) {
-      setMergeJobChoice(null)
-      return
-    }
-    if (assignBulk) {
-      setAssignBulk(null)
-      return
-    }
-    if (forceClockOutSession) {
-      setForceClockOutSession(null)
-      return
-    }
-    if (adjustTimesSession) {
-      setAdjustTimesSession(null)
-      return
-    }
-    if (!effectiveEditable || !authUserId) {
-      onClose()
-      return
-    }
+  /**
+   * Single source of truth for "what clusters need to be persisted on Save":
+   *  - `effectiveDirtyIds` real user edits (splits / job-bid / draft sessions), extended with
+   *    the proportional-seed override so the People → Hours grid contract still persists
+   *    scaled state on Save / Close.
+   *  - `isOnlyProportionalSeed` true iff the modal needs Save *only* because of the
+   *    proportional-seed pre-fill — PR3 uses this to hide Cancel and show the amber
+   *    "scaled, not saved yet" banner.
+   *
+   * Computed once per render via `useMemo` so `requestSave`, `requestDiscard`, the footer
+   * buttons, and the banner all read a single consistent snapshot.
+   */
+  const { effectiveDirtyIds, isOnlyProportionalSeed } = useMemo(() => {
     const splitDirty = listDirtyClusterIds(sessionClusters, initialSnapshot, splitByCluster)
     const currentJobBid = new Map(sortedSessions.map((s) => [s.id, sessionJobBidKey(s)]))
     const jobBidDirty = listClustersDirtyFromJobBidChange(
@@ -2192,30 +2261,123 @@ export function DashboardMyTimeDayEditorModal({
     )
     /**
      * Draft clusters (People → Hours manual entry seed) are NOT in the database yet —
-     * they must persist on Close even when nothing was edited. Without this, typing a value
-     * into an empty grid cell and hitting Close silently throws away the draft session.
+     * they must persist on Save even when nothing was edited. Without this, typing a value
+     * into an empty grid cell and hitting Save silently throws away the draft session.
      */
     const draftClusterIds = sessionClusters
       .filter((c) => c.some((s) => isDraftPeopleHoursSessionId(s.id)))
       .map((c) => sessionClusterId(c))
-    const dirty = [...new Set([...splitDirty, ...jobBidDirty, ...draftClusterIds])]
-    const effectiveDirty =
-      dirty.length === 0 &&
-      peopleHoursGridProportionalSeed &&
-      sessionClusters.length > 0
-        ? sessionClusters.map((c) => sessionClusterId(c))
-        : dirty
-    if (effectiveDirty.length === 0) {
+    const raw = [...new Set([...splitDirty, ...jobBidDirty, ...draftClusterIds])]
+    if (raw.length === 0 && peopleHoursGridProportionalSeed && sessionClusters.length > 0) {
+      return {
+        effectiveDirtyIds: sessionClusters.map((c) => sessionClusterId(c)),
+        isOnlyProportionalSeed: true,
+      }
+    }
+    return { effectiveDirtyIds: raw, isOnlyProportionalSeed: false }
+  }, [sessionClusters, initialSnapshot, splitByCluster, sortedSessions, peopleHoursGridProportionalSeed])
+
+  /** True whenever the Save button should be visible / enabled (includes the proportional-seed override). */
+  const isDirty = effectiveDirtyIds.length > 0
+
+  /**
+   * Close the topmost open sub-flow (sub-modal or active gesture) and return true if anything
+   * matched. Used by `requestClose`, the Escape key handler, and (after PR3) `requestDiscard` so
+   * every entry point dismisses the same sub-flow first instead of leaking through to the main
+   * modal close. Busy guards inside each branch (e.g. `ncnsBusy`, `rejectSessionBusyId`) suppress
+   * the actual setState while still returning true so the caller stops.
+   */
+  const closeTopmostSubFlow = useCallback((): boolean => {
+    if (notComingInConfirmOpen) {
+      if (!markNotComingInBusy) setNotComingInConfirmOpen(false)
+      return true
+    }
+    if (ncnsUi !== 'off') {
+      if (!ncnsBusy) {
+        setNcnsUi('off')
+        setNcnsPayrollAck(false)
+        setNcnsDetails('')
+      }
+      return true
+    }
+    if (ncnsPrecloseOpenSessions) {
+      if (!ncnsBusy) setNcnsPrecloseOpenSessions(null)
+      return true
+    }
+    if (mergeJobChoice) {
+      setMergeJobChoice(null)
+      return true
+    }
+    if (assignBulk) {
+      setAssignBulk(null)
+      return true
+    }
+    if (rejectSessionConfirm) {
+      if (rejectSessionBusyId == null) setRejectSessionConfirm(null)
+      return true
+    }
+    if (forceClockOutSession) {
+      setForceClockOutSession(null)
+      return true
+    }
+    if (adjustTimesSession) {
+      setAdjustTimesSession(null)
+      return true
+    }
+    if (addDisjointOpen) {
+      setAddDisjointOpen(null)
+      return true
+    }
+    if (dragRef.current) {
+      cancelBoundaryDrag()
+      return true
+    }
+    if (stripTapSessionRef.current) {
+      cancelStripTapGesture()
+      return true
+    }
+    return false
+  }, [
+    notComingInConfirmOpen,
+    markNotComingInBusy,
+    ncnsUi,
+    ncnsBusy,
+    ncnsPrecloseOpenSessions,
+    mergeJobChoice,
+    assignBulk,
+    rejectSessionConfirm,
+    rejectSessionBusyId,
+    forceClockOutSession,
+    adjustTimesSession,
+    addDisjointOpen,
+    cancelBoundaryDrag,
+    cancelStripTapGesture,
+  ])
+
+  /**
+   * Commit dirty changes to the database. Wired to the footer Save button. Mirrors the
+   * pre-PR3 `requestClose` save path verbatim except it no longer doubles as the close path:
+   * Cancel / backdrop / Escape now route through `requestDiscard`, so Save only runs when
+   * the user explicitly clicked Save.
+   */
+  const requestSave = useCallback(async () => {
+    if (saving) return
+    if (closeTopmostSubFlow()) return
+    if (!effectiveEditable || !authUserId) {
+      onClose()
+      return
+    }
+    if (effectiveDirtyIds.length === 0) {
       onClose()
       return
     }
     if (!canSave) {
       setError(
-        'Add focus notes to each segment and ensure each part is at least 0.01 hours before closing.'
+        'Add focus notes to each segment and ensure each part is at least 0.01 hours before saving.'
       )
       return
     }
-    const dirtyApprovedNeedsRpc = effectiveDirty.some((cid) => {
+    const dirtyApprovedNeedsRpc = effectiveDirtyIds.some((cid) => {
       const c = sessionClusters.find((x) => sessionClusterId(x) === cid)
       if (!c?.length || !c.some((s) => s.approved_at)) return false
       const split = splitByCluster[cid]
@@ -2232,7 +2394,7 @@ export function DashboardMyTimeDayEditorModal({
     setSaving(true)
     setError(null)
     try {
-      const ok = await persistDirtyChangesAsync(effectiveDirty)
+      const ok = await persistDirtyChangesAsync(effectiveDirtyIds)
       if (ok) {
         onSaved()
         onClose()
@@ -2242,90 +2404,67 @@ export function DashboardMyTimeDayEditorModal({
     }
   }, [
     saving,
-    mergeJobChoice,
-    assignBulk,
-    forceClockOutSession,
-    adjustTimesSession,
+    closeTopmostSubFlow,
+    effectiveDirtyIds,
     effectiveEditable,
     authUserId,
     sessionClusters,
-    initialSnapshot,
     splitByCluster,
-    sortedSessions,
     canSave,
     nowTick,
     onClose,
     onSaved,
     persistDirtyChangesAsync,
-    ncnsUi,
-    ncnsPrecloseOpenSessions,
-    peopleHoursGridProportionalSeed,
   ])
+
+  /** Open by `requestDiscard` when the modal has dirty changes; commits to discard them on confirm. */
+  const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
+
+  /**
+   * Cancel / backdrop / Escape path. Closes any open sub-flow first; if the modal has nothing
+   * to discard (not editable, no auth, or already clean) just closes. Otherwise opens the
+   * Discard Changes confirm dialog so the user has one safety net before losing edits.
+   */
+  const requestDiscard = useCallback(() => {
+    if (saving) return
+    if (closeTopmostSubFlow()) return
+    if (!effectiveEditable || !authUserId) {
+      onClose()
+      return
+    }
+    if (!isDirty) {
+      onClose()
+      return
+    }
+    setDiscardConfirmOpen(true)
+  }, [saving, closeTopmostSubFlow, effectiveEditable, authUserId, isDirty, onClose])
+
+  /** "Discard changes" button in the confirm dialog: close the confirm, then dismiss the modal. */
+  const confirmDiscard = useCallback(() => {
+    setDiscardConfirmOpen(false)
+    onClose()
+  }, [onClose])
 
   function handleBackdropClose() {
     if (saving) return
-    void requestClose()
+    void requestDiscard()
   }
 
   useEffect(() => {
     const onWindowKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       if (saving) return
-      if (notComingInConfirmOpen) {
-        e.preventDefault()
-        if (!markNotComingInBusy) setNotComingInConfirmOpen(false)
-        return
-      }
-      if (ncnsUi !== 'off') {
-        e.preventDefault()
-        setNcnsUi('off')
-        setNcnsPayrollAck(false)
-        setNcnsDetails('')
-        return
-      }
-      if (ncnsPrecloseOpenSessions) {
-        e.preventDefault()
-        if (!ncnsBusy) setNcnsPrecloseOpenSessions(null)
-        return
-      }
-      if (dragRef.current) {
-        e.preventDefault()
-        cancelBoundaryDrag()
-        return
-      }
-      if (stripTapSessionRef.current) {
-        e.preventDefault()
-        cancelStripTapGesture()
-        return
-      }
-      if (forceClockOutSession) {
-        e.preventDefault()
-        setForceClockOutSession(null)
-        return
-      }
-      if (adjustTimesSession) {
-        e.preventDefault()
-        setAdjustTimesSession(null)
-        return
-      }
       e.preventDefault()
-      void requestClose()
+      if (discardConfirmOpen) {
+        setDiscardConfirmOpen(false)
+        return
+      }
+      if (closeTopmostSubFlow()) return
+      void requestDiscard()
     }
     window.addEventListener('keydown', onWindowKeyDown, true)
     return () => window.removeEventListener('keydown', onWindowKeyDown, true)
-  }, [
-    adjustTimesSession,
-    cancelBoundaryDrag,
-    cancelStripTapGesture,
-    forceClockOutSession,
-    markNotComingInBusy,
-    ncnsBusy,
-    ncnsPrecloseOpenSessions,
-    ncnsUi,
-    notComingInConfirmOpen,
-    requestClose,
-    saving,
-  ])
+  }, [closeTopmostSubFlow, discardConfirmOpen, requestDiscard, saving])
 
   return (
     <>
@@ -2496,6 +2635,24 @@ export function DashboardMyTimeDayEditorModal({
           </p>
         ) : (
           <>
+            {isOnlyProportionalSeed ? (
+              <p
+                role="status"
+                style={{
+                  margin: '0 0 0.5rem 0',
+                  fontSize: '0.8125rem',
+                  color: '#92400e',
+                  background: '#fffbeb',
+                  border: '1px solid #fcd34d',
+                  borderRadius: 6,
+                  padding: '0.5rem 0.65rem',
+                  lineHeight: 1.45,
+                }}
+              >
+                These hours were just scaled from People → Hours and aren&rsquo;t saved yet. Click{' '}
+                <strong>Save</strong> to commit.
+              </p>
+            ) : null}
             {myTimeCompactLayout ? (
               <div
                 style={{
@@ -2513,7 +2670,7 @@ export function DashboardMyTimeDayEditorModal({
                       {' · '}
                       Punch start/end cannot be changed with Adjust times or Form &quot;Ends at&quot; fields here—use
                       Visual (blue handles on the strip) to move boundaries between rows. You can split focus, edit
-                      segment notes, assign jobs or bids, and use Close to save when you have pending changes.
+                      segment notes, assign jobs or bids, and use Save to commit pending changes.
                     </>
                   ) : null}
                 </p>
@@ -2527,7 +2684,7 @@ export function DashboardMyTimeDayEditorModal({
                     {' · '}
                     Punch start/end cannot be changed with Adjust times or Form &quot;Ends at&quot; fields here—use
                     Visual (blue handles on the strip) to move boundaries between rows. You can split focus, edit
-                    segment notes, assign jobs or bids, and use Close to save when you have pending changes.
+                    segment notes, assign jobs or bids, and use Save to commit pending changes.
                   </>
                 ) : null}
               </p>
@@ -2697,6 +2854,39 @@ export function DashboardMyTimeDayEditorModal({
                   )
                 })
               )}
+              {effectiveEditable &&
+              allowPunchTimeActions &&
+              !priorWeekGateActive &&
+              sessionsProp.length === 0 &&
+              !sessionsLoading &&
+              !pendingAuthForFetch ? (
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    marginTop: -4,
+                  }}
+                >
+                  <button
+                    type="button"
+                    title="Add disjoint session"
+                    aria-label="Add disjoint session"
+                    onClick={() => setAddDisjointOpen(computeAddDisjointDefaults())}
+                    disabled={saving}
+                    style={{
+                      padding: '0 4px',
+                      border: 'none',
+                      background: 'transparent',
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                      color: '#9ca3af',
+                      fontSize: '1rem',
+                      lineHeight: 1,
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              ) : null}
             </div>
 
             {error && <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: '#dc2626' }}>{error}</p>}
@@ -2767,22 +2957,48 @@ export function DashboardMyTimeDayEditorModal({
                 ) : null}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => void requestClose()}
-                  disabled={saving}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    border: '1px solid #3b82f6',
-                    borderRadius: 4,
-                    background: '#3b82f6',
-                    color: 'white',
-                    cursor: saving ? 'not-allowed' : 'pointer',
-                    fontWeight: 600,
-                  }}
-                >
-                  {saving ? 'Saving…' : 'Close'}
-                </button>
+                {/* Cancel / Close — hidden in proportional-seed-only mode so the People → Hours grid
+                    caller keeps its "Close = Save" contract (no user-visible discard path). */}
+                {!isOnlyProportionalSeed ? (
+                  <button
+                    type="button"
+                    onClick={() => requestDiscard()}
+                    disabled={saving}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      background: 'white',
+                      cursor: saving ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {isDirty ? 'Cancel' : 'Close'}
+                  </button>
+                ) : null}
+                {isDirty ? (
+                  <button
+                    type="button"
+                    onClick={() => void requestSave()}
+                    disabled={saving || !canSave}
+                    title={
+                      !canSave
+                        ? 'Add focus notes to each segment and ensure each part is at least 0.01 hours'
+                        : undefined
+                    }
+                    style={{
+                      padding: '0.5rem 1rem',
+                      border: '1px solid #3b82f6',
+                      borderRadius: 4,
+                      background: '#3b82f6',
+                      color: 'white',
+                      cursor: saving || !canSave ? 'not-allowed' : 'pointer',
+                      fontWeight: 600,
+                      opacity: !canSave ? 0.65 : 1,
+                    }}
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                ) : null}
               </div>
             </div>
           </>
@@ -2924,6 +3140,17 @@ export function DashboardMyTimeDayEditorModal({
         onSaved={onAdjustTimesSaved}
       />
     ) : null}
+    {addDisjointOpen ? (
+      <AddDisjointSessionModal
+        defaultClockInIso={addDisjointOpen.defaultClockInIso}
+        defaultClockOutIso={addDisjointOpen.defaultClockOutIso}
+        workDateYmd={dateStr}
+        existingIntervals={addDisjointExistingIntervals}
+        zIndex={1300}
+        onClose={() => setAddDisjointOpen(null)}
+        onConfirm={handleAddDisjointConfirm}
+      />
+    ) : null}
     {ncnsPrecloseOpenSessions ? (
       <div
         role="presentation"
@@ -2978,6 +3205,23 @@ export function DashboardMyTimeDayEditorModal({
             {ncnsPrecloseOpenSessions.length === 1 ? '' : 's'} at the current time, then record no-call
             no-show? This changes their hours for today.
           </p>
+          {ncnsPrecloseError ? (
+            <p
+              role="alert"
+              style={{
+                margin: '0 0 0.75rem 0',
+                fontSize: '0.8125rem',
+                color: '#b91c1c',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 6,
+                padding: '0.5rem 0.65rem',
+                lineHeight: 1.45,
+              }}
+            >
+              {ncnsPrecloseError}
+            </p>
+          ) : null}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -3079,6 +3323,23 @@ export function DashboardMyTimeDayEditorModal({
             >
               This session was already approved. Rejecting removes those hours from payroll until it is approved
               again.
+            </p>
+          ) : null}
+          {rejectSessionError ? (
+            <p
+              role="alert"
+              style={{
+                margin: '0 0 0.75rem 0',
+                fontSize: '0.8125rem',
+                color: '#b91c1c',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                borderRadius: 6,
+                padding: '0.5rem 0.65rem',
+                lineHeight: 1.45,
+              }}
+            >
+              {rejectSessionError}
             </p>
           ) : null}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -3190,6 +3451,23 @@ export function DashboardMyTimeDayEditorModal({
                 }}
                 placeholder="Context for this NCNS (visible in People → Writeups)"
               />
+              {ncnsError ? (
+                <p
+                  role="alert"
+                  style={{
+                    margin: '0 0 0.75rem 0',
+                    fontSize: '0.8125rem',
+                    color: '#b91c1c',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: 6,
+                    padding: '0.5rem 0.65rem',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {ncnsError}
+                </p>
+              ) : null}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   type="button"
@@ -3336,6 +3614,23 @@ export function DashboardMyTimeDayEditorModal({
                 }}
                 placeholder="Context for this NCNS (visible in People → Writeups)"
               />
+              {ncnsError ? (
+                <p
+                  role="alert"
+                  style={{
+                    margin: '0 0 0.75rem 0',
+                    fontSize: '0.8125rem',
+                    color: '#b91c1c',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: 6,
+                    padding: '0.5rem 0.65rem',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  {ncnsError}
+                </p>
+              ) : null}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   type="button"
@@ -3458,6 +3753,94 @@ export function DashboardMyTimeDayEditorModal({
               }}
             >
               {markNotComingInBusy ? '…' : 'Mark not coming in'}
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : null}
+    {discardConfirmOpen ? (
+      <div
+        role="presentation"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0,0,0,0.45)',
+          zIndex: 1320,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '1rem',
+        }}
+        onMouseDown={(e) => {
+          if (e.target !== e.currentTarget) return
+          setDiscardConfirmOpen(false)
+        }}
+      >
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="discard-changes-confirm-title"
+          aria-describedby="discard-changes-confirm-desc"
+          style={{
+            background: 'white',
+            borderRadius: 8,
+            padding: '1.25rem',
+            maxWidth: 440,
+            width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
+            border: '1px solid #e5e7eb',
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <h2
+            id="discard-changes-confirm-title"
+            style={{
+              margin: '0 0 0.75rem 0',
+              fontSize: '1.05rem',
+              fontWeight: 600,
+              color: '#111827',
+              lineHeight: 1.35,
+            }}
+          >
+            Discard unsaved changes?
+          </h2>
+          <p
+            id="discard-changes-confirm-desc"
+            style={{ margin: '0 0 1.25rem 0', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}
+          >
+            You have unsaved changes to <strong>{modalTitlePerson}</strong>&rsquo;s time for{' '}
+            <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong>. Closing now will discard them.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={() => setDiscardConfirmOpen(false)}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 6,
+                background: 'white',
+                cursor: 'pointer',
+              }}
+            >
+              Keep editing
+            </button>
+            <button
+              type="button"
+              onClick={confirmDiscard}
+              style={{
+                padding: '0.45rem 0.85rem',
+                fontSize: '0.875rem',
+                fontWeight: 600,
+                border: '1px solid #dc2626',
+                borderRadius: 6,
+                background: '#fef2f2',
+                color: '#b91c1c',
+                cursor: 'pointer',
+              }}
+            >
+              Discard changes
             </button>
           </div>
         </div>

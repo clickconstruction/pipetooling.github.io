@@ -21,6 +21,7 @@ import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import { useUserReviewModal } from '../contexts/UserReviewModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useIntervalNowMs } from '../hooks/useIntervalNowMs'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import {
@@ -560,6 +561,20 @@ const jobBidStripLink: CSSProperties = {
   fontSize: '0.72rem',
 }
 
+/**
+ * Makes a `<button>` indistinguishable from the existing `<Link>` styling so we can swap
+ * the three job links in this strip from `/jobs?edit=...` navigation to in-place
+ * `useJobDetailModal()` open (see v2.447). Spread as `{ ...buttonAsLinkReset, ...jobBidStripLink }`.
+ */
+const buttonAsLinkReset: CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  font: 'inherit',
+  cursor: 'pointer',
+  textAlign: 'left',
+}
+
 /** Session memo (`clocked_sessions.notes`): one typography block for Currently In, Focus, Clocked detail (iOS PWA parity). */
 const stripSessionMemoTextStyle: CSSProperties = {
   color: '#6b7280',
@@ -750,6 +765,20 @@ export function DashboardTeamActiveClockStrip({
       })
     },
     [userReviewModal, clockStripWorkDateYmd],
+  )
+  const jobDetailModal = useJobDetailModal()
+  const openJobDetailFromSessionEmbeds = useCallback(
+    (jobLedgerId: string, jl: ClockSessionRow['jobs_ledger'] | null) => {
+      if (!jobDetailModal) return
+      const h = (jl?.hcp_number ?? '').trim() || '—'
+      const n = (jl?.job_name ?? '').trim() || 'Job'
+      jobDetailModal.openJobDetail({
+        jobId: jobLedgerId,
+        prefillRowLabel: `${h} · ${n}`,
+        prefillAddress: (jl?.job_address ?? '').trim() || null,
+      })
+    },
+    [jobDetailModal],
   )
   const stripNameAsScheduleButtonStyle: CSSProperties = {
     margin: 0,
@@ -1439,10 +1468,6 @@ export function DashboardTeamActiveClockStrip({
                 : todayHBase
               const fullJobBid = synthetic ? null : formatClockSessionJobOrBidLabel(s as ClockSessionRow, prefixMap)
               const shortJb = synthetic ? null : shortJobOrBidLabel(s as ClockSessionRow, prefixMap)
-              const jobHref =
-                !synthetic && s.job_ledger_id
-                  ? `/jobs?edit=${encodeURIComponent(s.job_ledger_id)}`
-                  : null
               const bidHref =
                 !synthetic && s.bid_id
                   ? `/bids?bidId=${encodeURIComponent(s.bid_id)}&tab=submission-followup`
@@ -1579,10 +1604,20 @@ export function DashboardTeamActiveClockStrip({
                               ) : null}
                             </span>
                           ) : null}
-                          {jobHref && linkText ? (
-                            <Link to={jobHref} title={titleText} style={jobBidStripLink}>
+                          {!synthetic && s.job_ledger_id && linkText ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openJobDetailFromSessionEmbeds(
+                                  s.job_ledger_id!,
+                                  (s as ClockSessionRow).jobs_ledger ?? null,
+                                )
+                              }
+                              title={titleText}
+                              style={{ ...buttonAsLinkReset, ...jobBidStripLink }}
+                            >
                               {linkText}
-                            </Link>
+                            </button>
                           ) : bidHref && linkText ? (
                             <Link to={bidHref} title={titleText} style={jobBidStripLink}>
                               {linkText}
@@ -1852,9 +1887,6 @@ export function DashboardTeamActiveClockStrip({
                                       const memo = (s.notes ?? '').trim()
                                       const fullJobBid = formatClockSessionJobOrBidLabelFromEmbeds(s, prefixMap)
                                       const shortJb = shortJobOrBidLabelFromEmbeds(s, prefixMap)
-                                      const jobHref = s.job_ledger_id
-                                        ? `/jobs?edit=${encodeURIComponent(s.job_ledger_id)}`
-                                        : null
                                       const bidHref = s.bid_id
                                         ? `/bids?bidId=${encodeURIComponent(s.bid_id)}&tab=submission-followup`
                                         : null
@@ -2004,11 +2036,18 @@ export function DashboardTeamActiveClockStrip({
                                                         />
                                                       </span>
                                                     ) : null}
-                                                    {jobHref && linkText ? (
-                                                      <Link
-                                                        to={jobHref}
+                                                    {s.job_ledger_id && linkText ? (
+                                                      <button
+                                                        type="button"
+                                                        onClick={() =>
+                                                          openJobDetailFromSessionEmbeds(
+                                                            s.job_ledger_id!,
+                                                            s.jobs_ledger ?? null,
+                                                          )
+                                                        }
                                                         title={titleText}
                                                         style={{
+                                                          ...buttonAsLinkReset,
                                                           ...clockedInTodayDetailLink,
                                                           flex: '0 1 auto',
                                                           minWidth: 0,
@@ -2016,7 +2055,7 @@ export function DashboardTeamActiveClockStrip({
                                                         }}
                                                       >
                                                         {linkText}
-                                                      </Link>
+                                                      </button>
                                                     ) : bidHref && linkText ? (
                                                       <Link
                                                         to={bidHref}
@@ -2341,9 +2380,17 @@ export function DashboardTeamActiveClockStrip({
                                     {job.label}
                                   </span>
                                 ) : (
-                                  <Link
-                                    to={`/jobs?edit=${encodeURIComponent(job.jobLedgerId)}`}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      jobDetailModal?.openJobDetail({
+                                        jobId: job.jobLedgerId,
+                                        prefillRowLabel: job.label,
+                                        prefillAddress: (job.addressLine ?? '').trim() || null,
+                                      })
+                                    }
                                     style={{
+                                      ...buttonAsLinkReset,
                                       ...clockedInTodayDetailLink,
                                       fontWeight: 600,
                                       flex: '0 1 auto',
@@ -2353,7 +2400,7 @@ export function DashboardTeamActiveClockStrip({
                                     aria-label={`Open job ${job.label}, ${jobLinkStatsLabel}`}
                                   >
                                     {job.label}
-                                  </Link>
+                                  </button>
                                 )}
                                 <span
                                   style={{

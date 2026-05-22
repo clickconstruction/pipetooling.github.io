@@ -7,11 +7,11 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-05-19
+last_updated: 2026-05-21
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
-total_terms: ~127
+total_terms: ~129
 categories: 9
 
 key_sections:
@@ -239,6 +239,47 @@ A per-user, per-device toggle in the header gear menu (**[`Layout.tsx`](src/comp
 **Realtime / day rollover** — the card subscribes to `postgres_changes` on `clock_sessions` (this user) and `job_schedule_blocks` (this user, this `work_date`); a 1-minute interval re-checks `denverCalendarDayKey(Date.now())` so a long-open page rolls over at midnight. The picker is fully unit-tested (14 cases) so adding new state branches is safe.
 
 **See also** — **`RECENT_FEATURES.md`** **v2.545**, **`PROJECT_DOCUMENTATION.md`** Dashboard **Job Mode**.
+
+### User Review modal
+A global, full-screen modal (**[`UserReviewModal`](../src/components/UserReviewModal.tsx)** + **[`UserReviewModalContext`](../src/contexts/UserReviewModalContext.tsx)**) opened by clicking a person's **name** on the Dashboard's **`DashboardTeamActiveClockStrip`** (the "Currently In" / "Clocked in today" strip). It pairs a read-only **schedule view** with an optional **Mercury transaction summary** for the same date window, all keyed to one subject user.
+
+**Three view modes** toggle in the toolbar:
+- **Day** — one day's schedule strip + transactions.
+- **Week** — Sunday–Saturday company week (`companyWeekStartSundayContaining`), one strip per day + transactions for the whole week.
+- **Month** — rolling 30-day window anchored on the selected day, one strip per active day (empty days collapse) + transactions for the window.
+
+Prev / next chevrons step by one unit (day, week, or 30-day window); a **Today** button returns to the present.
+
+**Top section (all roles)** — read-only `DispatchAddBlockTimeRange` strips per day (no thumbs, no proposed range, no drag) showing **`job_schedule_blocks`** (occupied bands) + closed **`clock_sessions`** (secondary bands). Built from **[`UserDayScheduleSection`](../src/components/userReview/UserDayScheduleSection.tsx)**, **[`UserWeekScheduleSection`](../src/components/userReview/UserWeekScheduleSection.tsx)**, **[`UserMonthScheduleSection`](../src/components/userReview/UserMonthScheduleSection.tsx)**. Realtime via `useRealtimeChannel` on both source tables.
+
+**Bottom section (banking roles only)** — **[`UserMercuryWindowSection`](../src/components/userReview/UserMercuryWindowSection.tsx)**: Mercury transactions attributed to or person-tagged for the subject during the window, summarized **By Job** / **By Label** / **By Date** (segmented sort under the centered `Transactions: -$X · N tx` total, persisted under `localStorage` key `user_review_tx_sort_v1`). Non-banking roles see no Transactions section at all.
+
+**Interactions inside the modal:**
+- **Date header click** (Week / Month, all viewports) opens **[`UserDaySummaryModal`](../src/components/userReview/UserDaySummaryModal.tsx)** — read-only list of that day's blocks + sessions; rows click-through to **`ScheduleBlockPreviewModal`** (block) or **`DashboardMyTimeDayEditorModal`** (session, staff-gated).
+- **Name-in-title click** (all modes, all viewports) opens **[`UserReviewSwitchUserModal`](../src/components/userReview/UserReviewSwitchUserModal.tsx)** for staff (`dev` / `master_technician` / `assistant` / `superintendent`) — a `SearchableSelect` over the last 30 days of distinct **`clock_sessions.user_id`** (archived users dropped, current subject omitted). Picking a user preserves the anchor day + the current Day / Week / Month tab.
+- **Schedule strip clicks** route to `ScheduleBlockPreviewModal` (block bands) or `DashboardMyTimeDayEditorModal` (clock-session bands, staff-gated).
+
+**Schedule rail trim + stretch** — see **[Schedule rail trim / stretch (User Review modal)](#schedule-rail-trim--stretch-user-review-modal)** below.
+
+**See also** — **`RECENT_FEATURES.md`** v2.566 (User Day Summary), v2.567 (Switch user), v2.568 (rail trim), **v2.569** (rail stretch + 4 h floor); **`PROJECT_DOCUMENTATION.md`** Dashboard **User Review modal**; **`AGENTS.md`** "Where to Look For" → User Review modal rows.
+
+### Schedule rail trim / stretch (User Review modal)
+The grey background rail under each per-day schedule strip in the User Review modal is **rescaled** to show only the active part of the day, edge-to-edge, instead of always spanning the full 4 AM – 8 PM track. Specific to the User Review modal — Quickfill and Schedule Dispatch keep the full-rail layout.
+
+**How the window is computed:**
+- One shared `{ loSlotIndex, hiSlotIndex } | null` per view (Day = 1 row, Week = 7 rows, Month = active days) via pure helper **[`computeUserReviewSharedSlotWindow`](../src/lib/userReviewSharedSlotWindow.ts)** — `null` when zero bands exist anywhere in the view.
+- A **4-hour minimum floor** (8 slots at 30-min granularity) is applied at the orchestrator boundary via **`applyRailWindowMinFloor(window, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS = 8)`** — expands a tiny single-event window symmetrically around its midpoint, re-clamps to the legal slot range, and shifts the deficit to the opposite side when one edge clamps. So a 30-min punch at 9 AM expands to roughly 7:30 AM – 11 AM, and a 30-min punch at 4 AM expands to 4 AM – 8 AM.
+
+**How the strip renders the window:**
+- `null` → rail is hidden entirely (empty day).
+- `{ lo, hi }` → the visible strip *is* the window. Bands, proposed-range fill, inline tick marks, and orientation labels (`8 AM` / `12 PM` / `4 PM`) all route through internal helper `slotToTrackT(slotIndex, slotCount, window)` so they paint at their wall-time x in the rescaled strip; labels filter to inside-window marks only.
+- The shared header **`QuickfillScheduleOrientationLabelsRow`** above the strips tracks the same rescale via an optional `railTrimWindow` prop.
+
+**Cross-row alignment** is preserved by the shared-window invariant: every row in the same view uses the same `{ lo, hi }`, so a band at `9 AM` lands at the same screen x on every row. The trade-off is that `9 AM` sits at *different* screen x in Day vs Week vs Month because each view's window can differ.
+
+**Opt-in prop** — **`railTrimWindow?: { loSlotIndex; hiSlotIndex } | null`** on **[`DispatchAddBlockTimeRange`](../src/components/schedule/DispatchAddBlockTimeRange.tsx)**. Default-`undefined` keeps the original `slotIndex / maxIdx` math byte-for-byte, so every non-User-Review caller (Quickfill, Schedule Dispatch hub / job week, schedule-block modals) stays on the full-rail layout with zero behavior change.
+
+**See also** — **`RECENT_FEATURES.md`** **v2.568** (trim), **v2.569** (stretch + floor); **`AGENTS.md`** User Review modal "Shared schedule-rail trim + stretch" row.
 
 ### Crew lead inheritance (deprecated)
 Legacy feature on **`people_crew_jobs`** / **`people_crew_bids`** where a follower row could set **`crew_lead_person_name`** to inherit that lead's `job_assignments` / `bid_assignments` for the same `work_date`. Removed in **v2.538** because the business now drives crew hours and billing off clock sessions (hourly people get their own approved clock; salary people get sessions split across their paid hours), so inheritance no longer matches how time is allocated.
@@ -653,6 +694,21 @@ Link between a count row and a price book entry. Stores fixture-to-pricing mappi
 **Database**: `bid_pricing_assignments` table
 
 **Purpose**: Persist which price book entry applies to each fixture count
+
+### Bid Pricing Package send
+Bids → Pricing tab → **Package and send** button (left of **Export CSV**). Sends an external pricing package to a teammate: the bid's Job Plans link plus a 4-column table (**Fixture or Tie-in**, **Count**, **Unit price**, **Revenue**). External by design — no Margin %, no Our cost, no Price book entry; hidden submission fixtures (`bid_count_row_submission_hides`) are dropped, but the footer total still reflects the live Pricing tab.
+
+**Audience**: `dev` / `master_technician` / `assistant` / `estimator`. Recipient is an org user from the existing roster (non-archived, no `helpers`, no `name='delete'`).
+
+**Two send paths**:
+- **Send via my mail** — opens `mailto:` (plain-text body via [`bidPackageMailto.ts`](src/lib/bidPackageMailto.ts)) and copies the HTML table to the clipboard so the user pastes a rich table next to the link.
+- **Send for me** — Edge function [`send-bid-pricing-package`](supabase/functions/send-bid-pricing-package/index.ts) re-computes pricing rows server-side and emails via Resend (`sendResendHtmlEmail`). Server-side re-compute guarantees the email always matches the live Pricing tab, never a stale tab.
+
+**Audit table**: `bid_pricing_package_sends` (migration `20260521221622_bid_pricing_package_sends.sql`). One row per attempt with `sent_via` either `'resend'` or `'mailto_logged'`. The mailto path writes through SECURITY INVOKER RPC `log_bid_pricing_package_send`; the Resend path writes through the Edge function's service-role client.
+
+**RLS**: SELECT for `dev` / `master_technician` / `assistant` / `estimator` gated on `can_access_bid_for_pricing(bid_id)`. INSERT same gate plus `sent_by_user_id = auth.uid()`. UPDATE / DELETE dev only.
+
+**Source of truth**: shared pure helper [`buildBidPricingPackageHtml.ts`](src/lib/buildBidPricingPackageHtml.ts) (mirrored at [`supabase/functions/_shared/bidPricingPackage.ts`](supabase/functions/_shared/bidPricingPackage.ts)) renders the table HTML for the modal preview, the clipboard payload, and the Resend email body — so the recipient sees exactly what the sender saw.
 
 ### Followup Sheet
 Printable/downloadable report showing account manager's assigned projects with contact details and submission history. Available in Submission & Followup tab.

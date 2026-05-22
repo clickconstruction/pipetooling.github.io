@@ -5,7 +5,12 @@ type Customer = Database['public']['Tables']['customers']['Row']
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 
 /** Users join shape from `bids` estimator / account_manager FK selects */
-export type EstimatorUser = { id: string; name: string | null; email: string }
+export type EstimatorUser = {
+  id: string
+  name: string | null
+  email: string
+  role?: Database['public']['Enums']['user_role'] | null
+}
 
 /** `service_types` join from bid list / preview select */
 export type BidServiceTypeJoin = Pick<

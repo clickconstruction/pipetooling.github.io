@@ -510,6 +510,10 @@ verify_jwt = false
 [functions.schedule-day-email-dispatch]
 verify_jwt = false
 
+# Bids Pricing "Package and send" → Resend: JWT validated in function (getUser + role gate).
+[functions.send-bid-pricing-package]
+verify_jwt = false
+
 # DB webhook / service role: Bearer is service role or TEAM_LEAD_CLOCK_WEBHOOK_SECRET in function.
 [functions.notify-team-lead-clock]
 verify_jwt = false

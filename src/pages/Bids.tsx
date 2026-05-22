@@ -59,6 +59,10 @@ import {
 import { BidBoardNotesPanel, type BidBoardNotesTab } from '../components/bids/BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from '../components/bids/BidBoardLostSummaryModal'
 import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from '../components/bids/GenerateUnitCostModal'
+import {
+  PackageAndSendBidPricingModal,
+  type PackageAndSendPricingRowInput,
+} from '../components/bids/PackageAndSendBidPricingModal'
 import { BidsWorkingBoard } from '../components/bids/BidsWorkingBoard'
 import { BidWorkingBoardArchivedModal } from '../components/bids/BidWorkingBoardArchivedModal'
 import { BidFormModal, type BidServiceTypeSwitchSibling } from '../components/bids/BidFormModal'
@@ -74,6 +78,7 @@ import { buildBidBoardWeeklySentSummaries } from '../lib/bidBoardWeeklySentStats
 import { BidBoardWeeklySentSection } from '../components/bids/BidBoardWeeklySentSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from '../components/bids/BidBoardWeeklyEstimatorLaborDevSection'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../lib/bidPricingRowCalculations'
+import { buildBidPricingPrintTableHtml, type BidPricingPrintRow } from '../lib/buildBidPricingPrintTableHtml'
 import {
   bidEligibleForWorkingBoardArchive,
   canUserArchiveBidOnWorkingBoard,
@@ -2008,6 +2013,8 @@ export default function Bids() {
     fixtureLabel: string
   } | null>(null)
   const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
+  // Package and send (Pricing tab → "Package and send" modal — left of CSV)
+  const [packageSendOpen, setPackageSendOpen] = useState(false)
 
   // Cover Letter tab
   const [coverLetterInclusionsByBid, setCoverLetterInclusionsByBid] = useState<Record<string, string>>({})
@@ -2357,7 +2364,7 @@ export default function Bids() {
         async () =>
           supabase
             .from('users')
-            .select('id, name, email')
+            .select('id, name, email, role')
             .is('archived_at', null)
             .neq('role', 'helpers')
             .order('name', { ascending: true, nullsFirst: false }),
@@ -5715,36 +5722,30 @@ export default function Bids() {
         hiddenSubmissionCountRowIds: hiddenPrint,
       })
       const totalRevenue = pricingPrint.totalRevenue
-      const rows = pricingPrint.rows.map((pr) => {
+      const printRows: BidPricingPrintRow[] = pricingPrint.rows.map((pr) => {
         const assignment = assignmentsForVersionPrint.find((a) => a.count_row_id === pr.countRow.id)
         const entry = pr.entry as PriceBookEntryWithFixture | undefined
-        const isFixedPrice = assignment?.is_fixed_price === true
         return {
-          countRow: pr.countRow as BidCountRow,
-          entry,
+          fixture: pr.countRow.fixture ?? null,
           count: pr.count,
+          priceBookEntryName: entry?.fixture_types?.name ?? null,
           unitPrice: pr.unitPrice,
-          isFixedPrice,
+          isFixedPrice: assignment?.is_fixed_price === true,
           cost: pr.cost,
           revenue: pr.revenue,
-          margin: pr.marginPct,
+          marginPct: pr.marginPct,
+          pctOfGrandTotal: pr.pctOfGrandTotal,
         }
       })
-      const tableRows = rows
-        .map(
-          ({ countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }) => {
-            const fixedHint = isFixedPrice ? ' <span style="font-size:0.85em;color:#4b5563">(fixed)</span>' : ''
-            return `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(unitPrice)}${fixedHint}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
-          }
-        )
-        .join('')
-      const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
+      const tableInnerHtml = buildBidPricingPrintTableHtml({
+        rows: printRows,
+        totalCost,
+        totalRevenue,
+        viewModel: pricingViewModel,
+      })
       bodyContent = `<h2>Price book</h2>
   <p>${versionName}</p>
-  <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Unit price</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
-    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right"></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
-  </table>`
+  <table>${tableInnerHtml}</table>`
     } else {
       bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
     }
@@ -6001,40 +6002,33 @@ export default function Bids() {
           hiddenSubmissionCountRowIds: hiddenV,
         })
         const totalRevenue = pricingPv.totalRevenue
-        const rows = pricingPv.rows.map((pr) => {
-          const assignment =
-            assignsV.find((a) => a.count_row_id === pr.countRow.id)
+        const printRows: BidPricingPrintRow[] = pricingPv.rows.map((pr) => {
+          const assignment = assignsV.find((a) => a.count_row_id === pr.countRow.id)
           const entry = pr.entry as PriceBookEntryWithFixture | undefined
-          const isFixedPrice = assignment?.is_fixed_price === true
           return {
-            countRow: pr.countRow as BidCountRow,
-            entry,
+            fixture: pr.countRow.fixture ?? null,
             count: pr.count,
+            priceBookEntryName: entry?.fixture_types?.name ?? null,
             unitPrice: pr.unitPrice,
-            isFixedPrice,
+            isFixedPrice: assignment?.is_fixed_price === true,
             cost: pr.cost,
             revenue: pr.revenue,
-            margin: pr.marginPct,
+            marginPct: pr.marginPct,
+            pctOfGrandTotal: pr.pctOfGrandTotal,
           }
         })
-        const tableRows = rows
-          .map(
-            ({ countRow, entry, count, unitPrice, isFixedPrice, cost, revenue, margin }) => {
-              const fixedHint = isFixedPrice ? ' <span style="font-size:0.85em;color:#4b5563">(fixed)</span>' : ''
-              return `<tr><td>${escapeHtml(countRow.fixture ?? '')}</td><td style="text-align:center">${count}</td><td>${escapeHtml(entry?.fixture_types?.name ?? '—')}</td><td style="text-align:right">$${formatCurrency(unitPrice)}${fixedHint}</td><td style="text-align:right">$${formatCurrency(cost)}</td><td style="text-align:right">$${formatCurrency(revenue)}</td><td style="text-align:center">${margin != null ? `${margin.toFixed(1)}%` : '—'}</td></tr>`
-            }
-          )
-          .join('')
-        const overallMarginStr = totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'
+        const tableInnerHtml = buildBidPricingPrintTableHtml({
+          rows: printRows,
+          totalCost,
+          totalRevenue,
+          viewModel: pricingViewModel,
+        })
         const pageBreak = i === priceBookVersions.length - 1 ? 'auto' : 'always'
         const versionName = version.name
         sections.push(
           `<section class="price-book-page" style="page-break-after: ${pageBreak}">
   <h2>${escapeHtml(versionName)}</h2>
-  <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Count</th><th>Price book entry</th><th style="text-align:right">Unit price</th><th style="text-align:right">Our cost</th><th style="text-align:right">Revenue</th><th style="text-align:center">Margin %</th></tr></thead>
-    <tbody>${tableRows}<tr style="background:#f9fafb; font-weight:600"><td>Total</td><td style="text-align:center"></td><td></td><td style="text-align:right"></td><td style="text-align:right">$${formatCurrency(totalCost)}</td><td style="text-align:right">$${formatCurrency(totalRevenue)}</td><td style="text-align:center">${overallMarginStr}</td></tr></tbody>
-  </table>
+  <table>${tableInnerHtml}</table>
 </section>`
         )
       }
@@ -9992,6 +9986,89 @@ export default function Bids() {
     () => new Map(teamLaborDataForBids.map((r) => [r.bidId, r])),
     [teamLaborDataForBids]
   )
+
+  /**
+   * Pricing tab — shared package source: external rows + total revenue used by the
+   * "Package and send" modal. Mirrors the IIFE around line 16029 so the modal preview /
+   * mailto plain text / clipboard HTML all read the same numbers as the table on screen.
+   * Returns null when the data preconditions for the toolbar buttons are not met.
+   */
+  const pricingPackageSource = useMemo<{
+    rows: PackageAndSendPricingRowInput[]
+    totalRevenue: number
+  } | null>(() => {
+    if (!selectedBidForPricing || !selectedPricingVersionId) return null
+    if (pricingCountRows.length === 0 || !pricingCostEstimate) return null
+    const totalMaterials =
+      (pricingMaterialTotalRoughIn ?? 0) +
+      (pricingMaterialTotalTopOut ?? 0) +
+      (pricingMaterialTotalTrimSet ?? 0)
+    const rate = pricingLaborRate ?? 0
+    const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+    const assignmentsForVersion = bidPricingAssignments.filter(
+      (a) => a.price_book_version_id === selectedPricingVersionId,
+    )
+    const customMap = new Map<string, number>()
+    for (const cp of bidCountRowCustomPrices) {
+      if (cp.price_book_version_id === selectedPricingVersionId) {
+        customMap.set(cp.count_row_id, Number(cp.unit_price))
+      }
+    }
+    const hidden = submissionHiddenIdsForVersion(
+      bidCountRowSubmissionHides,
+      selectedPricingVersionId,
+    )
+    const result = computeBidPricingRows({
+      countRows: pricingCountRows,
+      assignments: assignmentsForVersion.map((a) => ({
+        count_row_id: a.count_row_id,
+        price_book_entry_id: a.price_book_entry_id,
+        is_fixed_price: a.is_fixed_price ?? false,
+        unit_price_override: a.unit_price_override,
+      })),
+      entries: priceBookEntries,
+      customUnitPriceByCountRowId: customMap,
+      laborRows: pricingLaborRows,
+      totalMaterials,
+      laborRate: rate,
+      taxPercent,
+      materialsFromTakeoffByCountRowId: pricingFixtureMaterialsFromTakeoff,
+      hiddenSubmissionCountRowIds: hidden,
+    })
+    return {
+      rows: result.rows.map((r) => ({
+        fixture: r.countRow.fixture ?? '',
+        count: r.count,
+        unitPrice: r.unitPrice,
+        revenue: r.revenue,
+        omitFromSubmissionDocuments: r.omitFromSubmissionDocuments,
+      })),
+      totalRevenue: result.totalRevenue,
+    }
+  }, [
+    selectedBidForPricing,
+    selectedPricingVersionId,
+    pricingCountRows,
+    pricingCostEstimate,
+    pricingMaterialTotalRoughIn,
+    pricingMaterialTotalTopOut,
+    pricingMaterialTotalTrimSet,
+    pricingLaborRate,
+    costEstimatePOModalTaxPercent,
+    bidPricingAssignments,
+    bidCountRowCustomPrices,
+    bidCountRowSubmissionHides,
+    priceBookEntries,
+    pricingLaborRows,
+    pricingFixtureMaterialsFromTakeoff,
+  ])
+
+  const canPackageAndSendBidPricing =
+    myRole === 'dev' ||
+    myRole === 'master_technician' ||
+    myRole === 'assistant' ||
+    myRole === 'estimator'
+
   const bidCostsUnsent = bids.filter(
     (b) =>
       !b.bid_date_sent &&
@@ -10895,6 +10972,27 @@ export default function Bids() {
             await updateUnitPriceOverride(p.countRowId, price)
           }}
         />
+
+        {packageSendOpen && selectedBidForPricing && selectedPricingVersionId && pricingPackageSource ? (
+          <PackageAndSendBidPricingModal
+            open={packageSendOpen}
+            onClose={() => setPackageSendOpen(false)}
+            bid={selectedBidForPricing}
+            priceBookVersionId={selectedPricingVersionId}
+            priceBookVersionName={
+              priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? '—'
+            }
+            pricingRows={pricingPackageSource.rows}
+            totalRevenue={pricingPackageSource.totalRevenue}
+            estimatorUsers={estimatorUsers}
+            prefixMap={ledgerPrefixMap}
+            currentUserName={profileName ?? null}
+            onRequestEditBid={() => {
+              setPackageSendOpen(false)
+              openEditBid(selectedBidForPricing)
+            }}
+          />
+        ) : null}
 
         {staffOutcomeDrilldown && (
           <div
@@ -15788,6 +15886,30 @@ export default function Bids() {
                   h2Style={{ margin: 0, flex: '0 0 auto' }}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+                  {canPackageAndSendBidPricing ? (
+                    <button
+                      type="button"
+                      onClick={() => setPackageSendOpen(true)}
+                      disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
+                      title={
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
+                          ? 'Select a price book and ensure Counts and Cost Estimate exist'
+                          : 'Package and send pricing (Job Plans + 4-column table) to a teammate'
+                      }
+                      style={{
+                        padding: '0.5rem 1rem',
+                        background:
+                          !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#f3f4f6',
+                        color: '#111827',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        cursor:
+                          !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      Package and send
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     onClick={() => downloadPricingCsv()}
@@ -15808,7 +15930,7 @@ export default function Bids() {
                         !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    Export CSV
+                    CSV
                   </button>
                   <button
                     type="button"

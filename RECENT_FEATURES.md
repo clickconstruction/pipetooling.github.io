@@ -7,15 +7,18 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-21 (v2.569)
+last_updated: 2026-05-21 (v2.570)
 estimated_read_time: 30-45 minutes
 difficulty: Beginner to Intermediate
 
 format: "Reverse chronological (newest first)"
-version_range: "v2.569+ (reverse chronological)"
+version_range: "v2.570+ (reverse chronological)"
 
 key_sections:
-  - name: "Latest Version (v2.569)"
+  - name: "Latest Version (v2.570)"
+    line: ~1911
+    description: "Bids → Pricing tab — new **Package and send** button left of **Export CSV**. Staff (`dev` / `master_technician` / `assistant` / `estimator`) can mail a bid's external pricing package (Job Plans link + 4-column table: Fixture/Tie-in, Count, Unit price, Revenue) to a roster user without leaving the tab. Two paths: (a) **Send via my mail** opens a `mailto:` with a plain-text fallback body via [`bidPackageMailto.ts`](src/lib/bidPackageMailto.ts) and copies the HTML table to the clipboard via `navigator.clipboard.write([new ClipboardItem({ 'text/html': … })])` so the user pastes it into their compose window; (b) **Send for me** invokes new Edge function [`send-bid-pricing-package`](supabase/functions/send-bid-pricing-package/index.ts) which re-computes pricing rows server-side from `bid_count_rows` + `bid_pricing_assignments` + `bid_count_row_custom_prices` + `bid_count_row_submission_hides` + `price_book_entries` (no trust in any client-built HTML — guarantees the email always matches the live Pricing tab), then calls `sendResendHtmlEmail` from [`recurringJobReportCore.ts`](supabase/functions/_shared/recurringJobReportCore.ts). Both paths respect `submissionHiddenIdsForVersion` so the same rows hidden on Counts / Cover Letter are hidden from the email. Modal preview uses scoped `dangerouslySetInnerHTML` of the shared table HTML so what the recipient sees is exactly what the sender saw. New audit table **`bid_pricing_package_sends`** (migration **`20260521221622_bid_pricing_package_sends.sql`** — `bid_id` / `price_book_version_id` / `sent_by_user_id` / `recipient_user_id` / `recipient_email` / `sent_via` check'd `'resend' | 'mailto_logged'` / `resend_id` / `plans_link` / `revenue_total_cents` / `row_count` / `created_at`; index on `(bid_id, created_at DESC)`; RLS for all 6 roles — SELECT for dev/master/assistant/estimator gated on `can_access_bid_for_pricing(bid_id)`, INSERT same plus `sent_by_user_id = auth.uid()`, UPDATE/DELETE dev only). SECURITY INVOKER RPC **`log_bid_pricing_package_send`** (gated through the INSERT policy) writes the mailto attempt row from the client; the Edge function uses service-role for the resend row. Recipient picker is `SearchableSelect` over the existing `estimatorUsers` roster (non-archived, no helpers, no `name='delete'`) and requires a non-empty email. Toolbar button shares the same data preconditions as Export CSV (`selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate`); blocked when `plans_link` is blank with an inline **Edit bid** button that opens `JobFormModal` via the existing `openEditBid`. New shared helpers: [`src/lib/buildBidPricingPackageHtml.ts`](src/lib/buildBidPricingPackageHtml.ts) (+ [test](src/lib/buildBidPricingPackageHtml.test.ts), 18 cases) — pure HTML / plain-text builders + external-row filter + cents totaler, mirrored byte-for-byte in [`supabase/functions/_shared/bidPricingPackage.ts`](supabase/functions/_shared/bidPricingPackage.ts) (keep-in-sync convention from `physicalInvoiceFixtureScaling.ts` ↔ `stripeInvoiceItemsFromFixtures.ts`). New mailto helper [`src/lib/bidPackageMailto.ts`](src/lib/bidPackageMailto.ts) (+ [test](src/lib/bidPackageMailto.test.ts), 6 cases) — full URL-encoding, plans-link line, simple email-shape validation. New modal [`src/components/bids/PackageAndSendBidPricingModal.tsx`](src/components/bids/PackageAndSendBidPricingModal.tsx). `Bids.tsx` adds one shared `pricingPackageSource = useMemo(...)` so the preview / mailto / Resend paths all read the same numbers as the on-screen Pricing table (one source of truth)."
+  - name: "Previous Version (v2.569)"
     line: ~1900
     description: "User Review modal — **schedule-rail stretch** (extends v2.568). The grey rail no longer just clips, it **rescales**: when a view (Day / Week per-day rows / Month per-day rows) has activity, every strip stretches its visible `[lo, hi]` window edge-to-edge so the user can see more of the active part of the day. The shared-window invariant is preserved (one window per view, every row gets the same window) so wall-time x-coords still line up across rows (`9 AM` lands at the same screen x on every visible row in Week / Month). Three coordinated changes inside the shared rail component [`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx): (1) new internal **`slotToTrackT(slotIndex, slotCount, window)`** and **`trackTToSlotIndex(t, slotCount, window)`** helpers centralize the slot↔track mapping — when `window` is undefined the math is the un-rescaled `slotIndex / maxIdx` (Quickfill / Schedule Dispatch path unchanged); when window is `{ lo, hi }` the math is `(clamp(slotIndex, lo, hi) - lo) / (hi - lo)` so `lo` lands at t=0 and `hi` at t=1. Forward exports `dispatchAddBlockTrackThumbLeftPct` and inverse helpers `clientXToSlotIndex` / `clientXToDispatchMinutes` / `thumbPixelX` all route through these helpers (inverse mappings update too — User Review strips are `disabled` so drag is unreachable, but the inverse stays honest for future interactive opt-in). (2) Rail under the rescale spans full track width when `{ lo, hi }` is provided (the visible strip *is* the window now — edge-clipping would double-trim); `null` still hides, `undefined` still draws the full un-trimmed rail. (3) Occupied / secondary bands and proposed-range fill all use `slotToTrackT` so they paint at their wall-time x in the rescaled strip; defensive `display: none` when `hi <= lo` after rescale. Orientation labels (the bottom row in `DispatchAddBlockTimeRange` and the shared header **`QuickfillScheduleOrientationLabelsRow`** above the strips) **filter** to inside-window marks only and **reposition** to their wall-time x in the rescaled space — so a stretched view that only covers 7 AM–11 AM shows just `8 AM` at the correct rescaled x, not all three labels at original positions. **4-hour minimum window floor** via new helper **`applyRailWindowMinFloor(window, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS = 8)`** in [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts) — `null` passes through (empty view stays empty), already-wide windows pass through, otherwise expands symmetrically around the midpoint then re-clamps to `[0, DISPATCH_ADD_BLOCK_SLOT_COUNT - 1]` with deficit-shift to the opposite side when clamping shrinks one edge (so a 30-min punch at 9 AM expands to ~7 AM-11 AM and a 30-min punch at 4 AM expands to 4 AM-8 AM, never to a misleading sliver). The floor lives at the **orchestrator boundary** — each of `UserDayScheduleSection.tsx`, `UserWeekScheduleSection.tsx`, `UserMonthScheduleSection.tsx` wraps the existing `computeUserReviewSharedSlotWindow(...)` `useMemo` result with `applyRailWindowMinFloor(raw, USER_REVIEW_RAIL_MIN_FLOOR_SLOTS)`. **`QuickfillScheduleOrientationLabelsRow`** gains an optional `railTrimWindow` prop (default-undefined keeps existing Quickfill positioning) so the User Review section headers track the rescale too. **Intentional reversal of v2.568's non-goal**: v2.568 explicitly kept bands and labels on the un-rescaled track to preserve absolute wall-time x; v2.569 rescales them but maintains the cross-row alignment via the shared-window invariant. Empty view: window is still `null`, rail still hidden, no rescale, no labels — v2.568 behavior preserved on empty days. Quickfill, Schedule Dispatch hub / job week, schedule-block modals stay untouched because none of them pass `railTrimWindow` — `slotToTrackT(idx, count, undefined)` returns the original `idx / maxIdx` math byte-for-byte. New helper + constant in [`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts) (6 new unit tests; 14 total in file — null passthrough, already-wide passthrough, symmetric expand around mid with room, left-edge clamp with right shift, right-edge clamp with left shift, floor exceeding track → returns full `[0, maxIdx]`). Modified: [`DispatchAddBlockTimeRange.tsx`](src/components/schedule/DispatchAddBlockTimeRange.tsx) (helper extraction + widened exported helper + rescaled bands / fill / rail / orientation marks / inverse mappings), [`QuickfillScheduleUserRow.tsx`](src/components/schedule/QuickfillScheduleUserRow.tsx) (`QuickfillScheduleOrientationLabelsRow` accepts `railTrimWindow`), [`UserDayScheduleSection.tsx`](src/components/userReview/UserDayScheduleSection.tsx) + [`UserWeekScheduleSection.tsx`](src/components/userReview/UserWeekScheduleSection.tsx) + [`UserMonthScheduleSection.tsx`](src/components/userReview/UserMonthScheduleSection.tsx) (apply floor + thread window into the header). No DB / migration / RLS / RPC / Edge changes. Verified: `npx tsc --noEmit` clean; **14 / 14** unit tests in `userReviewSharedSlotWindow.test.ts` pass (6 new); **1014 / 1014** total tests pass; zero new lints on touched files."
   - name: "Previous Version (v2.568)"
@@ -1906,6 +1909,74 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.570)
+
+**Date**: 2026-05-21
+
+### Bids → Pricing tab — Package and send
+
+A new **Package and send** button sits left of **Export CSV** on the Bids Pricing tab toolbar. Clicking it opens a modal that gives staff (`dev` / `master_technician` / `assistant` / `estimator`) a one-stop way to mail a bid's external pricing package (Job Plans link + the 4-column external table: **Fixture or Tie-in**, **Count**, **Unit price**, **Revenue**) to a teammate without leaving the tab.
+
+The button shares the same data preconditions as Export CSV — `selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate` — so it never appears with stale or partial pricing state. Disabled hover title spells out the missing piece. Superintendents and field roles never see the button (the rest of the Pricing tab already excludes them).
+
+#### Modal layout (top → bottom)
+
+1. **Job plans** — mirrors `BidPreviewModal`'s **Open plans** affordance. When `bid.plans_link` is set, an **Open plans** button opens the URL via `openInExternalBrowser` and the URL itself prints muted on the second line. When the link is blank, an amber **No job plans URL on this bid.** message renders alongside an **Edit bid** button that closes the modal and routes through the existing `openEditBid(bid)`; both send buttons stay disabled until a URL is saved.
+2. **Pricing preview** — scoped `<div>` containing `dangerouslySetInnerHTML={{ __html: tableHtml }}`. The table is built by the shared helper so the preview, the mailto plain-text body, the clipboard HTML, and the Resend email body are all rendered from the same pivot — what the recipient sees is exactly what the sender saw, and the footer total still matches the live Pricing tab even when fixtures are hidden from submission.
+3. **Send to** — `SearchableSelect` over the existing `estimatorUsers` roster (the same `loadEstimatorUsers` query used everywhere on the Bids page: non-archived, no `helpers`, no `name='delete'`). Only users with a non-empty email become valid recipients.
+
+#### Two send paths
+
+**Send via my mail** (neutral grey button)
+
+- Builds a `mailto:` URL via the new pure helper [`bidPackageMailto.ts`](src/lib/bidPackageMailto.ts). Subject is `Pricing — {bidLabel}`. Body is a fixed-width plain-text version of the same 4-column table (mail clients render `mailto:` bodies as plain text only) plus an optional `Job plans:` line at the top.
+- Copies the HTML table to the clipboard via `navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([tableHtml], { type: 'text/html' }), 'text/plain': new Blob([tableHtml], { type: 'text/plain' }) })])` so the user can paste a rich table into their compose window beside the link.
+- Opens the mail client with `openInExternalBrowser(mailtoUrl)` (same iOS-PWA-aware path the rest of the app uses for external links).
+- Calls SECURITY INVOKER RPC `log_bid_pricing_package_send` so the attempt is captured in the audit table with `sent_via='mailto_logged'`. RPC failures are swallowed silently because the user already opened their compose window — best-effort logging.
+- Success toast: `Mail draft opened — table copied to clipboard, paste into the email.` (or a soft fallback when clipboard write fails).
+
+**Send for me** (primary blue button)
+
+- POSTs `{ bid_id, price_book_version_id, recipient_user_id }` to a new Edge function [`send-bid-pricing-package`](supabase/functions/send-bid-pricing-package/index.ts).
+- The Edge function authenticates the JWT, confirms the sender's role and the recipient's existence/email, then **re-computes the pricing rows server-side** from `bid_count_rows` + `bid_pricing_assignments` + `bid_count_row_custom_prices` + `bid_count_row_submission_hides` + `price_book_entries` (joined with `fixture_types(name)` so the no-assignment fallback can match by fixture name like the client does). This guarantees the email always matches truth — a tab that's been open for hours can't ship a stale snapshot.
+- Builds the email body via the same shared helper used by the modal preview, then dispatches via `sendResendHtmlEmail` from [`recurringJobReportCore.ts`](supabase/functions/_shared/recurringJobReportCore.ts).
+- Writes a `sent_via='resend'` row to the audit table (with the Resend message id when present) using the service-role client.
+- Returns `{ ok: true, resend_id }` on success or `{ ok: false, error }` otherwise. Modal toasts success / error and auto-closes ~900 ms after a successful send.
+
+#### Audit table — `bid_pricing_package_sends`
+
+Migration **`20260521221622_bid_pricing_package_sends.sql`** creates the table with `id` / `bid_id` / `price_book_version_id` / `sent_by_user_id` / `recipient_user_id` / `recipient_email` / `sent_via` (check `'resend' | 'mailto_logged'`) / `resend_id` / `plans_link` / `revenue_total_cents` / `row_count` / `created_at`. Index on `(bid_id, created_at DESC)` for a future *Last sent…* subline. RLS for all 6 roles per AGENTS.md:
+
+- **SELECT** — `dev | master_technician | assistant | estimator` gated on `can_access_bid_for_pricing(bid_id)`. Subcontractor / helpers / primary / superintendent: no policy match → denied.
+- **INSERT** — same role gate, plus `sent_by_user_id = auth.uid()` so the RPC can't impersonate a different sender. The Edge function uses service-role and bypasses this policy.
+- **UPDATE** / **DELETE** — dev only.
+
+The SECURITY INVOKER function `log_bid_pricing_package_send` runs the mailto INSERT under the caller's JWT so the policy gate stays the source of truth.
+
+#### Shared helpers + tests
+
+- [`src/lib/buildBidPricingPackageHtml.ts`](src/lib/buildBidPricingPackageHtml.ts) + [test](src/lib/buildBidPricingPackageHtml.test.ts) — pure HTML / plain-text builders, external-row filter (`omitFromSubmissionDocuments` + `count > 0`), `escapeHtml`, currency formatter, cents totaler. 18 unit tests.
+- [`supabase/functions/_shared/bidPricingPackage.ts`](supabase/functions/_shared/bidPricingPackage.ts) — mirrors the file above byte-for-byte for the Deno runtime. Edge bundles can't import from `src/lib/`, so the project's existing "keep in sync" convention (`physicalInvoiceFixtureScaling.ts` ↔ `stripeInvoiceItemsFromFixtures.ts`) applies.
+- [`src/lib/bidPackageMailto.ts`](src/lib/bidPackageMailto.ts) + [test](src/lib/bidPackageMailto.test.ts) — `buildBidPackageMailtoUrl({ recipientEmail, bidLabel, plansLink, plainTextBody })` with full `encodeURIComponent` of every user-controllable segment + a simple email shape check that throws on a bad recipient. 6 unit tests.
+- [`src/components/bids/PackageAndSendBidPricingModal.tsx`](src/components/bids/PackageAndSendBidPricingModal.tsx) — the modal itself; pulls `pricingPackageSource` / `priceBookVersionName` / `estimatorUsers` / `prefixMap` / `profileName` from the Bids page, so the modal does zero new Supabase reads.
+
+#### `Bids.tsx` wiring
+
+- New `useMemo` `pricingPackageSource` near the existing `teamLaborByBidId` block reproduces the same `computeBidPricingRows` call that the Pricing tab's JSX IIFE makes — so the modal preview, mailto body, clipboard HTML, and Edge-function expected-shape all originate from one source of truth.
+- New role gate `canPackageAndSendBidPricing` for the staff allowlist.
+- New `packageSendOpen` state.
+- New toolbar button left of Export CSV (same neutral `#f3f4f6` background and identical disabled treatment).
+- The modal is mounted alongside `GenerateUnitCostModal` and only renders when `packageSendOpen && selectedBidForPricing && selectedPricingVersionId && pricingPackageSource` (avoids `useMemo`-after-conditional-render bugs and never sends `undefined` props).
+
+#### Out of scope (v2)
+
+- *Last sent …* subline in `BidPreviewModal` reading `bid_pricing_package_sends` (table is ready, index exists, just no surface yet).
+- Free-text recipient email (GC/builder direct send).
+- *Cc me* toggle on the Resend path.
+- Resend webhook updating delivery status on the audit row.
+
 ---
 
 ## Latest Updates (v2.569)
