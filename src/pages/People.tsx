@@ -126,6 +126,7 @@ import { formatMercuryDebitCardIdCompact } from '../lib/mercuryRawDebitCard'
 import {
   bucketOverheadPartsLinesByAccountingLabel,
   overheadPartsAccountingBucketFromDefaultKey,
+  sumMaterialsTotalUsdExcludingInternalTransfer,
   type OverheadPartsAccountingBucketKey,
 } from '../lib/overheadPartsAccountingBuckets'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -11486,10 +11487,20 @@ export default function People() {
       const sortedSessionsOj = [...laborLines].sort((a, b) =>
         `${a.userName} ${a.sessionId}`.localeCompare(`${b.userName} ${b.sessionId}`),
       )
-      const totalPartsUsdOj = overheadOtherJobsPartsUsdByDay.get(workDate) ?? 0
       const sortedPartLinesOj = [...(overheadOtherJobsPartsDetailByDay.get(workDate) ?? [])].sort((a, b) =>
         `${a.source} ${a.sortKey}`.localeCompare(`${b.source} ${b.sortKey}`),
       )
+      // Internal Transfers are not an expense. Recompute the Materials total
+      // from bucketed sections so the modal header (and Combined) match the
+      // breakdown shown below — even if legacy data has Internal-Transfer-
+      // labeled splits feeding the upstream RPC total.
+      const partsSectionsOj = bucketOverheadPartsLinesByAccountingLabel(
+        sortedPartLinesOj,
+        overheadOtherJobsAccountingBucketByTxId,
+      )
+      const totalPartsUsdOj = sumMaterialsTotalUsdExcludingInternalTransfer(partsSectionsOj)
+      const internalTransferUsdOj =
+        partsSectionsOj.find((s) => s.key === 'internal_transfer')?.totalUsd ?? 0
       const grandTotalUsdOj = totalLaborUsdOj + totalPartsUsdOj
       return {
         workDate,
@@ -11498,10 +11509,12 @@ export default function People() {
         totalHours: totalHoursOj,
         totalLaborUsd: totalLaborUsdOj,
         totalPartsUsd: totalPartsUsdOj,
+        internalTransferUsd: internalTransferUsdOj,
         grandTotalUsd: grandTotalUsdOj,
         personRows: aggregateOtherJobsLaborByPerson(laborLines),
         sortedSessions: sortedSessionsOj,
         sortedPartLines: sortedPartLinesOj,
+        partsSections: partsSectionsOj,
       } as const
     }
 
@@ -11544,6 +11557,7 @@ export default function People() {
     overheadOtherJobsLabor,
     overheadOtherJobsPartsUsdByDay,
     overheadOtherJobsPartsDetailByDay,
+    overheadOtherJobsAccountingBucketByTxId,
   ])
 
   const overheadValueCellButtonStyle: CSSProperties = {
@@ -12949,6 +12963,20 @@ export default function People() {
                       <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem' }}>
                         Materials: {formatCurrency(overheadBreakdownModalModel.totalPartsUsd)}
                       </p>
+                      {overheadBreakdownModalModel.internalTransferUsd > 0 ? (
+                        <p
+                          style={{
+                            margin: '0.15rem 0 0 0',
+                            fontSize: '0.75rem',
+                            color: '#6b7280',
+                            fontStyle: 'italic',
+                          }}
+                          title="Movement between your own accounts; excluded from Materials."
+                        >
+                          Internal Transfers (excluded):{' '}
+                          {formatCurrency(overheadBreakdownModalModel.internalTransferUsd)}
+                        </p>
+                      ) : null}
                       <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
                         Combined: {formatCurrency(overheadBreakdownModalModel.grandTotalUsd)}
                       </p>
@@ -13164,42 +13192,68 @@ export default function People() {
                           <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
                         ) : (
                           <>
-                            {bucketOverheadPartsLinesByAccountingLabel(
-                              overheadBreakdownModalModel.sortedPartLines,
-                              overheadOtherJobsAccountingBucketByTxId,
-                            ).map((section) => (
-                              <div key={section.key} style={{ marginTop: '0.5rem' }}>
+                            {overheadBreakdownModalModel.partsSections.map((section) => {
+                              const isInternalTransfer = section.key === 'internal_transfer'
+                              if (isInternalTransfer && section.lines.length === 0) return null
+                              return (
                                 <div
+                                  key={section.key}
                                   style={{
-                                    fontWeight: 600,
-                                    color: '#374151',
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'baseline',
-                                    gap: '0.5rem',
+                                    marginTop: '0.5rem',
+                                    ...(isInternalTransfer
+                                      ? {
+                                          paddingLeft: '0.5rem',
+                                          borderLeft: '3px solid #94a3b8',
+                                          background: '#f8fafc',
+                                        }
+                                      : null),
                                   }}
                                 >
-                                  <span>
-                                    {section.label} ({section.lines.length})
-                                  </span>
-                                  <span style={{ fontWeight: 500, color: '#6b7280' }}>
-                                    ${formatCurrency(section.totalUsd)}
-                                  </span>
+                                  <div
+                                    style={{
+                                      fontWeight: 600,
+                                      color: '#374151',
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      alignItems: 'baseline',
+                                      gap: '0.5rem',
+                                    }}
+                                  >
+                                    <span>
+                                      {section.label} ({section.lines.length})
+                                      {isInternalTransfer ? (
+                                        <span
+                                          style={{
+                                            marginLeft: '0.4rem',
+                                            fontWeight: 500,
+                                            color: '#64748b',
+                                            fontStyle: 'italic',
+                                            fontSize: '0.7rem',
+                                          }}
+                                        >
+                                          (not counted in Materials)
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    <span style={{ fontWeight: 500, color: '#6b7280' }}>
+                                      ${formatCurrency(section.totalUsd)}
+                                    </span>
+                                  </div>
+                                  {section.lines.length === 0 ? (
+                                    <p style={{ margin: '0.15rem 0 0 1.1rem', color: '#9ca3af' }}>None</p>
+                                  ) : (
+                                    <ul style={{ margin: '0.15rem 0 0 0', paddingLeft: '1.1rem' }}>
+                                      {section.lines.map((ln) => (
+                                        <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
+                                          {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
+                                          ${formatCurrency(ln.amountUsd)}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
                                 </div>
-                                {section.lines.length === 0 ? (
-                                  <p style={{ margin: '0.15rem 0 0 1.1rem', color: '#9ca3af' }}>None</p>
-                                ) : (
-                                  <ul style={{ margin: '0.15rem 0 0 0', paddingLeft: '1.1rem' }}>
-                                    {section.lines.map((ln) => (
-                                      <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
-                                        {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label} —{' '}
-                                        ${formatCurrency(ln.amountUsd)}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            ))}
+                              )
+                            })}
                           </>
                         )}
                       </details>

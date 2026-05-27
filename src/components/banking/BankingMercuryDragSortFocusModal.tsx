@@ -488,6 +488,7 @@ export default function BankingMercuryDragSortFocusModal({
                           expanded={labelCardsExpanded}
                           visualState={blocked ? 'idle' : visualState}
                           onDelete={undefined}
+                          defaultKey={L.default_key}
                         />
                       </button>
                     )

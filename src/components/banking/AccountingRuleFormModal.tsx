@@ -7,6 +7,7 @@ import {
   type AccountingLabelRuleCriteriaV1,
   accountingRuleEffectiveClauseCount,
 } from '../../lib/accountingLabelRuleMatch'
+import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
 
@@ -114,6 +115,8 @@ export type AccountingRuleFormModalProps = {
   onSaveAndApply?: (draft: AccountingRuleSaveDraft) => Promise<void>
   /** Disables actions while parent apply-rules is running (toolbar). */
   applyRulesBusy?: boolean
+  /** When set and `editingRuleId !== null`, renders a trash icon in the header that opens a nested confirm modal. */
+  onDelete?: () => Promise<void>
 }
 
 export function AccountingRuleFormModal({
@@ -127,6 +130,7 @@ export function AccountingRuleFormModal({
   onSave,
   onSaveAndApply,
   applyRulesBusy = false,
+  onDelete,
 }: AccountingRuleFormModalProps) {
   const { showToast } = useToastContext()
   const accountingLabelFieldId = useId()
@@ -134,9 +138,11 @@ export function AccountingRuleFormModal({
   const [nameManuallyEdited, setNameManuallyEdited] = useState(false)
   const [submitBusy, setSubmitBusy] = useState(false)
   const [saveActionKind, setSaveActionKind] = useState<'save' | 'saveApply' | null>(null)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const labelSuffixSeededRef = useRef(false)
 
-  const controlsDisabled = submitBusy || applyRulesBusy
+  const controlsDisabled = submitBusy || applyRulesBusy || deleting
 
   const sortedLabelSelectOptions = useMemo(
     () => buildSortedAccountingLabelSelectOptions(labels, labelAssignmentCountById),
@@ -227,6 +233,22 @@ export function AccountingRuleFormModal({
     }
   }
 
+  const handleConfirmDelete = async () => {
+    if (!onDelete || deleting) return
+    setDeleting(true)
+    try {
+      await onDelete()
+      // Parent typically closes the modal on success, but defensively close
+      // the nested confirm too in case the parent leaves it open.
+      setDeleteConfirmOpen(false)
+    } catch {
+      // deleteRuleCore re-throws after toasting; keep the confirm open so the
+      // user can retry without re-opening it.
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <div
       role="presentation"
@@ -262,7 +284,41 @@ export function AccountingRuleFormModal({
           overflowY: 'auto',
         }}
       >
-        <h3 style={{ margin: '0 0 1rem' }}>{editingRuleId ? 'Edit rule' : 'New rule'}</h3>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            marginBottom: '1rem',
+          }}
+        >
+          <h3 style={{ margin: 0 }}>{editingRuleId ? 'Edit rule' : 'New rule'}</h3>
+          {editingRuleId !== null && onDelete ? (
+            <button
+              type="button"
+              onClick={() => setDeleteConfirmOpen(true)}
+              disabled={controlsDisabled}
+              title="Delete rule"
+              aria-label="Delete rule"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 32,
+                height: 32,
+                padding: 0,
+                background: 'transparent',
+                border: 'none',
+                borderRadius: 6,
+                cursor: controlsDisabled ? 'not-allowed' : 'pointer',
+                color: controlsDisabled ? '#9ca3af' : '#b91c1c',
+              }}
+            >
+              <PayStubDeleteIcon color="currentColor" size={18} />
+            </button>
+          ) : null}
+        </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.875rem' }}>
             Name
@@ -484,6 +540,93 @@ export function AccountingRuleFormModal({
           </div>
         </div>
       </div>
+      {deleteConfirmOpen ? (
+        <div
+          role="presentation"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1201,
+            padding: '1rem',
+            boxSizing: 'border-box',
+          }}
+          onMouseDown={(e) => {
+            if (deleting) return
+            if (e.target === e.currentTarget) setDeleteConfirmOpen(false)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rule-form-delete-confirm-title"
+            onMouseDown={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              padding: '1.5rem',
+              borderRadius: 8,
+              minWidth: 360,
+              maxWidth: 480,
+              width: '100%',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
+              border: '1px solid #e5e7eb',
+              boxSizing: 'border-box',
+            }}
+          >
+            <h2
+              id="rule-form-delete-confirm-title"
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}
+            >
+              Delete rule?
+            </h2>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>
+              <strong>{form.name.trim() || '—'}</strong>
+            </p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              Pending suggestions tied to this rule will be removed. This cannot be undone.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!deleting) setDeleteConfirmOpen(false)
+                }}
+                disabled={deleting}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'white',
+                  color: '#111827',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmDelete()}
+                disabled={deleting}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: deleting ? '#9ca3af' : '#b91c1c',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: deleting ? 'not-allowed' : 'pointer',
+                  fontWeight: 500,
+                }}
+              >
+                {deleting ? 'Deleting…' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

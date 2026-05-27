@@ -2042,7 +2042,10 @@ interface Body {
 
 ### sync-mercury-transactions
 
-**Purpose**: **Dev-only** pull from Mercury **[List transactions](https://docs.mercury.com/reference/listtransactions)** into **`mercury_transactions`** (service-role upsert). Invoked from the Banking page **Refresh** button via `supabase.functions.invoke`.
+**Purpose**: **Dev-only** pull from Mercury **[List transactions](https://docs.mercury.com/reference/listtransactions)** into **`mercury_transactions`** (service-role upsert on `mercury_id`). Two invocation paths from the Banking page (`src/pages/Banking.tsx`):
+
+- **Refresh from Mercury** — top-of-page button + Advanced menu item; daily refresh path. Always posts **`{ lookback_days: 90 }`** so the daily round-trip stays fast (~10s) and idempotent.
+- **Backfill from Mercury…** (**v2.575**, dev-only Advanced menu item) — opens [`MercuryBackfillModal.tsx`](src/components/banking/MercuryBackfillModal.tsx) and posts **`{ start, end }`** with a custom `[start, end]` range (default `[today − 365, today]`, range capped at 3650 days client-side; future / reverse ranges blocked). The function already supports this payload — no Edge change.
 
 **Endpoint**: `POST /functions/v1/sync-mercury-transactions`
 
@@ -2056,8 +2059,12 @@ interface Body {
 
 #### Request body (optional JSON)
 
-- `start`, `end` — YYYY-MM-DD filter on Mercury **`createdAt`** (defaults: last **90** days through today).
-- `lookback_days` — if `start` omitted, use this many days back (default **90**, max **3650**).
+- `start`, `end` — YYYY-MM-DD filter on Mercury **`createdAt`** (defaults: last **90** days through today). When both are provided, `lookback_days` is ignored.
+- `lookback_days` — if `start` omitted, use this many days back (default **90**, max **3650**). Used by the everyday **Refresh from Mercury** path; the **Backfill from Mercury…** modal uses explicit `start`/`end` instead.
+
+#### Pagination cap
+
+Internal: 500 rows per Mercury page, **`MAX_PAGES = 120`** (so up to **60,000 transactions per invocation**). A 1-year window for a typical plumbing business is comfortably under this. Larger ranges should be split into multiple invocations (the upsert on `mercury_id` makes overlap safe).
 
 #### Response
 

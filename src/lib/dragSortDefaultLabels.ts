@@ -186,7 +186,29 @@ export const DRAG_SORT_DEFAULT_LABELS: DragSortDefaultLabelDef[] = [
     scheduleCLine: 'Part I',
     description: 'Gross receipts or sale',
   },
+  {
+    defaultKey: 'internal_transfers',
+    name: 'Internal Transfers',
+    scheduleCLine: 'N/A',
+    description:
+      'Movement between your own Mercury accounts. Not an expense — excluded from Schedule C totals and from job/material cost rollups. Cannot be assigned to a job split.',
+  },
 ]
+
+/** Stable `default_key` for the Internal Transfers built-in label (referenced by guards in Drag Sort, Accounting, and the allocations modal). */
+export const INTERNAL_TRANSFERS_DEFAULT_KEY = 'internal_transfers' as const
+
+/**
+ * Returns true when the given label row is the Internal Transfers built-in.
+ * Internal Transfers cannot coexist with `mercury_transaction_splits` — see
+ * the hard-block guards in `BankingMercuryDragSortTab.applyDragSortAssignment`
+ * and `MercuryTransactionAllocationsModal`.
+ */
+export function isInternalTransfersLabel(
+  label: { default_key: string | null } | null | undefined,
+): boolean {
+  return label?.default_key === INTERNAL_TRANSFERS_DEFAULT_KEY
+}
 
 export async function ensureDragSortDefaultLabels(): Promise<void> {
   const payload: DragSortLabelInsert[] = DRAG_SORT_DEFAULT_LABELS.map((def, i) => ({

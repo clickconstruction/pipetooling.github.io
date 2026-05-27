@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
+import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../lib/dragSortDefaultLabels'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = {
@@ -309,6 +310,14 @@ export function MercuryTransactionAllocationsModal({
   const [staffDaySessionBids, setStaffDaySessionBids] = useState<{ id: string; label: string }[]>([])
   const [staffDayContextLoading, setStaffDayContextLoading] = useState(false)
   const [staffDayContextError, setStaffDayContextError] = useState<string | null>(null)
+  /**
+   * Whether this Mercury transaction currently carries the **Internal
+   * Transfers** Drag Sort label. Internal Transfers and job splits are
+   * mutually exclusive — when this is true the form is read-only and Save
+   * is disabled (matched by the guard in `BankingMercuryDragSortTab`).
+   * `null` while loading; `false` otherwise.
+   */
+  const [internalTransfersLabelLocked, setInternalTransfersLabelLocked] = useState<boolean | null>(null)
 
   const txAmount = transaction ? Number(transaction.amount) : 0
   const displayTotal = Math.abs(txAmount)
@@ -450,6 +459,44 @@ export function MercuryTransactionAllocationsModal({
     }
     setRecentPersonIds(readRecentPersonUserIds(recentPersonPicksStorageKey))
   }, [open, recentPersonPicksStorageKey])
+
+  /**
+   * Probe the Drag Sort assignment + label `default_key` for this transaction.
+   * One round-trip per modal open via Supabase's foreign-table embed; result
+   * locks the form when the tx is currently labeled Internal Transfers.
+   */
+  useEffect(() => {
+    if (!open || !transaction?.id) {
+      setInternalTransfersLabelLocked(null)
+      return
+    }
+    let cancelled = false
+    setInternalTransfersLabelLocked(null)
+    void (async () => {
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_transaction_drag_sort_assignments')
+              .select('mercury_transaction_id, mercury_drag_sort_labels(default_key)')
+              .eq('mercury_transaction_id', transaction.id)
+              .limit(1),
+          'mercury alloc internal transfers probe',
+        )
+        if (cancelled) return
+        const head = (rows ?? [])[0] as
+          | { mercury_drag_sort_labels: { default_key: string | null } | null }
+          | undefined
+        const dk = head?.mercury_drag_sort_labels?.default_key ?? null
+        setInternalTransfersLabelLocked(dk === INTERNAL_TRANSFERS_DEFAULT_KEY)
+      } catch {
+        if (!cancelled) setInternalTransfersLabelLocked(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, transaction?.id])
 
   useEffect(() => {
     if (!open || !tallySelfService || !transaction?.posted_at) {
@@ -637,11 +684,12 @@ export function MercuryTransactionAllocationsModal({
 
   const canSave = useMemo(() => {
     if (!transaction) return false
+    if (internalTransfersLabelLocked === true) return false
     if (lines.length === 0) return true
     if (displayTotal <= 0) return false
     if (!allocationSum.ok) return false
     return Math.abs(remainder) < sumEpsilon
-  }, [transaction, lines.length, displayTotal, allocationSum.ok, remainder])
+  }, [transaction, internalTransfersLabelLocked, lines.length, displayTotal, allocationSum.ok, remainder])
 
   const recentChipsOrdered = useMemo(() => {
     if (!recentPersonPicksStorageKey) return []
@@ -649,19 +697,34 @@ export function MercuryTransactionAllocationsModal({
     return recentPersonIds.filter((id) => valid.has(id))
   }, [recentPersonPicksStorageKey, recentPersonIds, usersOptions])
 
-  const addJobLine = useCallback((row: JobSearchRow) => {
-    setLines((prev) => {
-      if (prev.some((p) => p.jobId === row.id)) return prev
-      const label = formatJobLedgerShortLine(ledgerPrefixMap, row.service_type_id, row.hcp_number, row.job_name).trim()
-      const appended = [
-        ...prev,
-        { jobId: row.id, jobLabel: label, mode: 'dollars' as SplitMode, valueStr: '', note: '' },
-      ]
-      return redistributeEqualSplit(appended, displayTotal)
-    })
-    setJobSearch('')
-    setJobResults([])
-  }, [displayTotal, ledgerPrefixMap])
+  const addJobLine = useCallback(
+    (row: JobSearchRow) => {
+      if (internalTransfersLabelLocked === true) {
+        showToast(
+          'This transaction is labeled Internal Transfers and cannot be split onto jobs. Remove the label first.',
+          'error',
+        )
+        return
+      }
+      setLines((prev) => {
+        if (prev.some((p) => p.jobId === row.id)) return prev
+        const label = formatJobLedgerShortLine(
+          ledgerPrefixMap,
+          row.service_type_id,
+          row.hcp_number,
+          row.job_name,
+        ).trim()
+        const appended = [
+          ...prev,
+          { jobId: row.id, jobLabel: label, mode: 'dollars' as SplitMode, valueStr: '', note: '' },
+        ]
+        return redistributeEqualSplit(appended, displayTotal)
+      })
+      setJobSearch('')
+      setJobResults([])
+    },
+    [displayTotal, ledgerPrefixMap, internalTransfersLabelLocked, showToast],
+  )
 
   const removeLine = useCallback((jobId: string) => {
     setLines((prev) => {
@@ -697,6 +760,13 @@ export function MercuryTransactionAllocationsModal({
 
   async function handleSave() {
     if (!transaction) return
+    if (internalTransfersLabelLocked === true) {
+      showToast(
+        'This transaction is labeled Internal Transfers and cannot be split onto jobs. Remove the label first.',
+        'error',
+      )
+      return
+    }
     if (!canSave) {
       showToast(
         lines.length > 0
@@ -865,6 +935,29 @@ export function MercuryTransactionAllocationsModal({
           {tallySelfService ? 'Assign to jobs' : 'Link to person and jobs'}
         </h2>
 
+        {internalTransfersLabelLocked === true ? (
+          <div
+            role="status"
+            aria-live="polite"
+            style={{
+              marginBottom: '0.85rem',
+              padding: '0.65rem 0.85rem',
+              borderRadius: 6,
+              border: '1px solid #cbd5e1',
+              background: '#f8fafc',
+              color: '#334155',
+              fontSize: '0.8125rem',
+              lineHeight: 1.45,
+            }}
+          >
+            <div style={{ fontWeight: 600, marginBottom: '0.15rem' }}>
+              Locked: Internal Transfers
+            </div>
+            This transaction is labeled <strong>Internal Transfers</strong> and cannot be split onto jobs.
+            Remove the label in <strong>Banking → Mercury → Drag Sort</strong> first.
+          </div>
+        ) : null}
+
         <div style={{ overflowX: 'auto', marginBottom: '0.85rem' }}>
           <table
             style={{
@@ -943,7 +1036,16 @@ export function MercuryTransactionAllocationsModal({
           onChange={(e) => setJobSearch(e.target.value)}
           placeholder="Transaction's Job Assignment (to search type 3+ characters)"
           aria-label="Search jobs for transaction assignment"
-          style={{ width: '100%', padding: '8px 10px', marginBottom: '0.5rem', fontSize: '0.875rem', boxSizing: 'border-box' }}
+          disabled={internalTransfersLabelLocked === true}
+          style={{
+            width: '100%',
+            padding: '8px 10px',
+            marginBottom: '0.5rem',
+            fontSize: '0.875rem',
+            boxSizing: 'border-box',
+            opacity: internalTransfersLabelLocked === true ? 0.55 : 1,
+            cursor: internalTransfersLabelLocked === true ? 'not-allowed' : 'auto',
+          }}
         />
         {lines.length === 0 ? (
           <div
@@ -1246,6 +1348,7 @@ export function MercuryTransactionAllocationsModal({
                   <button
                     type="button"
                     onClick={() => updateLine(ln.jobId, { mode: 'dollars' })}
+                    disabled={internalTransfersLabelLocked === true}
                     style={ln.mode === 'dollars' ? segmentBtnActive : segmentBtnInactive}
                     aria-pressed={ln.mode === 'dollars'}
                   >
@@ -1254,6 +1357,7 @@ export function MercuryTransactionAllocationsModal({
                   <button
                     type="button"
                     onClick={() => updateLine(ln.jobId, { mode: 'percent' })}
+                    disabled={internalTransfersLabelLocked === true}
                     style={ln.mode === 'percent' ? segmentBtnActive : segmentBtnInactive}
                     aria-pressed={ln.mode === 'percent'}
                   >
@@ -1267,20 +1371,28 @@ export function MercuryTransactionAllocationsModal({
                   onChange={(e) => updateLine(ln.jobId, { valueStr: e.target.value })}
                   placeholder={ln.mode === 'dollars' ? '0.00' : '0'}
                   aria-label={ln.mode === 'dollars' ? 'Dollar amount' : 'Percent of charge'}
+                  disabled={internalTransfersLabelLocked === true}
                   style={splitAmountInputStyle}
                 />
                 {lines.length >= 2 ? (
                   <button
                     type="button"
                     onClick={() => fillRemainder(ln.jobId)}
-                    disabled={displayTotal <= 0}
-                    style={fillRemainderButtonStyle(displayTotal <= 0)}
+                    disabled={displayTotal <= 0 || internalTransfersLabelLocked === true}
+                    style={fillRemainderButtonStyle(
+                      displayTotal <= 0 || internalTransfersLabelLocked === true,
+                    )}
                     title="Set this line to the remaining dollars so totals match"
                   >
                     Fill remainder
                   </button>
                 ) : null}
-                <button type="button" onClick={() => removeLine(ln.jobId)} style={removeLineButtonStyle}>
+                <button
+                  type="button"
+                  onClick={() => removeLine(ln.jobId)}
+                  disabled={internalTransfersLabelLocked === true}
+                  style={removeLineButtonStyle}
+                >
                   Remove
                 </button>
               </div>
@@ -1311,6 +1423,7 @@ export function MercuryTransactionAllocationsModal({
                 onChange={(e) => updateLine(ln.jobId, { note: e.target.value })}
                 placeholder="Note (optional)"
                 aria-label="Note for this job split"
+                disabled={internalTransfersLabelLocked === true}
                 style={{
                   width: '100%',
                   marginTop: '0.5rem',

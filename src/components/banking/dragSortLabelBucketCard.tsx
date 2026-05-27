@@ -1,4 +1,5 @@
 import { forwardRef } from 'react'
+import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../../lib/dragSortDefaultLabels'
 
 export function formatUsdDragSortBucket(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -27,11 +28,25 @@ export type DragSortLabelBucketCardProps = {
   onDelete?: () => void
   /** Sidebar list vs modal grid spacing */
   variant: 'sidebar' | 'grid'
+  /**
+   * Optional `mercury_drag_sort_labels.default_key` for built-ins. Used only
+   * to flag non-Schedule-C built-ins (currently just **Internal Transfers**)
+   * with a subtle slate accent so they read as "not a deductible bucket".
+   */
+  defaultKey?: string | null
 }
 
-function paletteForVisual(visualState: DragSortLabelBucketVisualState): { border: string; bg: string } {
+function paletteForVisual(
+  visualState: DragSortLabelBucketVisualState,
+  isInternalTransfers: boolean,
+): { border: string; bg: string } {
   if (visualState === 'droppableHover' || visualState === 'clickableHover') {
     return { border: '#2563eb', bg: '#eff6ff' }
+  }
+  if (isInternalTransfers) {
+    // Slate accent — visually distinct from the other neutral / Schedule C
+    // buckets so users grok this isn't an expense category.
+    return { border: '#94a3b8', bg: '#f1f5f9' }
   }
   return { border: '#d1d5db', bg: '#f9fafb' }
 }
@@ -117,12 +132,14 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
       visualState = 'idle',
       onDelete,
       variant,
+      defaultKey = null,
     },
     ref,
   ) {
     const descTrim = description?.trim() ?? ''
     const scheduleTrim = scheduleCLine?.trim() ?? ''
-    const { border, bg } = paletteForVisual(visualState)
+    const isInternalTransfers = defaultKey === INTERNAL_TRANSFERS_DEFAULT_KEY
+    const { border, bg } = paletteForVisual(visualState, isInternalTransfers)
 
     return (
       <div

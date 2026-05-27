@@ -1,4 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react'
+import { useEffect, useId, useState, type ReactNode } from 'react'
 import type { CounterpartyFrequencyListEntry } from '../../lib/bankingMercuryCounterpartyFrequency'
 
 export type MercuryCounterpartyFrequencyModalProps = {
@@ -7,6 +7,12 @@ export type MercuryCounterpartyFrequencyModalProps = {
   rows: CounterpartyFrequencyListEntry[]
   /** Shown under the title (explain which slice of the ledger is counted). */
   scopeDescription: ReactNode
+  /**
+   * When provided, rows become clickable buttons. The parent decides what to do
+   * with the selection (e.g. seed a search input) and is responsible for closing
+   * the modal afterwards. Without this prop rows render as plain table cells.
+   */
+  onRowClick?: (row: CounterpartyFrequencyListEntry) => void
   /** Backdrop + shell z-index */
   zIndex?: number
 }
@@ -16,6 +22,7 @@ export function MercuryCounterpartyFrequencyModal({
   onClose,
   rows,
   scopeDescription,
+  onRowClick,
   zIndex = 1200,
 }: MercuryCounterpartyFrequencyModalProps) {
   const reactId = useId()
@@ -136,19 +143,11 @@ export function MercuryCounterpartyFrequencyModal({
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.label}>
-                    <td style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #f3f4f6' }}>{row.label}</td>
-                    <td
-                      style={{
-                        padding: '0.5rem 0.75rem',
-                        borderBottom: '1px solid #f3f4f6',
-                        textAlign: 'right',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      {row.count}
-                    </td>
-                  </tr>
+                  <CounterpartyFrequencyRow
+                    key={row.label}
+                    row={row}
+                    onRowClick={onRowClick}
+                  />
                 ))}
               </tbody>
             </table>
@@ -156,5 +155,53 @@ export function MercuryCounterpartyFrequencyModal({
         </div>
       </div>
     </div>
+  )
+}
+
+function CounterpartyFrequencyRow({
+  row,
+  onRowClick,
+}: {
+  row: CounterpartyFrequencyListEntry
+  onRowClick?: (row: CounterpartyFrequencyListEntry) => void
+}) {
+  const [hovered, setHovered] = useState(false)
+  const interactive = typeof onRowClick === 'function'
+  const baseCellStyle: React.CSSProperties = {
+    padding: '0.5rem 0.75rem',
+    borderBottom: '1px solid #f3f4f6',
+  }
+  const trStyle: React.CSSProperties = interactive
+    ? { cursor: 'pointer', background: hovered ? '#f3f4f6' : 'transparent' }
+    : {}
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>) => {
+    if (!onRowClick) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onRowClick(row)
+    }
+  }
+  return (
+    <tr
+      style={trStyle}
+      onClick={onRowClick ? () => onRowClick(row) : undefined}
+      onMouseEnter={interactive ? () => setHovered(true) : undefined}
+      onMouseLeave={interactive ? () => setHovered(false) : undefined}
+      onKeyDown={interactive ? handleKeyDown : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      role={interactive ? 'button' : undefined}
+      aria-label={interactive ? `Search transactions for ${row.label}` : undefined}
+    >
+      <td style={baseCellStyle}>{row.label}</td>
+      <td
+        style={{
+          ...baseCellStyle,
+          textAlign: 'right',
+          fontVariantNumeric: 'tabular-nums',
+        }}
+      >
+        {row.count}
+      </td>
+    </tr>
   )
 }

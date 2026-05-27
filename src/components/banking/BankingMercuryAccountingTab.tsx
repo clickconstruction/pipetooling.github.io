@@ -1,27 +1,22 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Database, Json } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
-import { formatMercuryDebitCardIdCompact, mercuryDebitCardIdFromRaw } from '../../lib/mercuryRawDebitCard'
 import {
   buildMercuryTxSearchHaystackWithJobPerson,
   mercuryTxMatchesSearchQuery,
   type BankingMercurySearchNicknames,
 } from '../../lib/bankingMercurySearch'
 import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
-import { ensureDragSortDefaultLabels } from '../../lib/dragSortDefaultLabels'
+import { ensureDragSortDefaultLabels, isInternalTransfersLabel } from '../../lib/dragSortDefaultLabels'
 import {
   clearAccountingLedgerFiltersStorage,
-  readAccountingHideLabeledTransactions,
   readAccountingLedgerFiltersRaw,
   readAccountingLedgerSort,
-  readAccountingRulesSectionExpanded,
-  writeAccountingHideLabeledTransactions,
   writeAccountingLedgerFiltersRaw,
   writeAccountingLedgerSort,
-  writeAccountingRulesSectionExpanded,
 } from '../../lib/bankingDragSortStorage'
 import {
   compareMercuryLedgerRows,
@@ -56,6 +51,23 @@ import {
   matchAccountingLabelRuleCriteria,
   parseAccountingLabelRuleCriteria,
 } from '../../lib/accountingLabelRuleMatch'
+import { buildAccountingRuleOverlapReport } from '../../lib/accountingRuleOverlap'
+import {
+  buildAccountingRulesToInsert,
+  type ApplyRulesToInsertRow,
+} from '../../lib/applyAccountingRulesPreflight'
+import {
+  buildAutoApplySignature,
+  shouldAutoApplyAccountingRules,
+} from '../../lib/accountingApplyRulesAutoTrigger'
+import {
+  buildApproveByDefaultSignature,
+  shouldAutoApproveAccountingSuggestions,
+} from '../../lib/accountingApproveByDefaultAutoTrigger'
+import { BankingMercuryAccountingOverlapsModal } from './BankingMercuryAccountingOverlapsModal'
+import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercuryAccountingApplyRulesConfirmModal'
+import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
+import { AccountingApprovalCard } from './AccountingApprovalCard'
 import {
   BankingMercuryDragSortLedgerNotesEditorRow,
   BankingMercuryDragSortLedgerNotesPreviewRow,
@@ -111,6 +123,50 @@ export type BankingMercuryAccountingTabProps = {
   onEditAllocations?: (r: MercuryTxRow) => void
   orgNotesByTxId: Map<string, string>
   onOrgNoteUpdated: (txId: string, body: string) => void
+  /**
+   * **Hide labeled transactions** toggle. Lifted to `Banking.tsx` so the
+   * parent's tab-aware `loadRowsForActiveView` can swap to the unlabeled-only
+   * RPC when this is on (the default for the Accounting tab).
+   */
+  hideLabeledTransactions: boolean
+  /** Toolbar checkbox handler; parent persists per-user. */
+  onHideLabeledTransactionsChange: (v: boolean) => void
+  /**
+   * **Apply rules by default** toggle (RECENT_FEATURES v2.580). When on,
+   * the auto-apply effect runs `computeApplyRulesPreflight` →
+   * `executeApplyRules` after every successful transaction load, bypassing
+   * the 200-match confirm modal but preserving the 500-per-click cap.
+   * Lifted to `Banking.tsx` for per-user persistence.
+   */
+  applyRulesByDefault: boolean
+  onApplyRulesByDefaultChange: (v: boolean) => void
+  /**
+   * Monotonic counter the parent bumps after `handleSync` and
+   * `handleBackfill`. The child watches it in a ref-reset effect that
+   * nulls `lastAutoAppliedSignatureRef`, so a fresh Mercury sync re-fires
+   * one auto-apply pass even when the unlabeled id set didn't change
+   * (e.g. a sync that only updated counterparties).
+   */
+  autoApplyResetTick: number
+  /**
+   * **Approve by default** toggle (RECENT_FEATURES v2.581). When on, the
+   * Approvals section auto-runs `handleApproveAll` whenever a new pending
+   * suggestion appears. Internal Transfers conflicts (job-split rows) are
+   * still skipped by `handleApproveAll` itself, so those persist in the
+   * pending list and surface for manual review. Lifted to `Banking.tsx`
+   * for per-user persistence.
+   */
+  approveByDefault: boolean
+  onApproveByDefaultChange: (v: boolean) => void
+  /**
+   * Called after a successful mutation that adds or removes a row in
+   * `mercury_transaction_drag_sort_assignments` (manual label apply / clear,
+   * approve, approve all). Lets the parent re-fire `loadRowsForActiveView`
+   * so the unlabeled-only list shrinks (or grows) in place. Reject and
+   * Apply-rules don't touch the assignments table directly, so they do not
+   * call this.
+   */
+  onAfterAssignmentChange?: () => void
 }
 
 type PendingApproval = {
@@ -147,7 +203,85 @@ function ruleRowToForm(rule: RuleRow, fallbackLabelId: string): AccountingRuleFo
 }
 
 const TEST_PREVIEW_LIMIT = 40
-const ACCOUNTING_RULES_SECTION_BODY_ID = 'accounting-rules-section-body'
+
+/**
+ * Hard ceiling on how many pending suggestions one **Apply rules to transactions**
+ * click can create. Above this we slice — even if the user confirmed the preflight
+ * — so the Approvals UI never paints the full match set when it's huge. Forces the
+ * natural review-then-iterate cadence the page is built around.
+ */
+const APPLY_RULES_PER_CLICK_CAP = 500
+
+/**
+ * Threshold above which **Apply rules** prompts the user via
+ * `BankingMercuryAccountingApplyRulesConfirmModal` instead of inserting silently.
+ * Inserts under this threshold (the common case) are unchanged.
+ */
+const APPLY_RULES_CONFIRM_THRESHOLD = 200
+
+/**
+ * Initial visible window of approval cards in the Approvals section. The list
+ * uses **Show 50 more** + **Show all** controls to extend the window — keeps
+ * first-paint of large queues bounded without dropping any data.
+ */
+const APPROVALS_PAGE_SIZE = 50
+
+type ApplyRulesPreflight = {
+  toInsert: ApplyRulesToInsertRow[]
+  totalMatches: number
+}
+
+/**
+ * Hard cap on `.in('id', ids)` batch size for `loadPending` lookups. With a few
+ * thousand pending suggestions, the unchunked URL exceeds Cloudflare/HTTP/2's
+ * header limits and the connection is reset (`ERR_HTTP2_PROTOCOL_ERROR` /
+ * `ERR_CONNECTION_RESET`), which then takes down every other in-flight Supabase
+ * stream sharing that TCP connection. Same fix pattern as
+ * `MERCURY_TRANSACTION_ID_IN_CHUNK_SIZE` in `fetchMercuryRelationsByTxIds.ts`.
+ */
+const ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE = 200
+
+async function fetchAccountingPendingRuleNames(ruleIds: string[]): Promise<Array<{ id: string; name: string }>> {
+  const out: Array<{ id: string; name: string }> = []
+  for (let i = 0; i < ruleIds.length; i += ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE) {
+    const chunk = ruleIds.slice(i, i + ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE)
+    if (chunk.length === 0) continue
+    const rows = await withSupabaseRetry(async () => {
+      return supabase.from('mercury_accounting_label_rules').select('id,name').in('id', chunk)
+    }, 'accounting pending rule names')
+    out.push(...((rows ?? []) as Array<{ id: string; name: string }>))
+  }
+  return out
+}
+
+async function fetchAccountingPendingLabelNames(labelIds: string[]): Promise<Array<{ id: string; name: string }>> {
+  const out: Array<{ id: string; name: string }> = []
+  for (let i = 0; i < labelIds.length; i += ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE) {
+    const chunk = labelIds.slice(i, i + ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE)
+    if (chunk.length === 0) continue
+    const rows = await withSupabaseRetry(async () => {
+      return supabase.from('mercury_drag_sort_labels').select('id,name').in('id', chunk)
+    }, 'accounting pending label names')
+    out.push(...((rows ?? []) as Array<{ id: string; name: string }>))
+  }
+  return out
+}
+
+async function fetchAccountingPendingTxsByIds(txIds: string[]): Promise<MercuryTxRow[]> {
+  const out: MercuryTxRow[] = []
+  for (let i = 0; i < txIds.length; i += ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE) {
+    const chunk = txIds.slice(i, i + ACCOUNTING_PENDING_ID_IN_CHUNK_SIZE)
+    if (chunk.length === 0) continue
+    const rows = await withSupabaseRetry(async () => {
+      return supabase
+        .from('mercury_transactions')
+        .select(MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS)
+        .in('id', chunk)
+    }, 'accounting pending fetch txs')
+    out.push(...((rows ?? []) as MercuryTxRow[]))
+  }
+  return out
+}
 
 export function BankingMercuryAccountingTab({
   userId,
@@ -166,10 +300,23 @@ export function BankingMercuryAccountingTab({
   onEditAllocations,
   orgNotesByTxId,
   onOrgNoteUpdated,
+  hideLabeledTransactions,
+  onHideLabeledTransactionsChange,
+  applyRulesByDefault,
+  onApplyRulesByDefaultChange,
+  autoApplyResetTick,
+  approveByDefault,
+  onApproveByDefaultChange,
+  onAfterAssignmentChange,
 }: BankingMercuryAccountingTabProps) {
   const { showToast } = useToastContext()
   const [accountingSearchText, setAccountingSearchText] = useState('')
-  const [hideLabeledTransactions, setHideLabeledTransactions] = useState(() => readAccountingHideLabeledTransactions(userId))
+  // When the parent has already narrowed `filteredTransactions` to the
+  // unlabeled set (Hide labeled = on, Accounting tab), the per-row
+  // assignment-marking sweep would re-confirm that none of them have a
+  // matching `mercury_transaction_drag_sort_assignments` row — pure waste.
+  // Mirrors the same condition `Banking.tsx` uses to pick the loader.
+  const inputIsUnlabeledOnly = hideLabeledTransactions
   const [labels, setLabels] = useState<DragLabelRow[]>([])
   const [labelsLoading, setLabelsLoading] = useState(true)
   const [labelAssignmentCountById, setLabelAssignmentCountById] = useState<Record<string, number>>({})
@@ -182,6 +329,12 @@ export function BankingMercuryAccountingTab({
   const [pendingLoading, setPendingLoading] = useState(false)
   const [applyRulesBusy, setApplyRulesBusy] = useState(false)
   const [approveAllBusy, setApproveAllBusy] = useState(false)
+  const [applyRulesConfirm, setApplyRulesConfirm] = useState<ApplyRulesPreflight | null>(null)
+  const [approvalsVisibleCount, setApprovalsVisibleCount] = useState(APPROVALS_PAGE_SIZE)
+  // Mirror of `pendingApprovals` so memoized AccountingApprovalCard callbacks
+  // can resolve the current row by suggestionId without depending on the array
+  // (which would break memo equality every state change).
+  const pendingApprovalsRef = useRef<PendingApproval[]>([])
   const [notesExpandedTxId, setNotesExpandedTxId] = useState<string | null>(null)
   const [quickAssignTxId, setQuickAssignTxId] = useState<string | null>(null)
   const [quickAssignBusy, setQuickAssignBusy] = useState(false)
@@ -203,7 +356,20 @@ export function BankingMercuryAccountingTab({
   const [testModalOpen, setTestModalOpen] = useState(false)
   const [testRows, setTestRows] = useState<MercuryTxRow[]>([])
   const [testTotal, setTestTotal] = useState(0)
-  const [rulesSectionExpanded, setRulesSectionExpanded] = useState(() => readAccountingRulesSectionExpanded(userId))
+  const [testOtherMatchingRulesByTxId, setTestOtherMatchingRulesByTxId] = useState<Map<string, string[]>>(
+    () => new Map(),
+  )
+  const [overlapsModalOpen, setOverlapsModalOpen] = useState(false)
+  // When the user clicks a rule inside the Audit overlaps modal, we hide the
+  // audit and open Edit Rule on top. The Edit Rule modal's z-index (1200)
+  // sits below the audit modal's (1250) and can't be raised because the Test
+  // results modal it spawns lives at 1250 too — so a stacked layout would
+  // hide Edit Rule behind audit. A `useEffect` watching `ruleModalOpen` flips
+  // audit back on once any close path (Cancel / Save / Save and apply /
+  // backdrop) runs.
+  const auditPendingReopenAfterRuleModalRef = useRef(false)
+  const ruleModalOpenPrevRef = useRef(false)
+  const [rulesModalOpen, setRulesModalOpen] = useState(false)
   const [rulesTableSearchText, setRulesTableSearchText] = useState('')
   const [rulesTableSort, setRulesTableSort] = useState<{
     column: 'none' | 'name' | 'label'
@@ -211,12 +377,19 @@ export function BankingMercuryAccountingTab({
   }>({ column: 'none', direction: 'asc' })
 
   useEffect(() => {
-    setHideLabeledTransactions(readAccountingHideLabeledTransactions(userId))
-  }, [userId])
+    pendingApprovalsRef.current = pendingApprovals
+  }, [pendingApprovals])
 
+  // Reset the visible window when a fresh load brings rows from 0 -> N (e.g.
+  // a new Apply rules run). Subsequent in-place edits (e.g. label change,
+  // approve, reject) preserve the user's expanded window.
+  const prevPendingLenRef = useRef(0)
   useEffect(() => {
-    setRulesSectionExpanded(readAccountingRulesSectionExpanded(userId))
-  }, [userId])
+    if (prevPendingLenRef.current === 0 && pendingApprovals.length > 0) {
+      setApprovalsVisibleCount(APPROVALS_PAGE_SIZE)
+    }
+    prevPendingLenRef.current = pendingApprovals.length
+  }, [pendingApprovals.length])
 
   useEffect(() => {
     setLedgerFiltersApplied(parseBankingAccountingLedgerFiltersJson(readAccountingLedgerFiltersRaw(userId)))
@@ -302,6 +475,13 @@ export function BankingMercuryAccountingTab({
   }, [loadLabels])
 
   const loadAssignmentsForList = useCallback(async () => {
+    // When the parent already pre-narrowed the input to the unlabeled set,
+    // skip the assignment-marking sweep entirely — by definition every row
+    // is unlabeled and `assignmentLabelByTxId` should be empty.
+    if (inputIsUnlabeledOnly) {
+      setAssignmentLabelByTxId(new Map())
+      return
+    }
     const idSet = new Set(filteredTransactions.map((r) => r.id))
     if (idSet.size === 0) {
       setAssignmentLabelByTxId(new Map())
@@ -333,7 +513,7 @@ export function BankingMercuryAccountingTab({
     } finally {
       setAssignmentsLoading(false)
     }
-  }, [filteredTransactions, showToast])
+  }, [filteredTransactions, inputIsUnlabeledOnly, showToast])
 
   useEffect(() => {
     void loadAssignmentsForList()
@@ -385,25 +565,16 @@ export function BankingMercuryAccountingTab({
       const ruleIds = [...new Set(list.map((s) => s.rule_id))]
       const labelIds = [...new Set(list.map((s) => s.suggested_label_id))]
       const [rulesQ, labelsQ] = await Promise.all([
-        withSupabaseRetry(async () => {
-          return supabase.from('mercury_accounting_label_rules').select('id,name').in('id', ruleIds)
-        }, 'accounting pending rule names'),
-        withSupabaseRetry(async () => {
-          return supabase.from('mercury_drag_sort_labels').select('id,name').in('id', labelIds)
-        }, 'accounting pending label names'),
+        fetchAccountingPendingRuleNames(ruleIds),
+        fetchAccountingPendingLabelNames(labelIds),
       ])
-      const ruleNameById = new Map((rulesQ ?? []).map((r) => [r.id, r.name] as const))
-      const labelNameById = new Map((labelsQ ?? []).map((r) => [r.id, r.name] as const))
+      const ruleNameById = new Map(rulesQ.map((r) => [r.id, r.name] as const))
+      const labelNameById = new Map(labelsQ.map((r) => [r.id, r.name] as const))
       const txMap = new Map(filteredTransactions.map((t) => [t.id, t] as const))
       const missing = [...new Set(list.map((s) => s.mercury_transaction_id))].filter((id) => !txMap.has(id))
       if (missing.length > 0) {
-        const fetched = await withSupabaseRetry(async () => {
-          return supabase
-            .from('mercury_transactions')
-            .select(MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS)
-            .in('id', missing)
-        }, 'accounting pending fetch txs')
-        for (const t of (fetched ?? []) as MercuryTxRow[]) txMap.set(t.id, t)
+        const fetched = await fetchAccountingPendingTxsByIds(missing)
+        for (const t of fetched) txMap.set(t.id, t)
       }
       setPendingApprovals(
         list.map((s) => ({
@@ -440,6 +611,28 @@ export function BankingMercuryAccountingTab({
     return m
   }, [rules])
 
+  const overlapReport = useMemo(() => {
+    if (!overlapsModalOpen) return null
+    const ruleInputs = rules.map((r) => ({
+      id: r.id,
+      name: r.name,
+      label_id: r.label_id,
+      sort_order: r.sort_order,
+      enabled: r.enabled,
+      criteria: parseAccountingLabelRuleCriteria(r.criteria),
+    }))
+    return buildAccountingRuleOverlapReport(ruleInputs, filteredTransactions, {
+      assignmentLabelByTxId,
+    })
+  }, [overlapsModalOpen, rules, filteredTransactions, assignmentLabelByTxId])
+
+  const overlapTxByIdMap = useMemo(() => {
+    if (!overlapsModalOpen) return new Map<string, MercuryTxRow>()
+    const m = new Map<string, MercuryTxRow>()
+    for (const tx of filteredTransactions) m.set(tx.id, tx)
+    return m
+  }, [overlapsModalOpen, filteredTransactions])
+
   const rulesSearchNorm = useMemo(() => rulesTableSearchText.trim().toLowerCase(), [rulesTableSearchText])
 
   const rulesFilteredForTable = useMemo(() => {
@@ -471,8 +664,10 @@ export function BankingMercuryAccountingTab({
 
   const displayTransactions = useMemo(() => {
     if (!hideLabeledTransactions) return afterLedgerFilters
+    // Parent already filtered server-side; skip the redundant client filter.
+    if (inputIsUnlabeledOnly) return afterLedgerFilters
     return afterLedgerFilters.filter((tx) => !assignmentLabelByTxId.has(tx.id))
-  }, [hideLabeledTransactions, afterLedgerFilters, assignmentLabelByTxId])
+  }, [hideLabeledTransactions, afterLedgerFilters, assignmentLabelByTxId, inputIsUnlabeledOnly])
 
   const sortedDisplayTransactions = useMemo(() => {
     const copy = [...displayTransactions]
@@ -511,12 +706,13 @@ export function BankingMercuryAccountingTab({
       setAssignmentLabelByTxId(snap)
       try {
         await removeAssignment(txId)
+        onAfterAssignmentChange?.()
       } catch (e) {
         setAssignmentLabelByTxId(assignmentLabelByTxId)
         showToast(e instanceof Error ? e.message : 'Could not remove label', 'error')
       }
     },
-    [assignmentLabelByTxId, removeAssignment, showToast],
+    [assignmentLabelByTxId, onAfterAssignmentChange, removeAssignment, showToast],
   )
 
   const closeQuickAssign = useCallback(() => {
@@ -528,6 +724,17 @@ export function BankingMercuryAccountingTab({
     async (labelId: string) => {
       const txId = quickAssignTxId
       if (!txId || quickAssignBusy) return
+      // Internal Transfers and job splits are mutually exclusive.
+      if (isInternalTransfersLabel(labels.find((L) => L.id === labelId))) {
+        const splits = allocationsByTxId.get(txId) ?? []
+        if (splits.length > 0) {
+          showToast(
+            'Internal Transfers cannot be applied to a transaction with job splits. Clear the splits first.',
+            'error',
+          )
+          return
+        }
+      }
       const prevMap = new Map(assignmentLabelByTxId)
       const next = new Map(prevMap)
       next.set(txId, labelId)
@@ -537,6 +744,7 @@ export function BankingMercuryAccountingTab({
         await upsertDragAssignment(txId, labelId)
         showToast('Accounting label applied.', 'success')
         setQuickAssignTxId(null)
+        onAfterAssignmentChange?.()
       } catch (e) {
         setAssignmentLabelByTxId(prevMap)
         showToast(e instanceof Error ? e.message : 'Could not assign label', 'error')
@@ -544,7 +752,16 @@ export function BankingMercuryAccountingTab({
         setQuickAssignBusy(false)
       }
     },
-    [assignmentLabelByTxId, quickAssignBusy, quickAssignTxId, showToast, upsertDragAssignment],
+    [
+      allocationsByTxId,
+      assignmentLabelByTxId,
+      labels,
+      onAfterAssignmentChange,
+      quickAssignBusy,
+      quickAssignTxId,
+      showToast,
+      upsertDragAssignment,
+    ],
   )
 
   const quickAssignTransactionSummary = useMemo(() => {
@@ -559,6 +776,19 @@ export function BankingMercuryAccountingTab({
 
   const handleApprove = useCallback(
     async (p: PendingApproval, chosenLabelId: string) => {
+      // Internal Transfers and job splits are mutually exclusive — block
+      // approving a suggestion that would label a tx with existing splits
+      // as Internal Transfers.
+      if (isInternalTransfersLabel(labels.find((L) => L.id === chosenLabelId))) {
+        const splits = allocationsByTxId.get(p.txId) ?? []
+        if (splits.length > 0) {
+          showToast(
+            'Internal Transfers cannot be applied to a transaction with job splits. Clear the splits first.',
+            'error',
+          )
+          return
+        }
+      }
       const prevMap = new Map(assignmentLabelByTxId)
       try {
         await upsertDragAssignment(p.txId, chosenLabelId)
@@ -580,12 +810,22 @@ export function BankingMercuryAccountingTab({
         setRuleUsageApproved((u) => ({ ...u, [p.ruleId]: (u[p.ruleId] ?? 0) + 1 }))
         showToast('Accounting label applied.', 'success')
         void loadRulesAndUsage()
+        onAfterAssignmentChange?.()
       } catch (e) {
         setAssignmentLabelByTxId(prevMap)
         showToast(e instanceof Error ? e.message : 'Approve failed', 'error')
       }
     },
-    [assignmentLabelByTxId, loadRulesAndUsage, showToast, upsertDragAssignment, userId],
+    [
+      allocationsByTxId,
+      assignmentLabelByTxId,
+      labels,
+      loadRulesAndUsage,
+      onAfterAssignmentChange,
+      showToast,
+      upsertDragAssignment,
+      userId,
+    ],
   )
 
   const handleReject = useCallback(
@@ -605,7 +845,27 @@ export function BankingMercuryAccountingTab({
 
   const handleApproveAll = useCallback(async () => {
     if (pendingLoading || pendingApprovals.length === 0) return
-    const snapshot = [...pendingApprovals]
+    // Skip pending suggestions that would label a tx with existing job
+    // splits as Internal Transfers — those rows must be hand-cleaned first.
+    const skipped: PendingApproval[] = []
+    const snapshot: PendingApproval[] = []
+    for (const p of pendingApprovals) {
+      if (
+        isInternalTransfersLabel(labels.find((L) => L.id === p.suggestedLabelId)) &&
+        (allocationsByTxId.get(p.txId) ?? []).length > 0
+      ) {
+        skipped.push(p)
+        continue
+      }
+      snapshot.push(p)
+    }
+    if (snapshot.length === 0) {
+      showToast(
+        'All pending suggestions would label a transaction with job splits as Internal Transfers. Clear the splits first.',
+        'error',
+      )
+      return
+    }
     const prevAssignments = new Map(assignmentLabelByTxId)
     setApproveAllBusy(true)
     const APPROVE_CHUNK = 500
@@ -626,7 +886,7 @@ export function BankingMercuryAccountingTab({
         next.set(p.txId, p.suggestedLabelId)
       }
       setAssignmentLabelByTxId(next)
-      setPendingApprovals([])
+      setPendingApprovals((rows) => rows.filter((r) => skipped.some((s) => s.suggestionId === r.suggestionId)))
       setRuleUsageApproved((u) => {
         const out = { ...u }
         for (const p of snapshot) {
@@ -634,9 +894,18 @@ export function BankingMercuryAccountingTab({
         }
         return out
       })
-      showToast(snapshot.length === 1 ? 'Approved 1 suggestion.' : `Approved ${snapshot.length} suggestions.`, 'success')
+      const approvedMsg =
+        snapshot.length === 1 ? 'Approved 1 suggestion.' : `Approved ${snapshot.length} suggestions.`
+      const skippedMsg =
+        skipped.length === 0
+          ? ''
+          : skipped.length === 1
+            ? ' Skipped 1 Internal Transfers suggestion with job splits.'
+            : ` Skipped ${skipped.length} Internal Transfers suggestions with job splits.`
+      showToast(`${approvedMsg}${skippedMsg}`, skipped.length > 0 ? 'info' : 'success')
       void loadRulesAndUsage()
       void loadPending()
+      onAfterAssignmentChange?.()
     } catch (e) {
       setAssignmentLabelByTxId(prevAssignments)
       showToast(e instanceof Error ? e.message : 'Approve all failed', 'error')
@@ -646,14 +915,57 @@ export function BankingMercuryAccountingTab({
       setApproveAllBusy(false)
     }
   }, [
+    allocationsByTxId,
     assignmentLabelByTxId,
+    labels,
     loadAssignmentsForList,
     loadPending,
     loadRulesAndUsage,
+    onAfterAssignmentChange,
     pendingApprovals,
     pendingLoading,
     showToast,
   ])
+
+  // Stable callbacks for AccountingApprovalCard. These look up the current
+  // PendingApproval row by id from `pendingApprovalsRef` (not via state) so
+  // their identity is stable across re-renders — combined with React.memo,
+  // changing one card's label / approving / rejecting only re-renders the
+  // affected card.
+  const handleApproveCard = useCallback(
+    (suggestionId: string, _txId: string, labelId: string) => {
+      const row = pendingApprovalsRef.current.find((r) => r.suggestionId === suggestionId)
+      if (!row) return
+      void handleApprove(row, labelId)
+    },
+    [handleApprove],
+  )
+
+  const handleRejectCard = useCallback(
+    (suggestionId: string) => {
+      const row = pendingApprovalsRef.current.find((r) => r.suggestionId === suggestionId)
+      if (!row) return
+      void handleReject(row)
+    },
+    [handleReject],
+  )
+
+  const handleLabelChangeCard = useCallback(
+    (suggestionId: string, nextLabelId: string) => {
+      setPendingApprovals((rows) =>
+        rows.map((r) =>
+          r.suggestionId === suggestionId
+            ? {
+                ...r,
+                suggestedLabelId: nextLabelId,
+                suggestedLabelName: labelById.get(nextLabelId)?.name ?? nextLabelId,
+              }
+            : r,
+        ),
+      )
+    },
+    [labelById],
+  )
 
   const openLedgerFilterModal = useCallback(() => {
     setLedgerFilterDraft({ ...ledgerFiltersApplied })
@@ -683,73 +995,90 @@ export function BankingMercuryAccountingTab({
     setLedgerFilterModalOpen(false)
   }, [userId])
 
-  const applyRulesWithSnapshot = useCallback(
-    async (ruleRows: RuleRow[]) => {
+  /**
+   * Read-only preflight: walks rule snapshot + filtered transactions and
+   * returns the *uncapped* `(tx, rule, label)` rows the engine would insert.
+   * Returns `null` when there is nothing to do (no rules, no enabled rules,
+   * no matches) — caller should toast and bail.
+   *
+   * Surfaces a server hop for the current pending-suggestion id set so the
+   * preflight matches what the executor will see.
+   */
+  const computeApplyRulesPreflight = useCallback(
+    async (ruleRows: RuleRow[]): Promise<ApplyRulesPreflight | null> => {
       if (ruleRows.length === 0) {
         showToast('No rules defined.', 'info')
-        return
+        return null
       }
+      const enabled = ruleRows.filter((r) => r.enabled)
+      if (enabled.length === 0) {
+        showToast('No enabled rules.', 'info')
+        return null
+      }
+      const pendingTxRows = (await withSupabaseRetry(async () => {
+        return supabase.from('mercury_accounting_label_suggestions').select('mercury_transaction_id').eq('status', 'pending')
+      }, 'accounting apply pending ids')) as { mercury_transaction_id: string }[] | null
+      const pendingTxIds = new Set((pendingTxRows ?? []).map((r) => r.mercury_transaction_id))
+      const assignedTxIds = new Set(assignmentLabelByTxId.keys())
+
+      const rulesForPreflight = enabled.map((r) => ({
+        id: r.id,
+        label_id: r.label_id,
+        sort_order: r.sort_order,
+        enabled: r.enabled,
+        criteria: parseAccountingLabelRuleCriteria(r.criteria),
+      }))
+
+      // Apply rules scans Banking-filtered rows only (not Accounting search / ledger modal filters / hide labeled).
+      const toInsert = buildAccountingRulesToInsert({
+        rules: rulesForPreflight,
+        filteredTransactions,
+        assignedTxIds,
+        pendingTxIds,
+      })
+
+      if (toInsert.length === 0) {
+        showToast('No new suggestions (all matched txs already labeled or pending).', 'success')
+        return null
+      }
+      return { toInsert, totalMatches: toInsert.length }
+    },
+    [assignmentLabelByTxId, filteredTransactions, showToast],
+  )
+
+  /**
+   * Side-effecting executor: takes a preflight, slices to
+   * `APPLY_RULES_PER_CLICK_CAP`, chunks the insert, toasts the result, and
+   * reloads the pending list. Owns the `applyRulesBusy` flag.
+   */
+  const executeApplyRules = useCallback(
+    async (preflight: ApplyRulesPreflight) => {
       setApplyRulesBusy(true)
       try {
-        const enabled = ruleRows
-          .filter((r) => r.enabled)
-          .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
-        if (enabled.length === 0) {
-          showToast('No enabled rules.', 'info')
-          return
-        }
-        const pendingTx = new Set(
-          (
-            (await withSupabaseRetry(async () => {
-              return supabase.from('mercury_accounting_label_suggestions').select('mercury_transaction_id').eq('status', 'pending')
-            }, 'accounting apply pending ids')) ?? []
-          ).map((r: { mercury_transaction_id: string }) => r.mercury_transaction_id),
-        )
-        const assigned = new Set(assignmentLabelByTxId.keys())
-        const criteriaParsed = new Map<string, AccountingLabelRuleCriteriaV1 | null>()
-        for (const r of enabled) {
-          criteriaParsed.set(r.id, parseAccountingLabelRuleCriteria(r.criteria))
-        }
-        const toInsert: { mercury_transaction_id: string; rule_id: string; suggested_label_id: string }[] = []
-        // Apply rules scans Banking-filtered rows only (not Accounting search / ledger modal filters / hide labeled).
-        for (const tx of filteredTransactions) {
-          if (assigned.has(tx.id) || pendingTx.has(tx.id)) continue
-          let matchedRule: RuleRow | null = null
-          for (const rule of enabled) {
-            const crit = criteriaParsed.get(rule.id)
-            if (crit == null || accountingRuleEffectiveClauseCount(crit) === 0) continue
-            if (matchAccountingLabelRuleCriteria(tx, crit)) {
-              matchedRule = rule
-              break
-            }
-          }
-          if (!matchedRule) continue
-          toInsert.push({
-            mercury_transaction_id: tx.id,
-            rule_id: matchedRule.id,
-            suggested_label_id: matchedRule.label_id,
-          })
-          pendingTx.add(tx.id)
-        }
-        if (toInsert.length === 0) {
-          showToast('No new suggestions (all matched txs already labeled or pending).', 'success')
-          return
-        }
+        const capped = preflight.toInsert.slice(0, APPLY_RULES_PER_CLICK_CAP)
+        const droppedByCap = Math.max(0, preflight.toInsert.length - capped.length)
         const INSERT_CHUNK = 2000
         let created = 0
-        for (let i = 0; i < toInsert.length; i += INSERT_CHUNK) {
-          const slice = toInsert.slice(i, i + INSERT_CHUNK)
+        for (let i = 0; i < capped.length; i += INSERT_CHUNK) {
+          const slice = capped.slice(i, i + INSERT_CHUNK)
           const insertedBatch = await withSupabaseRetry(async () => {
             return supabase.rpc('bulk_insert_accounting_label_suggestions', { p_rows: slice })
           }, 'accounting bulk insert suggestions')
           created += insertedBatch ?? 0
         }
-        showToast(
-          created === 0
-            ? 'No new suggestions (all matched txs already labeled or pending).'
-            : `Created ${created} pending suggestion(s).`,
-          'success',
-        )
+        if (created === 0) {
+          showToast('No new suggestions (all matched txs already labeled or pending).', 'success')
+        } else {
+          const base =
+            created === 1
+              ? 'Created 1 pending suggestion.'
+              : `Created ${created.toLocaleString()} pending suggestions.`
+          const tail =
+            droppedByCap > 0
+              ? ` ${droppedByCap.toLocaleString()} more match — apply again after reviewing.`
+              : ''
+          showToast(`${base}${tail}`, droppedByCap > 0 ? 'info' : 'success')
+        }
         void loadPending()
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Apply rules failed', 'error')
@@ -757,12 +1086,135 @@ export function BankingMercuryAccountingTab({
         setApplyRulesBusy(false)
       }
     },
-    [assignmentLabelByTxId, filteredTransactions, showToast, loadPending],
+    [loadPending, showToast],
+  )
+
+  const applyRulesWithSnapshot = useCallback(
+    async (ruleRows: RuleRow[]) => {
+      const preflight = await computeApplyRulesPreflight(ruleRows)
+      if (preflight == null) return
+      // Above the confirm threshold, hand off to the modal — execute fires
+      // from its onConfirm.
+      if (preflight.totalMatches > APPLY_RULES_CONFIRM_THRESHOLD) {
+        setApplyRulesConfirm(preflight)
+        return
+      }
+      await executeApplyRules(preflight)
+    },
+    [computeApplyRulesPreflight, executeApplyRules],
   )
 
   const applyRules = useCallback(async () => {
     await applyRulesWithSnapshot(rules)
   }, [applyRulesWithSnapshot, rules])
+
+  /**
+   * Auto-apply path (RECENT_FEATURES v2.580). Deliberately bypasses
+   * `applyRulesWithSnapshot` (which gates on `APPLY_RULES_CONFIRM_THRESHOLD`
+   * and pops the modal) and goes straight to `executeApplyRules`. The 500
+   * per-pass cap inside `executeApplyRules` still applies, and its existing
+   * "Created N. M more match — apply again after reviewing." toast is the
+   * cue users see when a single pass didn't cover everything.
+   */
+  const runAutoApply = useCallback(async () => {
+    const preflight = await computeApplyRulesPreflight(rules)
+    if (preflight == null) return
+    await executeApplyRules(preflight)
+  }, [computeApplyRulesPreflight, executeApplyRules, rules])
+
+  // Tracks the last `(tx-id-set, enabled-rule-id-set)` snapshot we ran
+  // auto-apply on. Stops the effect from re-firing when `loadPending`
+  // round-trips with no behavior change. Reset by `autoApplyResetTick` so
+  // a fresh Mercury sync still triggers one pass even on identical id sets.
+  const lastAutoAppliedSignatureRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    lastAutoAppliedSignatureRef.current = null
+  }, [autoApplyResetTick])
+
+  useEffect(() => {
+    const sig = buildAutoApplySignature(filteredTransactions, rules)
+    const allow = shouldAutoApplyAccountingRules({
+      enabled: applyRulesByDefault,
+      loading,
+      rulesLoading,
+      assignmentsLoading,
+      applyRulesBusy,
+      rulesCount: rules.length,
+      currentSignature: sig,
+      lastSignature: lastAutoAppliedSignatureRef.current,
+    })
+    if (!allow) return
+    lastAutoAppliedSignatureRef.current = sig
+    void runAutoApply()
+  }, [
+    applyRulesByDefault,
+    filteredTransactions,
+    rules,
+    loading,
+    rulesLoading,
+    assignmentsLoading,
+    applyRulesBusy,
+    runAutoApply,
+  ])
+
+  // Pre-filter pending approvals to the rows `handleApproveAll` would
+  // actually take — i.e. drop Internal Transfers suggestions for txs with
+  // existing job splits (those need manual cleanup first). Feeding the
+  // **filtered** list into the signature builder means a residue of
+  // pure-conflict rows (post-approve all) produces a stable empty
+  // signature so the auto-approve effect quiets cleanly without firing
+  // `handleApproveAll`'s "All pending suggestions are conflicts" toast on
+  // every re-render.
+  const autoApprovablePending = useMemo(
+    () =>
+      pendingApprovals.filter((p) => {
+        const isInternalTransfers = isInternalTransfersLabel(
+          labels.find((L) => L.id === p.suggestedLabelId),
+        )
+        if (!isInternalTransfers) return true
+        return (allocationsByTxId.get(p.txId) ?? []).length === 0
+      }),
+    [pendingApprovals, labels, allocationsByTxId],
+  )
+
+  // Tracks the last `pendingSuggestionId-set` we ran auto-approve on. The
+  // signature naturally shrinks as suggestions get approved (server flips
+  // them to `'approved'`, `loadPending` filters them out), so once a load
+  // settles into a stable set the effect quiets.
+  const lastAutoApprovedSignatureRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    const sig = buildApproveByDefaultSignature(autoApprovablePending)
+    const allow = shouldAutoApproveAccountingSuggestions({
+      enabled: approveByDefault,
+      pendingLoading,
+      approveAllBusy,
+      pendingCount: autoApprovablePending.length,
+      currentSignature: sig,
+      lastSignature: lastAutoApprovedSignatureRef.current,
+    })
+    if (!allow) return
+    lastAutoApprovedSignatureRef.current = sig
+    void handleApproveAll()
+  }, [
+    approveByDefault,
+    autoApprovablePending,
+    pendingLoading,
+    approveAllBusy,
+    handleApproveAll,
+  ])
+
+  const cancelApplyRulesConfirm = useCallback(() => {
+    setApplyRulesConfirm(null)
+  }, [])
+
+  const confirmApplyRulesAfterModal = useCallback(async () => {
+    const preflight = applyRulesConfirm
+    if (preflight == null) return
+    setApplyRulesConfirm(null)
+    await executeApplyRules(preflight)
+  }, [applyRulesConfirm, executeApplyRules])
 
   const openNewRuleModal = () => {
     setRuleModalInitial(emptyRuleForm())
@@ -810,6 +1262,24 @@ export function BankingMercuryAccountingTab({
     [openEditRuleModal, ruleById, showToast],
   )
 
+  const openEditRuleByIdFromOverlaps = useCallback(
+    (ruleId: string) => {
+      auditPendingReopenAfterRuleModalRef.current = true
+      setOverlapsModalOpen(false)
+      openEditRuleById(ruleId)
+    },
+    [openEditRuleById],
+  )
+
+  useEffect(() => {
+    const wasOpen = ruleModalOpenPrevRef.current
+    ruleModalOpenPrevRef.current = ruleModalOpen
+    if (wasOpen && !ruleModalOpen && auditPendingReopenAfterRuleModalRef.current) {
+      auditPendingReopenAfterRuleModalRef.current = false
+      setOverlapsModalOpen(true)
+    }
+  }, [ruleModalOpen])
+
   const runTestFromCriteria = useCallback(
     (c: AccountingLabelRuleCriteriaV1) => {
       const matched: MercuryTxRow[] = []
@@ -817,11 +1287,32 @@ export function BankingMercuryAccountingTab({
       for (const tx of filteredTransactions) {
         if (matchAccountingLabelRuleCriteria(tx, c)) matched.push(tx)
       }
+      const visible = matched.slice(0, TEST_PREVIEW_LIMIT)
+
+      // Compute, per visible matched tx, which OTHER enabled rules (excluding the
+      // rule currently being edited) also match. Surfaces silent overlap to the
+      // rule author without changing how Apply tie-breaks.
+      const otherMatchesByTxId = new Map<string, string[]>()
+      const otherRulesParsed = rules
+        .filter((r) => r.enabled && (editingRuleId == null || r.id !== editingRuleId))
+        .map((r) => ({ rule: r, criteria: parseAccountingLabelRuleCriteria(r.criteria) }))
+        .filter((x) => x.criteria != null && accountingRuleEffectiveClauseCount(x.criteria) > 0)
+        .sort((a, b) => a.rule.sort_order - b.rule.sort_order || a.rule.id.localeCompare(b.rule.id))
+      for (const tx of visible) {
+        const ids: string[] = []
+        for (const { rule, criteria } of otherRulesParsed) {
+          if (criteria == null) continue
+          if (matchAccountingLabelRuleCriteria(tx, criteria)) ids.push(rule.id)
+        }
+        if (ids.length > 0) otherMatchesByTxId.set(tx.id, ids)
+      }
+
       setTestTotal(matched.length)
-      setTestRows(matched.slice(0, TEST_PREVIEW_LIMIT))
+      setTestRows(visible)
+      setTestOtherMatchingRulesByTxId(otherMatchesByTxId)
       setTestModalOpen(true)
     },
-    [filteredTransactions],
+    [filteredTransactions, rules, editingRuleId],
   )
 
   const saveRuleDraft = useCallback(
@@ -907,9 +1398,8 @@ export function BankingMercuryAccountingTab({
 
   const closeRuleModal = useCallback(() => setRuleModalOpen(false), [])
 
-  const deleteRule = useCallback(
+  const deleteRuleCore = useCallback(
     async (rule: RuleRow) => {
-      if (!window.confirm(`Delete rule "${rule.name}"? Pending suggestions for this rule will be removed.`)) return
       try {
         await withSupabaseRetry(async () => {
           return supabase.from('mercury_accounting_label_rules').delete().eq('id', rule.id)
@@ -919,9 +1409,22 @@ export function BankingMercuryAccountingTab({
         void loadPending()
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Delete failed', 'error')
+        throw e
       }
     },
     [loadPending, loadRulesAndUsage, showToast],
+  )
+
+  const deleteRule = useCallback(
+    async (rule: RuleRow) => {
+      if (!window.confirm(`Delete rule "${rule.name}"? Pending suggestions for this rule will be removed.`)) return
+      try {
+        await deleteRuleCore(rule)
+      } catch {
+        // toast already shown
+      }
+    },
+    [deleteRuleCore],
   )
 
   const ledgerShowDrag = false
@@ -971,8 +1474,31 @@ export function BankingMercuryAccountingTab({
               cursor: pendingLoading || pendingApprovals.length === 0 || approveAllBusy ? 'not-allowed' : 'pointer',
             }}
           >
-            {approveAllBusy ? 'Approving…' : 'Approve all'}
+            {approveAllBusy
+              ? 'Approving…'
+              : pendingApprovals.length > 0
+                ? `Approve all (${pendingApprovals.length.toLocaleString()})`
+                : 'Approve all'}
           </button>
+        </div>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'flex-end',
+            marginBottom: '0.5rem',
+          }}
+        >
+          <label
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}
+            title="When on, runs Approve all automatically every time new pending suggestions appear. Internal Transfers conflicts (rows with job splits) are still skipped and stay pending for manual review."
+          >
+            <input
+              type="checkbox"
+              checked={approveByDefault}
+              onChange={(e) => onApproveByDefaultChange(e.target.checked)}
+            />
+            Approve by default
+          </label>
         </div>
         <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
           Transactions matched by rules await confirmation. Choose a label if different from the suggestion, then Approve.
@@ -982,385 +1508,102 @@ export function BankingMercuryAccountingTab({
         ) : pendingApprovals.length === 0 ? (
           <div style={{ color: '#64748b' }}>No pending suggestions.</div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            {pendingApprovals.map((p) => {
-              const debitCardId = p.tx ? mercuryDebitCardIdFromRaw(p.tx.raw) : null
-              const debitCardLabel = debitCardId
-                ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)
-                : null
-              return (
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {pendingApprovals.slice(0, approvalsVisibleCount).map((p) => (
+                <AccountingApprovalCard
+                  key={p.suggestionId}
+                  approval={p}
+                  labels={labels}
+                  nicknameByDebitCard={nicknameByDebitCard}
+                  approveAllBusy={approveAllBusy}
+                  rulesLoading={rulesLoading}
+                  onApprove={handleApproveCard}
+                  onReject={handleRejectCard}
+                  onLabelChange={handleLabelChangeCard}
+                  onOpenEditRule={openEditRuleById}
+                />
+              ))}
+            </div>
+            {pendingApprovals.length > approvalsVisibleCount ? (
               <div
-                key={p.suggestionId}
                 style={{
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 8,
-                  padding: '0.75rem 1rem',
-                  background: '#fff',
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '0.5rem',
+                  marginTop: '0.75rem',
+                  padding: '0.5rem 0.25rem',
+                  fontSize: '0.875rem',
+                  color: '#475569',
                 }}
               >
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
-                  <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
-                    <div style={{ fontWeight: 600 }}>
-                      {p.tx
-                        ? `${formatUsd(Number(p.tx.amount))} · ${p.tx.counterparty_name ?? '—'}`
-                        : `Transaction ${p.txId.slice(0, 8)}… (not in current list)`}
-                    </div>
-                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
-                      Rule:{' '}
-                      <button
-                        type="button"
-                        disabled={approveAllBusy || rulesLoading}
-                        onClick={() => openEditRuleById(p.ruleId)}
-                        aria-label={`Edit rule ${p.ruleName}`}
-                        title="Edit rule"
-                        style={{
-                          padding: 0,
-                          border: 'none',
-                          background: 'none',
-                          color: '#2563eb',
-                          cursor: approveAllBusy || rulesLoading ? 'not-allowed' : 'pointer',
-                          textDecoration: 'underline',
-                          font: 'inherit',
-                          fontSize: 'inherit',
-                        }}
-                      >
-                        {p.ruleName}
-                      </button>
-                      {' · Suggested: '}
-                      {p.suggestedLabelName}
-                    </div>
-                    {debitCardLabel ? (
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>
-                        Card: {debitCardLabel}
-                      </div>
-                    ) : null}
-                    {p.tx ? (
-                      <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: 2 }}>
-                        Posted {formatBankingDate(p.tx.posted_at)} · Bank: {mercuryBankDescriptionFromRaw(p.tx.raw) ?? '—'}
-                      </div>
-                    ) : null}
-                  </div>
-                  <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
-                    <select
-                      value={p.suggestedLabelId}
-                      disabled={approveAllBusy}
-                      onChange={(e) => {
-                        const next = e.target.value
-                        setPendingApprovals((rows) =>
-                          rows.map((r) =>
-                            r.suggestionId === p.suggestionId ? { ...r, suggestedLabelId: next, suggestedLabelName: labelById.get(next)?.name ?? next } : r,
-                          ),
-                        )
-                      }}
-                      style={{ minWidth: 200, padding: '0.35rem 0.5rem' }}
-                    >
-                      {labels.map((L) => (
-                        <option key={L.id} value={L.id}>
-                          {L.name}
-                        </option>
-                      ))}
-                    </select>
-                    <span>Accounting Label</span>
-                  </label>
+                <span>
+                  Showing {approvalsVisibleCount.toLocaleString()} of{' '}
+                  {pendingApprovals.length.toLocaleString()}.
+                </span>
+                <span style={{ display: 'flex', gap: '0.5rem' }}>
                   <button
                     type="button"
-                    disabled={approveAllBusy}
-                    onClick={() => void handleApprove(p, p.suggestedLabelId)}
+                    onClick={() =>
+                      setApprovalsVisibleCount((n) =>
+                        Math.min(pendingApprovals.length, n + APPROVALS_PAGE_SIZE),
+                      )
+                    }
                     style={{
-                      padding: '0.45rem 0.9rem',
-                      fontWeight: 600,
-                      background: approveAllBusy ? '#94a3b8' : '#059669',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: 6,
-                      cursor: approveAllBusy ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    disabled={approveAllBusy}
-                    onClick={() => void handleReject(p)}
-                    style={{
-                      padding: '0.45rem 0.9rem',
-                      fontWeight: 600,
+                      padding: '0.4rem 0.85rem',
                       background: '#fff',
-                      color: '#b91c1c',
-                      border: '1px solid #fecaca',
+                      color: '#1f2937',
+                      border: '1px solid #e5e7eb',
                       borderRadius: 6,
-                      cursor: approveAllBusy ? 'not-allowed' : 'pointer',
+                      cursor: 'pointer',
+                      fontWeight: 500,
                     }}
                   >
-                    Reject
+                    Show {APPROVALS_PAGE_SIZE} more
                   </button>
-                </div>
+                  <button
+                    type="button"
+                    onClick={() => setApprovalsVisibleCount(pendingApprovals.length)}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      background: '#fff',
+                      color: '#1f2937',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                      fontWeight: 500,
+                    }}
+                  >
+                    Show all ({pendingApprovals.length.toLocaleString()})
+                  </button>
+                </span>
               </div>
-            )})}
-          </div>
+            ) : null}
+          </>
         )}
       </section>
 
-      <section style={{ marginBottom: '2rem' }}>
-        <div
+      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'flex-start' }}>
+        <button
+          type="button"
+          onClick={() => setRulesModalOpen(true)}
+          disabled={rulesLoading}
+          aria-label={`Open rules manager (${rules.length} rules)`}
           style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '0.75rem',
-            marginBottom: '0.75rem',
+            padding: '0.5rem 1rem',
+            fontWeight: 600,
+            background: rulesLoading ? '#e5e7eb' : '#2563eb',
+            color: rulesLoading ? '#64748b' : '#fff',
+            border: 'none',
+            borderRadius: 6,
+            cursor: rulesLoading ? 'not-allowed' : 'pointer',
           }}
         >
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <button
-                type="button"
-                aria-expanded={rulesSectionExpanded}
-                aria-controls={ACCOUNTING_RULES_SECTION_BODY_ID}
-                aria-label={rulesSectionExpanded ? 'Collapse rules list' : 'Expand rules list'}
-                title={rulesSectionExpanded ? 'Collapse rules list' : 'Expand rules list'}
-                onClick={() => {
-                  const next = !rulesSectionExpanded
-                  setRulesSectionExpanded(next)
-                  writeAccountingRulesSectionExpanded(userId, next)
-                }}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 28,
-                  height: 28,
-                  padding: 0,
-                  border: '1px solid #e5e7eb',
-                  borderRadius: 6,
-                  background: '#fff',
-                  cursor: 'pointer',
-                  fontSize: '0.75rem',
-                  lineHeight: 1,
-                  color: '#334155',
-                }}
-              >
-                <span aria-hidden>{rulesSectionExpanded ? '▼' : '▶'}</span>
-              </button>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Rules</h2>
-            </div>
-            <button
-              type="button"
-              onClick={openNewRuleModal}
-              disabled={labelsLoading || labels.length === 0}
-              style={{
-                padding: '0.4rem 0.85rem',
-                fontWeight: 600,
-                background: labelsLoading || labels.length === 0 ? '#e5e7eb' : '#2563eb',
-                color: labelsLoading || labels.length === 0 ? '#64748b' : '#fff',
-                border: 'none',
-                borderRadius: 6,
-                cursor: labelsLoading || labels.length === 0 ? 'not-allowed' : 'pointer',
-              }}
-            >
-              New rule
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => void applyRules()}
-            disabled={applyRulesBusy || rulesLoading}
-            style={{
-              padding: '0.4rem 0.85rem',
-              fontWeight: 600,
-              background: applyRulesBusy || rulesLoading ? '#e5e7eb' : '#f1f5f9',
-              color: applyRulesBusy || rulesLoading ? '#64748b' : '#0f172a',
-              border: applyRulesBusy || rulesLoading ? '1px solid #e5e7eb' : '1px solid #e2e8f0',
-              borderRadius: 6,
-              cursor: applyRulesBusy || rulesLoading ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {applyRulesBusy ? 'Applying…' : 'Apply rules to transactions'}
-          </button>
-        </div>
-        {rulesSectionExpanded ? (
-          <div id={ACCOUNTING_RULES_SECTION_BODY_ID}>
-            {rulesLoading ? (
-              <div style={{ color: '#64748b' }}>Loading rules…</div>
-            ) : rules.length === 0 ? (
-              <div style={{ color: '#64748b' }}>No rules yet.</div>
-            ) : (
-              <>
-                <label
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 4,
-                    fontSize: '0.85rem',
-                    marginBottom: '0.75rem',
-                    width: '100%',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <input
-                    type="search"
-                    aria-label="Search rules"
-                    placeholder="Search rules…"
-                    value={rulesTableSearchText}
-                    onChange={(e) => setRulesTableSearchText(e.target.value)}
-                    style={{
-                      width: '100%',
-                      boxSizing: 'border-box',
-                      padding: '0.45rem 0.65rem',
-                      borderRadius: 6,
-                      border: '1px solid #e5e7eb',
-                    }}
-                  />
-                </label>
-                {rulesFilteredForTable.length === 0 && rulesSearchNorm !== '' ? (
-                  <div style={{ color: '#64748b' }}>No rules match this search.</div>
-                ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead>
-                        <tr style={{ background: '#f9fafb' }}>
-                          <th
-                            scope="col"
-                            aria-sort={
-                              rulesTableSort.column === 'name'
-                                ? rulesTableSort.direction === 'asc'
-                                  ? 'ascending'
-                                  : 'descending'
-                                : 'none'
-                            }
-                            style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => onRulesSortHeaderClick('name')}
-                              aria-label="Sort by name"
-                              style={{
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                textAlign: 'left',
-                                padding: '0.5rem 0.75rem',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                font: 'inherit',
-                                color: 'inherit',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              Name
-                              {rulesTableSort.column === 'name'
-                                ? rulesTableSort.direction === 'asc'
-                                  ? '\u00a0▲'
-                                  : '\u00a0▼'
-                                : null}
-                            </button>
-                          </th>
-                          <th
-                            scope="col"
-                            aria-sort={
-                              rulesTableSort.column === 'label'
-                                ? rulesTableSort.direction === 'asc'
-                                  ? 'ascending'
-                                  : 'descending'
-                                : 'none'
-                            }
-                            style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => onRulesSortHeaderClick('label')}
-                              aria-label="Sort by label"
-                              style={{
-                                width: '100%',
-                                boxSizing: 'border-box',
-                                textAlign: 'left',
-                                padding: '0.5rem 0.75rem',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                font: 'inherit',
-                                color: 'inherit',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                              }}
-                            >
-                              Label
-                              {rulesTableSort.column === 'label'
-                                ? rulesTableSort.direction === 'asc'
-                                  ? '\u00a0▲'
-                                  : '\u00a0▼'
-                                : null}
-                            </button>
-                          </th>
-                          <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
-                            Enabled
-                          </th>
-                          <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
-                            Approved uses
-                          </th>
-                          <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }} />
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rulesSortedForTable.map((r) => {
-                          const lbl = labelById.get(r.label_id)
-                          return (
-                            <tr key={r.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{r.name}</td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{lbl?.name ?? r.label_id.slice(0, 8)}</td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{r.enabled ? 'Yes' : 'No'}</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                                {ruleUsageApproved[r.id] ?? 0}
-                              </td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => openEditRuleModal(r)}
-                                  style={{
-                                    marginRight: 8,
-                                    padding: '2px 8px',
-                                    fontSize: '0.8rem',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#2563eb',
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline',
-                                  }}
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => void deleteRule(r)}
-                                  style={{
-                                    padding: '2px 8px',
-                                    fontSize: '0.8rem',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    color: '#b91c1c',
-                                    cursor: 'pointer',
-                                    textDecoration: 'underline',
-                                  }}
-                                >
-                                  Delete
-                                </button>
-                              </td>
-                            </tr>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        ) : null}
-      </section>
+          Rules ({rules.length})
+        </button>
+      </div>
 
       <section style={{ marginBottom: '1rem' }}>
         <h2
@@ -1384,13 +1627,20 @@ export function BankingMercuryAccountingTab({
             <input
               type="checkbox"
               checked={hideLabeledTransactions}
-              onChange={(e) => {
-                const v = e.target.checked
-                setHideLabeledTransactions(v)
-                writeAccountingHideLabeledTransactions(userId, v)
-              }}
+              onChange={(e) => onHideLabeledTransactionsChange(e.target.checked)}
             />
             Hide labeled transactions
+          </label>
+          <label
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', cursor: 'pointer' }}
+            title="When on, runs Apply rules to transactions automatically after every load. Skips the confirm modal but still caps each pass at 500 new pending suggestions."
+          >
+            <input
+              type="checkbox"
+              checked={applyRulesByDefault}
+              onChange={(e) => onApplyRulesByDefaultChange(e.target.checked)}
+            />
+            Apply rules by default
           </label>
           <button
             type="button"
@@ -1584,9 +1834,14 @@ export function BankingMercuryAccountingTab({
         scopeDescription={
           <>
             Counterparties with more than two transactions in the current table (after <strong>Search</strong>,{' '}
-            <strong>More filters</strong>, and <strong>Hide labeled transactions</strong> when that option is on).
+            <strong>More filters</strong>, and <strong>Hide labeled transactions</strong> when that option is on). Click
+            a row to load that name into <strong>Search</strong>.
           </>
         }
+        onRowClick={(row) => {
+          setAccountingSearchText(row.label)
+          setCounterpartyFrequencyModalOpen(false)
+        }}
       />
 
       <AccountingLabelQuickAssignModal
@@ -1613,6 +1868,19 @@ export function BankingMercuryAccountingTab({
           onSave={saveRuleDraft}
           onSaveAndApply={saveRuleDraftAndApply}
           applyRulesBusy={applyRulesBusy}
+          onDelete={
+            editingRuleId
+              ? async () => {
+                  const rule = ruleById.get(editingRuleId)
+                  if (!rule) {
+                    showToast('Could not find that rule. Try reloading the page.', 'error')
+                    return
+                  }
+                  await deleteRuleCore(rule)
+                  setRuleModalOpen(false)
+                }
+              : undefined
+          }
         />
       ) : null}
 
@@ -1654,11 +1922,20 @@ export function BankingMercuryAccountingTab({
               {testTotal} transaction(s) match on the current Banking-loaded list (showing first {testRows.length}).
             </p>
             <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
-              {testRows.map((tx) => (
-                <li key={tx.id} style={{ marginBottom: 6 }}>
-                  {formatUsd(Number(tx.amount))} · {tx.counterparty_name ?? '—'} · {formatBankingDate(tx.posted_at)}
-                </li>
-              ))}
+              {testRows.map((tx) => {
+                const otherIds = testOtherMatchingRulesByTxId.get(tx.id) ?? []
+                return (
+                  <li key={tx.id} style={{ marginBottom: 6 }}>
+                    {formatUsd(Number(tx.amount))} · {tx.counterparty_name ?? '—'} · {formatBankingDate(tx.posted_at)}
+                    {otherIds.length > 0 ? (
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
+                        Also matched by:{' '}
+                        {otherIds.map((id) => ruleById.get(id)?.name ?? id.slice(0, 8)).join(', ')}
+                      </div>
+                    ) : null}
+                  </li>
+                )
+              })}
             </ul>
             <button
               type="button"
@@ -1670,6 +1947,52 @@ export function BankingMercuryAccountingTab({
           </div>
         </div>
       ) : null}
+
+      <BankingMercuryAccountingOverlapsModal
+        open={overlapsModalOpen}
+        onClose={() => {
+          auditPendingReopenAfterRuleModalRef.current = false
+          setOverlapsModalOpen(false)
+        }}
+        report={overlapReport}
+        labelById={labelById}
+        ruleById={ruleById}
+        txById={overlapTxByIdMap}
+        onEditRule={openEditRuleByIdFromOverlaps}
+      />
+
+      <BankingMercuryAccountingApplyRulesConfirmModal
+        open={applyRulesConfirm != null}
+        totalMatches={applyRulesConfirm?.totalMatches ?? 0}
+        capPerClick={APPLY_RULES_PER_CLICK_CAP}
+        busy={applyRulesBusy}
+        onCancel={cancelApplyRulesConfirm}
+        onConfirm={() => void confirmApplyRulesAfterModal()}
+      />
+
+      <BankingMercuryAccountingRulesModal
+        open={rulesModalOpen}
+        onClose={() => setRulesModalOpen(false)}
+        rulesLoading={rulesLoading}
+        rules={rules}
+        rulesFilteredForTable={rulesFilteredForTable}
+        rulesSortedForTable={rulesSortedForTable}
+        rulesSearchNorm={rulesSearchNorm}
+        rulesTableSearchText={rulesTableSearchText}
+        setRulesTableSearchText={setRulesTableSearchText}
+        rulesTableSort={rulesTableSort}
+        onRulesSortHeaderClick={onRulesSortHeaderClick}
+        labelById={labelById}
+        ruleUsageApproved={ruleUsageApproved}
+        labelsLoading={labelsLoading}
+        labelCount={labels.length}
+        applyRulesBusy={applyRulesBusy}
+        onNewRule={openNewRuleModal}
+        onAuditOverlaps={() => setOverlapsModalOpen(true)}
+        onApplyRules={() => void applyRules()}
+        onEditRule={openEditRuleModal}
+        onDeleteRule={(r) => void deleteRule(r)}
+      />
     </>
   )
 }

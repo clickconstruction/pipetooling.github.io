@@ -24,7 +24,7 @@ import {
   writeDragSortLabelsCardsExpanded,
 } from '../../lib/bankingDragSortStorage'
 import { counterpartyFrequenciesAboveMin } from '../../lib/bankingMercuryCounterpartyFrequency'
-import { ensureDragSortDefaultLabels } from '../../lib/dragSortDefaultLabels'
+import { ensureDragSortDefaultLabels, isInternalTransfersLabel } from '../../lib/dragSortDefaultLabels'
 import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
 import { mercuryTxDragSortBankNoteRowVisible } from './MercuryTxNotesDisclosure'
 import BankingMercuryDragSortFocusModal from './BankingMercuryDragSortFocusModal'
@@ -192,6 +192,7 @@ function LabelDropZone({
   amountSum,
   expanded,
   onDelete,
+  defaultKey,
 }: {
   labelId: string
   labelName: string
@@ -201,6 +202,7 @@ function LabelDropZone({
   amountSum: number
   expanded: boolean
   onDelete?: () => void
+  defaultKey?: string | null
 }) {
   const dropId = `label:${labelId}`
   const { setNodeRef, isOver } = useDroppable({ id: dropId })
@@ -217,6 +219,7 @@ function LabelDropZone({
       expanded={expanded}
       visualState={isOver ? 'droppableHover' : 'idle'}
       onDelete={onDelete}
+      defaultKey={defaultKey}
     />
   )
 }
@@ -480,6 +483,22 @@ export function BankingMercuryDragSortTab({
       if (!tx) return
       const amt = Number(tx.amount)
 
+      // Internal Transfers and job splits are mutually exclusive. Block the
+      // assignment before any optimistic state update so the UI never flickers.
+      if (nextLabelId !== null) {
+        const nextLabel = labelById.get(nextLabelId)
+        if (isInternalTransfersLabel(nextLabel)) {
+          const splits = allocationsByTxId.get(txId) ?? []
+          if (splits.length > 0) {
+            showToast(
+              'Internal Transfers cannot be applied to a transaction with job splits. Clear the splits first.',
+              'error',
+            )
+            return
+          }
+        }
+      }
+
       const fail = (e: unknown) => {
         setAssignmentLabelByTxId(mapSnapshot)
         setBucketStats(buildBucketStats(filteredTransactions, mapSnapshot))
@@ -521,6 +540,7 @@ export function BankingMercuryDragSortTab({
       filteredTransactions,
       txById,
       labelById,
+      allocationsByTxId,
       deleteAssignment,
       upsertAssignment,
       showToast,
@@ -1095,6 +1115,7 @@ export function BankingMercuryDragSortTab({
                     onDelete={
                       L.is_system_default ? undefined : () => void removeLabel(L.id)
                     }
+                    defaultKey={L.default_key}
                   />
                 )
               })

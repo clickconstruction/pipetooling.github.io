@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-05-19
+last_updated: 2026-05-25
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -124,6 +124,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Jobs / Billing / Stripe / RPC
 
 ### May 2026
+
+#### May 25, 2026
+
+**`20260525204531_list_unlabeled_mercury_transactions.sql`**
+- **Purpose**: Banking **Mercury** **Accounting** — **`list_unlabeled_mercury_transactions(p_limit int default null)`** SECURITY INVOKER RPC. Returns `setof public.mercury_transactions` filtered to rows that have **no** matching `mercury_transaction_drag_sort_assignments` row, ordered `posted_at DESC NULLS LAST, id DESC` (matches the existing master list ordering). `LIMIT p_limit` with `null` default returns all unlabeled rows; PostgREST's project-level cap stays the ultimate ceiling. Anti-join hits the primary key index on **`mercury_transaction_drag_sort_assignments(mercury_transaction_id)`** declared in **`20260502224616_mercury_drag_sort_org_wide_labels.sql`**, so no new index is required. RLS on both tables runs as the caller (existing **dev** / **master_technician** / **assistant** gating on `mercury_transactions` carries through). Single **`grant execute … to authenticated`** completes the migration.
+- **Changes**: Single **`create or replace function`** statement plus the grant — re-applying is safe and idempotent. No table / index / RLS / trigger changes.
+- **Impact**: **[`Banking.tsx`](src/pages/Banking.tsx)** splits **`loadRows`** into **`loadAllRows`** + **`loadUnlabeledRows`** + **`loadRowsForActiveView`** (tab-aware dispatcher); the unlabeled-only RPC fires only when (Accounting tab + Hide labeled = on), the default 90% case. Drag Sort, User Review, Category Review, Sorting, and Ledger continue to use the master 15k fetch. **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** drops local `hideLabeledTransactions` state, lifts it to props, derives `inputIsUnlabeledOnly`, and short-circuits both `loadAssignmentsForList` and the `displayTransactions` filter when the parent already pre-narrowed the input. New optional `onAfterAssignmentChange?` prop fires after each of the four assignment-table mutation flows (`clearRowDragSortLabel`, `handleQuickAssignLabel`, `handleApprove`, `handleApproveAll`) so the unlabeled list shrinks (or grows) in place. **`RECENT_FEATURES.md`** **v2.579**, **`AGENTS.md`** Banking Mercury Accounting row, **`GLOSSARY.md`** Accounting rules entry. **`npm run gen-types:linked`** after **`db push`** so the new RPC is typed (`Args: { p_limit?: number }`).
+- **Category**: Banking / Mercury / Accounting / RPC
+
+**`20260525160339_add_drag_sort_internal_transfers_builtin.sql`**
+- **Purpose**: Backfill the **Internal Transfers** Drag Sort built-in (**`mercury_drag_sort_labels`**) into existing orgs without requiring a Drag Sort tab visit to trigger client-side seeding via **`ensureDragSortDefaultLabels()`**. New row: **`default_key='internal_transfers'`**, **`name='Internal Transfers'`**, **`schedule_c_line='N/A'`**, **`is_system_default=true`**, **`sort_order=9999`** (parks at the bottom of the sidebar away from Schedule-C-flavored buckets). Mirrors the **`20260520161301_mercury_drag_sort_employee_benefits_builtin.sql`** precedent.
+- **Changes**: Single **`INSERT … ON CONFLICT (default_key) DO NOTHING`** statement so re-applying or running alongside the client seeder is safe (the `default_key` UNIQUE constraint is the canonical de-dupe). Per **`mercury_drag_sort_labels_guard_system_fields`** trigger, the row's **`name`** / **`schedule_c_line`** / **`description`** become immutable after insert. No new RLS / RPCs / triggers — covered by the existing **`mercury_drag_sort_labels`** policies + guard. The label is **mutually exclusive with `mercury_transaction_splits`** but that's enforced client-side via UI hard blocks (see **`RECENT_FEATURES.md`** **v2.572**), not via DB trigger.
+- **Impact**: Adds the new bucket to every org's Drag Sort sidebar + Accounting tab dropdowns. Counts toward the new **`'internal_transfer'`** key in **[`overheadPartsAccountingBuckets.ts`](src/lib/overheadPartsAccountingBuckets.ts)** so labeled rows are excluded from the Field Total / Hours modal's Materials total via **`sumMaterialsTotalUsdExcludingInternalTransfer`**. Sidebar rendering picks up the slate accent automatically once **[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)** receives the new **`defaultKey`** prop. Hard blocks in **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**, **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx)** prevent label/split coexistence. Helpers **`INTERNAL_TRANSFERS_DEFAULT_KEY`** + **`isInternalTransfersLabel`** in **[`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts)** centralize the default-key check. Applied via Supabase MCP **`apply_migration`**; observed `sort_order=270` post-apply because the client seeder's `index * 10` pricing ran before the migration and **`ON CONFLICT DO NOTHING`** preserved the existing row — both values still place the label at the bottom of the list, so no fix needed. **`RECENT_FEATURES.md`** **v2.572**, **`GLOSSARY.md`** **Internal Transfers (Banking Mercury Drag Sort built-in)**, **`AGENTS.md`** Drag Sort row. **`npm run gen-types:linked`** after **`db push`** (no schema column changes; ensures history sync).
+- **Category**: Banking / Mercury / Drag Sort / Built-in catalog
 
 #### May 19, 2026
 

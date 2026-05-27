@@ -28,6 +28,7 @@ import { BankingMercuryDragSortTab } from '../components/banking/BankingMercuryD
 import { BankingMercuryAccountingTab } from '../components/banking/BankingMercuryAccountingTab'
 import { BankingMercuryUserReviewTab } from '../components/banking/BankingMercuryUserReviewTab'
 import { BankingMercuryCategoryReviewTab } from '../components/banking/BankingMercuryCategoryReviewTab'
+import { MercuryBackfillModal } from '../components/banking/MercuryBackfillModal'
 import {
   mercuryTxHasNotePreview,
   MercuryTxNotesEditorPanel,
@@ -68,11 +69,21 @@ import {
   mercuryRowNeedsRawHydration,
   MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS,
 } from '../lib/fetchMercuryTransactionRaws'
+import {
+  readAccountingApplyRulesByDefault,
+  readAccountingApproveByDefault,
+  readAccountingHideLabeledTransactions,
+  writeAccountingApplyRulesByDefault,
+  writeAccountingApproveByDefault,
+  writeAccountingHideLabeledTransactions,
+} from '../lib/bankingDragSortStorage'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 /** Stable empty list for org-note fetch ids when not on Mercury Banking (avoid spurious refetches). */
 const NO_MERCURY_TX_IDS_FOR_BANKING_NOTES: readonly string[] = []
 const DEBIT_CARD_RECENT_TX_CAP = 50
+/** Cap for the in-memory Banking → Mercury list. Sized to comfortably fit a 1-year backfill (~10k tx) plus headroom. */
+const MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
 
 type BankingProduct = 'mercury' | 'stripe'
@@ -269,6 +280,8 @@ type BankingLedgerAdvancedMenuProps = {
   loading: boolean
   onRefreshFromMercury: () => void
   onReloadTable: () => void
+  /** Dev-only; when undefined, the Backfill menu item is hidden. */
+  onBackfillFromMercury?: () => void
 }
 
 function BankingLedgerAdvancedMenu({
@@ -278,6 +291,7 @@ function BankingLedgerAdvancedMenu({
   loading,
   onRefreshFromMercury,
   onReloadTable,
+  onBackfillFromMercury,
 }: BankingLedgerAdvancedMenuProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -370,6 +384,24 @@ function BankingLedgerAdvancedMenu({
           >
             {syncing ? 'Syncing from Mercury…' : 'Refresh from Mercury'}
           </button>
+          {onBackfillFromMercury ? (
+            <button
+              type="button"
+              role="menuitem"
+              disabled={syncing}
+              onClick={() => {
+                onMenuOpenChange(false)
+                onBackfillFromMercury()
+              }}
+              style={{
+                ...itemStyle,
+                cursor: syncing ? 'not-allowed' : 'pointer',
+                opacity: syncing ? 0.7 : 1,
+              }}
+            >
+              Backfill from Mercury…
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
@@ -1019,6 +1051,7 @@ export default function Banking() {
   const [debitCardNicknamesModalOpen, setDebitCardNicknamesModalOpen] = useState(false)
   const [nicknamesMenuOpen, setNicknamesMenuOpen] = useState(false)
   const [ledgerAdvancedMenuOpen, setLedgerAdvancedMenuOpen] = useState(false)
+  const [backfillModalOpen, setBackfillModalOpen] = useState(false)
   const [recentTxDebitCardId, setRecentTxDebitCardId] = useState<string | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(defaultBankingSortingConfig)
@@ -1033,6 +1066,26 @@ export default function Banking() {
   const [jobLabelByIdBanking, setJobLabelByIdBanking] = useState<Record<string, string>>({})
   const [usersSelectOptions, setUsersSelectOptions] = useState<SearchableSelectOption[]>([])
   const [allocModalTx, setAllocModalTx] = useState<MercuryTxRow | null>(null)
+  // Lifted from `BankingMercuryAccountingTab` so `loadRowsForActiveView` can
+  // pick the unlabeled-only RPC vs the master 15k fetch based on the current
+  // tab + the toggle. Defaults to **on** (the storage helper's null-userId
+  // default) until the user-bound `useEffect` below hydrates the per-user pref.
+  const [hideLabeledTransactions, setHideLabeledTransactions] = useState(true)
+  // Per-user "Apply rules by default" toggle (RECENT_FEATURES v2.580).
+  // Lifted to this component so we can bump `autoApplyResetTick` from
+  // `handleSync` / `handleBackfill` and so the storage hydration mirrors
+  // `hideLabeledTransactions`. Defaults **off** (opt-in for safety).
+  const [applyRulesByDefault, setApplyRulesByDefault] = useState(false)
+  // Monotonic counter the child reads in a ref-reset effect so that every
+  // Refresh from Mercury / Backfill clears `lastAutoAppliedSignatureRef` and
+  // re-fires one auto-apply pass even on identical id sets (e.g. a sync
+  // that only updated counterparties).
+  const [autoApplyResetTick, setAutoApplyResetTick] = useState(0)
+  // Per-user "Approve by default" toggle (RECENT_FEATURES v2.581).
+  // When on, auto-runs `handleApproveAll` whenever a new pending suggestion
+  // appears. Defaults **off** (opt-in — committing assignments without
+  // per-row review is the bigger trust step).
+  const [approveByDefault, setApproveByDefault] = useState(false)
 
   const isDevBanking = myRole === 'dev'
   const canAccessBanking = myRole === 'dev' || myRole === 'assistant' || myRole === 'master_technician'
@@ -1127,6 +1180,45 @@ export default function Banking() {
   }, [user?.id])
 
   useEffect(() => {
+    if (!user?.id) return
+    setHideLabeledTransactions(readAccountingHideLabeledTransactions(user.id))
+  }, [user?.id])
+
+  const onHideLabeledTransactionsChange = useCallback(
+    (v: boolean) => {
+      setHideLabeledTransactions(v)
+      if (user?.id) writeAccountingHideLabeledTransactions(user.id, v)
+    },
+    [user?.id],
+  )
+
+  useEffect(() => {
+    if (!user?.id) return
+    setApplyRulesByDefault(readAccountingApplyRulesByDefault(user.id))
+  }, [user?.id])
+
+  const onApplyRulesByDefaultChange = useCallback(
+    (v: boolean) => {
+      setApplyRulesByDefault(v)
+      if (user?.id) writeAccountingApplyRulesByDefault(user.id, v)
+    },
+    [user?.id],
+  )
+
+  useEffect(() => {
+    if (!user?.id) return
+    setApproveByDefault(readAccountingApproveByDefault(user.id))
+  }, [user?.id])
+
+  const onApproveByDefaultChange = useCallback(
+    (v: boolean) => {
+      setApproveByDefault(v)
+      if (user?.id) writeAccountingApproveByDefault(user.id, v)
+    },
+    [user?.id],
+  )
+
+  useEffect(() => {
     if (myRole && myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') {
       navigate('/dashboard', { replace: true })
     }
@@ -1180,7 +1272,7 @@ export default function Banking() {
     )
   }, [myRole, searchParams, setSearchParams])
 
-  const loadRows = useCallback(async (options?: { silent?: boolean }) => {
+  const loadAllRows = useCallback(async (options?: { silent?: boolean }) => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
     const silent = options?.silent === true
     if (!silent) {
@@ -1193,7 +1285,7 @@ export default function Banking() {
           .from('mercury_transactions')
           .select(MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS)
           .order('posted_at', { ascending: false, nullsFirst: false })
-          .limit(5000)
+          .limit(MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)
       }, 'load mercury_transactions')
       setRows((data as MercuryTxRow[]) ?? [])
     } catch (e) {
@@ -1207,6 +1299,53 @@ export default function Banking() {
       if (!silent) setLoading(false)
     }
   }, [myRole, showToast])
+
+  // Server-side anti-join: returns only `mercury_transactions` rows that have
+  // no matching `mercury_transaction_drag_sort_assignments`. Used when the
+  // Accounting tab is active with **Hide labeled transactions** on (the
+  // 90% case), instead of pulling 15k rows and discarding ~88% client-side.
+  // RPC has no cap; PostgREST's project-level row cap still applies as the
+  // ultimate ceiling, same as before.
+  const loadUnlabeledRows = useCallback(async (options?: { silent?: boolean }) => {
+    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    const silent = options?.silent === true
+    if (!silent) {
+      setError(null)
+      setLoading(true)
+    }
+    try {
+      const data = await withSupabaseRetry(async () => {
+        return supabase.rpc('list_unlabeled_mercury_transactions', { p_limit: undefined })
+      }, 'load mercury_transactions unlabeled')
+      setRows((data as MercuryTxRow[]) ?? [])
+    } catch (e) {
+      if (silent) {
+        showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to load transactions')
+        setRows([])
+      }
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [myRole, showToast])
+
+  // Tab-aware dispatcher. Accounting + Hide labeled = unlabeled-only RPC;
+  // every other tab (Drag Sort, User Review, Category Review, Sorting,
+  // Ledger) keeps the existing master 15k fetch.
+  const loadRowsForActiveView = useCallback(
+    async (options?: { silent?: boolean }) => {
+      if (
+        bankingView.product === 'mercury' &&
+        bankingView.mercuryTab === 'accounting' &&
+        hideLabeledTransactions
+      ) {
+        return loadUnlabeledRows(options)
+      }
+      return loadAllRows(options)
+    },
+    [bankingView.product, bankingView.mercuryTab, hideLabeledTransactions, loadAllRows, loadUnlabeledRows],
+  )
 
   const loadNicknames = useCallback(async () => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
@@ -1260,10 +1399,16 @@ export default function Banking() {
     [showToast],
   )
 
+  // Re-fires when the active tab or **Hide labeled transactions** toggle
+  // changes (via `loadRowsForActiveView`'s dep set), so toggling off the
+  // Accounting hide-labeled checkbox naturally pulls in the master 15k
+  // fetch, and re-toggling on shrinks the list back to the unlabeled-only
+  // RPC. First mount fires once because the dispatcher identity is stable
+  // across that initial paint.
   useEffect(() => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
-    void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])
-  }, [myRole, loadRows, loadNicknames, loadDebitCardNicknames])
+    void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])
+  }, [myRole, loadRowsForActiveView, loadNicknames, loadDebitCardNicknames])
 
   const bankingMercuryFilters = useMemo(
     () => [{ event: '*' as const, schema: 'public', table: 'mercury_transactions' }],
@@ -1274,7 +1419,7 @@ export default function Banking() {
     `banking-mercury-transactions-${user?.id ?? 'none'}`,
     bankingMercuryFilters,
     () => {
-      void loadRows({ silent: true })
+      void loadRowsForActiveView({ silent: true })
     },
     { debounceMs: 800 },
   )
@@ -1639,10 +1784,40 @@ export default function Banking() {
         setError(body.error)
         return
       }
-      await loadRows()
+      await loadRowsForActiveView()
       void Promise.all([loadNicknames(), loadDebitCardNicknames()])
+      // New rows landed (or counterparties / amounts were updated). Bump the
+      // tick so the Accounting tab's auto-apply ref resets and runs once
+      // even if the unlabeled id set didn't change.
+      setAutoApplyResetTick((t) => t + 1)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sync failed')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
+  async function handleBackfill(range: { start: string; end: string }) {
+    setSyncing(true)
+    setError(null)
+    try {
+      const { data, error: fnErr } = await supabase.functions.invoke('sync-mercury-transactions', {
+        body: { start: range.start, end: range.end },
+      })
+      if (fnErr) throw new Error(fnErr.message)
+      const body = data as { error?: string; upserted?: number; start?: string; end?: string } | null
+      if (body && typeof body.error === 'string') throw new Error(body.error)
+      const upserted = typeof body?.upserted === 'number' ? body.upserted : 0
+      const startLabel = body?.start ?? range.start
+      const endLabel = body?.end ?? range.end
+      showToast(
+        `Synced ${upserted.toLocaleString()} transactions from Mercury (${startLabel} → ${endLabel}).`,
+        'success',
+      )
+      await Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])
+      setAutoApplyResetTick((t) => t + 1)
+      setBackfillModalOpen(false)
+      return { upserted, start: startLabel, end: endLabel }
     } finally {
       setSyncing(false)
     }
@@ -2092,7 +2267,7 @@ export default function Banking() {
                 ) : null}
                 <button
                   type="button"
-                  onClick={() => void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])}
+                  onClick={() => void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])}
                   disabled={loading}
                   style={{
                     padding: '0.5rem 1rem',
@@ -2233,6 +2408,14 @@ export default function Banking() {
             onEditAllocations={(r) => void openAllocModalForMercuryRow(r)}
             orgNotesByTxId={orgNotesByTxId}
             onOrgNoteUpdated={onOrgNoteUpdated}
+            hideLabeledTransactions={hideLabeledTransactions}
+            onHideLabeledTransactionsChange={onHideLabeledTransactionsChange}
+            applyRulesByDefault={applyRulesByDefault}
+            onApplyRulesByDefaultChange={onApplyRulesByDefaultChange}
+            autoApplyResetTick={autoApplyResetTick}
+            approveByDefault={approveByDefault}
+            onApproveByDefaultChange={onApproveByDefaultChange}
+            onAfterAssignmentChange={() => void loadRowsForActiveView({ silent: true })}
           />
         </div>
       ) : null}
@@ -2305,7 +2488,8 @@ export default function Banking() {
                 syncing={syncing}
                 loading={loading}
                 onRefreshFromMercury={() => void handleSync()}
-                onReloadTable={() => void Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])}
+                onReloadTable={() => void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])}
+                onBackfillFromMercury={isDevBanking ? () => setBackfillModalOpen(true) : undefined}
               />
             </div>
           </div>
@@ -2467,6 +2651,14 @@ export default function Banking() {
         rows={rows}
         cap={DEBIT_CARD_RECENT_TX_CAP}
       />
+
+      {isDevBanking ? (
+        <MercuryBackfillModal
+          open={backfillModalOpen}
+          onClose={() => setBackfillModalOpen(false)}
+          onSubmit={handleBackfill}
+        />
+      ) : null}
 
       {canAccessBanking && (
         <MercuryTransactionAllocationsModal

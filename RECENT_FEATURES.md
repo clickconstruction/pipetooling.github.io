@@ -7,16 +7,46 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-21 (v2.570)
-estimated_read_time: 30-45 minutes
-difficulty: Beginner to Intermediate
-
-format: "Reverse chronological (newest first)"
-version_range: "v2.570+ (reverse chronological)"
-
-key_sections:
-  - name: "Latest Version (v2.570)"
-    line: ~1911
+last_updated: 2026-05-25 (v2.581)
+ estimated_read_time: 30-45 minutes
+ difficulty: Beginner to Intermediate
+ 
+ format: "Reverse chronological (newest first)"
+ version_range: "v2.581+ (reverse chronological)"
+ 
+ key_sections:
+   - name: "Latest Version (v2.581)"
+     line: ~1938
+     description: "Banking Mercury Accounting — **Approve by default** toggle. New per-user checkbox below the **Approve all (N)** button on the Accounting tab's Approvals section (defaults **off**: presence of `'1'` = on, anything else = off). When on, the existing `handleApproveAll` flow is auto-fired every time a new pending suggestion appears — closes the loop after v2.580 (rules auto-create suggestions; this auto-commits them). Internal Transfers conflicts (suggestions whose label is Internal Transfers and whose tx already has job splits in `mercury_transaction_splits`) are still skipped by `handleApproveAll` itself, so those persist in the pending list and surface for manual review. **Toast-spam-free residue handling**: the auto-approve effect derives a pre-filtered `autoApprovablePending` list (mirrors the conflict-skip predicate inside `handleApproveAll`) and only the filtered list goes into the signature. Once a load settles into a stable conflict-only set the signature shrinks to `''` and the gate's `pendingCount === 0` branch quiets the effect — so `handleApproveAll`'s `All pending suggestions would label a transaction with job splits as Internal Transfers. Clear the splits first.` toast never fires from auto-mode. New storage helpers `readAccountingApproveByDefault` / `writeAccountingApproveByDefault` in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) under prefix `banking_accounting_approve_by_default_v1_`. New pure helper module [`accountingApproveByDefaultAutoTrigger.ts`](src/lib/accountingApproveByDefaultAutoTrigger.ts) — `buildApproveByDefaultSignature(pending)` returns `pending.map(p => p.suggestionId).sort().join(',')` (sort independence keeps the signature stable across upstream re-orderings); `shouldAutoApproveAccountingSuggestions(state)` walks the gate set (`enabled`, `pendingLoading`, `approveAllBusy`, `pendingCount > 0`, `currentSignature !== lastSignature`). 11 unit tests in [`accountingApproveByDefaultAutoTrigger.test.ts`](src/lib/accountingApproveByDefaultAutoTrigger.test.ts) cover sort independence, empty-list signature, single-id add/remove, every gate flip, and signature equality / inequality. State lifted to [`Banking.tsx`](src/pages/Banking.tsx) alongside the v2.579/v2.580 lifts: `approveByDefault` boolean (hydrated per user via `useEffect` keyed on `user?.id`), `onApproveByDefaultChange` callback (state setter + `writeAccountingApproveByDefault`). Two new props on `BankingMercuryAccountingTabProps`: `approveByDefault`, `onApproveByDefaultChange`. New `<label>` checkbox in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) inside the Approvals `<section>`, in a right-aligned flex row immediately below the green **Approve all (N)** button (same checkbox styling as the v2.580 toolbar — `display: flex; alignItems: center; gap: 8`, `title` attribute explains the conflict-skip behavior for hover discoverability). Auto-approve effect threads the gate predicate, signature ref `lastAutoApprovedSignatureRef`, and the new memoized `autoApprovablePending` filter (`isInternalTransfersLabel(label) && allocationsByTxId.get(txId).length > 0` → drop). Concurrent-click safety is free — `approveAllBusy` gates both the manual button and the effect, so a click during an in-flight auto-approve (or vice versa) returns early with no double approve. Tab gating is free — the effect lives inside `BankingMercuryAccountingTab`, which only mounts when `bankingView.mercuryTab === 'accounting'`. No DB / migration / RLS / RPC / Edge / type-gen changes — `bulk_approve_accounting_label_suggestions` and the chunked-insert math in `handleApproveAll` are untouched. Verified: `npx tsc --noEmit` clean; `npx vitest run` **1130 / 1130** pass (1119 pre-existing + 11 new); zero new lints on touched files. Files: new [`src/lib/accountingApproveByDefaultAutoTrigger.ts`](src/lib/accountingApproveByDefaultAutoTrigger.ts), new [`src/lib/accountingApproveByDefaultAutoTrigger.test.ts`](src/lib/accountingApproveByDefaultAutoTrigger.test.ts), modified [`src/lib/bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts), [`src/pages/Banking.tsx`](src/pages/Banking.tsx), [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)."
+   - name: "Previous Version (v2.580)"
+     line: ~2010
+     description: "Banking Mercury Accounting — **Apply rules by default** toggle. New per-user toolbar checkbox below `Hide labeled transactions` (defaults **off**: presence of `'1'` = on, anything else = off). When on, every successful transaction load on the Accounting tab — initial mount, **Refresh from Mercury**, **Backfill from Mercury…**, the Sorting/Ledger **Reload table** buttons, and the silent reload after the v2.579 `onAfterAssignmentChange` callback — auto-runs `computeApplyRulesPreflight(rules)` followed by `executeApplyRules(preflight)`. Deliberately bypasses `applyRulesWithSnapshot` (so it skips `APPLY_RULES_CONFIRM_THRESHOLD = 200` and never pops the confirm modal) but still routes through `executeApplyRules` so the **`APPLY_RULES_PER_CLICK_CAP = 500`** per-pass cap and the `Created N. M more match — apply again after reviewing.` toast both apply unchanged. New storage helpers `readAccountingApplyRulesByDefault` / `writeAccountingApplyRulesByDefault` in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) under prefix `banking_accounting_apply_rules_default_v1_`. New pure helper module [`accountingApplyRulesAutoTrigger.ts`](src/lib/accountingApplyRulesAutoTrigger.ts) — `buildAutoApplySignature(txs, rules)` returns `${sortedTxIds}|${sortedEnabledRuleIds}` (sort independence keeps the signature stable across upstream re-orderings; disabled rules drop out so toggling enabled doesn't poison the cache); `shouldAutoApplyAccountingRules(state)` walks the gate set (`enabled`, `loading`, `rulesLoading`, `assignmentsLoading`, `applyRulesBusy`, `rulesCount > 0`, `currentSignature !== lastSignature`). 13 unit tests in [`accountingApplyRulesAutoTrigger.test.ts`](src/lib/accountingApplyRulesAutoTrigger.test.ts) cover every gate flip, sort independence, enabled-flag filtering, both-empty stability, and signature equality / inequality. State lifted to [`Banking.tsx`](src/pages/Banking.tsx) alongside the v2.579 `hideLabeledTransactions` lift: `applyRulesByDefault` boolean (hydrated per user via `useEffect` keyed on `user?.id`), `onApplyRulesByDefaultChange` callback (state setter + `writeAccountingApplyRulesByDefault`), and a monotonic **`autoApplyResetTick: number`** counter the parent bumps after `handleSync` and `handleBackfill` so a fresh sync still fires one auto-apply pass even when the unlabeled id set didn't change (e.g. a sync that only updated counterparties / amounts). Three new props on `BankingMercuryAccountingTabProps`: `applyRulesByDefault`, `onApplyRulesByDefaultChange`, `autoApplyResetTick`. New toolbar `<label>` checkbox in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) immediately after the existing **Hide labeled transactions** label (same `display: flex; alignItems: center; gap: 8` styling, `title` attribute explains the bypass + 500 cap for hover discoverability). Auto-apply effect threads the gate predicate, signature ref `lastAutoAppliedSignatureRef`, and a separate ref-reset effect keyed on `autoApplyResetTick`. New callback `runAutoApply` jumps straight from `computeApplyRulesPreflight(rules)` to `executeApplyRules(preflight)`, returning early on a null preflight (no rules / no enabled / no matches). Tab gating is free — the effect lives inside `BankingMercuryAccountingTab`, which only mounts when `bankingView.mercuryTab === 'accounting'`. Concurrent-click safety is also free — `applyRulesBusy` gates both the manual button and the effect, so a click during an in-flight auto-apply (or vice versa) returns early with no double insert. No DB / migration / RLS / RPC / Edge / type-gen changes — `bulk_insert_accounting_label_suggestions` and the `executeApplyRules` slice/insert math are untouched. Verified: `npx tsc --noEmit` clean; `npx vitest run` **1119 / 1119** pass (1106 pre-existing + 13 new); zero new lints on touched files. Files: new [`src/lib/accountingApplyRulesAutoTrigger.ts`](src/lib/accountingApplyRulesAutoTrigger.ts), new [`src/lib/accountingApplyRulesAutoTrigger.test.ts`](src/lib/accountingApplyRulesAutoTrigger.test.ts), modified [`src/lib/bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts), [`src/pages/Banking.tsx`](src/pages/Banking.tsx), [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)."
+   - name: "Previous Version (v2.579)"
+     line: ~2010
+     description: "Banking Mercury Accounting — **server-side unlabeled fetch**. Default-on path on the Accounting tab now skips fetching the labeled 88% of rows entirely. New SECURITY INVOKER RPC **`list_unlabeled_mercury_transactions(p_limit int default null)`** does a `LEFT JOIN ... WHERE assignments.mercury_transaction_id IS NULL` against `mercury_transaction_drag_sort_assignments` (anti-join hits the existing PK index, no new index needed); returns the same column shape as a `mercury_transactions` SELECT (typed via `npm run gen-types:linked`). `Banking.tsx` lifts `hideLabeledTransactions` state out of `BankingMercuryAccountingTab` and adds `loadAllRows` (existing 15k fetch unchanged) + `loadUnlabeledRows` (the new RPC) + `loadRowsForActiveView` — a tab-aware dispatcher that picks the unlabeled-only RPC only when (`mercuryTab === 'accounting' && hideLabeledTransactions === true`). Drag Sort, User Review, Category Review, Sorting, and Ledger continue to use the master 15k fetch. The mount effect, the `mercury_transactions` Realtime callback, post-sync, post-backfill, the Sorting tab Reload button, and the Ledger Advanced menu Reload all route through `loadRowsForActiveView`, so the toggle and the active tab fully drive what gets fetched. **`BankingMercuryAccountingTab`** drops its local `hideLabeledTransactions` state + the userId-change re-sync `useEffect` + the two storage helper imports (`readAccountingHideLabeledTransactions` / `writeAccountingHideLabeledTransactions`); accepts `hideLabeledTransactions` + `onHideLabeledTransactionsChange` props (the toolbar checkbox now calls the prop, parent persists per-user); derives `inputIsUnlabeledOnly = hideLabeledTransactions` and short-circuits both `loadAssignmentsForList` (returns immediately with an empty map — by definition every row is unlabeled, so the per-page assignment-marking sweep is pure waste) and `displayTransactions` (when input is already unlabeled-only, returns `afterLedgerFilters` directly without re-filtering). New optional `onAfterAssignmentChange?: () => void` prop wired by the parent to `() => void loadRowsForActiveView({ silent: true })`; the tab fires it after `clearRowDragSortLabel`, `handleQuickAssignLabel`, `handleApprove`, and `handleApproveAll` — the four mutation paths that add or remove rows in `mercury_transaction_drag_sort_assignments` — so the unlabeled list shrinks (or grows) in place. `handleReject`, `executeApplyRules`, and rule edits don't touch the assignments table directly, so they don't call back. Migration **`20260525204531_list_unlabeled_mercury_transactions.sql`**. Verified: types regen succeeds (RPC typed `Args: { p_limit?: number }`, returns `mercury_transactions` row shape); `npx tsc --noEmit` clean; `npx tsc -b` clean; `npx vitest run` **1,106 / 1,106** pass; zero new lints; manual sanity check via `execute_sql` confirms the RPC returns 1,284 unlabeled rows on the linked DB (vs ~10k+ total). New file `supabase/migrations/20260525204531_list_unlabeled_mercury_transactions.sql`; modified [`src/pages/Banking.tsx`](src/pages/Banking.tsx) and [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx); regenerated [`src/types/database.ts`](src/types/database.ts)."
+   - name: "Previous Version (v2.578)"
+     line: ~1935
+     description: "Banking Mercury Accounting — **Rules modal**. The inline collapsible Rules section on the Accounting tab is replaced by a single **`Rules (N)`** trigger button that opens a new dedicated modal containing the full toolbar (**New rule**, **Audit overlaps**, **Apply rules to transactions**), the **`Search rules…`** input, and the sortable rules table (Name / Label / Enabled / Approved uses / Edit / Delete). The Accounting tab page is now a clean two-section flow (Approvals → Sorting Ledger) with a thin trigger row between them. New file [`BankingMercuryAccountingRulesModal.tsx`](src/components/banking/BankingMercuryAccountingRulesModal.tsx) — modeled after [`MercuryCounterpartyFrequencyModal.tsx`](src/components/banking/MercuryCounterpartyFrequencyModal.tsx) (backdrop click + Escape close, `role=\"dialog\"` + `aria-modal=\"true\"`, sticky title + scope description, scrollable body); presentational only — every value comes in from props, so refresh/busy/persistence behavior is unchanged. **Stacking strategy**: the Rules modal renders at **`zIndex: 1100`**, deliberately below every child modal already mounted in the same component, so existing z-indices stay untouched: Edit Rule (`AccountingRuleFormModal`, 1200), Audit Overlaps (`BankingMercuryAccountingOverlapsModal`, 1250), Apply Rules confirm (`BankingMercuryAccountingApplyRulesConfirmModal`, 1260), and Edit Rule's nested delete confirm (1201) all sit naturally above the Rules modal. The user keeps the rules table visible behind every child interaction. The pre-existing **`auditPendingReopenAfterRuleModalRef` / `useEffect`** hide-and-restore handoff (audit → Edit Rule → audit returns) continues to work unchanged — Rules modal stays at 1100 throughout the cycle. **Cleanup**: dead code from the previous accordion is gone — `[rulesSectionExpanded, setRulesSectionExpanded]` state, the `useEffect` that resynced the flag on `userId` change, the `ACCOUNTING_RULES_SECTION_BODY_ID` constant, and the two storage-helper imports (`readAccountingRulesSectionExpanded` / `writeAccountingRulesSectionExpanded`) are deleted from [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx). The storage helpers themselves stay in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) for one PR — stale localStorage keys are harmless. Files: new [`src/components/banking/BankingMercuryAccountingRulesModal.tsx`](src/components/banking/BankingMercuryAccountingRulesModal.tsx); modified [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) (imports, dropped accordion state + effect + constant, new `rulesModalOpen` state, replaced 279-line inline `<section>` with a 17-line trigger button row, mounted the new modal next to its peers). No DB / migration / RLS / RPC / Edge / type-gen changes. Verified: `npx tsc --noEmit` clean, `npx tsc -b` clean, **1106 / 1106** vitest tests pass, no new lints."
+   - name: "Previous Version (v2.576)"
+     line: ~1932
+     description: "Banking Mercury Accounting — **Apply rules crash fix**. The Approvals section used to dump every newly-created `mercury_accounting_label_suggestions` row into the DOM at once. With **5,000+ pending approvals** that meant ~5,000 React cards × a `<select>` with ~50 label `<option>`s each ≈ **250,000+ DOM nodes**, and any state change anywhere in the component (hover, dropdown change, tab focus) re-reconciled the whole list — Chrome would freeze for 10–30 s, then crash. Fix is layered, the runtime never touches the wedge again. **(1) Cap creation per click** — new constant **`APPLY_RULES_PER_CLICK_CAP = 500`** in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx). Old `applyRulesWithSnapshot` was split into two pieces: pure-ish **`computeApplyRulesPreflight(ruleRows)`** (fetches the current pending-tx id set, builds the assigned tx id set, parses every rule's criteria once, calls new shared helper **`buildAccountingRulesToInsert`** in [`src/lib/applyAccountingRulesPreflight.ts`](src/lib/applyAccountingRulesPreflight.ts)) and side-effecting **`executeApplyRules(preflight)`** (slices to the cap, chunks the insert at `INSERT_CHUNK = 2000`, toasts the result, calls `loadPending()`). The orchestrating `applyRulesWithSnapshot` runs the preflight, returns early on no-rules / no-enabled / no-matches, and either fires the modal (above threshold) or executes inline. **(2) Confirm modal** — new constant **`APPLY_RULES_CONFIRM_THRESHOLD = 200`** + new component [`BankingMercuryAccountingApplyRulesConfirmModal.tsx`](src/components/banking/BankingMercuryAccountingApplyRulesConfirmModal.tsx). Above threshold, **Apply rules** stops and shows `N transactions match your rules. The first 500 will be created as pending suggestions for review. The remaining N-500 stay unmatched until you approve some and click Apply rules again.` Cancel + Escape + backdrop close (Escape gated on `!busy`); confirm fires `executeApplyRules` and closes. Below threshold the modal never mounts — common case is unchanged. **(3) Memoized approval cards** — new component [`AccountingApprovalCard.tsx`](src/components/banking/AccountingApprovalCard.tsx) wraps the 90-line per-approval card render in `React.memo`. Parent passes stable callbacks (**`handleApproveCard`** / **`handleRejectCard`** / **`handleLabelChangeCard`** / `openEditRuleById`) wrapped in `useCallback` and resolves the live `PendingApproval` row from a new **`pendingApprovalsRef: useRef<PendingApproval[]>`** mirror (synced via `useEffect`) so the callback identities don't churn on every state change. Net: changing one card's dropdown re-renders **only that card**, not the other 499 / 4,999. **(4) Pagination** — new constant **`APPROVALS_PAGE_SIZE = 50`** + `approvalsVisibleCount` state + a fresh-load effect (`prevPendingLenRef` → `0 → N` triggers reset to 50; same-list edits keep the user's expanded window). Below the visible cards, a `Showing X of N.` footer renders **`Show 50 more`** + **`Show all (N)`** when there are more rows. **`Approve all`** now reads **`Approve all (N)`** including the live count. **(5) Tests** — pure helper [`applyAccountingRulesPreflight.test.ts`](src/lib/applyAccountingRulesPreflight.test.ts) covers 13 cases (empty rules, empty txs, disabled rule skip, null criteria skip, zero-clause skip, assigned tx skip, pending tx skip, first-match-wins by `sort_order` then `id`, output ordering matches input tx order, no-cap behavior at 1500-row scale, dedupe of doubled-id input). Acceptance: **0 matches** → no-op toast; **50 / 150** matches → silent insert + paint **50** cards; **300 / 5,000** matches → modal asks → confirm inserts **300 / 500** + paints **50** cards with `Show 50 more` and `Show all (300 / 500)` controls; **Approve all (500)** approves the **whole queue**, not just the 50 visible. No DB / migration / RLS / RPC / Edge / type-gen changes (engine SQL semantics unchanged — `bulk_insert_accounting_label_suggestions` still does the chunked insert). Verified: `npx tsc --noEmit` clean, no new lints on the four touched files, **26 / 26** preflight + overlap tests pass."
+   - name: "Previous Version (v2.575)"
+     line: ~1920
+     description: "Banking Mercury — **1-year backfill control + raised display cap**. The everyday **Refresh from Mercury** button is hardcoded to **`lookback_days: 90`** so daily refresh stays fast (~10s, idempotent). To pull a longer window without redeploying, devs now have a separate **Backfill from Mercury…** menu item under **Advanced** (between **Refresh from Mercury** and **Reload table**); it's gated on **`isDevBanking`** so non-dev viewers (assistant / master_technician) don't see it. Click opens new **[`MercuryBackfillModal.tsx`](src/components/banking/MercuryBackfillModal.tsx)** — two `<input type=\"date\">` fields seeded to **`[today − 365, today]`** in **`APP_CALENDAR_TZ`** (via `denverCalendarDayKey(Date.now())` + `ymdAddDays(today, -365)`), cross-bounded via `min`/`max` (start.max = end, end.min = start; both clamped to today). Client validation runs on every render: both required, `start <= end`, `end <= today`, range ≤ **`MAX_RANGE_DAYS = 3650`** (matches the Edge clamp; surfaces a friendly amber inline message instead of letting the function silently truncate). Pre-validation errors render in an amber pill; submit failures from the Edge function render in a red pill and the modal stays open with `submitting === false` so the user can retry without re-opening it. **`Run backfill`** posts **`{ start, end }`** to existing Edge function **[`sync-mercury-transactions`](supabase/functions/sync-mercury-transactions/index.ts)** which already accepts that shape (alongside `lookback_days`); no Edge change. The function paginates Mercury **`/api/v1/transactions`** at 500/page × **`MAX_PAGES = 120`** = up to **60,000 tx** per invocation, upserts on **`mercury_id`** (idempotent — re-running over the same range rewrites the same rows). On success the modal closes itself and the parent's **`handleBackfill`** toasts `Synced N transactions from Mercury (start → end).` then runs **`Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])`** so the Banking table reflects the new rows immediately. **`handleBackfill`** flips **`syncing`** during the run so the **Refresh from Mercury** button (top-of-page) and the new **Backfill** menu item both disable; the rest of the page is unaffected. Display-side companion change: in [`src/pages/Banking.tsx`](src/pages/Banking.tsx) `loadRows`, the in-memory cap moves from a hardcoded **`.limit(5000)`** to a named constant **`MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000`** so a full year (~10k tx) plus headroom fits in one scrollable list. Trade-off: the existing `useMemo` chain that walks `rows` (filtering, sorting, counterparty frequencies, per-row maps) gets ~3× heavier on first paint; banking is desktop-first dev / master / assistant only, so the slow-phone case isn't relevant. Search and rules continue to filter via the DB, not the in-memory list. Files: new **[`MercuryBackfillModal.tsx`](src/components/banking/MercuryBackfillModal.tsx)** (`ymdDaysBetween` helper, `MercuryBackfillResult` / `MercuryBackfillModalProps` types, default-on-open seeding effect, Escape-to-close gated on `!submitting`); modified **[`Banking.tsx`](src/pages/Banking.tsx)** (new constant + import + `backfillModalOpen` state + `handleBackfill` async function + `BankingLedgerAdvancedMenuProps.onBackfillFromMercury?` prop + menuitem render + dev-gated mount alongside other nicknames modals + `.limit(MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)` swap). No DB / migration / RLS / RPC / Edge / type-gen changes — Edge function already supported `{ start, end }`; Mercury API itself accepts arbitrary `YYYY-MM-DD` windows. Verified: `npx tsc --noEmit` clean, no new lints on either touched file."
+   - name: "Previous Version (v2.574)"
+     line: ~1920
+     description: "Banking Mercury Accounting — **Edit Rule modal Delete**. Adds a red trash icon in the [`AccountingRuleFormModal`](src/components/banking/AccountingRuleFormModal.tsx) header (Edit mode only — gated on `editingRuleId !== null && onDelete !== undefined`, so New rule still has a clean header) styled with [`PayStubDeleteIcon`](src/components/pay/PayStubDeleteIcon.tsx) at `#b91c1c` (matches the Rules-table Delete-link red and Edit Job's confirm-Delete background). Click opens a nested confirm overlay at `zIndex: 1201` (parent modal sits at 1200, mirroring Edit Job's `parent + 1` convention) with the rule name in bold, a *Pending suggestions tied to this rule will be removed. This cannot be undone.* warning, and Cancel + Delete buttons; backdrop click + Cancel are gated on `!deleting` so a click can't dismiss the confirm mid-flight, and the parent modal's outer-presentation `onMouseDown` already short-circuits via `e.target === e.currentTarget` so the confirm's overlay div never closes the parent on bubble. **`deleteRuleCore`** refactored out of [`BankingMercuryAccountingTab.deleteRule`](src/components/banking/BankingMercuryAccountingTab.tsx) (new pure delete-and-toast-and-reload function with no `window.confirm`); the modal calls it via the new optional `onDelete?: () => Promise<void>` prop, the existing Rules-table Delete link still wraps it with `window.confirm` (regression-safe). On failure `deleteRuleCore` toasts and re-throws so the modal's `handleConfirmDelete` keeps the nested confirm open with `deleting === false` for retry. On success the parent calls `setRuleModalOpen(false)`, which fires the **v2.573 audit handoff** `useEffect` watching `ruleModalOpen` (`true → false`) and re-opens the audit modal underneath with the deleted rule absent from `overlapReport.txRows` / `pairCounts` (the `useMemo` rebuilds from refreshed `rules` after `loadRulesAndUsage()`) — completing the *open audit → click rule name → delete → audit reopens* workflow that v2.573 made discoverable. Form `controlsDisabled` extended to include `deleting` so Save / Save and apply / Test / form fields all lock during delete; the trash icon disables itself on the same flag. New local state `deleteConfirmOpen` + `deleting`; new handler `handleConfirmDelete` (try/finally on `setDeleting`, catches re-thrown errors so toast already shown). Files: modified [`AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx) (props type, state, header flex row, nested confirm overlay JSX, `handleConfirmDelete`, `controlsDisabled` extension), modified [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) (`deleteRuleCore` extraction, `deleteRule` thin wrapper, `onDelete` prop wired on `<AccountingRuleFormModal>` mount). No DB / migration / RLS / RPC / Edge / type-gen changes (`mercury_accounting_label_rules` already supports DELETE via the existing RLS policy). Verified: `npx tsc --noEmit` clean, no new lints on either touched file."
+   - name: "Previous Version (v2.573)"
+     line: ~1920
+     description: "Banking Mercury Accounting — **rule overlap audit**. Mercury accounting rules are first-match-wins (sorted by `sort_order, id`; the engine in `BankingMercuryAccountingTab.applyRulesWithSnapshot` `break`s on the first hit), which silently shadows every other rule that would have matched the same tx. New **Audit overlaps** button on the Rules section toolbar opens **`BankingMercuryAccountingOverlapsModal`** with two tabs: **By rule pair** (winner / shadowed / tx count, sorted desc by count, click rule names to open Edit Rule) and **By transaction** (one row per overlapping tx with all matching rule names — winner bolded — plus an amber *Currently labeled X · winning rule labels Y* line when an existing assignment disagrees with the winning rule). Audit scope = currently filtered Banking transactions, **including already-labeled ones** (so disagreements between the rule engine and live assignments surface as the highest-signal flavour of overlap). Modal is gated behind the button click so the O(rules × txs) compute pays only on demand. **Audit ↔ Edit Rule handoff**: clicking a rule name routes through `openEditRuleByIdFromOverlaps` which sets `auditPendingReopenAfterRuleModalRef = true`, closes the audit modal, then opens Edit Rule. A `useEffect` watching `ruleModalOpen` detects the `true → false` transition (Cancel / Save / Save and apply / backdrop) and re-opens the audit with the flag cleared and `overlapReport` memo re-computed against the freshly-saved rules. Hide-and-restore avoids stacking the audit (1250) above the Edit Rule modal (1200), which would have hidden Edit Rule behind audit, and avoids bumping Edit Rule above 1250 — which would have hidden the Test results modal (also 1250) that Edit Rule itself spawns. User-initiated audit Close (button / backdrop) clears the flag so accidental later edits don't auto-reopen. The existing per-rule **Test** preview (`runTestFromCriteria`) now also enriches each matched row with an `Also matched by: <rule names>` line, computed from the saved rules snapshot minus the rule being edited (when `editingRuleId != null`); same matcher / same engine sort. New pure helper **`buildAccountingRuleOverlapReport`** in [`src/lib/accountingRuleOverlap.ts`](src/lib/accountingRuleOverlap.ts) — mirrors the engine's sort/tiebreak verbatim, walks every match per tx (no `break`), aggregates `perRule` stats (matched / winner / shadowed) and `pairCounts` (winner → shadowed pair counts, sorted desc), exposes optional `assignmentLabelByTxId` for the conflict path and `includeDisabled` flag for future toggle work; 13 unit tests in [`accountingRuleOverlap.test.ts`](src/lib/accountingRuleOverlap.test.ts) cover empty inputs, single-match silent path, two-rule overlap, tied `sort_order` → `id.localeCompare` tiebreak, disabled-rule exclusion + `includeDisabled` opt-in, null/empty-criteria exclusion, three-rule pair-counting, multi-tx pair aggregation + sort, and the assignment-vs-winner conflict path with both single-match and overlap variants. Engine itself (`applyRulesWithSnapshot`, `matchAccountingLabelRuleCriteria`) untouched — audit is a pure read of in-memory state, no DB / migration / RPC / RLS / Edge changes. Files: new [`src/lib/accountingRuleOverlap.ts`](src/lib/accountingRuleOverlap.ts), new [`src/lib/accountingRuleOverlap.test.ts`](src/lib/accountingRuleOverlap.test.ts), new [`src/components/banking/BankingMercuryAccountingOverlapsModal.tsx`](src/components/banking/BankingMercuryAccountingOverlapsModal.tsx); modified [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) (toolbar button + state + memoized report + `txById` map + Test preview enrichment + audit handoff `useRef` / `useEffect` + modal mount). Verified: `npx tsc --noEmit` clean, 26 / 26 tests pass across `accountingLabelRuleMatch.test.ts` + `accountingRuleOverlap.test.ts`."
+   - name: "Previous Version (v2.572)"
+     line: ~1917
+     description: "Banking Mercury Drag Sort — new built-in **Internal Transfers** label for movement between the org's own accounts. Treated as a non-expense throughout the app: excluded from Schedule C totals and from the Materials cost rollup in **People → Overhead** (the **Field Total ($) / Hours** modal's Materials header now subtracts the bucket via new `sumMaterialsTotalUsdExcludingInternalTransfer` in [`overheadPartsAccountingBuckets.ts`](src/lib/overheadPartsAccountingBuckets.ts); the breakdown still surfaces an Internal Transfers section with a slate accent + *not counted in Materials* hint so the audit trail stays visible). Mutually exclusive with `mercury_transaction_splits` — both directions hard-blocked at the UI: applying the label to a transaction with existing job splits toasts an error in **`BankingMercuryDragSortTab.applyDragSortAssignment`** (covers DnD + Quick Sort focus modal `onPickLabel`), in **`BankingMercuryAccountingTab`**'s `handleQuickAssignLabel` / `handleApprove` / `handleApproveAll` (bulk path skips the conflicting rows + reports `Skipped N Internal Transfers suggestions with job splits`); creating job splits on a transaction already labeled Internal Transfers is locked in **`MercuryTransactionAllocationsModal`** via a one-shot probe of `mercury_transaction_drag_sort_assignments` + `mercury_drag_sort_labels.default_key`, which sets `internalTransfersLabelLocked` → renders a slate banner above the form (*Locked: Internal Transfers — This transaction is labeled Internal Transfers and cannot be split onto jobs. Remove the label in Banking → Mercury → Drag Sort first.*), disables the job search input + per-line `$/%` toggles + value input + note input + Fill remainder + Remove buttons, and gates Save (`canSave` returns false; `handleSave` shows the same error toast). Also adds early-return guard in `addJobLine` so cached `JobSearchRow` clicks can't bypass the disabled search. Sidebar bucket card carries a subtle slate accent (`#94a3b8` border, `#f1f5f9` background) when the new optional **`defaultKey`** prop equals `'internal_transfers'` — both **`LabelDropZone`** in `BankingMercuryDragSortTab` and the grid card in `BankingMercuryDragSortFocusModal` thread it through. New helper exports in [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts): **`INTERNAL_TRANSFERS_DEFAULT_KEY = 'internal_transfers'`** + **`isInternalTransfersLabel(label)`**. New helper in [`overheadPartsAccountingBuckets.ts`](src/lib/overheadPartsAccountingBuckets.ts): widened `OverheadPartsAccountingBucketKey` from 3 to 4 keys (adds `'internal_transfer'` last in the display order so the new bucket renders below `Other`), `OVERHEAD_PARTS_ACCOUNTING_BUCKET_LABEL.internal_transfer = 'Internal Transfers'`, **`isMaterialsBucketKey(key)`**, **`sumMaterialsTotalUsdExcludingInternalTransfer(sections)`**. Migration **`20260525160339_add_drag_sort_internal_transfers_builtin.sql`** — `INSERT … ON CONFLICT (default_key) DO NOTHING` with `is_system_default=true`, `sort_order=9999` (parks at the bottom for new orgs; the existing client-side `ensureDragSortDefaultLabels` upsert beats the migration for orgs that load Drag Sort before deploy and lands the row at the end of `DRAG_SORT_DEFAULT_LABELS` × 10 = 270, also bottom). Rules in [`mercury_drag_sort_labels_guard_system_fields`](supabase/migrations/20260502224616_mercury_drag_sort_org_wide_labels.sql) protect `name` / `schedule_c_line` / `description` from drift. Out of scope: auto-suggestion rules in `mercury_accounting_label_rules` (users add their own once the label exists), migrating existing `excludeCounterpartyContains` filter strings (left untouched per plan), Schedule C export (none yet — when it lands, skip rows whose `default_key === 'internal_transfers'`). Tests: 11 new unit tests in [`overheadPartsAccountingBuckets.test.ts`](src/lib/overheadPartsAccountingBuckets.test.ts) (`isMaterialsBucketKey` × 4, `internal_transfers` → bucket key, routes Mercury internal_transfer tx to internal_transfer bucket, isolates internal_transfer dollars in their own bucket, `sumMaterialsTotalUsdExcludingInternalTransfer` × 2, four-bucket fixed display order, four-bucket totals conservation) — full **1080 / 1080** vitest pass. Verified: `npm run gen-types:linked` clean (no schema column changes — INSERT-only migration). Files: [`src/lib/dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts), [`src/lib/overheadPartsAccountingBuckets.ts`](src/lib/overheadPartsAccountingBuckets.ts), [`src/lib/overheadPartsAccountingBuckets.test.ts`](src/lib/overheadPartsAccountingBuckets.test.ts), [`src/components/banking/BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx), [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx), [`src/components/banking/BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx), [`src/components/banking/dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx), [`src/components/MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx), [`src/pages/People.tsx`](src/pages/People.tsx), `supabase/migrations/20260525160339_add_drag_sort_internal_transfers_builtin.sql`."
+   - name: "Previous Version (v2.571)"
+     line: ~1917
+     description: "**Dashboard My Time / Edit time** modal — new **Add disjoint session** affordance. A small ghost-grey `+` button now sits at the bottom-right of `myTimeDayTimelineScroll` (right-aligned, vertically tucked under the last cluster's bottom border to match the `×` reject buttons inside Visual-mode cluster cards). Click opens [`AddDisjointSessionModal`](src/components/my-time-day-editor/AddDisjointSessionModal.tsx) — a sub-modal with Clock in / Clock out `datetime-local` inputs (same shape as the existing Adjust times modal). Defaults are computed by **`computeAddDisjointDefaults`** in [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx): last session end + 1 h gap, +2 h duration; for empty days it falls back to **8 AM** Chicago wall (`salaryZonedWallClockToUtcMs(dateStr, 8, 0, 0, APP_CALENDAR_TZ)`) + 2 h. Validation inside the modal blocks blank fields, `out <= in`, sessions shorter than `MIN_SEGMENT_MS`, future-stamped times, and overlap with any **existing session** (open punches treated as extending to `nowMs`); the error line names the conflicting range (`Overlaps an existing session at 13:00 – 14:00`). On confirm, **`handleAddDisjointConfirm`** appends a normalized `DayEditorSession` with a synthetic `DRAFT_PEOPLE_HOURS_SESSION_ID_PREFIX` id and a seeded `notes='Disjoint session'` (non-empty so `buildPayloads` doesn't reject the segment on Save) into local `fetchedSessions`. The save path already INSERTs draft-id rows via the `isDraftPeopleHoursSessionId` branch in `persistDirtyChangesAsync` — no new DB / RPC / migration. Gating: button only renders when `effectiveEditable && allowPunchTimeActions && !priorWeekGateActive && sessionsProp.length === 0 && !sessionsLoading && !pendingAuthForFetch` — i.e. only on editor instances that self-fetch their day (People Hours-seeded callers that pass `sessionsProp` explicitly never see it, since pushing a synthetic draft into their controlled state is unsafe). `closeTopmostSubFlow` learns the new branch so Escape / backdrop / discard-on-dirty close the disjoint modal before any other sub-flow. The wrapper around the `+` button uses `marginTop: -4` to overlap the last cluster's 0.5 rem internal bottom padding for tight visual alignment with the `×` buttons two pixels above. New file [`AddDisjointSessionModal.tsx`](src/components/my-time-day-editor/AddDisjointSessionModal.tsx). Modified [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx) (imports + `addDisjointOpen` state + `addDisjointExistingIntervals` memo + `computeAddDisjointDefaults` + `handleAddDisjointConfirm` + `closeTopmostSubFlow` branch + button render + modal mount). No DB / migration / RLS / RPC / Edge changes. Verified: `npx tsc --noEmit` clean; full test suite still passes; manual QA — empty-day defaults to 8–10 AM Chicago, last-session-end + 1h defaults, overlap rejected against open and closed sessions, future rejection, sub-`MIN_SEGMENT_MS` rejection, Escape / backdrop / Cancel dismissal cascade, Save persists via existing draft INSERT branch."
+  - name: "Previous Version (v2.570)"
+    line: ~1914
     description: "Bids → Pricing tab — new **Package and send** button left of **Export CSV**. Staff (`dev` / `master_technician` / `assistant` / `estimator`) can mail a bid's external pricing package (Job Plans link + 4-column table: Fixture/Tie-in, Count, Unit price, Revenue) to a roster user without leaving the tab. Two paths: (a) **Send via my mail** opens a `mailto:` with a plain-text fallback body via [`bidPackageMailto.ts`](src/lib/bidPackageMailto.ts) and copies the HTML table to the clipboard via `navigator.clipboard.write([new ClipboardItem({ 'text/html': … })])` so the user pastes it into their compose window; (b) **Send for me** invokes new Edge function [`send-bid-pricing-package`](supabase/functions/send-bid-pricing-package/index.ts) which re-computes pricing rows server-side from `bid_count_rows` + `bid_pricing_assignments` + `bid_count_row_custom_prices` + `bid_count_row_submission_hides` + `price_book_entries` (no trust in any client-built HTML — guarantees the email always matches the live Pricing tab), then calls `sendResendHtmlEmail` from [`recurringJobReportCore.ts`](supabase/functions/_shared/recurringJobReportCore.ts). Both paths respect `submissionHiddenIdsForVersion` so the same rows hidden on Counts / Cover Letter are hidden from the email. Modal preview uses scoped `dangerouslySetInnerHTML` of the shared table HTML so what the recipient sees is exactly what the sender saw. New audit table **`bid_pricing_package_sends`** (migration **`20260521221622_bid_pricing_package_sends.sql`** — `bid_id` / `price_book_version_id` / `sent_by_user_id` / `recipient_user_id` / `recipient_email` / `sent_via` check'd `'resend' | 'mailto_logged'` / `resend_id` / `plans_link` / `revenue_total_cents` / `row_count` / `created_at`; index on `(bid_id, created_at DESC)`; RLS for all 6 roles — SELECT for dev/master/assistant/estimator gated on `can_access_bid_for_pricing(bid_id)`, INSERT same plus `sent_by_user_id = auth.uid()`, UPDATE/DELETE dev only). SECURITY INVOKER RPC **`log_bid_pricing_package_send`** (gated through the INSERT policy) writes the mailto attempt row from the client; the Edge function uses service-role for the resend row. Recipient picker is `SearchableSelect` over the existing `estimatorUsers` roster (non-archived, no helpers, no `name='delete'`) and requires a non-empty email. Toolbar button shares the same data preconditions as Export CSV (`selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate`); blocked when `plans_link` is blank with an inline **Edit bid** button that opens `JobFormModal` via the existing `openEditBid`. New shared helpers: [`src/lib/buildBidPricingPackageHtml.ts`](src/lib/buildBidPricingPackageHtml.ts) (+ [test](src/lib/buildBidPricingPackageHtml.test.ts), 18 cases) — pure HTML / plain-text builders + external-row filter + cents totaler, mirrored byte-for-byte in [`supabase/functions/_shared/bidPricingPackage.ts`](supabase/functions/_shared/bidPricingPackage.ts) (keep-in-sync convention from `physicalInvoiceFixtureScaling.ts` ↔ `stripeInvoiceItemsFromFixtures.ts`). New mailto helper [`src/lib/bidPackageMailto.ts`](src/lib/bidPackageMailto.ts) (+ [test](src/lib/bidPackageMailto.test.ts), 6 cases) — full URL-encoding, plans-link line, simple email-shape validation. New modal [`src/components/bids/PackageAndSendBidPricingModal.tsx`](src/components/bids/PackageAndSendBidPricingModal.tsx). `Bids.tsx` adds one shared `pricingPackageSource = useMemo(...)` so the preview / mailto / Resend paths all read the same numbers as the on-screen Pricing table (one source of truth)."
   - name: "Previous Version (v2.569)"
     line: ~1900
@@ -1909,6 +1939,732 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.581)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Accounting — Approve by default toggle
+
+New per-user checkbox on **Banking → Mercury → Accounting** that, when on, auto-runs the existing **Approve all (N)** flow every time a new pending suggestion appears. Closes the loop after v2.580 — rules auto-create suggestions, and approve-by-default auto-commits them. Internal Transfers conflicts (suggestions whose label is Internal Transfers and whose tx already has job splits) are still skipped by `handleApproveAll` and remain pending for manual cleanup.
+
+#### What's new
+
+- **Checkbox** in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) inserted in a right-aligned flex row immediately below the green **Approve all (N)** button inside the Approvals `<section>`. Same `display: flex; alignItems: center; gap: 8` styling as the v2.580 toolbar checkbox so the two toggles pair visually. `title` attribute explains the conflict-skip behavior for hover discoverability: *When on, runs Approve all automatically every time new pending suggestions appear. Internal Transfers conflicts (rows with job splits) are still skipped and stay pending for manual review.*
+- **Per-user persistence** via two new storage helpers in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts):
+  - `readAccountingApproveByDefault(userId)` — reads `localStorage.getItem('banking_accounting_approve_by_default_v1_' + userId) === '1'`, returns `false` when the key is missing or unreadable (private mode / quota).
+  - `writeAccountingApproveByDefault(userId, value)` — sets `'1'` when on, `removeItem` when off (presence-based so removing the key restores the off default).
+  - **Default off** (opt-in for safety; flipping it on commits assignments without per-row review on every refresh).
+- **State lift to [`Banking.tsx`](src/pages/Banking.tsx)** alongside the v2.579/v2.580 lifts:
+  - `approveByDefault: boolean` state, hydrated per user via `useEffect` keyed on `user?.id`.
+  - `onApproveByDefaultChange(v: boolean)` callback wired to `setApproveByDefault(v)` + `writeAccountingApproveByDefault(user.id, v)` (persists per-user).
+  - Two new props on `BankingMercuryAccountingTab`: `approveByDefault`, `onApproveByDefaultChange`.
+- **Pure helper module** [`accountingApproveByDefaultAutoTrigger.ts`](src/lib/accountingApproveByDefaultAutoTrigger.ts) (new):
+  - `buildApproveByDefaultSignature(pending): string` — returns `pending.map(p => p.suggestionId).sort().join(',')`. Sort independence keeps the signature stable across upstream re-orderings (e.g. a different `created_at` tiebreak in `loadPending`).
+  - `shouldAutoApproveAccountingSuggestions(state): boolean` — walks the gate set (`enabled`, `pendingLoading`, `approveAllBusy`, `pendingCount > 0`, `currentSignature !== lastSignature`).
+- **`autoApprovablePending` memo** in `BankingMercuryAccountingTab` mirrors the conflict-skip predicate inside `handleApproveAll` (drop suggestions whose label is Internal Transfers and whose tx has at least one row in `allocationsByTxId`). The memo is what feeds the signature builder — so a stable conflict-only residue produces an empty signature, the gate's `pendingCount === 0` branch quiets the effect, and `handleApproveAll`'s "All pending suggestions are conflicts" error toast never fires from auto-mode.
+- **Auto-approve effect** runs after every render when:
+  1. Toggle is on.
+  2. `pendingLoading` is false (the list isn't mid-fetch).
+  3. `approveAllBusy` is false (no manual click in flight, no double approve).
+  4. `autoApprovablePending.length > 0` (something to approve after conflict filtering).
+  5. The `pendingSuggestionId-set` signature has changed since the last auto-approve — guards against re-firing on residues and re-renders.
+- **Loop prevention** via `lastAutoApprovedSignatureRef = useRef<string | null>(null)`. Effect short-circuits when `currentSignature === lastSignature`. The signature naturally shrinks as `bulk_approve_accounting_label_suggestions` flips suggestions to `'approved'` server-side and `loadPending` filters them out, so the effect quiets without explicit reset machinery (no `autoApplyResetTick` analogue needed — pending IDs are inherently transient).
+- **Tab gating is free** — the effect lives inside `BankingMercuryAccountingTab`, which only mounts when `bankingView.mercuryTab === 'accounting'`. No per-tab `if` needed in the effect itself.
+- **Concurrent-click safety is free** — `approveAllBusy` is gated by both the manual button and the auto-approve effect. A manual click during an in-flight auto-approve (or vice versa) returns early; same handler, same flag, no double approve.
+
+#### Coverage
+
+11 unit tests in [`accountingApproveByDefaultAutoTrigger.test.ts`](src/lib/accountingApproveByDefaultAutoTrigger.test.ts):
+
+- `buildApproveByDefaultSignature`: sort independence (3 ids, two orderings, same signature), empty-list signature `''`, single-id add flips signature, single-id remove flips signature.
+- `shouldAutoApproveAccountingSuggestions`: all gates pass + signature changed → `true`; each gate independently → `false` (`enabled`, `pendingLoading`, `approveAllBusy`, `pendingCount === 0`); signature equality → `false`; signature inequality → `true`.
+
+#### Files
+
+- New: [`src/lib/accountingApproveByDefaultAutoTrigger.ts`](src/lib/accountingApproveByDefaultAutoTrigger.ts), [`src/lib/accountingApproveByDefaultAutoTrigger.test.ts`](src/lib/accountingApproveByDefaultAutoTrigger.test.ts)
+- Modified: [`src/lib/bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) (two new helpers + the `Approve by default` block comment), [`src/pages/Banking.tsx`](src/pages/Banking.tsx) (state, hydrate effect, change handler, two new props on `<BankingMercuryAccountingTab>`), [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) (props extension, Approvals-section checkbox, `autoApprovablePending` memo, `lastAutoApprovedSignatureRef`, auto-approve effect, helper imports)
+
+#### Out of scope
+
+- No DB migration, no RPC, no Edge function, no type-gen changes — `bulk_approve_accounting_label_suggestions` and the chunked-approve math in `handleApproveAll` are untouched.
+- No change to the manual **Approve all (N)** button — same handler, same chunking, same Internal Transfers skip + toast.
+- No change to v2.580 **Apply rules by default** — the two toggles compose (v2.580 creates pending suggestions; v2.581 commits them) but the effects are independent.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npx vitest run` — **1130 / 1130** tests pass (1119 pre-existing + 11 new).
+- Zero new lints on the five touched files.
+- Smoke test plan: enable v2.580 + v2.581 with rules defined → reload Banking → confirm rules create pending suggestions, then suggestions auto-approve and drop off the list, leaving only Internal Transfers conflicts. Toggle v2.581 off → confirm new pending suggestions sit until manual **Approve all** click.
+
+---
+
+## Previous Updates (v2.580)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Accounting — Apply rules by default toggle
+
+New per-user toolbar checkbox on **Banking → Mercury → Accounting** that, when on, auto-runs the existing **Apply rules to transactions** flow on every successful transaction load. Closes the loop after v2.579's server-side unlabeled fetch — the Accounting tab now fetches only unlabeled rows *and* automatically labels the matchable ones — without trapping users behind the 200-confirm modal that was added in v2.576 to prevent the Approvals-list crash.
+
+#### What's new
+
+- **Toolbar checkbox** in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) inserted immediately after the **Hide labeled transactions** label, in the same flex row as **Search transactions** + **Hide labeled** + **More filters**. Same `display: flex; alignItems: center; gap: 8; fontSize: 0.875rem; cursor: pointer` styling so the two boxes pair visually. `title` attribute explains the bypass + the 500 cap for hover discoverability: *When on, runs Apply rules to transactions automatically after every load. Skips the confirm modal but still caps each pass at 500 new pending suggestions.*
+- **Per-user persistence** via two new storage helpers in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts):
+  - `readAccountingApplyRulesByDefault(userId)` — reads `localStorage.getItem('banking_accounting_apply_rules_default_v1_' + userId) === '1'`, returns `false` when the key is missing or unreadable (private mode / quota).
+  - `writeAccountingApplyRulesByDefault(userId, value)` — sets `'1'` when on, `removeItem` when off (presence-based so removing the key restores the off default).
+  - **Default off** (opt-in for safety; flipping it on can immediately spawn up to 500 pending suggestions on first Accounting visit).
+- **State lift to [`Banking.tsx`](src/pages/Banking.tsx)** alongside the v2.579 `hideLabeledTransactions` lift:
+  - `applyRulesByDefault: boolean` state, hydrated per user via `useEffect` keyed on `user?.id`.
+  - `onApplyRulesByDefaultChange(v: boolean)` callback wired to `setApplyRulesByDefault(v)` + `writeAccountingApplyRulesByDefault(user.id, v)` (persists per-user).
+  - Monotonic `autoApplyResetTick: number` counter — bumped in `handleSync` (after `loadRowsForActiveView()`) and `handleBackfill` (after the `Promise.all`) so a fresh Mercury sync re-fires one auto-apply pass even when the unlabeled id set didn't change (e.g. a sync that only updated counterparties or amounts).
+  - Three new props on `BankingMercuryAccountingTab`: `applyRulesByDefault`, `onApplyRulesByDefaultChange`, `autoApplyResetTick`.
+- **Pure helper module** [`accountingApplyRulesAutoTrigger.ts`](src/lib/accountingApplyRulesAutoTrigger.ts) (new):
+  - `buildAutoApplySignature(txs, rules): string` — returns `${sortedTxIds}|${sortedEnabledRuleIds}`. Sort independence keeps the signature stable across upstream re-orderings (different `posted_at` tiebreak, etc.); disabled rules drop out so toggling `enabled` doesn't poison the cache.
+  - `shouldAutoApplyAccountingRules(state): boolean` — walks the gate set (`enabled`, `loading`, `rulesLoading`, `assignmentsLoading`, `applyRulesBusy`, `rulesCount > 0`, `currentSignature !== lastSignature`). Used by the effect inside the tab.
+- **Auto-apply effect** in `BankingMercuryAccountingTab` runs after every render when:
+  1. Toggle is on.
+  2. None of `loading` / `rulesLoading` / `assignmentsLoading` / `applyRulesBusy` is true.
+  3. `rules.length > 0` (no enabled rules → silent skip, same as the manual button).
+  4. The `(tx-id-set, enabled-rule-id-set)` signature has changed since the last auto-apply — guards against infinite re-fire when the silent reload after `onAfterAssignmentChange` round-trips with no meaningful change.
+- **`runAutoApply` callback** is the only divergence from manual click — calls `computeApplyRulesPreflight(rules)` then jumps straight to `executeApplyRules(preflight)`, deliberately bypassing `applyRulesWithSnapshot` (which gates on `APPLY_RULES_CONFIRM_THRESHOLD = 200` and pops `BankingMercuryAccountingApplyRulesConfirmModal`). The `APPLY_RULES_PER_CLICK_CAP = 500` per-pass cap is preserved because it lives inside `executeApplyRules`, and its `Created N. M more match — apply again after reviewing.` toast is exactly the right cue for the recurring-pass cadence — toggle stays on, next reload runs the next batch of up to 500.
+- **Loop prevention** via `lastAutoAppliedSignatureRef = useRef<string | null>(null)`. Effect short-circuits when `currentSignature === lastSignature`. A separate `useEffect` keyed on `autoApplyResetTick` nulls the ref so a fresh sync still triggers one auto-apply pass even on identical id sets.
+- **Tab gating is free** — the effect lives inside `BankingMercuryAccountingTab`, which only mounts when `bankingView.mercuryTab === 'accounting'`. No per-tab `if` needed in the effect itself.
+- **Concurrent-click safety is free** — `applyRulesBusy` is gated by both the manual button and the auto-apply effect. A manual click during an in-flight auto-apply (or vice versa) returns early; same handler, same flag, no double insert.
+
+#### Coverage
+
+13 unit tests in [`accountingApplyRulesAutoTrigger.test.ts`](src/lib/accountingApplyRulesAutoTrigger.test.ts):
+
+- `buildAutoApplySignature`: sort independence (3 ids, two orderings, same signature), `enabled === false` rules drop out, both-empty stable signature `'|'`, single-tx-id change flips the signature.
+- `shouldAutoApplyAccountingRules`: all gates pass + signature changed → `true`; each gate independently → `false` (`enabled`, `loading`, `rulesLoading`, `assignmentsLoading`, `applyRulesBusy`, `rulesCount === 0`); signature equality → `false`; signature inequality → `true`.
+
+#### Files
+
+- New: [`src/lib/accountingApplyRulesAutoTrigger.ts`](src/lib/accountingApplyRulesAutoTrigger.ts), [`src/lib/accountingApplyRulesAutoTrigger.test.ts`](src/lib/accountingApplyRulesAutoTrigger.test.ts)
+- Modified: [`src/lib/bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) (two new helpers), [`src/pages/Banking.tsx`](src/pages/Banking.tsx) (state lift, hydrate effect, change handler, `autoApplyResetTick` counter + bumps in `handleSync` / `handleBackfill`, three new props on `<BankingMercuryAccountingTab>`), [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) (props extension, toolbar checkbox, `runAutoApply` callback, `lastAutoAppliedSignatureRef` + reset effect + auto-apply effect, helper imports)
+
+#### Out of scope
+
+- No DB migration, no RPC, no Edge function, no type-gen changes — the `bulk_insert_accounting_label_suggestions` RPC and the `executeApplyRules` slice/insert math are untouched.
+- No change to the manual **Apply rules to transactions** button — it still goes through `applyRulesWithSnapshot` and pops the 200-confirm modal as before.
+- No change to other Mercury tabs (Drag Sort, User Review, Category Review, Sorting, Ledger).
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npx vitest run` — **1119 / 1119** tests pass (1106 pre-existing + 13 new).
+- Zero new lints on the five touched files.
+- Smoke test plan: toggle on with rules defined → reload Banking → confirm pending suggestions appear in the Approvals section without clicking the manual button. Toggle off → confirm no auto-apply. With 5000 matches and toggle on, confirm the 200-confirm modal does **not** pop, only 500 pending suggestions are created, and the toast reads `Created 500. 4500 more match — apply again after reviewing.`
+
+---
+
+## Previous Updates (v2.579)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Accounting — server-side unlabeled fetch
+
+Default-on path on **Banking → Mercury → Accounting** stops fetching the labeled 88% of rows entirely. **Hide labeled transactions** is on by default for the Accounting tab; previously the page pulled up to 15,000 `mercury_transactions` rows, then mapped them against `mercury_transaction_drag_sort_assignments` in batches of 400 ids per request, then filtered the labeled ones out client-side — burning the wire and CPU on ~10,000 rows just to display ~1,200. The Accounting tab now goes directly to a server-side anti-join.
+
+#### What's new
+
+- **New RPC** **`list_unlabeled_mercury_transactions(p_limit int default null)`** — `SECURITY INVOKER`, `stable`, `LANGUAGE sql`. Performs a `LEFT JOIN public.mercury_transaction_drag_sort_assignments a ON a.mercury_transaction_id = t.id WHERE a.mercury_transaction_id IS NULL`, ordered `posted_at DESC NULLS LAST, id DESC` to match the existing master list ordering. `LIMIT p_limit` with `null` default returns all unlabeled rows (Postgres treats `LIMIT NULL` as no limit; PostgREST's project-level row cap stays the ultimate ceiling, same as before). Anti-join hits the primary key index on `mercury_transaction_drag_sort_assignments(mercury_transaction_id)` (declared in `20260502224616_mercury_drag_sort_org_wide_labels.sql`), so no new index is required. RLS on both tables runs as the caller — existing dev / master_technician / assistant gating on `mercury_transactions` carries through.
+- **Tab-aware loader in [`Banking.tsx`](src/pages/Banking.tsx)** — `loadRows` is split into:
+  - **`loadAllRows`** — the existing 15k `mercury_transactions` fetch, unchanged. Used by Drag Sort, User Review, Category Review, Sorting, and Ledger.
+  - **`loadUnlabeledRows`** — `supabase.rpc('list_unlabeled_mercury_transactions', { p_limit: undefined })`. Used only when (Accounting tab + Hide labeled = on).
+  - **`loadRowsForActiveView`** — picks one of the two based on `(bankingView.product, bankingView.mercuryTab, hideLabeledTransactions)`. Replaces every previous `loadRows()` call site (mount effect, `mercury_transactions` Realtime callback, post-sync `handleSync`, post-backfill `handleBackfill`, Sorting tab header **Reload table** button, Ledger Advanced menu **Reload table** menuitem). The mount effect's dep set already includes the dispatcher's identity, so the loader naturally re-fires when the user toggles the checkbox or switches tabs — no separate watcher effect.
+- **Lifted `hideLabeledTransactions` to the parent** — moved out of [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) into `Banking.tsx`. The toolbar checkbox in the Accounting tab now calls `onHideLabeledTransactionsChange(checked)`; the parent persists per-user via `writeAccountingHideLabeledTransactions(user.id, value)` and seeds the state on `user.id` change via `readAccountingHideLabeledTransactions(user.id)`. State default is **on** (matches the existing storage helper's null-userId default) until hydrated.
+- **Skip the assignment-marking sweep when input is already unlabeled-only** — new derived `inputIsUnlabeledOnly = hideLabeledTransactions` flag inside the tab. `loadAssignmentsForList` short-circuits with an empty `Map` (every row in `filteredTransactions` is unlabeled by construction, so the 26-batch round-trip is pure waste). `displayTransactions` returns `afterLedgerFilters` directly when `inputIsUnlabeledOnly` is true (the redundant `.filter((tx) => !assignmentLabelByTxId.has(tx.id))` step is skipped).
+- **In-place refresh after assignment mutations** — new optional `onAfterAssignmentChange?: () => void` prop on `BankingMercuryAccountingTab`. Parent passes `() => void loadRowsForActiveView({ silent: true })`. The tab fires it after the four side-effecting flows that add or remove rows in `mercury_transaction_drag_sort_assignments`:
+  - `clearRowDragSortLabel` (manual label removal — unlabeled count goes up; row appears in the unlabeled list).
+  - `handleQuickAssignLabel` (manual label apply via the **Quick label** modal — unlabeled count goes down; row drops out).
+  - `handleApprove` (single-row approve — same flow, single row).
+  - `handleApproveAll` (bulk approve via `bulk_approve_accounting_label_suggestions` RPC — unlabeled count drops by N rows in one shot).
+  - **Not** `handleReject`, **not** `executeApplyRules`, **not** rule add / edit / delete — those touch `mercury_accounting_label_suggestions` or `mercury_accounting_label_rules` only, never the assignments table.
+
+#### Why
+
+`Sorting Ledger (1178)` is what the user sees by default — meaning ~9,086 of the 10,264 fetched rows were filtered away client-side every time the page loaded. The new path replaces that with a single RPC call that returns the 1,178 rows directly. The redundant per-page `mercury_transaction_drag_sort_assignments` mapping (one call per chunk of 400 ids, ~26 calls per load) goes away on the default path because it's logically pointless once the input is already unlabeled-only.
+
+When the user toggles **Hide labeled transactions** off, or switches to any non-Accounting tab, the parent re-fires `loadAllRows` and the previous behavior returns verbatim — assignment map populates lazily, all existing surfaces (counterparty header counts, frequency modal, sorting filters, search) read off `displayTransactions` exactly as before.
+
+#### Edge cases
+
+| Case | Behavior |
+| --- | --- |
+| Toggle off **Hide labeled** | Parent re-fires `loadAllRows`. One round-trip; full list returns. |
+| Switch to Drag Sort / User Review / Category Review / Sorting / Ledger | Parent re-fires `loadAllRows`. Other tabs always see the full list. |
+| **Refresh from Mercury** while in Accounting + Hide on | Routes through `loadRowsForActiveView` after the sync — refreshes the unlabeled view (cheaper). New labeled rows from the sync show up only when the user toggles off. |
+| Realtime label assignment lands while Hide on | Parent's `mercury_transactions` Realtime callback already runs `loadRowsForActiveView({ silent: true })`; row drops out of the unlabeled list. |
+| Approve / Approve all / Apply manual label / Clear label | `onAfterAssignmentChange` fires; parent re-fetches the unlabeled list; the affected row leaves (or returns to) the list in place. |
+| Backfill from Mercury (15k+ rows possible) | RPC has no cap; returns whatever PostgREST will serialize. PostgREST's project-level row cap was always the ceiling — the previous client-side `MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000` constant only narrowed `loadAllRows`, never the server. |
+
+#### Files
+
+- **New** `supabase/migrations/20260525204531_list_unlabeled_mercury_transactions.sql` — `SECURITY INVOKER` anti-join RPC + `grant execute … to authenticated`.
+- **Regenerated** [`src/types/database.ts`](src/types/database.ts) via `npm run gen-types:linked`. New entry: `list_unlabeled_mercury_transactions: { Args: { p_limit?: number }, Returns: mercury_transactions row shape[] }`.
+- **Modified** [`src/pages/Banking.tsx`](src/pages/Banking.tsx) — added storage-helper imports, `hideLabeledTransactions` state + sync effect + `onHideLabeledTransactionsChange` callback, split `loadRows` into `loadAllRows` + `loadUnlabeledRows` + `loadRowsForActiveView`, replaced every `loadRows()` callsite, threaded the three new props on `<BankingMercuryAccountingTab>`.
+- **Modified** [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) — dropped `useState` for `hideLabeledTransactions`, the userId re-sync `useEffect`, and the two storage-helper imports; added three new props (`hideLabeledTransactions`, `onHideLabeledTransactionsChange`, `onAfterAssignmentChange?`); added derived `inputIsUnlabeledOnly`; short-circuited `loadAssignmentsForList` and `displayTransactions`; rewrote the toolbar checkbox handler to use the prop callback; wired `onAfterAssignmentChange?.()` after the four assignment-table mutation flows.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npx tsc -b` clean.
+- `npx vitest run` — **1,106 / 1,106** tests pass.
+- No new lints on touched files.
+- Sanity check: `execute_sql` against the linked DB returns **1,284** unlabeled rows from `list_unlabeled_mercury_transactions(null)` (vs ~10k+ total `mercury_transactions`) — matches the user's observed `Sorting Ledger (1178)` order of magnitude.
+
+---
+
+## Latest Updates (v2.578)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Accounting — Rules modal
+
+The inline collapsible Rules section on **Banking → Mercury → Accounting** is replaced by a single **`Rules (N)`** trigger button that opens a dedicated modal containing the full Rules toolbar, search input, and sortable rules table. The page now reads as a clean two-section flow (**Approvals** → **Sorting Ledger**) with a thin trigger row between them.
+
+#### What's new
+
+- **Trigger button** — a single primary blue **`Rules (N)`** button on the Accounting tab page, between Approvals and Sorting Ledger, where the inline accordion used to live. Disabled while `rulesLoading`. `aria-label` reads `Open rules manager (N rules)`.
+- **Rules modal** — new component [`BankingMercuryAccountingRulesModal.tsx`](src/components/banking/BankingMercuryAccountingRulesModal.tsx). Contains:
+  - **Toolbar**: **New rule** (primary, disabled when no labels exist), **Audit overlaps** (disabled when there are zero rules), **Apply rules to transactions** (disabled while busy or while rules are loading; busy label `Applying…`). Same handlers and disabled rules as before — moved into the modal verbatim.
+  - **`Search rules…`** input (`type="search"`, `aria-label="Search rules"`).
+  - Sortable table — **Name** / **Label** / **Enabled** / **Approved uses** / actions (Edit / Delete). `aria-sort` and `▲` / `▼` indicators on the Name and Label headers behave identically to the previous inline behavior.
+  - Backdrop click + Escape close. `role="dialog"`, `aria-modal="true"`, sticky title row, scrollable body, `maxWidth: 760`, `maxHeight: min(88vh, 44rem)`, `overflowX: 'auto'` so the 5-column table stays usable on narrow viewports. Patterned after [`MercuryCounterpartyFrequencyModal.tsx`](src/components/banking/MercuryCounterpartyFrequencyModal.tsx).
+  - Presentational only — every value comes in from props, so refresh / busy / persistence behavior is unchanged.
+
+#### Stacking strategy
+
+The Rules modal renders at **`zIndex: 1100`**, deliberately below every child modal already mounted by `BankingMercuryAccountingTab`. No other z-indices change:
+
+| Modal | z-index | Behavior |
+| --- | --- | --- |
+| **Rules modal** (new) | **1100** | Background of every child interaction |
+| **Edit Rule** ([`AccountingRuleFormModal`](src/components/banking/AccountingRuleFormModal.tsx)) | 1200 | Opens above Rules modal; Save closes Edit Rule and the table behind refreshes via existing `loadRulesAndUsage` flow |
+| **Edit Rule → nested delete confirm** | 1201 | Existing v2.574 nested confirm; sits above Edit Rule, above Rules modal |
+| **Audit Overlaps** ([`BankingMercuryAccountingOverlapsModal`](src/components/banking/BankingMercuryAccountingOverlapsModal.tsx)) | 1250 | Opens from Rules modal toolbar; Rules modal stays at 1100 underneath |
+| **Apply Rules confirm** ([`BankingMercuryAccountingApplyRulesConfirmModal`](src/components/banking/BankingMercuryAccountingApplyRulesConfirmModal.tsx)) | 1260 | Opens above Rules modal when matches exceed `APPLY_RULES_CONFIRM_THRESHOLD = 200`; Cancel returns to Rules modal; Confirm executes the chunked insert and closes only the confirm |
+
+The pre-existing **v2.573** audit-handoff cycle (audit → click rule name → Edit Rule → audit reopens) continues to work unchanged: Rules modal stays at 1100 throughout, so the user always has visual continuity back to the rules table.
+
+#### Cleanup
+
+Dead code from the previous accordion is gone in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx):
+
+- `[rulesSectionExpanded, setRulesSectionExpanded]` state.
+- The `useEffect` that re-synced the flag on `userId` change.
+- The `ACCOUNTING_RULES_SECTION_BODY_ID` constant.
+- The two storage-helper imports `readAccountingRulesSectionExpanded` / `writeAccountingRulesSectionExpanded`.
+
+The storage helpers themselves stay in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) for one PR — stale `localStorage` keys are harmless and can be reaped in a future cleanup.
+
+#### Files
+
+- New [`src/components/banking/BankingMercuryAccountingRulesModal.tsx`](src/components/banking/BankingMercuryAccountingRulesModal.tsx) — presentational modal with the toolbar, search, and table.
+- Modified [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx):
+  - Dropped the two storage-helper imports; added the new modal import.
+  - Removed `ACCOUNTING_RULES_SECTION_BODY_ID` constant.
+  - Replaced `rulesSectionExpanded` state with `rulesModalOpen` state; removed the userId-change re-sync `useEffect`.
+  - Replaced the 279-line inline `<section>` (Rules accordion) with a 17-line trigger button row.
+  - Mounted `<BankingMercuryAccountingRulesModal>` next to its peers (after the Apply Rules confirm modal).
+
+No DB / migration / RLS / RPC / Edge / type-gen changes.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npx tsc -b` clean.
+- `npx vitest run` — **1,106 / 1,106** tests pass.
+- No new lints on either touched file.
+
+---
+
+## Latest Updates (v2.576)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Accounting — Apply rules crash fix
+
+The Approvals section used to render every row of `mercury_accounting_label_suggestions` at once. With **5,000+ pending approvals** that meant ~5,000 React cards × a `<select>` with ~50 label `<option>`s each ≈ **250,000+ DOM nodes** — Chrome would freeze, then crash. Any state change anywhere in the tab (hover, dropdown change, tab focus) re-reconciled the whole list. Fix is layered so the runtime never reaches the wedge again.
+
+#### What's new
+
+- **Cap creation per click** — new constant **`APPLY_RULES_PER_CLICK_CAP = 500`** in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx). The old `applyRulesWithSnapshot` was split into `computeApplyRulesPreflight(ruleRows)` (fetches the current pending-tx id set, builds the assigned tx id set, parses every rule's criteria once, calls the new shared helper, returns `{ toInsert, totalMatches } | null`) and `executeApplyRules(preflight)` (slices to the cap, chunks the insert at `INSERT_CHUNK = 2000`, toasts the result, calls `loadPending()`).
+- **Confirm modal above 200 matches** — new constant **`APPLY_RULES_CONFIRM_THRESHOLD = 200`** + new component [`BankingMercuryAccountingApplyRulesConfirmModal.tsx`](src/components/banking/BankingMercuryAccountingApplyRulesConfirmModal.tsx). Above the threshold, **Apply rules** stops and shows `N transactions match. The first 500 will be created as pending suggestions for review. The remaining N-500 stay unmatched until you approve some and click Apply rules again.` Cancel + Escape + backdrop close (Escape gated on `!busy`); confirm fires `executeApplyRules` and closes. Below the threshold the modal never mounts — the common case is unchanged.
+- **Memoized approval cards** — new component [`AccountingApprovalCard.tsx`](src/components/banking/AccountingApprovalCard.tsx) wraps the per-approval card render in `React.memo`. Parent passes stable callbacks (`handleApproveCard`, `handleRejectCard`, `handleLabelChangeCard`, `openEditRuleById`) wrapped in `useCallback`, and resolves the live `PendingApproval` row from a new **`pendingApprovalsRef: useRef<PendingApproval[]>`** mirror (synced via `useEffect`) so the callback identities don't churn on every state change. Net: changing one card's dropdown re-renders **only that card**, not the other 499 / 4,999.
+- **Pagination** — new constant **`APPROVALS_PAGE_SIZE = 50`** + `approvalsVisibleCount` state + a fresh-load effect (`prevPendingLenRef` → `0 → N` triggers reset to 50; same-list edits keep the user's expanded window). Below the visible cards, a `Showing X of N.` footer renders **`Show 50 more`** + **`Show all (N)`** when there are more rows.
+- **Approve all label** now reads **`Approve all (N)`** including the live count.
+
+#### Pure helper + tests
+
+New [`src/lib/applyAccountingRulesPreflight.ts`](src/lib/applyAccountingRulesPreflight.ts) exports `buildAccountingRulesToInsert({ rules, filteredTransactions, assignedTxIds, pendingTxIds })`. Mirrors the engine semantics from the old inline loop verbatim:
+
+- Filter to enabled rules with `accountingRuleEffectiveClauseCount > 0` and non-null criteria.
+- Sort by `sort_order ASC, id ASC` (engine ordering, same comparator the audit overlap helper uses).
+- Walk every transaction in input order, skip if already-assigned or already-pending, walk eligible rules in sort order, `break` on first match (first-match-wins).
+- Returns the **uncapped** `{ mercury_transaction_id, rule_id, suggested_label_id }` rows. The cap lives one layer up so the preflight can show `N total match` before the cap is applied.
+
+13 unit tests in [`applyAccountingRulesPreflight.test.ts`](src/lib/applyAccountingRulesPreflight.test.ts) — empty rules, empty txs, disabled rule skip, null criteria skip, zero-clause skip, assigned tx skip, pending tx skip, first-match-wins by `sort_order` then `id`, output ordering matches input tx order, no-cap behavior at 1,500-row scale, dedupe of doubled-id input.
+
+#### Acceptance
+
+- **0 matches** → no-op toast.
+- **50 matches** → silent insert + paint **50** cards.
+- **150 matches** → silent insert + paint **50** cards + `Show 50 more` / `Show all (150)`.
+- **300 matches** → modal asks → confirm inserts **300** pending + paints **50** cards + `Show 50 more` / `Show all (300)`.
+- **5,000 matches** → modal asks → confirm inserts **500** pending (4,500 stay unmatched) + paints **50** cards + `Show 50 more` / `Show all (500)`.
+- **Approve all (500)** approves the **whole queue**, not just the 50 visible.
+
+#### Files
+
+- New [`src/lib/applyAccountingRulesPreflight.ts`](src/lib/applyAccountingRulesPreflight.ts) + [`applyAccountingRulesPreflight.test.ts`](src/lib/applyAccountingRulesPreflight.test.ts).
+- New [`src/components/banking/BankingMercuryAccountingApplyRulesConfirmModal.tsx`](src/components/banking/BankingMercuryAccountingApplyRulesConfirmModal.tsx).
+- New [`src/components/banking/AccountingApprovalCard.tsx`](src/components/banking/AccountingApprovalCard.tsx).
+- Modified [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx): added the three constants, the `ApplyRulesPreflight` type, `applyRulesConfirm` / `approvalsVisibleCount` state + ref + reset effect, `computeApplyRulesPreflight` / `executeApplyRules` / `cancelApplyRulesConfirm` / `confirmApplyRulesAfterModal` callbacks, `handleApproveCard` / `handleRejectCard` / `handleLabelChangeCard` callbacks, `pendingApprovalsRef` sync effect, replaced inline approval-card map with the memoized component, added `Show 50 more` + `Show all (N)` footer, updated **Approve all** label, mounted the new confirm modal. Removed the now-unused `mercuryDebitCardIdFromRaw` / `formatMercuryDebitCardIdCompact` imports (moved into `AccountingApprovalCard`).
+
+No DB / migration / RLS / RPC / Edge / type-gen changes — engine SQL semantics are unchanged (`bulk_insert_accounting_label_suggestions` still does the chunked insert).
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- No new lints on the four touched files.
+- **26 / 26** preflight + overlap tests pass (`applyAccountingRulesPreflight.test.ts` 13, `accountingRuleOverlap.test.ts` 13).
+
+---
+
+## Latest Updates (v2.575)
+
+**Date**: 2026-05-25
+
+### Banking Mercury — 1-year backfill control + raised display cap
+
+The everyday **Refresh from Mercury** button at [`src/pages/Banking.tsx`](src/pages/Banking.tsx) (handler `handleSync`) is hardcoded to `lookback_days: 90` so daily refresh stays fast (~10s, idempotent). To backfill a longer window without redeploying, devs now have a separate **Backfill from Mercury…** menu item that runs the same Edge function with an explicit `{ start, end }` payload. The Banking → Mercury list cap was also raised from 5,000 to 15,000 rows so a full year of synced transactions stays visible.
+
+#### What's new
+
+- **Advanced menu** picks up a new dev-only **Backfill from Mercury…** item between **Refresh from Mercury** and **Reload table**, gated via the new optional `onBackfillFromMercury?: () => void` prop on `BankingLedgerAdvancedMenuProps` — non-dev viewers don't see the item, the prop, or the modal mount.
+- New [`MercuryBackfillModal.tsx`](src/components/banking/MercuryBackfillModal.tsx) — two `<input type="date">` fields seeded to `[today − 365, today]` in `APP_CALENDAR_TZ` (`denverCalendarDayKey(Date.now())` + `ymdAddDays(today, -365)`), cross-bounded `min`/`max` so the picker can't even render an out-of-range value, both clamped to today.
+- **Run backfill** posts `{ start, end }` to existing Edge function [`sync-mercury-transactions`](supabase/functions/sync-mercury-transactions/index.ts) — no Edge change; the function already accepts that shape and clamps `lookback_days` to `[1, 3650]` while leaving explicit `start/end` as-is.
+- On success the modal closes, the parent's `handleBackfill` toasts `Synced N transactions from Mercury (start → end).`, and runs `Promise.all([loadRows(), loadNicknames(), loadDebitCardNicknames()])` so the Banking table reflects the new rows immediately.
+- The existing **Refresh from Mercury** path (`handleSync`) is byte-identical — daily refresh still posts `{ lookback_days: 90 }` and never touches the new modal.
+
+#### Validation
+
+The modal computes a `validationError: string | null` on every render and disables **Run backfill** when non-null:
+
+- Both Start and End must be set.
+- `start <= end` (otherwise Mercury returns zero rows).
+- `end <= today` (Mercury rejects future ends).
+- Range ≤ `MAX_RANGE_DAYS = 3650` (matches the Edge function's `lookback_days` clamp; explicit `start/end` aren't clamped on the server, so we surface a friendly amber message client-side instead of silently truncating).
+
+Pre-submit errors render in an amber pill; Edge-function failures render in a red pill and the modal stays open with `submitting === false` so the user can retry, change the range, or cancel.
+
+#### Display-cap raise
+
+In [`src/pages/Banking.tsx`](src/pages/Banking.tsx) `loadRows`, the in-memory cap moves from a hardcoded `.limit(5000)` to a named constant `MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000` so a full year (~10k tx) plus headroom fits in one scrollable list. The `useMemo` chain that walks `rows` (filtering, sorting, counterparty frequencies, per-row allocation/person/user maps) gets ~3× heavier on first paint; banking is desktop-first (dev / master / assistant only), so the slow-phone case isn't relevant. Search and rules still filter via the DB, not the in-memory list — those work the same regardless of the cap.
+
+#### Implementation notes
+
+- **`ymdDaysBetween`** local helper inside the modal converts both YMD strings to UTC midnight `Date.UTC` and divides by `86400000`. Pure civil math — no TZ surprises across the date-input boundary.
+- **Default seeding** uses `useMemo(() => denverCalendarDayKey(Date.now()), [])` so the today value is captured once when the modal mounts; the seed then re-fires on every `open` transition via the `useEffect([open, defaultStartYmd, todayYmd])` reset block (also clears `errorMsg` and `submitting` defensively in case the modal is being reopened after an error).
+- **Escape-to-close** is gated on `!submitting` so a stray keypress can't dismiss the modal mid-run.
+- **Backdrop click** also gates on `!submitting` via `handleCancel`.
+- **`syncing` shared state** — `handleBackfill` flips the same `syncing` flag `handleSync` uses, so the top-of-page **Refresh from Mercury** button and the new menu item both disable while a backfill runs (mutual-exclusion comes for free, no extra coordination needed).
+- **Idempotency** — Mercury's `start_after` cursor + the function's `onConflict: 'mercury_id'` upsert mean re-running over an overlapping range is safe and cheap. Already-synced rows just rewrite the same row.
+
+#### Files
+
+- New [`src/components/banking/MercuryBackfillModal.tsx`](src/components/banking/MercuryBackfillModal.tsx).
+- Modified [`src/pages/Banking.tsx`](src/pages/Banking.tsx):
+  - Added `MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000` top-of-file constant.
+  - Added `MercuryBackfillModal` import.
+  - Added `onBackfillFromMercury?: () => void` to `BankingLedgerAdvancedMenuProps` + destructured + rendered new menu item.
+  - Added `backfillModalOpen` state + `handleBackfill` async function + dev-gated `<MercuryBackfillModal>` mount.
+  - Replaced `.limit(5000)` in `loadRows` with `.limit(MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)`.
+
+No DB / migration / RLS / RPC / Edge / type-gen changes — the Edge function already supported `{ start, end }`, Mercury's API itself accepts arbitrary `YYYY-MM-DD` windows, and the cap raise is a pure client constant.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- No new lints on either touched file.
+- Manual smoke (per the plan):
+  - Non-dev viewers (assistant / master_technician): Advanced menu shows **Refresh from Mercury** + **Reload table** only. No Backfill item.
+  - Dev viewer: Advanced menu shows **Refresh from Mercury** + **Backfill from Mercury…** + **Reload table**.
+  - Click **Backfill from Mercury…**: modal opens with Start = today − 365, End = today.
+  - Submit with default range: button shows **Running…**, takes ~20–30s, success toast, modal closes, Banking table reloads with up to 15,000 rows visible.
+  - Future end / reverse range: blocked by amber inline validation.
+  - Range > 3650 days: blocked by amber inline validation.
+  - Edge fn 502 / 5xx: red inline error, modal stays open, retry succeeds.
+  - Everyday **Refresh from Mercury** (top-right of dev banking): still syncs `lookback_days: 90`, no behavior change.
+
+#### Out of scope
+
+- Streaming progress (Mercury batch responses arrive in ~2s chunks; surfacing per-page progress would need an SSE / WebSocket channel — not worth the complexity for a once-in-a-while action).
+- Posted-date range filter on the main Banking list. The Sorting Ledger More-filters modal already has one; the raise-limit option was preferred here.
+- Pagination of the main Banking list. Deferred unless 15k proves too heavy in practice.
+- Surfacing the 60k Edge-function page cap (`MAX_PAGES × DEFAULT_LIMIT`). Not a real risk for 1-year ranges.
+- Stripe equivalent — Stripe data is webhook-mirrored, no "load last N months" knob needed.
+
+---
+
+## Latest Updates (v2.574)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Accounting — Edit Rule modal Delete
+
+The Edit Rule modal at [`src/components/banking/AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx) had no Delete affordance — to remove a rule the user had to close the modal, find the row in the Rules table, and click its red **Delete** link. That round-trip is especially awkward when the user opened the modal *from the v2.573 audit overlaps modal* specifically to fix or remove a redundant rule. This release adds a trash icon in the modal header (Edit mode only) that opens a nested confirm modal and runs the same delete logic the Rules-table link uses.
+
+#### What's new
+
+- Red trash icon in the Edit Rule modal header, right-aligned next to the **Edit rule** title. Hidden on **New rule** (gated on `editingRuleId !== null && onDelete !== undefined`).
+- Click → nested confirm modal at `zIndex: 1201` (parent modal at 1200, mirroring Edit Job's `parent + 1` convention) with the rule name in bold and a *Pending suggestions tied to this rule will be removed. This cannot be undone.* warning. Cancel + Delete buttons.
+- On confirm Delete: the parent's `deleteRuleCore` runs (extracted from the existing `deleteRule` so the Rules-table Delete link still works the same way with `window.confirm`), the toast says *Rule deleted.*, the Edit Rule modal closes, and `loadRulesAndUsage()` + `loadPending()` refresh.
+- After the Edit Rule modal closes, the v2.573 **audit handoff** `useEffect` watching `ruleModalOpen` (`true → false`) re-opens the audit modal underneath with the deleted rule absent from `overlapReport.txRows` / `pairCounts`. Completes the *open audit → click rule name → delete → audit reopens* workflow.
+
+#### Implementation
+
+- New `onDelete?: () => Promise<void>` prop on `AccountingRuleFormModalProps`, mirroring the optional shape of `onSaveAndApply` so existing callsites stay safe.
+- New local state `deleteConfirmOpen` + `deleting`; `controlsDisabled = submitBusy || applyRulesBusy || deleting` so the rest of the form locks during delete and the trash icon disables itself.
+- New handler `handleConfirmDelete`: try/finally on `setDeleting`, awaits `onDelete()`, defensively closes the nested confirm on success (parent typically closes the parent modal first, but the nested confirm is closed on this side too in case the parent leaves it open). On failure the catch block is empty — `deleteRuleCore` re-throws after toasting, so the nested confirm stays open with `deleting === false` for retry without re-opening.
+- Backdrop `onMouseDown` on the confirm overlay short-circuits on `deleting === true` so a misclick can't dismiss the confirm mid-flight; the parent modal's outer-presentation `onMouseDown` already gates on `e.target === e.currentTarget`, so the confirm's overlay never bubbles a close to the parent.
+- `deleteRuleCore` extracted from `deleteRule` in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx): same `withSupabaseRetry` DELETE on `mercury_accounting_label_rules`, same toasts, same `loadRulesAndUsage()` + `loadPending()`, **but** re-throws on error so the modal can keep its nested confirm open. `deleteRule` is now a thin wrapper that calls `deleteRuleCore` after `window.confirm`. The Rules-table Delete link (`onClick={() => deleteRule(rule)}`) is untouched.
+- Modal mount in `BankingMercuryAccountingTab.tsx` passes `onDelete` only when `editingRuleId !== null`; the callback looks up the rule via the existing `ruleById` map, awaits `deleteRuleCore(rule)`, then calls `setRuleModalOpen(false)`. Missing-rule defensive branch toasts an error.
+
+#### Trash icon styling
+
+Reuses [`PayStubDeleteIcon`](src/components/pay/PayStubDeleteIcon.tsx) (the project's existing trash SVG, already used in `DraftPayrollModal`). 32×32 transparent button, color `#b91c1c` (matches the Rules-table Delete-link red and Edit Job's confirm-Delete background); disabled state recolors to `#9ca3af` and switches cursor to `not-allowed`. `aria-label` / `title` = *Delete rule*.
+
+#### Confirm modal styling
+
+Mirrors Edit Job's `deleteJobConfirmOpen` overlay: white card, 8 px radius, 1.5 rem padding, 480 px max width, drop shadow at `rgba(0,0,0,0.18)`. Cancel button is a neutral white-with-border button; Delete button is `#b91c1c` solid filled, switches to `#9ca3af` while `deleting === true` and the label changes to **Deleting…**.
+
+#### Files
+
+- [`src/components/banking/AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx) — `onDelete` prop, state, header flex row + trash icon, nested confirm overlay JSX, `handleConfirmDelete`, `controlsDisabled` extension, `PayStubDeleteIcon` import.
+- [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) — `deleteRuleCore` extraction, `deleteRule` thin wrapper, `onDelete` wiring on `<AccountingRuleFormModal>` mount.
+
+No DB / migration / RLS / RPC / Edge / type-gen changes — `mercury_accounting_label_rules` already supports DELETE via the existing RLS policy, and the existing Rules-table Delete link was already exercising the same SQL path.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- No new lints on either touched file.
+- Manual smoke (per the plan):
+  - **New rule** mode: no trash icon in the header.
+  - **Edit rule** mode: red trash icon at right of *Edit rule* heading.
+  - Click trash icon: nested confirm modal opens at `z-index: 1201`, shows current rule name, shows *Pending suggestions tied to this rule will be removed. This cannot be undone.* warning.
+  - **Cancel** on confirm: returns to Edit Rule modal unchanged.
+  - **Delete** on confirm: button shows **Deleting…**, all form controls + the trash icon disable, on success the Edit Rule modal closes and a green toast says *Rule deleted.*
+  - After delete with the audit modal open underneath: audit modal automatically re-opens with the deleted rule absent from both tabs.
+  - Rules-table Delete link: still uses `window.confirm` (regression-safe).
+  - Delete failure path: confirm modal stays open, toast shows the error, user can click Delete again.
+  - `applyRulesBusy === true`: trash icon disabled; clicking does nothing.
+
+#### Out of scope
+
+- Bulk delete of overlapping rules from the audit modal — deferred; single-rule delete from Edit Rule is the requested scope.
+- Soft-delete / undo — existing `deleteRule` is hard-delete via Supabase; matching that is the simpler choice and consistent with the Rules table.
+- Migrating the Rules-table Delete link to the same nested confirm modal — out of scope; can be a follow-up if we want to standardize.
+
+---
+
+## Latest Updates (v2.573)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Accounting — Rule overlap audit
+
+Mercury accounting rules at [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) are **first-match-wins**: rules are sorted by `sort_order, id` and `applyRulesWithSnapshot` `break`s on the first match. That's correct semantics for Apply, but every other rule that would have matched the same tx is silently shadowed — over time redundant or contradictory rules accumulate without warning. This release surfaces those overlaps without changing how Apply tie-breaks.
+
+#### What's new
+
+- **Audit overlaps** button on the Rules section toolbar (between the existing **New rule** cluster and **Apply rules to transactions**). Opens a new modal that scans every transaction in the current Banking-filtered list and lists every enabled rule that matches it, not just the first.
+- The existing per-rule **Test results** modal (run from the Edit Rule modal's **Test** action) now adds a muted `Also matched by: <rule names>` line under each matched tx when other enabled rules also match the same tx. Excludes the rule currently being edited.
+
+#### Audit modal layout
+
+[`src/components/banking/BankingMercuryAccountingOverlapsModal.tsx`](src/components/banking/BankingMercuryAccountingOverlapsModal.tsx) — backdrop + dialog styled identically to the existing Test results modal (z-index 1250, max-width 720, `maxHeight: 85vh`).
+
+- Header: *N transaction(s) match 2 or more rules · K disagree(s) with the existing label.*
+- Sub-line: *Scope: currently filtered Banking transactions, including already-labeled ones.* (matches Apply's scope, but intentionally **does not** skip already-labeled or already-pending txs — the rule-vs-assignment disagreement is the highest-signal overlap flavour and must be visible.)
+- **By rule pair** tab — table sorted desc by tx count, columns *Winner rule* / *Shadowed rule* / *Transactions*. Both rule names are clickable buttons that fire `openEditRuleById` so the user can edit either side of the conflict directly. Empty state: *No overlapping rule pairs.*
+- **By transaction** tab — one row per overlapping tx, posted-date sorted newest-first with id tiebreak. Each row shows the standard `formatUsd · counterparty · formatBankingDate` summary plus a `Matched by: <Winner> (winner), <Shadowed1>, <Shadowed2>...` line (winner rendered as a bold link, others as plain links). Conflict rows additionally render an amber `Currently labeled X · winning rule labels Y` line when the tx is already assigned to a different label than the winner would apply.
+- Footer: **Close**.
+
+Audit ↔ Edit Rule handoff: clicking a rule name in the audit modal calls a new wrapped handler `openEditRuleByIdFromOverlaps` that sets a `auditPendingReopenAfterRuleModalRef = true` flag, closes the audit modal, then calls the existing `openEditRuleById`. The Edit Rule modal (`AccountingRuleFormModal`, z-index 1200) can't simply stack above the audit modal (z-index 1250) because the **Test results** modal it spawns is also at 1250 — bumping Edit Rule above 1250 would hide Test behind it. Hide-and-restore avoids that whole class of stacking bug. A `useEffect` watching `ruleModalOpen` detects the `true → false` transition (covers Cancel, Save, Save and apply, backdrop click — every Edit Rule close path) and re-opens the audit modal with the flag cleared. Because `overlapReport` is memoized off `rules`, the audit re-renders with fresh data after a save. User-initiated audit Close (button or backdrop) clears the flag so accidental later edits don't auto-reopen.
+
+#### Pure helper + tests
+
+[`src/lib/accountingRuleOverlap.ts`](src/lib/accountingRuleOverlap.ts) exports a single pure function `buildAccountingRuleOverlapReport(rules, txs, opts)`:
+
+- Filters rules to enabled (or all when `includeDisabled: true`), drops rules with `null` criteria or `accountingRuleEffectiveClauseCount === 0`.
+- Sorts via `(a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id)` — **must mirror the engine tiebreak exactly** so winner determination stays consistent.
+- For each tx, walks the sorted list and collects every match. First match is `isWinner`. If `assignmentLabelByTxId.get(tx.id)` exists and `winner.labelId !== assigned`, sets `conflictWithAssignedLabelId` to the assigned label id (so the modal can render *Currently labeled X · winning rule labels Y* with both names).
+- Aggregates `perRule` (matched / winner / shadowed counts) and `pairCounts` ((winner, shadowed) pair counts, sorted desc with deterministic id tiebreak).
+- Returns only txs with 2+ matches **or** an assignment-vs-winner conflict in `txRows` — single-match no-conflict txs are silently dropped.
+
+[`src/lib/accountingRuleOverlap.test.ts`](src/lib/accountingRuleOverlap.test.ts) — 13 unit tests modeled after [`accountingLabelRuleMatch.test.ts`](src/lib/accountingLabelRuleMatch.test.ts):
+
+- Empty inputs, single-match (not in `txRows`).
+- Two-rule overlap → winner is lower `sort_order`, shadowed appears in `pairCounts`.
+- Tied `sort_order` → falls back to `id.localeCompare` (`'a'` beats `'b'`).
+- Disabled rule excluded by default; included when `includeDisabled: true`.
+- Null criteria, empty criteria, and whitespace-only criteria all excluded.
+- Three rules matching same tx → two `(winner, shadowed)` entries, both with shared winner.
+- Multi-tx aggregation + desc-sorted `pairCounts`.
+- Assignment-conflict path covering single-match conflict and overlap-with-conflict.
+
+#### Test preview enrichment
+
+`runTestFromCriteria` in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) now additionally builds an `otherMatchingRulesByTxId: Map<string, string[]>` after computing the matched txs:
+
+- Filters `rules` to enabled rules other than the one being edited (`editingRuleId`).
+- Parses each rule's criteria once via `parseAccountingLabelRuleCriteria`.
+- Filters out null / empty-clause criteria so empty-draft rules don't pollute the line.
+- Sorts via the engine comparator so the listed names appear in the same order they would in Apply.
+- Walks every visible matched tx through every other rule and records the matching rule ids.
+
+The Test results modal's `<li>` rendering grew an `Also matched by: <Comma-separated names>` line when the map is non-empty for that tx. Rules with zero overlap render unchanged. The intentional non-goal: don't try to compute "would the draft be a winner?" — the user is exploring criteria; we don't yet know where this rule will sort, and the existing Audit modal already covers that question for saved rules.
+
+#### What didn't change
+
+- `applyRulesWithSnapshot` is byte-identical — no `break` semantics change, no rule re-ordering, no compute path tweak. Apply still skips already-assigned and already-pending txs as before. The audit is a separate, read-only path.
+- `matchAccountingLabelRuleCriteria` and the rest of [`accountingLabelRuleMatch.ts`](src/lib/accountingLabelRuleMatch.ts) untouched.
+- [`AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx) untouched — the Test results modal lives in the parent so the enrichment is a parent-side change.
+- No DB / migration / RLS / RPC / Edge changes. The audit is purely a client-side reading of state already loaded for Apply.
+
+#### Out of scope
+
+- DB-level uniqueness or trigger preventing overlaps — overlaps are sometimes intentional (broad fallback rule + specific override).
+- Inline *Shadowed by N rules* column on the rules table — modal already covers the workflow; deferred.
+- Auto-resolution suggestions ("merge these two rules"). User-driven only.
+- Scope beyond `filteredTransactions` (same caveat as Apply; called out in the modal subheader).
+- Persisting the active modal tab to `localStorage` — local component state only.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- `npx vitest run src/lib/accountingRuleOverlap.test.ts src/lib/accountingLabelRuleMatch.test.ts` → **26 / 26** pass.
+- Manual smoke: created two rules with overlapping criteria, opened **Audit overlaps**, confirmed both rules appear under **By rule pair** with correct winner / shadowed assignment and tx count; switched to **By transaction**, confirmed the same tx lists both rule names with the winner bolded; clicked the winner name and verified `AccountingRuleFormModal` mounts on top; assigned a tx to a different label than the winning rule's label and confirmed the amber *Currently labeled X · winning rule labels Y* line surfaces.
+
+#### Files
+
+- New: [`src/lib/accountingRuleOverlap.ts`](src/lib/accountingRuleOverlap.ts), [`src/lib/accountingRuleOverlap.test.ts`](src/lib/accountingRuleOverlap.test.ts), [`src/components/banking/BankingMercuryAccountingOverlapsModal.tsx`](src/components/banking/BankingMercuryAccountingOverlapsModal.tsx).
+- Modified: [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx).
+
+---
+
+## Previous Updates (v2.572)
+
+**Date**: 2026-05-25
+
+### Banking Mercury Drag Sort — Internal Transfers built-in label
+
+A new built-in **Internal Transfers** accounting label for Mercury transactions that move money between the org's own accounts (Mercury Checking → Mercury Savings, internal sweep, etc.). Until now users worked around this with the **Exclude counterparty** filter on the **Banking → Mercury → Accounting** tab — a fragile approach that didn't compose with the rest of the labeling system. The new label is a first-class `mercury_drag_sort_labels` row with `is_system_default = true`, `default_key = 'internal_transfers'`, and explicit non-expense semantics throughout the app.
+
+#### Where it lives
+
+- **Drag Sort sidebar** — appears at the bottom of the **Accounting Labels** tile (sort order parks it after the Schedule C buckets). Card has a subtle slate accent (left border `#94a3b8`, background `#f1f5f9`) so it visually reads as "not a Schedule C bucket".
+- **Quick Sort focus modal** — same slate-accented card.
+- **Banking Accounting tab** — selectable in the quick-assign label picker, the rule-builder dropdown, and the suggestion approval flow.
+- **People → Overhead** — surfaces in the **Field Total ($) / Hours** modal Materials breakdown as its own section labeled *Internal Transfers · (not counted in Materials)*.
+
+#### Hard block: Internal Transfers ⊥ job splits
+
+Internal Transfers and `mercury_transaction_splits` are **mutually exclusive**, enforced in both directions at the UI layer:
+
+- **Apply label → block when splits exist.** `BankingMercuryDragSortTab.applyDragSortAssignment` checks `allocationsByTxId.get(txId)?.length > 0` before any optimistic state update; if true, toasts *Internal Transfers cannot be applied to a transaction with job splits. Clear the splits first.* and aborts. Same guard runs on `handleQuickAssignLabel` / `handleApprove` in the **Banking Accounting** tab. **Approve all** in the Accounting tab silently filters out conflicting suggestions and reports *Skipped N Internal Transfers suggestions with job splits.* alongside the success count.
+- **Create splits → block when labeled.** `MercuryTransactionAllocationsModal` runs a one-shot probe at modal open against `mercury_transaction_drag_sort_assignments` + `mercury_drag_sort_labels.default_key`; when the result is `'internal_transfers'`, it sets a local `internalTransfersLabelLocked` flag that:
+  - Renders a slate banner above the form: *Locked: Internal Transfers — This transaction is labeled Internal Transfers and cannot be split onto jobs. Remove the label in Banking → Mercury → Drag Sort first.*
+  - Disables the job search input, the per-line `$` / `%` mode toggles, the value input, the note input, the **Fill remainder** button, and the **Remove** button.
+  - Forces `canSave` to false; `handleSave` short-circuits with the same error toast.
+  - Defensive early-return in `addJobLine` so cached `JobSearchRow` clicks (Today's schedule, day-session jobs, day-session bids — all of which call `addJobLine`) can't bypass the disabled search field.
+
+This is a UX-only client-side guard — there is no DB trigger. Acceptable because the modal is dev / master_technician / assistant only, the probe is a single round-trip, and the apply-label guard symmetrically covers the other direction. A belt-and-suspenders DB trigger could be added in a follow-up migration if needed.
+
+#### Materials cost carve-out
+
+The **Field Total ($) / Hours** modal in **People → Overhead** previously rolled all Mercury parts lines (other than `fuel_gas` / `cogs_part_iii`) into an `'other'` bucket that summed into the Materials header total. With the new label, an Internal Transfers tx that somehow ended up in `mercury_transaction_splits` (legacy data, manual import, etc.) would silently inflate the Materials cost.
+
+Fix in [`src/lib/overheadPartsAccountingBuckets.ts`](src/lib/overheadPartsAccountingBuckets.ts):
+
+- `OverheadPartsAccountingBucketKey` widened from 3 to 4 keys: `'fuel_gas' | 'cogs_part_iii' | 'internal_transfer' | 'other'`.
+- New ordering pins `'internal_transfer'` last (renders below Other in the breakdown).
+- `OVERHEAD_PARTS_ACCOUNTING_BUCKET_LABEL.internal_transfer = 'Internal Transfers'`.
+- `overheadPartsAccountingBucketFromDefaultKey('internal_transfers') === 'internal_transfer'`.
+- New `isMaterialsBucketKey(key)` returns `true` for everything except `'internal_transfer'`.
+- New `sumMaterialsTotalUsdExcludingInternalTransfer(sections)` sums `totalUsd` across only Materials buckets — used by the modal consumer in [`src/pages/People.tsx`](src/pages/People.tsx) to override `totalPartsUsd` (and `grandTotalUsd`) with the bucket-corrected total. The header now shows an italic muted line *Internal Transfers (excluded): $X* when nonzero, between the **Materials** and **Combined** lines.
+
+The breakdown still renders the Internal Transfers section (with the slate accent + *not counted in Materials* hint) so the audit trail stays visible. The bucket render now reads from a memoized `partsSections` on the model instead of recomputing on render.
+
+11 new unit tests in [`overheadPartsAccountingBuckets.test.ts`](src/lib/overheadPartsAccountingBuckets.test.ts) cover: `isMaterialsBucketKey` × 4, default-key → bucket key for Internal Transfers, Mercury tx routing to the new bucket, isolation of internal_transfer dollars from the others, `sumMaterialsTotalUsdExcludingInternalTransfer` × 2, four-bucket fixed display order, four-bucket totals-conservation invariant.
+
+#### Catalog seed + backfill
+
+Seeded both ways for resilience:
+
+- **Client-side** — appended to `DRAG_SORT_DEFAULT_LABELS` in [`src/lib/dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts) (28th entry, idx 27 → `sort_order = 270`). The existing `ensureDragSortDefaultLabels()` runs on every Drag Sort tab load with `onConflict: 'default_key', ignoreDuplicates: true`, so the row arrives the moment a staff user opens Drag Sort.
+- **Migration** — new `supabase/migrations/20260525160339_add_drag_sort_internal_transfers_builtin.sql` runs `INSERT … ON CONFLICT (default_key) DO NOTHING` with `is_system_default = true`, `sort_order = 9999`. Whichever path lands first wins; the other is a no-op. `9999` would park the row even further down the list for orgs that haven't visited Drag Sort yet.
+
+The existing `mercury_drag_sort_labels_guard_system_fields` trigger (from migration `20260502224616`) immutably pins the `name` / `schedule_c_line` / `description` of `is_system_default = true` rows, so the label can't drift via UI edits.
+
+#### New helper exports
+
+[`src/lib/dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts):
+
+- `INTERNAL_TRANSFERS_DEFAULT_KEY = 'internal_transfers' as const` — referenced by every guard.
+- `isInternalTransfersLabel(label)` — null-safe predicate over `{ default_key: string | null }`. Used in the Drag Sort tab and Accounting tab guards.
+
+[`src/components/MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) imports `INTERNAL_TRANSFERS_DEFAULT_KEY` directly for the probe-result comparison.
+
+#### Sidebar visual cue
+
+[`src/components/banking/dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx) gains an optional `defaultKey?: string | null` prop. When the value matches `INTERNAL_TRANSFERS_DEFAULT_KEY`, the card's idle palette switches from neutral grey (`#d1d5db` border, `#f9fafb` bg) to slate (`#94a3b8` border, `#f1f5f9` bg). Hover/drop states are unchanged. The prop is threaded through:
+
+- `LabelDropZone` in [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx) — passes `L.default_key` from the loaded `DragLabelRow`.
+- The grid card in [`BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx) — same `L.default_key`.
+
+Other callers don't pass the prop (default `null`), so existing custom org labels render unchanged.
+
+#### Out of scope
+
+- **Auto-suggestion rules.** Users can create their own rule (e.g. counterparty contains *Mercury Checking*) on the Accounting tab once the label exists. Deferred.
+- **Migrating existing `excludeCounterpartyContains` filter strings** in [`bankingAccountingLedgerFilters.ts`](src/lib/bankingAccountingLedgerFilters.ts). Too risky — left alone.
+- **Schedule C export.** None exists today; when it lands, it should skip rows whose `default_key === 'internal_transfers'`.
+- **Category Review and User Review pivots.** They pivot the label catalog as-is, so the new column appears automatically with count + sum. No code change needed.
+
+#### Verification
+
+- `npx vitest run` — **1080 / 1080** pass (11 new tests in `overheadPartsAccountingBuckets.test.ts`, rest unchanged).
+- `npm run gen-types:linked` — clean (no schema column changes; the migration is INSERT-only).
+- Manual: dragging a transaction with existing job splits onto the Internal Transfers bucket toasts the error; opening the allocations modal on a tx labeled Internal Transfers shows the banner + disables Save; the **Field Total ($) / Hours** modal's Materials header excludes Internal-Transfer-labeled rows; the breakdown still surfaces the bucket so the audit trail is visible.
+
+#### Files
+
+- New migration: `supabase/migrations/20260525160339_add_drag_sort_internal_transfers_builtin.sql`
+- Modified: [`src/lib/dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts), [`src/lib/overheadPartsAccountingBuckets.ts`](src/lib/overheadPartsAccountingBuckets.ts), [`src/lib/overheadPartsAccountingBuckets.test.ts`](src/lib/overheadPartsAccountingBuckets.test.ts), [`src/components/banking/BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx), [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx), [`src/components/banking/BankingMercuryDragSortFocusModal.tsx`](src/components/banking/BankingMercuryDragSortFocusModal.tsx), [`src/components/banking/dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx), [`src/components/MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx), [`src/pages/People.tsx`](src/pages/People.tsx).
+
+---
+
+## Previous Updates (v2.571)
+
+**Date**: 2026-05-21
+
+### Dashboard My Time / Edit time — Add disjoint session
+
+The Dashboard **My Time → Edit time** modal ([`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx)) gains a small **`+`** button at the bottom-right of the timeline scroll area for inserting a new closed clock session on the current day without leaving the editor. The intended use case is the "I worked a second shift after dinner and forgot to clock back in" pattern — previously this required closing the editor, going to People → Hours, opening a manual entry there, then coming back. Now it's one inline click.
+
+#### Where the button lives
+
+The `+` sits at the bottom-right of the `myTimeDayTimelineScroll` flex column, vertically aligned with the per-cluster `×` reject buttons in Visual mode. Wrapper uses `marginTop: -4` to overlap the last cluster's 0.5 rem internal bottom padding so the button tucks right under the cluster's bottom border — visually it reads as the same column of small grey controls.
+
+Styling mirrors the per-segment `×`: `padding: '0 4px'`, transparent background, `color: '#9ca3af'`, `fontSize: '1rem'`, `lineHeight: 1`. `title` / `aria-label` both say *Add disjoint session*.
+
+#### When it shows
+
+Strict gate (all five must be true):
+
+```ts
+effectiveEditable          // editor is editable at all (not read-only)
+&& allowPunchTimeActions   // punch-time edits allowed (off for the "View today's time" preview path)
+&& !priorWeekGateActive    // not currently inside the prior-week confirmation step
+&& sessionsProp.length === 0  // editor owns its sessions (self-fetched), not driven by a parent's controlled state
+&& !sessionsLoading        // initial fetch finished
+&& !pendingAuthForFetch    // auth resolved
+```
+
+The `sessionsProp.length === 0` clause is load-bearing: People Hours seed paths pass a controlled `sessionsProp` and bypass the editor's internal fetch — pushing a synthetic draft into their state from inside the modal would desync the parent. The button is intentionally hidden in those cases; staff can still add disjoint sessions via the existing People Hours manual-entry flow.
+
+#### The sub-modal
+
+New file [`AddDisjointSessionModal.tsx`](src/components/my-time-day-editor/AddDisjointSessionModal.tsx) — a small dialog with:
+
+- **Title** *Add disjoint session*.
+- **Subtitle** *Insert a new closed clock session. Notes and job/bid can be edited after Save.*
+- **Clock in** + **Clock out** `<input type="datetime-local">` fields (same shape as the existing Adjust times modal). Local state via `toDatetimeLocal` / `fromDatetimeLocal` from [`src/utils/datetimeLocal.ts`](src/utils/datetimeLocal.ts).
+- **Cancel** / **Save** footer buttons (right-aligned).
+- Backdrop click + Escape close. `zIndex` defaults to 1300 (above the parent My Time editor's 1002, below the highest-priority confirmations).
+
+#### Default times
+
+`computeAddDisjointDefaults` in the parent computes:
+
+- **With existing sessions** — `defaultClockInIso = lastSession.clocked_out_at + 1h` (or `nowTick + 1h` when the last session is still open), `defaultClockOutIso = defaultClockInIso + 2h`. Example: last session was 1 PM–2 PM, defaults are 3 PM–5 PM.
+- **Empty day** — `defaultClockInIso = salaryZonedWallClockToUtcMs(dateStr, 8, 0, 0, APP_CALENDAR_TZ)`, `defaultClockOutIso = defaultClockInIso + 2h`. Example: 8 AM–10 AM in `America/Chicago`.
+- If the computed window slips into the future (e.g. current time is 4 PM and the last session ended at 4 PM → default 5 PM–7 PM), the inner modal's *no future* validator surfaces the error on Save; the user picks an earlier time manually.
+
+#### Validation (in order)
+
+Inside `handleSubmit`:
+
+1. **Required** — blank clock-in or clock-out → *Clock in is required.* / *Clock out is required.*
+2. **Order** — `outMs <= inMs` → *Clock out must be after clock in.*
+3. **Minimum duration** — `outMs - inMs < MIN_SEGMENT_MS` → *Session must be at least 0.01 hours (~36 seconds).* (`MIN_SEGMENT_MS` shared with the existing splits/merges so a disjoint session can't violate the modal's own minimum-segment invariant.)
+4. **No future** — `inMs > nowMs` or `outMs > nowMs` → *Clock-in cannot be in the future.* / *Clock-out cannot be in the future.*
+5. **No overlap** — `firstOverlap(inMs, outMs, existingIntervals, nowMs)` returns the first conflicting existing session (open punches treated as extending to `nowMs` so the user can't slot a closed session "underneath" an in-progress one) → *Overlaps an existing session at 13:00 – 14:00. Adjust the times or close the other session.*
+
+`addDisjointExistingIntervals` in the parent precomputes the `{ startMs, endMs }[]` array from `sortedSessions` so the overlap check is O(N) without per-keystroke re-parsing.
+
+#### Confirm path
+
+`handleAddDisjointConfirm` builds a normalized draft session:
+
+```ts
+const draft = normalizeDayEditorSession({
+  id: `${DRAFT_PEOPLE_HOURS_SESSION_ID_PREFIX}${crypto.randomUUID()}`,
+  clocked_in_at: clockedInIso,
+  clocked_out_at: clockedOutIso,
+  work_date: workDateYmd,
+  notes: 'Disjoint session',  // non-empty so buildPayloads doesn't reject the segment on Save
+  job_ledger_id: null,
+  bid_id: null,
+  approved_at: null,
+})
+setFetchedSessions((prev) => [...(prev ?? []), draft])
+```
+
+The seeded `notes` value matters: `buildPayloads` (inside the modal's save pipeline) rejects empty per-segment notes via `notes[i]?.trim()`. Pre-populating *Disjoint session* keeps the first Save path working immediately; users overwrite it via the per-segment textarea before or after Save.
+
+No new DB / RPC code is needed — the existing `isDraftPeopleHoursSessionId(id)` branch in `persistDirtyChangesAsync` already handles `INSERT` for synthetic draft ids. The new draft is just another row in `fetchedSessions`, picked up by `sortedSessions` → `sessionClusters` → save plan exactly like a manual People Hours draft would be.
+
+#### Dismissal cascade
+
+`closeTopmostSubFlow` was extended with a new branch:
+
+```ts
+if (addDisjointOpen) {
+  setAddDisjointOpen(null)
+  return true
+}
+```
+
+placed before the `adjustTimesSession` branch so Escape / backdrop click on the parent / *Discard* on a dirty close all dismiss the disjoint modal first. The branch is added to the callback's dep array so the closure captures the current state correctly.
+
+#### Files touched
+
+- New: [`src/components/my-time-day-editor/AddDisjointSessionModal.tsx`](src/components/my-time-day-editor/AddDisjointSessionModal.tsx) (sub-modal component + `firstOverlap` helper + `formatExistingRangeForError` formatter).
+- Modified: [`src/components/DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx) — imports (`AddDisjointSessionModal`, `DRAFT_PEOPLE_HOURS_SESSION_ID_PREFIX`, `salaryZonedWallClockToUtcMs`, `APP_CALENDAR_TZ`), `addDisjointOpen` state, `addDisjointExistingIntervals` memo, `computeAddDisjointDefaults` callback, `handleAddDisjointConfirm` callback, `closeTopmostSubFlow` extension, `+` button JSX, `<AddDisjointSessionModal>` mount.
+
+No DB / migration / RLS / RPC / Edge function changes.
+
+#### Verified
+
+- `npx tsc --noEmit` clean.
+- Full vitest suite still passes (no test file changes — the feature is purely UI + local state).
+- Manual QA: empty-day → 8–10 AM Chicago wall; last-session-end + 1 h default chained correctly; open-punch overlap rejected against `nowMs`; closed-session overlap rejected against actual end; sub-`MIN_SEGMENT_MS` rejected; future stamps rejected; Cancel / backdrop / Escape dismiss only the inner modal; *Discard* on the parent dirty-close path also dismisses the inner modal first; Save through the existing pipeline inserts a fresh `clock_sessions` row with `notes='Disjoint session'`, `job_ledger_id=null`, `bid_id=null`.
+
+#### Out of scope (v2)
+
+- Inline job/bid picker in the disjoint sub-modal (currently users edit job/bid via the per-segment chip after Save — same as People Hours manual entry).
+- Multi-row insert in one Save (one disjoint session per click; click the `+` twice to add two).
+- Re-enabling the button on People-Hours-seeded callers (would require a parent-side draft-merge handshake — not justified for the current call sites).
+
 ---
 
 ## Latest Updates (v2.570)
