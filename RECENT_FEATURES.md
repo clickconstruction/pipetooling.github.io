@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-25 (v2.581)
+last_updated: 2026-05-28 (v2.586)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -15,8 +15,23 @@ last_updated: 2026-05-25 (v2.581)
  version_range: "v2.581+ (reverse chronological)"
  
  key_sections:
-   - name: "Latest Version (v2.581)"
-     line: ~1938
+   - name: "Latest Version (v2.586)"
+     line: ~1944
+     description: "Bids → Pricing — **merged `Margin/Total` column**. The pricing table's last data column previously showed `Margin %` in Cost Model view and `% of Total` in Price Model view (one number, gated on `pricingViewModel`). It now shows a single column headed **`Margin/Total`** that always renders **both** numbers as `{margin}% / {pctOfTotal}%` (e.g. `500.0% / 1.2%`) in both view modes — on every row and the Total footer (footer reads `{overallMargin}% / 100%` since the grand total's share is always 100%). Implementation in [`src/pages/Bids.tsx`](src/pages/Bids.tsx): the header ternary is replaced with the literal `Margin/Total`; the per-row cell drops its `pricingViewModel === 'cost' ? … : …` branch in favor of a single `inline-flex` holding a margin `<span>` (`row.margin != null ? \`${row.margin.toFixed(1)}%\` : '—'`), a muted `/` separator, and the **existing** `pctOfGrandTotal` IIFE reused verbatim so the omit-from-submission eye toggle and all its `canToggleOmitSubmission` / `savingPricingAssignment` disabled-state logic are preserved. Two consequences of always showing both values: the omit-from-submission eye toggle (previously Price-view only) and the red/yellow/green margin flag dot (previously Cost-view only) now both render in **both** views — the eye toggle's gating was already view-independent, and the flag dot gates were simplified from `pricingViewModel === 'cost' && row.flag` / `… && totalRevenue > 0` to just `row.flag` / `totalRevenue > 0`. Number format keeps the existing `toFixed(1)` on both sides; rows with null margin or null pct render `—` on that side. The `View: Cost Model / Price Model` toggle still drives the `Our cost` / `Unit Cost` column header and the cost-breakdown box. Out of scope: the print table header (`'Margin %'`, line ~5894) and CSV export columns are unchanged. No DB / migration / RLS / RPC / Edge / type-gen changes; `computeBidPricingRows` / `marginFlag` / `pctOfGrandTotal` / `marginPct` calculations untouched. Verified: `npx tsc --noEmit` clean; zero new lints on [`src/pages/Bids.tsx`](src/pages/Bids.tsx). Files: modified [`src/pages/Bids.tsx`](src/pages/Bids.tsx)."
+   - name: "Previous Version (v2.585)"
+     line: ~1944
+     description: "Bids — **materials-model selector labels renamed + Cost Estimate selector repositioned**. The two-button toggle that sits above the Takeoffs, Cost Estimate, and Pricing tabs (previously `Materials  Exact  Rough`) now reads **`Materials  By Stage  Combined`** in all three tabs. The shared switch-confirmation modal body copy follows: `Exact and Rough data are stored separately. Switching does not copy lines from the other mode.` → `By Stage and Combined data are stored separately. Switching does not copy lines from the other mode.` Pure display-string change in [`src/pages/Bids.tsx`](src/pages/Bids.tsx) — seven literals total (six button labels at the three selector sites plus the one modal sentence). Companion **layout tweak in the Cost Estimate tab only**: the Materials selector previously lived inline next to the bid title in the header's left flex group, which crowded long bid titles on narrow viewports; it now renders on its own full-width row immediately under the `Print | ×` row, styled `display: flex; justifyContent: 'flex-end'; gap: '0.25rem'; flexWrap: 'wrap'; marginBottom: '0.75rem'` — mirroring the Pricing tab's flex-end row at lines ~16022–16080 so the three workflow tabs now share a consistent header shape. The selector remains **always visible** (not data-gated on `costEstimateCountRows.length`) so the empty-state path (`Add fixtures in the Counts tab first.`) is visually unchanged from current behavior. The underlying `type MaterialsModel = 'exact' | 'rough'` enum, `materials_model` column on the `bids` table, all `normalizeMaterialsModel` / `openMaterialsModelSwitch('exact'|'rough', …)` call sites, every `*MaterialsModel === 'exact' | 'rough'` comparison, the unrelated `STAGE_LABELS.rough_in = 'Rough In'` takeoff-stage map, the `takeoffRoughPartLines` / `roughLineCatalogApplyModal` / `pricingEntryRoughIn` / `setRoughQtyNumpadLineId` internal identifiers, and the Prospects default `materials_model: 'rough'` are all untouched. The `Print` button / `×` close button (both desktop and narrow-viewport floating variants) / Takeoffs / Pricing layouts are also untouched. Also right-aligned the blue `Add version` button in the expanded **Takeoff book** (Takeoffs tab), **Labor book** (Cost Estimate tab), and **Price book** (Pricing tab) sections via `marginLeft: 'auto'` on each button's inline `style`, so the version chips flow left-to-right and `Add version` anchors flush to the right edge of the row (chip rendering, flexWrap, and the `openNewTakeoffBookVersion` / `openNewLaborVersion` / `openNewPricingVersion` handlers are untouched). No DB / migration / RLS / RPC / Edge / type-gen changes. Verified: `npx tsc --noEmit` clean; zero new lints on [`src/pages/Bids.tsx`](src/pages/Bids.tsx). Files: modified [`src/pages/Bids.tsx`](src/pages/Bids.tsx)."
+   - name: "Previous Version (v2.584)"
+     line: ~1944
+     description: "Bids → Takeoffs → Exact — **Assembly picker dropdown portaled to document.body**. The per-row Assembly search dropdown used to be an absolutely-positioned `<ul>` inside a `<div style={{ overflow: 'hidden' }}>` table wrapper (clipping the inner table to the rounded border) so the dropdown got cut off at the table edge whenever it opened on a row near the bottom. Fixed via `ReactDOM.createPortal` to `document.body` modeled after the existing rough-quantity numpad portal already in the same file. New top-level state in [`Bids.tsx`](src/pages/Bids.tsx): `takeoffTemplatePickerInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())` (per-mapping input refs so the open-picker effect can resolve the correct anchor input regardless of which row is active) and `takeoffTemplatePickerAnchor: { top, left, width } | null` (computed viewport-anchored position). New `useEffect` keyed on `takeoffTemplatePickerOpenMappingId` reads `inputRefs.current.get(openMappingId)?.getBoundingClientRect()` and sets `{ top: rect.bottom + 2, left: rect.left, width: rect.width }`; registers `resize` and `scroll` (capture phase, so any scrolling ancestor fires it) listeners while the picker is open and tears them down on close. The assembly `<input>` gains a callback ref that registers/unregisters in the Map by `mapping.id`. Existing `onFocus` / `onBlur` (the 150 ms `setTimeout` close) / `onKeyDown` (Escape) / `readOnly` behavior is untouched. The inline `<ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50 }}>` block (53 lines) is removed from the Assembly cell and replaced by a single `createPortal(<ul style={{ position: 'fixed', top, left, width, zIndex: 1200, ... }}>, document.body)` rendered as a sibling next to the existing `roughQtyNumpadLineId` portal at the end of the main `Bids` component JSX. Belt-and-suspenders: `onMouseDown={(e) => e.preventDefault()}` on the `<ul>`, each `<li>`, and the 'Add assembly' fallback button prevents the input from blurring mid-scroll (the existing 150 ms blur close still works since the portal sits outside the input subtree). `zIndex: 1200` matches the rough numpad portal (above standard modals at 1000). The `overflow: 'hidden'` on the table wrapper is left in place — no longer relevant for the dropdown, still useful for the rounded clip on the table body. No DB / migration / RPC / type-gen changes. Verified: `npx tsc --noEmit` clean; zero new lints. Files: modified [`src/pages/Bids.tsx`](src/pages/Bids.tsx) (new state + ref Map, new useEffect, callback ref on the input, removed inline `<ul>`, new portal alongside the rough numpad portal). Out of scope: applying the same portal pattern to any Rough takeoff dropdown (same `overflow: 'hidden'` wrapper at line ~13787 — trivial follow-up if needed), and extracting the takeoffs section out of the 22k-line `Bids.tsx`."
+   - name: "Previous Version (v2.583)"
+     line: ~1944
+     description: "Materials → Supply Houses — **Show last payment** toggle. New per-user checkbox stacked directly below the existing **Show paid invoices** toggle in the page header; when on, reveals a new **Last Paid** column on the summary table between **Updated** and the actions column showing `MAX(paid_at)` per supply house as a relative phrase via `longTimeAgoPhrase` (matching the adjacent **Updated** column verbatim) with the full ISO timestamp in the `title` hover tooltip. Toggle defaults **off** so existing UI is unchanged on first load. Component-local state (not persisted), matching the existing `showPaidInvoices` sibling — explicit non-goal in this pass. Data path: [`loadSupplyHouseSummary`](src/components/SupplyHousesTab.tsx) extends its existing `supply_house_invoices` projection from `(supply_house_id, amount, is_paid, updated_at)` to `(supply_house_id, amount, is_paid, updated_at, paid_at)`, adds a parallel `maxPaidByHouse: Map<string, string>` alongside the existing `maxUpdatedByHouse`, filters `inv.is_paid && inv.paid_at` (so unpaid rows with NULL `paid_at` don't poison the max), and folds `lastInvoicePaidAt: maxPaidByHouse.get(h.id) ?? null` into each `SupplyHouseSummaryRow`. Toggling the checkbox does not refetch — `paid_at` is always present in the loaded summary and the toggle only gates rendering. Expanded-detail row `colSpan` flexes from 5 to 6 when the toggle is on. Houses with zero paid invoices show `—`. No DB / migration / RPC / type-gen changes (the `paid_at` column + auto-stamp trigger landed in v2.582). Verified: `npx tsc --noEmit` clean; zero new lints on the touched file. Files: modified [`src/components/SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx). Out of scope: persisting either toggle to `localStorage`, making the column sortable, and re-sorting by Last Paid when toggled on."
+   - name: "Previous Version (v2.582)"
+     line: ~1944
+     description: "Materials → Supply Houses — **invoice paid-at timestamp**. New `paid_at TIMESTAMPTZ` column on `supply_house_invoices` plus a `BEFORE INSERT OR UPDATE` trigger (`sync_supply_house_invoice_paid_at` / `sync_supply_house_invoice_paid_at_trigger`) that auto-stamps `paid_at = now()` when `is_paid` flips false→true (and clears it on true→false). Trigger lives in [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql) with `SET search_path = public` per the project lint convention. All three UI write paths in [`src/components/SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx) — the per-row `toggleInvoicePaid` checkbox, the bulk `applyPayment` flow, and the edit-invoice `saveInvoice` form — keep their existing `UPDATE … SET is_paid` shape and just inherit the stamp from the trigger (no app-side `new Date().toISOString()` to remember in any call site; editing amount/link/etc. without flipping `is_paid` deliberately leaves `paid_at` untouched). Legacy rows backfilled best-effort via `UPDATE … SET paid_at = COALESCE(updated_at, created_at, NOW()) WHERE is_paid = true AND paid_at IS NULL;` (149 rows touched in prod). New index `idx_supply_house_invoices_paid_at`. UI surfaces it as a new **Paid On** column in the per–supply-house Invoices table (between Paid and Link), with `inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'` and a `title` attribute carrying the full ISO timestamp for hover detail; the empty-state `colSpan` bumps from 9 to 10. The **Apply Payment** modal's per-invoice line now reads `Paid {MM/DD/YYYY}` (same `title` ISO tooltip) when `inv.is_paid` is true and `paid_at` is set. Types regenerated via `npm run gen-types:linked` so `Database['public']['Tables']['supply_house_invoices']` Row/Insert/Update each include `paid_at: string | null`. Trigger verified end-to-end via a transactional DO block (insert unpaid → null; flip to paid → stamped; amount-only update → unchanged; flip to unpaid → cleared; insert already-paid → auto-stamped). Out of scope: a 'Last Paid' aggregate column on the Supply Houses summary table, a user-editable paid-date input in the edit-invoice modal, and any filtering / sorting by paid date — all easy follow-ups now that the column exists. Verified: `npx supabase db push` clean, `npx tsc --noEmit` clean, zero new advisor warnings on the touched table / function. Files: new [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql); modified [`src/components/SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx); regenerated [`src/types/database.ts`](src/types/database.ts)."
+   - name: "Previous Version (v2.581)"
+     line: ~1944
      description: "Banking Mercury Accounting — **Approve by default** toggle. New per-user checkbox below the **Approve all (N)** button on the Accounting tab's Approvals section (defaults **off**: presence of `'1'` = on, anything else = off). When on, the existing `handleApproveAll` flow is auto-fired every time a new pending suggestion appears — closes the loop after v2.580 (rules auto-create suggestions; this auto-commits them). Internal Transfers conflicts (suggestions whose label is Internal Transfers and whose tx already has job splits in `mercury_transaction_splits`) are still skipped by `handleApproveAll` itself, so those persist in the pending list and surface for manual review. **Toast-spam-free residue handling**: the auto-approve effect derives a pre-filtered `autoApprovablePending` list (mirrors the conflict-skip predicate inside `handleApproveAll`) and only the filtered list goes into the signature. Once a load settles into a stable conflict-only set the signature shrinks to `''` and the gate's `pendingCount === 0` branch quiets the effect — so `handleApproveAll`'s `All pending suggestions would label a transaction with job splits as Internal Transfers. Clear the splits first.` toast never fires from auto-mode. New storage helpers `readAccountingApproveByDefault` / `writeAccountingApproveByDefault` in [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) under prefix `banking_accounting_approve_by_default_v1_`. New pure helper module [`accountingApproveByDefaultAutoTrigger.ts`](src/lib/accountingApproveByDefaultAutoTrigger.ts) — `buildApproveByDefaultSignature(pending)` returns `pending.map(p => p.suggestionId).sort().join(',')` (sort independence keeps the signature stable across upstream re-orderings); `shouldAutoApproveAccountingSuggestions(state)` walks the gate set (`enabled`, `pendingLoading`, `approveAllBusy`, `pendingCount > 0`, `currentSignature !== lastSignature`). 11 unit tests in [`accountingApproveByDefaultAutoTrigger.test.ts`](src/lib/accountingApproveByDefaultAutoTrigger.test.ts) cover sort independence, empty-list signature, single-id add/remove, every gate flip, and signature equality / inequality. State lifted to [`Banking.tsx`](src/pages/Banking.tsx) alongside the v2.579/v2.580 lifts: `approveByDefault` boolean (hydrated per user via `useEffect` keyed on `user?.id`), `onApproveByDefaultChange` callback (state setter + `writeAccountingApproveByDefault`). Two new props on `BankingMercuryAccountingTabProps`: `approveByDefault`, `onApproveByDefaultChange`. New `<label>` checkbox in [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) inside the Approvals `<section>`, in a right-aligned flex row immediately below the green **Approve all (N)** button (same checkbox styling as the v2.580 toolbar — `display: flex; alignItems: center; gap: 8`, `title` attribute explains the conflict-skip behavior for hover discoverability). Auto-approve effect threads the gate predicate, signature ref `lastAutoApprovedSignatureRef`, and the new memoized `autoApprovablePending` filter (`isInternalTransfersLabel(label) && allocationsByTxId.get(txId).length > 0` → drop). Concurrent-click safety is free — `approveAllBusy` gates both the manual button and the effect, so a click during an in-flight auto-approve (or vice versa) returns early with no double approve. Tab gating is free — the effect lives inside `BankingMercuryAccountingTab`, which only mounts when `bankingView.mercuryTab === 'accounting'`. No DB / migration / RLS / RPC / Edge / type-gen changes — `bulk_approve_accounting_label_suggestions` and the chunked-insert math in `handleApproveAll` are untouched. Verified: `npx tsc --noEmit` clean; `npx vitest run` **1130 / 1130** pass (1119 pre-existing + 11 new); zero new lints on touched files. Files: new [`src/lib/accountingApproveByDefaultAutoTrigger.ts`](src/lib/accountingApproveByDefaultAutoTrigger.ts), new [`src/lib/accountingApproveByDefaultAutoTrigger.test.ts`](src/lib/accountingApproveByDefaultAutoTrigger.test.ts), modified [`src/lib/bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts), [`src/pages/Banking.tsx`](src/pages/Banking.tsx), [`src/components/banking/BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)."
    - name: "Previous Version (v2.580)"
      line: ~2010
@@ -1564,6 +1579,9 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.584 — **Bids → Takeoffs → Exact** — **Assembly picker dropdown portaled to `document.body`**. The per-row Assembly search dropdown used to be an absolutely-positioned `<ul>` inside a `<div style={{ overflow: 'hidden' }}>` table wrapper (rounded-border clip), so opening the picker on a row near the bottom of the table cut the dropdown off at the table edge. Fixed via `ReactDOM.createPortal` to `document.body`, modeled after the existing rough-quantity numpad portal already in the same file. New top-level `takeoffTemplatePickerInputRefs: Map<mapping.id, HTMLInputElement>` + `takeoffTemplatePickerAnchor` state + `useEffect` that reads `getBoundingClientRect()` and re-anchors on `resize` and `scroll` (capture phase, so any scrolling ancestor fires it). The assembly `<input>` gains a callback ref; the inline `<ul>` (53 lines) is replaced by a single `createPortal(<ul style={{ position: 'fixed', top, left, width, zIndex: 1200 }}>, document.body)` rendered next to the existing rough numpad portal. `onMouseDown={(e) => e.preventDefault()}` on `<ul>` / `<li>` / fallback button prevents the input from blurring mid-scroll. No DB / migration / RPC / type-gen changes](#latest-updates-v2584)
+**New:** [v2.583 — **Materials → Supply Houses** — **Show last payment** toggle. New per-user checkbox stacked directly below the existing **Show paid invoices** toggle; when on, reveals a new **Last Paid** column on the summary table between **Updated** and the actions column showing `MAX(paid_at)` per supply house as a relative phrase ("5 days ago") via `longTimeAgoPhrase` — matches the adjacent **Updated** column verbatim, full ISO timestamp in the hover `title` tooltip. Defaults off; component-local state (not persisted). `loadSupplyHouseSummary` extends its existing `supply_house_invoices` projection to include `paid_at` and folds `lastInvoicePaidAt: MAX(paid_at) per house` into `SupplyHouseSummaryRow`; toggling does not refetch. Expanded-detail row `colSpan` flexes 5 → 6 when on. Houses with zero paid invoices show `—`. No DB / migration / RPC / type-gen changes — the `paid_at` column + auto-stamp trigger landed in v2.582](#latest-updates-v2583)
+**New:** [v2.582 — **Materials → Supply Houses** — **invoice paid-at timestamp**. New `paid_at TIMESTAMPTZ` column on **`supply_house_invoices`** with a `BEFORE INSERT OR UPDATE` trigger (**`sync_supply_house_invoice_paid_at`**) that auto-stamps `paid_at = NOW()` when `is_paid` flips false→true and clears it on true→false. Single source of truth at the DB level — none of the three UI write paths in [`src/components/SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx) (the per-row Paid checkbox, the bulk Apply Payment flow, and the edit-invoice form) need app-side stamping; editing amount/link without flipping `is_paid` deliberately leaves `paid_at` untouched. Legacy paid rows backfilled best-effort to `COALESCE(updated_at, created_at, NOW())` (149 rows). New index `idx_supply_house_invoices_paid_at`. UI shows a new **Paid On** column in the per–supply-house Invoices table (full ISO timestamp in `title` tooltip), and the **Apply Payment** modal's per-invoice line now reads `Paid {MM/DD/YYYY}` when paid. Types regenerated via `npm run gen-types:linked`. Trigger verified end-to-end via a transactional `DO` block (insert unpaid → NULL; flip paid → stamped; amount-only update → unchanged; flip unpaid → cleared; insert already-paid → auto-stamped)](#latest-updates-v2582)
 **New:** [v2.568 — **User Review modal** — **shared schedule-rail trim** across **Day** / **Week** / **Month** per-day rows. The grey rail under each strip now clips to the earliest band start and latest band end across **every row in the view** via the new pure helper **`computeUserReviewSharedSlotWindow`** ([`src/lib/userReviewSharedSlotWindow.ts`](src/lib/userReviewSharedSlotWindow.ts), 8 unit tests) — one shared `{ loSlotIndex, hiSlotIndex } | null` window per view so a wall-time x-coordinate like `9 AM` lines up identically on every row's bands. Empty view → window is `null` → every rail hides. Bands, thumbs, proposed-range fill, orientation labels, and click handlers stay on the full track (load-bearing constraint that keeps cross-row alignment). Opt-in additive **`railTrimWindow?: { loSlotIndex; hiSlotIndex } | null`** prop on **`DispatchAddBlockTimeRange`** (default `undefined` = full rail, `null` = hide rail, `{ lo, hi }` = clip), passthroughs on **`QuickfillScheduleUserRow`** and **`UserScheduleDayRow`**. Quickfill / Schedule Dispatch / every other consumer untouched (none pass the prop). Each User Review section adds one `useMemo` over its already-computed segments + secondary bands](#latest-updates-v2568)
 **New:** [v2.567 — **User Review modal** — **switch-user modal** mounted above the parent. Clicking the subject's name in the title (Day / Week / Month modes, both viewports) opens a new **`UserReviewSwitchUserModal`** for staff viewers (`dev` / `master_technician` / `assistant` / `superintendent`); other roles render the name as plain text with no caret affordance. The picker is a single **`SearchableSelect`** seeded from a new lazy **`useUserReviewRoster`** hook that fetches distinct **`clock_sessions.user_id`** over the last 30 days (Chicago calendar) in parallel with **`users.archived_at`** to drop archived people; roster is ref-cached for the parent modal session so re-opening is instant. Picking re-opens the parent via `modal.open({ userId, displayName, workDateYmd })` — preserves Day/Week/Month tab and the anchor day. Day-mode name now opens the switcher instead of MyTime (MyTime still one click deeper via clock-band clicks); Week/Month names newly clickable for staff. New helper **`buildSwitchUserOptions`** + **8 / 8** unit tests](#latest-updates-v2567)
 **New:** [v2.566 — **User Review modal** — per-day **User Day Summary modal** opened by clicking the **`Sat · 05/16 (3 days ago)`** date header in **Week** and **Month** modes (both desktop and mobile). Read-only list of scheduled blocks + clock sessions for the day; rows close Summary then open the existing **`ScheduleBlockPreviewModal`** / **`DashboardMyTimeDayEditorModal`** (session rows gated by staff `showOpenMyTime` role). Replaces the desktop name-column click that previously jumped straight to MyTime editor — MyTime stays reachable one click deeper inside Summary; mobile gains a tappable date header that previously did nothing. **Day mode** untouched (already a single-day focus view). New **`UserDaySummaryModal.tsx`**; new helpers **`userDaySummaryFormat.ts`** (`formatSessionTimeRange` / `formatSessionDuration` / `computeSessionDurationMs`, 15 tests); **`associationLabel`** now exported from **`clockSessionsToDispatchSecondaryBands.ts`**; additive **`onNameColumnClick`** prop on **`QuickfillScheduleUserRow.tsx`** preserves all existing Quickfill / Schedule-Dispatch callsites. **57 / 57** unit tests pass](#latest-updates-v2566)
@@ -1939,6 +1957,146 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.584)
+
+**Date**: 2026-05-28
+
+### Bids → Takeoffs → Exact — Assembly picker dropdown portaled
+
+The per-row **Assembly** search dropdown in the Exact takeoffs table used to be clipped at the table edge whenever it opened on a row near the bottom. The table wrapper at [`src/pages/Bids.tsx`](src/pages/Bids.tsx) line ~13396 carries `overflow: 'hidden'` (to clip the inner table to the rounded border), and the inline `<ul>` dropdown was absolutely-positioned inside that wrapper — so its visible region was clipped by the wrapper. Fixed by portaling the dropdown into `document.body` via `ReactDOM.createPortal`, modeled after the existing rough-quantity numpad portal already in the same file.
+
+#### What's new
+
+- **New top-level state and refs** in the main `Bids` component:
+  - `takeoffTemplatePickerInputRefs: useRef<Map<string, HTMLInputElement>>(new Map())` — keyed by `mapping.id`, populated via a callback ref on each Assembly input. Only one picker is open at a time, but every Exact-row input is mounted simultaneously, so a Map (rather than a single ref) is needed to resolve the correct anchor input.
+  - `takeoffTemplatePickerAnchor: { top: number; left: number; width: number } | null` — viewport-anchored coordinates fed straight to the portal's `position: 'fixed'` style.
+- **Anchor recompute effect** keyed on `takeoffTemplatePickerOpenMappingId`:
+  - On open, reads `inputRefs.current.get(openMappingId)?.getBoundingClientRect()` and sets `{ top: rect.bottom + 2, left: rect.left, width: rect.width }` (the `+ 2` matches the original `marginTop: 2`).
+  - Registers `window.addEventListener('resize', recompute)` and `window.addEventListener('scroll', recompute, true)` while the picker is open — the `true` puts the scroll listener in capture phase so any scrolling ancestor (modal body, takeoffs section, window) fires the recompute.
+  - Clears the anchor and tears down listeners on close.
+- **Callback ref on the assembly `<input>`** registers / unregisters the element in the Map by `mapping.id`. The existing `onFocus` / `onBlur` (the 150 ms `setTimeout` close) / `onKeyDown` (Escape) / `readOnly` behavior is left untouched.
+- **Inline `<ul>` deleted** (53 lines) from the Assembly cell. It was `position: 'absolute', left: 0, right: 0, top: '100%', zIndex: 50` — the absolute position was the original anchor, the `zIndex` was a band-aid that couldn't overcome `overflow: hidden`.
+- **New portaled `<ul>`** rendered as a sibling next to the existing rough numpad portal at the end of the main `Bids` component JSX:
+  - `createPortal(<ul style={{ position: 'fixed', top, left, width, zIndex: 1200, maxHeight: 240, overflowY: 'auto', ... }}>, document.body)` — `zIndex: 1200` matches the rough numpad portal (above standard modals at 1000).
+  - `onMouseDown={(e) => e.preventDefault()}` on the `<ul>`, each `<li>` option, and the "Add assembly" fallback button. The existing 150 ms `setTimeout` blur close still works (clicking an `<li>` still triggers `blur` on the input, and `onClick` runs before the timer), but `preventDefault` avoids a visible flicker when the user mouse-downs on a scrollbar or option boundary mid-scroll.
+  - Body resolves the open mapping via `takeoffMappings.find((m) => m.id === takeoffTemplatePickerOpenMappingId)` and renders `takeoffTemplatePickerOptions(openMapping)` — same options shape as before. The empty-state "No templates match · Add assembly" branch is preserved.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- Zero new lints on the touched file.
+- Open the picker on any row (including rows near the bottom of the table): dropdown floats above the table border, not clipped.
+- Scroll the modal / page with the picker open: dropdown follows the input via the capture-phase scroll listener.
+- Resize the window: dropdown re-anchors.
+- Click an option: selects + closes, no flicker.
+- Press Escape: closes via the existing `onKeyDown` on the input.
+- Click outside the input: blurs, 150 ms later the picker closes via the existing `onBlur` `setTimeout`.
+
+#### Files
+
+- Modified: [`src/pages/Bids.tsx`](src/pages/Bids.tsx) — new state + ref Map, new useEffect, callback ref on the assembly input, deleted the inline 53-line `<ul>`, new portaled `<ul>` alongside the rough numpad portal.
+
+#### Out of scope
+
+- Applying the same portal pattern to any **Rough** takeoff dropdown. The Rough table wrapper at line ~13787 has the same `overflow: 'hidden'` shape, so any absolutely-positioned dropdown inside it would have the same clipping problem; trivial follow-up if needed.
+- Extracting the takeoffs section out of the 22k-line [`src/pages/Bids.tsx`](src/pages/Bids.tsx).
+- Removing `overflow: 'hidden'` from the Exact table wrapper — no longer needed for the dropdown but left in place because it still keeps the rounded clip clean on the table body.
+
+---
+
+## Latest Updates (v2.583)
+
+**Date**: 2026-05-28
+
+### Materials → Supply Houses — Show last payment toggle
+
+Follow-up to v2.582 (which added the `paid_at` column + auto-stamp trigger). The summary table on **Materials → Supply Houses** can now show a per-house "Last Paid" column on demand, gated behind a small toggle so the default UI stays unchanged.
+
+#### What's new
+
+- **New checkbox** stacked directly below the existing **Show paid invoices** toggle in the page header. Same styling (`fontSize: 0.875rem`, `whiteSpace: 'nowrap'`, gap-aligned checkbox). Both toggles now share a flex column wrapper anchored to the existing `justifySelf: 'end'` grid slot.
+- **Defaults off** so first-load looks identical to v2.582. Component-local state (`useState`, not persisted), matching the existing `showPaidInvoices` sibling — explicit non-goal in this pass.
+- **Last Paid column** in the summary table between **Updated** and the actions column. Cell renders:
+  - `longTimeAgoPhrase(row.lastInvoicePaidAt)` (e.g. `5 days ago`) when set — same helper as the adjacent **Updated** column for visual parity.
+  - `—` when the supply house has zero paid invoices.
+  - Full ISO timestamp in the `title` hover tooltip either way.
+- **Data path** — [`loadSupplyHouseSummary`](src/components/SupplyHousesTab.tsx) extends its existing `supply_house_invoices` projection from `(supply_house_id, amount, is_paid, updated_at)` to `(supply_house_id, amount, is_paid, updated_at, paid_at)`. A new `maxPaidByHouse: Map<string, string>` runs alongside the existing `maxUpdatedByHouse` and folds into each row as `lastInvoicePaidAt`. The fold filters `inv.is_paid && inv.paid_at` so unpaid rows (where `paid_at` is NULL by trigger) don't poison the max. ISO 8601 timestamp lexicographic comparison is safe.
+- **No refetch on toggle** — `paid_at` is always present in the loaded summary; the checkbox only gates rendering of the new header + body cells.
+- **Expanded-detail row `colSpan`** flexes from 5 → 6 when the toggle is on so the per-supply-house panel still spans the full table width.
+- **No DB / migration / RPC / type-gen changes** — the `paid_at` column and `sync_supply_house_invoice_paid_at` trigger landed in v2.582.
+
+#### Verification
+
+- `npx tsc --noEmit` clean.
+- Zero new lints on the touched file.
+- Toggle off → summary table looks identical to v2.582 (5 columns, expanded row `colSpan={5}`).
+- Toggle on → 6th "Last Paid" column appears with relative phrases; hover tooltip shows the ISO timestamp; expanded row `colSpan={6}`.
+- Houses with zero paid invoices render `—`.
+- Outstanding totals, sort order, and the per-invoice "Paid On" column inside the expanded panel are all unchanged.
+
+#### Files
+
+- Modified: [`src/components/SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx) — new `showLastPayment` state, `lastInvoicePaidAt` on `SupplyHouseSummaryRow`, projection + map in `loadSupplyHouseSummary`, stacked-checkbox flex column, conditional `<th>` / `<td>`, dynamic `colSpan`.
+
+#### Out of scope (easy follow-ups)
+
+- Persisting either toggle to `localStorage` (current behavior: lost on page refresh).
+- Making the **Last Paid** column sortable.
+- Auto re-sorting summary rows by Last Paid when the toggle flips on.
+- A user-editable `paid_at` field in the edit-invoice modal.
+
+---
+
+## Latest Updates (v2.582)
+
+**Date**: 2026-05-28
+
+### Materials → Supply Houses — Invoice paid-at timestamp
+
+The per–supply-house Invoices table on **Materials → Supply Houses** used to show only an `is_paid` checkbox — there was no reliable record of *when* an invoice was marked paid (the existing `updated_at` got bumped on any edit, so it couldn't double as a paid-date). This version adds a real `paid_at` timestamp, auto-maintained at the DB level, and surfaces it in the UI.
+
+#### What's new
+
+- **New column** `paid_at TIMESTAMPTZ` on `public.supply_house_invoices` (nullable; NULL means unpaid).
+- **Auto-sync trigger** `sync_supply_house_invoice_paid_at_trigger` (`BEFORE INSERT OR UPDATE`) defined in [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql). Function `public.sync_supply_house_invoice_paid_at` (with `SET search_path = public` per the project lint convention) implements:
+  - `INSERT` with `is_paid = true` and `paid_at IS NULL` → `paid_at = NOW()`.
+  - `UPDATE` flipping `is_paid` false → true and `paid_at` not explicitly set → `paid_at = NOW()`.
+  - `UPDATE` flipping `is_paid` true → false → `paid_at = NULL`.
+  - `UPDATE` with no `is_paid` change → leave `paid_at` untouched (so editing amount, link, due date, allocations, etc. doesn't bump the paid date).
+- **Backfill** for legacy paid rows: `UPDATE … SET paid_at = COALESCE(updated_at, created_at, NOW()) WHERE is_paid = true AND paid_at IS NULL;`. Touched 149 rows in prod; 0 unpaid rows changed.
+- **Index** `idx_supply_house_invoices_paid_at` on `paid_at` (cheap; supports any future `MAX(paid_at)` per supply house / "paid this month" filter without a sequential scan).
+- **Single source of truth** — all three UI write paths in [`src/components/SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx) keep their existing `UPDATE … SET is_paid` shape and just inherit the stamp from the trigger:
+  - `toggleInvoicePaid(inv)` — the per-row Paid checkbox.
+  - `applyPayment(e)` — the bulk Apply Payment modal that flips `is_paid` on N selected invoices.
+  - `saveInvoice(e)` — the Add / Edit Invoice modal (does not touch `paid_at`; the trigger handles flips).
+  No `new Date().toISOString()` to remember in any call site, so the three paths can't drift.
+- **Types regenerated** via `npm run gen-types:linked` — `Database['public']['Tables']['supply_house_invoices']` Row / Insert / Update each now include `paid_at: string | null`. `loadSupplyHouseDetail`'s existing `select('*')` against `supply_house_invoices` picks up the column with no query change.
+- **Paid On column** in the per–supply-house Invoices table (between **Paid** and **Link**) renders `inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'` with a `title` attribute carrying the full ISO timestamp for hover detail. Empty-state `colSpan` bumps from 9 to 10.
+- **Apply Payment modal** — the per-invoice row now reads `Paid {MM/DD/YYYY}` (same `title` ISO tooltip) when `inv.is_paid` is true and `paid_at` is set; falls back to bare `Paid` if `paid_at` is null for any reason.
+
+#### Verification
+
+- `npx supabase db push` applied the migration cleanly to the linked DB.
+- `npx tsc --noEmit` clean.
+- Schema sanity: `information_schema.columns` confirms `paid_at` is `timestamp with time zone, nullable`; `pg_trigger` confirms the trigger is enabled.
+- Backfill: 149 paid rows now have `paid_at` set; 134 unpaid rows have `paid_at IS NULL`.
+- End-to-end trigger behavior verified via a single transactional `DO` block (cleaned itself up): insert unpaid → `paid_at` NULL; UPDATE `is_paid = true` → `paid_at` stamped to `NOW()`; UPDATE amount only → `paid_at` unchanged (RAISE EXCEPTION assertion); UPDATE `is_paid = false` → `paid_at` NULL (RAISE EXCEPTION assertion); INSERT with `is_paid = true` directly → `paid_at` auto-stamped. All assertions passed, zero leftover test rows.
+- `get_advisors` on the linked DB surfaced no new warnings tied to the new column / function / trigger / index.
+
+#### Files
+
+- New: [`supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql`](supabase/migrations/20270602120000_supply_house_invoices_paid_at.sql)
+- Modified: [`src/components/SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx) (Paid On header + body cell, colSpan 9 → 10, Apply Payment modal Paid-label date)
+- Regenerated: [`src/types/database.ts`](src/types/database.ts)
+
+#### Out of scope (easy follow-ups)
+
+- A **Last Paid** aggregate column on the Supply Houses summary table (`MAX(paid_at)` per supply house in `loadSupplyHouseSummary`).
+- A user-editable **Paid On** date input in the edit-invoice modal (for reconciling a payment whose effective date differs from the click date).
+- Filtering / sorting the invoices table by paid date.
+
 ---
 
 ## Latest Updates (v2.581)

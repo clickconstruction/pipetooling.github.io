@@ -1802,6 +1802,10 @@ export default function Bids() {
   const [takeoffSuccessMessage, setTakeoffSuccessMessage] = useState<string | null>(null)
   const [takeoffTemplatePickerOpenMappingId, setTakeoffTemplatePickerOpenMappingId] = useState<string | null>(null)
   const [takeoffTemplatePickerQuery, setTakeoffTemplatePickerQuery] = useState('')
+  const takeoffTemplatePickerInputRefs = useRef<Map<string, HTMLInputElement>>(new Map())
+  const [takeoffTemplatePickerAnchor, setTakeoffTemplatePickerAnchor] = useState<
+    { top: number; left: number; width: number } | null
+  >(null)
   const [takeoffCreatedPOId, setTakeoffCreatedPOId] = useState<string | null>(null)
   const [takeoffTemplatePreviewCache, setTakeoffTemplatePreviewCache] = useState<Record<string, { part_name: string; quantity: number }[] | 'loading' | null>>({})
   const [takeoffPreviewModalTemplateId, setTakeoffPreviewModalTemplateId] = useState<string | null>(null)
@@ -2316,6 +2320,30 @@ export default function Bids() {
       setCoverLetterBidSubmissionQuickAddValue('')
     }
   }, [selectedBidForPricing?.id, coverLetterBidSubmissionQuickAddBidId])
+
+  useEffect(() => {
+    if (takeoffTemplatePickerOpenMappingId == null) {
+      setTakeoffTemplatePickerAnchor(null)
+      return
+    }
+    const recompute = () => {
+      const el = takeoffTemplatePickerInputRefs.current.get(takeoffTemplatePickerOpenMappingId)
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      setTakeoffTemplatePickerAnchor({
+        top: rect.bottom + 2,
+        left: rect.left,
+        width: rect.width,
+      })
+    }
+    recompute()
+    window.addEventListener('resize', recompute)
+    window.addEventListener('scroll', recompute, true)
+    return () => {
+      window.removeEventListener('resize', recompute)
+      window.removeEventListener('scroll', recompute, true)
+    }
+  }, [takeoffTemplatePickerOpenMappingId])
 
   async function loadRole() {
     if (!authUser?.id) {
@@ -11209,7 +11237,7 @@ export default function Bids() {
                 Switch materials model?
               </h3>
               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
-                Exact and Rough data are stored separately. Switching does not copy lines from the other mode.
+                By Stage and Combined data are stored separately. Switching does not copy lines from the other mode.
               </p>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button
@@ -13324,7 +13352,7 @@ export default function Bids() {
                             boxShadow: takeoffMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
                           }}
                         >
-                          Exact
+                          By Stage
                         </button>
                         <button
                           type="button"
@@ -13341,7 +13369,7 @@ export default function Bids() {
                             boxShadow: takeoffMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
                           }}
                         >
-                          Rough
+                          Combined
                         </button>
                       </div>
                     )
@@ -13498,6 +13526,10 @@ export default function Bids() {
                                       <div style={{ position: 'relative' }}>
                                         <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
                                           <input
+                                            ref={(el) => {
+                                              if (el) takeoffTemplatePickerInputRefs.current.set(mapping.id, el)
+                                              else takeoffTemplatePickerInputRefs.current.delete(mapping.id)
+                                            }}
                                             type="text"
                                             value={takeoffTemplatePickerOpenMappingId === mapping.id ? takeoffTemplatePickerQuery : (mapping.templateId ? (materialTemplates.find((t) => t.id === mapping.templateId)?.name ?? '') : '')}
                                             onChange={(e) => setTakeoffTemplatePickerQuery(e.target.value)}
@@ -13575,59 +13607,6 @@ export default function Bids() {
                                             </button>
                                           </div>
                                         ) : null}
-                                        {takeoffTemplatePickerOpenMappingId === mapping.id && (
-                                          <ul
-                                            style={{
-                                              position: 'absolute',
-                                              left: 0,
-                                              right: 0,
-                                              top: '100%',
-                                              margin: 0,
-                                              marginTop: 2,
-                                              padding: 0,
-                                              listStyle: 'none',
-                                              maxHeight: 240,
-                                              overflowY: 'auto',
-                                              border: '1px solid #d1d5db',
-                                              borderRadius: 4,
-                                              background: '#fff',
-                                              zIndex: 50,
-                                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                                            }}
-                                          >
-                                            {takeoffTemplatePickerOptions(mapping).length === 0 ? (
-                                              <li style={{ padding: '0.75rem', color: '#6b7280' }}>
-                                                No templates match.{' '}
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    setTakeoffAddTemplateModalOpen(true)
-                                                    setTakeoffAddTemplateForMappingId(mapping.id)
-                                                    setTakeoffTemplatePickerOpenMappingId(null)
-                                                  }}
-                                                  style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                                                >
-                                                  Add assembly
-                                                </button>
-                                              </li>
-                                            ) : (
-                                              takeoffTemplatePickerOptions(mapping).map((t) => (
-                                                <li
-                                                  key={t.id}
-                                                  onClick={() => {
-                                                    setTakeoffMapping(mapping.id, { templateId: t.id })
-                                                    setTakeoffTemplatePickerQuery('')
-                                                    setTakeoffTemplatePickerOpenMappingId(null)
-                                                  }}
-                                                  style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
-                                                >
-                                                  <div style={{ fontWeight: 500 }}>{t.name}</div>
-                                                  {t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}
-                                                </li>
-                                              ))
-                                            )}
-                                          </ul>
-                                        )}
                                       </div>
                                     </td>
                                     <td style={{ padding: '0.75rem', fontSize: '0.875rem', maxWidth: 280 }}>{partsCell}</td>
@@ -14389,7 +14368,7 @@ export default function Bids() {
                 <button
                   type="button"
                   onClick={openNewTakeoffBookVersion}
-                  style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Add version
                 </button>
@@ -14654,58 +14633,6 @@ export default function Bids() {
                     previewEnabled={bidPreview != null}
                     onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForCostEstimate)}
                   />
-                  {(() => {
-                    const ceMaterialsModel = normalizeMaterialsModel(selectedBidForCostEstimate.materials_model)
-                    return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-                        <span
-                          style={{
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            marginRight: '0.25rem',
-                            color: '#4b5563',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          Materials
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => openMaterialsModelSwitch('exact', 'cost-estimate')}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            fontSize: '0.8125rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: ceMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontWeight: ceMaterialsModel === 'exact' ? 600 : 400,
-                            color: ceMaterialsModel === 'exact' ? '#111827' : '#6b7280',
-                            boxShadow: ceMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
-                          }}
-                        >
-                          Exact
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openMaterialsModelSwitch('rough', 'cost-estimate')}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            fontSize: '0.8125rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: ceMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontWeight: ceMaterialsModel === 'rough' ? 600 : 400,
-                            color: ceMaterialsModel === 'rough' ? '#111827' : '#6b7280',
-                            boxShadow: ceMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
-                          }}
-                        >
-                          Rough
-                        </button>
-                      </div>
-                    )
-                  })()}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <button
@@ -14728,6 +14655,67 @@ export default function Bids() {
                   ) : null}
                 </div>
               </div>
+              {(() => {
+                const ceMaterialsModel = normalizeMaterialsModel(selectedBidForCostEstimate.materials_model)
+                return (
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'flex-end',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      flexWrap: 'wrap',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        marginRight: '0.25rem',
+                        color: '#4b5563',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Materials
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openMaterialsModelSwitch('exact', 'cost-estimate')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: ceMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: ceMaterialsModel === 'exact' ? 600 : 400,
+                        color: ceMaterialsModel === 'exact' ? '#111827' : '#6b7280',
+                        boxShadow: ceMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      By Stage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openMaterialsModelSwitch('rough', 'cost-estimate')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: ceMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: ceMaterialsModel === 'rough' ? 600 : 400,
+                        color: ceMaterialsModel === 'rough' ? '#111827' : '#6b7280',
+                        boxShadow: ceMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      Combined
+                    </button>
+                  </div>
+                )
+              })()}
               {costEstimateCountRows.length === 0 ? (
                 <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
               ) : (
@@ -14857,7 +14845,7 @@ export default function Bids() {
                   ) : (
                   <div style={{ marginBottom: '1.5rem' }}>
                     <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MATERIALS</h3>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
                       Rough takeoff totals: sum of part lines from the Takeoffs tab (quantity × unit price). Edit lines on Takeoffs → Rough.
                     </p>
                     <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -15546,7 +15534,7 @@ export default function Bids() {
                 <button
                   type="button"
                   onClick={openNewLaborVersion}
-                  style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Add version
                 </button>
@@ -16079,7 +16067,7 @@ export default function Bids() {
                             boxShadow: pricingMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
                           }}
                         >
-                          Exact
+                          By Stage
                         </button>
                         <button
                           type="button"
@@ -16096,7 +16084,7 @@ export default function Bids() {
                             boxShadow: pricingMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
                           }}
                         >
-                          Rough
+                          Combined
                         </button>
                       </div>
                     )
@@ -16265,7 +16253,7 @@ export default function Bids() {
                           </th>
                           <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Unit Cost'}</th>
                           <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Margin %' : '% of Total'}</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin/Total</th>
                           <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
                         </tr>
                       </thead>
@@ -16590,11 +16578,9 @@ export default function Bids() {
                               style={{ padding: '0.75rem', textAlign: 'center' }}
                               onClick={(e) => e.stopPropagation()}
                             >
-                              {pricingViewModel === 'cost' ?
-                                row.margin != null ?
-                                  `${row.margin.toFixed(1)}%`
-                                : '—'
-                              : <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                  <span style={{ fontSize: '0.875rem' }}>{row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}</span>
+                                  <span style={{ color: '#9ca3af' }}>/</span>
                                   {(() => {
                                     const pctDisplay =
                                       row.pctOfGrandTotal != null ? `${row.pctOfGrandTotal.toFixed(1)}%` : '—'
@@ -16691,10 +16677,9 @@ export default function Bids() {
                                     )
                                   })()}
                                 </div>
-                              }
                             </td>
                             <td style={{ padding: '0.75rem' }}>
-                              {pricingViewModel === 'cost' && row.flag && (
+                              {row.flag && (
                                 <span
                                   title={row.flag === 'red' ? '< 20%' : row.flag === 'yellow' ? '< 40%' : '≥ 40%'}
                                   style={{
@@ -16717,12 +16702,10 @@ export default function Bids() {
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>{pricingViewModel === 'cost' ? `$${formatCurrency(totalCost)}` : ''}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            {pricingViewModel === 'cost'
-                              ? (totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—')
-                              : '100%'}
+                            {`${totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'} / 100%`}
                           </td>
                           <td style={{ padding: '0.75rem' }}>
-                            {pricingViewModel === 'cost' && totalRevenue > 0 && (() => {
+                            {totalRevenue > 0 && (() => {
                               const m = ((totalRevenue - totalCost) / totalRevenue) * 100
                               const f = marginFlag(m)
                               return f ? (
@@ -16908,7 +16891,7 @@ export default function Bids() {
                 <button
                   type="button"
                   onClick={openNewPricingVersion}
-                  style={{ padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Add version
                 </button>
@@ -21144,6 +21127,69 @@ We saw some structural issues with your plans and I wanted to get clarity...
                 }}
               />
             </div>,
+            document.body
+          )
+        : null}
+      {takeoffTemplatePickerOpenMappingId != null && takeoffTemplatePickerAnchor
+        ? createPortal(
+            <ul
+              onMouseDown={(e) => e.preventDefault()}
+              style={{
+                position: 'fixed',
+                top: takeoffTemplatePickerAnchor.top,
+                left: takeoffTemplatePickerAnchor.left,
+                width: takeoffTemplatePickerAnchor.width,
+                margin: 0,
+                padding: 0,
+                listStyle: 'none',
+                maxHeight: 240,
+                overflowY: 'auto',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: '#fff',
+                zIndex: 1200,
+                boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
+              }}
+            >
+              {(() => {
+                const openMapping = takeoffMappings.find((m) => m.id === takeoffTemplatePickerOpenMappingId)
+                if (!openMapping) return null
+                const options = takeoffTemplatePickerOptions(openMapping)
+                return options.length === 0 ? (
+                  <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                    No templates match.{' '}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setTakeoffAddTemplateModalOpen(true)
+                        setTakeoffAddTemplateForMappingId(openMapping.id)
+                        setTakeoffTemplatePickerOpenMappingId(null)
+                      }}
+                      style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                    >
+                      Add assembly
+                    </button>
+                  </li>
+                ) : (
+                  options.map((t) => (
+                    <li
+                      key={t.id}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setTakeoffMapping(openMapping.id, { templateId: t.id })
+                        setTakeoffTemplatePickerQuery('')
+                        setTakeoffTemplatePickerOpenMappingId(null)
+                      }}
+                      style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
+                    >
+                      <div style={{ fontWeight: 500 }}>{t.name}</div>
+                      {t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}
+                    </li>
+                  ))
+                )
+              })()}
+            </ul>,
             document.body
           )
         : null}

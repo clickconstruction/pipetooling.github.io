@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
+import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import { SupplyHouseForm } from './SupplyHouseForm'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
@@ -25,7 +26,14 @@ type POItemWithDetails = PurchaseOrderItem & {
 }
 type PurchaseOrderWithItems = PurchaseOrder & { items: POItemWithDetails[] }
 
-type SupplyHouseSummaryRow = { supply_house_id: string; name: string; outstanding: number; monthlyPaymentDay: number | null }
+type SupplyHouseSummaryRow = {
+  supply_house_id: string
+  name: string
+  outstanding: number
+  monthlyPaymentDay: number | null
+  lastInvoiceUpdatedAt: string | null
+  lastInvoicePaidAt: string | null
+}
 
 interface SupplyHousesTabProps {
   supplyHouses?: SupplyHouse[]
@@ -96,6 +104,7 @@ export function SupplyHousesTab({
   const [creatingPOForSupplyHouse, setCreatingPOForSupplyHouse] = useState(false)
   const [firstServiceTypeId, setFirstServiceTypeId] = useState<string | null>(null)
   const [showPaidInvoices, setShowPaidInvoices] = useState(false)
+  const [showLastPayment, setShowLastPayment] = useState(false)
 
   const serviceTypeId = selectedServiceTypeIdProp ?? firstServiceTypeId
 
@@ -144,20 +153,35 @@ export function SupplyHousesTab({
     }
     const { data: invoices } = await supabase
       .from('supply_house_invoices')
-      .select('supply_house_id, amount, is_paid')
-    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean }[]
+      .select('supply_house_id, amount, is_paid, updated_at, paid_at')
+    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean; updated_at: string | null; paid_at: string | null }[]
     const byHouse = new Map<string, number>()
+    const maxUpdatedByHouse = new Map<string, string>()
+    const maxPaidByHouse = new Map<string, string>()
     for (const h of housesList) byHouse.set(h.id, 0)
     for (const inv of invoicesList) {
-      if (inv.is_paid) continue
-      const cur = byHouse.get(inv.supply_house_id)
-      if (cur !== undefined) byHouse.set(inv.supply_house_id, cur + inv.amount)
+      if (!inv.is_paid) {
+        const cur = byHouse.get(inv.supply_house_id)
+        if (cur !== undefined) byHouse.set(inv.supply_house_id, cur + inv.amount)
+      }
+      // Track most recent invoice update per supply house across paid + unpaid;
+      // ISO 8601 timestamps sort lexicographically so string comparison is safe.
+      if (inv.updated_at) {
+        const prev = maxUpdatedByHouse.get(inv.supply_house_id)
+        if (!prev || inv.updated_at > prev) maxUpdatedByHouse.set(inv.supply_house_id, inv.updated_at)
+      }
+      if (inv.is_paid && inv.paid_at) {
+        const prev = maxPaidByHouse.get(inv.supply_house_id)
+        if (!prev || inv.paid_at > prev) maxPaidByHouse.set(inv.supply_house_id, inv.paid_at)
+      }
     }
     const rows: SupplyHouseSummaryRow[] = housesList.map((h) => ({
       supply_house_id: h.id,
       name: h.name,
       outstanding: byHouse.get(h.id) ?? 0,
       monthlyPaymentDay: h.monthly_payment_day,
+      lastInvoiceUpdatedAt: maxUpdatedByHouse.get(h.id) ?? null,
+      lastInvoicePaidAt: maxPaidByHouse.get(h.id) ?? null,
     }))
     rows.sort((a, b) => b.outstanding - a.outstanding)
     setSupplyHouseSummary(rows)
@@ -584,24 +608,42 @@ export function SupplyHousesTab({
             Supply Houses
           </h2>
         )}
-        <label
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            cursor: 'pointer',
-            fontSize: '0.875rem',
-            justifySelf: 'end',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={showPaidInvoices}
-            onChange={(e) => setShowPaidInvoices(e.target.checked)}
-          />
-          Show paid invoices
-        </label>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', justifySelf: 'end' }}>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showPaidInvoices}
+              onChange={(e) => setShowPaidInvoices(e.target.checked)}
+            />
+            Show paid invoices
+          </label>
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              cursor: 'pointer',
+              fontSize: '0.875rem',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={showLastPayment}
+              onChange={(e) => setShowLastPayment(e.target.checked)}
+            />
+            Show last payment
+          </label>
+        </div>
       </div>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
@@ -619,6 +661,10 @@ export function SupplyHousesTab({
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Supply House</th>
                   <th style={{ padding: '0.75rem', textAlign: 'right' }}>Outstanding</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Due</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left' }}>Updated</th>
+                  {showLastPayment && (
+                    <th style={{ padding: '0.75rem', textAlign: 'left' }}>Last Paid</th>
+                  )}
                   <th style={{ padding: '0.75rem', textAlign: 'right', width: 80 }}></th>
                 </tr>
               </thead>
@@ -649,6 +695,17 @@ export function SupplyHousesTab({
                         <td style={{ padding: '0.75rem', color: '#6b7280' }}>
                           {row.monthlyPaymentDay ? formatOrdinal(row.monthlyPaymentDay) : '—'}
                         </td>
+                        <td style={{ padding: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                          {row.lastInvoiceUpdatedAt ? longTimeAgoPhrase(row.lastInvoiceUpdatedAt) : '—'}
+                        </td>
+                        {showLastPayment && (
+                          <td
+                            style={{ padding: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}
+                            title={row.lastInvoicePaidAt ?? undefined}
+                          >
+                            {row.lastInvoicePaidAt ? longTimeAgoPhrase(row.lastInvoicePaidAt) : '—'}
+                          </td>
+                        )}
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>
                           {isExpanded && selectedSupplyHouseForDetail && (
                             <button
@@ -667,7 +724,7 @@ export function SupplyHousesTab({
                       </tr>
                       {isExpanded && selectedSupplyHouseForDetail && (
                         <tr>
-                          <td colSpan={4} style={{ padding: 0, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+                          <td colSpan={showLastPayment ? 6 : 5} style={{ padding: 0, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
                             <div style={{ padding: '1rem 1.5rem', background: '#f9fafb', borderLeft: '3px solid #3b82f6' }}>
                               {supplyHouseDetailLoading ? (
                                 <p>Loading…</p>
@@ -728,6 +785,7 @@ export function SupplyHousesTab({
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Amount</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Jobs</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid</th>
+                                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Paid On</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Link</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                                           </tr>
@@ -738,7 +796,7 @@ export function SupplyHousesTab({
                                               ? supplyHouseInvoices
                                               : supplyHouseInvoices.filter((inv) => !inv.is_paid)
                                             return invoicesToShow.length === 0 ? (
-                                              <tr><td colSpan={9} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No invoices</td></tr>
+                                              <tr><td colSpan={10} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No invoices</td></tr>
                                             ) : (
                                               invoicesToShow.map((inv) => {
                                                 const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
@@ -783,6 +841,12 @@ export function SupplyHousesTab({
                                                     checked={inv.is_paid}
                                                     onChange={() => toggleInvoicePaid(inv)}
                                                   />
+                                                </td>
+                                                <td
+                                                  style={{ padding: '0.5rem 0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}
+                                                  title={inv.paid_at ?? undefined}
+                                                >
+                                                  {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}
                                                 </td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                                   {inv.link ? (
@@ -1135,7 +1199,11 @@ export function SupplyHousesTab({
                         <span>{inv.invoice_number}</span>
                         <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>{new Date(inv.invoice_date).toLocaleDateString()}</span>
                         <span style={{ marginLeft: 'auto' }}>${formatCurrency(inv.amount)}</span>
-                        {inv.is_paid && <span style={{ fontSize: '0.75rem', color: '#059669' }}>Paid</span>}
+                        {inv.is_paid && (
+                          <span style={{ fontSize: '0.75rem', color: '#059669' }} title={inv.paid_at ?? undefined}>
+                            Paid{inv.paid_at ? ` ${new Date(inv.paid_at).toLocaleDateString()}` : ''}
+                          </span>
+                        )}
                       </label>
                     ))
                   })()}

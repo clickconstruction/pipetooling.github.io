@@ -7956,6 +7956,7 @@ export type Database = {
           invoice_number: string
           is_paid: boolean
           link: string | null
+          paid_at: string | null
           purchase_order_number: string | null
           supply_house_id: string
           updated_at: string | null
@@ -7969,6 +7970,7 @@ export type Database = {
           invoice_number: string
           is_paid?: boolean
           link?: string | null
+          paid_at?: string | null
           purchase_order_number?: string | null
           supply_house_id: string
           updated_at?: string | null
@@ -7982,6 +7984,7 @@ export type Database = {
           invoice_number?: string
           is_paid?: boolean
           link?: string | null
+          paid_at?: string | null
           purchase_order_number?: string | null
           supply_house_id?: string
           updated_at?: string | null
