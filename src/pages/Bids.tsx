@@ -16579,7 +16579,7 @@ export default function Bids() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                  <span style={{ fontSize: '0.875rem' }}>{row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}</span>
+                                  <span style={{ fontSize: '0.875rem' }}>{row.materialsFromTakeoff == null || row.materialsFromTakeoff === 0 ? '—' : row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}</span>
                                   <span style={{ color: '#9ca3af' }}>/</span>
                                   {(() => {
                                     const pctDisplay =
