@@ -58,7 +58,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
     'working',
     'counts',
     'takeoffs',
-    'cost-estimate',
+    'labor',
     'pricing',
     'cover-letter',
     'submission-followup',
@@ -67,7 +67,7 @@ export const PATH_TABS: Record<string, readonly string[]> = {
     'lien-release',
   ],
   '/checklist': ['today', 'history', 'review', 'manage'],
-  '/materials': ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses', 'po-generator'],
+  '/materials': ['parts-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses', 'po-generator'],
   '/documents': ['search', 'estimates', 'bid-proposals', 'jobs', 'supply-invoices', 'upload'],
 }
 
@@ -93,6 +93,8 @@ export function getPinned(userId: string | undefined): PinnedItem[] {
       .map((p) => {
         if (p.path === '/jobs' && p.tab === 'ledger') return { ...p, tab: 'billing' }
         if (p.path === '/documents' && p.tab === 'ledger') return { ...p, tab: 'estimates' }
+        if (p.path === '/materials' && p.tab === 'price-book') return { ...p, tab: 'parts-book' }
+        if (p.path === '/bids' && p.tab === 'cost-estimate') return { ...p, tab: 'labor' }
         return p
       })
   } catch {

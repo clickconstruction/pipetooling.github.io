@@ -1751,6 +1751,10 @@ export type Database = {
           purchase_order_id_rough_in: string | null
           purchase_order_id_top_out: string | null
           purchase_order_id_trim_set: string | null
+          travel_hotel_rate: number | null
+          travel_meals_rate: number | null
+          travel_nights: number
+          travel_people: number
           updated_at: string | null
         }
         Insert: {
@@ -1765,6 +1769,10 @@ export type Database = {
           purchase_order_id_rough_in?: string | null
           purchase_order_id_top_out?: string | null
           purchase_order_id_trim_set?: string | null
+          travel_hotel_rate?: number | null
+          travel_meals_rate?: number | null
+          travel_nights?: number
+          travel_people?: number
           updated_at?: string | null
         }
         Update: {
@@ -1779,6 +1787,10 @@ export type Database = {
           purchase_order_id_rough_in?: string | null
           purchase_order_id_top_out?: string | null
           purchase_order_id_trim_set?: string | null
+          travel_hotel_rate?: number | null
+          travel_meals_rate?: number | null
+          travel_nights?: number
+          travel_people?: number
           updated_at?: string | null
         }
         Relationships: [
@@ -2932,6 +2944,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      gsa_per_diem_cache: {
+        Row: {
+          city: string | null
+          county: string | null
+          fetched_at: string
+          hotel_rate_max: number | null
+          meals_rate: number | null
+          state: string | null
+          year: number
+          zip: string
+        }
+        Insert: {
+          city?: string | null
+          county?: string | null
+          fetched_at?: string
+          hotel_rate_max?: number | null
+          meals_rate?: number | null
+          state?: string | null
+          year: number
+          zip: string
+        }
+        Update: {
+          city?: string | null
+          county?: string | null
+          fetched_at?: string
+          hotel_rate_max?: number | null
+          meals_rate?: number | null
+          state?: string | null
+          year?: number
+          zip?: string
+        }
+        Relationships: []
       }
       hours_days_correct: {
         Row: {

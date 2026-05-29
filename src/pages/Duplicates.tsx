@@ -184,7 +184,7 @@ export default function Duplicates() {
       </div>
 
       <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
-        Parts with matching names or 80%+ name similarity are grouped below. Delete duplicates to clean up the price book.
+        Parts with matching names or 80%+ name similarity are grouped below. Delete duplicates to clean up the Parts Book.
       </p>
 
       {!loading && duplicateGroups.length > 0 && (

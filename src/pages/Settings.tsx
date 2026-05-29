@@ -9799,7 +9799,7 @@ export default function Settings() {
                         </button>
             </div>
             <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-              These are material prices whose part or supply house no longer exists. They do not appear in the Materials Price Book.
+              These are material prices whose part or supply house no longer exists. They do not appear in the Materials Parts Book.
             </p>
             {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
             {orphanError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{orphanError}</p>}
@@ -10250,7 +10250,7 @@ export default function Settings() {
           <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
           <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Duplicate Materials</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Find and delete duplicate material parts in the price book (matching names or 80%+ similarity).
+            Find and delete duplicate material parts in the Parts Book (matching names or 80%+ similarity).
           </p>
           <Link
             to="/duplicates"
@@ -11178,7 +11178,7 @@ export default function Settings() {
       )}
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Maintenance: Materials prices</h2>
           <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
-            Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Price Book).
+            Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Parts Book).
           </p>
           <button
             type="button"

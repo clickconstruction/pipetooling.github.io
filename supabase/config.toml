@@ -461,6 +461,10 @@ verify_jwt = false
 [functions.geocode-one]
 verify_jwt = false
 
+# GSA federal per-diem lookup by ZIP for the Bids Travel section; caches into public.gsa_per_diem_cache. JWT + role in (dev, master_technician, assistant, estimator) in function. Needs GSA_API_KEY secret.
+[functions.gsa-per-diem]
+verify_jwt = false
+
 # Same as test-email: JWT validated in function (getUser + users.role); gateway returned Invalid JWT for browser sessions.
 [functions.login-as-user]
 verify_jwt = false

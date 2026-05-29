@@ -4373,7 +4373,7 @@ export default function Dashboard() {
       { key: 'job_labor', label: 'Job Labor', to: '/jobs?tab=sub_sheet_ledger&newJob=true' },
       { key: 'bid', label: 'Bid', to: '/bids?new=true' },
       { key: 'project', label: 'Project', to: '/projects/new' },
-      { key: 'part', label: 'Part', to: '/materials?tab=price-book&addPart=true' },
+      { key: 'part', label: 'Part', to: '/materials?tab=parts-book&addPart=true' },
       { key: 'assembly', label: 'Assembly', to: '/materials?tab=assembly-book&addAssembly=true' },
       { key: 'prospect', label: 'Prospect', to: '/prospects?newProspect=true' },
       { key: 'inspections', label: 'Inspections', to: '/jobs?tab=inspections' },

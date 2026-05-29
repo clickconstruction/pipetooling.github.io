@@ -141,7 +141,7 @@ function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-const MATERIALS_TABS = ['price-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses', 'po-generator'] as const
+const MATERIALS_TABS = ['parts-book', 'assembly-book', 'templates-po', 'purchase-orders', 'supply-houses', 'po-generator'] as const
 
 export default function Materials() {
   const { user: authUser } = useAuth()
@@ -151,8 +151,8 @@ export default function Materials() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [activeTab, setActiveTab] = useState<
-    'price-book' | 'assembly-book' | 'templates-po' | 'purchase-orders' | 'supply-houses' | 'po-generator'
-  >('price-book')
+    'parts-book' | 'assembly-book' | 'templates-po' | 'purchase-orders' | 'supply-houses' | 'po-generator'
+  >('parts-book')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -166,7 +166,7 @@ export default function Materials() {
   // Part Types state
   const [partTypes, setPartTypes] = useState<PartType[]>([])
 
-  // Price Book state
+  // Parts Book state
   const [parts, setParts] = useState<PartWithPrices[]>([])
   const [supplyHouses, setSupplyHouses] = useState<SupplyHouse[]>([])
   const [searchQuery, setSearchQuery] = useState('')
@@ -1004,24 +1004,35 @@ export default function Materials() {
   }, [authUser?.id])
 
   useEffect(() => {
-    const tab = searchParams.get('tab')
+    let tab = searchParams.get('tab')
+    // Back-compat: the Materials "Price Book" tab slug was renamed to "parts-book".
+    if (tab === 'price-book') {
+      tab = 'parts-book'
+      setActiveTab('parts-book')
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'parts-book')
+        return next
+      }, { replace: true })
+      return
+    }
     const restrictedPrimarySuper =
       tab === 'supply-houses' ||
       tab === 'po-generator' ||
       tab === 'templates-po' ||
       tab === 'purchase-orders'
     if ((myRole === 'primary' || myRole === 'superintendent') && restrictedPrimarySuper) {
-      setActiveTab('price-book')
+      setActiveTab('parts-book')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'price-book')
+        next.set('tab', 'parts-book')
         return next
       }, { replace: true })
     } else if (myRole === 'estimator' && (tab === 'supply-houses' || tab === 'po-generator')) {
-      setActiveTab('price-book')
+      setActiveTab('parts-book')
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'price-book')
+        next.set('tab', 'parts-book')
         return next
       }, { replace: true })
     } else if (tab && MATERIALS_TABS.includes(tab as typeof MATERIALS_TABS[number])) {
@@ -1029,7 +1040,7 @@ export default function Materials() {
     } else if (!tab) {
       setSearchParams((p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'price-book')
+        next.set('tab', 'parts-book')
         return next
       }, { replace: true })
     }
@@ -1364,7 +1375,7 @@ export default function Materials() {
 
   // Infinite scroll for parts pagination
   useEffect(() => {
-    if (activeTab !== 'price-book' || loadAllMode) return
+    if (activeTab !== 'parts-book' || loadAllMode) return
     if (!hasMoreParts || loadingPartsPage) return
 
     const handleScroll = () => {
@@ -1499,7 +1510,7 @@ export default function Materials() {
     )
   })
 
-  // Template stats: # of templates, % with at least one part item that has no price in price book
+  // Template stats: # of templates, % with at least one part item that has no price in the Parts Book
   const partIdsWithNoPrice = new Set(parts.filter(p => p.prices.length === 0).map(p => p.id))
   const templatesWithItemsWithNoPrice = materialTemplates.filter(t =>
     allTemplateItemsForStats.some(i =>
@@ -1552,7 +1563,7 @@ export default function Materials() {
     return { total, missingPrices, partCount, nestedCount }
   }
 
-  // Price Book Tab Functions
+  // Parts Book Tab Functions
   function openAddPart() {
     setEditingPart(null)
     setPartFormInitialName('')
@@ -3031,10 +3042,10 @@ export default function Materials() {
         <button
           type="button"
           onClick={() => {
-            setActiveTab('price-book')
+            setActiveTab('parts-book')
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
-              next.set('tab', 'price-book')
+              next.set('tab', 'parts-book')
               return next
             })
           }}
@@ -3042,14 +3053,14 @@ export default function Materials() {
             padding: '0.75rem 1.5rem',
             border: 'none',
             background: 'none',
-            borderBottom: activeTab === 'price-book' ? '2px solid #3b82f6' : '2px solid transparent',
-            color: activeTab === 'price-book' ? '#3b82f6' : '#6b7280',
-            fontWeight: activeTab === 'price-book' ? 600 : 400,
+            borderBottom: activeTab === 'parts-book' ? '2px solid #3b82f6' : '2px solid transparent',
+            color: activeTab === 'parts-book' ? '#3b82f6' : '#6b7280',
+            fontWeight: activeTab === 'parts-book' ? 600 : 400,
             cursor: 'pointer',
             flexShrink: 0,
           }}
         >
-          Price Book
+          Parts Book
         </button>
         <button
           type="button"
@@ -3128,8 +3139,8 @@ export default function Materials() {
         </div>
       </div>
 
-      {/* Price Book Tab */}
-      {activeTab === 'price-book' && (
+      {/* Parts Book Tab */}
+      {activeTab === 'parts-book' && (
         <div>
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="button" onClick={openAddPart} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
@@ -4139,11 +4150,11 @@ export default function Materials() {
                     type="button"
                     onClick={() => {
                       setSelectedTemplate(null)
-                      setActiveTab('price-book')
+                      setActiveTab('parts-book')
                     }}
                     style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                   >
-                    View Price Book
+                    View Parts Book
                   </button>
                 </div>
               </div>

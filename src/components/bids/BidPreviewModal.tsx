@@ -15,7 +15,7 @@ export type BidPreviewTabUrl =
   | 'bid-costs'
   | 'counts'
   | 'takeoffs'
-  | 'cost-estimate'
+  | 'labor'
   | 'pricing'
   | 'cover-letter'
   | 'submission-followup'

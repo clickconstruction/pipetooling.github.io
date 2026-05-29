@@ -36,7 +36,6 @@ import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import {
   formatBidLedgerNumberLabel,
   resolveBidLedgerPrefix,
-  type LedgerPrefixMap,
 } from '../lib/ledgerDisplayPrefixes'
 import { useNewCustomerModal } from '../contexts/NewCustomerModalContext'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
@@ -70,25 +69,96 @@ import { BidsEstimatorsTab } from '../components/bids/BidsEstimatorsTab'
 import { BidSubmissionFollowupExpandableDetails } from '../components/bids/BidSubmissionFollowupExpandableDetails'
 import { SupplyHouseWebsiteLink } from '../components/SupplyHouseWebsiteLink'
 import { Database } from '../types/database'
-import type { Json } from '../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../types/bidWithBuilder'
 import type { BidDateSentAttestationPayload } from '../types/bidDateSentAttestation'
 import { bidAttestationDisplayName, normalizeBidDateInput } from '../lib/bidDateSentDisplay'
 import { buildBidBoardWeeklySentSummaries } from '../lib/bidBoardWeeklySentStats'
 import { BidBoardWeeklySentSection } from '../components/bids/BidBoardWeeklySentSection'
 import { BidBoardWeeklyEstimatorLaborDevSection } from '../components/bids/BidBoardWeeklyEstimatorLaborDevSection'
+import { BidBoardEstimatingHealthWonPctSliders } from '../components/bids/BidBoardEstimatingHealthSliders'
+import { StaffOutcomeDrilldownCountCell } from '../components/bids/StaffOutcomeDrilldownCountCell'
+import { BidWorkflowTabTitleWithPreview } from '../components/bids/BidWorkflowTabTitleWithPreview'
+import { BidBoardBidNumberMark } from '../components/bids/BidBoardBidNumberMark'
+import { SortableCountRow } from '../components/bids/CountRow'
+import { NewCountRow } from '../components/bids/NewCountRow'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows, type ComputeBidPricingRowsResult } from '../lib/bidPricingRowCalculations'
 import { buildBidPricingPrintTableHtml, type BidPricingPrintRow } from '../lib/buildBidPricingPrintTableHtml'
+import { addressLines, printHtmlInNewWindow } from '../lib/bidDocuments/htmlDoc'
+import {
+  buildCoverLetterHtml,
+  buildCoverLetterText,
+  numberToWords,
+  DEFAULT_TERMS_AND_WARRANTY,
+  DEFAULT_EXCLUSIONS,
+} from '../lib/bidDocuments/coverLetter'
+import { buildRfiHtml, buildRfiText, type RfiFormData } from '../lib/bidDocuments/rfi'
+import { buildCostEstimatePOHtml, type CostEstimatePOModalItem } from '../lib/bidDocuments/costEstimatePO'
+import { buildRoughTakeoffBreakdownHtml, buildExactTakeoffBreakdownHtml } from '../lib/bidDocuments/takeoffBreakdown'
+import { buildLaborSubSheetHtml, buildAllLaborSubSheetsHtml } from '../lib/bidDocuments/laborSubSheet'
+import { buildChangeOrderHtml, buildChangeOrderText, type ChangeOrderFormData } from '../lib/bidDocuments/changeOrder'
+import {
+  buildLienReleaseHtml,
+  buildLienReleaseText,
+  type LienReleaseFormData,
+  LIEN_RELEASE_DEFAULT_COMPANY_ADDRESS,
+  LIEN_RELEASE_DEFAULT_LIEN_PHONE,
+  LIEN_RELEASE_DEFAULT_COMPANY_PHONE,
+  LIEN_RELEASE_DEFAULT_COMPANY_EMAIL,
+  LIEN_RELEASE_DEFAULT_CONDITIONAL_WAIVER,
+  LIEN_RELEASE_DEFAULT_PAYMENT_TERMS,
+} from '../lib/bidDocuments/lienRelease'
 import {
   bidEligibleForWorkingBoardArchive,
   canUserArchiveBidOnWorkingBoard,
   isBidEligibleForWorkingBoard,
 } from '../lib/workingBoardArchiveEligibility'
+import type { Bid, BidCountRow } from '../types/bids'
+import { formatCurrency } from '../lib/format'
+import {
+  formatCompactCurrency,
+  formatBidValueShort,
+  formatTimeSinceLastContact,
+  formatShortDate,
+  formatDateYYMMDD,
+  formatDateYYMMDDParts,
+  formatBidNameWithValue,
+  formatDesignDrawingPlanDate,
+  formatDesignDrawingPlanDateLabel,
+  bidDisplayName,
+  countsConfirmLabel,
+  marginFlag,
+  formatAmountFromString,
+  getCustomerDisplay,
+} from '../lib/bids/bidFormatting'
+import { tabStyle, bidsTabStyle, SAFETY_ORANGE, SAFETY_ORANGE_BORDER } from '../lib/bids/bidStyles'
+import {
+  clampRoughQtyFromDraft,
+  roughQtyToDraftString,
+  normalizeMaterialsModel,
+  takeoffFixtureCountLabel,
+  sumRoughLinesPreTax,
+  mergePartLinesToTakeoffTemplateItems,
+  STAGE_LABELS,
+  type MaterialsModel,
+  type TakeoffStage,
+} from '../lib/bids/bidTakeoffHelpers'
+import { extractContactInfo, formatAddressWithoutZip } from '../lib/bids/bidContactInfo'
+import { computeTravelCost } from '../lib/bids/bidCostCalc'
+import { parseCountsImportText } from '../lib/bids/parseCountsImportText'
+import { csvEscapeField, buildCountsCsv, sanitizeCsvFilenamePart } from '../lib/bids/bidCsvExport'
+import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../lib/bids/laborRowHours'
+import {
+  formatBidStaffDisplayName,
+  computeBidBoardStaffOutcomeStatsByRole,
+  staffOutcomeDrilldownMetricLabel,
+  filterBidsForStaffOutcomeDrilldown,
+  sortStaffOutcomeDrilldownBids,
+  BID_BOARD_STAFF_MIN_BIDS,
+  type StaffOutcomeDrilldownState,
+} from '../lib/bids/bidBoardStaffOutcomes'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
-type Bid = Database['public']['Tables']['bids']['Row']
-type BidCountRow = Database['public']['Tables']['bids_count_rows']['Row']
 type CustomerContact = Database['public']['Tables']['customer_contacts']['Row']
 type CustomerContactPerson = Database['public']['Tables']['customer_contact_persons']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
@@ -123,335 +193,6 @@ function submissionHiddenIdsForVersion(
   return s
 }
 
-function formatBidStaffDisplayName(u: EstimatorUser | EstimatorUser[] | null | undefined): string {
-  if (u == null) return '—'
-  const one = Array.isArray(u) ? u[0] ?? null : u
-  if (!one) return '—'
-  return (one.name?.trim() || one.email || '—').slice(0, 200)
-}
-
-type BidBoardStaffOutcomeRow = {
-  userId: string
-  displayName: string
-  notYetWonOrLost: number
-  won: number
-  lost: number
-}
-
-/** Minimum bids in role (on filtered list) to appear in staff outcome tables. */
-const BID_BOARD_STAFF_MIN_BIDS = 3
-
-type BidBoardStaffOutcomesByRole = {
-  estimators: BidBoardStaffOutcomeRow[]
-  accountManagers: BidBoardStaffOutcomeRow[]
-  estimatorsHadAnyAssignment: boolean
-  accountManagersHadAnyAssignment: boolean
-}
-
-function sortBidBoardStaffOutcomeRows(rows: BidBoardStaffOutcomeRow[]): BidBoardStaffOutcomeRow[] {
-  return [...rows].sort((a, b) => {
-    const sentA = a.notYetWonOrLost + a.won + a.lost
-    const sentB = b.notYetWonOrLost + b.won + b.lost
-    if (sentB !== sentA) return sentB - sentA
-    const cmp = a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
-    if (cmp !== 0) return cmp
-    return a.userId.localeCompare(b.userId)
-  })
-}
-
-/** Won % for Scoreboard / Estimating Health: decided = won + lost; null when no decided bids. */
-function staffOutcomeWonPctDisplay(row: BidBoardStaffOutcomeRow): { decided: number; pct: number | null } {
-  const decided = row.won + row.lost
-  if (decided === 0) return { decided: 0, pct: null }
-  return { decided, pct: (100 * row.won) / decided }
-}
-
-function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOutcomeRow }) {
-  const { pct } = staffOutcomeWonPctDisplay(row)
-  const pctStr = pct === null ? '—' : `${pct.toFixed(1)}%`
-  return (
-    <div
-      role="group"
-      aria-label={pct === null ? `${row.displayName}, no decided bids` : `${row.displayName}, Won percent ${pctStr}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        padding: '0.35rem 0.5rem',
-        borderBottom: '1px solid #e5e7eb',
-      }}
-    >
-      <div style={{ flex: '0 1 9rem', minWidth: 0, fontSize: '0.8125rem', color: '#374151' }}>{row.displayName}</div>
-      <div style={{ flex: 1, minWidth: 0, position: 'relative', padding: '6px 0' }}>
-        <div
-          aria-hidden
-          style={{
-            height: 10,
-            position: 'relative',
-            borderRadius: 4,
-            border: '1px solid #e5e7eb',
-            overflow: 'visible',
-            opacity: pct === null ? 0.45 : 1,
-            background:
-              'linear-gradient(90deg, #fee2e2 0%, #fee2e2 20%, #fef9c3 20%, #fef9c3 40%, #dcfce7 40%, #dcfce7 60%, #fef9c3 60%, #fef9c3 80%, #fee2e2 80%, #fee2e2 100%)',
-          }}
-        >
-          {pct !== null ? (
-            <div
-              style={{
-                position: 'absolute',
-                left: `${pct}%`,
-                top: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 5,
-                height: 18,
-                background: '#111827',
-                borderRadius: 2,
-                boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
-              }}
-            />
-          ) : null}
-        </div>
-      </div>
-      <div
-        style={{
-          flex: '0 0 auto',
-          minWidth: '3.25rem',
-          textAlign: 'right',
-          fontSize: '0.8125rem',
-          fontWeight: 600,
-          color: '#374151',
-        }}
-      >
-        {pctStr}
-      </div>
-    </div>
-  )
-}
-
-function BidBoardEstimatingHealthWonPctSliders({ stats }: { stats: BidBoardStaffOutcomesByRole }) {
-  if (stats.estimators.length === 0 && stats.accountManagers.length === 0) return null
-  return (
-    <div style={{ margin: '0 0 0.625rem 0', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-      {stats.estimators.length > 0 ? (
-        <>
-          <div
-            style={{
-              padding: '0.375rem 0.75rem',
-              background: '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-            }}
-          >
-            Estimators
-          </div>
-          {stats.estimators.map((row) => (
-            <BidBoardEstimatingHealthWonPctSliderRow key={`est-health-${row.userId}`} row={row} />
-          ))}
-        </>
-      ) : null}
-      {stats.accountManagers.length > 0 ? (
-        <>
-          <div
-            style={{
-              padding: '0.375rem 0.75rem',
-              background: '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
-              borderTop: stats.estimators.length > 0 ? '1px solid #e5e7eb' : undefined,
-              fontSize: '0.875rem',
-              fontWeight: 600,
-            }}
-          >
-            Account managers
-          </div>
-          {stats.accountManagers.map((row) => (
-            <BidBoardEstimatingHealthWonPctSliderRow key={`am-health-${row.userId}`} row={row} />
-          ))}
-        </>
-      ) : null}
-    </div>
-  )
-}
-
-/** Sent bid, outcome not won / lost / started_or_complete — same as Bid Board "Not yet won or lost" (excludes unsent). */
-function isBidBoardPendingNotYetWonOrLost(bid: BidWithBuilder): boolean {
-  if (!bid.bid_date_sent) return false
-  const o = bid.outcome
-  if (o === 'won' || o === 'lost' || o === 'started_or_complete') return false
-  return true
-}
-
-/** Won = won + started_or_complete; decided bids only. Separate tallies per role; rows only if bidCount >= BID_BOARD_STAFF_MIN_BIDS. */
-function computeBidBoardStaffOutcomeStatsByRole(bids: BidWithBuilder[]): BidBoardStaffOutcomesByRole {
-  const estTally = new Map<string, { won: number; lost: number; bidCount: number; notYetWonOrLost: number }>()
-  const amTally = new Map<string, { won: number; lost: number; bidCount: number; notYetWonOrLost: number }>()
-  const estNames = new Map<string, string>()
-  const amNames = new Map<string, string>()
-
-  for (const bid of bids) {
-    const o = bid.outcome
-    const isWonLike = o === 'won' || o === 'started_or_complete'
-    const isLost = o === 'lost'
-    const isPendingNywol = isBidBoardPendingNotYetWonOrLost(bid)
-
-    const eid = bid.estimator_id
-    if (eid) {
-      if (!estTally.has(eid)) estTally.set(eid, { won: 0, lost: 0, bidCount: 0, notYetWonOrLost: 0 })
-      const t = estTally.get(eid)!
-      t.bidCount += 1
-      const n = formatBidStaffDisplayName(bid.estimator)
-      if (n !== '—') estNames.set(eid, n)
-      if (isWonLike) t.won += 1
-      else if (isLost) t.lost += 1
-      else if (isPendingNywol) t.notYetWonOrLost += 1
-    }
-
-    const amid = bid.account_manager_id
-    if (amid) {
-      if (!amTally.has(amid)) amTally.set(amid, { won: 0, lost: 0, bidCount: 0, notYetWonOrLost: 0 })
-      const t = amTally.get(amid)!
-      t.bidCount += 1
-      const n = formatBidStaffDisplayName(bid.account_manager)
-      if (n !== '—') amNames.set(amid, n)
-      if (isWonLike) t.won += 1
-      else if (isLost) t.lost += 1
-      else if (isPendingNywol) t.notYetWonOrLost += 1
-    }
-  }
-
-  for (const uid of estTally.keys()) {
-    if (!estNames.has(uid)) estNames.set(uid, '—')
-  }
-  for (const uid of amTally.keys()) {
-    if (!amNames.has(uid)) amNames.set(uid, '—')
-  }
-
-  const toRows = (
-    tally: Map<string, { won: number; lost: number; bidCount: number; notYetWonOrLost: number }>,
-    names: Map<string, string>
-  ): BidBoardStaffOutcomeRow[] =>
-    sortBidBoardStaffOutcomeRows(
-      [...tally.entries()]
-        .filter(([, v]) => v.bidCount >= BID_BOARD_STAFF_MIN_BIDS)
-        .map(([userId, { won, lost, notYetWonOrLost }]) => ({
-          userId,
-          displayName: names.get(userId) ?? '—',
-          notYetWonOrLost,
-          won,
-          lost,
-        }))
-    )
-
-  return {
-    estimators: toRows(estTally, estNames),
-    accountManagers: toRows(amTally, amNames),
-    estimatorsHadAnyAssignment: estTally.size > 0,
-    accountManagersHadAnyAssignment: amTally.size > 0,
-  }
-}
-
-type StaffOutcomeDrilldownMetric = 'sent' | 'notYetWonOrLost' | 'won' | 'lost'
-type StaffOutcomeDrilldownRole = 'estimator' | 'account_manager'
-
-type StaffOutcomeDrilldownState = {
-  userId: string
-  staffDisplayName: string
-  role: StaffOutcomeDrilldownRole
-  metric: StaffOutcomeDrilldownMetric
-}
-
-function staffOutcomeDrilldownMetricLabel(metric: StaffOutcomeDrilldownMetric): string {
-  switch (metric) {
-    case 'sent':
-      return 'Sent'
-    case 'notYetWonOrLost':
-      return 'Not yet won or lost'
-    case 'won':
-      return 'Won'
-    case 'lost':
-      return 'Lost'
-  }
-}
-
-function staffOutcomeDrilldownRolePhrase(role: StaffOutcomeDrilldownRole): string {
-  return role === 'estimator' ? 'estimator' : 'account manager'
-}
-
-function filterBidsForStaffOutcomeDrilldown(
-  bids: BidWithBuilder[],
-  args: { userId: string; role: StaffOutcomeDrilldownRole; metric: StaffOutcomeDrilldownMetric }
-): BidWithBuilder[] {
-  const { userId, role, metric } = args
-  return bids.filter((bid) => {
-    if (role === 'estimator') {
-      if (bid.estimator_id !== userId) return false
-    } else if (bid.account_manager_id !== userId) {
-      return false
-    }
-    if (metric === 'sent') return Boolean(bid.bid_date_sent)
-    const o = bid.outcome
-    const isWonLike = o === 'won' || o === 'started_or_complete'
-    const isLost = o === 'lost'
-    const isPendingNywol = isBidBoardPendingNotYetWonOrLost(bid)
-    if (metric === 'won') return isWonLike
-    if (metric === 'lost') return isLost
-    return isPendingNywol
-  })
-}
-
-function sortStaffOutcomeDrilldownBids(bids: BidWithBuilder[]): BidWithBuilder[] {
-  return [...bids].sort((a, b) => {
-    const pa = (a.project_name ?? '').toLowerCase()
-    const pb = (b.project_name ?? '').toLowerCase()
-    const c = pa.localeCompare(pb, undefined, { sensitivity: 'base' })
-    if (c !== 0) return c
-    return a.id.localeCompare(b.id)
-  })
-}
-
-function StaffOutcomeDrilldownCountCell({
-  count,
-  userId,
-  displayName,
-  role,
-  metric,
-  onOpen,
-}: {
-  count: number
-  userId: string
-  displayName: string
-  role: StaffOutcomeDrilldownRole
-  metric: StaffOutcomeDrilldownMetric
-  onOpen: (s: StaffOutcomeDrilldownState) => void
-}) {
-  const tdStyle: CSSProperties = { padding: '0.375rem 0.75rem', fontSize: '0.875rem', textAlign: 'right' }
-  if (count <= 0) return <td style={tdStyle}>{count}</td>
-  const metricLabel = staffOutcomeDrilldownMetricLabel(metric)
-  const rolePhrase = staffOutcomeDrilldownRolePhrase(role)
-  return (
-    <td style={tdStyle}>
-      <button
-        type="button"
-        onClick={() => onOpen({ userId, staffDisplayName: displayName, role, metric })}
-        aria-label={`View ${count} bids, ${metricLabel}, ${displayName} as ${rolePhrase}`}
-        style={{
-          padding: 0,
-          margin: 0,
-          border: 'none',
-          background: 'none',
-          color: '#3b82f6',
-          cursor: 'pointer',
-          font: 'inherit',
-          textDecoration: 'underline',
-        }}
-      >
-        {count}
-      </button>
-    </td>
-  )
-}
-
 const BID_DATE_SENT_ATTESTATION_NULLS: Record<
   | 'bid_date_sent_attested_at'
   | 'bid_date_sent_attested_by'
@@ -473,68 +214,7 @@ const BID_DATE_SENT_ATTESTATION_NULLS: Record<
   bid_date_sent_ack_honesty_by: null,
 }
 
-type RfiFormData = {
-  bidSubmittedDate: string
-  submittedTo: string
-  companyName: string
-  contactPerson: string
-  phoneEmail: string
-  responseRequestDate: string
-  detailedDescription: string
-  impactStatement: string
-  checklistExactLocation?: boolean
-  checklistWhatIssue?: boolean
-  checklistReferenceDocs?: boolean
-  checklistWhyUnclear?: boolean
-  checklistProposedSolution?: boolean
-  checklistImpactStatement?: boolean
-}
-
-type ChangeOrderFormData = {
-  bidSubmittedDate: string
-  submittedTo: string
-  companyName: string
-  contactPerson: string
-  phoneEmail: string
-  responseRequestDate: string
-  detailedDescriptionOfChange: string
-  reasonForChange: string
-  impactOnCost: string
-  impactOnSchedule: string
-  checklistDetailedDesc?: boolean
-  checklistExactWork?: boolean
-  checklistReferences?: boolean
-  checklistSupportingDetails?: boolean
-  checklistReasonForChange?: boolean
-  checklistCostBreakdown?: boolean
-  checklistNetChange?: boolean
-  checklistUpdatedTotal?: boolean
-  checklistScheduleDuration?: boolean
-  checklistRevisedDate?: boolean
-  checklistScheduleJustification?: boolean
-}
-
-type LienReleaseFormData = {
-  invoiceAmount: string
-  bidAmount: string
-  invoicesToDate: string
-  cc: string
-  companyName: string
-  companyAddress: string
-  companyPhone: string
-  companyEmail: string
-  invoiceDate: string
-  invoiceNumber: string
-  descriptionOfWork: string
-  conditionalWaiver: string
-  paymentTerms: string
-  lienStatusPhone: string
-}
-
-type TakeoffStage = 'rough_in' | 'top_out' | 'trim_set'
 type TakeoffMapping = { id: string; countRowId: string; templateId: string; stage: TakeoffStage; quantity: number; isSaved: boolean }
-
-type MaterialsModel = 'exact' | 'rough'
 
 type TakeoffRoughPartLineRow = {
   id: string
@@ -550,38 +230,8 @@ type TakeoffRoughPartLineRow = {
   isSaved: boolean
 }
 
-function clampRoughQtyFromDraft(draft: string): number {
-  const t = draft.trim()
-  if (t === '' || t === '.') return 0.0001
-  const n = parseFloat(t)
-  if (Number.isNaN(n)) return 0.0001
-  return Math.max(0.0001, n)
-}
-
-function roughQtyToDraftString(q: number): string {
-  if (!Number.isFinite(q) || q <= 0) return '0.0001'
-  return String(q)
-}
-
-function normalizeMaterialsModel(v: string | null | undefined): MaterialsModel {
-  return v === 'rough' ? 'rough' : 'exact'
-}
-
-/** Takeoffs: single-column label for fixture + count row (e.g. `(5) Toilet`). */
-function takeoffFixtureCountLabel(row: Pick<BidCountRow, 'fixture' | 'count'>): string {
-  const name = (row.fixture ?? '').trim()
-  const n = Number(row.count)
-  if (name) return `(${n}) ${name}`
-  return `(${n})`
-}
-
-function sumRoughLinesPreTax(lines: Array<{ quantity: number; unit_price: number }>): number {
-  return lines.reduce((s, r) => s + Number(r.quantity) * Number(r.unit_price), 0)
-}
 type DraftPO = { id: string; name: string }
 type CostEstimatePO = { id: string; name: string; stage: string | null }
-
-const STAGE_LABELS: Record<TakeoffStage, string> = { rough_in: 'Rough In', top_out: 'Top Out', trim_set: 'Trim Set' }
 
 interface ServiceType {
   id: string
@@ -615,391 +265,8 @@ type PriceBookEntryWithFixture = PriceBookEntry & {
   fixture_types?: { name: string } | null 
 }
 
-function extractContactInfo(ci: Json | null): { phone: string; email: string } {
-  if (ci == null) return { phone: '', email: '' }
-  if (typeof ci === 'object' && ci !== null) {
-    const obj = ci as Record<string, unknown>
-    return {
-      phone: typeof obj.phone === 'string' ? obj.phone : '',
-      email: typeof obj.email === 'string' ? obj.email : '',
-    }
-  }
-  return { phone: '', email: '' }
-}
-
-function formatAddressWithoutZip(address: string | null): string {
-  if (!address) return ''
-  const parts = address.split(',')
-  if (parts.length === 0) return address
-
-  const lastIndex = parts.length - 1
-  const lastPart = parts[lastIndex]?.trim()
-  if (!lastPart) return address
-  
-  const tokens = lastPart.split(/\s+/)
-  const lastToken = tokens[tokens.length - 1]
-  if (!lastToken) return address
-
-  // If the last token is mostly numeric (zip-like), drop it
-  if (/^\d{3,}$/.test(lastToken)) {
-    tokens.pop()
-    parts[lastIndex] = tokens.join(' ')
-    return parts.map((p) => p.trim()).filter(Boolean).join(', ')
-  }
-
-  return address
-}
-
-const tabStyle = (active: boolean) => ({
-  padding: '0.5rem 0.6rem',
-  border: 'none',
-  background: 'none',
-  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? '#3b82f6' : '#6b7280',
-  fontWeight: active ? 600 : 400,
-  cursor: 'pointer' as const,
-  fontSize: '0.9375rem',
-})
-
-const HIGHLIGHTED_TABS = ['counts', 'pricing', 'cover-letter'] as const
-const SAFETY_ORANGE = '#FF6600' // ANSI/OSHA safety orange
-const SAFETY_ORANGE_BORDER = '#CC5200'
-
-function bidsTabStyle(active: boolean, tabId: string) {
-  const base = tabStyle(active)
-  if (HIGHLIGHTED_TABS.includes(tabId as (typeof HIGHLIGHTED_TABS)[number])) {
-    return { ...base, fontWeight: 600, color: SAFETY_ORANGE, borderBottom: active ? '2px solid #FF6600' : '2px solid transparent' }
-  }
-  return base
-}
-
-function formatTimeSinceLastContact(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso).getTime()
-  const now = Date.now()
-  const sec = Math.floor((now - d) / 1000)
-  if (sec < 60) return 'Just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min} minute${min !== 1 ? 's' : ''} ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} hour${hr !== 1 ? 's' : ''} ago`
-  const day = Math.floor(hr / 24)
-  if (day < 7) return `${day} day${day !== 1 ? 's' : ''} ago`
-  const week = Math.floor(day / 7)
-  if (week < 4) return `${week} week${week !== 1 ? 's' : ''} ago`
-  const mo = Math.floor(day / 30)
-  if (mo < 12) return `${mo} month${mo !== 1 ? 's' : ''} ago`
-  return `${Math.floor(mo / 12)} year${Math.floor(mo / 12) !== 1 ? 's' : ''} ago`
-}
-
-function formatShortDate(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso)
-  return `${d.toLocaleDateString('en-US', { weekday: 'short' })} ${d.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' })}`
-}
-
-function formatDateYYMMDD(dateStr: string | null): string {
-  if (!dateStr) return '—'
-  const d = new Date(dateStr + 'T12:00:00')
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  
-  // Calculate days until/since
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  d.setHours(0, 0, 0, 0)
-  const diffMs = d.getTime() - today.getTime()
-  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000))
-  
-  // Format with brackets
-  const formattedDate = `${m}/${day}`
-  if (diffDays < 0) return `${formattedDate} [+${Math.abs(diffDays)}]`
-  return `${formattedDate} [-${diffDays}]`
-}
-
-function formatDateYYMMDDParts(dateStr: string | null): { date: string; bracket: string } | null {
-  if (!dateStr) return null
-  const d = new Date(dateStr + 'T12:00:00')
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  d.setHours(0, 0, 0, 0)
-  const diffMs = d.getTime() - today.getTime()
-  const diffDays = Math.round(diffMs / (24 * 60 * 60 * 1000))
-  
-  const formattedDate = `${m}/${day}`
-  const bracket = diffDays < 0 ? `[+${Math.abs(diffDays)}]` : `[-${diffDays}]`
-  
-  return { date: formattedDate, bracket }
-}
-
-function formatBidNameWithValue(bid: BidWithBuilder): string {
-  const baseName = bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)
-  
-  if (bid.bid_value != null && bid.bid_value !== 0) {
-    const valueInThousands = Number(bid.bid_value) / 1000
-    const formattedValue = valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)
-    return `${baseName} (${formattedValue})`
-  }
-  
-  return baseName
-}
-
-function formatDesignDrawingPlanDate(dateStr: string | null): string {
-  if (!dateStr || !dateStr.trim()) return ''
-  const d = new Date(dateStr.trim() + 'T12:00:00')
-  if (isNaN(d.getTime())) return ''
-  const y = d.getFullYear() % 100
-  const m = d.getMonth() + 1
-  const day = d.getDate()
-  return `${m}-${day}-${String(y).padStart(2, '0')}`
-}
-
-function formatDesignDrawingPlanDateLabel(dateStr: string | null): string {
-  if (!dateStr || !dateStr.trim()) return ''
-  const d = new Date(dateStr.trim() + 'T12:00:00')
-  if (isNaN(d.getTime())) return ''
-  const y = d.getFullYear() % 100
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${m}/${day}/${String(y).padStart(2, '0')}`
-}
-
-function formatCompactCurrency(n: number | null): string {
-  if (n == null) return '—'
-  const k = n / 1000
-  if (k % 1 === 0) return `$${k}k`
-  return `$${k.toFixed(1)}k`
-}
-
-function formatBidValueShort(n: number | null): string {
-  if (n == null) return '—'
-  const valueInThousands = n / 1000
-  return valueInThousands >= 10 ? valueInThousands.toFixed(0) : valueInThousands.toFixed(1)
-}
-
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function bidDisplayName(b: Bid): string {
-  return b.project_name || ''
-}
-
-/** Tab header when a bid is selected: `{prefix}{n} project name` if `bid_number` is set, else project name or `Bid`. */
-function bidWorkflowTabHeading(b: Bid, prefixMap: LedgerPrefixMap): string {
-  const name = bidDisplayName(b).trim()
-  const label = name || 'Bid'
-  const num = b.bid_number?.trim()
-  if (num) return `${formatBidLedgerNumberLabel(resolveBidLedgerPrefix(b.service_type_id, prefixMap), num)} ${label}`
-  return label
-}
-
-type BidWorkflowTabTitleWithPreviewProps = {
-  bid: Bid
-  previewEnabled: boolean
-  onOpenPreview: () => void
-  h2Style?: CSSProperties
-}
-
-function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPreview, h2Style }: BidWorkflowTabTitleWithPreviewProps) {
-  const prefixMap = useLedgerPrefixMap()
-  const mergedH2Style: CSSProperties = h2Style ?? { margin: 0 }
-  const name = bidDisplayName(bid).trim()
-  const label = name || 'Bid'
-  const num = bid.bid_number?.trim()
-  if (!previewEnabled || !num) {
-    return <h2 style={mergedH2Style}>{bidWorkflowTabHeading(bid, prefixMap)}</h2>
-  }
-  const numLabel = formatBidLedgerNumberLabel(resolveBidLedgerPrefix(bid.service_type_id, prefixMap), num)
-  const previewA11y = `Preview bid ${numLabel}`
-  return (
-    <h2 style={mergedH2Style}>
-      <button
-        type="button"
-        onClick={onOpenPreview}
-        title={previewA11y}
-        aria-label={previewA11y}
-        style={{
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          margin: 0,
-          font: 'inherit',
-          color: '#3b82f6',
-          cursor: 'pointer',
-          textDecoration: 'underline',
-        }}
-      >
-        {numLabel}
-      </button>
-      {' '}
-      {label}
-    </h2>
-  )
-}
-
-/** Bid Board “Bid #” cell: trade prefix (all letters) smaller than the numeric part. */
-function BidBoardBidNumberMark({ bidPrefix, bidNumber }: { bidPrefix: string; bidNumber: string }) {
-  const pref = (bidPrefix || 'B').trim() || 'B'
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: '0.05em', font: 'inherit' }}>
-      <span style={{ fontSize: '0.7em', lineHeight: 1, fontWeight: 600 }}>{pref}</span>
-      <span>{bidNumber}</span>
-    </span>
-  )
-}
-
-/** Project name only — used for destructive confirm typing (Counts clear-all). */
-function countsConfirmLabel(bid: BidWithBuilder | null): string {
-  const t = bid?.project_name?.trim()
-  return t || 'Bid'
-}
-
-function marginFlag(marginPercent: number | null): 'red' | 'yellow' | 'green' | null {
-  if (marginPercent == null) return null
-  if (marginPercent < 20) return 'red'
-  if (marginPercent < 40) return 'yellow'
-  return 'green'
-}
-
-/** Convert amount (e.g. 31420.50) to "Thirty One Thousand Four Hundred Twenty 50/100 Dollars" */
-function numberToWords(amount: number): string {
-  const whole = Math.floor(Math.abs(amount))
-  const cents = Math.round((Math.abs(amount) - whole) * 100)
-  const centsStr = String(cents).padStart(2, '0')
-  const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
-  const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
-  function toHundreds(n: number): string {
-    if (n === 0) return ''
-    if (n < 20) return ONES[n] ?? ''
-    if (n < 100) return (TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + (ONES[n % 10] ?? '') : '')).trim()
-    return ((ONES[Math.floor(n / 100)] ?? '') + ' Hundred' + (n % 100 ? ' ' + toHundreds(n % 100) : '')).trim()
-  }
-  function toWords(n: number): string {
-    if (n === 0) return 'Zero'
-    const thousands = Math.floor(n / 1000)
-    const rest = n % 1000
-    const th = thousands ? toHundreds(thousands) + ' Thousand' : ''
-    const r = rest ? toHundreds(rest) : ''
-    return (th + (th && r ? ' ' : '') + r).trim()
-  }
-  const words = toWords(whole)
-  return `${words} ${centsStr}/100 Dollars`
-}
-
-const DEFAULT_TERMS_AND_WARRANTY =
-  'All work to be completed in a workmanlike manner in accordance with uniform code and/or specifications; workmanship warranty of one year for new construction projects considering substantial completion date. All material is guaranteed to be as specified; warranty by manufacturer, labor not included. No liability, no warranty on customer provided materials. All agreements contingent upon strikes, accidents or delays beyond our control. This estimate is subject to acceptance within thirty (30) days and is void thereafter at the option of Click Plumbing and Electrical. Any alteration or deviation from above specifications involving extra cost, including rock excavation and removal or haul-off of spoils or debris will become an extra charge over and above the estimate. Anything outside the scope of work described in this estimate, including any additional trips or visits beyond the standard rough-in, top-out, and trim phases, will be charged as a change order and will include a trip charge. Additionally, any trips or delays caused by builder, general contractor error, scheduling issues, or failure to provide timely access will be charged as a trip charge.'
-
-const DEFAULT_EXCLUSIONS = `Concrete cutting, removal, and/or pour back is excluded from this proposal.
-This proposal excludes all impact fees.
-This proposal excludes any work not specifically described within.
-This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.`
-
 const COVER_LETTER_INCLUSIONS_PLACEHOLDER = 'Permits'
 
-const LIEN_RELEASE_DEFAULT_COMPANY_ADDRESS = '5501 Balcones Dr Ste A141, Austin, Texas 78731'
-const LIEN_RELEASE_DEFAULT_LIEN_PHONE = '+1 512 360 0599'
-const LIEN_RELEASE_DEFAULT_COMPANY_PHONE = '+1 512 360 0599'
-const LIEN_RELEASE_DEFAULT_COMPANY_EMAIL = 'office@clickplumbing.com'
-const LIEN_RELEASE_DEFAULT_CONDITIONAL_WAIVER = 'CONDITIONAL WAIVER AND RELEASE ONLY upon receipt and collection of good funds in the amount of ${{finalInvoice}} payable to Click Plumbing and Electrical, the undersigned hereby waives and releases any and all mechanic\'s lien rights, payment bond claims, or claims against the project or property described above that have arisen or may arise through the date of this invoice.\n\nThis waiver and release is expressly conditional and shall be void and of no effect if the ${{invoicesToDate}} payment is not actually received and collected in full. Click Plumbing and Electrical expressly reserves all lien, bond, and contract rights until payment is received and clears.'
-const LIEN_RELEASE_DEFAULT_PAYMENT_TERMS = 'Payment of ${{finalInvoice}} is due immediately upon receipt of this invoice. Pursuant to Texas Property Code Chapter 28 (Prompt Payment Act), if payment in full is not received within 45 days of the invoice date, interest shall accrue at the rate of one and one-half percent (1.5%) per month (18% per annum) on the unpaid balance beginning on day 46, and {{ownerName}} shall also be liable for all reasonable attorney\'s fees, collection costs, and court costs incurred by Click Plumbing and Electrical to collect the overdue amount.'
-
-/** Parse amount string and return formatted currency (e.g. "17242.50" -> "17,242.50") */
-function formatAmountFromString(s: string): string {
-  const n = parseFloat(String(s).replace(/,/g, ''))
-  return isNaN(n) ? '' : formatCurrency(n)
-}
-
-/** Service-type word for cover letter (plumbing/electrical/HVAC). "Click Plumbing and Electrical" is never changed. */
-function serviceTypeWordForCoverLetter(serviceTypeName: string): string {
-  const name = (serviceTypeName ?? 'Plumbing').toLowerCase()
-  if (name === 'electrical') return 'electrical'
-  if (name === 'hvac') return 'HVAC'
-  return 'plumbing'
-}
-
-/** Split address on first comma into [street, city/state/zip] for combined document. */
-function addressLines(addr: string): string[] {
-  const trimmed = (addr ?? '').trim()
-  if (!trimmed) return ['']
-  const commaIdx = trimmed.indexOf(',')
-  if (commaIdx < 0) return [trimmed]
-  return [trimmed.slice(0, commaIdx).trim(), trimmed.slice(commaIdx + 1).trim()]
-}
-
-function escapeHtml(s: string): string {
-  return (s ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
-function buildCoverLetterHtml(
-  customerName: string,
-  customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  revenueWords: string,
-  revenueNumber: string,
-  fixtureRows: { fixture: string; count: number }[],
-  inclusions: string,
-  exclusions: string,
-  terms: string,
-  designDrawingPlanDateFormatted: string | null,
-  serviceTypeName: string,
-  includeSignature = true,
-  includeFixturesPerPlan = true
-): string {
-  const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
-  const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
-  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : []
-  const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
-  const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
-  const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
-  const fixtureBlock =
-    fixtureRows.length > 0 && includeFixturesPerPlan
-      ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
-      : ''
-  const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
-  const amountBold = `${revenueWords} (${revenueNumber})`
-  const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
-  const revenueLinePrefix = `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: `
-  const br = '<br/>'
-  const br2 = br + br
-  // Single <p> + <br/> / <br/><br/> so Google Docs paste gets line breaks inside one paragraph (see clipboard full HTML doc).
-  const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
-  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
-  const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
-  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr + br + br + (escapeHtml(revenueLinePrefix) + '<strong>' + escapeHtml(amountBold) + '</strong>')
-  const exclusionsContent = exclusions.trim()
-    ? exclusionLines.join('\n')
-    : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n')
-  const termsContent = terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY
-
-  let html = customerBlock + br2 + projectBlock
-  if (designDrawingPlanDateFormatted) {
-    html += br2 + '<strong>Design Drawings Plan Date: ' + escapeHtml(designDrawingPlanDateFormatted) + '</strong>'
-  }
-  html += br2 + '<strong>Inclusions:</strong>' + br + escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br)
-  html += br2 + '<strong>Exclusions and Scope:</strong>' + br + escapeHtml(exclusionsContent).replace(/\n/g, br)
-  html += br2 + escapeHtml(termsContent).replace(/\n/g, br)
-  html += br2 + escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.')
-  html += br + escapeHtml('Respectfully submitted by Click Plumbing and Electrical')
-  if (includeSignature) {
-    html += br2 + escapeHtml('_______________________________')
-    html += br + escapeHtml('The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.')
-    html += br2 + '<strong>' + escapeHtml('Acceptance of estimate') + '</strong>'
-    html += br + escapeHtml('General Contractor / Builder Signature:')
-    html += br2 + escapeHtml('____________________________________')
-    html += br2 + escapeHtml('Date: ____________________________________')
-  }
-  return '<p style="margin:0;line-height:1;white-space:pre-wrap">' + html + '</p>'
-}
 
 type EvaluateChecklistItem = {
   id: string
@@ -1055,326 +322,6 @@ const evaluateChecklist: EvaluateChecklistItem[] = [
   },
 ]
 
-function buildCoverLetterText(
-  customerName: string,
-  customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  revenueWords: string,
-  revenueNumber: string,
-  fixtureRows: { fixture: string; count: number }[],
-  inclusions: string,
-  exclusions: string,
-  terms: string,
-  designDrawingPlanDateFormatted: string | null,
-  serviceTypeName: string,
-  includeSignature = true,
-  includeFixturesPerPlan = true
-): string {
-  const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
-  const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
-  const inclusionLinesToUse = inclusions.trim() ? inclusionLines : []
-  const exclusionIndent = '     ' // 5 preceding spaces for Exclusions
-  const exclusionLines = exclusions.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim())
-  const termsLines = terms.trim().split(/\n/).filter(Boolean).map((l) => '• ' + l.trim())
-  const fixtureBlock =
-    fixtureRows.length > 0 && includeFixturesPerPlan
-      ? '     • Fixtures provided and installed by us per plan:\n            ' + fixtureRows.map((r) => '• [' + r.count + '] ' + r.fixture).join('\n            ')
-      : ''
-  const inclusionsBlock = [fixtureBlock, ...inclusionLinesToUse].filter(Boolean).join('\n')
-  const stWord = serviceTypeWordForCoverLetter(serviceTypeName)
-  const lines: string[] = [
-    customerName,
-    ...addressLines(customerAddress),
-    '',
-    projectName,
-    ...addressLines(projectAddress),
-    '',
-    `As per ${stWord} plans and specifications, we propose to do the ${stWord} in the amount of: ${revenueWords} (${revenueNumber})`,
-    '',
-    ...(designDrawingPlanDateFormatted ? ['Design Drawings Plan Date: ' + designDrawingPlanDateFormatted, ''] : []),
-    'Inclusions:',
-    inclusionsBlock || '(none)',
-    '',
-    'Exclusions and Scope:',
-    exclusions.trim() ? exclusionLines.join('\n') : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n'),
-    '',
-    terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY,
-    '',
-    'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.',
-    'Respectfully submitted by Click Plumbing and Electrical',
-    '',
-    ...(includeSignature ? [
-      '_______________________________',
-      'The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.',
-      '',
-      'Acceptance of estimate',
-      'General Contractor / Builder Signature:',
-      '',
-      '____________________________________',
-      '',
-      'Date: ____________________________________',
-    ] : []),
-  ]
-  return lines.join('\n')
-}
-
-function buildRfiHtml(
-  customerName: string,
-  customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  form: RfiFormData
-): string {
-  const br = '<br/>'
-  const pStyle = 'margin: 0 0 0.5em 0'
-  const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
-  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
-  const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
-  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr
-  const paragraphs: string[] = [
-    customerBlock + br + br + projectBlock,
-    '',
-    'Bid was submitted: ' + escapeHtml(form.bidSubmittedDate || '—') + br + 'The bid was submitted to ' + escapeHtml(form.submittedTo || '—'),
-    '',
-    'Response requested by ' + escapeHtml(form.responseRequestDate || '—'),
-    '',
-    '<strong>Question/Issue</strong>',
-    escapeHtml(form.detailedDescription || '').replace(/\n/g, br) || '—',
-    '',
-    '<strong>Impact</strong>',
-    escapeHtml(form.impactStatement || '').replace(/\n/g, br) || '—',
-    '',
-    'From ' + escapeHtml(form.companyName || '—') + br + escapeHtml(form.contactPerson || '—') + br + escapeHtml(form.phoneEmail || '—'),
-  ]
-  return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
-}
-
-function buildRfiText(
-  customerName: string,
-  customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  form: RfiFormData
-): string {
-  const lines: string[] = [
-    customerName,
-    ...addressLines(customerAddress),
-    '',
-    projectName,
-    ...addressLines(projectAddress),
-    '',
-    'Bid was submitted: ' + (form.bidSubmittedDate || '—') + '\nThe bid was submitted to ' + (form.submittedTo || '—'),
-    '',
-    'Response requested by ' + (form.responseRequestDate || '—'),
-    '',
-    'Question/Issue',
-    form.detailedDescription || '—',
-    '',
-    'Impact',
-    form.impactStatement || '—',
-    '',
-    'From ' + (form.companyName || '—') + '\n' + (form.contactPerson || '—') + '\n' + (form.phoneEmail || '—'),
-  ]
-  return lines.join('\n')
-}
-
-function buildChangeOrderHtml(
-  customerName: string,
-  customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  form: ChangeOrderFormData
-): string {
-  const br = '<br/>'
-  const pStyle = 'margin: 0 0 0.5em 0'
-  const customerAddr = addressLines(customerAddress).map((l) => escapeHtml(l)).join(br)
-  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
-  const customerBlock = '<strong>' + escapeHtml(customerName) + '</strong><br/>' + customerAddr
-  const projectBlock = '<strong>' + escapeHtml(projectName) + '</strong><br/>' + projectAddr
-  const paragraphs: string[] = [
-    customerBlock + br + br + projectBlock,
-    '',
-    'Bid was submitted: ' + escapeHtml(form.bidSubmittedDate || '—') + br + 'The bid was submitted to ' + escapeHtml(form.submittedTo || '—'),
-    '',
-    'Response requested by ' + escapeHtml(form.responseRequestDate || '—'),
-    '',
-    '<strong>Detailed Description of the Change</strong>',
-    escapeHtml(form.detailedDescriptionOfChange || '').replace(/\n/g, br) || '—',
-    '',
-    '<strong>Reason for the Change</strong>',
-    escapeHtml(form.reasonForChange || '').replace(/\n/g, br) || '—',
-    '',
-    '<strong>Impact on Cost (Contract Sum Adjustment)</strong>',
-    escapeHtml(form.impactOnCost || '').replace(/\n/g, br) || '—',
-    '',
-    '<strong>Impact on Schedule (Contract Time Adjustment)</strong>',
-    escapeHtml(form.impactOnSchedule || '').replace(/\n/g, br) || '—',
-    '',
-    'From ' + escapeHtml(form.companyName || '—') + br + escapeHtml(form.contactPerson || '—') + br + escapeHtml(form.phoneEmail || '—'),
-  ]
-  return '<div style="white-space: pre-wrap">' + paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('') + '</div>'
-}
-
-function buildChangeOrderText(
-  customerName: string,
-  customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  form: ChangeOrderFormData
-): string {
-  const lines: string[] = [
-    customerName,
-    ...addressLines(customerAddress),
-    '',
-    projectName,
-    ...addressLines(projectAddress),
-    '',
-    'Bid was submitted: ' + (form.bidSubmittedDate || '—') + '\nThe bid was submitted to ' + (form.submittedTo || '—'),
-    '',
-    'Response requested by ' + (form.responseRequestDate || '—'),
-    '',
-    'Detailed Description of the Change',
-    form.detailedDescriptionOfChange || '—',
-    '',
-    'Reason for the Change',
-    form.reasonForChange || '—',
-    '',
-    'Impact on Cost (Contract Sum Adjustment)',
-    form.impactOnCost || '—',
-    '',
-    'Impact on Schedule (Contract Time Adjustment)',
-    form.impactOnSchedule || '—',
-    '',
-    'From ' + (form.companyName || '—') + '\n' + (form.contactPerson || '—') + '\n' + (form.phoneEmail || '—'),
-  ]
-  return lines.join('\n')
-}
-
-function buildLienReleaseHtml(
-  customerName: string,
-  _customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  form: LienReleaseFormData,
-  ownerName: string
-): string {
-  const br = '<br/>'
-  const pStyle = 'margin: 0 0 0.5em 0'
-
-  const invoiceAmtFmt = formatAmountFromString(form.invoiceAmount)
-  const invToDateFmt = formatAmountFromString(form.invoicesToDate)
-  const amountDisplay = invoiceAmtFmt || '—'
-  const invToDateDisplay = invToDateFmt || '—'
-
-  const boldAmount = '<strong>$' + amountDisplay + '</strong>'
-  const boldInvToDate = '<strong>$' + invToDateDisplay + '</strong>'
-  let conditionalWaiver = escapeHtml(form.conditionalWaiver || '')
-    .replace(/\$\{\{finalInvoice\}\}/g, boldAmount)
-    .replace(/\$\{\{invoicesToDate\}\}/g, boldInvToDate)
-    .replace(/\{\{finalInvoice\}\}/g, boldAmount)
-    .replace(/\{\{invoicesToDate\}\}/g, boldInvToDate)
-  conditionalWaiver = conditionalWaiver.replace(/\n/g, br)
-  conditionalWaiver = conditionalWaiver
-    .replace(/(CONDITIONAL WAIVER AND RELEASE ONLY)( upon)/g, '<strong>$1</strong>$2')
-    .replace(/(expressly )(conditional)( and shall be )/g, '$1<strong>$2</strong>$3')
-    .replace(/(shall be )(void and of no effect)( if)/g, '$1<strong>$2</strong>$3')
-    .replace(/(within )(45 days)( of)/g, '$1<strong>$2</strong>$3')
-    .replace(/(at the rate of )(one and one-half percent \(1\.5\%\) per month)( \(18% per annum\))/g, '$1<strong>$2</strong>$3')
-
-  let paymentTerms = escapeHtml(form.paymentTerms || '')
-    .replace(/\$\{\{finalInvoice\}\}/g, boldAmount)
-    .replace(/\{\{finalInvoice\}\}/g, boldAmount)
-    .replace(/\{\{ownerName\}\}/g, ownerName || '—')
-  paymentTerms = paymentTerms.replace(/\n/g, br)
-
-  const projectAddr = addressLines(projectAddress).map((l) => escapeHtml(l)).join(br)
-  const claimantAddr = addressLines(form.companyAddress).map((l) => escapeHtml(l)).join(br)
-
-  const projectBlock = '<strong>Project:</strong>' + br + escapeHtml(projectName || '—') + br + projectAddr
-  const ownerBlock = '<strong>Owner / Contracting Party:</strong>' + br + escapeHtml(customerName || '—')
-
-  const claimantLines: string[] = [escapeHtml(form.companyName || '—'), claimantAddr]
-  if (form.companyPhone) claimantLines.push('Phone: ' + escapeHtml(form.companyPhone))
-  if (form.companyEmail) claimantLines.push('Email: ' + escapeHtml(form.companyEmail))
-  const claimantBlock = '<strong>Claimant (Releasing Party):</strong>' + br + claimantLines.join(br)
-
-  const invoiceDateStr = form.invoiceDate ? new Date(form.invoiceDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
-  const invoiceBlock = '<strong>Invoice / Application for Payment:</strong>' + br + 'Invoice Date: ' + escapeHtml(invoiceDateStr) + br + 'Invoice Number: ' + escapeHtml(form.invoiceNumber || '—') + br + 'Amount of this Application: ' + boldAmount
-
-  const lienPhone = form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE
-  const lienBlock = '<strong>Lien Status Verification</strong>' + br + 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: <strong>' + escapeHtml(lienPhone) + '</strong>'
-
-  const sep = br + br
-  let mainContent = projectBlock + sep + ownerBlock
-  if ((form.cc || '').trim()) mainContent += sep + 'CC: ' + escapeHtml(form.cc.trim())
-  mainContent += sep + claimantBlock + sep + invoiceBlock
-  if ((form.descriptionOfWork || '').trim()) mainContent += sep + 'Description of Work / Period Covered:' + br + escapeHtml(form.descriptionOfWork.trim()).replace(/\n/g, br)
-  mainContent += sep + conditionalWaiver + br + '<div style="text-align: center;"><strong>Payment Terms & Late Payment Consequences:</strong></div>' + paymentTerms + br + lienBlock
-
-  const paragraphs: string[] = []
-  const summaryLines: string[] = []
-  if (invoiceAmtFmt) summaryLines.push(invoiceAmtFmt + ' - FINAL INVOICE')
-  if (invToDateFmt) summaryLines.push(invToDateFmt + ' - Invoices to date')
-  if (summaryLines.length > 0) {
-    paragraphs.push(summaryLines.join(br))
-    paragraphs.push('')
-  }
-  paragraphs.push(mainContent)
-
-  const headerLines = [
-    '<strong>' + escapeHtml('CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT') + '</strong>',
-    escapeHtml('(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)'),
-    '<strong>' + escapeHtml('Effective ONLY Upon Actual Receipt and Collection of Payment') + '</strong>',
-  ]
-  const headerHtml = '<p style="text-align: center; font-family: inherit; font-size: 0.875rem; margin: 0 0 0.5em 0; padding: 0; line-height: 1.15;">' + headerLines.join(br) + '</p>'
-  const contentHtml = paragraphs.map((p) => (p ? '<p style="' + pStyle + '">' + p + '</p>' : '<p style="' + pStyle + '">&nbsp;</p>')).join('')
-  return headerHtml + '<div style="white-space: pre-wrap; font-family: inherit; font-size: 0.875rem;">' + contentHtml + '</div>'
-}
-
-function buildLienReleaseText(
-  customerName: string,
-  _customerAddress: string,
-  projectName: string,
-  projectAddress: string,
-  form: LienReleaseFormData,
-  ownerName: string
-): string {
-  const invoiceAmtFmt = formatAmountFromString(form.invoiceAmount)
-  const invToDateFmt = formatAmountFromString(form.invoicesToDate)
-
-  const conditionalWaiver = (form.conditionalWaiver || '')
-    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
-    .replace(/\{\{invoicesToDate\}\}/g, invToDateFmt || '—')
-  const paymentTerms = (form.paymentTerms || '')
-    .replace(/\{\{finalInvoice\}\}/g, invoiceAmtFmt || '—')
-    .replace(/\{\{ownerName\}\}/g, ownerName || '—')
-
-  const headerLines = [
-    'CONDITIONAL WAIVER AND RELEASE ON PROGRESS PAYMENT',
-    '(Texas Property Code § 53.284(c) – Conditional Waiver and Release on Progress Payment)',
-    'Effective ONLY Upon Actual Receipt and Collection of Payment',
-  ]
-  const headerText = headerLines.join('\n')
-  const sep = '\n\n'
-  const lines: string[] = [headerText]
-  if (invoiceAmtFmt) lines.push(invoiceAmtFmt + ' - FINAL INVOICE')
-  if (invToDateFmt) lines.push(invToDateFmt + ' - Invoices to date')
-  if (lines.length > 0) lines.push('')
-  const projectSection = ['Project:', projectName || '—', ...addressLines(projectAddress)].join('\n')
-  const ownerSection = ['Owner / Contracting Party:', customerName || '—'].join('\n')
-  const claimantSection = ['Claimant (Releasing Party):', form.companyName || '—', ...addressLines(form.companyAddress), ...(form.companyPhone ? ['Phone: ' + form.companyPhone] : []), ...(form.companyEmail ? ['Email: ' + form.companyEmail] : [])].join('\n')
-  const invoiceDateStr = form.invoiceDate ? new Date(form.invoiceDate + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'
-  const invoiceSection = ['Invoice / Application for Payment:', 'Invoice Date: ' + invoiceDateStr, 'Invoice Number: ' + (form.invoiceNumber || '—'), 'Amount of this Application: $' + (invoiceAmtFmt || '—')].join('\n')
-  let body = projectSection + sep + ownerSection
-  if ((form.cc || '').trim()) body += sep + 'CC: ' + (form.cc || '').trim()
-  body += sep + claimantSection + sep + invoiceSection
-  if ((form.descriptionOfWork || '').trim()) body += sep + 'Description of Work / Period Covered:' + '\n' + form.descriptionOfWork.trim()
-  const lienStatusText = 'Lien Status Verification' + '\n' + 'Current status of any lien filings or pencil-copy documentation may be verified at any time by calling: ' + (form.lienStatusPhone || LIEN_RELEASE_DEFAULT_LIEN_PHONE)
-  body += sep + conditionalWaiver + '\n' + 'Payment Terms & Late Payment Consequences:' + '\n' + paymentTerms + '\n' + lienStatusText
-  return lines.join('\n') + (lines.length > 0 ? '\n\n' : '') + body
-}
-
 export default function Bids() {
   const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
@@ -1390,7 +337,7 @@ export default function Bids() {
   const [myRole, setMyRole] = useState<UserRole | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'cost-estimate' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
+  const [activeTab, setActiveTab] = useState<'bid-board' | 'builder-review' | 'working' | 'bid-costs' | 'estimators' | 'counts' | 'takeoffs' | 'labor' | 'pricing' | 'cover-letter' | 'submission-followup' | 'rfi' | 'change-order' | 'lien-release'>('bid-board')
   
   // Service Types state
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
@@ -1790,7 +737,7 @@ export default function Bids() {
   const [materialsModelSwitchModal, setMaterialsModelSwitchModal] = useState<{
     open: boolean
     next: MaterialsModel | null
-    sourceTab: 'takeoffs' | 'cost-estimate' | 'pricing' | null
+    sourceTab: 'takeoffs' | 'labor' | 'pricing' | null
   }>({ open: false, next: null, sourceTab: null })
   const [materialsModelBusy, setMaterialsModelBusy] = useState(false)
   const [materialTemplates, setMaterialTemplates] = useState<MaterialTemplateWithAssemblyType[]>([])
@@ -1910,7 +857,7 @@ export default function Bids() {
   const [editTemplateNewItemTemplateDropdownOpen, setEditTemplateNewItemTemplateDropdownOpen] = useState(false)
   const [editTemplateAddingItem, setEditTemplateAddingItem] = useState(false)
 
-  // Cost Estimate tab
+  // Labor tab
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
   const [selectedBidForCostEstimate, setSelectedBidForCostEstimate] = useState<BidWithBuilder | null>(null)
   const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null)
@@ -1923,7 +870,6 @@ export default function Bids() {
   const [laborRateInput, setLaborRateInput] = useState('')
   const [drivingCostRate, setDrivingCostRate] = useState('0.70')
   const [hoursPerTrip, setHoursPerTrip] = useState('2')
-  const [savingCostEstimate, setSavingCostEstimate] = useState(false)
   const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
   const [costEstimatePOModalPoId, setCostEstimatePOModalPoId] = useState<string | null>(null)
   const [costEstimatePOModalData, setCostEstimatePOModalData] = useState<{ name: string; items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> } | 'loading' | null>(null)
@@ -1961,6 +907,13 @@ export default function Bids() {
   const [estimatorCostUseFlat, setEstimatorCostUseFlat] = useState(false)
   const [estimatorCostPerCount, setEstimatorCostPerCount] = useState('10')
   const [estimatorCostFlatAmount, setEstimatorCostFlatAmount] = useState('')
+  const [travelPeople, setTravelPeople] = useState('1')
+  const [travelNights, setTravelNights] = useState('1')
+  const [travelMealsRate, setTravelMealsRate] = useState('')
+  const [travelHotelRate, setTravelHotelRate] = useState('')
+  const [travelZip, setTravelZip] = useState('')
+  const [travelLookupStatus, setTravelLookupStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [travelLookupMessage, setTravelLookupMessage] = useState<string | null>(null)
 
   // Team labor (clocked) for bids - used in Pricing cost breakdown
   const [teamLaborDataForBids, setTeamLaborDataForBids] = useState<TeamLaborBidRow[]>([])
@@ -2037,7 +990,7 @@ export default function Bids() {
   const [bidValueAppliedSuccess, setBidValueAppliedSuccess] = useState(false)
   const [bidSubmissionQuickAddSuccess, setBidSubmissionQuickAddSuccess] = useState<string | null>(null)
 
-  /** Set selected bid for Counts, Takeoffs, Cost Estimate, Pricing, Submission, RFI, Change Order, and Lien Release so selection stays in sync across tabs. */
+  /** Set selected bid for Counts, Takeoffs, Labor, Pricing, Submission, RFI, Change Order, and Lien Release so selection stays in sync across tabs. */
   function setSharedBid(bid: BidWithBuilder | null) {
     setSelectedBidForCounts(bid)
     setSelectedBidForTakeoff(bid)
@@ -2614,11 +1567,6 @@ export default function Bids() {
     return () => document.removeEventListener('keydown', onKey)
   }, [workingBoardArchiveConfirmBidId, closeWorkingBoardArchiveConfirm])
 
-  function getCustomerDisplay(c: Customer): string {
-    if (c.address) return `${c.name} - ${c.address}`
-    return c.name
-  }
-
   async function loadCountRows(bidId: string) {
     const { data, error } = await supabase
       .from('bids_count_rows')
@@ -2713,33 +1661,6 @@ export default function Bids() {
     }
   }
 
-  function parseCountsImportText(text: string): { rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }>; skippedCount: number } {
-    const rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }> = []
-    let skippedCount = 0
-    const lines = text.split(/\r?\n/)
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed) continue
-      const delimiter = trimmed.includes('\t') ? '\t' : ','
-      const cells = trimmed.split(delimiter).map((c) => c.trim())
-      const fixture = cells[0] ?? ''
-      const countStr = cells[1] ?? ''
-      const groupTag = cells.length >= 4 ? ((cells[2] ?? '').trim() || null) : null
-      const page = (cells.length >= 4 ? (cells[3] ?? '') : (cells[2] ?? '')).trim() || null
-      if (!fixture || !countStr) {
-        skippedCount++
-        continue
-      }
-      const count = parseFloat(countStr)
-      if (isNaN(count) || count < 0) {
-        skippedCount++
-        continue
-      }
-      rows.push({ fixture, count, group_tag: groupTag, page })
-    }
-    return { rows, skippedCount }
-  }
-
   async function insertCountRows(
     bidId: string,
     rows: Array<{ fixture: string; count: number; group_tag: string | null; page: string | null }>
@@ -2825,30 +1746,12 @@ export default function Bids() {
     const bid = selectedBidForCounts
     if (!bid || countRows.length === 0) return
 
-    const safe = (s: string) =>
-      s
-        .replace(/[^a-zA-Z0-9._-]+/g, '_')
-        .replace(/^_+|_+$/g, '')
-        .slice(0, 80)
-
-    const headerLabels = ['Count', 'Fixture or Tie-in', 'Group/Tag', 'Plan Page']
-    const lines = [headerLabels.map((h) => csvEscapeField(h)).join(',')]
-    for (const row of countRows) {
-      lines.push(
-        [
-          String(row.count),
-          csvEscapeField(row.fixture),
-          csvEscapeField(row.group_tag ?? ''),
-          csvEscapeField(row.page ?? ''),
-        ].join(','),
-      )
-    }
     const bidLabel = bidDisplayName(bid) || 'bid'
-    const blob = new Blob([`\uFEFF${lines.join('\n')}`], { type: 'text/csv;charset=utf-8' })
+    const blob = new Blob([`\uFEFF${buildCountsCsv(countRows)}`], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `counts_${safe(bidLabel)}_${new Date().toISOString().slice(0, 10)}.csv`
+    a.download = `counts_${sanitizeCsvFilenamePart(bidLabel)}_${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
     showToast('Counts exported to CSV.', 'success')
@@ -3015,34 +1918,6 @@ export default function Bids() {
     setTakeoffNewItemQuantity('1')
     setTakeoffNewItemPartSearchQuery('')
     setTakeoffNewItemTemplateSearchQuery('')
-  }
-
-  function mergePartLinesToTakeoffTemplateItems(
-    lines: TakeoffRoughPartLineRow[]
-  ): Array<{ item_type: 'part' | 'template'; part_id: string | null; nested_template_id: string | null; quantity: number }> {
-    const merged: Array<{
-      item_type: 'part' | 'template'
-      part_id: string | null
-      nested_template_id: string | null
-      quantity: number
-    }> = []
-    for (const line of lines) {
-      const pid = line.partId.trim()
-      if (!pid) continue
-      const qty = Math.max(0.0001, Number(line.quantity) || 0.0001)
-      const existing = merged.find((m) => m.item_type === 'part' && m.part_id === pid)
-      if (existing) {
-        existing.quantity += qty
-      } else {
-        merged.push({
-          item_type: 'part',
-          part_id: pid,
-          nested_template_id: null,
-          quantity: qty,
-        })
-      }
-    }
-    return merged
   }
 
   function openSaveAsAssemblyFromRough(countRowId: string, row: BidCountRow) {
@@ -3567,6 +2442,10 @@ export default function Bids() {
       setEstimatorCostPerCount((est as any).estimator_cost_per_count?.toString() ?? '10')
       setEstimatorCostFlatAmount((est as any).estimator_cost_flat_amount != null ? String((est as any).estimator_cost_flat_amount) : '')
       setEstimatorCostUseFlat((est as any).estimator_cost_flat_amount != null)
+      setTravelPeople((est as any).travel_people != null ? String((est as any).travel_people) : '1')
+      setTravelNights((est as any).travel_nights != null ? String((est as any).travel_nights) : '1')
+      setTravelMealsRate((est as any).travel_meals_rate != null ? String((est as any).travel_meals_rate) : '')
+      setTravelHotelRate((est as any).travel_hotel_rate != null ? String((est as any).travel_hotel_rate) : '')
       if (mm === 'rough') {
         const { data: roughLines } = await supabase
           .from('bids_takeoff_rough_part_lines')
@@ -4906,63 +3785,41 @@ export default function Bids() {
     }
   }
 
-  async function saveCostEstimate() {
-    if (!costEstimate) return
-    setSavingCostEstimate(true)
-    setError(null)
-    const laborRateNum = laborRateInput.trim() === '' ? null : parseFloat(laborRateInput)
-    if (laborRateInput.trim() !== '' && (isNaN(laborRateNum!) || laborRateNum! < 0)) {
-      setError('Labor rate must be a non-negative number.')
-      setSavingCostEstimate(false)
+  async function handleTravelPerDiemLookup() {
+    const zip = travelZip.trim()
+    if (!/^\d{5}$/.test(zip)) {
+      setTravelLookupStatus('error')
+      setTravelLookupMessage('Enter a 5-digit ZIP code.')
       return
     }
-    const drivingCostRateNum = drivingCostRate.trim() === '' ? 0.70 : parseFloat(drivingCostRate)
-    const hoursPerTripNum = hoursPerTrip.trim() === '' ? 2.0 : parseFloat(hoursPerTrip)
-    
-    if (isNaN(drivingCostRateNum) || drivingCostRateNum < 0) {
-      setError('Driving cost rate must be a non-negative number.')
-      setSavingCostEstimate(false)
-      return
+    setTravelLookupStatus('loading')
+    setTravelLookupMessage(null)
+    try {
+      const { data, error } = await supabase.functions.invoke('gsa-per-diem', { body: { zip } })
+      if (error) {
+        setTravelLookupStatus('error')
+        setTravelLookupMessage('Lookup failed. Enter rates manually.')
+        return
+      }
+      const res = data as { ok?: boolean; meals_rate?: number | null; hotel_rate?: number | null; city?: string | null; state?: string | null; error?: string }
+      if (!res?.ok) {
+        setTravelLookupStatus('error')
+        setTravelLookupMessage(
+          res?.error === 'oconus'
+            ? 'GSA per diem is not available for this ZIP (outside the continental US). Enter rates manually.'
+            : 'No GSA rate found for this ZIP. Enter rates manually.'
+        )
+        return
+      }
+      if (res.meals_rate != null) setTravelMealsRate(String(res.meals_rate))
+      if (res.hotel_rate != null) setTravelHotelRate(String(res.hotel_rate))
+      setTravelLookupStatus('idle')
+      const loc = [res.city, res.state].filter(Boolean).join(', ')
+      setTravelLookupMessage(`GSA rates loaded${loc ? ` for ${loc}` : ''}. Override as needed.`)
+    } catch {
+      setTravelLookupStatus('error')
+      setTravelLookupMessage('Lookup failed. Enter rates manually.')
     }
-    
-    if (isNaN(hoursPerTripNum) || hoursPerTripNum <= 0) {
-      setError('Hours per trip must be a positive number.')
-      setSavingCostEstimate(false)
-      return
-    }
-    const estimatorCostPerCountNum = estimatorCostUseFlat ? null : (parseFloat(estimatorCostPerCount) || 10)
-    const estimatorCostFlatAmountNum = estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) : null
-    if (estimatorCostUseFlat && (estimatorCostFlatAmount.trim() === '' || isNaN(estimatorCostFlatAmountNum!) || estimatorCostFlatAmountNum! < 0)) {
-      setError('Estimator flat amount must be a non-negative number when using flat amount.')
-      setSavingCostEstimate(false)
-      return
-    }
-    if (!estimatorCostUseFlat && (isNaN(estimatorCostPerCountNum!) || estimatorCostPerCountNum! < 0)) {
-      setError('Estimator cost per count must be a non-negative number.')
-      setSavingCostEstimate(false)
-      return
-    }
-    const { error: updateErr } = await supabase
-      .from('cost_estimates')
-      .update({
-        purchase_order_id_rough_in: costEstimate.purchase_order_id_rough_in || null,
-        purchase_order_id_top_out: costEstimate.purchase_order_id_top_out || null,
-        purchase_order_id_trim_set: costEstimate.purchase_order_id_trim_set || null,
-        labor_rate: laborRateNum,
-        driving_cost_rate: drivingCostRateNum,
-        hours_per_trip: hoursPerTripNum,
-        estimator_cost_per_count: estimatorCostPerCountNum,
-        estimator_cost_flat_amount: estimatorCostFlatAmountNum,
-      })
-      .eq('id', costEstimate.id)
-    if (updateErr) {
-      setError(`Failed to save cost estimate: ${updateErr.message}`)
-      setSavingCostEstimate(false)
-      return
-    }
-    setCostEstimate((prev) => (prev ? { ...prev, labor_rate: laborRateNum, driving_cost_rate: drivingCostRateNum, hours_per_trip: hoursPerTripNum, estimator_cost_per_count: estimatorCostPerCountNum, estimator_cost_flat_amount: estimatorCostFlatAmountNum } as any : null))
-    await saveLaborRows()
-    setSavingCostEstimate(false)
   }
 
   async function updateBidDistanceFromCostEstimate() {
@@ -5143,85 +4000,18 @@ export default function Bids() {
     }
   }
 
-  type CostEstimatePOModalItem = { part_name: string; quantity: number; price_at_time: number; template_name: string | null }
-
   function printCostEstimatePOForReview(poName: string, items: CostEstimatePOModalItem[], taxPercent: number) {
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(poName)
-    const grandTotal = items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
-    const withTaxAmount = grandTotal * (1 + taxPercent / 100)
-    const tableRows = items.map((item) => {
-      const partName = escapeHtml(item.part_name)
-      const qty = item.quantity
-      const template = escapeHtml(item.template_name ?? '—')
-      const price = item.price_at_time.toFixed(2)
-      const total = (item.price_at_time * item.quantity).toFixed(2)
-      return `<tr><td>${partName}</td><td>${qty}</td><td>${template}</td><td>$${price}</td><td>$${total}</td></tr>`
-    }).join('')
-    const thead = '<tr><th>Part</th><th>Qty</th><th>Assembly</th><th>Cost</th><th>Total</th></tr>'
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-      body { font-family: sans-serif; margin: 1in; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-      th { background: #f5f5f5; }
-      @media print { body { margin: 0.5in; } }
-    </style></head><body>
-      <h1>${title}</h1>
-      <table>
-        <thead>${thead}</thead>
-        <tbody>${tableRows}</tbody>
-        <tfoot><tr><td colspan="4" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr><tr><td colspan="4" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${withTaxAmount.toFixed(2)}</td></tr></tfoot>
-      </table>
-    </body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(buildCostEstimatePOHtml({ variant: 'review', poName, items, taxPercent }))
   }
 
   function printCostEstimatePOForSupplyHouse(poName: string, items: CostEstimatePOModalItem[], taxPercent: number) {
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(poName)
-    const grandTotal = items.reduce((sum, item) => sum + item.price_at_time * item.quantity, 0)
-    const withTaxAmount = grandTotal * (1 + taxPercent / 100)
-    const tableRows = items.map((item) => {
-      const partName = escapeHtml(item.part_name)
-      const qty = item.quantity
-      const price = item.price_at_time.toFixed(2)
-      const total = (item.price_at_time * item.quantity).toFixed(2)
-      return `<tr><td>${partName}</td><td>${qty}</td><td>$${price}</td><td>$${total}</td></tr>`
-    }).join('')
-    const thead = '<tr><th>Part</th><th>Qty</th><th>Price</th><th>Total</th></tr>'
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-      body { font-family: sans-serif; margin: 1in; }
-      table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-      th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-      th { background: #f5f5f5; }
-      @media print { body { margin: 0.5in; } }
-    </style></head><body>
-      <h1>${title}</h1>
-      <table>
-        <thead>${thead}</thead>
-        <tbody>${tableRows}</tbody>
-        <tfoot><tr><td colspan="3" style="text-align:right; font-weight:600;">Grand Total:</td><td style="font-weight:600;">$${grandTotal.toFixed(2)}</td></tr><tr><td colspan="3" style="text-align:right; font-weight:600;">With Tax ${taxPercent}%:</td><td style="font-weight:600;">$${withTaxAmount.toFixed(2)}</td></tr></tfoot>
-      </table>
-    </body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(buildCostEstimatePOHtml({ variant: 'supplyHouse', poName, items, taxPercent }))
   }
 
   async function printCostEstimatePage() {
     if (!selectedBidForCostEstimate) return
     const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Cost Estimate'
+    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Labor'
     if (normalizeMaterialsModel(selectedBidForCostEstimate.materials_model) === 'rough') {
       const bidId = selectedBidForCostEstimate.id
       const { data: roughLines } = await supabase
@@ -5275,7 +4065,8 @@ export default function Bids() {
           ? Number((costEstimate as { estimator_cost_flat_amount?: unknown }).estimator_cost_flat_amount)
           : costEstimateCountRows.length *
             (Number((costEstimate as { estimator_cost_per_count?: unknown })?.estimator_cost_per_count) || 10)
-      const laborCostWithDriving = laborCost + drivingCost + estimatorCost
+      const travelCost = computeTravelCost(costEstimate)
+      const laborCostWithDriving = laborCost + drivingCost + estimatorCost + travelCost
       const grandTotal = totalMaterials + laborCostWithDriving
       const laborRowsHtml =
         costEstimateLaborRows.length === 0
@@ -5321,25 +4112,21 @@ export default function Bids() {
   </table>
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Manhours: $${formatCurrency(laborCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr)</span></p>${distance > 0 && totalHours > 0 ? `
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}${estimatorCost > 0 ? `
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Travel: $${formatCurrency(travelCost)}</p>` : ''}
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCostWithDriving)}</p>
   <h2>Summary</h2>
   <div class="summary">
     <p>Materials total (pre-tax): $${formatCurrency(totalMaterials)}</p>
     <p>Manhours: $${formatCurrency(laborCost)}</p>${distance > 0 && totalHours > 0 ? `
     <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}${estimatorCost > 0 ? `
-    <p>Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}
+    <p>Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
+    <p>Travel: $${formatCurrency(travelCost)}</p>` : ''}
     <p>Labor total: $${formatCurrency(laborCostWithDriving)}</p>
     <p style="font-weight:700; font-size:1.125rem;">Our total cost is: $${formatCurrency(grandTotal)}</p>
   </div>
 </body></html>`
-      const win = window.open('', '_blank')
-      if (!win) return
-      win.document.write(html)
-      win.document.close()
-      win.focus()
-      win.print()
-      win.onafterprint = () => win.close()
+      printHtmlInNewWindow(html)
       return
     }
     const poRoughName = escapeHtml(purchaseOrdersForCostEstimate.find((p) => p.id === costEstimate?.purchase_order_id_rough_in)?.name ?? '—')
@@ -5409,7 +4196,8 @@ export default function Bids() {
     const estimatorCost = (costEstimate as any)?.estimator_cost_flat_amount != null
       ? Number((costEstimate as any).estimator_cost_flat_amount)
       : costEstimateCountRows.length * (Number((costEstimate as any)?.estimator_cost_per_count) || 10)
-    const laborCostWithDriving = laborCost + drivingCost + estimatorCost
+    const travelCost = computeTravelCost(costEstimate)
+    const laborCostWithDriving = laborCost + drivingCost + estimatorCost + travelCost
     const grandTotal = totalMaterials + laborCostWithDriving
 
     const laborRowsHtml =
@@ -5468,234 +4256,75 @@ export default function Bids() {
   </table>
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Manhours: $${formatCurrency(laborCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${totalHours.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} hrs × $${formatCurrency(rate)}/hr)</span></p>${distance > 0 && totalHours > 0 ? `
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Driving: $${formatCurrency(drivingCost)}<br/><span style="font-weight:400; font-size:0.875rem;">(${numTrips.toFixed(1)} trips × $${ratePerMile.toFixed(2)}/mi × ${distance.toFixed(0)} mi)</span></p>` : ''}${estimatorCost > 0 ? `
-  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
+  <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Travel: $${formatCurrency(travelCost)}</p>` : ''}
   <p style="font-weight:600; text-align:right; margin-top:0.5rem;">Labor total: $${formatCurrency(laborCostWithDriving)}</p>
   <h2>Summary</h2>
   <div class="summary">
     <p>Materials Total: $${formatCurrency(totalMaterials)}</p>
     <p>Manhours: $${formatCurrency(laborCost)}</p>${distance > 0 && totalHours > 0 ? `
     <p>Driving: $${formatCurrency(drivingCost)}</p>` : ''}${estimatorCost > 0 ? `
-    <p>Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}
+    <p>Estimator: $${formatCurrency(estimatorCost)}</p>` : ''}${travelCost > 0 ? `
+    <p>Travel: $${formatCurrency(travelCost)}</p>` : ''}
     <p>Labor total: $${formatCurrency(laborCostWithDriving)}</p>
     <p style="font-weight:700; font-size:1.125rem;">Our total cost is: $${formatCurrency(grandTotal)}</p>
   </div>
 </body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(html)
   }
 
   function printRoughInSubSheet() {
     if (!selectedBidForCostEstimate) return
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Rough In Labor Sub Sheet'
     const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-
-    const laborRowsHtml =
-      costEstimateLaborRows.length === 0
-        ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
-        : costEstimateLaborRows
-            .map((row) => {
-              const quantity = Number(row.count)
-              const hours = Number(row.rough_in_hrs_per_unit)
-              const totalCost = rate * hours * quantity
-              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-            })
-            .join('')
-
-    let totalCost = 0
-    if (costEstimateLaborRows.length > 0) {
-      totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * laborRowRough(row)
-      }, 0)
-    }
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  th { background: #f5f5f5; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
-    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
-  </table>
-</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(
+      buildLaborSubSheetHtml({
+        bidName: bidDisplayName(selectedBidForCostEstimate),
+        stageLabel: 'Rough In',
+        stage: 'rough_in',
+        rows: costEstimateLaborRows,
+        rate,
+      })
+    )
   }
 
   function printTopOutSubSheet() {
     if (!selectedBidForCostEstimate) return
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Top Out Labor Sub Sheet'
     const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-
-    const laborRowsHtml =
-      costEstimateLaborRows.length === 0
-        ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
-        : costEstimateLaborRows
-            .map((row) => {
-              const quantity = Number(row.count)
-              const hours = Number(row.top_out_hrs_per_unit)
-              const totalCost = rate * hours * quantity
-              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-            })
-            .join('')
-
-    let totalCost = 0
-    if (costEstimateLaborRows.length > 0) {
-      totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * laborRowTop(row)
-      }, 0)
-    }
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  th { background: #f5f5f5; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
-    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
-  </table>
-</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(
+      buildLaborSubSheetHtml({
+        bidName: bidDisplayName(selectedBidForCostEstimate),
+        stageLabel: 'Top Out',
+        stage: 'top_out',
+        rows: costEstimateLaborRows,
+        rate,
+      })
+    )
   }
 
   function printTrimSetSubSheet() {
     if (!selectedBidForCostEstimate) return
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const title = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid') + ' — Trim Set Labor Sub Sheet'
     const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-
-    const laborRowsHtml =
-      costEstimateLaborRows.length === 0
-        ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
-        : costEstimateLaborRows
-            .map((row) => {
-              const quantity = Number(row.count)
-              const hours = Number(row.trim_set_hrs_per_unit)
-              const totalCost = rate * hours * quantity
-              return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-            })
-            .join('')
-
-    let totalCost = 0
-    if (costEstimateLaborRows.length > 0) {
-      totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * laborRowTrim(row)
-      }, 0)
-    }
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  th { background: #f5f5f5; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <table>
-    <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
-    <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
-  </table>
-</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(
+      buildLaborSubSheetHtml({
+        bidName: bidDisplayName(selectedBidForCostEstimate),
+        stageLabel: 'Trim Set',
+        stage: 'trim_set',
+        rows: costEstimateLaborRows,
+        rate,
+      })
+    )
   }
 
   function printAllSubSheets() {
     if (!selectedBidForCostEstimate) return
-    const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-    const bidName = escapeHtml(bidDisplayName(selectedBidForCostEstimate) || 'Bid')
     const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-
-    // Helper to generate table for a stage
-    const generateStageTable = (stageName: string, hoursField: 'rough_in_hrs_per_unit' | 'top_out_hrs_per_unit' | 'trim_set_hrs_per_unit') => {
-      const laborRowsHtml =
-        costEstimateLaborRows.length === 0
-          ? '<tr><td colspan="3" style="text-align:center; color:#6b7280;">No labor rows</td></tr>'
-          : costEstimateLaborRows
-              .map((row) => {
-                const quantity = Number(row.count)
-                const hours = Number(row[hoursField])
-                const totalCost = rate * hours * quantity
-                return `<tr><td>${escapeHtml(row.fixture ?? '')}</td><td style="text-align:center">${quantity}</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr>`
-              })
-              .join('')
-
-      const totalCost = costEstimateLaborRows.reduce((sum, row) => {
-        return sum + rate * (hoursField === 'rough_in_hrs_per_unit' ? laborRowRough(row) : hoursField === 'top_out_hrs_per_unit' ? laborRowTop(row) : laborRowTrim(row))
-      }, 0)
-
-      return `
-      <h2>${stageName}</h2>
-      <table>
-        <thead><tr><th>Fixture or Tie-in</th><th style="text-align:center">Quantity</th><th style="text-align:right">Rate</th></tr></thead>
-        <tbody>${laborRowsHtml}<tr style="background:#f9fafb; font-weight:600"><td colspan="2" style="text-align:right">Total:</td><td style="text-align:right">$${formatCurrency(totalCost)}</td></tr></tbody>
-      </table>
-    `
-    }
-
-    const roughInTable = generateStageTable('Rough In', 'rough_in_hrs_per_unit')
-    const topOutTable = generateStageTable('Top Out', 'top_out_hrs_per_unit')
-    const trimSetTable = generateStageTable('Trim Set', 'trim_set_hrs_per_unit')
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${bidName} — Labor Sub Sheets</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  h1 { font-size: 1.25rem; margin-bottom: 1rem; }
-  h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; page-break-before: auto; }
-  h2:first-of-type { margin-top: 0.5rem; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; page-break-inside: avoid; }
-  th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
-  th { background: #f5f5f5; }
-  @media print { 
-    body { margin: 0.5in; }
-    h2 { page-break-after: avoid; }
-  }
-</style></head><body>
-  <h1>${bidName} — Labor Sub Sheets</h1>
-  ${roughInTable}
-  ${topOutTable}
-  ${trimSetTable}
-</body></html>`
-
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(
+      buildAllLaborSubSheetsHtml({
+        bidName: bidDisplayName(selectedBidForCostEstimate),
+        rows: costEstimateLaborRows,
+        rate,
+      })
+    )
   }
 
   function printPricingPage() {
@@ -5720,7 +4349,8 @@ export default function Bids() {
       const estimatorCost = (pricingCostEstimate as any)?.estimator_cost_flat_amount != null
         ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
         : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
-      const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
+      const travelCost = computeTravelCost(pricingCostEstimate)
+      const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + travelCost
       const taxPercentPrint = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
       const assignmentsForVersionPrint = bidPricingAssignments.filter(
         (a) => a.price_book_version_id === selectedPricingVersionId,
@@ -5775,7 +4405,7 @@ export default function Bids() {
   <p>${versionName}</p>
   <table>${tableInnerHtml}</table>`
     } else {
-      bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
+      bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Labor are set up.</p>'
     }
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
@@ -5790,25 +4420,13 @@ export default function Bids() {
   <h1>${title}</h1>
   ${bodyContent}
 </body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
-  }
-
-  function csvEscapeField(value: string): string {
-    const s = value ?? ''
-    if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`
-    return s
+    printHtmlInNewWindow(html)
   }
 
   function downloadPricingCsv() {
     if (!selectedBidForPricing) return
     if (!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate) {
-      showToast('Select a price book version and ensure Counts and Cost Estimate are set up.', 'info')
+      showToast('Select a price book version and ensure Counts and Labor are set up.', 'info')
       return
     }
 
@@ -5839,9 +4457,10 @@ export default function Bids() {
       ce.estimator_cost_flat_amount != null
         ? Number(ce.estimator_cost_flat_amount)
         : pricingCountRows.length * (Number(ce.estimator_cost_per_count) || 10)
+    const travelCost = computeTravelCost(pricingCostEstimate)
     const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
     const teamLaborCost = teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0
-    const totalBidCost = totalMaterials + laborCostAll + drivingCost + estimatorCost + teamLaborCost
+    const totalBidCost = totalMaterials + laborCostAll + drivingCost + estimatorCost + teamLaborCost + travelCost
 
     const assignmentsForVersionCsv = bidPricingAssignments.filter(
       (a) => a.price_book_version_id === selectedPricingVersionId,
@@ -5950,7 +4569,7 @@ export default function Bids() {
     if (priceBookVersions.length === 0) {
       bodyContent = '<p style="color:#6b7280">No price book versions.</p>'
     } else if (!pricingCostEstimate || pricingCountRows.length === 0) {
-      bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Cost Estimate are set up.</p>'
+      bodyContent = '<p style="color:#6b7280">Select a price book version and ensure Counts and Labor are set up.</p>'
     } else {
       const versionIds = priceBookVersions.map((v) => v.id)
       const [entriesResult, assignmentsResult, customPricesResult, submissionHidesResult] = await Promise.all([
@@ -5998,7 +4617,8 @@ export default function Bids() {
       const estimatorCost = (pricingCostEstimate as any)?.estimator_cost_flat_amount != null
         ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
         : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
-      const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost
+      const travelCost = computeTravelCost(pricingCostEstimate)
+      const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + travelCost
       const taxPctAll = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
       const sections: string[] = []
       for (let i = 0; i < priceBookVersions.length; i++) {
@@ -6076,13 +4696,7 @@ export default function Bids() {
   <h1>${title}</h1>
   ${bodyContent}
 </body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(html)
   }
 
   function printCoverLetterDocument(combinedHtml: string) {
@@ -6090,13 +4704,7 @@ export default function Bids() {
   body { font-family: sans-serif; margin: 1in; font-size: 12pt; }
   @media print { body { margin: 0.5in; } }
 </style></head><body>${combinedHtml}</body></html>`
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(html)
   }
 
   async function downloadSubmissionSummaryPdf() {
@@ -6463,7 +5071,7 @@ export default function Bids() {
       push(pricingContent)
     }
 
-    // Page 3: Cost Estimate (back to portrait)
+    // Page 3: Labor (back to portrait)
     doc.addPage('a4', 'portrait')
     {
       const size = doc.internal.pageSize
@@ -6472,7 +5080,7 @@ export default function Bids() {
     }
     y = margin
     doc.setFontSize(16)
-    push(`${bidDisplayName(b) || 'Bid'} — Cost Estimate`, true)
+    push(`${bidDisplayName(b) || 'Bid'} — Labor`, true)
     y += lineHeight * 2
     doc.setFontSize(11)
 
@@ -6505,7 +5113,8 @@ export default function Bids() {
       const estimatorCost = (est as any)?.estimator_cost_flat_amount != null
         ? Number((est as any).estimator_cost_flat_amount)
         : countRowsForEst.length * (Number((est as any)?.estimator_cost_per_count) || 10)
-      const laborCostWithDriving = laborCost + drivingCost + estimatorCost
+      const travelCost = computeTravelCost(est)
+      const laborCostWithDriving = laborCost + drivingCost + estimatorCost + travelCost
       const grandTotal = totalMaterials + laborCostWithDriving
 
       push('Materials')
@@ -6548,6 +5157,10 @@ export default function Bids() {
         push(`Estimator cost: $${formatCurrency(estimatorCost)}`)
         y += lineHeight
       }
+      if (travelCost > 0) {
+        push(`Travel cost (meals + hotels): $${formatCurrency(travelCost)}`)
+        y += lineHeight
+      }
       push('Summary', true)
       const summaryColWidths = [100, 70]
       const summaryRows: [string, string][] = [
@@ -6559,6 +5172,9 @@ export default function Bids() {
       }
       if (estimatorCost > 0) {
         summaryRows.push(['Estimator', `$${formatCurrency(estimatorCost)}`])
+      }
+      if (travelCost > 0) {
+        summaryRows.push(['Travel', `$${formatCurrency(travelCost)}`])
       }
       summaryRows.push(
         ['Labor total', `$${formatCurrency(laborCostWithDriving)}`],
@@ -6839,13 +5455,7 @@ export default function Bids() {
   ${bodyContent}
 </body></html>`
 
-    const win = window.open('', '_blank')
-    if (!win) return
-    win.document.write(html)
-    win.document.close()
-    win.focus()
-    win.print()
-    win.onafterprint = () => win.close()
+    printHtmlInNewWindow(html)
   }
 
   async function downloadFollowupSheetPdf(accountManagerFilter: string) {
@@ -7079,20 +5689,6 @@ export default function Bids() {
     setCostEstimateLaborRows((prev) =>
       prev.map((r) => (r.id === rowId ? { ...r, ...updates } : r))
     )
-  }
-
-  function laborRowHours(r: CostEstimateLaborRow): number {
-    const hrs = Number(r.rough_in_hrs_per_unit) + Number(r.top_out_hrs_per_unit) + Number(r.trim_set_hrs_per_unit)
-    return r.is_fixed ? hrs : Number(r.count) * hrs
-  }
-  function laborRowRough(r: CostEstimateLaborRow): number {
-    return r.is_fixed ? Number(r.rough_in_hrs_per_unit) : Number(r.count) * Number(r.rough_in_hrs_per_unit)
-  }
-  function laborRowTop(r: CostEstimateLaborRow): number {
-    return r.is_fixed ? Number(r.top_out_hrs_per_unit) : Number(r.count) * Number(r.top_out_hrs_per_unit)
-  }
-  function laborRowTrim(r: CostEstimateLaborRow): number {
-    return r.is_fixed ? Number(r.trim_set_hrs_per_unit) : Number(r.count) * Number(r.trim_set_hrs_per_unit)
   }
 
   function setTakeoffMapping(mappingId: string, updates: { templateId?: string; stage?: TakeoffStage; quantity?: number }) {
@@ -7573,7 +6169,7 @@ export default function Bids() {
     }
   }
 
-  function openMaterialsModelSwitch(next: MaterialsModel, sourceTab: 'takeoffs' | 'cost-estimate' | 'pricing') {
+  function openMaterialsModelSwitch(next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') {
     const bid = selectedBidForTakeoff ?? selectedBidForCostEstimate ?? selectedBidForPricing
     if (!bid) return
     const current = normalizeMaterialsModel(bid.materials_model)
@@ -7686,7 +6282,7 @@ export default function Bids() {
           })
           .eq('id', est.id)
         await loadPurchaseOrdersForCostEstimate()
-        if (activeTab === 'cost-estimate' && selectedBidForCostEstimate?.id === selectedBidForTakeoff.id) {
+        if ((activeTab === 'labor' || activeTab === 'takeoffs') && selectedBidForCostEstimate?.id === selectedBidForTakeoff.id) {
           await loadCostEstimate(selectedBidForTakeoff.id)
         }
       }
@@ -7750,58 +6346,26 @@ export default function Bids() {
       setTakeoffPrinting(true)
       setError(null)
       try {
-        const escapeHtml = (s: string) =>
-          (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-        const title = escapeHtml(bidDisplayName(selectedBidForTakeoff) || 'Bid') + ' — Rough Takeoff'
         const partIds = Array.from(new Set(filled.map((l) => l.partId)))
         const { data: partsData } = await supabase.from('material_parts').select('id, name').in('id', partIds)
-        const nameById = new Map<string, string>()
+        const partNameById: Record<string, string> = {}
         for (const p of partsData ?? []) {
-          if (p?.id) nameById.set(p.id, p.name ?? '')
+          if (p?.id) partNameById[p.id] = p.name ?? ''
         }
-        const rowsHtml = takeoffCountRows
-          .map((row) => {
-            const lines = filled
-              .filter((l) => l.countRowId === row.id)
-              .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
-            if (lines.length === 0) return ''
-            const body = lines
-              .map((l) => {
-                const nm = escapeHtml(nameById.get(l.partId) ?? l.partId.slice(0, 8))
-                const q = Number(l.quantity)
-                const up = Number(l.unitPrice)
-                const tot = q * up
-                return `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${nm}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${up.toFixed(2)}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${q}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${tot.toFixed(2)}</td></tr>`
-              })
-              .join('')
-            return `
-          <div style="margin-bottom:1rem">
-            <h3 style="margin:0.5rem 0 0.25rem 0; font-size:1rem">${escapeHtml(row.fixture ?? '—')} <span style="font-weight:400; color:#6b7280">(count ${Number(row.count)})</span></h3>
-            <table style="width:100%; border-collapse:collapse; font-size:0.875rem; margin-left:0.5rem">
-              <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Unit</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">Total</th></tr></thead>
-              <tbody>${body}</tbody>
-            </table>
-          </div>`
-          })
-          .join('')
-        const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <p style="font-size:0.875rem; color:#6b7280">Unit prices and extended costs per fixture (rough takeoff).</p>
-  ${rowsHtml}
-</body></html>`
-        const win = window.open('', '_blank')
-        if (!win) {
-          setError('Popup blocked. Allow popups to print.')
-          return
-        }
-        win.document.write(html)
-        win.document.close()
-        win.focus()
-        win.print()
-        win.onafterprint = () => win.close()
+        printHtmlInNewWindow(
+          buildRoughTakeoffBreakdownHtml({
+            title: (bidDisplayName(selectedBidForTakeoff) || 'Bid') + ' — Rough Takeoff',
+            rows: takeoffCountRows.map((row) => ({ id: row.id, fixture: row.fixture ?? null, count: Number(row.count) })),
+            lines: filled.map((l) => ({
+              countRowId: l.countRowId,
+              partId: l.partId,
+              quantity: l.quantity,
+              unitPrice: l.unitPrice,
+              sequenceOrder: l.sequenceOrder,
+            })),
+            partNameById,
+          }),
+        )
       } finally {
         setTakeoffPrinting(false)
       }
@@ -7815,19 +6379,18 @@ export default function Bids() {
     setTakeoffPrinting(true)
     setError(null)
     try {
-      const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-      const title = escapeHtml(bidDisplayName(selectedBidForTakeoff) || 'Bid') + ' — Takeoff Breakdown'
-      const stages: TakeoffStage[] = ['rough_in', 'top_out', 'trim_set']
-      const sectionHtmls: string[] = []
+      const stageOrder: TakeoffStage[] = ['rough_in', 'top_out', 'trim_set']
+      const stages: Array<{
+        stageLabel: string
+        rows: Array<{ fixture: string; count: number; parts: Array<{ partName: string; quantity: number; templateName: string }> }>
+      }> = []
 
-      for (const stage of stages) {
+      for (const stage of stageOrder) {
         const mappingsForStage = mapped.filter((m) => m.stage === stage)
         if (mappingsForStage.length === 0) continue
 
-        const stageLabel = STAGE_LABELS[stage]
         const countRowIds = Array.from(new Set(mappingsForStage.map((m) => m.countRowId)))
-
-        let stageHtml = `<h2 style="margin-top:1.5rem; margin-bottom:0.75rem; border-bottom:1px solid #ccc; padding-bottom:0.25rem">${stageLabel}</h2>`
+        const stageRows: Array<{ fixture: string; count: number; parts: Array<{ partName: string; quantity: number; templateName: string }> }> = []
 
         for (const countRowId of countRowIds) {
           const row = takeoffCountRows.find((r) => r.id === countRowId)
@@ -7853,54 +6416,35 @@ export default function Bids() {
             if (p?.id) nameById.set(p.id, p.name ?? '')
           }
 
-          const partRows = partsWithTemplate
+          const parts = partsWithTemplate
             .sort((a, b) => {
               const nameCmp = (nameById.get(a.part_id) ?? '').localeCompare(nameById.get(b.part_id) ?? '')
               if (nameCmp !== 0) return nameCmp
               return a.template_name.localeCompare(b.template_name)
             })
-            .map((p) => `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${escapeHtml(nameById.get(p.part_id) ?? p.part_id.slice(0, 8))}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${p.quantity}</td><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${escapeHtml(p.template_name)}</td></tr>`)
-            .join('')
+            .map((p) => ({
+              partName: nameById.get(p.part_id) ?? p.part_id.slice(0, 8),
+              quantity: p.quantity,
+              templateName: p.template_name,
+            }))
 
-          stageHtml += `
-          <div style="margin-bottom:1rem">
-            <h3 style="margin:0.5rem 0 0.25rem 0; font-size:1rem">${escapeHtml(fixture)} (Count: ${count})</h3>
-            <table style="width:100%; border-collapse:collapse; font-size:0.875rem; margin-left:0.5rem">
-              <thead style="background:#f9fafb"><tr><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Part</th><th style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">Qty</th><th style="padding:0.25rem 0.5rem; text-align:left; border:1px solid #ccc">Assembly</th></tr></thead>
-              <tbody>${partRows}</tbody>
-            </table>
-          </div>`
+          stageRows.push({ fixture, count, parts })
         }
 
-        sectionHtmls.push(stageHtml)
+        stages.push({ stageLabel: STAGE_LABELS[stage], rows: stageRows })
       }
 
-      if (sectionHtmls.length === 0) {
+      if (stages.length === 0) {
         setError('No mappings with assemblies to print.')
         return
       }
 
-      const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title><style>
-  body { font-family: sans-serif; margin: 1in; }
-  table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
-  th, td { border: 1px solid #ccc; padding: 0.25rem 0.5rem; }
-  th { background: #f9fafb; }
-  @media print { body { margin: 0.5in; } }
-</style></head><body>
-  <h1>${title}</h1>
-  <p style="font-size:0.875rem; color:#6b7280">Breakdown of parts and assemblies per stage for audit.</p>
-  ${sectionHtmls.join('')}
-</body></html>`
-      const win = window.open('', '_blank')
-      if (!win) {
-        setError('Popup blocked. Allow popups to print.')
-        return
-      }
-      win.document.write(html)
-      win.document.close()
-      win.focus()
-      win.print()
-      win.onafterprint = () => win.close()
+      printHtmlInNewWindow(
+        buildExactTakeoffBreakdownHtml({
+          title: (bidDisplayName(selectedBidForTakeoff) || 'Bid') + ' — Takeoff Breakdown',
+          stages,
+        }),
+      )
     } finally {
       setTakeoffPrinting(false)
     }
@@ -7929,7 +6473,7 @@ export default function Bids() {
     )
   }, [location.search, setSearchParams])
 
-  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
+  const BIDS_TABS = ['bid-board', 'builder-review', 'working', 'bid-costs', 'estimators', 'counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'submission-followup', 'rfi', 'change-order', 'lien-release'] as const
 
   useEffect(() => {
     const params = new URLSearchParams(location.search)
@@ -7939,7 +6483,16 @@ export default function Bids() {
       return
     }
     const bidId = params.get('bidId')
-    const tab = params.get('tab')
+    let tab = params.get('tab')
+    // Back-compat: the Bids "Cost Estimate" tab slug was renamed to "labor".
+    if (tab === 'cost-estimate') {
+      tab = 'labor'
+      setSearchParams((p) => {
+        const next = new URLSearchParams(p)
+        next.set('tab', 'labor')
+        return next
+      }, { replace: true })
+    }
     if (tab !== 'bid-board' || !bidId) {
       bidBoardPendingScrollBidIdRef.current = null
     }
@@ -8068,7 +6621,7 @@ export default function Bids() {
       setWorkingBoardDeepLinkBidId(wBid.id)
       return
     }
-    const bidTabs = ['counts', 'takeoffs', 'cost-estimate', 'pricing', 'cover-letter', 'rfi', 'change-order', 'lien-release']
+    const bidTabs = ['counts', 'takeoffs', 'labor', 'pricing', 'cover-letter', 'rfi', 'change-order', 'lien-release']
     if (bidId && tab && bidTabs.includes(tab)) {
       const bid = bids.find((b) => b.id === bidId)
       if (bid) {
@@ -8664,7 +7217,7 @@ export default function Bids() {
   }, [takeoffBookEntriesVersionId])
 
   useEffect(() => {
-    if (activeTab === 'cost-estimate') {
+    if (activeTab === 'labor' || activeTab === 'takeoffs') {
       const t = setTimeout(() => {
         loadPurchaseOrdersForCostEstimate()
         loadLaborBookVersions()
@@ -8673,9 +7226,9 @@ export default function Bids() {
     }
   }, [activeTab])
 
-  // Autosave for Cost Estimate tab
+  // Autosave for Labor tab
   useEffect(() => {
-    if (activeTab !== 'cost-estimate' || !costEstimate) return
+    if (activeTab !== 'labor' || !costEstimate) return
 
     const timer = setTimeout(async () => {
       setCostEstimateAutosaveStatus('saving')
@@ -8692,6 +7245,14 @@ export default function Bids() {
       const estimatorCostFlatAmountNum = estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) : null
       if (estimatorCostUseFlat && estimatorCostFlatAmount.trim() !== '' && (isNaN(estimatorCostFlatAmountNum!) || estimatorCostFlatAmountNum! < 0)) return
       if (!estimatorCostUseFlat && (isNaN(estimatorCostPerCountNum!) || estimatorCostPerCountNum! < 0)) return
+      const travelPeopleNum = travelPeople.trim() === '' ? 1 : Math.round(parseFloat(travelPeople))
+      const travelNightsNum = travelNights.trim() === '' ? 1 : Math.round(parseFloat(travelNights))
+      const travelMealsRateNum = travelMealsRate.trim() === '' ? null : parseFloat(travelMealsRate)
+      const travelHotelRateNum = travelHotelRate.trim() === '' ? null : parseFloat(travelHotelRate)
+      if (isNaN(travelPeopleNum) || travelPeopleNum < 1) return
+      if (isNaN(travelNightsNum) || travelNightsNum < 0) return
+      if (travelMealsRateNum != null && (isNaN(travelMealsRateNum) || travelMealsRateNum < 0)) return
+      if (travelHotelRateNum != null && (isNaN(travelHotelRateNum) || travelHotelRateNum < 0)) return
       
       // Save cost estimate fields
       await supabase
@@ -8705,6 +7266,10 @@ export default function Bids() {
           hours_per_trip: hoursPerTripNum,
           estimator_cost_per_count: estimatorCostPerCountNum,
           estimator_cost_flat_amount: estimatorCostFlatAmountNum,
+          travel_people: travelPeopleNum,
+          travel_nights: travelNightsNum,
+          travel_meals_rate: travelMealsRateNum,
+          travel_hotel_rate: travelHotelRateNum,
         })
         .eq('id', costEstimate.id)
       
@@ -8727,7 +7292,17 @@ export default function Bids() {
     }, 1500) // 1.5 second debounce
 
     return () => clearTimeout(timer)
-  }, [activeTab, costEstimate, laborRateInput, drivingCostRate, hoursPerTrip, estimatorCostUseFlat, estimatorCostPerCount, estimatorCostFlatAmount, costEstimateLaborRows])
+  }, [activeTab, costEstimate, laborRateInput, drivingCostRate, hoursPerTrip, estimatorCostUseFlat, estimatorCostPerCount, estimatorCostFlatAmount, travelPeople, travelNights, travelMealsRate, travelHotelRate, costEstimateLaborRows])
+
+  // Best-effort prefill of the Travel ZIP from the bid's customer address (a 5-digit ZIP).
+  // Not persisted; resets when the selected bid changes. The user can always override.
+  useEffect(() => {
+    const addr = selectedBidForCostEstimate?.customers?.address ?? ''
+    const matches = addr.match(/\b\d{5}\b/g)
+    setTravelZip(matches && matches.length > 0 ? matches[matches.length - 1]! : '')
+    setTravelLookupStatus('idle')
+    setTravelLookupMessage(null)
+  }, [selectedBidForCostEstimate?.id, selectedBidForCostEstimate?.customers?.address])
 
   // Auto-calculate price book entry total
   useEffect(() => {
@@ -8784,7 +7359,7 @@ export default function Bids() {
   }, [costEstimatePOModalPoId, purchaseOrdersForCostEstimate])
 
   useEffect(() => {
-    if (activeTab !== 'cost-estimate' || !selectedBidForCostEstimate?.id) {
+    if ((activeTab !== 'labor' && activeTab !== 'takeoffs') || !selectedBidForCostEstimate?.id) {
       if (!selectedBidForCostEstimate?.id) {
         costEstimateBidIdRef.current = null
         setCostEstimate(null)
@@ -8876,7 +7451,7 @@ export default function Bids() {
   ])
 
   useEffect(() => {
-    if (activeTab !== 'pricing' && activeTab !== 'cost-estimate' && activeTab !== 'bid-costs') return
+    if (activeTab !== 'pricing' && activeTab !== 'labor' && activeTab !== 'bid-costs') return
     loadTeamLaborDataForBids(supabase).then(setTeamLaborDataForBids).catch(() => setTeamLaborDataForBids([]))
   }, [activeTab, supabase])
 
@@ -11627,16 +10202,16 @@ export default function Bids() {
         <button
           type="button"
           onClick={() => {
-            setActiveTab('cost-estimate')
+            setActiveTab('labor')
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
-              next.set('tab', 'cost-estimate')
+              next.set('tab', 'labor')
               return next
             })
           }}
-          style={tabStyle(activeTab === 'cost-estimate')}
+          style={tabStyle(activeTab === 'labor')}
         >
-          Cost Estimate
+          Labor
         </button>
         {myRole !== 'superintendent' && (
         <>
@@ -13376,6 +11951,26 @@ export default function Bids() {
                   })()}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Takeoff book version</label>
+                  <select
+                    value={selectedTakeoffBookVersionId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v) {
+                        setSelectedTakeoffBookVersionId(v)
+                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, v)
+                      } else {
+                        setSelectedTakeoffBookVersionId(null)
+                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
+                      }
+                    }}
+                    style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '10rem', fontSize: '0.875rem' }}
+                  >
+                    <option value="">— Select version —</option>
+                    {takeoffBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
                   {takeoffCountRows.length > 0 && selectedTakeoffBookVersionId && (
                     <>
                       <button
@@ -14411,41 +13006,6 @@ export default function Bids() {
                   </button>
                 </>
               )}
-              {selectedBidForTakeoff && (
-                <div style={{ marginTop: '1.5rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Takeoff book version</label>
-                  <select
-                    value={selectedTakeoffBookVersionId ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v) {
-                        setSelectedTakeoffBookVersionId(v)
-                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, v)
-                      } else {
-                        setSelectedTakeoffBookVersionId(null)
-                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
-                      }
-                    }}
-                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
-                  >
-                    <option value="">— Select version —</option>
-                    {takeoffBookVersions.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                  {!narrowViewport640 ? (
-                    <button
-                      type="button"
-                      onClick={() => { closeSharedBidAndClearUrl(); setTakeoffCreatedPOId(null) }}
-                      title="Close"
-                      aria-label="Close"
-                      style={bidDetailCloseXStyle}
-                    >
-                      ×
-                    </button>
-                  ) : null}
-                </div>
-              )}
               </>
               )}
             </div>
@@ -14589,11 +13149,312 @@ export default function Bids() {
               </div>
             </div>
           )}
+          {selectedBidForTakeoff && selectedBidForCostEstimate && costEstimateCountRows.length > 0 && (
+            <div style={{ marginTop: '1.5rem' }}>
+              {/* Material section moved from Labor tab: three POs (Exact) or rough roll-up */}
+              {normalizeMaterialsModel(selectedBidForCostEstimate.materials_model) === 'exact' ? (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MATERIALS BY STAGE</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Rough In)</label>
+                    <select
+                      value={costEstimate?.purchase_order_id_rough_in ?? ''}
+                      onChange={(e) => setCostEstimatePO('rough_in', e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    >
+                      <option value="">—</option>
+                      {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'rough_in' || po.stage === null).map((po) => (
+                        <option key={po.id} value={po.id}>{po.name}</option>
+                      ))}
+                    </select>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                      Rough In materials: {costEstimateMaterialTotalRoughIn != null ? `$${formatCurrency(Number(costEstimateMaterialTotalRoughIn))}` : '—'}
+                      {costEstimateMaterialTotalRoughIn != null && (
+                        <>
+                          <br />
+                          {'\u00A0'.repeat(18)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalRoughIn) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+                        </>
+                      )}
+                    </p>
+                    {costEstimate?.purchase_order_id_rough_in && (
+                      <button
+                        type="button"
+                        onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_rough_in)}
+                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                      >
+                        View
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Top Out)</label>
+                    <select
+                      value={costEstimate?.purchase_order_id_top_out ?? ''}
+                      onChange={(e) => setCostEstimatePO('top_out', e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    >
+                      <option value="">—</option>
+                      {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'top_out' || po.stage === null).map((po) => (
+                        <option key={po.id} value={po.id}>{po.name}</option>
+                      ))}
+                    </select>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                      Top Out materials: {costEstimateMaterialTotalTopOut != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTopOut))}` : '—'}
+                      {costEstimateMaterialTotalTopOut != null && (
+                        <>
+                          <br />
+                          {'\u00A0'.repeat(17)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalTopOut) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+                        </>
+                      )}
+                    </p>
+                    {costEstimate?.purchase_order_id_top_out && (
+                      <button
+                        type="button"
+                        onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_top_out)}
+                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                      >
+                        View
+                      </button>
+                    )}
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Trim Set)</label>
+                    <select
+                      value={costEstimate?.purchase_order_id_trim_set ?? ''}
+                      onChange={(e) => setCostEstimatePO('trim_set', e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    >
+                      <option value="">—</option>
+                      {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'trim_set' || po.stage === null).map((po) => (
+                        <option key={po.id} value={po.id}>{po.name}</option>
+                      ))}
+                    </select>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                      Trim Set materials: {costEstimateMaterialTotalTrimSet != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTrimSet))}` : '—'}
+                      {costEstimateMaterialTotalTrimSet != null && (
+                        <>
+                          <br />
+                          {'\u00A0'.repeat(17)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalTrimSet) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+                        </>
+                      )}
+                    </p>
+                    {costEstimate?.purchase_order_id_trim_set && (
+                      <button
+                        type="button"
+                        onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_trim_set)}
+                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                      >
+                        View
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tax %</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    value={costEstimatePOModalTaxPercent}
+                    onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+                    style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
+                  />
+                </div>
+                <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
+                  Materials Total: $
+                  {formatCurrency(
+                    (costEstimateMaterialTotalRoughIn ?? 0) +
+                    (costEstimateMaterialTotalTopOut ?? 0) +
+                    (costEstimateMaterialTotalTrimSet ?? 0)
+                  )}
+                  <br />
+                  <span style={{ fontWeight: 400 }}>{'\u00A0'.repeat(11)}With tax: ${formatCurrency(((costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0)) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}</span>
+                </p>
+              </div>
+              ) : (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MATERIALS</h3>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
+                  Rough takeoff totals: sum of part lines from the Takeoffs tab (quantity × unit price). Edit lines on Takeoffs → Rough.
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tax %</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.01}
+                    value={costEstimatePOModalTaxPercent}
+                    onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+                    style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
+                  />
+                </div>
+                <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
+                  Materials total: $
+                  {formatCurrency(costEstimateMaterialTotalRoughIn ?? 0)}
+                  <br />
+                  <span style={{ fontWeight: 400 }}>
+                    With tax: $
+                    {formatCurrency((costEstimateMaterialTotalRoughIn ?? 0) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
+                  </span>
+                </p>
+              </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
-      {/* Cost Estimate Tab */}
-      {activeTab === 'cost-estimate' && (
+      {/* PO review modal (moved from Labor tab; triggered by the material section View buttons) */}
+      {costEstimatePOModalPoId && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}
+          onClick={() => setCostEstimatePOModalPoId(null)}
+        >
+          <div
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.5rem',
+              maxWidth: 560,
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1rem' }}>{costEstimatePOModalData && costEstimatePOModalData !== 'loading' ? costEstimatePOModalData.name : 'Purchase order'}</h3>
+              <button
+                type="button"
+                onClick={() => setCostEstimatePOModalPoId(null)}
+                style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+            {costEstimatePOModalData === 'loading' && (
+              <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
+            )}
+            {costEstimatePOModalData === null && (
+              <p style={{ margin: 0, color: '#6b7280' }}>Could not load items.</p>
+            )}
+            {costEstimatePOModalData && costEstimatePOModalData !== 'loading' && (
+              <>
+                {costEstimatePOModalData.items.length === 0 ? (
+                  <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>No items in this PO.</p>
+                ) : null}
+                {costEstimatePOModalData.items.length > 0 ? (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Item</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {costEstimatePOModalData.items.map((item, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{item.part_name}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{item.quantity}</td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>{item.template_name ?? '—'}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${item.price_at_time.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${(item.quantity * item.price_at_time).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>Grand Total:</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>
+                          ${costEstimatePOModalData.items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0).toFixed(2)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                          With Tax{' '}
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={costEstimatePOModalTaxPercent}
+                            onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+                            style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                          />
+                          %:
+                        </td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
+                          ${(costEstimatePOModalData.items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0) * (1 + (parseFloat(costEstimatePOModalTaxPercent) || 0) / 100)).toFixed(2)}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                ) : (
+                  <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
+                    <p style={{ margin: 0 }}><strong>Grand Total:</strong> $0.00</p>
+                    <p style={{ margin: '0.25rem 0 0' }}>
+                      <strong>With Tax</strong>{' '}
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={costEstimatePOModalTaxPercent}
+                        onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
+                        style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                      />
+                      %: $0.00
+                    </p>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const data = costEstimatePOModalData
+                      if (data && typeof data === 'object' && 'items' in data) {
+                        printCostEstimatePOForReview(data.name, data.items, parseFloat(costEstimatePOModalTaxPercent) || 0)
+                      }
+                    }}
+                    disabled={false}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Print for Review
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const data = costEstimatePOModalData
+                      if (data && typeof data === 'object' && 'items' in data) {
+                        printCostEstimatePOForSupplyHouse(data.name, data.items, parseFloat(costEstimatePOModalTaxPercent) || 0)
+                      }
+                    }}
+                    disabled={false}
+                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  >
+                    Print for Supply House
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Labor Tab */}
+      {activeTab === 'labor' && (
         <div>
           {!selectedBidForCostEstimate && (
             <input
@@ -14681,7 +13542,7 @@ export default function Bids() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => openMaterialsModelSwitch('exact', 'cost-estimate')}
+                      onClick={() => openMaterialsModelSwitch('exact', 'labor')}
                       style={{
                         padding: '0.35rem 0.75rem',
                         fontSize: '0.8125rem',
@@ -14698,7 +13559,7 @@ export default function Bids() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => openMaterialsModelSwitch('rough', 'cost-estimate')}
+                      onClick={() => openMaterialsModelSwitch('rough', 'labor')}
                       style={{
                         padding: '0.35rem 0.75rem',
                         fontSize: '0.8125rem',
@@ -14720,160 +13581,9 @@ export default function Bids() {
                 <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
               ) : (
                 <>
-                  {/* Material section: three POs (Exact) or rough roll-up */}
-                  {normalizeMaterialsModel(selectedBidForCostEstimate.materials_model) === 'exact' ? (
+                  {/* Manhours section */}
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MATERIALS</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Rough In)</label>
-                        <select
-                          value={costEstimate?.purchase_order_id_rough_in ?? ''}
-                          onChange={(e) => setCostEstimatePO('rough_in', e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                        >
-                          <option value="">—</option>
-                          {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'rough_in' || po.stage === null).map((po) => (
-                            <option key={po.id} value={po.id}>{po.name}</option>
-                          ))}
-                        </select>
-                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                          Rough In materials: {costEstimateMaterialTotalRoughIn != null ? `$${formatCurrency(Number(costEstimateMaterialTotalRoughIn))}` : '—'}
-                          {costEstimateMaterialTotalRoughIn != null && (
-                            <>
-                              <br />
-                              {'\u00A0'.repeat(18)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalRoughIn) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
-                            </>
-                          )}
-                        </p>
-                        {costEstimate?.purchase_order_id_rough_in && (
-                          <button
-                            type="button"
-                            onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_rough_in)}
-                            style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
-                          >
-                            View
-                          </button>
-                        )}
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Top Out)</label>
-                        <select
-                          value={costEstimate?.purchase_order_id_top_out ?? ''}
-                          onChange={(e) => setCostEstimatePO('top_out', e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                        >
-                          <option value="">—</option>
-                          {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'top_out' || po.stage === null).map((po) => (
-                            <option key={po.id} value={po.id}>{po.name}</option>
-                          ))}
-                        </select>
-                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                          Top Out materials: {costEstimateMaterialTotalTopOut != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTopOut))}` : '—'}
-                          {costEstimateMaterialTotalTopOut != null && (
-                            <>
-                              <br />
-                              {'\u00A0'.repeat(17)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalTopOut) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
-                            </>
-                          )}
-                        </p>
-                        {costEstimate?.purchase_order_id_top_out && (
-                          <button
-                            type="button"
-                            onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_top_out)}
-                            style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
-                          >
-                            View
-                          </button>
-                        )}
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>PO (Trim Set)</label>
-                        <select
-                          value={costEstimate?.purchase_order_id_trim_set ?? ''}
-                          onChange={(e) => setCostEstimatePO('trim_set', e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-                        >
-                          <option value="">—</option>
-                          {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'trim_set' || po.stage === null).map((po) => (
-                            <option key={po.id} value={po.id}>{po.name}</option>
-                          ))}
-                        </select>
-                        <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                          Trim Set materials: {costEstimateMaterialTotalTrimSet != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTrimSet))}` : '—'}
-                          {costEstimateMaterialTotalTrimSet != null && (
-                            <>
-                              <br />
-                              {'\u00A0'.repeat(17)}with tax: ${formatCurrency(Number(costEstimateMaterialTotalTrimSet) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
-                            </>
-                          )}
-                        </p>
-                        {costEstimate?.purchase_order_id_trim_set && (
-                          <button
-                            type="button"
-                            onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_trim_set)}
-                            style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
-                          >
-                            View
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tax %</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.01}
-                        value={costEstimatePOModalTaxPercent}
-                        onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                        style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
-                      />
-                    </div>
-                    <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
-                      Materials Total: $
-                      {formatCurrency(
-                        (costEstimateMaterialTotalRoughIn ?? 0) +
-                        (costEstimateMaterialTotalTopOut ?? 0) +
-                        (costEstimateMaterialTotalTrimSet ?? 0)
-                      )}
-                      <br />
-                      <span style={{ fontWeight: 400 }}>{'\u00A0'.repeat(11)}With tax: ${formatCurrency(((costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0)) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}</span>
-                    </p>
-                  </div>
-                  ) : (
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MATERIALS</h3>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
-                      Rough takeoff totals: sum of part lines from the Takeoffs tab (quantity × unit price). Edit lines on Takeoffs → Rough.
-                    </p>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                      <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tax %</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step={0.01}
-                        value={costEstimatePOModalTaxPercent}
-                        onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                        style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
-                      />
-                    </div>
-                    <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
-                      Materials total: $
-                      {formatCurrency(costEstimateMaterialTotalRoughIn ?? 0)}
-                      <br />
-                      <span style={{ fontWeight: 400 }}>
-                        With tax: $
-                        {formatCurrency((costEstimateMaterialTotalRoughIn ?? 0) * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100))}
-                      </span>
-                    </p>
-                  </div>
-                  )}
-                  {/* Labor section */}
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>LABOR</h3>
+                    <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MANHOURS</h3>
                     <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <div>
                         <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Labor book version</label>
@@ -15097,7 +13807,7 @@ export default function Bids() {
                     {/* Driving Cost Section */}
                     <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                        <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Driving Cost Parameters</h4>
+                        <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600 }}>Vehical Travel</h4>
                         {selectedBidForCostEstimate && (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <button
@@ -15177,17 +13887,118 @@ export default function Bids() {
                             <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
                               Distance to office: {distance > 0 ? `${distance.toFixed(1)} miles` : 'Not set'}
                             </p>
-                            <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem' }}>
-                              Driving cost: {numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)}mi = ${formatCurrency(drivingCost)}
+                            <p style={{ margin: 0, fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
+                              Driving cost: {numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)}mi = <span style={{ fontWeight: 700 }}>${formatCurrency(drivingCost)}</span>
                             </p>
                           </>
                         )
                       })()}
                     </div>
                   </div>
-                  {/* Estimator Cost Parameters */}
+                  {/* Travel Cost Parameters */}
                   <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
-                    <h4 style={{ margin: 0, marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Estimator Cost Parameters</h4>
+                    <h4 style={{ margin: 0, marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Lodging and Meals</h4>
+                    <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Travelers</label>
+                        <input
+                          type="number"
+                          min={1}
+                          step={1}
+                          value={travelPeople}
+                          onChange={(e) => setTravelPeople(e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          style={{ width: '5rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Nights</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={1}
+                          value={travelNights}
+                          onChange={(e) => setTravelNights(e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          style={{ width: '5rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Meals/day ($)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={travelMealsRate}
+                          onChange={(e) => setTravelMealsRate(e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          placeholder="—"
+                          style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Hotel/night ($)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={travelHotelRate}
+                          onChange={(e) => setTravelHotelRate(e.target.value)}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          placeholder="—"
+                          style={{ width: '6rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <label style={{ fontSize: '0.875rem' }}>ZIP</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        value={travelZip}
+                        onChange={(e) => setTravelZip(e.target.value.replace(/[^0-9]/g, '').slice(0, 5))}
+                        placeholder="78701"
+                        style={{ width: '5rem', padding: '0.375rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleTravelPerDiemLookup}
+                        disabled={travelLookupStatus === 'loading'}
+                        style={{ padding: '0.375rem 0.625rem', background: travelLookupStatus === 'loading' ? '#d1d5db' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: travelLookupStatus === 'loading' ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                      >
+                        {travelLookupStatus === 'loading' ? 'Looking up…' : 'Look up GSA per diem'}
+                      </button>
+                      {travelLookupMessage && (
+                        <span style={{ fontSize: '0.75rem', color: travelLookupStatus === 'error' ? '#b45309' : '#059669' }}>{travelLookupMessage}</span>
+                      )}
+                    </div>
+                    {(() => {
+                      const people = Math.max(0, Math.round(parseFloat(travelPeople) || 0))
+                      const nights = Math.max(0, Math.round(parseFloat(travelNights) || 0))
+                      const mealsRate = parseFloat(travelMealsRate) || 0
+                      const hotelRate = parseFloat(travelHotelRate) || 0
+                      const mealsCost = people * nights * mealsRate
+                      const hotelCost = people * nights * hotelRate
+                      const travelCost = mealsCost + hotelCost
+                      return (
+                        <>
+                          <p style={{ margin: '0.25rem 0', fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
+                            Meals: {people} ppl × {nights} nights × ${mealsRate.toFixed(2)} = <span style={{ fontWeight: 700 }}>${formatCurrency(mealsCost)}</span>
+                          </p>
+                          <p style={{ margin: '0.25rem 0', fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
+                            Hotels: {people} ppl × {nights} nights × ${hotelRate.toFixed(2)} = <span style={{ fontWeight: 700 }}>${formatCurrency(hotelCost)}</span>
+                          </p>
+                          <p style={{ margin: '0.25rem 0', fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
+                            Travel total: <span style={{ fontWeight: 700 }}>${formatCurrency(travelCost)}</span>
+                          </p>
+                        </>
+                      )
+                    })()}
+                  </div>
+                  {/* Estimators Time */}
+                  <div style={{ marginTop: '1rem', padding: '0.75rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a' }}>
+                    <h4 style={{ margin: 0, marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Estimators Time</h4>
                     <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem' }}>
                         <input
@@ -15232,46 +14043,9 @@ export default function Bids() {
                         ? (estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) || 0 : 0)
                         : countRows * (parseFloat(estimatorCostPerCount) || 10)
                       return (
-                        <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem' }}>
-                          Estimator cost: {estimatorCostUseFlat ? `$${formatCurrency(estimatorCost)}` : `${countRows} Count Types × $${(parseFloat(estimatorCostPerCount) || 10).toFixed(2)} = $${formatCurrency(estimatorCost)}`}
+                        <p style={{ margin: 0, fontWeight: 400, fontSize: '0.875rem', textAlign: 'right' }}>
+                          Estimator cost: {estimatorCostUseFlat ? '' : `${countRows} Count Types × $${(parseFloat(estimatorCostPerCount) || 10).toFixed(2)} = `}<span style={{ fontWeight: 700 }}>${formatCurrency(estimatorCost)}</span>
                         </p>
-                      )
-                    })()}
-                  </div>
-                  {/* Total */}
-                  <div style={{ marginBottom: '1.5rem', padding: '1rem' }}>
-                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', textAlign: 'center' }}>TOTAL</h3>
-                    {(() => {
-                      const totalMaterials =
-                        (costEstimateMaterialTotalRoughIn ?? 0) + (costEstimateMaterialTotalTopOut ?? 0) + (costEstimateMaterialTotalTrimSet ?? 0)
-                      const totalHours = costEstimateLaborRows.reduce(
-                        (s, r) => s + laborRowHours(r),
-                        0
-                      )
-                      const rate = laborRateInput.trim() === '' ? 0 : parseFloat(laborRateInput) || 0
-                      const laborCost = totalHours * rate
-                      const distance = parseFloat(selectedBidForCostEstimate?.distance_from_office ?? '0') || 0
-                      const ratePerMile = parseFloat(drivingCostRate) || 0.70
-                      const hrsPerTrip = parseFloat(hoursPerTrip) || 2.0
-                      const numTrips = totalHours / hrsPerTrip
-                      const drivingCost = numTrips * ratePerMile * distance
-                      const estimatorCost = estimatorCostUseFlat
-                        ? (estimatorCostFlatAmount.trim() !== '' ? parseFloat(estimatorCostFlatAmount) || 0 : 0)
-                        : costEstimateCountRows.length * (parseFloat(estimatorCostPerCount) || 10)
-                      const laborCostWithDriving = laborCost + drivingCost + estimatorCost
-                      const materialsWithTax = totalMaterials * (1 + parseFloat(costEstimatePOModalTaxPercent || '8.25') / 100)
-                      const grandTotal = materialsWithTax + laborCostWithDriving
-                      return (
-                        <>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right', fontWeight: 600 }}>Materials with tax: ${formatCurrency(materialsWithTax)}</p>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Manhours: ${formatCurrency(laborCost)}</p>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Driving: ${formatCurrency(drivingCost)}</p>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right' }}>Estimator: ${formatCurrency(estimatorCost)}</p>
-                          <p style={{ margin: '0.25rem 0', textAlign: 'right', fontWeight: 600 }}>
-                            Labor total: ${formatCurrency(laborCostWithDriving)}
-                          </p>
-                          <p style={{ margin: '0.5rem 0 0', fontWeight: 700, fontSize: '1.125rem', textAlign: 'right' }}>Grand total: ${formatCurrency(grandTotal)}</p>
-                        </>
                       )
                     })()}
                   </div>
@@ -15283,165 +14057,10 @@ export default function Bids() {
                       {costEstimateAutosaveStatus === 'saved' && (
                         <span style={{ fontSize: '0.875rem', color: '#059669' }}>✓ Saved</span>
                       )}
-                      {costEstimateAutosaveStatus === 'idle' && (
-                        <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>Autosave enabled</span>
-                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={saveCostEstimate}
-                      disabled={savingCostEstimate || !costEstimate}
-                      style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: savingCostEstimate ? 'wait' : 'pointer', fontSize: '0.875rem' }}
-                    >
-                      {savingCostEstimate ? 'Saving…' : 'Save Now'}
-                    </button>
                   </div>
                 </>
               )}
-            </div>
-          )}
-          {costEstimatePOModalPoId && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 50,
-              }}
-              onClick={() => setCostEstimatePOModalPoId(null)}
-            >
-              <div
-                style={{
-                  background: 'white',
-                  borderRadius: 8,
-                  padding: '1.5rem',
-                  maxWidth: 560,
-                  maxHeight: '90vh',
-                  overflow: 'auto',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem' }}>{costEstimatePOModalData && costEstimatePOModalData !== 'loading' ? costEstimatePOModalData.name : 'Purchase order'}</h3>
-                  <button
-                    type="button"
-                    onClick={() => setCostEstimatePOModalPoId(null)}
-                    style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Close
-                  </button>
-                </div>
-                {costEstimatePOModalData === 'loading' && (
-                  <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
-                )}
-                {costEstimatePOModalData === null && (
-                  <p style={{ margin: 0, color: '#6b7280' }}>Could not load items.</p>
-                )}
-                {costEstimatePOModalData && costEstimatePOModalData !== 'loading' && (
-                  <>
-                    {costEstimatePOModalData.items.length === 0 ? (
-                      <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>No items in this PO.</p>
-                    ) : null}
-                    {costEstimatePOModalData.items.length > 0 ? (
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                        <thead style={{ background: '#f9fafb' }}>
-                          <tr>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {costEstimatePOModalData.items.map((item, i) => (
-                            <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{item.part_name}</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{item.quantity}</td>
-                              <td style={{ padding: '0.5rem 0.75rem' }}>{item.template_name ?? '—'}</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${item.price_at_time.toFixed(2)}</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${(item.quantity * item.price_at_time).toFixed(2)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot style={{ background: '#f9fafb' }}>
-                          <tr>
-                            <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>Grand Total:</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>
-                              ${costEstimatePOModalData.items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0).toFixed(2)}
-                            </td>
-                          </tr>
-                          <tr>
-                            <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
-                              With Tax{' '}
-                              <input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                value={costEstimatePOModalTaxPercent}
-                                onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                                style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
-                              />
-                              %:
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>
-                              ${(costEstimatePOModalData.items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0) * (1 + (parseFloat(costEstimatePOModalTaxPercent) || 0) / 100)).toFixed(2)}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    ) : (
-                      <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
-                        <p style={{ margin: 0 }}><strong>Grand Total:</strong> $0.00</p>
-                        <p style={{ margin: '0.25rem 0 0' }}>
-                          <strong>With Tax</strong>{' '}
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={costEstimatePOModalTaxPercent}
-                            onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                            style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
-                          />
-                          %: $0.00
-                        </p>
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const data = costEstimatePOModalData
-                          if (data && typeof data === 'object' && 'items' in data) {
-                            printCostEstimatePOForReview(data.name, data.items, parseFloat(costEstimatePOModalTaxPercent) || 0)
-                          }
-                        }}
-                        disabled={false}
-                        style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-                      >
-                        Print for Review
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const data = costEstimatePOModalData
-                          if (data && typeof data === 'object' && 'items' in data) {
-                            printCostEstimatePOForSupplyHouse(data.name, data.items, parseFloat(costEstimatePOModalTaxPercent) || 0)
-                          }
-                        }}
-                        disabled={false}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                      >
-                        Print for Supply House
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
           )}
           {!selectedBidForCostEstimate && (
@@ -15460,7 +14079,7 @@ export default function Bids() {
                     return (
                       <tr
                         key={bid.id}
-                        onClick={() => selectBidAndSyncUrl(bid, 'cost-estimate')}
+                        onClick={() => selectBidAndSyncUrl(bid, 'labor')}
                         style={{
                           cursor: 'pointer',
                           borderBottom: '1px solid #e5e7eb',
@@ -15881,7 +14500,7 @@ export default function Bids() {
                       disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
                       title={
                         !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
-                          ? 'Select a price book and ensure Counts and Cost Estimate exist'
+                          ? 'Select a price book and ensure Counts and Labor exist'
                           : 'Package and send pricing (Job Plans + 4-column table) to a teammate'
                       }
                       style={{
@@ -15904,7 +14523,7 @@ export default function Bids() {
                     disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
                     title={
                       !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
-                        ? 'Select a price book and ensure Counts and Cost Estimate exist'
+                        ? 'Select a price book and ensure Counts and Labor exist'
                         : 'Download pricing grid as CSV'
                     }
                     style={{
@@ -16093,13 +14712,13 @@ export default function Bids() {
               </div>
               {!pricingCostEstimate && pricingCountRows.length > 0 && (
                 <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                  Add fixtures in Counts and create a Cost Estimate first to see margin comparison.{' '}
+                  Add fixtures in Counts and set up Labor first to see margin comparison.{' '}
                   <button
                     type="button"
-                    onClick={() => setActiveTab('cost-estimate')}
+                    onClick={() => setActiveTab('labor')}
                     style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                   >
-                    Go to Cost Estimate
+                    Go to Labor
                   </button>
                 </p>
               )}
@@ -16120,9 +14739,10 @@ export default function Bids() {
                 const estimatorCost = (pricingCostEstimate as any)?.estimator_cost_flat_amount != null
                   ? Number((pricingCostEstimate as any).estimator_cost_flat_amount)
                   : pricingCountRows.length * (Number((pricingCostEstimate as any)?.estimator_cost_per_count) || 10)
+                const travelCost = computeTravelCost(pricingCostEstimate)
                 const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
                 const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
-                const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost
+                const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost + travelCost
                 const assignmentsForVersion = bidPricingAssignments.filter(
                   (a) => a.price_book_version_id === selectedPricingVersionId,
                 )
@@ -16197,25 +14817,6 @@ export default function Bids() {
                 })
                 return (
                   <>
-                  {pricingViewModel === 'cost' && (
-                  <div style={{ marginBottom: '1rem', marginLeft: 'auto', padding: '0.75rem 1rem', background: '#fef3c7', borderRadius: 4, border: '1px solid #fde68a', width: 'fit-content' }}>
-                    <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600 }}>Our cost breakdown</h4>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', fontSize: '0.875rem' }}>
-                      <span>Materials: ${formatCurrency(totalMaterials)} {totalCost > 0 ? `| ${((totalMaterials / totalCost) * 100).toFixed(1)}%` : ''}</span>
-                      <span>Manhours: ${formatCurrency(laborCost)} {totalCost > 0 ? `| ${((laborCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
-                      {distance > 0 && totalLaborHours > 0 && (
-                        <span>Driving: ${formatCurrency(drivingCost)} <span style={{ color: '#6b7280', fontWeight: 400 }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span> {totalCost > 0 ? `| ${((drivingCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
-                      )}
-                      {estimatorCost > 0 && (
-                        <span>Estimator: ${formatCurrency(estimatorCost)} {totalCost > 0 ? `| ${((estimatorCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
-                      )}
-                      {teamLaborCost > 0 && (
-                        <span>Team Labor (clocked): ${formatCurrency(teamLaborCost)} {totalCost > 0 ? `| ${((teamLaborCost / totalCost) * 100).toFixed(1)}%` : ''}</span>
-                      )}
-                      <span style={{ fontWeight: 600 }}>Total cost: ${formatCurrency(totalCost)}</span>
-                    </div>
-                  </div>
-                  )}
                   <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'visible' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead style={{ background: '#f9fafb' }}>
@@ -16695,6 +15296,71 @@ export default function Bids() {
                             </td>
                           </tr>
                         ))}
+                        <tr style={{ background: '#fffbeb' }}>
+                          <td colSpan={3} style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>Our cost breakdown</td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>${formatCurrency(totalCost)}</td>
+                          <td colSpan={3} />
+                        </tr>
+                        <tr style={{ fontSize: '0.8125rem' }}>
+                          <td colSpan={7} style={{ padding: '0.35rem 0.75rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => { if (selectedBidForPricing) selectBidAndSyncUrl(selectedBidForPricing, 'takeoffs') }}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                            >
+                              Takeoffs
+                            </button>
+                          </td>
+                        </tr>
+                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Materials</td>
+                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(totalMaterials)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((totalMaterials / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                          <td colSpan={3} />
+                        </tr>
+                        <tr style={{ fontSize: '0.8125rem' }}>
+                          <td colSpan={7} style={{ padding: '0.35rem 0.75rem' }}>
+                            <button
+                              type="button"
+                              onClick={() => { if (selectedBidForPricing) selectBidAndSyncUrl(selectedBidForPricing, 'labor') }}
+                              style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                            >
+                              Labor
+                            </button>
+                          </td>
+                        </tr>
+                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Manhours</td>
+                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((laborCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                          <td colSpan={3} />
+                        </tr>
+                        {distance > 0 && totalLaborHours > 0 && (
+                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Driving <span style={{ color: '#6b7280' }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span></td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(drivingCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((drivingCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                            <td colSpan={3} />
+                          </tr>
+                        )}
+                        {estimatorCost > 0 && (
+                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Estimator</td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estimatorCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((estimatorCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                            <td colSpan={3} />
+                          </tr>
+                        )}
+                        {teamLaborCost > 0 && (
+                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Team Labor (clocked)</td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(teamLaborCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((teamLaborCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                            <td colSpan={3} />
+                          </tr>
+                        )}
+                        {travelCost > 0 && (
+                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Travel <span style={{ color: '#6b7280' }}>(meals + hotels)</span></td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(travelCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((travelCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                            <td colSpan={3} />
+                          </tr>
+                        )}
                         <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
                           <td style={{ padding: '0.75rem' }}>Total</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }} />
@@ -21713,285 +20379,5 @@ function SortableRoughPartLineRow({
         </div>
       </td>
     </tr>
-  )
-}
-
-function SortableCountRow({ row, highlight, onUpdate, onDelete }: {
-  row: BidCountRow
-  highlight?: boolean
-  onUpdate: () => void
-  onDelete: () => void
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: row.id })
-  const dragHandle = (
-    <span
-      {...attributes}
-      {...listeners}
-      style={{ cursor: 'grab', display: 'inline-flex', padding: '0.25rem', color: '#9ca3af' }}
-      title="Drag to reorder"
-      aria-label="Drag to reorder"
-    >
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
-        <path d="M8 6h2v2H8V6zm0 4h2v2H8v-2zm0 4h2v2H8v-2zm4-8h2v2h-2V6zm0 4h2v2h-2v-2zm0 4h2v2h-2v-2z" />
-      </svg>
-    </span>
-  )
-  return (
-    <CountRow
-      row={row}
-      highlight={highlight}
-      onUpdate={onUpdate}
-      onDelete={onDelete}
-      dragHandle={dragHandle}
-      trRef={setNodeRef}
-      trStyle={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
-      }}
-    />
-  )
-}
-
-function CountRow({ row, highlight, onUpdate, onDelete, dragHandle, trRef, trStyle }: {
-  row: BidCountRow
-  highlight?: boolean
-  onUpdate: () => void
-  onDelete: () => void
-  dragHandle?: React.ReactNode
-  trRef?: React.Ref<HTMLTableRowElement>
-  trStyle?: React.CSSProperties
-}) {
-  const [fixture, setFixture] = useState(row.fixture ?? '')
-  const [count, setCount] = useState(String(row.count))
-  const [groupTag, setGroupTag] = useState(row.group_tag ?? '')
-  const [page, setPage] = useState(row.page ?? '')
-  const [editing, setEditing] = useState(false)
-  const [saving, setSaving] = useState(false)
-
-  async function save() {
-    setSaving(true)
-    const num = parseFloat(count)
-    if (isNaN(num)) { setSaving(false); return }
-    const { error } = await supabase.from('bids_count_rows').update({ fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null }).eq('id', row.id)
-    if (error) { setSaving(false); return }
-    setEditing(false)
-    onUpdate()
-    setSaving(false)
-  }
-
-  async function remove() {
-    if (!confirm('Remove this row?')) return
-    await supabase.from('bids_count_rows').delete().eq('id', row.id)
-    onDelete()
-  }
-
-  const rowStyle = highlight ? { borderBottom: '1px solid #e5e7eb', background: '#dcfce7' } : { borderBottom: '1px solid #e5e7eb' }
-  const mergedStyle = { ...rowStyle, ...trStyle }
-  if (editing) {
-    return (
-      <tr ref={trRef} style={mergedStyle}>
-        {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
-        <td style={{ padding: '0.75rem', width: 132, textAlign: 'center' }}>
-          <input type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }} />
-        </td>
-        <td style={{ padding: '0.75rem', width: '50%' }}>
-          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-        </td>
-        <td style={{ padding: '0.75rem' }}>
-          <input type="text" value={groupTag} onChange={(e) => setGroupTag(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-        </td>
-        <td style={{ padding: '0.75rem' }}>
-          <input type="text" value={page} onChange={(e) => setPage(e.target.value)} style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-        </td>
-        <td style={{ padding: '0.75rem' }}>
-          <button type="button" onClick={save} disabled={saving} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-          <button type="button" onClick={() => setEditing(false)} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-        </td>
-      </tr>
-    )
-  }
-  return (
-    <tr ref={trRef} style={mergedStyle}>
-      {dragHandle != null && <td style={{ padding: '0.75rem', width: 32, verticalAlign: 'middle' }}>{dragHandle}</td>}
-      <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
-      <td style={{ padding: '0.75rem' }}>{row.fixture ?? ''}</td>
-      <td style={{ padding: '0.75rem' }}>{row.group_tag ?? '—'}</td>
-      <td style={{ padding: '0.75rem' }}>{row.page ?? '—'}</td>
-      <td style={{ padding: '0.75rem' }}>
-        <button type="button" onClick={() => setEditing(true)} title="Edit" aria-label="Edit" style={{ marginRight: '0.25rem', padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: '#6b7280', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
-            <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z" />
-          </svg>
-        </button>
-        <button type="button" onClick={remove} title="Delete" aria-label="Delete" style={{ padding: '0.25rem', cursor: 'pointer', background: 'none', border: 'none', color: '#991b1b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
-            <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
-          </svg>
-        </button>
-      </td>
-    </tr>
-  )
-}
-
-function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAndAddAnother, showDragHandleColumn }: { bidId: string; serviceTypeId?: string; onSaved: () => void; onCancel: () => void; onSavedAndAddAnother?: () => void; showDragHandleColumn?: boolean }) {
-  const { showToast } = useToastContext()
-  const countInputRef = useRef<HTMLInputElement>(null)
-  const [fixture, setFixture] = useState('')
-  const [count, setCount] = useState('')
-  const [groupTag, setGroupTag] = useState('')
-  const [page, setPage] = useState('')
-  const [saving, setSaving] = useState(false)
-  const [countsFixtureGroups, setCountsFixtureGroups] = useState<Array<{ label: string; fixtures: string[] }>>([])
-
-  useEffect(() => {
-    if (!serviceTypeId) {
-      setCountsFixtureGroups([])
-      return
-    }
-    const stId = serviceTypeId
-    let cancelled = false
-    async function load() {
-      const { data: groupsData } = await supabase
-        .from('counts_fixture_groups')
-        .select('id, label, sequence_order')
-        .eq('service_type_id', stId)
-        .order('sequence_order', { ascending: true })
-      if (cancelled || !groupsData?.length) {
-        if (!cancelled) setCountsFixtureGroups([])
-        return
-      }
-      const groupIds = (groupsData as { id: string }[]).map((g) => g.id)
-      const { data: itemsData } = await supabase
-        .from('counts_fixture_group_items')
-        .select('group_id, name, sequence_order')
-        .in('group_id', groupIds)
-        .order('sequence_order', { ascending: true })
-      if (cancelled) return
-      const groups = (groupsData as { id: string; label: string; sequence_order: number }[]).map((g) => ({
-        label: g.label,
-        fixtures: ((itemsData as { group_id: string; name: string }[]) ?? [])
-          .filter((i) => i.group_id === g.id)
-          .map((i) => i.name),
-      }))
-      setCountsFixtureGroups(groups)
-    }
-    void load()
-    return () => { cancelled = true }
-  }, [serviceTypeId])
-
-  async function submit() {
-    const num = parseFloat(count)
-    if (isNaN(num) || !fixture.trim()) return
-    setSaving(true)
-    const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
-    const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1 })
-    if (error) { setSaving(false); showToast(error.message, 'error'); return }
-    onSaved()
-  }
-
-  async function submitAndAdd(): Promise<boolean> {
-    const num = parseFloat(count)
-    if (isNaN(num) || !fixture.trim()) return false
-    setSaving(true)
-    const { data: maxSeqData } = await supabase.from('bids_count_rows').select('sequence_order').eq('bid_id', bidId).order('sequence_order', { ascending: false }).limit(1)
-    const maxSeq = maxSeqData?.[0]?.sequence_order ?? 0
-    const { error } = await supabase.from('bids_count_rows').insert({ bid_id: bidId, fixture: fixture.trim(), count: num, group_tag: groupTag.trim() || null, page: page.trim() || null, sequence_order: maxSeq + 1 })
-    if (error) {
-      setSaving(false)
-      showToast(error.message, 'error')
-      return false
-    }
-    setFixture('')
-    setCount('')
-    setGroupTag('')
-    setPage('')
-    setSaving(false)
-    onSavedAndAddAnother?.()
-    return true
-  }
-
-  async function submitAndAddThenFocusCount() {
-    const ok = await submitAndAdd()
-    if (ok) requestAnimationFrame(() => countInputRef.current?.focus())
-  }
-
-  const calcWidth = 132
-  const hasFixtureGroups = countsFixtureGroups.length > 0
-  const missingFields: string[] = []
-  if (!fixture.trim()) missingFields.push('Fixture')
-  if (isNaN(parseFloat(count))) missingFields.push('Count')
-  const canSubmit = missingFields.length === 0
-
-  return (
-    <>
-      <tr style={{ borderBottom: hasFixtureGroups ? 'none' : '1px solid #e5e7eb' }}>
-        {showDragHandleColumn && <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: 32, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }} />}
-        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: calcWidth, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: calcWidth }}>
-            <input ref={countInputRef} type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-            <div style={{ marginTop: hasFixtureGroups ? '1.75rem' : undefined }}>
-              <NumericEntryPad widthPx={calcWidth} value={count} onChange={setCount} />
-            </div>
-          </div>
-        </td>
-        <td style={{ padding: '0.75rem', width: '50%', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-        </td>
-        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <input type="text" value={groupTag} onChange={(e) => setGroupTag(e.target.value)} placeholder="Group/Tag" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-        </td>
-        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <input
-            type="text"
-            value={page}
-            onChange={(e) => setPage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key !== 'Tab' || e.shiftKey || !canSubmit || saving) return
-              e.preventDefault()
-              void submitAndAddThenFocusCount()
-            }}
-            placeholder="Plan Page"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
-          />
-        </td>
-        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
-              <button type="button" onClick={submit} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-              <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-              <button type="button" onClick={() => void submitAndAddThenFocusCount()} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save<br />& Add</button>
-              {!canSubmit && !saving && missingFields.length > 0 && (
-                <span style={{ fontSize: '0.8rem', color: '#FF6600', display: 'inline-block' }}>
-                <span style={{ display: 'block' }}>Required:</span>
-                {missingFields.map((f) => (
-                  <span key={f} style={{ display: 'block', marginLeft: '0.25em' }}>{f}</span>
-                ))}
-              </span>
-              )}
-            </div>
-          </div>
-        </td>
-      </tr>
-      {hasFixtureGroups && (
-        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-          <td colSpan={3} style={{ padding: '0.75rem', verticalAlign: 'top' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-              {countsFixtureGroups.map((group) => (
-                <div key={group.label} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem', flexShrink: 0 }}>{group.label}</span>
-                  {group.fixtures.map((name) => (
-                    <button key={name} type="button" tabIndex={-1} onClick={() => setFixture(name)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{name}</button>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </td>
-        </tr>
-      )}
-    </>
   )
 }
