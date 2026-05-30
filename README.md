@@ -26,6 +26,26 @@ A web application for Master Plumbers to track plumbing work across multiple pro
    npm run build
    ```
 
+5. **Check before pushing** (the same checks CI runs)
+   ```bash
+   npm run typecheck   # tsc -b
+   npm run lint        # eslint src (warnings allowed for now)
+   npm test            # vitest run
+   npm run build
+   ```
+
+## Contributing / branch workflow
+
+`main` is **branch-protected** — no direct pushes. All changes land via a pull request whose CI `checks` job (typecheck + lint + test) must pass; merging then triggers the GitHub Pages deploy. See the "Branch workflow" section in [AI_CONTEXT.md](./AI_CONTEXT.md).
+
+```bash
+git checkout -b my-change
+# edit, commit
+git push -u origin my-change
+gh pr create --fill        # CI runs automatically
+gh pr merge --squash --delete-branch   # once "checks" is green
+```
+
 ## For AI Agents / New Developers
 
 **Start here**: [AGENTS.md](./AGENTS.md) → [AI_CONTEXT.md](./AI_CONTEXT.md) (entry point + 30-second project overview)
@@ -38,6 +58,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 | Adding a new role | [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) - Step-by-step guide |
 | Working with database/schema | [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - "Database Schema" section |
 | Bids system features | [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - All 10 tabs documented |
+| Decomposing a large page (Bids/People) | [docs/BIDS_TABS_ARCHITECTURE.md](./docs/BIDS_TABS_ARCHITECTURE.md), [docs/PEOPLE_TABS_ARCHITECTURE.md](./docs/PEOPLE_TABS_ARCHITECTURE.md) - per-tab state/coupling maps + extraction order |
 | Edge Functions / API | [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - Complete API reference |
 | Recent changes/features | [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Chronological updates |
 | App crash / outage / Supabase load (AI + CLI triage; Cursor: `.cursor/rules/supabase-incident-triage.mdc`) | [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md); capture: [`scripts/capture-supabase-incident.sh`](./scripts/capture-supabase-incident.sh); client mitigation: [RECENT_FEATURES.md](./RECENT_FEATURES.md) **v2.454** |
@@ -159,7 +180,7 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 
 ## Deployment
 
-The project automatically deploys to GitHub Pages when changes are pushed to the `main` branch.
+The project automatically deploys to GitHub Pages when changes land on the `main` branch. Because `main` is branch-protected, changes reach it via a merged PR. CI runs `typecheck` + `lint` + `test` on every PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)); the deploy workflow ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) re-runs the same `checks` job as a gate before building, so a broken `main` never ships.
 
 **Required GitHub Secrets**:
 - `VITE_SUPABASE_URL`
