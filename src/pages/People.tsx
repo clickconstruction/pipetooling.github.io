@@ -14,9 +14,6 @@ import PeopleHousingTab from '../components/people/PeopleHousingTab'
 import PeopleLicensesTab from '../components/people/PeopleLicensesTab'
 import PeopleOffsetsTab from '../components/people/PeopleOffsetsTab'
 import PeopleContractsTab from '../components/people/PeopleContractsTab'
-import type { WriteupListRow } from '../components/writeups/WriteupEditorModal'
-import type { NcnsListRow } from '../components/writeups/writeupsTimelineTypes'
-import type { WriteupTemplateRow } from '../components/writeups/WriteupTemplateManagerModal'
 import { Link, useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -501,10 +498,6 @@ export default function People() {
   const usersTabSearchQ = useMemo(() => usersTabSearch.trim().toLowerCase(), [usersTabSearch])
   const [activityAccessResolved, setActivityAccessResolved] = useState(false)
   const [isActivityViewer, setIsActivityViewer] = useState(false)
-  const [activityViewerGrantSet, setActivityViewerGrantSet] = useState<Set<string>>(() => new Set())
-  const [activityGrantListLoading, setActivityGrantListLoading] = useState(false)
-  const [activityGrantBusyId, setActivityGrantBusyId] = useState<string | null>(null)
-  const [activityGrantsSectionOpen, setActivityGrantsSectionOpen] = useState(true)
   const canSeeActivityTab = isDev || isActivityViewer
   const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
@@ -867,12 +860,6 @@ export default function People() {
   const [offsetFormOpen, setOffsetFormOpen] = useState(false)
   const [offsetFormInitialCreateDraft, setOffsetFormInitialCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
   const [, setOffsetFormError] = useState<string | null>(null)
-
-  const [writeupTemplatesRows, setWriteupTemplatesRows] = useState<WriteupTemplateRow[]>([])
-  const [writeupsRows, setWriteupsRows] = useState<WriteupListRow[]>([])
-  const [ncnsRows, setNcnsRows] = useState<NcnsListRow[]>([])
-  const [writeupsLoading, setWriteupsLoading] = useState(false)
-  const [writeupsError, setWriteupsError] = useState<string | null>(null)
 
   // Review tab state. v2.542 — `last_month` was a misnomer (it's really 30 days
   // rolling back from today, not the previous calendar month) so we renamed the
@@ -1463,27 +1450,6 @@ export default function People() {
       cancelled = true
     }
   }, [authUser?.id])
-
-  useEffect(() => {
-    if (!isDev || activeTab !== 'activity') return
-    let cancelled = false
-    setActivityGrantListLoading(true)
-    void (async () => {
-      try {
-        const data = await withSupabaseRetry(
-          async () => await supabase.from('user_app_activity_viewers').select('viewer_user_id'),
-          'list activity viewers'
-        )
-        if (cancelled) return
-        setActivityViewerGrantSet(new Set((data ?? []).map((r: { viewer_user_id: string }) => r.viewer_user_id)))
-      } finally {
-        if (!cancelled) setActivityGrantListLoading(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [isDev, activeTab])
 
   const canEditCrewJobs = canAccessPay || (authUserRole === 'assistant' && canAccessHours)
 
@@ -4174,98 +4140,6 @@ export default function People() {
     setOffsetFormInitialCreateDraft(null)
     setOffsetFormError(null)
   }
-
-  const loadWriteupsData = useCallback(async () => {
-    setWriteupsLoading(true)
-    setWriteupsError(null)
-    try {
-      const tplRows = await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('writeup_templates')
-            .select('id, name, description, is_active, schema, created_at')
-            .order('name'),
-        'fetch writeup templates'
-      )
-      const list = (tplRows ?? []) as WriteupTemplateRow[]
-      setWriteupTemplatesRows(list)
-      const tplMap = new Map(list.map((t) => [t.id, t.name]))
-      const [wRows, incidentRows] = await Promise.all([
-        withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('writeups')
-              .select(
-                'id, template_id, subject_user_id, filled_by_user_id, status, disclosure, answers, submitted_at, created_at'
-              )
-              .order('created_at', { ascending: false }),
-          'fetch writeups'
-        ),
-        withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('attendance_incidents')
-              .select('id, subject_user_id, work_date, created_by_user_id, created_at, metadata, details')
-              .eq('incident_type', 'no_call_no_show')
-              .order('created_at', { ascending: false }),
-          'fetch attendance incidents ncns'
-        ),
-      ])
-      setWriteupsRows(
-        (wRows ?? []).map((r) => ({
-          id: r.id,
-          template_id: r.template_id,
-          template_name: tplMap.get(r.template_id) ?? '—',
-          subject_user_id: r.subject_user_id,
-          subject_name: users.find((u) => u.id === r.subject_user_id)?.name ?? 'Unknown',
-          filled_by_user_id: r.filled_by_user_id,
-          author_name: users.find((u) => u.id === r.filled_by_user_id)?.name ?? 'Unknown',
-          status: r.status as 'draft' | 'submitted',
-          disclosure: r.disclosure ?? null,
-          submitted_at: r.submitted_at ?? null,
-          created_at: r.created_at,
-          answers: r.answers,
-        }))
-      )
-      setNcnsRows(
-        (incidentRows ?? []).map((r) => {
-          let hadApproved = false
-          let source: string | null = null
-          const meta = r.metadata
-          if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
-            const o = meta as Record<string, unknown>
-            if (o.had_approved_sessions === true) hadApproved = true
-            if (typeof o.source === 'string') source = o.source
-          }
-          return {
-            id: r.id,
-            subject_user_id: r.subject_user_id,
-            subject_name: users.find((u) => u.id === r.subject_user_id)?.name ?? 'Unknown',
-            created_by_user_id: r.created_by_user_id,
-            author_name: users.find((u) => u.id === r.created_by_user_id)?.name ?? 'Unknown',
-            work_date: r.work_date,
-            created_at: r.created_at,
-            had_approved_sessions: hadApproved,
-            source,
-            details: r.details ?? null,
-          }
-        })
-      )
-    } catch (e) {
-      setWriteupsError(e instanceof Error ? e.message : 'Failed to load writeups')
-      setNcnsRows([])
-    } finally {
-      setWriteupsLoading(false)
-    }
-  }, [users])
-
-  useEffect(() => {
-    if (activeTab !== 'writeups' || !canAccessContracts) return
-    const t = window.setTimeout(() => {
-      void loadWriteupsData()
-    }, 80)
-    return () => window.clearTimeout(t)
-  }, [activeTab, canAccessContracts, loadWriteupsData])
 
   useEffect(() => {
     if (activeTab === 'review' && isDev) {
@@ -14611,15 +14485,10 @@ export default function People() {
 
       {activeTab === 'writeups' && canAccessContracts && authUser?.id ? (
         <WriteupsContractsSubTab
-          writeups={writeupsRows}
-          ncnsRows={ncnsRows}
-          templates={writeupTemplatesRows}
+          users={users}
           userOptions={writeupUserSelectOptions}
-          loading={writeupsLoading}
-          error={writeupsError}
           authUserId={authUser.id}
           isDev={isDev}
-          onRefresh={loadWriteupsData}
         />
       ) : null}
 
@@ -16155,177 +16024,12 @@ export default function People() {
           {!activityAccessResolved ? (
             <p style={{ color: '#6b7280' }}>Loading…</p>
           ) : canSeeActivityTab ? (
-            <>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  flexWrap: 'wrap',
-                  gap: '0.75rem',
-                  marginBottom: '1rem',
-                }}
-              >
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>App activity</h2>
-                {isDev && (
-                  <button
-                    type="button"
-                    aria-expanded={activityGrantsSectionOpen}
-                    aria-controls="people-activity-grants-panel"
-                    onClick={() => setActivityGrantsSectionOpen((o) => !o)}
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      fontSize: '0.875rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 6,
-                      background: '#fff',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                    }}
-                  >
-                    <span aria-hidden>{activityGrantsSectionOpen ? '\u25BC' : '\u25B6'}</span>
-                    {activityGrantsSectionOpen ? 'Hide access' : 'Manage access'}
-                  </button>
-                )}
-              </div>
-              {isDev && activityGrantsSectionOpen && (
-                <div
-                  id="people-activity-grants-panel"
-                  style={{
-                    marginBottom: '1.5rem',
-                    padding: '1rem',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: 8,
-                    background: '#f9fafb',
-                  }}
-                >
-                  <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', fontWeight: 600 }}>Who can see this tab</h3>
-                  <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
-                    Grant Assistants, Master Technicians, or Primaries org-wide activity (same table as below). Others keep only their own usage.
-                  </p>
-                  {activityGrantListLoading ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading grants…</p>
-                  ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 720, fontSize: '0.875rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                            <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
-                            <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
-                            <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
-                            <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
-                            <th style={{ padding: '0.5rem 0.75rem' }} />
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {users
-                            .filter((u) => ['assistant', 'master_technician', 'primary'].includes(u.role))
-                            .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-                            .map((u) => {
-                              const granted = activityViewerGrantSet.has(u.id)
-                              const busy = activityGrantBusyId === u.id
-                              return (
-                                <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || '—'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{u.email || '—'}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                                    {u.phone ? (
-                                      <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
-                                        {u.phone}
-                                      </a>
-                                    ) : (
-                                      '—'
-                                    )}
-                                  </td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>{u.role.replace(/_/g, ' ')}</td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}>
-                                    {granted ? (
-                                      <button
-                                        type="button"
-                                        disabled={busy || !authUser?.id}
-                                        onClick={async () => {
-                                          setActivityGrantBusyId(u.id)
-                                          try {
-                                            await withSupabaseRetry(
-                                              async () =>
-                                                await supabase.from('user_app_activity_viewers').delete().eq('viewer_user_id', u.id),
-                                              'revoke activity viewer'
-                                            )
-                                            setActivityViewerGrantSet((prev) => {
-                                              const next = new Set(prev)
-                                              next.delete(u.id)
-                                              return next
-                                            })
-                                          } catch (e) {
-                                            showToast(String(e instanceof Error ? e.message : e), 'error')
-                                          } finally {
-                                            setActivityGrantBusyId(null)
-                                          }
-                                        }}
-                                        style={{
-                                          padding: '0.25rem 0.5rem',
-                                          fontSize: '0.8125rem',
-                                          border: '1px solid #d1d5db',
-                                          borderRadius: 6,
-                                          background: '#fff',
-                                          cursor: busy ? 'not-allowed' : 'pointer',
-                                        }}
-                                      >
-                                        {busy ? '…' : 'Revoke'}
-                                      </button>
-                                    ) : (
-                                      <button
-                                        type="button"
-                                        disabled={busy || !authUser?.id}
-                                        onClick={async () => {
-                                          if (!authUser?.id) return
-                                          setActivityGrantBusyId(u.id)
-                                          try {
-                                            await withSupabaseRetry(
-                                              async () =>
-                                                await supabase.from('user_app_activity_viewers').insert({
-                                                  viewer_user_id: u.id,
-                                                  granted_by: authUser.id,
-                                                }),
-                                              'grant activity viewer'
-                                            )
-                                            setActivityViewerGrantSet((prev) => new Set(prev).add(u.id))
-                                          } catch (e) {
-                                            showToast(String(e instanceof Error ? e.message : e), 'error')
-                                          } finally {
-                                            setActivityGrantBusyId(null)
-                                          }
-                                        }}
-                                        style={{
-                                          padding: '0.25rem 0.5rem',
-                                          fontSize: '0.8125rem',
-                                          border: '1px solid #3b82f6',
-                                          borderRadius: 6,
-                                          background: '#3b82f6',
-                                          color: '#fff',
-                                          cursor: busy ? 'not-allowed' : 'pointer',
-                                        }}
-                                      >
-                                        {busy ? '…' : 'Grant'}
-                                      </button>
-                                    )}
-                                  </td>
-                                </tr>
-                              )
-                            })}
-                        </tbody>
-                      </table>
-                      {users.filter((u) => ['assistant', 'master_technician', 'primary'].includes(u.role)).length === 0 && (
-                        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No eligible users loaded.</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              <PeopleAppActivityPanel enabled={activityAccessResolved && canSeeActivityTab} />
-            </>
+            <PeopleAppActivityPanel
+              enabled={activityAccessResolved && canSeeActivityTab}
+              isDev={isDev}
+              users={users}
+              authUserId={authUser?.id ?? null}
+            />
           ) : null}
         </div>
       )}
