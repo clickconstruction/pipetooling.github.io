@@ -26,10 +26,10 @@ import { HOURS_GRID_FIRST_COL_LABEL } from '../constants/hoursGridFirstCol'
 import { formatCurrency } from '../lib/format'
 import { buildPayReportDocumentTitle } from '../lib/payReportDocumentTitle'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { buildCrewMapFromJobsAndBidRows, type MergedCrewMapRow } from '../utils/crewAssignments'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, referenceDateForWorkDateYmd, ymdAddDays } from '../utils/dateUtils'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
+import { useCrewJobMap } from '../hooks/useCrewJobMap'
 import {
   usePeopleRoster,
   type Person,
@@ -741,6 +741,13 @@ export default function People() {
     start.setDate(d.getDate() - day + 6)
     return start.toLocaleDateString('en-CA')
   })
+  const {
+    crewJobsByDatePerson,
+    loadCrewJobsForHoursRange,
+    mergeCrewJobsForDateRange,
+    loadCrewJobsRef,
+    draftPayrollCrewMergeFetchIdRef,
+  } = useCrewJobMap(hoursDateStart, hoursDateEnd)
   const [editingHoursCell, setEditingHoursCell] = useState<{ personName: string; workDate: string } | null>(null)
   const [editingHoursValue, setEditingHoursValue] = useState('')
   /** People → Hours: anchor + entry for the inline pending sessions popover. */
@@ -869,7 +876,6 @@ export default function People() {
   type CrewJobRow = { job_assignments: CrewJobAssignment[] }
   type CrewBidAssignment = { bid_id: string; pct: number }
   type CrewBidRow = { bid_assignments: CrewBidAssignment[] }
-  const [crewJobsByDatePerson, setCrewJobsByDatePerson] = useState<Record<string, MergedCrewMapRow>>({})
   const [hoursUnassignedModal, setHoursUnassignedModal] = useState<{ personName: string } | null>(null)
   const [hoursDayAuditModal, setHoursDayAuditModal] = useState<{ personName: string; workDate: string } | null>(null)
 
@@ -1066,7 +1072,6 @@ export default function People() {
   const [reviewLaborBreakdownContext, setReviewLaborBreakdownContext] = useState<ReviewLaborBreakdownContext | null>(null)
   const [reviewHoursPayCollapsed, setReviewHoursPayCollapsed] = useState(false)
   const [reviewOnlyPaidInFull, setReviewOnlyPaidInFull] = useState(false)
-  const loadCrewJobsRef = useRef<() => void>()
   const loadPeopleHoursRef = useRef<() => void>()
   loadPeopleHoursRef.current = () => {
     if (
@@ -2633,7 +2638,6 @@ export default function People() {
   }
 
   const draftPayrollPendingFetchIdRef = useRef(0)
-  const draftPayrollCrewMergeFetchIdRef = useRef(0)
   const loadDraftPayrollPendingApprovalsRef = useRef<(periodStart: string, periodEnd: string) => void>(() => {})
 
   const loadDraftPayrollPendingApprovals = useCallback(async (periodStart: string, periodEnd: string) => {
@@ -4566,54 +4570,6 @@ export default function People() {
     }, 300)
     return () => clearTimeout(t)
   }, [overheadJobSearch, overheadJobPickerOpen])
-
-  function loadCrewJobsForHoursRange() {
-    const days = getDaysInRange(hoursDateStart, hoursDateEnd)
-    if (days.length === 0) return
-    void Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').in('work_date', days),
-      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').in('work_date', days),
-    ]).then(([jobsRes, bidsRes]) => {
-      const jobsRows = (jobsRes.data ?? []) as Array<{
-        work_date: string
-        person_name: string
-        job_assignments: CrewJobAssignment[]
-      }>
-      const bidsRows = (bidsRes.data ?? []) as Array<{
-        work_date: string
-        person_name: string
-        bid_assignments: CrewBidAssignment[]
-      }>
-      setCrewJobsByDatePerson(buildCrewMapFromJobsAndBidRows(jobsRows, bidsRows))
-    })
-  }
-
-  /** Merges crew rows for Draft Payroll review; Hours tab loader still replaces its range only. */
-  function mergeCrewJobsForDateRange(periodStart: string, periodEnd: string) {
-    if (periodStart > periodEnd) return
-    const days = getDaysInRange(periodStart, periodEnd)
-    if (days.length === 0) return
-    const fetchId = ++draftPayrollCrewMergeFetchIdRef.current
-    void Promise.all([
-      supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').in('work_date', days),
-      supabase.from('people_crew_bids').select('work_date, person_name, bid_assignments').in('work_date', days),
-    ]).then(([jobsRes, bidsRes]) => {
-      if (fetchId !== draftPayrollCrewMergeFetchIdRef.current) return
-      const jobsRows = (jobsRes.data ?? []) as Array<{
-        work_date: string
-        person_name: string
-        job_assignments: CrewJobAssignment[]
-      }>
-      const bidsRows = (bidsRes.data ?? []) as Array<{
-        work_date: string
-        person_name: string
-        bid_assignments: CrewBidAssignment[]
-      }>
-      const partial = buildCrewMapFromJobsAndBidRows(jobsRows, bidsRows)
-      setCrewJobsByDatePerson((prev) => ({ ...prev, ...partial }))
-    })
-  }
-  loadCrewJobsRef.current = loadCrewJobsForHoursRange
 
   useEffect(() => {
     if (!draftPayrollModalOpen || !canAccessPay) return
