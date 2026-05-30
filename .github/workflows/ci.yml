@@ -30,3 +30,8 @@ jobs:
 
       - name: Test
         run: npm test
+        env:
+          # Unit tests don't hit Supabase, but src/lib/supabase.ts throws at import
+          # if these are unset. Dummy non-empty values satisfy the guard.
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
