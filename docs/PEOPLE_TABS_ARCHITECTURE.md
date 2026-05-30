@@ -10,7 +10,12 @@ last_updated: 2026-05-31
 
 ## Overview
 
-[`src/pages/People.tsx`](../src/pages/People.tsx) is a ~21,435-line "God component" (one `People()` starting at line 489, ~329 `useState`, ~60 `useEffect`). This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented**. It mirrors the approach proven on [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md), which took `Bids.tsx` from ~18,800 lines to ~3,650.
+[`src/pages/People.tsx`](../src/pages/People.tsx) was a ~21,435-line "God component"; decomposition is in progress and it is now **~16,277 lines**. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented**. It mirrors the approach proven on [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md), which took `Bids.tsx` from ~18,800 lines to ~3,650.
+
+### Progress
+- **Phase 1 (low/med-coupling tab extractions) — DONE.** `vehicles`, `housing`, `licenses`, `offsets`, `contracts` extracted to `src/components/people/People<Tab>Tab.tsx`; `activity` + `writeups` cleaned up (state/loaders moved into their existing components). With `teams`/`feedback` already thin, the only tabs still inline are `users`, `overhead`, `pay_stubs`, `hours`, `review` (the pay/hours hub).
+- **Phase 2 (shared hooks) — IN PROGRESS.** Extracted so far: `usePeopleAccess`, `usePeopleRoster`, `useCrewJobMap` (under `src/hooks/`). Remaining: `usePayConfig`, `usePeopleHoursData` (Realtime), and `useTeamSummaryData` (intricate review-UI orchestration; likely folded into the Phase-3 `review` extraction rather than a standalone hook).
+- **Phase 3 (hub tabs)** — not started: `overhead → review → pay_stubs → users → hours` (hours last), consuming the Phase-2 hooks.
 
 Tabs switch on a single `activeTab` state ([`People.tsx:537`](../src/pages/People.tsx)), type `PeopleTab` at [line 417](../src/pages/People.tsx):
 
@@ -37,21 +42,23 @@ Tabs switch on a single `activeTab` state ([`People.tsx:537`](../src/pages/Peopl
 | `overhead` | 12363-13633 | ~1,271 | inline | ~28 (`overhead*`) | reads `payConfig`, `crewJobsByDatePerson` | med (dev/master) | Phase 3 (after hooks) |
 | `pay_stubs` | 13634-14388 (+calendar 21314-21431) | ~870 | inline | ~35 (`payStub*`, `draftPayroll*`) | reads `payConfig`, `peopleHours`, rosters | high | Phase 3 (after hooks) |
 | `hours` | 14391-16725 | ~2,335 | inline | ~45 (`hours*`, `costMatrix*`, clock sessions) | **owns** `payConfig`/`teams`/`crewJobsByDatePerson` | very high | Phase 3 — extract LAST |
-| `vehicles` | 16726-16855 (+modals 20814-20918) | ~235 | inline | ~23 (`vehicle*`) | reads `users` (assignee names) | low | **Phase 1 — first target** |
-| `housing` | 16856-16989 (+20919-20985) | ~200 | inline | ~16 (`housing*`) | reads `users` | low | Phase 1 (twin of vehicles) |
-| `offsets` | 16990-17163 (+20792) | ~195 | inline | ~10 (`offset*`) | reads `payStubs` (apply), rosters | low-med | Phase 1 |
-| `licenses` | 17164-17376 (+20682-20791) | ~320 | inline | ~18 (`license*`, `costLine*`) | reads rosters | low | Phase 1 |
-| `contracts` | 17377-17891 (+modals 17906-18974) | ~1,583 | inline | ~50 (`contract*`, `template*`) | writes `contractSigningStatusByPersonName` (users reads) | med-high lines / low data | Phase 1 (biggest cheap win) |
-| `writeups` | 17892-17904 | ~13 | thin (`WriteupsContractsSubTab`) | 5 rows (loaded in parent) | `canAccessContracts`, `authUser` | low | Phase 1 cleanup (move loader in) |
+| `vehicles` | thin wrapper | ~235 | extracted (`PeopleVehiclesTab`) | 0 in parent | `users` prop | low | Done (PR #19) |
+| `housing` | thin wrapper | ~200 | extracted (`PeopleHousingTab`) | 0 in parent | `users` prop | low | Done (PR #20) |
+| `offsets` | thin wrapper | ~195 | extracted (`PeopleOffsetsTab`) | 0 in parent | `payStubs`/`loadPayStubs` props | low-med | Done (PR #22) |
+| `licenses` | thin wrapper | ~320 | extracted (`PeopleLicensesTab`) | 0 in parent | `people`/`users` props | low | Done (PR #21) |
+| `contracts` | thin wrapper | ~1,583 | extracted (`PeopleContractsTab`) | `contractSigningStatusByPersonName` stays in parent | `people`/`users`/`canDeletePeopleContracts` props | med-high lines / low data | Done (PR #23) |
+| `writeups` | thin wrapper | ~13 | extracted (`WriteupsContractsSubTab`, self-loads) | 0 | props only | low | Done (PR #24) |
 | `review` | 18975-20494 | ~1,520 | inline (dev) | ~35 (`review*`, `teamSummary*`) | reads `payConfig`, `archivedUserNames` | med-high | Phase 3 (after hooks) |
 | `feedback` | 20496-20500 | ~5 | thin (`TeamFeedbackDevSettingsBlock`) | 0 | `isDev` | low | Done |
-| `activity` | 20502-20681 | ~180 | partial (`PeopleAppActivityPanel` + inline grants) | 6 (`activity*`) | `isDev`/`isActivityViewer` | low | Phase 1 cleanup |
+| `activity` | thin wrapper | ~180 | extracted (`PeopleAppActivityPanel`) | `isActivityViewer`/`activityAccessResolved` stay in parent (feed `canSeeActivityTab`) | props only | low | Done (PR #24) |
 
 > Status legend: `inline` = rendered directly in `People.tsx`; `thin` = a few lines delegating to an imported component; `partial` = panel extracted but the tab still owns inline UI/state; `extracted` = fully moved.
 
 ---
 
 ## Per-tab dossiers
+
+> For the **extracted** tabs (`vehicles`/`housing`/`licenses`/`offsets`/`contracts`/`activity`/`writeups`/`teams`/`feedback`), the dossier below is the **pre-extraction inventory** — a record of what each tab contained before it moved to its `src/components/people/*` component. Current status/owner is in the master summary table above. The remaining inline tabs (`users`/`overhead`/`pay_stubs`/`hours`/`review`) are still accurate as-is. Line numbers are pre-extraction anchors; search by symbol.
 
 ### `users` — Roster
 - **Render:** [`11845-12357`](../src/pages/People.tsx) (~513); tab button at 11617; person create/edit form modal at 20986-21025; invite-confirm modal at 21026.
@@ -181,17 +188,17 @@ Each is tab-local; keep it that way during extraction.
 ### Permission / role flags (loaded once by `loadPayAccess` @1903)
 `canAccessPay`(545), `canAccessHours`(546), `canAccessLicenses`(547), `canAccessContracts`(548), `canViewCostMatrixShared`(549), `isDev`(551), `canOpenHoursTab`(550), `canSeeActivityTab`(587), `canAccessTeamsTab`(835), `canAccessOverheadTab`(837), `canDeletePeopleContracts`(839), `canEditUserNotes`(11372). The URL deep-link router (1730-1791) redirects unauthorized `tab=` values back to `users`.
 
-### Candidate shared layers to lift into hooks (the `useBidPricingEngine` analog)
-| Proposed hook | Owns | Consumed by |
-|---|---|---|
-| `usePeopleRoster` | `people`/`users` + refs, `loadPeople`(1591), `loadArchivedPeople`(2263), person create/edit form (`handleSave` 2196), name↔id bridge | nearly all tabs |
-| `usePeoplePermissions` | `loadPayAccess`(1903) + all `canAccess*`/`isDev` flags + URL redirect guards | every tab (gates) |
-| `usePayConfig` | `payConfig`/`Draft`/`Saving` (594-603), `loadPayConfig`(3306), `savePayConfig`(7181/7255) | hours (editor), pay_stubs, overhead, review |
-| `usePeopleHoursData` | `peopleHours`(643), clock-session queues (644-654), loaders (3349-3454), the Realtime subscription | hours (owner), pay_stubs, review |
-| `useCrewJobMap` | `crewJobsByDatePerson`(940) | hours, overhead, review, pay_stubs |
-| `useTeamSummaryData` | `teamSummary*` (1530-1563), `loadTeamSummaryData`(9377) | hours, review |
+### Shared layers lifted into hooks (the `useBidPricingEngine` analog)
+| Hook | Status | Owns | Consumed by |
+|---|---|---|---|
+| [`usePeopleAccess`](../src/hooks/usePeopleAccess.ts) | **extracted (PR #25)** | `loadPayAccess` + the 7 raw flags (`canAccessPay`/`Hours`/`Licenses`/`Contracts`, `canViewCostMatrixShared`, `isDev`, `canSeePushStatus`). Derived flags (`canOpenHoursTab`, `canSeeActivityTab`, `canAccessTeamsTab`/`Overhead`/`canDeletePeopleContracts`) stay in the parent. | every tab (gates) |
+| [`usePeopleRoster`](../src/hooks/usePeopleRoster.ts) | **extracted (PR #26)** | `people`/`users` + refs, `loadPeople`, `loadArchivedPeople`, person create/edit form + `handleSave` (via a 6-field deps ref). `handleMergeDuplicate` stays in the parent (pay/hours-entangled). | nearly all tabs |
+| [`useCrewJobMap`](../src/hooks/useCrewJobMap.ts) | **extracted (PR #27)** | `crewJobsByDatePerson` + `loadCrewJobsForHoursRange` + `mergeCrewJobsForDateRange` + refs (input: `hoursDateStart`/`End`). The two orchestration effects stay in the parent. | hours, overhead, review, pay_stubs |
+| `usePayConfig` | planned | `payConfig`/`Draft`/`Saving`, `loadPayConfig`, `savePayConfig` | hours (editor), pay_stubs, overhead, review |
+| `usePeopleHoursData` | planned (last/highest-risk) | `peopleHours`, clock-session queues, loaders, the Realtime subscription | hours (owner), pay_stubs, review |
+| `useTeamSummaryData` | deferred | `teamSummary*` + `loadTeamSummaryData` + drain/modal refs | review (likely folds into the `review` extraction — intricate review-UI orchestration, depends on `payConfig`) |
 
-`payConfig`, `peopleHours`/`clock_sessions`, and `crewJobsByDatePerson` are the People analogs of `bids_count_rows` — the shared sources of truth that resist extraction. Lift these into hooks **before** touching hours/pay_stubs/overhead/review.
+`payConfig`, `peopleHours`/`clock_sessions`, and `crewJobsByDatePerson` are the People analogs of `bids_count_rows` — the shared sources of truth that resist extraction. Lift the remaining ones into hooks **before** touching hours/pay_stubs/overhead/review.
 
 ---
 
@@ -199,44 +206,40 @@ Each is tab-local; keep it that way during extraction.
 
 ```mermaid
 graph TD
-    subgraph isolated [Domain-isolated low-coupling]
+    subgraph done [Extracted tabs - Phase 1 done]
         VH[vehicles]
         HO[housing]
         LI[licenses]
         OF[offsets]
-        CT["contracts (modal cluster)"]
-    end
-    subgraph done [Extracted / thin]
+        CT[contracts]
         TE[teams]
         WR[writeups]
         FB[feedback]
-        AC[activity + inline grants]
+        AC[activity]
     end
-    subgraph hub [Pay/Hours hub high-coupling]
+    subgraph hub [Pay/Hours hub - still inline]
         US[users]
         HR[hours]
         PS[pay_stubs]
         OV[overhead]
         RV[review]
     end
-    ROSTER[["people/users roster"]]
-    PERMS[["loadPayAccess flags"]]
-    PAYCFG[["payConfig"]]
-    HOURS[["peopleHours/clock_sessions"]]
-    CREW[["crewJobsByDatePerson"]]
+    subgraph hooks [Shared hooks]
+        ROSTER["usePeopleRoster (done)"]
+        PERMS["usePeopleAccess (done)"]
+        CREW["useCrewJobMap (done)"]
+        PAYCFG["usePayConfig (planned)"]
+        HOURS["usePeopleHoursData (planned)"]
+    end
 
-    US & PS & OF & LI & CT & RV --> ROSTER
-    VH & HO --> ROSTER
-    US & HR & PS & OV & RV & CT & LI & AC --> PERMS
+    US & PS & OV & RV --> ROSTER
+    US & HR & PS & OV & RV --> PERMS
     HR --> PAYCFG
     PS & OV & RV --> PAYCFG
-    HR --> HOURS
-    PS --> HOURS
-    HR --> CREW
-    OV & RV --> CREW
+    HR & PS --> HOURS
+    HR & OV & RV & PS --> CREW
     CT -.contractSigningStatusByPersonName.-> US
     OF -.payStubs apply.-> PS
-    HR & RV -.TeamSummaryInline.-> HR
 ```
 
 ---
@@ -245,17 +248,17 @@ graph TD
 
 Lowest-coupling, domain-isolated, permission-gated tabs first; the pay/hours hub last.
 
-1. **`vehicles`** — fully isolated (only `users` assignee names); form modals 20814-20918 move with it. Establishes the `People<Domain>Tab` prop pattern.
-2. **`housing`** — structural twin of vehicles (20919-20985).
-3. **`licenses`** — isolated, `canAccessLicenses`-gated; modals 20682-20791.
-4. **`offsets`** — isolated except the pay-stub apply linkage; pass `payStubs`/loader as a prop.
-5. **`contracts`** — biggest cheap win (~1,583 lines, mostly the modal cluster 17906-18974); surface `contractSigningStatusByPersonName` as a callback.
-6. **`activity` + `writeups` cleanup** — move inline grant UI + 6 `activity*` vars into `PeopleAppActivityPanel`; push `loadWriteupsData` + 5 rows into `WriteupsContractsSubTab`.
-7. **Shared-hook prep (refactor, not a move):** `usePeopleRoster`, `usePeoplePermissions`, `usePayConfig`, `usePeopleHoursData`, `useCrewJobMap`, `useTeamSummaryData`. The unlock for the hub tabs.
+1. ~~`vehicles`~~ — **DONE (PR #19)**. Established the `People<Domain>Tab` prop pattern (`users` prop).
+2. ~~`housing`~~ — **DONE (PR #20)** (twin of vehicles).
+3. ~~`licenses`~~ — **DONE (PR #21)**.
+4. ~~`offsets`~~ — **DONE (PR #22)** (`payStubs`/`loadPayStubs` passed as props; the record-payment `PersonOffsetFormModal` instance stayed in the parent).
+5. ~~`contracts`~~ — **DONE (PR #23)** (`contractSigningStatusByPersonName` + its populate effect kept in the parent for the users-tab traffic light).
+6. ~~`activity` + `writeups` cleanup~~ — **DONE (PR #24)**.
+7. **Shared-hook prep (refactor, not a move):** `usePeopleAccess` ~~DONE (PR #25)~~, `usePeopleRoster` ~~DONE (PR #26)~~, `useCrewJobMap` ~~DONE (PR #27)~~; **remaining:** `usePayConfig`, then `usePeopleHoursData` (last). `useTeamSummaryData` deferred (note the dependency: it needs `payConfig`, and it's review-UI-centric — likely extracted with the `review` tab).
 8. **`overhead`** — after `usePayConfig` + `useCrewJobMap`; dev/master-gated.
-9. **`review`** — after `useTeamSummaryData` + `usePayConfig`; dev-only.
+9. **`review`** — after `usePayConfig` (+ the team-summary machinery); dev-only.
 10. **`pay_stubs`** — after `usePayConfig` + `usePeopleHoursData`.
-11. **`users`** — extract the tag subsystem first, then the roster UI; the person-edit form lands in `usePeopleRoster`.
+11. **`users`** — extract the tag subsystem first, then the roster UI; the person-edit form already lives in `usePeopleRoster`.
 12. **`hours`** — **last.** The hub; extract once everything it feeds is on the shared hooks.
 
 > Already thin/extracted: `teams` (`PeopleTeamsTab`), `writeups` (`WriteupsContractsSubTab`), `feedback` (`TeamFeedbackDevSettingsBlock`), `activity` panel (`PeopleAppActivityPanel`). Many domain modals are already components (`PayStubLessModal`, `DraftPayrollModal`, `PersonOffsetFormModal`, `ContractBookModal`, `PersonTimeDetailModal`, `ReviewHoursModal`, `TeamSummaryInline`); the parent mostly orchestrates state around them.
