@@ -29,6 +29,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { buildCrewMapFromJobsAndBidRows, type MergedCrewMapRow } from '../utils/crewAssignments'
 import { formatDateRangeLabel } from '../utils/dateRangeLabel'
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, referenceDateForWorkDateYmd, ymdAddDays } from '../utils/dateUtils'
+import { usePeopleAccess } from '../hooks/usePeopleAccess'
 
 function formatOverheadTabWorkDateLabel(workDateYmd: string): string {
   const d = referenceDateForWorkDateYmd(workDateYmd)
@@ -460,13 +461,8 @@ export default function People() {
   const hoursTabFirstLoadCycleStartedRef = useRef(false)
   const hoursTableScrollRef = useRef<HTMLDivElement>(null)
   const hoursFocusClearTimeoutRef = useRef<number | null>(null)
-  const [canAccessPay, setCanAccessPay] = useState(false)
-  const [canAccessHours, setCanAccessHours] = useState(false)
-  const [canAccessLicenses, setCanAccessLicenses] = useState(false)
-  const [canAccessContracts, setCanAccessContracts] = useState(false)
-  const [canViewCostMatrixShared, setCanViewCostMatrixShared] = useState(false)
+  const { canAccessPay, canAccessHours, canAccessLicenses, canAccessContracts, canViewCostMatrixShared, isDev, canSeePushStatus } = usePeopleAccess(authUser?.id)
   const canOpenHoursTab = canAccessPay || canAccessHours || canViewCostMatrixShared
-  const [isDev, setIsDev] = useState(false)
   const [showUsersTabTags, setShowUsersTabTags] = useState(() =>
     typeof localStorage !== 'undefined' && localStorage.getItem(SHOW_USERS_TAB_TAGS_KEY) === '1',
   )
@@ -499,7 +495,6 @@ export default function People() {
   const [activityAccessResolved, setActivityAccessResolved] = useState(false)
   const [isActivityViewer, setIsActivityViewer] = useState(false)
   const canSeeActivityTab = isDev || isActivityViewer
-  const [canSeePushStatus, setCanSeePushStatus] = useState(false)
   const [pushEnabledUserIds, setPushEnabledUserIds] = useState<Set<string>>(new Set())
   const [locationEnabledUserIds, setLocationEnabledUserIds] = useState<Set<string>>(new Set())
   const [contractSigningStatusByPersonName, setContractSigningStatusByPersonName] = useState<
@@ -1369,47 +1364,6 @@ export default function People() {
       }
     }
   }, [activeTab, canAccessHours, hoursTabLoading, hoursFocusRequest, hoursDateStart, hoursDateEnd])
-
-  useEffect(() => {
-    async function loadPayAccess() {
-      if (!authUser?.id) return
-      const [meRes, approvedRes, sharesRes] = await Promise.all([
-        supabase.from('users').select('role').eq('id', authUser.id).single(),
-        supabase.from('pay_approved_masters').select('master_id'),
-        supabase.from('cost_matrix_teams_shares').select('shared_with_user_id').eq('shared_with_user_id', authUser.id).maybeSingle(),
-      ])
-      const role = (meRes.data as { role?: string } | null)?.role ?? null
-      const approvedIds = new Set((approvedRes.data ?? []).map((r: { master_id: string }) => r.master_id))
-      const hasCostMatrixShare = !!sharesRes.data
-      setCanViewCostMatrixShared(hasCostMatrixShare)
-      if (role === 'dev') {
-        setCanAccessPay(true)
-        setCanAccessHours(true)
-        setCanAccessLicenses(true)
-        setCanAccessContracts(true)
-        setIsDev(true)
-        setCanSeePushStatus(true)
-        return
-      }
-      if (role === 'assistant') {
-        setCanAccessHours(true)
-        setCanAccessLicenses(true)
-        setCanAccessContracts(true)
-        setCanSeePushStatus(true)
-        return
-      }
-      if (role === 'master_technician') {
-        setCanSeePushStatus(true)
-        setCanAccessContracts(true)
-        if (approvedIds.has(authUser.id)) {
-          setCanAccessPay(true)
-          setCanAccessHours(true)
-          setCanAccessLicenses(true)
-        }
-      }
-    }
-    loadPayAccess()
-  }, [authUser?.id])
 
   useEffect(() => {
     if (!authUser?.id) {
