@@ -24,6 +24,22 @@
 
 ---
 
+## Branch workflow
+
+`main` is protected: no direct pushes. All changes land via a PR whose CI `checks` job (typecheck + lint + test, [`.github/workflows/ci.yml`](.github/workflows/ci.yml)) must pass; branches must be up to date before merging.
+
+```bash
+git checkout -b my-change
+# edit, commit
+git push -u origin my-change
+gh pr create --fill          # CI runs automatically
+gh pr merge --squash --delete-branch   # once "checks" is green
+```
+
+Merging to `main` triggers the GitHub Pages deploy ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)), which re-runs the same checks before building.
+
+---
+
 ## Critical Concepts
 
 ### Access Control Patterns
