@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { SearchableSelectOption } from '../SearchableSelect'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -15,15 +15,10 @@ type TemplateOption = {
 }
 
 type Props = {
-  writeups: WriteupListRow[]
-  ncnsRows: NcnsListRow[]
-  templates: WriteupTemplateRow[]
+  users: { id: string; name: string }[]
   userOptions: SearchableSelectOption[]
-  loading: boolean
-  error: string | null
   authUserId: string
   isDev: boolean
-  onRefresh: () => void | Promise<void>
 }
 
 function formatNcnsWorkDateCell(ymd: string): string {
@@ -32,16 +27,105 @@ function formatNcnsWorkDateCell(ymd: string): string {
 }
 
 export function WriteupsContractsSubTab({
-  writeups,
-  ncnsRows,
-  templates,
+  users,
   userOptions,
-  loading,
-  error,
   authUserId,
   isDev,
-  onRefresh,
 }: Props) {
+  const [templates, setTemplates] = useState<WriteupTemplateRow[]>([])
+  const [writeups, setWriteups] = useState<WriteupListRow[]>([])
+  const [ncnsRows, setNcnsRows] = useState<NcnsListRow[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const loadWriteupsData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const tplRows = await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('writeup_templates')
+            .select('id, name, description, is_active, schema, created_at')
+            .order('name'),
+        'fetch writeup templates'
+      )
+      const list = (tplRows ?? []) as WriteupTemplateRow[]
+      setTemplates(list)
+      const tplMap = new Map(list.map((t) => [t.id, t.name]))
+      const [wRows, incidentRows] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('writeups')
+              .select(
+                'id, template_id, subject_user_id, filled_by_user_id, status, disclosure, answers, submitted_at, created_at'
+              )
+              .order('created_at', { ascending: false }),
+          'fetch writeups'
+        ),
+        withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('attendance_incidents')
+              .select('id, subject_user_id, work_date, created_by_user_id, created_at, metadata, details')
+              .eq('incident_type', 'no_call_no_show')
+              .order('created_at', { ascending: false }),
+          'fetch attendance incidents ncns'
+        ),
+      ])
+      setWriteups(
+        (wRows ?? []).map((r) => ({
+          id: r.id,
+          template_id: r.template_id,
+          template_name: tplMap.get(r.template_id) ?? '—',
+          subject_user_id: r.subject_user_id,
+          subject_name: users.find((u) => u.id === r.subject_user_id)?.name ?? 'Unknown',
+          filled_by_user_id: r.filled_by_user_id,
+          author_name: users.find((u) => u.id === r.filled_by_user_id)?.name ?? 'Unknown',
+          status: r.status as 'draft' | 'submitted',
+          disclosure: r.disclosure ?? null,
+          submitted_at: r.submitted_at ?? null,
+          created_at: r.created_at,
+          answers: r.answers,
+        }))
+      )
+      setNcnsRows(
+        (incidentRows ?? []).map((r) => {
+          let hadApproved = false
+          let source: string | null = null
+          const meta = r.metadata
+          if (meta && typeof meta === 'object' && !Array.isArray(meta)) {
+            const o = meta as Record<string, unknown>
+            if (o.had_approved_sessions === true) hadApproved = true
+            if (typeof o.source === 'string') source = o.source
+          }
+          return {
+            id: r.id,
+            subject_user_id: r.subject_user_id,
+            subject_name: users.find((u) => u.id === r.subject_user_id)?.name ?? 'Unknown',
+            created_by_user_id: r.created_by_user_id,
+            author_name: users.find((u) => u.id === r.created_by_user_id)?.name ?? 'Unknown',
+            work_date: r.work_date,
+            created_at: r.created_at,
+            had_approved_sessions: hadApproved,
+            source,
+            details: r.details ?? null,
+          }
+        })
+      )
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load writeups')
+      setNcnsRows([])
+    } finally {
+      setLoading(false)
+    }
+  }, [users])
+
+  useEffect(() => {
+    void loadWriteupsData()
+  }, [loadWriteupsData])
+
   const [tplModalOpen, setTplModalOpen] = useState(false)
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorMode, setEditorMode] = useState<'create' | 'edit_draft' | 'view_submitted'>('create')
@@ -112,7 +196,7 @@ export function WriteupsContractsSubTab({
     if (!confirm(`Delete this ${r.status} writeup for ${r.subject_name}?`)) return
     try {
       await withSupabaseRetry(async () => supabase.from('writeups').delete().eq('id', r.id), 'delete writeup')
-      await onRefresh()
+      await loadWriteupsData()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Delete failed')
     }
@@ -329,7 +413,7 @@ export function WriteupsContractsSubTab({
         onClose={() => setTplModalOpen(false)}
         templates={templates}
         authUserId={authUserId}
-        onAfterChange={onRefresh}
+        onAfterChange={loadWriteupsData}
       />
       <WriteupEditorModal
         open={editorOpen}
@@ -342,7 +426,7 @@ export function WriteupsContractsSubTab({
         templates={templateOptionsForEditor}
         userOptions={userOptions}
         authUserId={authUserId}
-        onAfterSave={onRefresh}
+        onAfterSave={loadWriteupsData}
       />
       <NcnsDetailModal open={ncnsDetailRow != null} row={ncnsDetailRow} onClose={() => setNcnsDetailRow(null)} />
     </div>
