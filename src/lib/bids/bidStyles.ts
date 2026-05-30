@@ -1,6 +1,7 @@
 /**
  * Tab style helpers and constants for the Bids page navigation, extracted from `src/pages/Bids.tsx`.
  */
+import type { CSSProperties } from 'react'
 
 export const HIGHLIGHTED_TABS = ['counts', 'pricing', 'cover-letter'] as const
 export const SAFETY_ORANGE = '#FF6600' // ANSI/OSHA safety orange
@@ -23,4 +24,25 @@ export function bidsTabStyle(active: boolean, tabId: string) {
     return { ...base, fontWeight: 600, color: SAFETY_ORANGE, borderBottom: active ? '2px solid #FF6600' : '2px solid transparent' }
   }
   return base
+}
+
+export const bidDetailCloseXStyle: CSSProperties = {
+  padding: '0.2rem 0.45rem',
+  background: 'transparent',
+  border: 'none',
+  borderRadius: 4,
+  cursor: 'pointer',
+  color: '#9ca3af',
+  fontSize: '1.35rem',
+  lineHeight: 1,
+}
+
+export const bidDetailCloseFloatMobileStyle: CSSProperties = {
+  ...bidDetailCloseXStyle,
+  position: 'absolute',
+  top: '0.75rem',
+  right: '0.75rem',
+  zIndex: 2,
+  background: 'white',
+  boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
 }

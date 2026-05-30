@@ -155,6 +155,7 @@ pipetooling.github.io/
 - **`SALARY_CLOCK_SESSIONS.md`** - Salaried **`salary_schedule`** materialization, split RPCs, sync overlap guards, **continuous** indexed-fragment close (**`20270516120000`**), migrations (no-Docker CLI notes)
 - **`TIME_AND_ZONES.md`** - Company **`America/Chicago`** constant (`APP_CALENDAR_TZ`), instants vs naive wall-clock storage, `check:timezone` guardrail
 - **`BIDS_SYSTEM.md`** - Bids system documentation (all tabs)
+- **`docs/BIDS_TABS_ARCHITECTURE.md`** - Refactor map of `src/pages/Bids.tsx`: per-tab state/memos/handlers/supabase tables, cross-tab coupling, extraction status + recommended extraction order (use when decomposing the Bids God component)
 - **`ACCESS_CONTROL.md`** - Complete role permissions matrix
 - **`ADDING_A_NEW_ROLE.md`** - Step-by-step guide for adding new roles
 - **`EDGE_FUNCTIONS.md`** - Edge Functions API reference

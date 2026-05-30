@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { computeTravelCost } from './bidCostCalc'
+import {
+  computeTravelCost,
+  costEstimateDrivingRate,
+  costEstimateHoursPerTrip,
+  costEstimateEstimatorCost,
+} from './bidCostCalc'
 
 describe('computeTravelCost', () => {
   it('defaults to 1 person, 1 night, $0 rates -> 0', () => {
@@ -27,5 +32,60 @@ describe('computeTravelCost', () => {
   it('returns 0 when any value is non-finite', () => {
     expect(computeTravelCost({ travel_meals_rate: 'abc', travel_hotel_rate: 100 })).toBe(0)
     expect(computeTravelCost({ travel_people: NaN })).toBe(0)
+  })
+})
+
+describe('costEstimateDrivingRate', () => {
+  it('defaults to 0.70 when absent', () => {
+    expect(costEstimateDrivingRate(null)).toBe(0.7)
+    expect(costEstimateDrivingRate(undefined)).toBe(0.7)
+    expect(costEstimateDrivingRate({})).toBe(0.7)
+  })
+
+  it('uses the stored value, including an explicit 0', () => {
+    expect(costEstimateDrivingRate({ driving_cost_rate: 0.55 })).toBe(0.55)
+    expect(costEstimateDrivingRate({ driving_cost_rate: 0 })).toBe(0)
+  })
+
+  it('coerces string values', () => {
+    expect(costEstimateDrivingRate({ driving_cost_rate: '0.85' })).toBe(0.85)
+  })
+})
+
+describe('costEstimateHoursPerTrip', () => {
+  it('defaults to 2.0 when absent', () => {
+    expect(costEstimateHoursPerTrip(null)).toBe(2)
+    expect(costEstimateHoursPerTrip({})).toBe(2)
+  })
+
+  it('uses the stored value, including an explicit 0', () => {
+    expect(costEstimateHoursPerTrip({ hours_per_trip: 3.5 })).toBe(3.5)
+    expect(costEstimateHoursPerTrip({ hours_per_trip: 0 })).toBe(0)
+  })
+
+  it('coerces string values', () => {
+    expect(costEstimateHoursPerTrip({ hours_per_trip: '1.5' })).toBe(1.5)
+  })
+})
+
+describe('costEstimateEstimatorCost', () => {
+  it('returns the flat amount when present, including 0', () => {
+    expect(costEstimateEstimatorCost({ estimator_cost_flat_amount: 9000 }, 5)).toBe(9000)
+    expect(costEstimateEstimatorCost({ estimator_cost_flat_amount: 0 }, 5)).toBe(0)
+  })
+
+  it('falls back to countLen * per-count when flat is absent', () => {
+    expect(costEstimateEstimatorCost({ estimator_cost_per_count: 25 }, 4)).toBe(100)
+  })
+
+  it('uses a per-count default of 10 when per-count is missing, 0, or non-numeric', () => {
+    expect(costEstimateEstimatorCost({}, 3)).toBe(30)
+    expect(costEstimateEstimatorCost({ estimator_cost_per_count: 0 }, 3)).toBe(30)
+    expect(costEstimateEstimatorCost({ estimator_cost_per_count: 'abc' }, 3)).toBe(30)
+    expect(costEstimateEstimatorCost(null, 3)).toBe(30)
+  })
+
+  it('coerces a string flat amount', () => {
+    expect(costEstimateEstimatorCost({ estimator_cost_flat_amount: '1200' }, 5)).toBe(1200)
   })
 })

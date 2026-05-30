@@ -1,0 +1,2089 @@
+import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
+import { supabase } from '../../lib/supabase'
+import { formatCurrency } from '../../lib/format'
+import { bidDisplayName, formatDateYYMMDD, marginFlag } from '../../lib/bids/bidFormatting'
+import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
+import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
+import { laborRowHours } from '../../lib/bids/laborRowHours'
+import {
+  computeTravelCost,
+  costEstimateDrivingRate,
+  costEstimateHoursPerTrip,
+  costEstimateEstimatorCost,
+} from '../../lib/bids/bidCostCalc'
+import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from './GenerateUnitCostModal'
+import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
+import {
+  printPricingPage as printPricingPageDoc,
+  printAllPricingPages as printAllPricingPagesDoc,
+  buildPricingCsvForBid,
+  type PricingPrintContext,
+} from '../../lib/bidDocuments/pricingPage'
+import type { ComputeBidPricingRowsResult } from '../../lib/bidPricingRowCalculations'
+import { useToastContext } from '../../contexts/ToastContext'
+import type { useBidPreview } from '../../contexts/BidPreviewModalContext'
+import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
+import type { BidCountRow } from '../../types/bids'
+import type { TeamLaborBidRow } from '../../utils/teamLabor'
+import type {
+  CostEstimate,
+  CostEstimateLaborRow,
+  PriceBookVersion,
+  PriceBookEntryWithFixture,
+  BidPricingAssignment,
+  BidCountRowCustomPrice,
+  BidCountRowSubmissionHide,
+} from '../../lib/bids/bidPricingEngineTypes'
+
+type BidsPricingTabProps = {
+  bids: BidWithBuilder[]
+  selectedBidForPricing: BidWithBuilder | null
+  narrowViewport640: boolean
+  bidPreview: ReturnType<typeof useBidPreview>
+  error: string | null
+  setError: (message: string | null) => void
+  selectedServiceTypeId: string
+  fixtureTypes: Array<{ id: string; name: string }>
+  getOrCreateFixtureTypeId: (name: string, serviceTypeIdOverride?: string) => Promise<{ id: string } | { id: null; error?: string }>
+  loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
+  // Shared, parent-owned
+  costEstimatePOModalTaxPercent: string
+  canPackageAndSendBidPricing: boolean
+  estimatorUsers: EstimatorUser[]
+  ledgerPrefixMap: LedgerPrefixMap
+  profileName: string | null
+  // Engine values + setters/loaders
+  priceBookVersions: PriceBookVersion[]
+  priceBookEntries: PriceBookEntryWithFixture[]
+  setPriceBookEntries: Dispatch<SetStateAction<PriceBookEntryWithFixture[]>>
+  bidPricingAssignments: BidPricingAssignment[]
+  bidCountRowCustomPrices: BidCountRowCustomPrice[]
+  bidCountRowSubmissionHides: BidCountRowSubmissionHide[]
+  selectedPricingVersionId: string | null
+  setSelectedPricingVersionId: Dispatch<SetStateAction<string | null>>
+  pricingCountRows: BidCountRow[]
+  pricingCostEstimate: CostEstimate | null
+  pricingLaborRows: CostEstimateLaborRow[]
+  pricingMaterialTotalRoughIn: number | null
+  pricingMaterialTotalTopOut: number | null
+  pricingMaterialTotalTrimSet: number | null
+  pricingLaborRate: number | null
+  pricingFixtureMaterialsFromTakeoff: Record<string, number>
+  teamLaborDataForBids: TeamLaborBidRow[]
+  loadPriceBookVersions: () => Promise<void>
+  loadPriceBookEntries: (versionId: string | null) => Promise<void>
+  loadBidPricingAssignments: (bidId: string, versionId: string | null, signal?: AbortSignal) => Promise<void>
+  saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null) => Promise<void>
+  openMaterialsModelSwitch: (next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') => void
+  // Shared pricing-rows calc (from useBidPricingRows)
+  pricingRowsForGrid: ComputeBidPricingRowsResult | null
+  pricingPackageSource: { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null
+  // Callbacks
+  onSelectBid: (bid: BidWithBuilder) => void
+  onClose: () => void
+  onEditBid: (bid: BidWithBuilder) => void
+  onNavigateToLabor: () => void
+  onNavigateBidToTab: (bid: BidWithBuilder, tab: 'takeoffs' | 'labor') => void
+}
+
+export function BidsPricingTab({
+  bids,
+  selectedBidForPricing,
+  narrowViewport640,
+  bidPreview,
+  error,
+  setError,
+  selectedServiceTypeId,
+  fixtureTypes,
+  getOrCreateFixtureTypeId,
+  loadBids,
+  costEstimatePOModalTaxPercent,
+  canPackageAndSendBidPricing,
+  estimatorUsers,
+  ledgerPrefixMap,
+  profileName,
+  priceBookVersions,
+  priceBookEntries,
+  setPriceBookEntries,
+  bidPricingAssignments,
+  bidCountRowCustomPrices,
+  bidCountRowSubmissionHides,
+  selectedPricingVersionId,
+  setSelectedPricingVersionId,
+  pricingCountRows,
+  pricingCostEstimate,
+  pricingLaborRows,
+  pricingMaterialTotalRoughIn,
+  pricingMaterialTotalTopOut,
+  pricingMaterialTotalTrimSet,
+  pricingLaborRate,
+  pricingFixtureMaterialsFromTakeoff,
+  teamLaborDataForBids,
+  loadPriceBookVersions,
+  loadPriceBookEntries,
+  loadBidPricingAssignments,
+  saveBidSelectedPriceBookVersion,
+  openMaterialsModelSwitch,
+  pricingRowsForGrid,
+  pricingPackageSource,
+  onSelectBid,
+  onClose,
+  onEditBid,
+  onNavigateToLabor,
+  onNavigateBidToTab,
+}: BidsPricingTabProps) {
+  const { showToast } = useToastContext()
+
+  const [pricingSearchQuery, setPricingSearchQuery] = useState('')
+  const [priceBookSectionOpen, setPriceBookSectionOpen] = useState(false)
+  const [pricingVersionFormOpen, setPricingVersionFormOpen] = useState(false)
+  const [editingPricingVersion, setEditingPricingVersion] = useState<PriceBookVersion | null>(null)
+  const [pricingVersionNameInput, setPricingVersionNameInput] = useState('')
+  const [savingPricingVersion, setSavingPricingVersion] = useState(false)
+  const [pricingEntryFormOpen, setPricingEntryFormOpen] = useState(false)
+  const [editingPricingEntry, setEditingPricingEntry] = useState<PriceBookEntryWithFixture | null>(null)
+  const [pricingEntryFixtureName, setPricingEntryFixtureName] = useState('')
+  const [pricingEntryRoughIn, setPricingEntryRoughIn] = useState('')
+  const [pricingEntryTopOut, setPricingEntryTopOut] = useState('')
+  const [pricingEntryTrimSet, setPricingEntryTrimSet] = useState('')
+  const [pricingEntryTotal, setPricingEntryTotal] = useState('')
+  const [savingPricingEntry, setSavingPricingEntry] = useState(false)
+  const [savingPricingAssignment, setSavingPricingAssignment] = useState<string | null>(null)
+  const [deletePricingVersionModalOpen, setDeletePricingVersionModalOpen] = useState(false)
+  const [pricingVersionToDelete, setPricingVersionToDelete] = useState<PriceBookVersion | null>(null)
+  const [deletePricingVersionNameInput, setDeletePricingVersionNameInput] = useState('')
+  const [deletePricingVersionError, setDeletePricingVersionError] = useState<string | null>(null)
+  const [priceBookSearchQuery, setPriceBookSearchQuery] = useState('')
+  const [pricingAssignmentSearches, setPricingAssignmentSearches] = useState<Record<string, string>>({})
+  const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
+  const [pricingRowBreakdownModalCountRow, setPricingRowBreakdownModalCountRow] = useState<BidCountRow | null>(null)
+  const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
+  const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
+  const [generateUnitCostModalParams, setGenerateUnitCostModalParams] = useState<{
+    countRowId: string
+    totalRevenue: number
+    currentRowRevenue: number
+    currentPctOfTotal: number | null
+    count: number
+    isFixedPrice: boolean
+    fixtureLabel: string
+  } | null>(null)
+  const [savingUnitPriceOverride, setSavingUnitPriceOverride] = useState<string | null>(null)
+  // Package and send (Pricing tab → "Package and send" modal — left of CSV)
+  const [packageSendOpen, setPackageSendOpen] = useState(false)
+
+  // Close price book modals when service type changes
+  useEffect(() => {
+    setPricingVersionFormOpen(false)
+    setPricingEntryFormOpen(false)
+    setDeletePricingVersionModalOpen(false)
+    setEditingPricingVersion(null)
+    setEditingPricingEntry(null)
+    setPricingVersionToDelete(null)
+    setPricingVersionNameInput('')
+    setPricingEntryFixtureName('')
+    setPricingEntryRoughIn('')
+    setPricingEntryTopOut('')
+    setPricingEntryTrimSet('')
+    setPricingEntryTotal('')
+    setDeletePricingVersionNameInput('')
+    setDeletePricingVersionError(null)
+  }, [selectedServiceTypeId])
+
+  // Auto-calculate price book entry total
+  useEffect(() => {
+    const rough = parseFloat(pricingEntryRoughIn) || 0
+    const top = parseFloat(pricingEntryTopOut) || 0
+    const trim = parseFloat(pricingEntryTrimSet) || 0
+    const calculatedTotal = rough + top + trim
+
+    // Only auto-update if the current total is different (allows manual override)
+    if (calculatedTotal !== (parseFloat(pricingEntryTotal) || 0)) {
+      setPricingEntryTotal(calculatedTotal.toFixed(2))
+    }
+  }, [pricingEntryRoughIn, pricingEntryTopOut, pricingEntryTrimSet])
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (pricingAssignmentDropdownOpen) {
+        const target = event.target as HTMLElement
+        if (!target.closest('[data-pricing-assignment-dropdown]')) {
+          setPricingAssignmentDropdownOpen(null)
+        }
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [pricingAssignmentDropdownOpen])
+
+  function resolvePricingEntryForCountRow(countRowId: string): PriceBookEntryWithFixture | null {
+    const versionId = selectedPricingVersionId
+    if (!versionId) return null
+    const existing = bidPricingAssignments.find(
+      (a) => a.count_row_id === countRowId && a.price_book_version_id === versionId,
+    )
+    const entriesById = new Map(priceBookEntries.map((e) => [e.id, e]))
+    if (existing) {
+      return entriesById.get(existing.price_book_entry_id) ?? null
+    }
+    const countRow = pricingCountRows.find((r) => r.id === countRowId)
+    if (!countRow) return null
+    return (
+      priceBookEntries.find(
+        (e) =>
+          (e.fixture_types?.name ?? '').toLowerCase() === (countRow.fixture ?? '').toLowerCase(),
+      ) ?? null
+    )
+  }
+
+  function pricingRowCanToggleOmitFromSubmission(_countRowId: string): boolean {
+    return selectedPricingVersionId != null
+  }
+
+  async function savePricingAssignment(countRowId: string, priceBookEntryId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    setSavingPricingAssignment(countRowId)
+    const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
+    if (existing) {
+      const { error: err } = await supabase
+        .from('bid_pricing_assignments')
+        .update({ price_book_entry_id: priceBookEntryId })
+        .eq('id', existing.id)
+      if (err) setError(err.message)
+      else await loadBidPricingAssignments(bidId, versionId)
+    } else {
+      const { error: err } = await supabase
+        .from('bid_pricing_assignments')
+        .insert({ bid_id: bidId, count_row_id: countRowId, price_book_entry_id: priceBookEntryId, price_book_version_id: versionId })
+      if (err) setError(err.message)
+      else await loadBidPricingAssignments(bidId, versionId)
+    }
+    setSavingPricingAssignment(null)
+  }
+
+  async function removePricingAssignment(countRowId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
+    if (!existing) return
+    const { error: err } = await supabase.from('bid_pricing_assignments').delete().eq('id', existing.id)
+    if (err) setError(err.message)
+    else await loadBidPricingAssignments(bidId, versionId)
+  }
+
+  async function togglePricingAssignmentFixedPrice(countRowId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+
+    const existing = bidPricingAssignments.find(
+      (a) => a.count_row_id === countRowId && a.price_book_version_id === versionId
+    )
+    if (!existing) return
+
+    const { error: err } = await supabase
+      .from('bid_pricing_assignments')
+      .update({ is_fixed_price: !existing.is_fixed_price })
+      .eq('id', existing.id)
+
+    if (err) setError(err.message)
+    else await loadBidPricingAssignments(bidId, versionId)
+  }
+
+  async function togglePricingRowOmitFromSubmission(countRowId: string) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    const existingHide = bidCountRowSubmissionHides.find(
+      (h) => h.count_row_id === countRowId && h.price_book_version_id === versionId,
+    )
+    setSavingPricingAssignment(countRowId)
+    try {
+      if (existingHide) {
+        const { error: err } = await supabase
+          .from('bid_count_row_submission_hides')
+          .delete()
+          .eq('bid_id', bidId)
+          .eq('count_row_id', countRowId)
+          .eq('price_book_version_id', versionId)
+        if (err) setError(err.message)
+        else await loadBidPricingAssignments(bidId, versionId)
+      } else {
+        const { error: err } = await supabase.from('bid_count_row_submission_hides').insert({
+          bid_id: bidId,
+          count_row_id: countRowId,
+          price_book_version_id: versionId,
+        })
+        if (err) setError(err.message)
+        else await loadBidPricingAssignments(bidId, versionId)
+      }
+    } finally {
+      setSavingPricingAssignment(null)
+    }
+  }
+
+  async function updateUnitPriceOverride(countRowId: string, value: number | null) {
+    const bidId = selectedBidForPricing?.id
+    const versionId = selectedPricingVersionId
+    if (!bidId || !versionId) return
+    const existing = bidPricingAssignments.find((a) => a.count_row_id === countRowId && a.price_book_version_id === versionId)
+    const entry = resolvePricingEntryForCountRow(countRowId)
+    const existingCustom = bidCountRowCustomPrices.find((c) => c.count_row_id === countRowId && c.price_book_version_id === versionId)
+
+    setSavingUnitPriceOverride(countRowId)
+    let err: { message: string } | null = null
+
+    if (existing) {
+      const res = await supabase.from('bid_pricing_assignments').update({ unit_price_override: value }).eq('id', existing.id)
+      err = res.error
+      if (!err && existingCustom) {
+        await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+      }
+    } else if (entry) {
+      const res = await supabase.from('bid_pricing_assignments').insert({
+        bid_id: bidId,
+        count_row_id: countRowId,
+        price_book_entry_id: entry.id,
+        price_book_version_id: versionId,
+        unit_price_override: value,
+      })
+      err = res.error
+      if (!err && existingCustom) {
+        await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+      }
+    } else {
+      if (value == null) {
+        if (existingCustom) {
+          const res = await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+          err = res.error
+        }
+      } else {
+        const res = existingCustom
+          ? await supabase.from('bid_count_row_custom_prices').update({ unit_price: value }).eq('id', existingCustom.id)
+          : await supabase.from('bid_count_row_custom_prices').insert({ bid_id: bidId, count_row_id: countRowId, price_book_version_id: versionId, unit_price: value })
+        err = res.error
+      }
+    }
+
+    if (err) setError(err.message)
+    else await loadBidPricingAssignments(bidId, versionId)
+    setSavingUnitPriceOverride(null)
+    setUnitPriceEditValues((prev) => {
+      const next = { ...prev }
+      delete next[countRowId]
+      return next
+    })
+  }
+
+  function openNewPricingVersion() {
+    setEditingPricingVersion(null)
+    setPricingVersionNameInput('')
+    setPricingVersionFormOpen(true)
+  }
+
+  function openEditPricingVersion(v: PriceBookVersion) {
+    setEditingPricingVersion(v)
+    setPricingVersionNameInput(v.name)
+    setPricingVersionFormOpen(true)
+  }
+
+  function closePricingVersionForm() {
+    setPricingVersionFormOpen(false)
+    setEditingPricingVersion(null)
+    setPricingVersionNameInput('')
+  }
+
+  async function savePricingVersion(e: React.FormEvent) {
+    e.preventDefault()
+    const name = pricingVersionNameInput.trim()
+    if (!name) return
+
+    // Check for duplicate name (case-insensitive)
+    const isDuplicate = priceBookVersions.some((v) =>
+      v.name.toLowerCase() === name.toLowerCase() &&
+      v.id !== editingPricingVersion?.id
+    )
+
+    if (isDuplicate) {
+      setError(`A price book named "${name}" already exists. Please use a different name.`)
+      return
+    }
+
+    setSavingPricingVersion(true)
+    setError(null)
+    if (editingPricingVersion) {
+      const { error: err } = await supabase.from('price_book_versions').update({ name }).eq('id', editingPricingVersion.id)
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookVersions()
+        closePricingVersionForm()
+      }
+    } else {
+      const { error: err } = await supabase.from('price_book_versions').insert({ name, service_type_id: selectedServiceTypeId })
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookVersions()
+        closePricingVersionForm()
+      }
+    }
+    setSavingPricingVersion(false)
+  }
+
+  function openDeletePricingVersionModal(v: PriceBookVersion) {
+    setPricingVersionToDelete(v)
+    setDeletePricingVersionNameInput('')
+    setDeletePricingVersionError(null)
+    setDeletePricingVersionModalOpen(true)
+  }
+
+  async function confirmDeletePricingVersion() {
+    if (!pricingVersionToDelete) {
+      setDeletePricingVersionModalOpen(false)
+      return
+    }
+    const expected = pricingVersionToDelete.name.trim()
+    const typed = deletePricingVersionNameInput.trim()
+    if (typed !== expected) {
+      setDeletePricingVersionError('Name does not match. Type the version name exactly to confirm.')
+      return
+    }
+
+    const { error: err } = await supabase
+      .from('price_book_versions')
+      .delete()
+      .eq('id', pricingVersionToDelete.id)
+    if (err) {
+      setDeletePricingVersionError(err.message)
+      return
+    }
+
+    await loadPriceBookVersions()
+    if (selectedPricingVersionId === pricingVersionToDelete.id) {
+      setSelectedPricingVersionId(null)
+      setPriceBookEntries([])
+      if (selectedBidForPricing?.selected_price_book_version_id === pricingVersionToDelete.id) {
+        saveBidSelectedPriceBookVersion(selectedBidForPricing!.id, null)
+        await loadBids()
+      }
+    }
+
+    setDeletePricingVersionModalOpen(false)
+    setPricingVersionToDelete(null)
+    setDeletePricingVersionNameInput('')
+    setDeletePricingVersionError(null)
+  }
+
+  function openNewPricingEntry() {
+    setEditingPricingEntry(null)
+    setPricingEntryFixtureName('')
+    setPricingEntryRoughIn('')
+    setPricingEntryTopOut('')
+    setPricingEntryTrimSet('')
+    setPricingEntryTotal('')
+    setError(null)
+    setPricingEntryFormOpen(true)
+  }
+
+  function openEditPricingEntry(entry: PriceBookEntryWithFixture) {
+    setEditingPricingEntry(entry)
+    setPricingEntryFixtureName(entry.fixture_types?.name ?? '')
+    setPricingEntryRoughIn(String(entry.rough_in_price))
+    setPricingEntryTopOut(String(entry.top_out_price))
+    setPricingEntryTrimSet(String(entry.trim_set_price))
+    setPricingEntryTotal(String(entry.total_price))
+    setError(null)
+    setPricingEntryFormOpen(true)
+  }
+
+  function closePricingEntryForm() {
+    setPricingEntryFormOpen(false)
+    setEditingPricingEntry(null)
+    setPricingEntryFixtureName('')
+    setPricingEntryRoughIn('')
+    setPricingEntryTopOut('')
+    setPricingEntryTrimSet('')
+    setPricingEntryTotal('')
+    setError(null)
+  }
+
+  async function savePricingEntry(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedPricingVersionId) {
+      setError('No price book version selected')
+      return
+    }
+    const fixtureName = pricingEntryFixtureName.trim()
+    if (!fixtureName) {
+      setError('Please enter a fixture type')
+      return
+    }
+    setSavingPricingEntry(true)
+    setError(null)
+
+    // Get or auto-create fixture type (use bid's service type when on Pricing tab for robustness)
+    const result = await getOrCreateFixtureTypeId(fixtureName, selectedBidForPricing?.service_type_id)
+    if (!result.id) {
+      const errMsg = ('error' in result ? result.error : null) ?? `Failed to create or find fixture type "${fixtureName}"`
+      setError(errMsg)
+      setSavingPricingEntry(false)
+      return
+    }
+    const fixtureTypeId = result.id
+
+    const rough = parseFloat(pricingEntryRoughIn) || 0
+    const top = parseFloat(pricingEntryTopOut) || 0
+    const trim = parseFloat(pricingEntryTrimSet) || 0
+    const total = parseFloat(pricingEntryTotal) || 0
+    if (editingPricingEntry) {
+      const { error: err } = await supabase
+        .from('price_book_entries')
+        .update({ fixture_type_id: fixtureTypeId, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total })
+        .eq('id', editingPricingEntry.id)
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookEntries(selectedPricingVersionId)
+        closePricingEntryForm()
+      }
+    } else {
+      const maxSeq = priceBookEntries.length === 0 ? 0 : Math.max(...priceBookEntries.map((e) => e.sequence_order))
+      const { error: err } = await supabase
+        .from('price_book_entries')
+        .insert({ version_id: selectedPricingVersionId, fixture_type_id: fixtureTypeId, rough_in_price: rough, top_out_price: top, trim_set_price: trim, total_price: total, sequence_order: maxSeq + 1 })
+      if (err) setError(err.message)
+      else {
+        await loadPriceBookEntries(selectedPricingVersionId)
+        closePricingEntryForm()
+      }
+    }
+    setSavingPricingEntry(false)
+  }
+
+  async function deletePricingEntry(entry: PriceBookEntryWithFixture) {
+    if (!confirm(`Delete "${entry.fixture_types?.name ?? ''}" from this price book?`)) return
+    const { error: err } = await supabase.from('price_book_entries').delete().eq('id', entry.id)
+    if (err) setError(err.message)
+    else if (selectedPricingVersionId) await loadPriceBookEntries(selectedPricingVersionId)
+  }
+
+  async function handlePricingVersionChange(bidId: string, versionId: string) {
+    setSelectedPricingVersionId(versionId)
+    await loadPriceBookEntries(versionId)
+    await saveBidSelectedPriceBookVersion(bidId, versionId)
+  }
+
+  function buildPricingPrintContext(): PricingPrintContext | null {
+    if (!selectedBidForPricing) return null
+    return {
+      bid: selectedBidForPricing,
+      priceBookVersions,
+      priceBookEntries,
+      selectedPricingVersionId,
+      countRows: pricingCountRows,
+      costEstimate: pricingCostEstimate,
+      laborRows: pricingLaborRows,
+      materialTotalRoughIn: pricingMaterialTotalRoughIn,
+      materialTotalTopOut: pricingMaterialTotalTopOut,
+      materialTotalTrimSet: pricingMaterialTotalTrimSet,
+      laborRate: pricingLaborRate,
+      fixtureMaterialsFromTakeoff: pricingFixtureMaterialsFromTakeoff,
+      viewModel: pricingViewModel,
+      assignments: bidPricingAssignments,
+      customPrices: bidCountRowCustomPrices,
+      submissionHides: bidCountRowSubmissionHides,
+      taxPercent: parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0,
+    }
+  }
+
+  function printPricingPage() {
+    const ctx = buildPricingPrintContext()
+    if (!ctx) return
+    printPricingPageDoc(ctx)
+  }
+
+  function downloadPricingCsv() {
+    const ctx = buildPricingPrintContext()
+    if (!ctx) return
+    const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
+    const teamLaborCost = teamLaborCostByBidId.get(ctx.bid.id) ?? 0
+    const result = buildPricingCsvForBid(ctx, teamLaborCost)
+    if (!result) {
+      showToast('Select a price book version and ensure Counts and Labor are set up.', 'info')
+      return
+    }
+    const blob = new Blob([`\uFEFF${result.csv}`], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = result.filename
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('Pricing exported to CSV.', 'success')
+  }
+
+  async function printAllPricingPages() {
+    const ctx = buildPricingPrintContext()
+    if (!ctx) return
+    const err = await printAllPricingPagesDoc(ctx)
+    if (err) setError(err)
+  }
+
+  const filteredBidsForPricing: BidWithBuilder[] = pricingSearchQuery.trim()
+    ? bids.filter(
+        (b) =>
+          (b.project_name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
+          (b.address?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
+          (b.customers?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
+          (b.bids_gc_builders?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false)
+      )
+    : bids
+
+  return (
+    <>
+      <div>
+        {!selectedBidForPricing && (
+          <input
+            type="text"
+            placeholder="Search bids (project name or GC/Builder)..."
+            value={pricingSearchQuery}
+            onChange={(e) => setPricingSearchQuery(e.target.value)}
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+          />
+        )}
+        {selectedBidForPricing && (
+          <div
+            style={{
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '1.5rem 2rem',
+              background: 'white',
+              marginBottom: '1.5rem',
+              ...(narrowViewport640 ? { position: 'relative' } : {}),
+            }}
+          >
+            {narrowViewport640 ? (
+              <button
+                type="button"
+                onClick={onClose}
+                title="Close"
+                aria-label="Close"
+                style={bidDetailCloseFloatMobileStyle}
+              >
+                ×
+              </button>
+            ) : null}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <BidWorkflowTabTitleWithPreview
+                bid={selectedBidForPricing}
+                previewEnabled={bidPreview != null}
+                onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForPricing)}
+                h2Style={{ margin: 0, flex: '0 0 auto' }}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto' }}>
+                {canPackageAndSendBidPricing ? (
+                  <button
+                    type="button"
+                    onClick={() => setPackageSendOpen(true)}
+                    disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
+                    title={
+                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
+                        ? 'Select a price book and ensure Counts and Labor exist'
+                        : 'Package and send pricing (Job Plans + 4-column table) to a teammate'
+                    }
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background:
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#f3f4f6',
+                      color: '#111827',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      cursor:
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    Package and send
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => downloadPricingCsv()}
+                  disabled={!selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate}
+                  title={
+                    !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
+                      ? 'Select a price book and ensure Counts and Labor exist'
+                      : 'Download pricing grid as CSV'
+                  }
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background:
+                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#f3f4f6',
+                    color: '#111827',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    cursor:
+                      !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  CSV
+                </button>
+                <button
+                  type="button"
+                  onClick={() => printPricingPage()}
+                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  Print
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void printAllPricingPages()}
+                  style={{ padding: '0.5rem 1rem', background: '#f97316', color: 'black', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}
+                >
+                  Review
+                </button>
+                {!narrowViewport640 ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    title="Close"
+                    aria-label="Close"
+                    style={bidDetailCloseXStyle}
+                  >
+                    ×
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.5rem',
+                marginBottom: '0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto', minWidth: 0 }}>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem', whiteSpace: 'nowrap' }}>Price book</label>
+                  <select
+                    value={selectedPricingVersionId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v) handlePricingVersionChange(selectedBidForPricing.id, v)
+                    }}
+                    style={{
+                      padding: '0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      boxSizing: 'border-box',
+                      width: 'max-content',
+                      maxWidth: '100%',
+                      ...( { fieldSizing: 'content' } as CSSProperties ),
+                    }}
+                  >
+                    <option value="">— Select version —</option>
+                    {priceBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: '0 0 auto', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
+                    <button
+                      type="button"
+                      onClick={() => setPricingViewModel('cost')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: pricingViewModel === 'cost' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: pricingViewModel === 'cost' ? 600 : 400,
+                        color: pricingViewModel === 'cost' ? '#111827' : '#6b7280',
+                        boxShadow: pricingViewModel === 'cost' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      Cost Model
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPricingViewModel('price')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: pricingViewModel === 'price' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: pricingViewModel === 'price' ? 600 : 400,
+                        color: pricingViewModel === 'price' ? '#111827' : '#6b7280',
+                        boxShadow: pricingViewModel === 'price' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      Price Model
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && selectedBidForPricing ? (
+                (() => {
+                  const pricingMaterialsModel = normalizeMaterialsModel(selectedBidForPricing.materials_model)
+                  return (
+                    <div
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: '0.875rem',
+                          fontWeight: 500,
+                          marginRight: '0.25rem',
+                          color: '#4b5563',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Materials
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => openMaterialsModelSwitch('exact', 'pricing')}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.8125rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          background: pricingMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
+                          cursor: 'pointer',
+                          fontWeight: pricingMaterialsModel === 'exact' ? 600 : 400,
+                          color: pricingMaterialsModel === 'exact' ? '#111827' : '#6b7280',
+                          boxShadow: pricingMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
+                        }}
+                      >
+                        By Stage
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openMaterialsModelSwitch('rough', 'pricing')}
+                        style={{
+                          padding: '0.35rem 0.75rem',
+                          fontSize: '0.8125rem',
+                          border: '1px solid #d1d5db',
+                          borderRadius: 4,
+                          background: pricingMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
+                          cursor: 'pointer',
+                          fontWeight: pricingMaterialsModel === 'rough' ? 600 : 400,
+                          color: pricingMaterialsModel === 'rough' ? '#111827' : '#6b7280',
+                          boxShadow: pricingMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
+                        }}
+                      >
+                        Combined
+                      </button>
+                    </div>
+                  )
+                })()
+              ) : null}
+            </div>
+            {!pricingCostEstimate && pricingCountRows.length > 0 && (
+              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                Add fixtures in Counts and set up Labor first to see margin comparison.{' '}
+                <button
+                  type="button"
+                  onClick={() => onNavigateToLabor()}
+                  style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Go to Labor
+                </button>
+              </p>
+            )}
+            {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (() => {
+              const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+              const rate = pricingLaborRate ?? 0
+              const totalLaborHours = pricingLaborRows.reduce(
+                (s, r) => s + laborRowHours(r),
+                0
+              )
+              const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+              const laborCost = totalLaborHours * rate
+              const distance = parseFloat(selectedBidForPricing?.distance_from_office ?? '0') || 0
+              const ratePerMile = costEstimateDrivingRate(pricingCostEstimate)
+              const hrsPerTrip = costEstimateHoursPerTrip(pricingCostEstimate)
+              const numTrips = totalLaborHours / hrsPerTrip
+              const drivingCost = numTrips * ratePerMile * distance
+              const estimatorCost = costEstimateEstimatorCost(pricingCostEstimate, pricingCountRows.length)
+              const travelCost = computeTravelCost(pricingCostEstimate)
+              const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
+              const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
+              const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost + travelCost
+              const assignmentsForVersion = bidPricingAssignments.filter(
+                (a) => a.price_book_version_id === selectedPricingVersionId,
+              )
+              const pricingCalcResult = pricingRowsForGrid
+              if (!pricingCalcResult) return null
+
+              const totalRevenue = pricingCalcResult.totalRevenue
+              const rows = pricingCalcResult.rows.map((pr) => {
+                const laborRow = pricingLaborRows.find(
+                  (l) =>
+                    (l.fixture ?? '').toLowerCase() === (pr.countRow.fixture ?? '').toLowerCase(),
+                )
+                const customPrice =
+                  bidCountRowCustomPrices.find(
+                    (c) =>
+                      c.count_row_id === pr.countRow.id &&
+                      c.price_book_version_id === selectedPricingVersionId,
+                  )?.unit_price ?? null
+                const assignment = assignmentsForVersion.find((a) => a.count_row_id === pr.countRow.id)
+                const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pr.countRow.id]
+                const taxAmount =
+                  materialsFromTakeoff != null ? pr.materialsBeforeTax * (taxPercent / 100) : 0
+                const marginVal = pr.marginPct
+                const flag = marginFlag(marginVal)
+                return {
+                  countRow: pr.countRow as BidCountRow,
+                  entry: pr.entry as PriceBookEntryWithFixture | undefined,
+                  laborRow,
+                  count: pr.count,
+                  cost: pr.cost,
+                  unitPrice: pr.unitPrice,
+                  isFixedPrice: pr.isFixedPrice,
+                  revenue: pr.revenue,
+                  margin: marginVal,
+                  flag,
+                  assignment,
+                  customPrice,
+                  materialsBeforeTax: pr.materialsBeforeTax,
+                  materialsWithTax: pr.materialsWithTax,
+                  taxAmount,
+                  laborCost: pr.laborCost,
+                  materialsFromTakeoff: materialsFromTakeoff ?? null,
+                  pctOfGrandTotal: pr.pctOfGrandTotal,
+                  omitFromSubmissionDocuments: pr.omitFromSubmissionDocuments,
+                  canToggleOmitSubmission: pricingRowCanToggleOmitFromSubmission(pr.countRow.id),
+                }
+              })
+              return (
+                <>
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'visible' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                            Price book entry
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPricingAssignmentSearches((prev) => {
+                                  const next = { ...prev }
+                                  for (const row of rows) {
+                                    const fixture = row.countRow.fixture ?? ''
+                                    next[row.countRow.id] = fixture.slice(0, 3)
+                                  }
+                                  return next
+                                })
+                              }}
+                              style={{
+                                padding: '0.2rem 0.4rem',
+                                fontSize: '0.75rem',
+                                background: '#f3f4f6',
+                                border: '1px solid #d1d5db',
+                                borderRadius: 4,
+                                cursor: 'pointer'
+                              }}
+                              title="Pre-fill first 3 letters of each fixture into search"
+                            >
+                              partial-fill
+                            </button>
+                          </span>
+                        </th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Unit Cost'}</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin/Total</th>
+                        <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row) => (
+                        <tr key={row.countRow.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.75rem' }}>{row.countRow.fixture ?? ''}</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>{row.count}</td>
+                          <td style={{ padding: '0.75rem', position: 'relative' }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ position: 'relative' }} data-pricing-assignment-dropdown>
+                              <input
+                                type="text"
+                                value={pricingAssignmentSearches[row.countRow.id] !== undefined 
+                                  ? pricingAssignmentSearches[row.countRow.id] 
+                                  : (row.entry?.fixture_types?.name ?? '')}
+                                onChange={(e) => {
+                                  setPricingAssignmentSearches((prev) => ({ ...prev, [row.countRow.id]: e.target.value }))
+                                  setPricingAssignmentDropdownOpen(row.countRow.id)
+                                }}
+                                onFocus={() => setPricingAssignmentDropdownOpen(row.countRow.id)}
+                                placeholder="Search or assign..."
+                                disabled={savingPricingAssignment === row.countRow.id}
+                                style={{ 
+                                  width: '100%',
+                                  padding: '0.35rem', 
+                                  border: '1px solid #d1d5db', 
+                                  borderRadius: 4, 
+                                  minWidth: '10rem',
+                                  boxSizing: 'border-box',
+                                  paddingRight: row.entry ? '5rem' : '0.35rem'
+                                }}
+                              />
+                              {row.entry && (
+                                <>
+                                  <label
+                                    style={{
+                                      position: 'absolute',
+                                      right: '2rem',
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '0.25rem',
+                                      fontSize: '0.75rem',
+                                      color: '#6b7280',
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap'
+                                    }}
+                                    title="Fixed price: don't multiply by count"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={row.assignment?.is_fixed_price ?? false}
+                                      onChange={() => togglePricingAssignmentFixedPrice(row.countRow.id)}
+                                      style={{ cursor: 'pointer' }}
+                                    />
+                                    Fixed
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      removePricingAssignment(row.countRow.id)
+                                      setPricingAssignmentSearches((prev) => {
+                                        const next = { ...prev }
+                                        delete next[row.countRow.id]
+                                        return next
+                                      })
+                                    }}
+                                    style={{
+                                      position: 'absolute',
+                                      right: '0.5rem',
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor: 'pointer',
+                                      color: '#6b7280',
+                                      fontSize: '1.25rem',
+                                      lineHeight: 1,
+                                      padding: 0
+                                    }}
+                                    title="Clear assignment"
+                                  >
+                                    ×
+                                  </button>
+                                </>
+                              )}
+                              {pricingAssignmentDropdownOpen === row.countRow.id && (() => {
+                                const searchTerm = pricingAssignmentSearches[row.countRow.id] || ''
+                                const filtered = priceBookEntries.filter((e) => 
+                                  (e.fixture_types?.name ?? '').toLowerCase().includes(searchTerm.toLowerCase())
+                                )
+                                return (
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    left: 0,
+                                    right: 0,
+                                    background: 'white',
+                                    border: '1px solid #d1d5db',
+                                    borderRadius: 4,
+                                    marginTop: '0.25rem',
+                                    maxHeight: '200px',
+                                    overflowY: 'auto',
+                                    zIndex: 10,
+                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                                  }}>
+                                    {filtered.length > 0 ? (
+                                      filtered.map((e) => (
+                                        <div
+                                          key={e.id}
+                                          onClick={() => {
+                                            savePricingAssignment(row.countRow.id, e.id)
+                                            setPricingAssignmentSearches((prev) => {
+                                              const next = { ...prev }
+                                              delete next[row.countRow.id]
+                                              return next
+                                            })
+                                            setPricingAssignmentDropdownOpen(null)
+                                          }}
+                                          style={{
+                                            padding: '0.5rem',
+                                            cursor: 'pointer',
+                                            borderBottom: '1px solid #f3f4f6',
+                                            background: row.entry?.id === e.id ? '#eff6ff' : 'white'
+                                          }}
+                                          onMouseEnter={(ev) => { ev.currentTarget.style.background = '#f9fafb' }}
+                                          onMouseLeave={(ev) => { ev.currentTarget.style.background = row.entry?.id === e.id ? '#eff6ff' : 'white' }}
+                                        >
+                                          {e.fixture_types?.name ?? ''}
+                                        </div>
+                                      ))
+                                    ) : searchTerm ? (
+                                      <div style={{ padding: '0.75rem', textAlign: 'center', color: '#6b7280' }}>
+                                        No matches for "{searchTerm}"
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setEditingPricingEntry(null)
+                                            setPricingEntryFixtureName(searchTerm)
+                                            setPricingEntryRoughIn('')
+                                            setPricingEntryTopOut('')
+                                            setPricingEntryTrimSet('')
+                                            setPricingEntryTotal('')
+                                            setPricingEntryFormOpen(true)
+                                            setPricingAssignmentDropdownOpen(null)
+                                          }}
+                                          style={{
+                                            display: 'block',
+                                            margin: '0.5rem auto 0',
+                                            padding: '0.5rem 1rem',
+                                            background: '#3b82f6',
+                                            color: 'white',
+                                            border: 'none',
+                                            borderRadius: 4,
+                                            cursor: 'pointer',
+                                            fontSize: '0.875rem'
+                                          }}
+                                        >
+                                          Add "{searchTerm}" to Price Book
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div style={{ padding: '0.5rem', color: '#6b7280', textAlign: 'center' }}>
+                                        Start typing to search...
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })()}
+                            </div>
+                          </td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
+                            {pricingViewModel === 'cost' ? (
+                              `$${formatCurrency(row.cost)}`
+                            ) : (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
+                                {(() => {
+                                  const unitCostDisplayStr =
+                                    unitPriceEditValues[row.countRow.id] ??
+                                    (row.unitPrice > 0 ? formatCurrency(row.unitPrice) : '')
+                                  const showGenerateUnitCostIcon =
+                                    unitCostDisplayStr.trim() === '' &&
+                                    savingUnitPriceOverride !== row.countRow.id
+                                  return (
+                                    <div style={{ position: 'relative', display: 'inline-block' }}>
+                                      {showGenerateUnitCostIcon ?
+                                        <button
+                                          type="button"
+                                          aria-label="Line share of total percent"
+                                          title="Set unit from line share of current bid total (percent)"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setGenerateUnitCostModalParams({
+                                              countRowId: row.countRow.id,
+                                              totalRevenue,
+                                              currentRowRevenue: row.revenue,
+                                              currentPctOfTotal: row.pctOfGrandTotal,
+                                              count: row.count,
+                                              isFixedPrice: row.isFixedPrice,
+                                              fixtureLabel: row.countRow.fixture ?? '',
+                                            })
+                                          }}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                          style={{
+                                            position: 'absolute',
+                                            left: 4,
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            padding: 0,
+                                            margin: 0,
+                                            border: 'none',
+                                            background: 'transparent',
+                                            cursor: 'pointer',
+                                            color: '#6b7280',
+                                            lineHeight: 0,
+                                            zIndex: 1,
+                                          }}
+                                        >
+                                          <GenerateUnitCostTriggerIcon />
+                                        </button>
+                                      : null}
+                                      <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={unitCostDisplayStr}
+                                        onFocus={() => {
+                                          if (unitPriceEditValues[row.countRow.id] == null) {
+                                            setUnitPriceEditValues((prev) => ({
+                                              ...prev,
+                                              [row.countRow.id]: row.unitPrice > 0 ? row.unitPrice.toFixed(2) : '',
+                                            }))
+                                          }
+                                        }}
+                                        onChange={(e) =>
+                                          setUnitPriceEditValues((prev) => ({
+                                            ...prev,
+                                            [row.countRow.id]: e.target.value,
+                                          }))
+                                        }
+                                        onBlur={() => {
+                                          const raw = (
+                                            unitPriceEditValues[row.countRow.id] ?? String(row.unitPrice)
+                                          ).replace(/,/g, '')
+                                          const v = parseFloat(raw)
+                                          const bookPrice = row.entry ? Number(row.entry.total_price) : 0
+                                          if (raw.trim() === '' || isNaN(v)) {
+                                            updateUnitPriceOverride(row.countRow.id, null)
+                                          } else if (row.entry && Math.abs(v - bookPrice) <= 0.001) {
+                                            updateUnitPriceOverride(row.countRow.id, null)
+                                          } else {
+                                            updateUnitPriceOverride(row.countRow.id, v)
+                                          }
+                                        }}
+                                        disabled={savingUnitPriceOverride === row.countRow.id}
+                                        placeholder={
+                                          row.entry ? `$${formatCurrency(row.entry.total_price)}` : '—'
+                                        }
+                                        style={{
+                                          width: '7rem',
+                                          paddingTop: '0.35rem',
+                                          paddingBottom: '0.35rem',
+                                          paddingRight: '0.5rem',
+                                          paddingLeft: showGenerateUnitCostIcon ? '1.6rem' : '0.5rem',
+                                          border: '1px solid #d1d5db',
+                                          borderRadius: 4,
+                                          textAlign: 'right',
+                                          background:
+                                            row.assignment?.unit_price_override != null || row.customPrice != null ?
+                                              '#fef9c3'
+                                            : 'white',
+                                          fontSize: '0.875rem',
+                                        }}
+                                      />
+                                    </div>
+                                  )
+                                })()}
+                                {(row.assignment?.unit_price_override != null || row.customPrice != null) && (
+                                  <button
+                                    type="button"
+                                    onClick={() => updateUnitPriceOverride(row.countRow.id, null)}
+                                    title={row.assignment ? 'Reset to price book' : 'Clear custom price'}
+                                    aria-label={row.assignment ? 'Reset to price book' : 'Clear custom price'}
+                                    disabled={savingUnitPriceOverride === row.countRow.id}
+                                    style={{
+                                      padding: '0.15rem',
+                                      background: 'none',
+                                      border: 'none',
+                                      cursor:
+                                        savingUnitPriceOverride === row.countRow.id ?
+                                          'not-allowed'
+                                        : 'pointer',
+                                      color: '#6b7280',
+                                      fontSize: '0.75rem',
+                                    }}
+                                  >
+                                    Reset
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td
+                            style={{ padding: '0.75rem', textAlign: 'right', cursor: 'pointer' }}
+                            role="button"
+                            tabIndex={0}
+                            title="Cost breakdown"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setPricingRowBreakdownModalCountRow(row.countRow)
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault()
+                                setPricingRowBreakdownModalCountRow(row.countRow)
+                              }
+                            }}
+                          >
+                            ${formatCurrency(row.revenue)}
+                          </td>
+                          <td
+                            style={{ padding: '0.75rem', textAlign: 'center' }}
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                                <span style={{ fontSize: '0.875rem' }}>{row.materialsFromTakeoff == null || row.materialsFromTakeoff === 0 ? '—' : row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}</span>
+                                <span style={{ color: '#9ca3af' }}>/</span>
+                                {(() => {
+                                  const pctDisplay =
+                                    row.pctOfGrandTotal != null ? `${row.pctOfGrandTotal.toFixed(1)}%` : '—'
+                                  const pctTextStyle = { fontSize: '0.875rem' as const }
+                                  const toggleInteractive =
+                                    row.canToggleOmitSubmission &&
+                                    savingPricingAssignment !== row.countRow.id
+                                  if (toggleInteractive) {
+                                    return (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          void togglePricingRowOmitFromSubmission(row.countRow.id)
+                                        }}
+                                        aria-pressed={row.omitFromSubmissionDocuments}
+                                        aria-label={
+                                          row.omitFromSubmissionDocuments ?
+                                            'Include line in Cover Letter fixture list'
+                                          : 'Hide line from Cover Letter fixture list'
+                                        }
+                                        title={
+                                          row.omitFromSubmissionDocuments ?
+                                            'Hidden from Cover Letter fixture list — click to restore'
+                                          : 'Click to hide from Cover Letter fixture list (included in totals)'
+                                        }
+                                        style={{
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          gap: '0.35rem',
+                                          padding: 0,
+                                          margin: 0,
+                                          border: 'none',
+                                          borderRadius: 0,
+                                          background: 'transparent',
+                                          cursor: 'pointer',
+                                          font: 'inherit',
+                                          color:
+                                            row.omitFromSubmissionDocuments ? '#2563eb' : '#374151',
+                                          lineHeight: 1.25,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.textDecoration = 'underline'
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.textDecoration = 'none'
+                                        }}
+                                      >
+                                        <span style={pctTextStyle}>{pctDisplay}</span>
+                                        {row.omitFromSubmissionDocuments ?
+                                          <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            viewBox="0 0 640 640"
+                                            width={16}
+                                            height={16}
+                                            aria-hidden
+                                          >
+                                            <path
+                                              fill="currentColor"
+                                              d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L504.5 470.8C507.2 468.4 509.9 466 512.5 463.6C559.3 420.1 590.6 368.2 605.5 332.5C608.8 324.6 608.8 315.8 605.5 307.9C590.6 272.2 559.3 220.2 512.5 176.8C465.4 133.1 400.7 96.2 319.9 96.2C263.1 96.2 214.3 114.4 173.9 140.4L73 39.1zM208.9 175.1C241 156.2 278.1 144 320 144C385.2 144 438.8 173.6 479.9 211.7C518.4 247.4 545 290 558.5 320C544.9 350 518.3 392.5 479.9 428.3C476.8 431.1 473.7 433.9 470.5 436.7L425.8 392C439.8 371.5 448 346.7 448 320C448 249.3 390.7 192 320 192C293.3 192 268.5 200.2 248 214.2L208.9 175.1zM390.9 357.1L282.9 249.1C294 243.3 306.6 240 320 240C364.2 240 400 275.8 400 320C400 333.4 396.7 346 390.9 357.1zM135.4 237.2L101.4 203.2C68.8 240 46.4 279 34.5 307.7C31.2 315.6 31.2 324.4 34.5 332.3C49.4 368 80.7 420 127.5 463.4C174.6 507.1 239.3 544 320.1 544C357.4 544 391.3 536.1 421.6 523.4L384.2 486C364.2 492.4 342.8 496 320 496C254.8 496 201.2 466.4 160.1 428.3C121.6 392.6 95 350 81.5 320C91.9 296.9 110.1 266.4 135.5 237.2z"
+                                            />
+                                          </svg>
+                                        : null}
+                                      </button>
+                                    )
+                                  }
+                                  return (
+                                    <span
+                                      style={{
+                                        ...pctTextStyle,
+                                        color:
+                                          savingPricingAssignment === row.countRow.id ?
+                                            '#9ca3af'
+                                          : !row.canToggleOmitSubmission ?
+                                            '#9ca3af'
+                                          : '#374151',
+                                        opacity:
+                                          savingPricingAssignment === row.countRow.id ?
+                                            0.7
+                                          : !row.canToggleOmitSubmission ?
+                                            0.55
+                                          : 1,
+                                      }}
+                                      title={
+                                        savingPricingAssignment === row.countRow.id ?
+                                          'Saving…'
+                                        : !row.canToggleOmitSubmission ?
+                                          'Select a price book version to change submission visibility.'
+                                        : undefined
+                                      }
+                                    >
+                                      {pctDisplay}
+                                    </span>
+                                  )
+                                })()}
+                              </div>
+                          </td>
+                          <td style={{ padding: '0.75rem' }}>
+                            {row.flag && (
+                              <span
+                                title={row.flag === 'red' ? '< 20%' : row.flag === 'yellow' ? '< 40%' : '≥ 40%'}
+                                style={{
+                                  display: 'inline-block',
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: '50%',
+                                  background: row.flag === 'red' ? '#dc2626' : row.flag === 'yellow' ? '#ca8a04' : '#16a34a',
+                                }}
+                                aria-hidden
+                              />
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      <tr style={{ background: '#fffbeb' }}>
+                        <td colSpan={3} style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>Our cost breakdown</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>${formatCurrency(totalCost)}</td>
+                        <td colSpan={3} />
+                      </tr>
+                      <tr style={{ fontSize: '0.8125rem' }}>
+                        <td colSpan={7} style={{ padding: '0.35rem 0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs') }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                          >
+                            Takeoffs
+                          </button>
+                        </td>
+                      </tr>
+                      <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                        <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Materials</td>
+                        <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(totalMaterials)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((totalMaterials / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                        <td colSpan={3} />
+                      </tr>
+                      <tr style={{ fontSize: '0.8125rem' }}>
+                        <td colSpan={7} style={{ padding: '0.35rem 0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'labor') }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                          >
+                            Labor
+                          </button>
+                        </td>
+                      </tr>
+                      <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                        <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Manhours</td>
+                        <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((laborCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                        <td colSpan={3} />
+                      </tr>
+                      {distance > 0 && totalLaborHours > 0 && (
+                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Driving <span style={{ color: '#6b7280' }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span></td>
+                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(drivingCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((drivingCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                          <td colSpan={3} />
+                        </tr>
+                      )}
+                      {estimatorCost > 0 && (
+                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Estimator</td>
+                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estimatorCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((estimatorCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                          <td colSpan={3} />
+                        </tr>
+                      )}
+                      {teamLaborCost > 0 && (
+                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Team Labor (clocked)</td>
+                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(teamLaborCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((teamLaborCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                          <td colSpan={3} />
+                        </tr>
+                      )}
+                      {travelCost > 0 && (
+                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Travel <span style={{ color: '#6b7280' }}>(meals + hotels)</span></td>
+                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(travelCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((travelCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
+                          <td colSpan={3} />
+                        </tr>
+                      )}
+                      <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                        <td style={{ padding: '0.75rem' }}>Total</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }} />
+                        <td style={{ padding: '0.75rem' }} />
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{pricingViewModel === 'cost' ? `$${formatCurrency(totalCost)}` : ''}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'center' }}>
+                          {`${totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'} / 100%`}
+                        </td>
+                        <td style={{ padding: '0.75rem' }}>
+                          {totalRevenue > 0 && (() => {
+                            const m = ((totalRevenue - totalCost) / totalRevenue) * 100
+                            const f = marginFlag(m)
+                            return f ? (
+                              <span
+                                title={f === 'red' ? '< 20%' : f === 'yellow' ? '< 40%' : '≥ 40%'}
+                                style={{
+                                  display: 'inline-block',
+                                  width: 16,
+                                  height: 16,
+                                  borderRadius: '50%',
+                                  background: f === 'red' ? '#dc2626' : f === 'yellow' ? '#ca8a04' : '#16a34a',
+                                }}
+                                aria-hidden
+                              />
+                            ) : null
+                          })()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                </>
+              )
+            })()}
+          </div>
+        )}
+        {pricingRowBreakdownModalCountRow && selectedBidForPricing && pricingCostEstimate && (() => {
+          const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
+          const rate = pricingLaborRate ?? 0
+          const totalLaborHours = pricingLaborRows.reduce((s, r) => s + laborRowHours(r), 0)
+          const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
+          const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (pricingRowBreakdownModalCountRow!.fixture ?? '').toLowerCase())
+          const laborHrs = laborRow ? laborRowHours(laborRow) : 0
+          const laborCost = laborHrs * rate
+          const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pricingRowBreakdownModalCountRow!.id]
+          const materialsBeforeTax = materialsFromTakeoff != null
+            ? materialsFromTakeoff
+            : (totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0)
+          const taxAmount = materialsFromTakeoff != null ? materialsBeforeTax * (taxPercent / 100) : 0
+          const ourCost = laborCost + materialsBeforeTax + taxAmount
+          return (
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="pricing-breakdown-title"
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(0,0,0,0.4)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+              }}
+              onClick={() => setPricingRowBreakdownModalCountRow(null)}
+            >
+              <div
+                style={{
+                  background: 'white',
+                  borderRadius: 8,
+                  padding: '1.5rem 2rem',
+                  minWidth: 320,
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 id="pricing-breakdown-title" style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>
+                  Cost breakdown: {pricingRowBreakdownModalCountRow.fixture ?? ''}
+                </h2>
+                <dl style={{ margin: 0, display: 'grid', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <dt style={{ margin: 0, color: '#6b7280' }}>Materials {materialsFromTakeoff != null ? '(from takeoff)' : '(proportional)'}</dt>
+                    <dd style={{ margin: 0 }}>${formatCurrency(materialsBeforeTax)}</dd>
+                  </div>
+                  {taxAmount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                      <dt style={{ margin: 0, color: '#6b7280' }}>Tax ({taxPercent}%)</dt>
+                      <dd style={{ margin: 0 }}>${formatCurrency(taxAmount)}</dd>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                    <dt style={{ margin: 0, color: '#6b7280' }}>Labor</dt>
+                    <dd style={{ margin: 0 }}>${formatCurrency(laborCost)}</dd>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontWeight: 600, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
+                    <dt style={{ margin: 0 }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Unit Cost'}</dt>
+                    <dd style={{ margin: 0 }}>${formatCurrency(ourCost)}</dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  onClick={() => setPricingRowBreakdownModalCountRow(null)}
+                  style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', width: '100%' }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )
+        })()}
+        {!selectedBidForPricing && (
+          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ background: '#f9fafb' }}>
+                <tr>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredBidsForPricing.map((bid) => (
+                  <tr
+                    key={bid.id}
+                    onClick={() => onSelectBid(bid)}
+                    style={{
+                      cursor: 'pointer',
+                      borderBottom: '1px solid #e5e7eb',
+                    }}
+                  >
+                    <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '1.5rem' }}>
+          <div>
+            <button
+              type="button"
+              onClick={() => setPriceBookSectionOpen((prev) => !prev)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                margin: 0,
+                marginBottom: priceBookSectionOpen ? '0.75rem' : 0,
+                padding: 0,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 600,
+              }}
+            >
+              <span style={{ fontSize: '0.75rem' }}>{priceBookSectionOpen ? '▼' : '▶'}</span>
+              Price book
+            </button>
+            {priceBookSectionOpen && (
+            <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+              {priceBookVersions.map((v) => (
+                <span
+                  key={v.id}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    padding: '0.35rem 0.5rem',
+                    background: selectedPricingVersionId === v.id ? '#dbeafe' : '#f3f4f6',
+                    border: selectedPricingVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                    borderRadius: 4,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedPricingVersionId(v.id); loadPriceBookEntries(v.id) }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: selectedPricingVersionId === v.id ? 600 : 400, padding: 0 }}
+                  >
+                    {v.name}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openEditPricingVersion(v)}
+                    style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                    title="Edit version name"
+                  >
+                    ✎
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={openNewPricingVersion}
+                style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                Add version
+              </button>
+            </div>
+            {selectedPricingVersionId && (
+              <>
+                <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries</h4>
+                <input
+                  type="text"
+                  placeholder="Search fixture/tie-in name..."
+                  value={priceBookSearchQuery}
+                  onChange={(e) => setPriceBookSearchQuery(e.target.value)}
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.5rem', 
+                    border: '1px solid #d1d5db', 
+                    borderRadius: 4, 
+                    marginBottom: '0.5rem', 
+                    boxSizing: 'border-box' 
+                  }}
+                />
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture / Tie-in</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                        <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {priceBookEntries
+                        .filter((entry) => 
+                          (entry.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase())
+                        )
+                        .map((entry) => (
+                        <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <td style={{ padding: '0.5rem' }}>{entry.fixture_types?.name ?? ''}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.rough_in_price))}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.top_out_price))}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.trim_set_price))}</td>
+                          <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(Number(entry.total_price))}</td>
+                          <td style={{ padding: '0.5rem' }}>
+                            <button type="button" onClick={() => openEditPricingEntry(entry)} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer' }} title="Edit">✎</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {priceBookSearchQuery && 
+                 priceBookEntries.filter((e) => 
+                   (e.fixture_types?.name ?? '').toLowerCase().includes(priceBookSearchQuery.toLowerCase())
+                 ).length === 0 && (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '1rem', 
+                    color: '#6b7280' 
+                  }}>
+                    No entries match "{priceBookSearchQuery}"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPricingEntry(null)
+                        setPricingEntryFixtureName(priceBookSearchQuery)
+                        setPricingEntryRoughIn('')
+                        setPricingEntryTopOut('')
+                        setPricingEntryTrimSet('')
+                        setPricingEntryTotal('')
+                        setPricingEntryFormOpen(true)
+                      }}
+                      style={{ 
+                        display: 'block',
+                        margin: '0.5rem auto 0',
+                        padding: '0.5rem 1rem', 
+                        background: '#3b82f6', 
+                        color: 'white', 
+                        border: 'none', 
+                        borderRadius: 4, 
+                        cursor: 'pointer',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      Add "{priceBookSearchQuery}" to Price Book
+                    </button>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={openNewPricingEntry}
+                  style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Add entry
+                </button>
+              </>
+            )}
+            </>
+            )}
+          </div>
+        </div>
+        {pricingVersionFormOpen && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+            }}
+            onClick={closePricingVersionForm}
+          >
+            <div
+              style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: '0 0 1rem' }}>{editingPricingVersion ? 'Edit version' : 'New version'}</h3>
+              <form onSubmit={savePricingVersion}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
+                <input
+                  type="text"
+                  value={pricingVersionNameInput}
+                  onChange={(e) => setPricingVersionNameInput(e.target.value)}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                  placeholder="e.g. 2025 Standard"
+                />
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                  {editingPricingVersion && editingPricingVersion.name !== 'Default' ? (
+                    <button
+                      type="button"
+                      onClick={() => openDeletePricingVersionModal(editingPricingVersion)}
+                      style={{ padding: '0.5rem 1rem', background: 'white', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Delete version
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={closePricingVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingPricingVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingVersion ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+        {deletePricingVersionModalOpen && pricingVersionToDelete && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+            }}
+            onClick={() => {
+              setDeletePricingVersionModalOpen(false)
+              setPricingVersionToDelete(null)
+              setDeletePricingVersionNameInput('')
+              setDeletePricingVersionError(null)
+            }}
+          >
+            <div
+              style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: '0 0 0.75rem', color: '#b91c1c' }}>Delete price book version</h3>
+              <p style={{ margin: '0 0 0.75rem', color: '#374151', fontSize: '0.9rem' }}>
+                This will permanently delete the price book version{' '}
+                <strong>{pricingVersionToDelete.name}</strong> and all entries it contains.
+              </p>
+              <p style={{ margin: '0 0 0.5rem', color: '#4b5563', fontSize: '0.875rem' }}>
+                Type the name of this price book version to confirm:
+              </p>
+              <input
+                type="text"
+                value={deletePricingVersionNameInput}
+                onChange={(e) => {
+                  setDeletePricingVersionNameInput(e.target.value)
+                  if (deletePricingVersionError) setDeletePricingVersionError(null)
+                }}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  marginBottom: '0.5rem',
+                  boxSizing: 'border-box',
+                }}
+                placeholder={pricingVersionToDelete.name}
+              />
+              {deletePricingVersionError && (
+                <p style={{ margin: '0 0 0.5rem', color: '#b91c1c', fontSize: '0.875rem' }}>
+                  {deletePricingVersionError}
+                </p>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeletePricingVersionModalOpen(false)
+                    setPricingVersionToDelete(null)
+                    setDeletePricingVersionNameInput('')
+                    setDeletePricingVersionError(null)
+                  }}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmDeletePricingVersion}
+                  disabled={!deletePricingVersionNameInput.trim()}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: deletePricingVersionNameInput.trim() ? '#b91c1c' : '#e5e7eb',
+                    color: deletePricingVersionNameInput.trim() ? 'white' : '#9ca3af',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: deletePricingVersionNameInput.trim() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {pricingEntryFormOpen && selectedPricingVersionId && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 50,
+            }}
+            onClick={closePricingEntryForm}
+          >
+            <div
+              style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 style={{ margin: '0 0 1rem' }}>{editingPricingEntry ? 'Edit entry' : 'New entry'}</h3>
+              {error && (
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+                  {error}
+                </div>
+              )}
+              <form onSubmit={savePricingEntry}>
+                <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture / Tie-in *</label>
+                <input
+                  type="text"
+                  list="pricing-fixture-types"
+                  value={pricingEntryFixtureName}
+                  onChange={(e) => setPricingEntryFixtureName(e.target.value)}
+                  required
+                  placeholder="Type or select fixture type..."
+                  autoComplete="off"
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                />
+                <datalist id="pricing-fixture-types">
+                  {fixtureTypes.map(ft => (
+                    <option key={ft.id} value={ft.name} />
+                  ))}
+                </datalist>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Rough In</label>
+                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryRoughIn} onChange={(e) => setPricingEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Top Out</label>
+                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTopOut} onChange={(e) => setPricingEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Trim Set</label>
+                    <input type="number" inputMode="decimal" min={0} step={0.01} value={pricingEntryTrimSet} onChange={(e) => setPricingEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Total (auto-calculated)</label>
+                    <input type="number" min={0} step={0.01} value={pricingEntryTotal} readOnly style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', background: '#f9fafb', cursor: 'not-allowed' }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    {editingPricingEntry && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm(`Delete "${editingPricingEntry.fixture_types?.name ?? ''}" from this price book?`)) return
+                          await deletePricingEntry(editingPricingEntry)
+                          closePricingEntryForm()
+                        }}
+                        style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button type="button" onClick={closePricingEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={savingPricingEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingPricingEntry ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <GenerateUnitCostModal
+        open={generateUnitCostModalParams != null}
+        onClose={() => setGenerateUnitCostModalParams(null)}
+        fixtureLabel={generateUnitCostModalParams?.fixtureLabel}
+        totalRevenue={generateUnitCostModalParams?.totalRevenue ?? 0}
+        currentRowRevenue={generateUnitCostModalParams?.currentRowRevenue ?? 0}
+        currentPctOfTotal={generateUnitCostModalParams?.currentPctOfTotal ?? null}
+        count={generateUnitCostModalParams?.count ?? 0}
+        isFixedPrice={generateUnitCostModalParams?.isFixedPrice ?? false}
+        onApply={async (price) => {
+          const p = generateUnitCostModalParams
+          if (!p) return
+          await updateUnitPriceOverride(p.countRowId, price)
+        }}
+      />
+
+      {packageSendOpen && selectedBidForPricing && selectedPricingVersionId && pricingPackageSource ? (
+        <PackageAndSendBidPricingModal
+          open={packageSendOpen}
+          onClose={() => setPackageSendOpen(false)}
+          bid={selectedBidForPricing}
+          priceBookVersionId={selectedPricingVersionId}
+          priceBookVersionName={
+            priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? '—'
+          }
+          pricingRows={pricingPackageSource.rows}
+          totalRevenue={pricingPackageSource.totalRevenue}
+          estimatorUsers={estimatorUsers}
+          prefixMap={ledgerPrefixMap}
+          currentUserName={profileName ?? null}
+          onRequestEditBid={() => {
+            setPackageSendOpen(false)
+            onEditBid(selectedBidForPricing)
+          }}
+        />
+      ) : null}
+    </>
+  )
+}

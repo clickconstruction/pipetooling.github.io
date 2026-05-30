@@ -104,6 +104,8 @@ when_to_read:
 
 The Bids system is a comprehensive bidding and estimation tool for plumbing contractors. It provides a complete workflow from initial fixture counts through pricing, cost estimation, and bid submission tracking.
 
+> **Refactoring / decomposing `Bids.tsx`?** See [`docs/BIDS_TABS_ARCHITECTURE.md`](./docs/BIDS_TABS_ARCHITECTURE.md) — a per-tab coupling/refactor map (state, memos, handlers, supabase tables, extraction status, and a recommended extraction order). This file (`BIDS_SYSTEM.md`) covers feature/workflow/DB behavior; the architecture map covers internal structure.
+
 ### Key Features
 - **Eleven integrated tabs** covering the complete bid lifecycle (Bid Board, **Estimators**, Counts, Takeoff, Cost Estimate, Pricing, Cover Letter, Submission & Followup, RFI, Change Order, Lien Release). **Estimators** (**v2.531+**) is a cross-bid pivot, not part of the linear per-bid workflow below — see [Estimators Tab](#estimators-tab).
 - **Three book systems** (Takeoff, Labor, Price) for standardizing estimates

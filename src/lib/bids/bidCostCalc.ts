@@ -23,3 +23,36 @@ export function computeTravelCost(ce: unknown): number {
   }
   return people * nights * (mealsRate + hotelRate)
 }
+
+/**
+ * Driving cost rate ($/mile) from a cost_estimates row. Default 0.70.
+ * An explicitly stored `0` is honored (only `null`/`undefined` falls back).
+ */
+export function costEstimateDrivingRate(ce: unknown): number {
+  const v = (ce as { driving_cost_rate?: unknown } | null)?.driving_cost_rate
+  return v != null ? Number(v) : 0.7
+}
+
+/**
+ * Hours per round trip from a cost_estimates row. Default 2.0.
+ * An explicitly stored `0` is honored (only `null`/`undefined` falls back).
+ */
+export function costEstimateHoursPerTrip(ce: unknown): number {
+  const v = (ce as { hours_per_trip?: unknown } | null)?.hours_per_trip
+  return v != null ? Number(v) : 2.0
+}
+
+/**
+ * Estimator cost from a cost_estimates row.
+ * Uses `estimator_cost_flat_amount` when present, otherwise
+ * `countLen * (estimator_cost_per_count || 10)`.
+ */
+export function costEstimateEstimatorCost(ce: unknown, countLen: number): number {
+  const row = (ce ?? {}) as {
+    estimator_cost_flat_amount?: unknown
+    estimator_cost_per_count?: unknown
+  }
+  return row.estimator_cost_flat_amount != null
+    ? Number(row.estimator_cost_flat_amount)
+    : countLen * (Number(row.estimator_cost_per_count) || 10)
+}

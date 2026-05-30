@@ -5,6 +5,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { Database } from '../../types/database'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import type { BidDateSentAttestationPayload } from '../../types/bidDateSentAttestation'
+import type { BidEditForm } from '../../lib/bids/useBidEditForm'
 import {
   bidAttestationDisplayName,
   normalizeBidDateInput,
@@ -33,83 +34,25 @@ export type BidFormModalProps = {
   editingBid: BidWithBuilder | null
   closeBidForm: () => void
   saveBid: (e: FormEvent<HTMLFormElement>) => void
-  estimatorId: string
-  setEstimatorId: (value: string) => void
+  /** Owns all editable bid-form data fields (values + setters). */
+  form: BidEditForm
   estimatorUsers: EstimatorUser[]
-  accountManagerId: string
-  setAccountManagerId: (value: string) => void
-  bidDueDate: string
-  setBidDueDate: (value: string) => void
-  bidNumber: string
-  setBidNumber: (value: string) => void
   myRole: BidFormUserRole
-  projectName: string
-  setProjectName: (value: string) => void
-  formServiceTypeId: string
-  setFormServiceTypeId: (value: string) => void
   visibleServiceTypes: { id: string; name: string; color: string | null }[]
-  outcome: BidFormOutcomeOption
-  setOutcome: (value: BidFormOutcomeOption) => void
   bidDateSent: string
   handleBidDateSentInputChange: (e: ChangeEvent<HTMLInputElement>) => void
   handleBidDateSentBlur: (e: FocusEvent<HTMLInputElement>) => void
   pendingAttestationForDate: string | null
   pendingBidDateSentAttestation: BidDateSentAttestationPayload | null
-  lossReason: string
-  setLossReason: (value: string) => void
-  estimatedJobStartDate: string
-  setEstimatedJobStartDate: (value: string) => void
-  address: string
-  setAddress: (value: string) => void
-  distanceFromOffice: string
-  setDistanceFromOffice: (value: string) => void
-  planPages: string
-  setPlanPages: (value: string) => void
-  driveLink: string
-  setDriveLink: (value: string) => void
-  plansLink: string
-  setPlansLink: (value: string) => void
-  designDrawingPlanDate: string
-  setDesignDrawingPlanDate: (value: string) => void
-  countToolingLink: string
-  setCountToolingLink: (value: string) => void
-  bidSubmissionLink: string
-  setBidSubmissionLink: (value: string) => void
-  gcCustomerSearch: string
-  setGcCustomerSearch: (value: string) => void
   gcCustomerDropdownOpen: boolean
   setGcCustomerDropdownOpen: (value: boolean) => void
-  gcCustomerId: string
-  setGcCustomerId: (value: string) => void
   customers: Customer[]
   loadCustomers: () => void | Promise<void>
   openNewCustomerModal?: (options?: { onCreated?: (customer: Customer | null) => void }) => void
   getCustomerDisplay: (customer: Customer) => string
   getGcBuilderPhone: () => string
   getGcBuilderEmail: () => string
-  projectContactExpanded: boolean
-  setProjectContactExpanded: Dispatch<SetStateAction<boolean>>
-  gcContactName: string
-  setGcContactName: (value: string) => void
-  gcContactPhone: string
-  setGcContactPhone: (value: string) => void
-  gcContactEmail: string
-  setGcContactEmail: (value: string) => void
-  submittedTo: string
-  setSubmittedTo: (value: string) => void
-  bidValue: string
-  setBidValue: (value: string) => void
-  agreedValue: string
-  setAgreedValue: (value: string) => void
-  profit: string
-  setProfit: (value: string) => void
-  lastContact: string
-  setLastContact: (value: string) => void
-  notes: string
-  setNotes: (value: string) => void
   saveBidAndOpenCounts: () => void
-  bidFormCanSubmit: boolean
-  bidFormMissingFields: string[]
   savingBid: boolean
   setDeleteBidModalOpen: (value: boolean) => void
   setDeleteConfirmProjectName: (value: string) => void
@@ -158,83 +101,24 @@ export function BidFormModal(props: BidFormModalProps) {
     editingBid,
     closeBidForm,
     saveBid,
-    estimatorId,
-    setEstimatorId,
+    form,
     estimatorUsers,
-    accountManagerId,
-    setAccountManagerId,
-    bidDueDate,
-    setBidDueDate,
-    bidNumber,
-    setBidNumber,
     myRole,
-    projectName,
-    setProjectName,
-    formServiceTypeId,
-    setFormServiceTypeId,
     visibleServiceTypes,
-    outcome,
-    setOutcome,
     bidDateSent,
     handleBidDateSentInputChange,
     handleBidDateSentBlur,
     pendingAttestationForDate,
     pendingBidDateSentAttestation,
-    lossReason,
-    setLossReason,
-    estimatedJobStartDate,
-    setEstimatedJobStartDate,
-    address,
-    setAddress,
-    distanceFromOffice,
-    setDistanceFromOffice,
-    planPages,
-    setPlanPages,
-    driveLink,
-    setDriveLink,
-    plansLink,
-    setPlansLink,
-    designDrawingPlanDate,
-    setDesignDrawingPlanDate,
-    countToolingLink,
-    setCountToolingLink,
-    bidSubmissionLink,
-    setBidSubmissionLink,
-    gcCustomerSearch,
-    setGcCustomerSearch,
     gcCustomerDropdownOpen,
     setGcCustomerDropdownOpen,
-    gcCustomerId,
-    setGcCustomerId,
     customers,
     loadCustomers,
     openNewCustomerModal,
     getCustomerDisplay,
     getGcBuilderPhone,
     getGcBuilderEmail,
-    projectContactExpanded,
-    setProjectContactExpanded,
-    gcContactName,
-    setGcContactName,
-    gcContactPhone,
-    setGcContactPhone,
-    gcContactEmail,
-    setGcContactEmail,
-    submittedTo,
-    setSubmittedTo,
-    bidValue,
-    setBidValue,
-    agreedValue,
-    setAgreedValue,
-    profit,
-    setProfit,
-    lastContact,
-    setLastContact,
-    notes,
-    setNotes,
     saveBidAndOpenCounts,
-    bidFormCanSubmit,
-    bidFormMissingFields,
     savingBid,
     setDeleteBidModalOpen,
     setDeleteConfirmProjectName,
@@ -247,6 +131,70 @@ export function BidFormModal(props: BidFormModalProps) {
     onDuplicateBidToServiceType,
     onOpenExistingBidFromServiceTypeSwitch,
   } = props
+  const {
+    driveLink,
+    plansLink,
+    countToolingLink,
+    bidSubmissionLink,
+    projectName,
+    bidNumber,
+    address,
+    gcContactName,
+    gcContactPhone,
+    gcContactEmail,
+    projectContactExpanded,
+    estimatorId,
+    accountManagerId,
+    formServiceTypeId,
+    bidDueDate,
+    estimatedJobStartDate,
+    designDrawingPlanDate,
+    planPages,
+    submittedTo,
+    outcome,
+    lossReason,
+    bidValue,
+    agreedValue,
+    profit,
+    distanceFromOffice,
+    lastContact,
+    notes,
+    gcCustomerId,
+    gcCustomerSearch,
+  } = form.values
+  const {
+    setDriveLink,
+    setPlansLink,
+    setCountToolingLink,
+    setBidSubmissionLink,
+    setProjectName,
+    setBidNumber,
+    setAddress,
+    setGcContactName,
+    setGcContactPhone,
+    setGcContactEmail,
+    setProjectContactExpanded,
+    setEstimatorId,
+    setAccountManagerId,
+    setFormServiceTypeId,
+    setBidDueDate,
+    setEstimatedJobStartDate,
+    setDesignDrawingPlanDate,
+    setPlanPages,
+    setSubmittedTo,
+    setOutcome,
+    setLossReason,
+    setBidValue,
+    setAgreedValue,
+    setProfit,
+    setDistanceFromOffice,
+    setLastContact,
+    setNotes,
+    setGcCustomerId,
+    setGcCustomerSearch,
+  } = form.setters
+  const bidFormCanSubmit = form.canSubmit
+  const bidFormMissingFields = form.missingFields
 
   const selectedServiceType = formServiceTypeId.trim()
     ? visibleServiceTypes.find((st) => st.id === formServiceTypeId)

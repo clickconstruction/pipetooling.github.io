@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import { csvEscapeField, sanitizeCsvFilenamePart, buildCountsCsv } from './bidCsvExport'
+import {
+  csvEscapeField,
+  sanitizeCsvFilenamePart,
+  buildCountsCsv,
+  buildPricingCsv,
+  type PricingCsvRow,
+} from './bidCsvExport'
 import type { BidCountRow } from '../../types/bids'
+
+const PRICING_HEADER =
+  'Fixture or Tie-in,Count,Price book entry,Fixed price,Unit price,Our cost,Revenue,Margin %,% of bid revenue'
 
 function row(partial: Partial<BidCountRow>): BidCountRow {
   return { count: 0, fixture: '', group_tag: null, page: null, ...partial } as BidCountRow
@@ -61,5 +70,48 @@ describe('buildCountsCsv', () => {
   it('escapes fixture fields that contain commas', () => {
     const csv = buildCountsCsv([row({ count: 1, fixture: 'Tee, 2in' })])
     expect(csv).toBe('Count,Fixture or Tie-in,Group/Tag,Plan Page\n1,"Tee, 2in",,')
+  })
+})
+
+describe('buildPricingCsv', () => {
+  it('emits a header and a zero-total TOTAL row with no data', () => {
+    const csv = buildPricingCsv([], { totalBidCost: 0, totalRevenue: 0 })
+    expect(csv).toBe(`${PRICING_HEADER}\nTOTAL (bid),,,,,0.00,0.00,,`)
+  })
+
+  it('formats data rows and the TOTAL row', () => {
+    const rows: PricingCsvRow[] = [
+      {
+        fixture: 'Tee, 2in',
+        count: 3,
+        priceBookEntry: 'Toilet Assembly',
+        fixedPrice: true,
+        unitPrice: 100,
+        ourCost: 80,
+        revenue: 300,
+        marginPct: 73.333,
+        pctOfTotalDisplay: 50,
+      },
+      {
+        fixture: 'Sink',
+        count: 2,
+        priceBookEntry: '',
+        fixedPrice: false,
+        unitPrice: 50,
+        ourCost: 60,
+        revenue: 100,
+        marginPct: null,
+        pctOfTotalDisplay: null,
+      },
+    ]
+    const csv = buildPricingCsv(rows, { totalBidCost: 140, totalRevenue: 400 })
+    expect(csv).toBe(
+      [
+        PRICING_HEADER,
+        '"Tee, 2in",3,Toilet Assembly,Yes,100.00,80.00,300.00,73.3,50.0',
+        'Sink,2,,No,50.00,60.00,100.00,,',
+        'TOTAL (bid),,,,,140.00,400.00,65.0,100.0',
+      ].join('\n'),
+    )
   })
 })
