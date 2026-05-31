@@ -1,0 +1,1 @@
+{ "extends": "./tsconfig.json", "include": ["src/pages/People.tsx", "src/vite-env.d.ts"] }
