@@ -12,6 +12,26 @@ import {
 import { FileSpreadsheet, Folder, Images, PanelRightOpen, Pencil } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import {
+  addDaysToDate,
+  calendarDaysSinceDateUtc,
+  filterLaborCrewNames,
+  formatCurrency,
+  formatCurrencyNoCents,
+  formatEstimatedCompletionDisplay,
+  formatJobNameTwoLines,
+  formatJobSummaryDurationMinutes,
+  formatJobSummaryInvoiceDate,
+  formatJobSummaryMercuryPostedAt,
+  formatJobSummarySessionDateTime,
+  formatJobSummarySessionTimeOnly,
+  formatPrintDaysSince,
+  formatTimeSince,
+  formatUsdNoCents,
+  formatYmdOrIsoDateForPrintDisplay,
+  jobSummaryPartsCostIsZero,
+  personMatchesJobSummaryBreakdownFilter,
+} from '../lib/jobs/jobFormatting'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -71,7 +91,7 @@ import {
 } from '../lib/jobSummaryHcpFilter'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { CLOCK_SESSION_LIST_SELECT } from '../lib/clockSessionSelect'
-import { APP_CALENDAR_TZ, formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
+import { formatWorkDateYmdWeekdayLongFriendly, getDefaultWeekRange } from '../utils/dateUtils'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
 import { fetchMercuryJobAllocationsWithAttributionForJob } from '../lib/fetchMercuryJobAllocationsWithAttributionForJob'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
@@ -333,13 +353,6 @@ type JobSummaryMercuryAllocationRow = {
   } | null
 }
 
-/** Job Summary cost breakdown: substring match on person name; empty query shows all. */
-function personMatchesJobSummaryBreakdownFilter(name: string | null | undefined, queryRaw: string): boolean {
-  const q = queryRaw.trim().toLowerCase()
-  if (!q) return true
-  return (name ?? '').toLowerCase().includes(q)
-}
-
 function jobSummaryDrilldownCellKeyboard(
   e: KeyboardEvent<HTMLTableCellElement>,
   onOpen: () => void,
@@ -357,71 +370,6 @@ function jobSummaryBreakdownInteractiveClass(
 ): string | undefined {
   if (!interactive) return undefined
   return variant === 'muted' ? 'jobSummaryBreakdownInteractiveMuted' : 'jobSummaryBreakdownInteractive'
-}
-
-function formatJobSummaryInvoiceDate(iso: string): string {
-  try {
-    return new Date(iso.includes('T') ? iso : `${iso}T12:00:00`).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-  } catch {
-    return iso
-  }
-}
-
-/** Mercury posted_at in Job Summary Card charges: weekday + date in company calendar TZ (Chicago). */
-function formatJobSummaryMercuryPostedAt(iso: string): string {
-  try {
-    const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00`)
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: APP_CALENDAR_TZ,
-      weekday: 'long',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    }).format(d)
-  } catch {
-    return iso
-  }
-}
-
-function formatJobSummarySessionDateTime(iso: string | null): string {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-  } catch {
-    return '—'
-  }
-}
-
-/** Job Summary Team Labor "By work date" table: In/Out column (work date is in the first column). */
-function formatJobSummarySessionTimeOnly(iso: string | null): string {
-  if (!iso) return '—'
-  try {
-    return new Date(iso).toLocaleString('en-US', { timeStyle: 'short' })
-  } catch {
-    return '—'
-  }
-}
-
-function formatJobSummaryDurationMinutes(ms: number): string {
-  if (!Number.isFinite(ms) || ms <= 0) return '—'
-  const m = Math.round(ms / 60000)
-  const h = Math.floor(m / 60)
-  const min = m % 60
-  if (h > 0) return `${h}h ${min}m`
-  return `${min}m`
-}
-
-function formatCurrency(n: number): string {
-  return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function jobSummaryPartsCostIsZero(n: number): boolean {
-  const x = Number(n)
-  return Number.isFinite(x) && Math.abs(x) < 1e-6
 }
 
 /** Job Summary: supply-house invoice line table or loading / empty (shared by Parts details and top section). */
@@ -536,30 +484,6 @@ function resolvedLaborInvoiceLink(raw: string): string | null {
   return normalized || null
 }
 
-/** Sub Labor modal crew search: empty query leaves list unchanged. */
-function filterLaborCrewNames(names: string[], queryLower: string): string[] {
-  if (!queryLower) return names
-  return names.filter((n) => n.toLowerCase().includes(queryLower))
-}
-
-function formatCurrencyNoCents(n: number): string {
-  return Math.round(n).toLocaleString('en-US', { maximumFractionDigits: 0 })
-}
-
-/** Integer USD for Stages Paid / Left / Bid lines (leading $, no cents). */
-function formatUsdNoCents(n: number): string {
-  return `$${formatCurrencyNoCents(n)}`
-}
-
-/** Calendar whole days from an ISO date/timestamp to now in UTC (avoids DST edge cases). */
-function calendarDaysSinceDateUtc(dateIso: string, now = new Date()): number {
-  const d = new Date(dateIso)
-  if (Number.isNaN(d.getTime())) return -1
-  const fromUtc = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
-  const toUtc = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-  return Math.floor((toUtc - fromUtc) / 86400000)
-}
-
 function buildClickToolingUrl(job: JobWithDetails): string {
   const params = new URLSearchParams()
   params.set('name', (job.customer_name ?? '').trim())
@@ -567,25 +491,6 @@ function buildClickToolingUrl(job: JobWithDetails): string {
   params.set('phone', (job.customer_phone ?? '').trim())
   params.set('location', (job.job_address ?? '').trim())
   return `https://clicktooling.com/?${params.toString()}`
-}
-
-function formatTimeSince(iso: string | null): string {
-  if (!iso) return '—'
-  const now = new Date()
-  const then = new Date(iso)
-  const diffMs = now.getTime() - then.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-  const diffWeeks = Math.floor(diffMs / 604800000)
-  const diffMonths = Math.floor(diffMs / 2592000000)
-  if (diffMins < 1) return 'just now'
-  if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''}`
-  if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''}`
-  if (diffDays < 7) return `${diffDays} day${diffDays !== 1 ? 's' : ''}`
-  if (diffWeeks < 4) return `${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`
-  if (diffMonths < 12) return `${diffMonths} month${diffMonths !== 1 ? 's' : ''}`
-  return `${Math.floor(diffMonths / 12)} year${Math.floor(diffMonths / 12) !== 1 ? 's' : ''}`
 }
 
 /** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
@@ -599,26 +504,6 @@ function renderStagesThreeLineHeader(line1: string, line2: string, line3: string
       <span style={stagesThreeLineHeaderLineStyle}>{line3}</span>
     </>
   )
-}
-
-function formatEstimatedCompletionDisplay(estimatedCompletionDate: string | null): string | null {
-  if (!estimatedCompletionDate?.trim()) return null
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const target = new Date(estimatedCompletionDate.trim() + 'T12:00:00')
-  target.setHours(0, 0, 0, 0)
-  const diffMs = target.getTime() - today.getTime()
-  const diffDays = Math.round(diffMs / 86400000)
-  const dayOfWeek = target.toLocaleDateString('en-US', { weekday: 'short' }).toLowerCase()
-  if (diffDays > 0) return `T-${diffDays} (${dayOfWeek})`
-  if (diffDays < 0) return `T+${Math.abs(diffDays)} (${dayOfWeek})`
-  return `Today (${dayOfWeek})`
-}
-
-function addDaysToDate(dateStr: string | null, deltaDays: number): string {
-  const base = dateStr?.trim() ? new Date(dateStr.trim() + 'T12:00:00') : new Date()
-  base.setDate(base.getDate() + deltaDays)
-  return base.toISOString().slice(0, 10)
 }
 
 /** Per-invoice est. bill date when set; else job-level manual last bill date (`last_bill_date`). */
@@ -675,14 +560,6 @@ function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] {
   })
 }
 
-function formatYmdOrIsoDateForPrintDisplay(ymdOrIso: string): string {
-  const trimmed = ymdOrIso.trim()
-  const datePart = trimmed.length >= 10 ? trimmed.slice(0, 10) : trimmed
-  const d = new Date(`${datePart}T12:00:00`)
-  if (Number.isNaN(d.getTime())) return '—'
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
 /** Reference date and whole calendar days since, for Billed Awaiting Payment printout. */
 function printBilledRowReferenceDate(r: StageRow, now = new Date()): { display: string; ageDays: number | null } {
   if (r.kind === 'job') {
@@ -706,12 +583,6 @@ function printBilledRowReferenceDate(r: StageRow, now = new Date()): { display: 
   const display = `${formatYmdOrIsoDateForPrintDisplay(est)} (est.)`
   if (days < 0) return { display, ageDays: null }
   return { display, ageDays: days }
-}
-
-function formatPrintDaysSince(ageDays: number | null): string {
-  if (ageDays == null) return '—'
-  if (ageDays === 1) return '1 day'
-  return `${ageDays} days`
 }
 
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
@@ -749,18 +620,6 @@ function formatAddressTwoLines(addr: string | null): { line1: string; line2?: st
     const line1 = a.slice(0, suffixEndIdx).trim()
     const line2 = a.slice(suffixEndIdx).trim()
     if (line2) return { line1, line2 }
-  }
-  return { line1: a }
-}
-
-function formatJobNameTwoLines(name: string | null): { line1: string; line2?: string } | null {
-  const a = (name ?? '').trim()
-  if (!a) return null
-  const commaIdx = a.indexOf(',')
-  if (commaIdx !== -1) {
-    const line1 = a.slice(0, commaIdx).trim()
-    const line2 = a.slice(commaIdx + 1).trim()
-    return { line1, line2: line2 || undefined }
   }
   return { line1: a }
 }
