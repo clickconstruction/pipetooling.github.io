@@ -10,7 +10,7 @@ last_updated: 2026-05-31
 
 ## What this is
 
-`src/pages/*.tsx` has several God components: `People.tsx` (~16k), `Jobs.tsx` (~15k), `Settings.tsx` (~12k), `Dashboard.tsx` (~8.8k), `Materials.tsx` (~6.8k), `Estimates.tsx` (~5.3k), `Workflow.tsx` (~4.8k). Each is a tab-switched page that owns hundreds of `useState`s, dozens of loaders/handlers, and inline JSX for every tab.
+`src/pages/*.tsx` has several God components: `Jobs.tsx` (~15k), `Settings.tsx` (~12k), `People.tsx` (~8.6k, decomposition well underway), `Dashboard.tsx` (~8.8k), `Materials.tsx` (~6.8k), `Estimates.tsx` (~5.3k), `Workflow.tsx` (~4.8k). Each is a tab-switched page that owns hundreds of `useState`s, dozens of loaders/handlers, and inline JSX for every tab.
 
 This document is the **process** for shrinking one. The two reference implementations are:
 
