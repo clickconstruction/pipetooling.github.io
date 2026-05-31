@@ -39,6 +39,7 @@ import { supabase } from '../lib/supabase'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../constants/hoursGridFirstCol'
 import { formatCurrency } from '../lib/format'
 import { decimalToHms, hmsToDecimal } from '../lib/people/hoursGridTime'
+import { shouldOfferManualHoursSession } from '../lib/people/shouldOfferManualHoursSession'
 import { buildPayStubHtml, openPayStubWindow } from '../lib/peopleDocuments/buildPayStubHtml'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
@@ -3798,11 +3799,13 @@ export default function People() {
                                   onChange={(e) => setEditingHoursValue(e.target.value)}
                                   onBlur={() => {
                                     const v = hmsToDecimal(editingHoursValue)
-                                    const shouldOfferManualSession =
-                                      v > 0 &&
-                                      (canAccessHours || canAccessPay) &&
-                                      canEditHours(personName) &&
-                                      !hoursDaysCorrect.has(d)
+                                    const shouldOfferManualSession = shouldOfferManualHoursSession({
+                                      hoursDecimal: v,
+                                      canAccessHours,
+                                      canAccessPay,
+                                      canEditHours: canEditHours(personName),
+                                      dayIsMarkedCorrect: hoursDaysCorrect.has(d),
+                                    })
                                     if (shouldOfferManualSession) {
                                       openManualHoursDraftFromBlur(personName, d, v)
                                       return
