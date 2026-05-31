@@ -1,11 +1,11 @@
 /** Format decimal hours as "H:MM" or "H:MM:SS" (seconds only when nonzero). Returns '' for zero/negative. */
 export function decimalToHms(decimal: number): string {
   if (!decimal || decimal <= 0) return ''
-  const h = Math.floor(decimal)
-  const m = Math.floor((decimal - h) * 60)
-  const s = Math.round(((decimal - h) * 60 - m) * 60)
-  if (s > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-  return `${h}:${String(m).padStart(2, '0')}:00`
+  const total = Math.round(decimal * 3600)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
 /** Parse a user-entered hours string to decimal hours.

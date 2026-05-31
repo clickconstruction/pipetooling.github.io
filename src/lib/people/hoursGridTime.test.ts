@@ -18,6 +18,10 @@ describe('decimalToHms', () => {
     expect(decimalToHms(2.125)).toBe('2:07:30')
     expect(decimalToHms(2 + 30 / 60 + 15 / 3600)).toBe('2:30:15')
   })
+
+  it('carries floating-point seconds==60 up into minutes', () => {
+    expect(decimalToHms(1 + 5 / 60)).toBe('1:05:00')
+  })
 })
 
 describe('hmsToDecimal', () => {
