@@ -40,6 +40,18 @@ export function hoursTabSectionHeaderGap(open: boolean): CSSProperties {
   return { marginBottom: open ? '0.75rem' : 0 }
 }
 
+/** Inclusive list of en-CA date strings between start and end (chronologically sortable). */
+export function getDaysInRange(start: string, end: string): string[] {
+  const days: string[] = []
+  const d = new Date(start + 'T12:00:00')
+  const endD = new Date(end + 'T12:00:00')
+  while (d <= endD) {
+    days.push(d.toLocaleDateString('en-CA'))
+    d.setDate(d.getDate() + 1)
+  }
+  return days
+}
+
 /** Pick readable text color (white/dark) for a hex background by relative luminance. */
 export function textColorForBackground(hex: string): string {
   const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i)
