@@ -38,6 +38,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { HOURS_GRID_FIRST_COL_LABEL } from '../constants/hoursGridFirstCol'
 import { formatCurrency } from '../lib/format'
+import { decimalToHms, hmsToDecimal } from '../lib/people/hoursGridTime'
 import { buildPayStubHtml, openPayStubWindow } from '../lib/peopleDocuments/buildPayStubHtml'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
@@ -2498,31 +2499,6 @@ export default function People() {
   function ensureHoursRangeIncludesDate(workDate: string) {
     if (workDate < hoursDateStart) setHoursDateStart(workDate)
     if (workDate > hoursDateEnd) setHoursDateEnd(workDate)
-  }
-
-  function decimalToHms(decimal: number): string {
-    if (!decimal || decimal <= 0) return ''
-    const h = Math.floor(decimal)
-    const m = Math.floor((decimal - h) * 60)
-    const s = Math.round(((decimal - h) * 60 - m) * 60)
-    if (s > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    return `${h}:${String(m).padStart(2, '0')}:00`
-  }
-
-  function hmsToDecimal(str: string): number {
-    const trimmed = str.trim()
-    if (!trimmed) return 0
-    // "8.5" (one digit after dot) = 8.5 decimal hours. "8.30" (two digits, ≤59) = 8:30.
-    if (!trimmed.includes(':') && /^\d+\.(\d+)$/.test(trimmed)) {
-      const m = trimmed.match(/^\d+\.(\d+)$/)!
-      const frac = m[1]!
-      if (frac.length === 1) return parseFloat(trimmed) // 8.5 → 8.5 hrs
-      if (parseInt(frac, 10) > 59) return parseFloat(trimmed) // 8.75 → 8.75 hrs
-    }
-    const normalized = trimmed.replace(/\./g, ':').replace(/\s+/g, ':')
-    const parts = normalized.split(':').map((p) => parseInt(p, 10) || 0)
-    const [h = 0, m = 0, s = 0] = parts
-    return h + m / 60 + s / 3600
   }
 
   const showPeopleForHours = Object.keys(payConfig)
