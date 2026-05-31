@@ -122,7 +122,7 @@ export function useRealtimeChannel(
           onChangeRef.current(ev)
         } catch (err) {
           // Failures here should never crash the channel.
-          // eslint-disable-next-line no-console
+           
           console.error(`[useRealtimeChannel:${channelName}] onChange threw`, err)
         }
       }, debounceMs)

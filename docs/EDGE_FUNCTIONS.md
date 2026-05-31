@@ -59,7 +59,7 @@ quick_navigation:
 related_docs:
   - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Architecture context"
   - "[ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Role requirements"
-  - "[EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md) - Email config"
+  - "EMAIL_TEMPLATES_SETUP.md - Email config"
 
 prerequisites:
   - Understanding of Supabase Edge Functions
@@ -267,7 +267,7 @@ const response = await supabase.functions.invoke('create-user', {
 6. Creates corresponding `public.users` record
 7. Returns user details
 
-**Deployment**: See [`supabase/functions/create-user/DEPLOY.md`](supabase/functions/create-user/DEPLOY.md)
+**Deployment**: See [`supabase/functions/create-user/DEPLOY.md`](../supabase/functions/create-user/DEPLOY.md)
 
 ---
 
@@ -475,7 +475,7 @@ const response = await supabase.functions.invoke('login-as-user', {
    - Redirects to magic link
    - `AuthHandler` component processes tokens
    - User impersonated successfully
-   - **Exit UI**: [`Layout`](src/components/Layout.tsx) shows mobile **Back**; on desktop a short **Back** control with **`title`/`aria-label`** carrying the full “stop impersonating …” phrase. [`Settings`](src/pages/Settings.tsx) uses **Back to my Account** on mobile and the same desktop pattern. See **`RECENT_FEATURES.md`** v2.231 and **`PROJECT_DOCUMENTATION.md`** Impersonation flow.
+   - **Exit UI**: [`Layout`](../src/components/Layout.tsx) shows mobile **Back**; on desktop a short **Back** control with **`title`/`aria-label`** carrying the full “stop impersonating …” phrase. [`Settings`](../src/pages/Settings.tsx) uses **Back to my Account** on mobile and the same desktop pattern. See **`RECENT_FEATURES.md`** v2.231 and **`PROJECT_DOCUMENTATION.md`** Impersonation flow.
 
 **Use Cases**:
 - Debugging user-specific issues
@@ -487,7 +487,7 @@ const response = await supabase.functions.invoke('login-as-user', {
 - **Site URL**: Set to production URL (e.g. `https://pipetooling.com`)
 - **Redirect URLs**: Add both `https://pipetooling.com/**` and `http://localhost:5173/**`. Settings imitate uses localhost; People → Users imitate (dev-only) uses pipetooling.com.
 
-**Deployment**: See [`supabase/functions/login-as-user/DEPLOY.md`](supabase/functions/login-as-user/DEPLOY.md)
+**Deployment**: See [`supabase/functions/login-as-user/DEPLOY.md`](../supabase/functions/login-as-user/DEPLOY.md)
 
 ---
 
@@ -556,7 +556,7 @@ const response = await supabase.functions.invoke('dev-login', {
 - `SUPABASE_SERVICE_ROLE_KEY` (optional but required for push + **`notification_history`** insert when **`recipient_user_id`** is sent)
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (optional, for push)
 
-**Gateway JWT**: Repo [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`** for this function; deploy with **`supabase functions deploy send-workflow-notification --no-verify-jwt`** so the gateway does not return 401 before the function runs.
+**Gateway JWT**: Repo [`supabase/config.toml`](../supabase/config.toml) sets **`verify_jwt = false`** for this function; deploy with **`supabase functions deploy send-workflow-notification --no-verify-jwt`** so the gateway does not return 401 before the function runs.
 
 #### Request body (actual contract)
 
@@ -636,7 +636,7 @@ const { data, error } = await supabase.functions.invoke('send-workflow-notificat
 
 #### Dev smoke test (Settings UI)
 
-Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (collapsible): one-shot invoke with placeholder data; omits **`recipient_user_id`** so **`notification_history`** is not written. See **[`WORKFLOW_EMAIL_TESTING.md`](./WORKFLOW_EMAIL_TESTING.md)** and **[`RECENT_FEATURES.md`](./RECENT_FEATURES.md)** v2.186.
+Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (collapsible): one-shot invoke with placeholder data; omits **`recipient_user_id`** so **`notification_history`** is not written. See **`WORKFLOW_EMAIL_TESTING.md`** and **[`RECENT_FEATURES.md`](./RECENT_FEATURES.md)** v2.186.
 
 #### Implementation Details
 
@@ -649,10 +649,10 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **See Also**:
 
-- [EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md)
-- [WORKFLOW_EMAIL_TESTING.md](./WORKFLOW_EMAIL_TESTING.md)
+- EMAIL_TEMPLATES_SETUP.md
+- WORKFLOW_EMAIL_TESTING.md
 
-**Deployment**: [`supabase/functions/send-workflow-notification/DEPLOY.md`](supabase/functions/send-workflow-notification/DEPLOY.md)
+**Deployment**: [`supabase/functions/send-workflow-notification/DEPLOY.md`](../supabase/functions/send-workflow-notification/DEPLOY.md)
 
 ---
 
@@ -664,13 +664,13 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
-**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](supabase/config.toml).
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
 **Behavior**: SHA-256 hash of `token`; load row by `public_token_hash` where `status = sent`; enforce `public_token_expires_at` and `valid_until`. Returns estimate fields plus **`customer_experience`**: public UI strings (accept, thank-you, document labels — omits email subject/body). Uses **`customer_experience_sent`** when set, else merges **`app_settings`** + **`customer_experience_overrides`**. If **`status = customer_accepted`**, responds **409** with `code: already_accepted` and **`customer_experience`** for the thank-you page.
 
 **200 response**: Includes **`for_line`** (`string | null`): staff **For:** line — trimmed **`for_address`** if set, else trimmed linked **`customers.address`**, else `null` (UI may show em dash).
 
-**Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](supabase/migrations/20260406034514_record_estimate_public_link_view_rpc.sql). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](supabase/migrations/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.).
+**Audit**: On each successful **200** for **`status = sent`**, calls Postgres **`record_estimate_public_link_view`** via **`service_role`** **`rpc`** to append **`estimate_customer_events`** with **`event_type = public_link_view`** and **`client_ip` / `user_agent`** from the request ( **`SECURITY DEFINER`** in-db insert; failures are **`console.error`**’d and do not change the response). See migration [`20260406034514_record_estimate_public_link_view_rpc.sql`](../supabase/migrations/20260406034514_record_estimate_public_link_view_rpc.sql). **Dedupe**: [`20260412184127_dedupe_record_estimate_public_link_view.sql`](../supabase/migrations/20260412184127_dedupe_record_estimate_public_link_view.sql) skips a second **`public_link_view`** for the same estimate, IP, and user-agent within **5 seconds** (Strict Mode double-fetch, etc.).
 
 ---
 
@@ -682,7 +682,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
-**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](supabase/config.toml).
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
 **200 response**: `{ "body": string }` — plain text from **`app_settings`** key **`estimate_public_terms_body`** (empty string if missing).
 
@@ -712,13 +712,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Staff email** (after successful **`sent` → `customer_accepted`**): For each user id in **`estimates.accept_notify_user_ids`** (nullable before first save; empty array = explicitly no recipients), calls **`estimate_accept_notify_filter_eligible_user_ids`** then emails each resolved **`users.email`** via Resend (same From as customer estimate mail). Link uses **`ESTIMATE_PUBLIC_ORIGIN`** (or fallback **https://pipetooling.github.io**) to **`/estimates/{estimate_number}`**. Failures are **`console.error`** only; HTTP **`200`** is still returned if the DB update succeeded.
 
-**Draft app default (not Edge)**: When the column is **`NULL`**, [`Estimates.tsx`](src/pages/Estimates.tsx) pre-selects the signed-in user and every **`master_technician`** on estimate detail load (Supabase **`users`** query; dedupe; on failure, self only)—until staff save the draft, which persists the array. **`[]`** remains explicitly no recipients.
+**Draft app default (not Edge)**: When the column is **`NULL`**, [`Estimates.tsx`](../src/pages/Estimates.tsx) pre-selects the signed-in user and every **`master_technician`** on estimate detail load (Supabase **`users`** query; dedupe; on failure, self only)—until staff save the draft, which persists the array. **`[]`** remains explicitly no recipients.
 
 **Audit**:
-- **First acceptance** (**`sent` → `customer_accepted`**): the **`estimate_customer_events`** row (**`public_accept_submitted`**, IP/UA, **`metadata.had_signature`**) is written by the **database trigger** [`estimates_audit_customer_accepted_trigger`](supabase/migrations/20260406033952_estimates_audit_customer_accepted_trigger.sql) in the **same transaction** as the **`estimates`** update (Edge does not insert that row on the success path).
-- **`alreadyAccepted: true`** (repeat **POST** while already accepted): best-effort **`insertEstimateCustomerEvent`** via **`log_estimate_customer_event`** / insert fallback in [`_shared/logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts), with **`metadata.repeat_after_accepted`** (does not change **`200`** success).
+- **First acceptance** (**`sent` → `customer_accepted`**): the **`estimate_customer_events`** row (**`public_accept_submitted`**, IP/UA, **`metadata.had_signature`**) is written by the **database trigger** [`estimates_audit_customer_accepted_trigger`](../supabase/migrations/20260406033952_estimates_audit_customer_accepted_trigger.sql) in the **same transaction** as the **`estimates`** update (Edge does not insert that row on the success path).
+- **`alreadyAccepted: true`** (repeat **POST** while already accepted): best-effort **`insertEstimateCustomerEvent`** via **`log_estimate_customer_event`** / insert fallback in [`_shared/logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts), with **`metadata.repeat_after_accepted`** (does not change **`200`** success).
 
-**Related (Postgres, not Edge)**: Staff create **`jobs_ledger`** and set **`estimates.job_ledger_id`** via authenticated RPC **`create_job_from_estimate`** — see [`20260405072854_estimate_create_job_rpc.sql`](supabase/migrations/20260405072854_estimate_create_job_rpc.sql) and [`Estimates.tsx`](src/pages/Estimates.tsx).
+**Related (Postgres, not Edge)**: Staff create **`jobs_ledger`** and set **`estimates.job_ledger_id`** via authenticated RPC **`create_job_from_estimate`** — see [`20260405072854_estimate_create_job_rpc.sql`](../supabase/migrations/20260405072854_estimate_create_job_rpc.sql) and [`Estimates.tsx`](../src/pages/Estimates.tsx).
 
 ---
 
@@ -748,9 +748,9 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
-**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](supabase/config.toml).
+**Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
-**Behavior**: SHA-256 hash of `token`; load row by **`public_token_hash`** where **`status = sent`**; enforce **`public_token_expires_at`**. Returns **`signing_body_html`**, **`canonical_document_url`** (canonical column, else legacy **`url`**), **`document_name`**, **`person_name`** (still used for staff/email context; the public signing page in [`ContractAccept.tsx`](src/pages/ContractAccept.tsx) does **not** display **For:** **`person_name`**). If **`status = signed`**, responds **409** with **`code: already_signed`** and optional thank-you strings (the app thank-you may use title-only copy; see **`RECENT_FEATURES.md`** v2.368).
+**Behavior**: SHA-256 hash of `token`; load row by **`public_token_hash`** where **`status = sent`**; enforce **`public_token_expires_at`**. Returns **`signing_body_html`**, **`canonical_document_url`** (canonical column, else legacy **`url`**), **`document_name`**, **`person_name`** (still used for staff/email context; the public signing page in [`ContractAccept.tsx`](../src/pages/ContractAccept.tsx) does **not** display **For:** **`person_name`**). If **`status = signed`**, responds **409** with **`code: already_signed`** and optional thank-you strings (the app thank-you may use title-only copy; see **`RECENT_FEATURES.md`** v2.368).
 
 ---
 
@@ -807,7 +807,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Optional**: `ESTIMATE_PUBLIC_ORIGIN` for link base.
 
-**Implementation**: [`supabase/functions/get-contract-signing-link-for-self/index.ts`](supabase/functions/get-contract-signing-link-for-self/index.ts)
+**Implementation**: [`supabase/functions/get-contract-signing-link-for-self/index.ts`](../supabase/functions/get-contract-signing-link-for-self/index.ts)
 
 ---
 
@@ -831,13 +831,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Note**: Results are **best-effort** (HTML viewer pages, Workspace policies, timeouts). Staff should still verify in a private/incognito window when unsure.
 
-**Implementation**: [`supabase/functions/check-estimate-attachment-url/index.ts`](supabase/functions/check-estimate-attachment-url/index.ts); UI: draft **Check link** in [`Estimates.tsx`](src/pages/Estimates.tsx); **Documents** add-link modal via [`checkGoogleDriveAttachmentUrl`](src/lib/checkGoogleDriveAttachmentUrl.ts) ([`DocumentsAddDriveLinkModal.tsx`](src/components/documents/DocumentsAddDriveLinkModal.tsx)).
+**Implementation**: [`supabase/functions/check-estimate-attachment-url/index.ts`](../supabase/functions/check-estimate-attachment-url/index.ts); UI: draft **Check link** in [`Estimates.tsx`](../src/pages/Estimates.tsx); **Documents** add-link modal via [`checkGoogleDriveAttachmentUrl`](../src/lib/checkGoogleDriveAttachmentUrl.ts) ([`DocumentsAddDriveLinkModal.tsx`](../src/components/documents/DocumentsAddDriveLinkModal.tsx)).
 
 ---
 
 ### resolve-ip-geolocation
 
-**Purpose**: Resolve a **public** IPv4/IPv6 address to approximate **lat/lng** (via **ipinfo.io**) so staff can open **Google Maps**. Used from **Estimates** customer activity and acceptance IP lines ([`IpAddressMapButton`](src/components/estimates/IpAddressMapButton.tsx)).
+**Purpose**: Resolve a **public** IPv4/IPv6 address to approximate **lat/lng** (via **ipinfo.io**) so staff can open **Google Maps**. Used from **Estimates** customer activity and acceptance IP lines ([`IpAddressMapButton`](../src/components/estimates/IpAddressMapButton.tsx)).
 
 **Endpoint**: `GET /functions/v1/resolve-ip-geolocation?ip=<address>` — **`ip` optional**. If **`ip` is omitted or empty**, the function uses the caller’s public IP from proxy headers (`x-forwarded-for` first hop, then `cf-connecting-ip`, then `x-real-ip`) for the same ipinfo lookup (used for **clock in/out** geo-IP fallback when GPS is unavailable).
 
@@ -859,7 +859,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### street-view-preview
 
-**Purpose**: **Proxy** Google **Street View Static** imagery and **metadata** so the Maps API key stays server-side. Used by **[`DetailJobModal`](src/components/jobs/DetailJobModal.tsx)** (Street View preview under **Address**); client loads the image with **`fetch` + `Authorization`** (not `<img src>`) and **`URL.createObjectURL`**.
+**Purpose**: **Proxy** Google **Street View Static** imagery and **metadata** so the Maps API key stays server-side. Used by **[`DetailJobModal`](../src/components/jobs/DetailJobModal.tsx)** (Street View preview under **Address**); client loads the image with **`fetch` + `Authorization`** (not `<img src>`) and **`URL.createObjectURL`**.
 
 **Endpoint**:
 
@@ -885,7 +885,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Deploy**: `supabase functions deploy street-view-preview`
 
-**Implementation**: [`supabase/functions/street-view-preview/index.ts`](supabase/functions/street-view-preview/index.ts); client: [`src/lib/fetchStreetViewPreview.ts`](src/lib/fetchStreetViewPreview.ts).
+**Implementation**: [`supabase/functions/street-view-preview/index.ts`](../supabase/functions/street-view-preview/index.ts); client: [`src/lib/fetchStreetViewPreview.ts`](../src/lib/fetchStreetViewPreview.ts).
 
 ---
 
@@ -909,13 +909,13 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Deploy**: `supabase functions deploy geocode-address-batch`
 
-**Implementation**: [`supabase/functions/geocode-address-batch/index.ts`](supabase/functions/geocode-address-batch/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](supabase/functions/_shared/googleGeocode.ts). **Map** page primary load: [`useMapPageData.ts`](src/hooks/useMapPageData.ts) invokes this in **chunks of up to 20** addresses per request for cache misses (see **geocode-one** for single-address / review flows).
+**Implementation**: [`supabase/functions/geocode-address-batch/index.ts`](../supabase/functions/geocode-address-batch/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](../supabase/functions/_shared/googleGeocode.ts). **Map** page primary load: [`useMapPageData.ts`](../src/hooks/useMapPageData.ts) invokes this in **chunks of up to 20** addresses per request for cache misses (see **geocode-one** for single-address / review flows).
 
 ---
 
 ### geocode-one
 
-**Purpose**: Single-address geocoding for **`address_geocodes`** (**`dev`**, **`master_technician`**, **`assistant`**, **`estimator`** only): same cache and upsert as batch. **Map** bulk resolution uses **`geocode-address-batch`** from [`useMapPageData.ts`](src/hooks/useMapPageData.ts). **`geocode-one`** covers **Review geocodes** **`refresh_google_only`**, **Settings** default map label lookup ([`mapDefaultViewSettings.ts`](src/lib/mapDefaultViewSettings.ts)), and any caller that wants one row per request. For a normal (non **`refresh_google_only`**) miss: **Nominatim** first, then **Google** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return usable coordinates.
+**Purpose**: Single-address geocoding for **`address_geocodes`** (**`dev`**, **`master_technician`**, **`assistant`**, **`estimator`** only): same cache and upsert as batch. **Map** bulk resolution uses **`geocode-address-batch`** from [`useMapPageData.ts`](../src/hooks/useMapPageData.ts). **`geocode-one`** covers **Review geocodes** **`refresh_google_only`**, **Settings** default map label lookup ([`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts)), and any caller that wants one row per request. For a normal (non **`refresh_google_only`**) miss: **Nominatim** first, then **Google** if **`GOOGLE_MAPS_API_KEY`** is set and Nominatim does not return usable coordinates.
 
 **Endpoint**: `POST /functions/v1/geocode-one`
 
@@ -936,11 +936,11 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Gateway**: `verify_jwt = false`; **`auth.getUser()`** + **`users.role` in `('dev','master_technician','assistant','estimator')`** in the function (**403** otherwise).
 
-**Client pacing**: The **batch** function waits **~1.1s** between *rows* for Nominatim inside one request. **Map** callers that loop **`geocode-one`** (e.g. **`refresh_google_only`** with a short sleep between rows — [`MapGeocodeReviewModal.tsx`](src/components/map/MapGeocodeReviewModal.tsx)) should avoid hammering Nominatim / Google; follow Google’s Maps Platform terms for your deployment.
+**Client pacing**: The **batch** function waits **~1.1s** between *rows* for Nominatim inside one request. **Map** callers that loop **`geocode-one`** (e.g. **`refresh_google_only`** with a short sleep between rows — [`MapGeocodeReviewModal.tsx`](../src/components/map/MapGeocodeReviewModal.tsx)) should avoid hammering Nominatim / Google; follow Google’s Maps Platform terms for your deployment.
 
 **Deploy**: `supabase functions deploy geocode-one`
 
-**Implementation**: [`supabase/functions/geocode-one/index.ts`](supabase/functions/geocode-one/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](supabase/functions/_shared/googleGeocode.ts); client: **`Map`** **`refresh_google_only`** [`MapGeocodeReviewModal.tsx`](src/components/map/MapGeocodeReviewModal.tsx), [`invokeGeocodeOneRefreshGoogleOnly.ts`](src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts); **Settings** default map label lookup [`mapDefaultViewSettings.ts`](src/lib/mapDefaultViewSettings.ts) (bulk **Map** load uses **`geocode-address-batch`** via [`useMapPageData.ts`](src/hooks/useMapPageData.ts)).
+**Implementation**: [`supabase/functions/geocode-one/index.ts`](../supabase/functions/geocode-one/index.ts) + shared [`supabase/functions/_shared/googleGeocode.ts`](../supabase/functions/_shared/googleGeocode.ts); client: **`Map`** **`refresh_google_only`** [`MapGeocodeReviewModal.tsx`](../src/components/map/MapGeocodeReviewModal.tsx), [`invokeGeocodeOneRefreshGoogleOnly.ts`](../src/lib/map/invokeGeocodeOneRefreshGoogleOnly.ts); **Settings** default map label lookup [`mapDefaultViewSettings.ts`](../src/lib/mapDefaultViewSettings.ts) (bulk **Map** load uses **`geocode-address-batch`** via [`useMapPageData.ts`](../src/hooks/useMapPageData.ts)).
 
 ---
 
@@ -1066,7 +1066,7 @@ When the Dispatch group is empty: `push_sent: 0`, `recipients: 0`, friendly `mes
 1. User-scoped client loads `dispatch_requests` by id; rejects if not found or `from_user_id !== auth.uid()`.
 2. Admin client loads all `dispatch_group_members`, then for each user loads `push_subscriptions` and sends push (`tag`: `dispatch-<request_id>`, `url`: `/dashboard`).
 3. Logs `notification_history` with `template_type: dispatch_request` per recipient when at least one push succeeded for that recipient.
-4. Optional **job/bid** line in the push body uses **`service_types.ledger_job_prefix`** / **`ledger_bid_prefix`** (fallback **J** / **B**) via shared **[`_shared/ledgerDisplayPrefixes.ts`](supabase/functions/_shared/ledgerDisplayPrefixes.ts)** when the referenced row includes **`service_type_id`** — **RECENT_FEATURES** **v2.432**.
+4. Optional **job/bid** line in the push body uses **`service_types.ledger_job_prefix`** / **`ledger_bid_prefix`** (fallback **J** / **B**) via shared **[`_shared/ledgerDisplayPrefixes.ts`](../supabase/functions/_shared/ledgerDisplayPrefixes.ts)** when the referenced row includes **`service_type_id`** — **RECENT_FEATURES** **v2.432**.
 5. **`links[]`** is **optional** — empty arrays are tolerated (the function never dereferences `links` for push body composition). The Dashboard My Schedule *Link Customer Pictures* flow (**v2.556**) reuses this endpoint with `links: []` and the new **`pending_action = 'link_job_pictures'`** marker (used only by the inbox UI, not by the push payload), so no Edge-function change was required.
 
 ---
@@ -1553,15 +1553,15 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 3. Sends via Resend API
 4. Returns Resend email ID for tracking
 
-**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`** for **`test-email`** (JWT is still validated in the function). Deploy with **`--no-verify-jwt`** if the hosted function still verifies JWT at the edge. Call **`functions.invoke`** with **`Authorization: Bearer`** from **`refreshSession()`**’s **`access_token`**.
+**Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) sets **`verify_jwt = false`** for **`test-email`** (JWT is still validated in the function). Deploy with **`--no-verify-jwt`** if the hosted function still verifies JWT at the edge. Call **`functions.invoke`** with **`Authorization: Bearer`** from **`refreshSession()`**’s **`access_token`**.
 
 **Request body** (required): **`to`**, **`subject`**, **`body`**; **`template_type`** is optional metadata for logging.
 
 **See Also**: 
-- [EMAIL_TESTING.md](./EMAIL_TESTING.md) - Complete testing documentation
-- [`supabase/functions/test-email/README.md`](supabase/functions/test-email/README.md)
+- EMAIL_TESTING.md - Complete testing documentation
+- [`supabase/functions/test-email/README.md`](../supabase/functions/test-email/README.md)
 
-**Deployment**: See [`supabase/functions/test-email/DEPLOY.md`](supabase/functions/test-email/DEPLOY.md)
+**Deployment**: See [`supabase/functions/test-email/DEPLOY.md`](../supabase/functions/test-email/DEPLOY.md)
 
 ---
 
@@ -1637,7 +1637,7 @@ const { data, error } = await supabase.functions.invoke('create-stripe-invoice',
 }
 ```
 
-**`invoice_preview`**: Finalized invoice line items and totals (**amounts in cents**), same shape as **`preview-stripe-invoice`** line payload; omitted if an idempotent **`invoices.retrieve`** fails. When **multi-line**, **`invoice_preview.lines`** is passed through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** in **[`stripeInvoiceLinesForFixtureOrderDisplay.ts`](supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)** so the in-app table matches **invoice.stripe.com** (**v2.528** — **`RECENT_FEATURES.md`**). Bill Customer uses it to show the invoice table after create.
+**`invoice_preview`**: Finalized invoice line items and totals (**amounts in cents**), same shape as **`preview-stripe-invoice`** line payload; omitted if an idempotent **`invoices.retrieve`** fails. When **multi-line**, **`invoice_preview.lines`** is passed through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** in **[`stripeInvoiceLinesForFixtureOrderDisplay.ts`](../supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)** so the in-app table matches **invoice.stripe.com** (**v2.528** — **`RECENT_FEATURES.md`**). Bill Customer uses it to show the invoice table after create.
 
 If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns the same shape with **`idempotent: true`** (and **`invoice_preview`** when retrieve succeeds).
 
@@ -1654,16 +1654,16 @@ If **`stripe_invoice_id`** and **`hosted_invoice_url`** are already set, returns
 2. Creates or reuses **`customers.stripe_customer_id`** on Stripe; updates Stripe customer email/name.
 3. Stripe invoice **`number`** is **digits-only HCP**, a hyphen, **`YYMMDD`** from bill due date, then **`HHmm`** (24-hour) in **`America/Chicago`** at finalize time (e.g. `11-2605140020`; customer email may show a **`#`** prefix). **`preview-stripe-invoice`** uses the same rule at preview time; if the user waits between preview and create, the time suffix may differ.
 4. Creates draft invoice + one or more invoice line items (see below), **finalize**s, then **UPDATE** **`jobs_ledger_invoices`** (**`status = 'billed'`**) and Stripe columns, plus **`external_send_channel = 'stripe'`**, **`stripe_invoice_memo`** (from **`memo`** → Stripe **`description`**), and **`stripe_invoice_footer`** (from optional **`footer`** → Stripe **`footer`**; **`null`** when omitted). **`sent_to_customer_at`** is **not** set here; it is recorded when **[send-stripe-invoice](#send-stripe-invoice)** successfully calls Stripe **`invoices.sendInvoice`** (customer email from Stripe).
-5. **Line items from Specific Work**: Loads **`jobs_ledger_fixtures`** for the invoice’s job. When there are **billable** rows (trimmed **`name`**, **`count × line_unit_price`** in dollars **> 0**) and **`line_description`** is omitted or blank, creates **one** Stripe line per row (ordered by **`sequence_order`**; description from name + optional scope text), with cent amounts **scaled proportionally** to **`amount_dollars`** when the bill is less than the fixture subtotal so the lines sum exactly. A non-empty **`line_description`** keeps the legacy behavior: **one** line for the full amount using that description (or the default **`Customer · Job · HCP`** string when not overridden). Stripe **`invoice_items`** follow **`sequence_order`** ascending (**no** post-build **`reverse`** — **v2.527**, shared **[`stripeInvoiceItemsFromFixtures.ts`](supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)**).
-6. **Staff-visible `lines` vs hosted invoice**: **`invoice_preview.lines`** from **`invoices.retrieve`** / line-item expansion uses **`stripeInvoiceLinesDataForFixtureOrderDisplay`** (**v2.528**, **[`stripeInvoiceLinesForFixtureOrderDisplay.ts`](supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)**) when **multi-line**, because Stripe **`lines.data`** / **`listLineItems`** arrays can disagree with **invoice.stripe.com** top-to-bottom order.
+5. **Line items from Specific Work**: Loads **`jobs_ledger_fixtures`** for the invoice’s job. When there are **billable** rows (trimmed **`name`**, **`count × line_unit_price`** in dollars **> 0**) and **`line_description`** is omitted or blank, creates **one** Stripe line per row (ordered by **`sequence_order`**; description from name + optional scope text), with cent amounts **scaled proportionally** to **`amount_dollars`** when the bill is less than the fixture subtotal so the lines sum exactly. A non-empty **`line_description`** keeps the legacy behavior: **one** line for the full amount using that description (or the default **`Customer · Job · HCP`** string when not overridden). Stripe **`invoice_items`** follow **`sequence_order`** ascending (**no** post-build **`reverse`** — **v2.527**, shared **[`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)**).
+6. **Staff-visible `lines` vs hosted invoice**: **`invoice_preview.lines`** from **`invoices.retrieve`** / line-item expansion uses **`stripeInvoiceLinesDataForFixtureOrderDisplay`** (**v2.528**, **[`stripeInvoiceLinesForFixtureOrderDisplay.ts`](../supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)**) when **multi-line**, because Stripe **`lines.data`** / **`listLineItems`** arrays can disagree with **invoice.stripe.com** top-to-bottom order.
 
-**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
+**Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) sets **`verify_jwt = false`**. Deploy with **`supabase functions deploy create-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
 ---
 
 ### send-physical-invoice-email
 
-**Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the **`jobs_ledger_invoices`** billing fields as a **Physical** send (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). It does **not** call **`update_job_status`** on **`jobs_ledger`**. After a **200** response, **[`SendRecordInvoiceModal`](src/components/jobs/SendRecordInvoiceModal.tsx)** runs **`maybePromoteJobToBilledAfterCustomerInvoice`** ([`promoteJobToBilledIfFullyInvoiced.ts`](src/lib/promoteJobToBilledIfFullyInvoiced.ts)) — the same helper used after **Stripe** **`create-stripe-invoice`** and **HouseCall Pro** manual bill — so when the job is **fully invoiced out** (no **`ready_to_bill`** rows; **`jobBillingUnallocatedDollars`** ~ 0), the **job** moves to **billed** together with the invoice line regardless of billing channel. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
+**Purpose**: Email the customer a **PDF invoice** (generated in the app to match the on-screen preview) via **Resend**, then persist the **`jobs_ledger_invoices`** billing fields as a **Physical** send (**`status: billed`**, **`external_send_channel: physical`**, **`sent_to_customer_at`**, **`external_send_note`**, **`amount`**). It does **not** call **`update_job_status`** on **`jobs_ledger`**. After a **200** response, **[`SendRecordInvoiceModal`](../src/components/jobs/SendRecordInvoiceModal.tsx)** runs **`maybePromoteJobToBilledAfterCustomerInvoice`** ([`promoteJobToBilledIfFullyInvoiced.ts`](../src/lib/promoteJobToBilledIfFullyInvoiced.ts)) — the same helper used after **Stripe** **`create-stripe-invoice`** and **HouseCall Pro** manual bill — so when the job is **fully invoiced out** (no **`ready_to_bill`** rows; **`jobBillingUnallocatedDollars`** ~ 0), the **job** moves to **billed** together with the invoice line regardless of billing channel. The client may send a **detailed** multi-section PDF (Specific Work + materials + payment history) built from the job ledger; the Edge function only validates and attaches **`pdf_base64`**.
 
 **Endpoint**: `POST /functions/v1/send-physical-invoice-email`
 
@@ -1703,7 +1703,7 @@ interface SendPhysicalInvoiceEmailBody {
 - **403** — Invoice or job not visible under RLS.
 - **502** — Resend API error.
 
-**Client**: [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab) invokes this Edge Function, then **`maybePromoteJobToBilledAfterCustomerInvoice`** on success. **`subject`** is **[`physicalInvoiceEmailSubject`](src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).
+**Client**: [`SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx) (**Physical invoice** tab) invokes this Edge Function, then **`maybePromoteJobToBilledAfterCustomerInvoice`** on success. **`subject`** is **[`physicalInvoiceEmailSubject`](../src/lib/physicalInvoiceDocument.ts)** (**`Click Plumbing Invoice [#…]`**). **`email_text`** / **`email_html`** are built by **[`buildPhysicalInvoiceEmailBodies`](../src/lib/physicalInvoiceDocument.ts)** (HTML summary: bold issuer **tagline** under the intro; no **Service date** or **Issuer** block—PDF is authoritative).
 
 **Deploy**: `supabase functions deploy send-physical-invoice-email --no-verify-jwt` if the hosted gateway still enforces JWT.
 
@@ -1711,9 +1711,9 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### send-stripe-invoice
 
-**Purpose**: Call Stripe **`invoices.sendInvoice`** for an open billed line so Stripe emails the customer the payment link. After Stripe accepts the send, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)), and for **Email invoice to customer** on Dashboard **Collect Payment** step 3 ([`CollectPaymentModal`](src/components/jobs/CollectPaymentModal.tsx)).
+**Purpose**: Call Stripe **`invoices.sendInvoice`** for an open billed line so Stripe emails the customer the payment link. After Stripe accepts the send, updates **`jobs_ledger_invoices`** with **`sent_to_customer_at`** (now) and **`stripe_invoice_status`** from the returned invoice (service role; retries a few times on transient DB errors). Each successful send **overwrites** **`sent_to_customer_at`** (latest send only). On success, also **INSERT** into **`jobs_ledger_invoice_stripe_email_sends`** (append-only log for the confirm modal **Most recent sends** list; insert failure is **logged** only—the HTTP response still **200** if the invoice row updated). Used for the primary **Send Email invoice from Stripe** control and for **Resend invoice email** on Jobs **Stages** **Last activity** ([`StripeInvoiceSendFromStripeButton`](../src/components/jobs/StripeInvoiceSendFromStripeButton.tsx)), and for **Email invoice to customer** on Dashboard **Collect Payment** step 3 ([`CollectPaymentModal`](../src/components/jobs/CollectPaymentModal.tsx)).
 
-Pre-send validation uses **[`customerEmailFromStripeInvoice`](supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)** on the retrieved invoice (**expanded Customer `email` first**, then **`invoice.customer_email`**).
+Pre-send validation uses **[`customerEmailFromStripeInvoice`](../supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)** on the retrieved invoice (**expanded Customer `email` first**, then **`invoice.customer_email`**).
 
 **Endpoint**: `POST /functions/v1/send-stripe-invoice`
 
@@ -1741,7 +1741,7 @@ If the DB persist fails, the function may return **502** with **`stripe_may_have
 
 ### update-collect-payment-stripe-customer-email
 
-**Purpose**: Let a **subcontractor** on **Collect Payment** step 3 correct the payer email before **Email invoice to customer**. Updates the Stripe **Customer** `email` via **`customers.update`**, then updates the **open** Stripe invoice’s **`customer_email`** via **`invoices.update`** (keeps invoice snapshot aligned; UI resolution still prefers expanded Customer in **[`customerEmailFromStripeInvoice`](supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)**), then syncs **`jobs_ledger.customer_email`** and merges **`customers.contact_info.email`** (preserving **`phone`**) with the service role so office data and **`get_collect_payment_certify_payload`** stay aligned with **`send-stripe-invoice`** / **`get-stripe-invoice-details`**.
+**Purpose**: Let a **subcontractor** on **Collect Payment** step 3 correct the payer email before **Email invoice to customer**. Updates the Stripe **Customer** `email` via **`customers.update`**, then updates the **open** Stripe invoice’s **`customer_email`** via **`invoices.update`** (keeps invoice snapshot aligned; UI resolution still prefers expanded Customer in **[`customerEmailFromStripeInvoice`](../supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)**), then syncs **`jobs_ledger.customer_email`** and merges **`customers.contact_info.email`** (preserving **`phone`**) with the service role so office data and **`get_collect_payment_certify_payload`** stay aligned with **`send-stripe-invoice`** / **`get-stripe-invoice-details`**.
 
 **Endpoint**: `POST /functions/v1/update-collect-payment-stripe-customer-email`
 
@@ -1772,7 +1772,7 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 - **403** — Not a subcontractor, or collect-payment gate failed (not on job team / flow not approved for this invoice).
 - **502** — Stripe error (other than handled missing customer), **`invoices.update`** failure after **`customers.update`** (customer may be updated on Stripe; invoice email not synced — contact office), or partial DB failure after both Stripe updates.
 
-**Client**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx) step 3 **Change email**.
+**Client**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx) step 3 **Change email**.
 
 **Gateway JWT**: Deploy with **`supabase functions deploy update-collect-payment-stripe-customer-email --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
@@ -1780,7 +1780,7 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 
 ### get-stripe-invoice-details
 
-**Purpose**: **`invoices.retrieve`** (with **`expand: ['customer']`**) + line items for a billed **`jobs_ledger_invoices`** row with **`stripe_invoice_id`**. Used by **Hosted bill** UI and **Collect Payment** step 3 (Stripe-resolved customer email). Response **`customer_email`** matches **`send-stripe-invoice`** resolution (**expanded Customer `email` first**, then **`invoice.customer_email`**) per **[`customerEmailFromStripeInvoice`](supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)**.
+**Purpose**: **`invoices.retrieve`** (with **`expand: ['customer']`**) + line items for a billed **`jobs_ledger_invoices`** row with **`stripe_invoice_id`**. Used by **Hosted bill** UI and **Collect Payment** step 3 (Stripe-resolved customer email). Response **`customer_email`** matches **`send-stripe-invoice`** resolution (**expanded Customer `email` first**, then **`invoice.customer_email`**) per **[`customerEmailFromStripeInvoice`](../supabase/functions/_shared/stripeInvoiceCustomerEmail.ts)**.
 
 **Endpoint**: `POST /functions/v1/get-stripe-invoice-details`
 
@@ -1788,7 +1788,7 @@ interface UpdateCollectPaymentStripeCustomerEmailBody {
 
 **Success body** (partial): includes **`memo`** (Stripe **`description`**) and **`footer`** (Stripe **`footer`**) as separate strings when present. May service-backfill **`stripe_invoice_memo`** / **`stripe_invoice_footer`** on the ledger row when empty.
 
-Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** ([**`stripeInvoiceLinesForFixtureOrderDisplay.ts`**](supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)): **multi-line** payloads are reversed so hosted bill UI matches **invoice.stripe.com** (**v2.528**; creation / **`invoice_items`** order: **v2.527**, **`RECENT_FEATURES.md`**).
+Response **`lines`** (from Stripe **`listLineItems`**) pass through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** ([**`stripeInvoiceLinesForFixtureOrderDisplay.ts`**](../supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)): **multi-line** payloads are reversed so hosted bill UI matches **invoice.stripe.com** (**v2.528**; creation / **`invoice_items`** order: **v2.527**, **`RECENT_FEATURES.md`**).
 
 **Gateway JWT**: Deploy with **`supabase functions deploy get-stripe-invoice-details --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
@@ -1825,7 +1825,7 @@ interface RecordStripeInvoiceOobBody {
 
 - **`Amount must match the full open balance on the Stripe invoice`** — v1 requires **`amount_dollars`** (in cents when compared) to match Stripe **`amount_remaining`** exactly.
 
-**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy record-stripe-invoice-out-of-band-payment --no-verify-jwt`** if the hosted gateway still enforces JWT.
+**Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy record-stripe-invoice-out-of-band-payment --no-verify-jwt`** if the hosted gateway still enforces JWT.
 
 ---
 
@@ -1866,9 +1866,9 @@ interface ReverseStripeInvoiceOobBody {
 - **409** — Stripe credit note may have succeeded but RPC returned a business error (check both systems).
 - **502** — Stripe API or RPC failure after credit note (partial state possible; message includes warning).
 
-**Webhook**: Subscribe to **`credit_note.created`** so [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts) can **`invoices.retrieve`** and **`syncJobsLedgerStripeInvoiceStatus`**.
+**Webhook**: Subscribe to **`credit_note.created`** so [`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts) can **`invoices.retrieve`** and **`syncJobsLedgerStripeInvoiceStatus`**.
 
-**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy reverse-stripe-invoice-out-of-band-payment --no-verify-jwt`**.
+**Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy reverse-stripe-invoice-out-of-band-payment --no-verify-jwt`**.
 
 ---
 
@@ -1910,7 +1910,7 @@ interface Body {
 - **401** / **403** — Missing/invalid JWT or role.
 - **502** — Stripe API or **`service_apply_agreed_write_down_from_stripe`** failure (credit note may exist; check Stripe and DB).
 
-**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy stripe-invoice-agreed-write-down --no-verify-jwt`**.
+**Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) **`verify_jwt = false`**. Deploy with **`supabase functions deploy stripe-invoice-agreed-write-down --no-verify-jwt`**.
 
 ---
 
@@ -1950,9 +1950,9 @@ Amounts are in **cents**, matching Stripe invoice objects.
 - If **`customers.stripe_customer_id`** is set, previews as that **`customer`**; otherwise uses **`customer_details`** from the body (no `cus_` creation).
 - **`collection_method`**, **`days_until_due`**, memo/line description mirror **create-stripe-invoice**.
 - Invoice **`number`** in the preview matches **create-stripe-invoice** (`{hcp}-{YYMMDD}{HHmm}` in Chicago time at request time); a later create may use a different **`HHmm`** if the clock has moved.
-- Response **`lines`**: Derived from Stripe preview line items passed through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** ([**`stripeInvoiceLinesForFixtureOrderDisplay.ts`**](supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)). **Multi-line** arrays are reversed so Bill Customer preview matches **invoice.stripe.com** top-to-bottom (**v2.528**); **`invoice_items`** / creation still follow **`jobs_ledger_fixtures.sequence_order`** ascending (**v2.527**, **`stripeInvoiceItemsFromFixtures`**).
+- Response **`lines`**: Derived from Stripe preview line items passed through **`stripeInvoiceLinesDataForFixtureOrderDisplay`** ([**`stripeInvoiceLinesForFixtureOrderDisplay.ts`**](../supabase/functions/_shared/stripeInvoiceLinesForFixtureOrderDisplay.ts)). **Multi-line** arrays are reversed so Bill Customer preview matches **invoice.stripe.com** top-to-bottom (**v2.528**); **`invoice_items`** / creation still follow **`jobs_ledger_fixtures.sequence_order`** ascending (**v2.527**, **`stripeInvoiceItemsFromFixtures`**).
 
-**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`supabase functions deploy preview-stripe-invoice --no-verify-jwt`** if needed.
+**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](../supabase/config.toml). Deploy with **`supabase functions deploy preview-stripe-invoice --no-verify-jwt`** if needed.
 
 ---
 
@@ -1998,7 +1998,7 @@ interface Body {
 4. If Stripe returns **resource missing** for the invoice id, still clears DB (idempotent).
 5. Service-role **UPDATE** clears **`stripe_invoice_id`**, **`hosted_invoice_url`**, **`stripe_invoice_status`**, **`stripe_invoice_memo`**, **`external_send_channel`**, **`external_send_note`**, **`sent_to_customer_at`**, **`billed_at`**, sets **`ready_to_bill`**.
 
-**Client**: [`src/lib/voidStripeInvoiceForRevert.ts`](src/lib/voidStripeInvoiceForRevert.ts); Jobs/Dashboard send-back and job-level billed → RTB pre-flight.
+**Client**: [`src/lib/voidStripeInvoiceForRevert.ts`](../src/lib/voidStripeInvoiceForRevert.ts); Jobs/Dashboard send-back and job-level billed → RTB pre-flight.
 
 **Deploy**: `supabase functions deploy void-stripe-invoice-for-revert --no-verify-jwt` if the hosted gateway still enforces JWT.
 
@@ -2026,7 +2026,7 @@ interface Body {
 #### Behavior
 
 1. **`constructEvent`** on raw body.
-2. **Dedupe:** insert **`stripe_event_id`** into **`stripe_webhook_events`** (unique). On conflict, respond **`200`** with **`{ "received": true, "duplicate": true }`** and skip processing (reduces duplicate work when Stripe retries). **Dev UI:** Banking → Stripe → **Data** reads this table ([`BankingStripeWebhookEventsPanel.tsx`](src/components/BankingStripeWebhookEventsPanel.tsx); **`RECENT_FEATURES.md`** v2.284).
+2. **Dedupe:** insert **`stripe_event_id`** into **`stripe_webhook_events`** (unique). On conflict, respond **`200`** with **`{ "received": true, "duplicate": true }`** and skip processing (reduces duplicate work when Stripe retries). **Dev UI:** Banking → Stripe → **Data** reads this table ([`BankingStripeWebhookEventsPanel.tsx`](../src/components/BankingStripeWebhookEventsPanel.tsx); **`RECENT_FEATURES.md`** v2.284).
 3. On **`invoice.paid`** / **`invoice.payment_succeeded`**, resolve **`jobs_ledger_invoices`** by **`stripe_invoice_id`**; invoke **`mark_invoice_paid_from_stripe`** when appropriate; update **`stripe_invoice_status`** to **`paid`** only when the RPC succeeds (or the row was already **`paid`**). Then call **`complete_job_collect_payment_flow_for_invoice`** (service role); log failures without failing the webhook. On lookup errors, RPC errors, or RPC JSON **`{ error }`** (business rule), respond **`200`** with **`applied: false`** and a **`reason`** (e.g. **`invoice_lookup_failed`**, **`mark_paid_rpc_failed`**, **`mark_paid_rejected`**) — **do not** return **`5xx`** for those paths so Stripe does not retry-storm.
 4. On **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`**, resolve by **`stripe_invoice_id`** and **PATCH** **`stripe_invoice_status`** from the Stripe object’s **`status`** (skip downgrading when DB row **`status`** is already **`paid`** and Stripe is not **`paid`**).
 5. **Unhandled exceptions:** respond **`200`** with **`applied: false`**, **`reason: unhandled_exception`** (logged) so Stripe stops retrying; fix data/code and replay from Stripe Dashboard if needed.
@@ -2036,7 +2036,7 @@ interface Body {
 
 **Ops**: Point Stripe webhook URL at **`https://<project-ref>.supabase.co/functions/v1/stripe-webhook`**. In the Stripe Dashboard, subscribe the endpoint to **`invoice.paid`**, **`invoice.payment_succeeded`**, **`invoice.updated`**, **`invoice.voided`**, and **`invoice.payment_failed`** (and any other events you still rely on). Use test mode keys in development. When **`applied`** is **`false`**, check **Supabase Edge Function logs** (`stripe-webhook`) and **Stripe → Webhooks → delivery** details — do not rely on HTTP **`5xx`** to surface most failures.
 
-**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
+**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](../supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 
 ---
 
@@ -2045,7 +2045,7 @@ interface Body {
 **Purpose**: **Dev-only** pull from Mercury **[List transactions](https://docs.mercury.com/reference/listtransactions)** into **`mercury_transactions`** (service-role upsert on `mercury_id`). Two invocation paths from the Banking page (`src/pages/Banking.tsx`):
 
 - **Refresh from Mercury** — top-of-page button + Advanced menu item; daily refresh path. Always posts **`{ lookback_days: 90 }`** so the daily round-trip stays fast (~10s) and idempotent.
-- **Backfill from Mercury…** (**v2.575**, dev-only Advanced menu item) — opens [`MercuryBackfillModal.tsx`](src/components/banking/MercuryBackfillModal.tsx) and posts **`{ start, end }`** with a custom `[start, end]` range (default `[today − 365, today]`, range capped at 3650 days client-side; future / reverse ranges blocked). The function already supports this payload — no Edge change.
+- **Backfill from Mercury…** (**v2.575**, dev-only Advanced menu item) — opens [`MercuryBackfillModal.tsx`](../src/components/banking/MercuryBackfillModal.tsx) and posts **`{ start, end }`** with a custom `[start, end]` range (default `[today − 365, today]`, range capped at 3650 days client-side; future / reverse ranges blocked). The function already supports this payload — no Edge change.
 
 **Endpoint**: `POST /functions/v1/sync-mercury-transactions`
 
@@ -2072,7 +2072,7 @@ Internal: 500 rows per Mercury page, **`MAX_PAGES = 120`** (so up to **60,000 tr
 { "success": true, "upserted": 1234, "start": "2025-01-01", "end": "2026-04-01" }
 ```
 
-**Gateway JWT**: [`supabase/config.toml`](supabase/config.toml) sets **`verify_jwt = false`**; JWT is validated in the function (same pattern as **`create-stripe-invoice`**). Deploy with **`supabase functions deploy sync-mercury-transactions --no-verify-jwt`** if the hosted gateway still enforces JWT.
+**Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) sets **`verify_jwt = false`**; JWT is validated in the function (same pattern as **`create-stripe-invoice`**). Deploy with **`supabase functions deploy sync-mercury-transactions --no-verify-jwt`** if the hosted gateway still enforces JWT.
 
 ---
 
@@ -2094,7 +2094,7 @@ Internal: 500 rows per Mercury page, **`MAX_PAGES = 120`** (so up to **60,000 tr
 
 **Ops**: Register HTTPS URL **`https://<project-ref>.supabase.co/functions/v1/mercury-webhook`** in Mercury. Webhooks are **not** available in Mercury sandbox.
 
-**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](supabase/config.toml). Deploy with **`--no-verify-jwt`**.
+**Gateway JWT**: **`verify_jwt = false`** in [`supabase/config.toml`](../supabase/config.toml). Deploy with **`--no-verify-jwt`**.
 
 **Enable checklist (production)**:
 
@@ -2271,21 +2271,21 @@ curl -X POST http://localhost:54321/functions/v1/create-user \
 
 Each function has a `DEPLOY.md` or `DEPLOY_NOW.md` file with specific deployment instructions:
 
-- [`create-user/DEPLOY.md`](supabase/functions/create-user/DEPLOY.md)
-- [`archive-user`](supabase/functions/archive-user/) - Archive users (replaces delete-user)
-- [`restore-user`](supabase/functions/restore-user/) - Restore archived users
-- [`login-as-user/DEPLOY.md`](supabase/functions/login-as-user/DEPLOY.md)
-- [`send-workflow-notification/DEPLOY.md`](supabase/functions/send-workflow-notification/DEPLOY.md)
-- [`test-email/DEPLOY.md`](supabase/functions/test-email/DEPLOY.md)
+- [`create-user/DEPLOY.md`](../supabase/functions/create-user/DEPLOY.md)
+- [`archive-user`](../supabase/functions/archive-user/) - Archive users (replaces delete-user)
+- [`restore-user`](../supabase/functions/restore-user/) - Restore archived users
+- [`login-as-user/DEPLOY.md`](../supabase/functions/login-as-user/DEPLOY.md)
+- [`send-workflow-notification/DEPLOY.md`](../supabase/functions/send-workflow-notification/DEPLOY.md)
+- [`test-email/DEPLOY.md`](../supabase/functions/test-email/DEPLOY.md)
 
 ---
 
 ## Related Documentation
 
 - [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Overall architecture
-- [EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md) - Email template configuration
-- [EMAIL_TESTING.md](./EMAIL_TESTING.md) - Email testing procedures
-- [Settings page](./src/pages/Settings.tsx) - UI for user management and edge function calls
+- EMAIL_TEMPLATES_SETUP.md - Email template configuration
+- EMAIL_TESTING.md - Email testing procedures
+- [Settings page](../src/pages/Settings.tsx) - UI for user management and edge function calls
 
 ---
 

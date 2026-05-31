@@ -2923,6 +2923,7 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                         background: '#fafafa',
                         color: '#111827',
                       }}
+                      // eslint-disable-next-line react/no-danger -- app-generated contract email-preview HTML; values are escaped by the tested contractSendEmailPreview builder
                       dangerouslySetInnerHTML={{ __html: contractSendEmailPreview.htmlBody }}
                     />
                     <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.35rem 0 0' }}>

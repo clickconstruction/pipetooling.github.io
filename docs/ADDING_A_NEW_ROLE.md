@@ -2,7 +2,7 @@
 
 > **Purpose**: Step-by-step guide for adding a new user role (e.g., Primary) to PipeTooling. Use this to avoid policy/permission mistakes and ensure all touchpoints are updated.
 
-**Related**: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) — Role permissions matrix; [supabase/archive/README.md](./supabase/archive/README.md) — Migration reference.
+**Related**: [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) — Role permissions matrix; [supabase/archive/README.md](../supabase/archive/README.md) — Migration reference.
 
 ---
 
@@ -17,7 +17,7 @@ ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'new_role';
 COMMENT ON TYPE user_role IS 'User role enum: dev (formerly owner), master_technician, assistant, subcontractor, estimator, primary, superintendent, new_role';
 ```
 
-**Reference**: [supabase/migrations/20260221210000_add_user_role_primary.sql](supabase/migrations/20260221210000_add_user_role_primary.sql)
+**Reference**: [supabase/migrations/20260221210000_add_user_role_primary.sql](../supabase/migrations/20260221210000_add_user_role_primary.sql)
 
 ### 2. Regenerate types
 
@@ -50,14 +50,14 @@ Ensure the `create-user` Edge Function accepts the new role in its validation:
   }
   ```
 
-**Reference**: [src/components/Layout.tsx](src/components/Layout.tsx) — `SUBCONTRACTOR_PATHS`, `ESTIMATOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`
+**Reference**: [src/components/Layout.tsx](../src/components/Layout.tsx) — `SUBCONTRACTOR_PATHS`, `ESTIMATOR_PATHS`, `PRIMARY_PATHS`, `SUPERINTENDENT_PATHS`
 
 ### Dashboard.tsx
 
 - **Paths constant** (lines 166–168): Add `NEW_ROLE_PATHS = new Set([...])`
 - **getPathsForRole** (lines 171–173): Add `if (role === 'new_role') return NEW_ROLE_PATHS`
 
-**Reference**: [src/pages/Dashboard.tsx](src/pages/Dashboard.tsx)
+**Reference**: [src/pages/Dashboard.tsx](../src/pages/Dashboard.tsx)
 
 ### Settings.tsx
 
@@ -66,7 +66,7 @@ Ensure the `create-user` Edge Function accepts the new role in its validation:
 - **Report-enabled users** (lines 8327–8337): If the role can be report-enabled (like subcontractor), add logic to show the checkbox for users with this role
 - **Service type filtering** (if applicable): Add UI for `new_role_service_type_ids` when creating/editing users with this role
 
-**Reference**: [src/pages/Settings.tsx](src/pages/Settings.tsx)
+**Reference**: [src/pages/Settings.tsx](../src/pages/Settings.tsx)
 
 ### Page components
 
@@ -151,9 +151,9 @@ AS $$
 $$;
 ```
 
-**Reference**: [supabase/migrations/20260212240000_allow_estimators_see_masters.sql](supabase/migrations/20260212240000_allow_estimators_see_masters.sql)
+**Reference**: [supabase/migrations/20260212240000_allow_estimators_see_masters.sql](../supabase/migrations/20260212240000_allow_estimators_see_masters.sql)
 
-**RLS performance**: Use `(select auth.uid())` and `(select auth.jwt())` in policies so the planner can cache the result per query. See [optimize_workflow_templates_rls.sql](supabase/archive/optimize_workflow_templates_rls.sql) and Supabase RLS performance docs.
+**RLS performance**: Use `(select auth.uid())` and `(select auth.jwt())` in policies so the planner can cache the result per query. See [optimize_workflow_templates_rls.sql](../supabase/archive/optimize_workflow_templates_rls.sql) and Supabase RLS performance docs.
 
 ---
 
@@ -163,7 +163,7 @@ $$;
 
 If the role needs adoption (like Primary or Superintendent), create a junction table mirroring `master_primaries`:
 
-**Reference**: [supabase/migrations/20260223100000_create_master_primaries.sql](supabase/migrations/20260223100000_create_master_primaries.sql), [supabase/migrations/20260520120001_create_master_superintendents.sql](supabase/migrations/20260520120001_create_master_superintendents.sql)
+**Reference**: [supabase/migrations/20260223100000_create_master_primaries.sql](../supabase/migrations/20260223100000_create_master_primaries.sql), [supabase/migrations/20260520120001_create_master_superintendents.sql](../supabase/migrations/20260520120001_create_master_superintendents.sql)
 
 - Table: `master_new_roles(master_id, new_role_id)` with FKs to `users`
 - RLS: Masters and devs can read/manage; new_role users can read who adopted them
@@ -174,7 +174,7 @@ If the role needs adoption (like Primary or Superintendent), create a junction t
 If the role should be restricted to specific service types (e.g., Plumbing only):
 
 - Add column: `ALTER TABLE public.users ADD COLUMN IF NOT EXISTS new_role_service_type_ids UUID[] DEFAULT NULL`
-- **Reference**: [supabase/migrations/20260224000000_add_primary_service_type_ids.sql](supabase/migrations/20260224000000_add_primary_service_type_ids.sql)
+- **Reference**: [supabase/migrations/20260224000000_add_primary_service_type_ids.sql](../supabase/migrations/20260224000000_add_primary_service_type_ids.sql)
 - Update `create-user` Edge Function to accept and store `service_type_ids` when role is `new_role`
 - Add Settings UI for editing this when creating/editing users
 
@@ -183,8 +183,8 @@ If the role should be restricted to specific service types (e.g., Plumbing only)
 For roles that get the Recent Reports section only when explicitly enabled (e.g., subcontractors):
 
 - Table: `report_enabled_users(user_id)` — devs manage via Settings
-- **Reference**: [src/pages/Settings.tsx](src/pages/Settings.tsx) lines 8327–8337 (Report-enabled users section)
-- [src/pages/Dashboard.tsx](src/pages/Dashboard.tsx) lines 521–522, 530 — `isReportEnabledOnlyUser` and `showRecent` logic
+- **Reference**: [src/pages/Settings.tsx](../src/pages/Settings.tsx) lines 8327–8337 (Report-enabled users section)
+- [src/pages/Dashboard.tsx](../src/pages/Dashboard.tsx) lines 521–522, 530 — `isReportEnabledOnlyUser` and `showRecent` logic
 
 ---
 

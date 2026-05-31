@@ -10,7 +10,7 @@ import { ymdAddDays } from '../utils/dateUtils'
 //      every time they open it; they see "now" first and pan back if they care.
 //   3) The grid auto-centers on today (existing behavior) consistently across jobs.
 // The trade-off is that stages outside the default window are hidden until panned to —
-// see PROJECT_DOCUMENTATION.md → Forecast Specific for the user-visible behavior.
+// see docs/PROJECT_DOCUMENTATION.md → Forecast Specific for the user-visible behavior.
 export const FORECAST_SPECIFIC_DEFAULT_BACK_DAYS = 90
 export const FORECAST_SPECIFIC_DEFAULT_FORWARD_DAYS = 90
 export const FORECAST_SPECIFIC_EXTEND_DAYS = 90

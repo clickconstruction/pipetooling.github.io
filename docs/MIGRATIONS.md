@@ -43,8 +43,8 @@ quick_navigation:
 
 related_docs:
   - "[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - Current schema"
-  - "[DATABASE_IMPROVEMENTS_SUMMARY.md](./DATABASE_IMPROVEMENTS_SUMMARY.md) - v2.22 improvements"
-  - "[supabase/archive/README.md](./supabase/archive/README.md) - Migration files"
+  - "DATABASE_IMPROVEMENTS_SUMMARY.md - v2.22 improvements"
+  - "[supabase/archive/README.md](../supabase/archive/README.md) - Migration files"
 
 prerequisites:
   - Understanding of PostgreSQL DDL
@@ -96,31 +96,31 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **`20270521120000_bid_count_row_submission_hides.sql`**
 - **Purpose**: **Bids** **Pricing** — sparse **`bid_count_row_submission_hides`** (**`bid_id`**, **`count_row_id`**, **`price_book_version_id`**, PK composite; index on **`bid_id`, `price_book_version_id`**). Row present ⇒ omit fixture from **Cover Letter** + **Approval** pricing-grid lists only; totals unchanged. **RLS**: **`can_access_bid_for_pricing(bid_id)`** for pricing-capable roles. **Backfill** from **`bid_pricing_assignments.omit_from_submission_documents`**, then clears that flag on assignments.
-- **Impact**: **[`Bids.tsx`](src/pages/Bids.tsx)** loads/toggles hides; **`computeBidPricingRows`** + **`hiddenSubmissionCountRowIds`** ([`bidPricingRowCalculations.ts`](src/lib/bidPricingRowCalculations.ts)); PDF/print (**v2.499** in **`RECENT_FEATURES.md`**). **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: **[`Bids.tsx`](../src/pages/Bids.tsx)** loads/toggles hides; **`computeBidPricingRows`** + **`hiddenSubmissionCountRowIds`** ([`bidPricingRowCalculations.ts`](../src/lib/bidPricingRowCalculations.ts)); PDF/print (**v2.499** in **`RECENT_FEATURES.md`**). **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Bids / Pricing / RLS
 
 **`20270521120100_drop_bid_pricing_assignments_omit_from_submission_documents.sql`**
 - **Purpose**: **DROP** **`bid_pricing_assignments.omit_from_submission_documents`** (canonical hides are **`bid_count_row_submission_hides`**). **`duplicate_bid_to_service_type`** updated to **`INSERT`** matching hide rows after count-row map (same **`price_book_version_id`** semantics as source bid).
-- **Impact**: Duplicate-bid UX in **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** / related flows preserves per-version omit state; regenerate **`src/types/database.ts`**.
+- **Impact**: Duplicate-bid UX in **[`BidFormModal.tsx`](../src/components/bids/BidFormModal.tsx)** / related flows preserves per-version omit state; regenerate **`src/types/database.ts`**.
 - **Category**: Bids / Pricing / functions
 
 #### May 22, 2027
 
 **`20270522120000_schedule_day_email_requests_and_rpc.sql`**
 - **Purpose**: **`schedule_day_email_requests`** (pending row per **`recipient_user_id`** + **`work_date`**, **`send_at`** UTC); **`can_access_project_row_for_user`**, **`list_job_schedule_blocks_for_schedule_email`** (mirrors **`job_schedule_blocks`** SELECT using viewer id); RLS (recipients see own rows; **INSERT** self-only for **master_technician**/**assistant** and base **dev** path — **dev → any non-archived recipient** added in **`20270523120000_dev_schedule_day_email_for_other.sql`**); pg_cron **`schedule-day-email-dispatch`** → Edge ([**`EDGE_FUNCTIONS.md`**](EDGE_FUNCTIONS.md)). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.522**.
-- **Impact**: **[`DashboardTeamActiveClockStrip.tsx`](src/components/DashboardTeamActiveClockStrip.tsx)**, **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)**; **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: **[`DashboardTeamActiveClockStrip.tsx`](../src/components/DashboardTeamActiveClockStrip.tsx)**, **[`ScheduleDayEmailModal.tsx`](../src/components/ScheduleDayEmailModal.tsx)**; **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Dashboard / Schedule / Email / RLS
 
 #### May 23, 2027
 
 **`20270523120000_dev_schedule_day_email_for_other.sql`**
 - **Purpose**: RLS — **`schedule_day_email_requests_insert_dev_any_recipient`** (**`is_dev()`** + non-archived **`recipient_user_id`**); **`schedule_day_email_requests_select_dev`**. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.523**.
-- **Impact**: **[`ScheduleDayEmailModal.tsx`](src/components/ScheduleDayEmailModal.tsx)** dev **Send to** picker.
+- **Impact**: **[`ScheduleDayEmailModal.tsx`](../src/components/ScheduleDayEmailModal.tsx)** dev **Send to** picker.
 - **Category**: Dashboard / RLS
 
 **`20270523140000_agreed_write_down_billed_invoice.sql`**
 - **Purpose**: **`jobs_ledger_invoices`** — **`agreed_write_down_note`**, **`agreed_write_down_at`**, **`agreed_write_down_by`** (**`auth.users`**), **`agreed_write_down_previous_amount`**, **`agreed_write_down_stripe_credit_note_id`**. **`apply_agreed_write_down_to_billed_invoice`** (**JWT**, **`billed`** rows **without** **`stripe_invoice_id`**). **`service_apply_agreed_write_down_from_stripe`** (**`service_role`** only; Stripe Edge path after credit note). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.524**.
-- **Impact**: **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)**, **[`AgreedWriteDownModal.tsx`](src/components/jobs/AgreedWriteDownModal.tsx)**; **[`stripe-invoice-agreed-write-down`](supabase/functions/stripe-invoice-agreed-write-down/index.ts)**; **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**. **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)**, **[`AgreedWriteDownModal.tsx`](../src/components/jobs/AgreedWriteDownModal.tsx)**; **[`stripe-invoice-agreed-write-down`](../supabase/functions/stripe-invoice-agreed-write-down/index.ts)**; **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**. **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Jobs / Billing / Stripe / RPC
 
 ### May 2026
@@ -130,13 +130,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260525204531_list_unlabeled_mercury_transactions.sql`**
 - **Purpose**: Banking **Mercury** **Accounting** — **`list_unlabeled_mercury_transactions(p_limit int default null)`** SECURITY INVOKER RPC. Returns `setof public.mercury_transactions` filtered to rows that have **no** matching `mercury_transaction_drag_sort_assignments` row, ordered `posted_at DESC NULLS LAST, id DESC` (matches the existing master list ordering). `LIMIT p_limit` with `null` default returns all unlabeled rows; PostgREST's project-level cap stays the ultimate ceiling. Anti-join hits the primary key index on **`mercury_transaction_drag_sort_assignments(mercury_transaction_id)`** declared in **`20260502224616_mercury_drag_sort_org_wide_labels.sql`**, so no new index is required. RLS on both tables runs as the caller (existing **dev** / **master_technician** / **assistant** gating on `mercury_transactions` carries through). Single **`grant execute … to authenticated`** completes the migration.
 - **Changes**: Single **`create or replace function`** statement plus the grant — re-applying is safe and idempotent. No table / index / RLS / trigger changes.
-- **Impact**: **[`Banking.tsx`](src/pages/Banking.tsx)** splits **`loadRows`** into **`loadAllRows`** + **`loadUnlabeledRows`** + **`loadRowsForActiveView`** (tab-aware dispatcher); the unlabeled-only RPC fires only when (Accounting tab + Hide labeled = on), the default 90% case. Drag Sort, User Review, Category Review, Sorting, and Ledger continue to use the master 15k fetch. **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)** drops local `hideLabeledTransactions` state, lifts it to props, derives `inputIsUnlabeledOnly`, and short-circuits both `loadAssignmentsForList` and the `displayTransactions` filter when the parent already pre-narrowed the input. New optional `onAfterAssignmentChange?` prop fires after each of the four assignment-table mutation flows (`clearRowDragSortLabel`, `handleQuickAssignLabel`, `handleApprove`, `handleApproveAll`) so the unlabeled list shrinks (or grows) in place. **`RECENT_FEATURES.md`** **v2.579**, **`AGENTS.md`** Banking Mercury Accounting row, **`GLOSSARY.md`** Accounting rules entry. **`npm run gen-types:linked`** after **`db push`** so the new RPC is typed (`Args: { p_limit?: number }`).
+- **Impact**: **[`Banking.tsx`](../src/pages/Banking.tsx)** splits **`loadRows`** into **`loadAllRows`** + **`loadUnlabeledRows`** + **`loadRowsForActiveView`** (tab-aware dispatcher); the unlabeled-only RPC fires only when (Accounting tab + Hide labeled = on), the default 90% case. Drag Sort, User Review, Category Review, Sorting, and Ledger continue to use the master 15k fetch. **[`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx)** drops local `hideLabeledTransactions` state, lifts it to props, derives `inputIsUnlabeledOnly`, and short-circuits both `loadAssignmentsForList` and the `displayTransactions` filter when the parent already pre-narrowed the input. New optional `onAfterAssignmentChange?` prop fires after each of the four assignment-table mutation flows (`clearRowDragSortLabel`, `handleQuickAssignLabel`, `handleApprove`, `handleApproveAll`) so the unlabeled list shrinks (or grows) in place. **`RECENT_FEATURES.md`** **v2.579**, **`AGENTS.md`** Banking Mercury Accounting row, **`GLOSSARY.md`** Accounting rules entry. **`npm run gen-types:linked`** after **`db push`** so the new RPC is typed (`Args: { p_limit?: number }`).
 - **Category**: Banking / Mercury / Accounting / RPC
 
 **`20260525160339_add_drag_sort_internal_transfers_builtin.sql`**
 - **Purpose**: Backfill the **Internal Transfers** Drag Sort built-in (**`mercury_drag_sort_labels`**) into existing orgs without requiring a Drag Sort tab visit to trigger client-side seeding via **`ensureDragSortDefaultLabels()`**. New row: **`default_key='internal_transfers'`**, **`name='Internal Transfers'`**, **`schedule_c_line='N/A'`**, **`is_system_default=true`**, **`sort_order=9999`** (parks at the bottom of the sidebar away from Schedule-C-flavored buckets). Mirrors the **`20260520161301_mercury_drag_sort_employee_benefits_builtin.sql`** precedent.
 - **Changes**: Single **`INSERT … ON CONFLICT (default_key) DO NOTHING`** statement so re-applying or running alongside the client seeder is safe (the `default_key` UNIQUE constraint is the canonical de-dupe). Per **`mercury_drag_sort_labels_guard_system_fields`** trigger, the row's **`name`** / **`schedule_c_line`** / **`description`** become immutable after insert. No new RLS / RPCs / triggers — covered by the existing **`mercury_drag_sort_labels`** policies + guard. The label is **mutually exclusive with `mercury_transaction_splits`** but that's enforced client-side via UI hard blocks (see **`RECENT_FEATURES.md`** **v2.572**), not via DB trigger.
-- **Impact**: Adds the new bucket to every org's Drag Sort sidebar + Accounting tab dropdowns. Counts toward the new **`'internal_transfer'`** key in **[`overheadPartsAccountingBuckets.ts`](src/lib/overheadPartsAccountingBuckets.ts)** so labeled rows are excluded from the Field Total / Hours modal's Materials total via **`sumMaterialsTotalUsdExcludingInternalTransfer`**. Sidebar rendering picks up the slate accent automatically once **[`dragSortLabelBucketCard.tsx`](src/components/banking/dragSortLabelBucketCard.tsx)** receives the new **`defaultKey`** prop. Hard blocks in **[`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx)**, **[`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx)** prevent label/split coexistence. Helpers **`INTERNAL_TRANSFERS_DEFAULT_KEY`** + **`isInternalTransfersLabel`** in **[`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts)** centralize the default-key check. Applied via Supabase MCP **`apply_migration`**; observed `sort_order=270` post-apply because the client seeder's `index * 10` pricing ran before the migration and **`ON CONFLICT DO NOTHING`** preserved the existing row — both values still place the label at the bottom of the list, so no fix needed. **`RECENT_FEATURES.md`** **v2.572**, **`GLOSSARY.md`** **Internal Transfers (Banking Mercury Drag Sort built-in)**, **`AGENTS.md`** Drag Sort row. **`npm run gen-types:linked`** after **`db push`** (no schema column changes; ensures history sync).
+- **Impact**: Adds the new bucket to every org's Drag Sort sidebar + Accounting tab dropdowns. Counts toward the new **`'internal_transfer'`** key in **[`overheadPartsAccountingBuckets.ts`](../src/lib/overheadPartsAccountingBuckets.ts)** so labeled rows are excluded from the Field Total / Hours modal's Materials total via **`sumMaterialsTotalUsdExcludingInternalTransfer`**. Sidebar rendering picks up the slate accent automatically once **[`dragSortLabelBucketCard.tsx`](../src/components/banking/dragSortLabelBucketCard.tsx)** receives the new **`defaultKey`** prop. Hard blocks in **[`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx)**, **[`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx)**, **[`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx)** prevent label/split coexistence. Helpers **`INTERNAL_TRANSFERS_DEFAULT_KEY`** + **`isInternalTransfersLabel`** in **[`dragSortDefaultLabels.ts`](../src/lib/dragSortDefaultLabels.ts)** centralize the default-key check. Applied via Supabase MCP **`apply_migration`**; observed `sort_order=270` post-apply because the client seeder's `index * 10` pricing ran before the migration and **`ON CONFLICT DO NOTHING`** preserved the existing row — both values still place the label at the bottom of the list, so no fix needed. **`RECENT_FEATURES.md`** **v2.572**, **`GLOSSARY.md`** **Internal Transfers (Banking Mercury Drag Sort built-in)**, **`AGENTS.md`** Drag Sort row. **`npm run gen-types:linked`** after **`db push`** (no schema column changes; ensures history sync).
 - **Category**: Banking / Mercury / Drag Sort / Built-in catalog
 
 #### May 19, 2026
@@ -144,19 +144,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260519214147_add_percent_complete_to_project_workflow_steps.sql`**
 - **Purpose**: Optional **0-100 progress estimate** on each workflow stage. Editable from three surfaces with a single source of truth: (1) **Forecast Specific gutter** (`/projects?tab=forecast`, Specific sub-tab) — right-aligned cell inside `StageGutterLabel` with a `%` column header in the sticky gutter header; (2) **Forecast Specific stage detail modal** header — compact **`Complete [N] %`** editor (**v2.559**); (3) **Workflow expanded stage card** — new `Complete: [ N ] %` row directly under the existing Expected dates row. NULL = "not tracked"; clamped 0-100 at the DB layer so ad-hoc SQL writers can't bypass the UI's `parsePercentCompleteInput` helper. Forecast All Stages intentionally does NOT render the column.
 - **Changes**: **`ALTER TABLE public.project_workflow_steps ADD COLUMN IF NOT EXISTS percent_complete INTEGER NULL CHECK (percent_complete IS NULL OR (percent_complete BETWEEN 0 AND 100))`** + **`COMMENT ON COLUMN`** documenting the 0-100 semantics. Append-only (no edit to existing migrations, no second file sharing the same `YYYYMMDDHHMMSS` prefix). No new RLS — column inherits existing `project_workflow_steps` policies. No RPCs.
-- **Impact**: New helper **[`parsePercentCompleteInput.ts`](src/lib/parsePercentCompleteInput.ts)** (`parsePercentCompleteInput(raw): number | null` — empty/non-numeric → null, **explicit `0` → null** (the helper treats a 0% estimate as functionally identical to "not tracked," so typing `0` clears the cell on all surfaces), negatives → null (clamp to 0 → null), > 100 → 100, fractional → `Math.round` (and fractionals that round to 0 such as `0.4` also clear); 14 unit tests in **[`parsePercentCompleteInput.test.ts`](src/lib/parsePercentCompleteInput.test.ts)**). Forecast pipeline: **[`projectsForecastData.ts`](src/lib/projectsForecastData.ts)** (`ForecastStage.percent_complete: number | null` + explicit `select(...)` column), **[`projectsForecastStageResolver.ts`](src/lib/projectsForecastStageResolver.ts)** (`ForecastStageInput.percent_complete?` optional for legacy callers; `ResolvedStageBar.percentComplete: number | null` required; resolver passes through as `s.percent_complete ?? null`; +3 unit tests for round-trip / undefined→null / explicit-null pass-through). Shared grids: **[`ProjectsForecastTimelineGrid.tsx`](src/components/projects/ProjectsForecastTimelineGrid.tsx)** + **[`ProjectsForecastSpecificGrid.tsx`](src/components/projects/ProjectsForecastSpecificGrid.tsx)** got an optional `gutterHeader?: ReactNode` prop (default = empty spacer, preserving All Stages visuals). Forecast Specific: **[`ProjectsForecastSpecificTab.tsx`](src/components/projects/ProjectsForecastSpecificTab.tsx)** — `StageGutterLabel` widened with `percentComplete` + `percentEditable` + `onPercentCommit`; uncontrolled input re-keyed off the persisted value; `e.stopPropagation()` on input events; `<PercentColumnGutterHeader />` rendered into the gutter header; `labelGutterWidth` bumped 260 → 300 on both grid call sites; `onCommitPercentComplete(stageId, next)` writes via `withSupabaseRetry(supabase.from('project_workflow_steps').update({ percent_complete: next }).eq('id', stageId))` with a `formatErrorMessage(err)` toast on failure; edit gate `canAlignStages(myRole)`; the optimistic-inserted bar gains `percentComplete: null` to satisfy the new required field. **v2.562** (client-only, no schema change) — gutter `%` commits stamp optimistic **`pendingPercentByStageId`** (merged into **`effectiveResolvedBars`**), call parent **`refreshStages()`** after successful write, and blur focused gutter inputs (`data-forecast-pct="true"`) when **Edit** toggles off. Stage modal: **[`ProjectsForecastSpecificStageModal.tsx`](src/components/projects/ProjectsForecastSpecificStageModal.tsx)** — header **`Complete [N] %`** editor (**v2.559**). Workflow page: **[`Workflow.tsx`](src/pages/Workflow.tsx)** — new "Row 2c: Percent complete" rendered under Expected dates inside every expanded stage card; same uncontrolled-input idiom; `updatePercentComplete(step, value)` mirrors `submitExpectedDates` shape (DB write + optimistic `setSteps` merge); edit gate `canManageStages || s.assigned_to_name === currentUserName`. Applied via Supabase MCP **`apply_migration`** (returned `{success: true}`); `npm run gen-types:linked` confirms `percent_complete: number | null` on `Database['public']['Tables']['project_workflow_steps']['Row']` / `['Insert']` / `['Update']`. **`RECENT_FEATURES.md`** **v2.559** / **v2.562**, **`GLOSSARY.md`** **Percent complete (workflow step)**.
+- **Impact**: New helper **[`parsePercentCompleteInput.ts`](../src/lib/parsePercentCompleteInput.ts)** (`parsePercentCompleteInput(raw): number | null` — empty/non-numeric → null, **explicit `0` → null** (the helper treats a 0% estimate as functionally identical to "not tracked," so typing `0` clears the cell on all surfaces), negatives → null (clamp to 0 → null), > 100 → 100, fractional → `Math.round` (and fractionals that round to 0 such as `0.4` also clear); 14 unit tests in **[`parsePercentCompleteInput.test.ts`](../src/lib/parsePercentCompleteInput.test.ts)**). Forecast pipeline: **[`projectsForecastData.ts`](../src/lib/projectsForecastData.ts)** (`ForecastStage.percent_complete: number | null` + explicit `select(...)` column), **[`projectsForecastStageResolver.ts`](../src/lib/projectsForecastStageResolver.ts)** (`ForecastStageInput.percent_complete?` optional for legacy callers; `ResolvedStageBar.percentComplete: number | null` required; resolver passes through as `s.percent_complete ?? null`; +3 unit tests for round-trip / undefined→null / explicit-null pass-through). Shared grids: **[`ProjectsForecastTimelineGrid.tsx`](../src/components/projects/ProjectsForecastTimelineGrid.tsx)** + **[`ProjectsForecastSpecificGrid.tsx`](../src/components/projects/ProjectsForecastSpecificGrid.tsx)** got an optional `gutterHeader?: ReactNode` prop (default = empty spacer, preserving All Stages visuals). Forecast Specific: **[`ProjectsForecastSpecificTab.tsx`](../src/components/projects/ProjectsForecastSpecificTab.tsx)** — `StageGutterLabel` widened with `percentComplete` + `percentEditable` + `onPercentCommit`; uncontrolled input re-keyed off the persisted value; `e.stopPropagation()` on input events; `<PercentColumnGutterHeader />` rendered into the gutter header; `labelGutterWidth` bumped 260 → 300 on both grid call sites; `onCommitPercentComplete(stageId, next)` writes via `withSupabaseRetry(supabase.from('project_workflow_steps').update({ percent_complete: next }).eq('id', stageId))` with a `formatErrorMessage(err)` toast on failure; edit gate `canAlignStages(myRole)`; the optimistic-inserted bar gains `percentComplete: null` to satisfy the new required field. **v2.562** (client-only, no schema change) — gutter `%` commits stamp optimistic **`pendingPercentByStageId`** (merged into **`effectiveResolvedBars`**), call parent **`refreshStages()`** after successful write, and blur focused gutter inputs (`data-forecast-pct="true"`) when **Edit** toggles off. Stage modal: **[`ProjectsForecastSpecificStageModal.tsx`](../src/components/projects/ProjectsForecastSpecificStageModal.tsx)** — header **`Complete [N] %`** editor (**v2.559**). Workflow page: **[`Workflow.tsx`](../src/pages/Workflow.tsx)** — new "Row 2c: Percent complete" rendered under Expected dates inside every expanded stage card; same uncontrolled-input idiom; `updatePercentComplete(step, value)` mirrors `submitExpectedDates` shape (DB write + optimistic `setSteps` merge); edit gate `canManageStages || s.assigned_to_name === currentUserName`. Applied via Supabase MCP **`apply_migration`** (returned `{success: true}`); `npm run gen-types:linked` confirms `percent_complete: number | null` on `Database['public']['Tables']['project_workflow_steps']['Row']` / `['Insert']` / `['Update']`. **`RECENT_FEATURES.md`** **v2.559** / **v2.562**, **`GLOSSARY.md`** **Percent complete (workflow step)**.
 - **Category**: Workflow / Projects / Forecast / schema
 
 **`20260519170221_add_project_number_to_projects.sql`**
 - **Purpose**: **Auto-assigned `Project #N`** on **`public.projects`** (mirrors the **`bids.bid_number`** pattern). Adds **`project_number TEXT DEFAULT ''`** + index, creates org-global **`projects_project_number_seq`**, backfills every existing row oldest-first via `row_number() OVER (ORDER BY created_at ASC NULLS LAST, id ASC)`, pins the sequence to `MAX(project_number) + 1`, and installs **`set_project_number_if_empty()`** as a **`BEFORE INSERT FOR EACH ROW`** trigger so manually-passed values are honored verbatim and only blanks get auto-filled. Backfill verified: 6 / 6 rows numbered 1–6 in `created_at` order; `projects_project_number_seq.last_value=7, is_called=true`.
 - **Changes**: **`ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS project_number TEXT DEFAULT ''`** + **`CREATE INDEX IF NOT EXISTS idx_projects_project_number`** + **`COMMENT ON COLUMN`**; **`CREATE SEQUENCE IF NOT EXISTS public.projects_project_number_seq START 1`**; CTE-driven backfill; **`setval`** to **`MAX + 1`** (regex-guarded `^\s*\d+\s*$` on the existing values so non-numeric entries can't crash the cast); **`CREATE OR REPLACE FUNCTION public.set_project_number_if_empty()`** that fills only when **`NEW.project_number IS NULL OR trim(...) = ''`**; **`DROP TRIGGER IF EXISTS … ; CREATE TRIGGER projects_set_project_number BEFORE INSERT ON public.projects FOR EACH ROW EXECUTE FUNCTION …`**. No new RLS — column inherits existing `projects` policies. The **`BEFORE INSERT`** scope means manual UPDATE renames stay free-text (cleared = stays cleared).
-- **Impact**: New helper **[`projectNumberLabel.ts`](src/lib/projectNumberLabel.ts)** (`formatProjectNumberLabel` / `formatProjectNumberBadge`, both null-safe and trim-safe; 11 unit tests in **[`projectNumberLabel.test.ts`](src/lib/projectNumberLabel.test.ts)**). Display surfaces wired: **[`EditProjectForm.tsx`](src/components/projects/EditProjectForm.tsx)** (round 1 = read-only badge in title; round 2 = first-position editable **`Project #`** input + live duplicate warning via `projects.select('id, name').eq('project_number', trimmed).neq('id', projectId).limit(1)` + `payload.project_number = projectNumber.trim()`), **[`Projects.tsx`](src/pages/Projects.tsx)** (inline muted label next to the project-name `<Link>`), **[`Workflow.tsx`](src/pages/Workflow.tsx)** (chip text `Project #N · {name}` with `Project: {name}` fallback), **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** (`SubscribedStep` type extended with `project_number: string | null`, projects loader select widened to `'id, name, project_number'`, in-memory `projectMap` carries `{ name, project_number }`, JSX renders `{formatProjectNumberLabel(sub.project_number) ?? 'Project'}: {sub.project_name}`). Unchanged: `NewProjectForm.tsx` (INSERT omits `project_number`, trigger fills); other surfaces showing project names (Jobs Stages, DetailJobModal, Calendar, ForecastSpecific, People active projects) intentionally untouched. **`RECENT_FEATURES.md`** **v2.557**, **`GLOSSARY.md`** **Project Number**, **`PROJECT_DOCUMENTATION.md`** `public.projects` Key Fields. Applied via Supabase MCP `apply_migration` (local file timestamp predated the `20260519171140` dispatch-requests migration); `npm run gen-types:linked` confirms `project_number: string | null` on `Database['public']['Tables']['projects']['Row']`.
+- **Impact**: New helper **[`projectNumberLabel.ts`](../src/lib/projectNumberLabel.ts)** (`formatProjectNumberLabel` / `formatProjectNumberBadge`, both null-safe and trim-safe; 11 unit tests in **[`projectNumberLabel.test.ts`](../src/lib/projectNumberLabel.test.ts)**). Display surfaces wired: **[`EditProjectForm.tsx`](../src/components/projects/EditProjectForm.tsx)** (round 1 = read-only badge in title; round 2 = first-position editable **`Project #`** input + live duplicate warning via `projects.select('id, name').eq('project_number', trimmed).neq('id', projectId).limit(1)` + `payload.project_number = projectNumber.trim()`), **[`Projects.tsx`](../src/pages/Projects.tsx)** (inline muted label next to the project-name `<Link>`), **[`Workflow.tsx`](../src/pages/Workflow.tsx)** (chip text `Project #N · {name}` with `Project: {name}` fallback), **[`Dashboard.tsx`](../src/pages/Dashboard.tsx)** (`SubscribedStep` type extended with `project_number: string | null`, projects loader select widened to `'id, name, project_number'`, in-memory `projectMap` carries `{ name, project_number }`, JSX renders `{formatProjectNumberLabel(sub.project_number) ?? 'Project'}: {sub.project_name}`). Unchanged: `NewProjectForm.tsx` (INSERT omits `project_number`, trigger fills); other surfaces showing project names (Jobs Stages, DetailJobModal, Calendar, ForecastSpecific, People active projects) intentionally untouched. **`RECENT_FEATURES.md`** **v2.557**, **`GLOSSARY.md`** **Project Number**, **`PROJECT_DOCUMENTATION.md`** `public.projects` Key Fields. Applied via Supabase MCP `apply_migration` (local file timestamp predated the `20260519171140` dispatch-requests migration); `npm run gen-types:linked` confirms `project_number: string | null` on `Database['public']['Tables']['projects']['Row']`.
 - **Category**: Projects / schema / Sequence + Trigger
 
 **`20260519171140_dispatch_requests_pending_action.sql`**
 - **Purpose**: **Dashboard My Schedule → Dispatch task** flow. Adds a stable token to **`dispatch_requests`** that drives in-app action affordances on inbox rows. The first known value is **`'link_job_pictures'`** — *Add a Customer Pictures folder for a job*, surfaced as an **Add Customer Pictures URL** button on the dispatch inbox row that deep-links into **Edit Job** with the **Customer Pictures** input scrolled into view, focused, and flashed. Future tokens can extend the same UX without further schema changes.
 - **Changes**: **`ALTER TABLE public.dispatch_requests ADD COLUMN IF NOT EXISTS pending_action text NULL`** (nullable so plain text tasks keep working unchanged) + **`COMMENT ON COLUMN`** documenting the known token. **Partial index** **`dispatch_requests_pending_action_open_job_idx`** on **`(job_ledger_id, pending_action) WHERE pending_action IS NOT NULL AND status = 'open'`** so the per-job dedupe lookup (*do we already have an open `link_job_pictures` request for this job?*) costs a single index seek even as `dispatch_requests` grows. No RLS additions — existing row policies cover the new column. No RPCs.
-- **Impact**: **[`Dashboard.tsx`](src/pages/Dashboard.tsx)** (`submitLinkJobPicturesDispatchRequest` — dedupe SELECT → INSERT → fire `notify-dispatch-request` Edge → toast); **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** (`jobPicturesLinkHighlight` flag mirrors `fixturesSectionHighlight` pattern — scroll/focus/flash + auto-close `dispatch_requests` after URL save); **[`JobFormModalContext.tsx`](src/contexts/JobFormModalContext.tsx)** (`OpenEditJobOptions.jobPicturesLinkHighlight`); **[`DispatchInboxSection.tsx`](src/components/DispatchInboxSection.tsx)** + **[`useDispatchInbox.ts`](src/hooks/useDispatchInbox.ts)** (row type + select column list + `onLinkJobPictures?` prop + button render); wired from **[`Dashboard.tsx`](src/pages/Dashboard.tsx)**, **[`Quickfill.tsx`](src/pages/Quickfill.tsx)**, **[`ChecklistReviewInboxes.tsx`](src/components/checklist/ChecklistReviewInboxes.tsx)** (all three `DispatchInboxSection` mounts). Edge **`notify-dispatch-request`** unchanged (already tolerates empty `links[]`). **`RECENT_FEATURES.md`** **v2.556**, **`GLOSSARY.md`** **Link Customer Pictures dispatch action**. Applied via Supabase MCP `apply_migration` (local file timestamp predated existing remote migrations); `npm run gen-types:linked` after apply.
+- **Impact**: **[`Dashboard.tsx`](../src/pages/Dashboard.tsx)** (`submitLinkJobPicturesDispatchRequest` — dedupe SELECT → INSERT → fire `notify-dispatch-request` Edge → toast); **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)** (`jobPicturesLinkHighlight` flag mirrors `fixturesSectionHighlight` pattern — scroll/focus/flash + auto-close `dispatch_requests` after URL save); **[`JobFormModalContext.tsx`](../src/contexts/JobFormModalContext.tsx)** (`OpenEditJobOptions.jobPicturesLinkHighlight`); **[`DispatchInboxSection.tsx`](../src/components/DispatchInboxSection.tsx)** + **[`useDispatchInbox.ts`](../src/hooks/useDispatchInbox.ts)** (row type + select column list + `onLinkJobPictures?` prop + button render); wired from **[`Dashboard.tsx`](../src/pages/Dashboard.tsx)**, **[`Quickfill.tsx`](../src/pages/Quickfill.tsx)**, **[`ChecklistReviewInboxes.tsx`](../src/components/checklist/ChecklistReviewInboxes.tsx)** (all three `DispatchInboxSection` mounts). Edge **`notify-dispatch-request`** unchanged (already tolerates empty `links[]`). **`RECENT_FEATURES.md`** **v2.556**, **`GLOSSARY.md`** **Link Customer Pictures dispatch action**. Applied via Supabase MCP `apply_migration` (local file timestamp predated existing remote migrations); `npm run gen-types:linked` after apply.
 - **Category**: Dashboard / Dispatch / schema
 
 #### May 16, 2026
@@ -164,7 +164,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260516162434_drop_crew_lead_inheritance_from_sync_rpcs.sql`**
 - **Purpose**: Drop the "skip if **`crew_lead_person_name`** is set" branch from **`sync_crew_jobs_from_clock(p_person_name text, p_work_date date)`** and **`sync_crew_bids_from_clock(p_person_name text, p_work_date date)`**. Both RPCs now always recompute `job_assignments` / `bid_assignments` from approved closed **`clock_sessions`** for that (person, date) and force **`crew_lead_person_name = NULL`** on every `INSERT` / `ON CONFLICT DO UPDATE`. Pairs with **`20260516154601_freeze_crew_lead_inheritance.sql`** (data freeze) to fully retire the inherit-from-crew-lead feature.
 - **Changes**: `CREATE OR REPLACE FUNCTION` for both; removed `v_crew_lead` declaration, `SELECT crew_lead_person_name INTO …` lookup, and the `IF v_crew_lead IS NOT NULL THEN RETURN; END IF;` early-exit; `INSERT … VALUES (…, NULL, v_assignments, v_person_id)` and `ON CONFLICT … DO UPDATE SET crew_lead_person_name = NULL, job_assignments = EXCLUDED.job_assignments, person_id = COALESCE(public.people_crew_jobs.person_id, EXCLUDED.person_id)` (mirror for bids). `COMMENT ON FUNCTION …` records the deprecation. **`approve_clock_sessions`** / **`revoke_clock_sessions`** call these RPCs unchanged.
-- **Impact**: **[`CrewJobsBlock.tsx`](src/components/CrewJobsBlock.tsx)** (Crew column / picker removed), **[`peopleHoursUnallocatedRows.ts`](src/lib/peopleHoursUnallocatedRows.ts)**, **[`payReportAssignmentsBreakdown.ts`](src/lib/payReportAssignmentsBreakdown.ts)**, **[`draftPayrollPersonBreakdown.ts`](src/lib/draftPayrollPersonBreakdown.ts)**, **[`crewAssignments.ts`](src/utils/crewAssignments.ts)**, **[`teamLabor.ts`](src/utils/teamLabor.ts)**, **[`HoursUnassignedModal.tsx`](src/components/HoursUnassignedModal.tsx)**, **[`PeopleHoursDayAuditModal.tsx`](src/components/PeopleHoursDayAuditModal.tsx)**, **[`QuickfillUnassignedFieldTimeSection.tsx`](src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx)**, **[`HoursSection.tsx`](src/components/quickfill/HoursSection.tsx)**, **[`People.tsx`](src/pages/People.tsx)**, **[`Jobs.tsx`](src/pages/Jobs.tsx)** — all now read `row.job_assignments ?? []` directly. **`RECENT_FEATURES.md`** **v2.538**, **`GLOSSARY.md`** **Crew lead inheritance (deprecated)**, **`PROJECT_DOCUMENTATION.md`** People **Team Costs Tab**. `npm run gen-types:linked` ran after apply to refresh `src/types/database.ts` with the new function bodies. Applied via Supabase MCP `apply_migration` + `supabase migration repair --status applied 20260516162434 --linked` because the local file timestamp landed before existing remote migrations.
+- **Impact**: **[`CrewJobsBlock.tsx`](../src/components/CrewJobsBlock.tsx)** (Crew column / picker removed), **[`peopleHoursUnallocatedRows.ts`](../src/lib/peopleHoursUnallocatedRows.ts)**, **[`payReportAssignmentsBreakdown.ts`](../src/lib/payReportAssignmentsBreakdown.ts)**, **[`draftPayrollPersonBreakdown.ts`](../src/lib/draftPayrollPersonBreakdown.ts)**, **[`crewAssignments.ts`](../src/utils/crewAssignments.ts)**, **[`teamLabor.ts`](../src/utils/teamLabor.ts)**, **[`HoursUnassignedModal.tsx`](../src/components/HoursUnassignedModal.tsx)**, **[`PeopleHoursDayAuditModal.tsx`](../src/components/PeopleHoursDayAuditModal.tsx)**, **[`QuickfillUnassignedFieldTimeSection.tsx`](../src/components/quickfill/QuickfillUnassignedFieldTimeSection.tsx)**, **[`HoursSection.tsx`](../src/components/quickfill/HoursSection.tsx)**, **[`People.tsx`](../src/pages/People.tsx)**, **[`Jobs.tsx`](../src/pages/Jobs.tsx)** — all now read `row.job_assignments ?? []` directly. **`RECENT_FEATURES.md`** **v2.538**, **`GLOSSARY.md`** **Crew lead inheritance (deprecated)**, **`PROJECT_DOCUMENTATION.md`** People **Team Costs Tab**. `npm run gen-types:linked` ran after apply to refresh `src/types/database.ts` with the new function bodies. Applied via Supabase MCP `apply_migration` + `supabase migration repair --status applied 20260516162434 --linked` because the local file timestamp landed before existing remote migrations.
 - **Category**: People / Crew Jobs / RPC
 
 **`20260516154601_freeze_crew_lead_inheritance.sql`**
@@ -178,7 +178,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260515233801_pay_staff_remove_not_coming_in_for_user_day.sql`**
 - **Purpose**: **`pay_staff_remove_not_coming_in_for_user_day(p_user_id uuid, p_work_date date)`** — **`SECURITY DEFINER`** RPC for the **Schedule Dispatch** *Undo Not coming in* flow. Symmetric to **`pay_staff_bulk_insert_user_time_off`** with the **same authz gate** (`is_dev` / `is_pay_approved_master` / `is_assistant_of_pay_approved_master` / `is_assistant`) and **per-target check** (`salary_schedule_staff_or_self_target`).
 - **Changes**: Tightly scoped DELETE — only rows where `user_id = p_user_id AND start_date = p_work_date AND end_date = p_work_date AND kind = 'unpaid' AND note = 'Not coming in'` (so PTO and other variants are intentionally untouchable through this path). After delete, runs `sync_salary_clock_sessions_for_user_day(p_user_id, p_work_date)` when `p_work_date = (timezone('America/Denver', now()))::date` so any salary session that was hidden by the time-off entry comes back. Returns JSONB `{ ok, deleted, sync_warning? }` on success / `{ ok:false, message }` on bad args. `REVOKE ALL FROM PUBLIC; GRANT EXECUTE TO authenticated, service_role`.
-- **Impact**: **[`ScheduleDispatchUndoNotComingInModal.tsx`](src/components/schedule/ScheduleDispatchUndoNotComingInModal.tsx)** + **[`removeNotComingInForUserAsStaff`](src/lib/notComingInTimeOff.ts)** + cell-chip click in **[`ScheduleDispatchHubPage.tsx`](src/components/schedule/ScheduleDispatchHubPage.tsx)** / **[`ScheduleDispatchJobWeek.tsx`](src/components/schedule/ScheduleDispatchJobWeek.tsx)**. Table-level RLS DELETE policy on `user_time_off` stays self-only — staff use this RPC, never a direct delete. **`RECENT_FEATURES.md`** **v2.535**. `npm run gen-types:linked` after apply.
+- **Impact**: **[`ScheduleDispatchUndoNotComingInModal.tsx`](../src/components/schedule/ScheduleDispatchUndoNotComingInModal.tsx)** + **[`removeNotComingInForUserAsStaff`](../src/lib/notComingInTimeOff.ts)** + cell-chip click in **[`ScheduleDispatchHubPage.tsx`](../src/components/schedule/ScheduleDispatchHubPage.tsx)** / **[`ScheduleDispatchJobWeek.tsx`](../src/components/schedule/ScheduleDispatchJobWeek.tsx)**. Table-level RLS DELETE policy on `user_time_off` stays self-only — staff use this RPC, never a direct delete. **`RECENT_FEATURES.md`** **v2.535**. `npm run gen-types:linked` after apply.
 - **Category**: Schedule Dispatch / People / Time off / SECURITY DEFINER RPCs
 
 **`20260515102040_bid_estimators_tab.sql`**
@@ -186,82 +186,82 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
   - **`bid_estimators_extra_users(user_id PK → public.users, added_at, added_by)`** — org-wide augmentation list for the estimators column set. RLS: authenticated read; **dev / master_technician / assistant** insert/delete (inline role check, not `is_dev_or_master_or_assistant()` which now also matches `primary`).
   - **`list_bid_estimators_window_hours(p_user_ids UUID[], p_start_date DATE, p_end_date DATE)`** **SECURITY DEFINER STABLE** → `(user_id, bid_id, work_date, hours NUMERIC)` per-day decimal hours per (user, bid). Filters: **`bid_id IS NOT NULL`**, **`rejected_at IS NULL`**, **`revoked_at IS NULL`**, window-bounded, clamped `COALESCE(clocked_out_at, now())`.
   - **`list_bid_estimators_all_time_hours(p_bid_ids UUID[])`** **SECURITY DEFINER STABLE** → `(bid_id, hours NUMERIC)` lifetime team clock hours per bid (denominator for the per-day cell percentages). Same session filter semantics.
-- **Impact**: **[`BidsEstimatorsTab.tsx`](src/components/bids/BidsEstimatorsTab.tsx)** + **[`BidsEstimatorsExtraUsersModal.tsx`](src/components/bids/BidsEstimatorsExtraUsersModal.tsx)**; pure helpers **[`bidEstimatorsTab.ts`](src/lib/bidEstimatorsTab.ts)** (14 tests). **[`Bids.tsx`](src/pages/Bids.tsx)** wires the tab right of **Bid Costs** in all four primary-tab layout branches. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.531**. `npm run gen-types:linked` after apply.
+- **Impact**: **[`BidsEstimatorsTab.tsx`](../src/components/bids/BidsEstimatorsTab.tsx)** + **[`BidsEstimatorsExtraUsersModal.tsx`](../src/components/bids/BidsEstimatorsExtraUsersModal.tsx)**; pure helpers **[`bidEstimatorsTab.ts`](../src/lib/bidEstimatorsTab.ts)** (14 tests). **[`Bids.tsx`](../src/pages/Bids.tsx)** wires the tab right of **Bid Costs** in all four primary-tab layout branches. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.531**. `npm run gen-types:linked` after apply.
 - **Category**: Bids / Pivot / RLS / SECURITY DEFINER RPCs
 
 #### May 11, 2026
 
 **`20260511015410_bids_working_board_archive.sql`**
 - **Purpose**: **`bids.working_board_archived_at`** / **`working_board_archived_by`** (soft-hide from Unsent/Working UI and clock quick picks; **`bid_working_board_placements`** unchanged). **`BEFORE INSERT OR UPDATE`** trigger clears archive when **`bid_date_sent`** is set or **`outcome`** is **`won`/`lost`/`started_or_complete`**. Partial index on **`working_board_archived_at`** where not null.
-- **Impact**: **[`Bids.tsx`](src/pages/Bids.tsx)**, **[`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx)**, **[`BidFormModal.tsx`](src/components/bids/BidFormModal.tsx)** (**Archive from board** footer — **`RECENT_FEATURES.md`** **v2.518**), **[`BidWorkingBoardArchivedModal.tsx`](src/components/bids/BidWorkingBoardArchivedModal.tsx)**, **[`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts)**; **`BIDS_SYSTEM.md`**, **`RECENT_FEATURES.md`** **v2.517** / **v2.518**. **`npm run gen-types:linked`** after **`db push`** (or sync **`database.ts`**).
+- **Impact**: **[`Bids.tsx`](../src/pages/Bids.tsx)**, **[`BidsWorkingBoard.tsx`](../src/components/bids/BidsWorkingBoard.tsx)**, **[`BidFormModal.tsx`](../src/components/bids/BidFormModal.tsx)** (**Archive from board** footer — **`RECENT_FEATURES.md`** **v2.518**), **[`BidWorkingBoardArchivedModal.tsx`](../src/components/bids/BidWorkingBoardArchivedModal.tsx)**, **[`fetchWorkingBoardClockBidPicks.ts`](../src/lib/fetchWorkingBoardClockBidPicks.ts)**; **`BIDS_SYSTEM.md`**, **`RECENT_FEATURES.md`** **v2.517** / **v2.518**. **`npm run gen-types:linked`** after **`db push`** (or sync **`database.ts`**).
 - **Category**: Bids / schema
 
 **`20260511012922_split_job_ledger_fixtures_to_new_job.sql`**
 - **Purpose**: **`split_job_ledger_fixtures_to_new_job`** — **`SECURITY DEFINER`**, source **working** only; no invoices/payments/collect flow; validates fixture + session IDs; **cannot** move **all** fixtures; revenue for moved lines matches app extended Specific Work math; **`INSERT`** new **`jobs_ledger`**, **`UPDATE`** fixtures + optional **`clock_sessions`**, subtract revenue from source, copy **`jobs_ledger_team_members`**; **`GRANT EXECUTE`** **`authenticated`** on full signature (incl. default **`p_clock_session_ids`**).
-- **Impact**: **[`JobsCombineSeparateModal.tsx`](src/components/jobs/JobsCombineSeparateModal.tsx)**, **[`Jobs.tsx`](src/pages/Jobs.tsx)** — Stages **Combine / Separate** control at the **right** end of the toolbar row (**`RECENT_FEATURES.md`** **v2.516**). **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: **[`JobsCombineSeparateModal.tsx`](../src/components/jobs/JobsCombineSeparateModal.tsx)**, **[`Jobs.tsx`](../src/pages/Jobs.tsx)** — Stages **Combine / Separate** control at the **right** end of the toolbar row (**`RECENT_FEATURES.md`** **v2.516**). **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Jobs / Billing / RPC
 
 **`20260511011751_migrate_job_ledger_merge_target_revenue.sql`**
 - **Purpose**: **`migrate_job_ledger_costs_and_delete`** — same repoint/merge/delete behavior as **`20270425120000`**, plus **`UPDATE`** target **`jobs_ledger.revenue`** **`+=`** source **`revenue`** (**`COALESCE`** both to 0) after team-member cleanup and before **`DELETE`** source **`jobs_ledger`**. **`COMMENT ON FUNCTION`** notes revenue merge.
-- **Impact**: **[`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx)** migrate dialog + toast (**`RECENT_FEATURES.md`** **v2.515**). No RPC signature change; **`npm run gen-types:linked`** not required.
+- **Impact**: **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)** migrate dialog + toast (**`RECENT_FEATURES.md`** **v2.515**). No RPC signature change; **`npm run gen-types:linked`** not required.
 - **Category**: Jobs / Billing / RPC
 
 #### May 10, 2026
 
 **`20260510215603_quickfill_office_arriving_daily_checks.sql`**
 - **Purpose**: **`quickfill_office_arriving_daily_checks`** — **PK** **`(item_id text, work_date)`**, **`checked_at`**, **`checked_by`** (default **`auth.uid()`** → **`users`**). **RLS**: **SELECT**/**INSERT**/**DELETE** for **`is_dev_or_master_or_assistant()`**; **INSERT** **`WITH CHECK`** **`checked_by = auth.uid()`**. **`supabase_realtime`** publication on the table. **`app_settings`**: replaces **`authenticated_update_quickfill_office_arriving_leaving_done`** with **`authenticated_update_quickfill_office_leaving_done`** (**`UPDATE`** only **`key = 'quickfill_office_leaving_done'`**; legacy **`quickfill_office_arriving_done`** row not client-updated).
-- **Impact**: **[`QuickfillOfficeSection.tsx`](src/components/quickfill/QuickfillOfficeSection.tsx)** — **Office Arriving** uses daily checks + **Realtime**; **Office Leaving** still JSON. **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: **[`QuickfillOfficeSection.tsx`](../src/components/quickfill/QuickfillOfficeSection.tsx)** — **Office Arriving** uses daily checks + **Realtime**; **Office Leaving** still JSON. **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Quickfill / RLS / Realtime
 
 **`20260510215023_quickfill_difficult_people_daily_checks.sql`**
 - **Purpose**: **`quickfill_difficult_people_daily_checks`** — **PK** **`(item_id, work_date)`**, **`checked_at`**, **`checked_by`** (default **`auth.uid()`**). **RLS**: **SELECT**/**INSERT**/**DELETE** for **`is_dev_or_master_or_assistant()`**; **INSERT** **`WITH CHECK`** **`checked_by = auth.uid()`**. **Removes** from **`quickfill_difficult_people_items`**: **`completed_at`**, **`completed_by`**, completion **CHECK**, partial index, **`quickfill_difficult_people_items_non_dev_update_guard`** trigger/function; **UPDATE** on items **dev-only** (**`quickfill_difficult_people_items_update_dev`** replaces staff update policy).
-- **Impact**: **[`QuickfillDifficultPeopleSection.tsx`](src/components/quickfill/QuickfillDifficultPeopleSection.tsx)** — per–company-day checkboxes (**`denverCalendarDayKey`**); **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: **[`QuickfillDifficultPeopleSection.tsx`](../src/components/quickfill/QuickfillDifficultPeopleSection.tsx)** — per–company-day checkboxes (**`denverCalendarDayKey`**); **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Quickfill / People / RLS
 
 **`20260510213434_quickfill_difficult_people_items.sql`**
 - **Purpose**: **`quickfill_difficult_people_items`** — org-wide Quickfill follow-ups (**`person_id`** → **`people`**, **`action_text`**, **`reason_text`**, **`created_by`**). *(Initial release added **`completed_*`** + non-dev completion trigger; those are **dropped** by **`20260510215023`** in favor of **`quickfill_difficult_people_daily_checks`**.)* **RLS**: **SELECT** **`is_dev_or_master_or_assistant()`**; **INSERT**/**DELETE** **`is_dev()`**; **UPDATE** **dev-only** after **`20260510215023`**.
-- **Impact**: **[`QuickfillDifficultPeopleSection.tsx`](src/components/quickfill/QuickfillDifficultPeopleSection.tsx)**, **[`Quickfill.tsx`](src/pages/Quickfill.tsx)** **`difficult-people`** **`section_id`**; **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: **[`QuickfillDifficultPeopleSection.tsx`](../src/components/quickfill/QuickfillDifficultPeopleSection.tsx)**, **[`Quickfill.tsx`](../src/pages/Quickfill.tsx)** **`difficult-people`** **`section_id`**; **`ACCESS_CONTROL.md`**, **`RECENT_FEATURES.md`**. **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Quickfill / People / RLS
 
 #### May 5, 2026
 
 **`20260505231245_list_mercury_drag_sort_label_assignment_counts.sql`**
 - **Purpose**: Banking **Mercury** **Accounting** — **`list_mercury_drag_sort_label_assignment_counts()`** returns **`label_id`** + **`assignment_count`** from **`mercury_transaction_drag_sort_assignments`** (**`GROUP BY label_id`**). **`SECURITY INVOKER`** + assignments **SELECT RLS** (banking staff). Labels with zero assignments omit from result (UI treats missing as **0**).
-- **Impact**: [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx); [`AccountingRuleFormModal.tsx`](src/components/banking/AccountingRuleFormModal.tsx) (**SearchableSelect** ordering). **`npm run gen-types:linked`** after **`db push`** if typings regenerated from remote.
+- **Impact**: [`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx); [`AccountingRuleFormModal.tsx`](../src/components/banking/AccountingRuleFormModal.tsx) (**SearchableSelect** ordering). **`npm run gen-types:linked`** after **`db push`** if typings regenerated from remote.
 - **Category**: Banking / Mercury / RPC
 
 #### May 4, 2026
 
 **`20260504040116_bulk_accounting_label_suggestions_rpcs.sql`**
 - **Purpose**: Banking **Mercury** **Accounting** — **`bulk_approve_accounting_label_suggestions(p_items jsonb)`** (atomic upsert **`mercury_transaction_drag_sort_assignments`** + approve rows in **`mercury_accounting_label_suggestions`**, max **500** per call, banking-staff guard); **`bulk_insert_accounting_label_suggestions(p_rows jsonb)`** (bulk **`pending`** inserts with **`ON CONFLICT … WHERE (status = 'pending') DO NOTHING`**, max **2000** per call). **`SECURITY DEFINER`**, **`SET search_path = public`**, **`GRANT EXECUTE`** **`authenticated`** + **`service_role`**.
-- **Impact**: [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx) **Apply rules** / **Approve all** use RPCs + **`withSupabaseRetry`**; chunking on client when over cap. **`src/types/database.ts`** RPC typings after apply (**`npm run gen-types:linked`** preferred).
+- **Impact**: [`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx) **Apply rules** / **Approve all** use RPCs + **`withSupabaseRetry`**; chunking on client when over cap. **`src/types/database.ts`** RPC typings after apply (**`npm run gen-types:linked`** preferred).
 - **Category**: Banking / Mercury / RPC
 
 **`20260504011219_mercury_accounting_label_rules_and_suggestions.sql`**
 - **Purpose**: Banking **Mercury** **Accounting** tab — **`mercury_accounting_label_rules`** (named rules, **`label_id`** → **`mercury_drag_sort_labels`**, **`enabled`**, **`sort_order`**, **`criteria` jsonb** default **`{"v":1}`**, **`created_by`**); **`mercury_accounting_label_suggestions`** (queue: **`mercury_transaction_id`**, **`rule_id`**, **`suggested_label_id`**, **`status`** **`pending`/`approved`/`rejected`**, **`final_label_id`**, **`resolved_at`**, **`resolved_by`**). **Partial UNIQUE** one **`pending`** row per transaction; **`updated_at`** trigger on rules. **RLS**: banking staff **`dev`**, **`master_technician`**, **`assistant`** (same EXISTS pattern as Drag Sort org-wide tables).
-- **Impact**: [`BankingMercuryAccountingTab.tsx`](src/components/banking/BankingMercuryAccountingTab.tsx); [`accountingLabelRuleMatch.ts`](src/lib/accountingLabelRuleMatch.ts) (**`resolveAccountingRuleAmountBounds`** — inclusive amount interval, **Min**/**Max** order normalization for **Test** / **Apply**; `accountingLabelRuleMatch.test.ts`; **`RECENT_FEATURES.md`** **v2.486**); [`Banking.tsx`](src/pages/Banking.tsx) **`?tab=accounting`**; [`bankingDragSortStorage.ts`](src/lib/bankingDragSortStorage.ts) per-tab hide-labeled key; shared ledger [`bankingMercuryDragSortLedger.tsx`](src/components/banking/bankingMercuryDragSortLedger.tsx). **`npm run gen-types:linked`** after **`db push`**.
+- **Impact**: [`BankingMercuryAccountingTab.tsx`](../src/components/banking/BankingMercuryAccountingTab.tsx); [`accountingLabelRuleMatch.ts`](../src/lib/accountingLabelRuleMatch.ts) (**`resolveAccountingRuleAmountBounds`** — inclusive amount interval, **Min**/**Max** order normalization for **Test** / **Apply**; `accountingLabelRuleMatch.test.ts`; **`RECENT_FEATURES.md`** **v2.486**); [`Banking.tsx`](../src/pages/Banking.tsx) **`?tab=accounting`**; [`bankingDragSortStorage.ts`](../src/lib/bankingDragSortStorage.ts) per-tab hide-labeled key; shared ledger [`bankingMercuryDragSortLedger.tsx`](../src/components/banking/bankingMercuryDragSortLedger.tsx). **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Banking / Mercury / RLS
 
 #### May 2, 2026
 
 **`20260502232908_mercury_transaction_org_notes.sql`**
 - **Purpose**: Banking **Notes** panel — **organization-wide** scratch note per **`mercury_transactions`** row (**`mercury_transaction_org_notes`**, PK **`mercury_transaction_id`**, **`body`** ≤ **2000**, **`updated_by`**). **RLS** **SELECT** for **`dev`**, **`master_technician`**, **`assistant`**; **INSERT/UPDATE/DELETE** policies defined but **revoked** from **`authenticated`** on the table (writes via **`upsert_mercury_org_transaction_note`** **`SECURITY DEFINER`**, same role gate; empty body deletes).
-- **Impact**: [`MercuryTxNotesDisclosure.tsx`](src/components/banking/MercuryTxNotesDisclosure.tsx) (**Team note**); [`Banking.tsx`](src/pages/Banking.tsx); [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); [`useMercuryOrgNotesByTxId.ts`](src/hooks/useMercuryOrgNotesByTxId.ts); [`bankingMercuryNotesSubRowColSpan.ts`](src/lib/bankingMercuryNotesSubRowColSpan.ts) (`bankingMercuryNotesSubRowColSpan.test.ts`); **`npm run gen-types:linked`** after **`db push`**. **UI** (`RECENT_FEATURES.md` → **v2.475**–**v2.480**): **Edit note** under **Amount**; default **read-only preview** (**v2.476**–**v2.477**); editor polish (**v2.478**); **notes-band grouping** + tight spacing + optional **Drag Sort** **bank \| note** preview (**v2.479**); **Counterparty**-aligned notes sub-row (**spacer `colSpan`** + content cell, symmetric inner padding — **v2.480**); no **Notes** column (**v2.475**).
+- **Impact**: [`MercuryTxNotesDisclosure.tsx`](../src/components/banking/MercuryTxNotesDisclosure.tsx) (**Team note**); [`Banking.tsx`](../src/pages/Banking.tsx); [`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx); [`useMercuryOrgNotesByTxId.ts`](../src/hooks/useMercuryOrgNotesByTxId.ts); [`bankingMercuryNotesSubRowColSpan.ts`](../src/lib/bankingMercuryNotesSubRowColSpan.ts) (`bankingMercuryNotesSubRowColSpan.test.ts`); **`npm run gen-types:linked`** after **`db push`**. **UI** (`RECENT_FEATURES.md` → **v2.475**–**v2.480**): **Edit note** under **Amount**; default **read-only preview** (**v2.476**–**v2.477**); editor polish (**v2.478**); **notes-band grouping** + tight spacing + optional **Drag Sort** **bank \| note** preview (**v2.479**); **Counterparty**-aligned notes sub-row (**spacer `colSpan`** + content cell, symmetric inner padding — **v2.480**); no **Notes** column (**v2.475**).
 - **Category**: Banking / Mercury / RLS / RPC
 
 **`20260502224616_mercury_drag_sort_org_wide_labels.sql`**
 - **Purpose**: Banking **Drag Sort** — **org-wide** labels and assignments: merge duplicate **`mercury_drag_sort_labels`** (by **`default_key`** for built-ins, by **`lower(trim(name))`** for custom) and duplicate **`mercury_transaction_drag_sort_assignments`** (latest **`assigned_at`** wins per transaction); drop **`user_id`** from labels and assignments; PK **`mercury_transaction_id`** only on assignments; partial **UNIQUE** **`(default_key)`** on labels; RLS for banking staff **without** per-row **`auth.uid()`** ownership; update built-in guard trigger (no **`user_id`**).
-- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx), [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts), [`src/types/database.ts`](src/types/database.ts); **`ACCESS_CONTROL.md`**, **`GLOSSARY.md`**, **`PROJECT_DOCUMENTATION.md`**, **`AI_CONTEXT.md`**. Drops index **`20260502205309_mercury_drag_sort_assignments_user_tx_idx`** (obsolete).
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx), [`dragSortDefaultLabels.ts`](../src/lib/dragSortDefaultLabels.ts), [`src/types/database.ts`](../src/types/database.ts); **`ACCESS_CONTROL.md`**, **`GLOSSARY.md`**, **`PROJECT_DOCUMENTATION.md`**, **`AI_CONTEXT.md`**. Drops index **`20260502205309_mercury_drag_sort_assignments_user_tx_idx`** (obsolete).
 - **Category**: Banking / Mercury / RLS
 
 **`20260502225320_mercury_drag_sort_default_key_unique_not_partial.sql`**
 - **Purpose**: Replace **partial** **`UNIQUE (default_key) WHERE default_key IS NOT NULL`** on **`mercury_drag_sort_labels`** with a **full** unique index on **`default_key`**. PostgREST **upsert** emits **`ON CONFLICT (default_key)`** without the partial predicate, so Postgres could not use **`20260502224616`**’s index — client **`ensureDragSortDefaultLabels`** failed and **`BankingMercuryDragSortTab`** cleared the list. Non-null duplicates still forbidden; multiple **`NULL`** **`default_key`** (custom labels) remain valid. Idempotent **INSERT** of built-in rows **`ON CONFLICT (default_key) DO NOTHING`** for orgs that ended up empty.
-- **Impact**: [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts) (still **`onConflict: 'default_key'`**); [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx). **`src/types/database.ts`** usually unchanged.
+- **Impact**: [`dragSortDefaultLabels.ts`](../src/lib/dragSortDefaultLabels.ts) (still **`onConflict: 'default_key'`**); [`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx). **`src/types/database.ts`** usually unchanged.
 - **Category**: Banking / Mercury (index + seed)
 
 **`20260502202929_rename_drag_sort_rent_lease_builtin_names.sql`**
 - **Purpose**: Banking **Drag Sort** — rename two built-in **`default_key`** rows that shared **"Rent or Lease"**: **`rent_lease_20a`** → **Equipment Lease**, **`rent_lease_20b`** → **Property Lease**. Temporarily disables **`mercury_drag_sort_labels_guard_system_fields_trg`** for the **UPDATE** only.
-- **Impact**: [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts) (seed catalog match); **`RECENT_FEATURES.md`** **v2.473**
+- **Impact**: [`dragSortDefaultLabels.ts`](../src/lib/dragSortDefaultLabels.ts) (seed catalog match); **`RECENT_FEATURES.md`** **v2.473**
 - **Category**: Banking / Mercury (data)
 
 **`20260502205309_mercury_drag_sort_assignments_user_tx_idx.sql`**
@@ -270,18 +270,18 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Banking / Mercury (index)
 
 **`20260502193138_mercury_drag_sort_label_system_defaults.sql`**
-- **Purpose**: Banking **Drag Sort** — **`is_system_default`** + **`default_key`** on **`mercury_drag_sort_labels`**; **UNIQUE** **`(user_id, default_key)`** for idempotent built-in labels; **trigger** blocks edits to name / line / description on built-ins. App seeds **Schedule C–style** defaults per user via [`dragSortDefaultLabels.ts`](src/lib/dragSortDefaultLabels.ts).
-- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); **`npm run gen-types:linked`** after **`db push`**
+- **Purpose**: Banking **Drag Sort** — **`is_system_default`** + **`default_key`** on **`mercury_drag_sort_labels`**; **UNIQUE** **`(user_id, default_key)`** for idempotent built-in labels; **trigger** blocks edits to name / line / description on built-ins. App seeds **Schedule C–style** defaults per user via [`dragSortDefaultLabels.ts`](../src/lib/dragSortDefaultLabels.ts).
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx); **`npm run gen-types:linked`** after **`db push`**
 - **Category**: Banking / Mercury
 
 **`20260502191955_mercury_drag_sort_labels_schedule_c.sql`**
 - **Purpose**: Banking **Drag Sort** — add **`schedule_c_line`** (optional short text, max **32**) and **`description`** (optional, max **2000**) on **`mercury_drag_sort_labels`**. **RLS** unchanged.
-- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); **`npm run gen-types:linked`** after **`db push`**
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx); **`npm run gen-types:linked`** after **`db push`**
 - **Category**: Banking / Mercury
 
 **`20260502183057_mercury_drag_sort_labels.sql`**
 - **Purpose**: Banking **Mercury** **Drag Sort** tab — **`mercury_drag_sort_labels`** (per-user label names + **`sort_order`**) and **`mercury_transaction_drag_sort_assignments`** (composite PK **`(mercury_transaction_id, user_id)`**, FK to label; **ON DELETE CASCADE** from **`mercury_transactions`** and labels). **RLS**: **SELECT/INSERT/UPDATE/DELETE** for **`authenticated`** when **`user_id = auth.uid()`** and **`users.role`** ∈ **`dev`**, **`master_technician`**, **`assistant`** (same gate as other Banking staff mutations).
-- **Impact**: [`BankingMercuryDragSortTab.tsx`](src/components/banking/BankingMercuryDragSortTab.tsx); [`Banking.tsx`](src/pages/Banking.tsx) **`?tab=drag_sort`**; **`RECENT_FEATURES.md`** **v2.467**; **`PROJECT_DOCUMENTATION.md`** §15; **`ACCESS_CONTROL.md`** Banking row; **`npm run gen-types:linked`** after **`db push`**
+- **Impact**: [`BankingMercuryDragSortTab.tsx`](../src/components/banking/BankingMercuryDragSortTab.tsx); [`Banking.tsx`](../src/pages/Banking.tsx) **`?tab=drag_sort`**; **`RECENT_FEATURES.md`** **v2.467**; **`PROJECT_DOCUMENTATION.md`** §15; **`ACCESS_CONTROL.md`** Banking row; **`npm run gen-types:linked`** after **`db push`**
 - **Category**: Banking / Mercury / RLS
 
 **`20260502070926_contract_tables_assistant_no_delete.sql`**
@@ -299,7 +299,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **`20260501030427_remove_jobs_ledger_payment_and_reconcile.sql`**
 - **Purpose**: **`remove_jobs_ledger_payment_and_reconcile(p_payment_id uuid)`** — `SECURITY DEFINER` RPC deletes one **`jobs_ledger_payments`** row, recomputes **`jobs_ledger.payments_made`**, reconciles **`jobs_ledger_invoices`** **`paid`/`billed`** from remaining invoice-linked amounts (ε **`0.0001`**), may move **`jobs_ledger`** **`paid`→`billed`** via **`update_job_status`** when revenue exceeds payments; **rejects** payments tied to **Stripe-hosted** invoices (**`stripe_invoice_id`** non-empty). Roles: **`dev`**, **`master_technician`**, **`assistant`**, **`primary`** with same job-access pattern as other billing RPCs. Frees Mercury allocation capacity when the row had **`mercury_transaction_id`**.
-- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **Unlink and remove** (Mercury) + persisted non-Stripe manual removal path; **`RECENT_FEATURES.md`** **v2.436**; **`npm run gen-types:linked`** picks up **`remove_jobs_ledger_payment_and_reconcile`** in **`src/types/database.ts`** once linked schema includes this migration.
+- **Impact**: [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) **Unlink and remove** (Mercury) + persisted non-Stripe manual removal path; **`RECENT_FEATURES.md`** **v2.436**; **`npm run gen-types:linked`** picks up **`remove_jobs_ledger_payment_and_reconcile`** in **`src/types/database.ts`** once linked schema includes this migration.
 - **Category**: Jobs / Billing / RPC
 
 ### April 2026
@@ -308,52 +308,52 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 **`20260430213314_estimates_accept_notify_user_ids.sql`**
 - **Purpose**: **`estimates.accept_notify_user_ids`** (`uuid[]`, nullable) — staff to email after **`sent` → `customer_accepted`** (Edge **`accept-estimate`** + **`estimate_accept_notify_filter_eligible_user_ids`**); draft-editable only; post-accept frozen with other estimate fields per **`estimates_protect_after_accept`**.
-- **Impact**: [`Estimates.tsx`](src/pages/Estimates.tsx) **Email when customer accepts**; [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) **accept-estimate**; **`PROJECT_DOCUMENTATION.md`** (Estimates); **`RECENT_FEATURES.md`** **v2.434** (UI: notify me + searchable **Also notify**, role-grouped options, default **`NULL`** → self + all **`master_technician`** on load).
+- **Impact**: [`Estimates.tsx`](../src/pages/Estimates.tsx) **Email when customer accepts**; [`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md) **accept-estimate**; **`PROJECT_DOCUMENTATION.md`** (Estimates); **`RECENT_FEATURES.md`** **v2.434** (UI: notify me + searchable **Also notify**, role-grouped options, default **`NULL`** → self + all **`master_technician`** on load).
 - **Category**: Estimates / Email / RLS
 
 **`20260430205318_search_jobs_ledger_service_type_name.sql`**
 - **Purpose**: **`search_jobs_ledger`** **`RETURNS TABLE`** adds **`service_type_name`** via **`LEFT JOIN public.service_types`** (canonical trade name for UI pills).
-- **Impact**: Unified job/bid search surfaces ([`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts), Clock In, Layout header search, strip assign, Dispatch/Estimator modals, People Hours audit); regenerate **`src/types/database.ts`**
+- **Impact**: Unified job/bid search surfaces ([`unifiedJobBidSearch.ts`](../src/utils/unifiedJobBidSearch.ts), Clock In, Layout header search, strip assign, Dispatch/Estimator modals, People Hours audit); regenerate **`src/types/database.ts`**
 - **Category**: Jobs / Search RPC
 
 **`20260430203800_restore_pct_complete_on_jobs_ledger_detail_rpcs.sql`**
 - **Purpose**: Restore **`pct_complete`** on **`get_jobs_ledger_by_ids`**, **`get_jobs_ledger_by_ids_paid_only`**, **`get_jobs_ledger_by_hcp_numbers`**, **`get_jobs_ledger_by_hcp_numbers_paid_only`** alongside **`service_type_id`** (regression fix after ledger-prefix RPC work).
-- **Impact**: [`People.tsx`](src/pages/People.tsx), job/bid label flows that use those RPCs; regenerate **`src/types/database.ts`**
+- **Impact**: [`People.tsx`](../src/pages/People.tsx), job/bid label flows that use those RPCs; regenerate **`src/types/database.ts`**
 - **Category**: Jobs / RPC
 
 **`20260430202750_crew_rpcs_service_type_id_for_ledger_prefixes.sql`**
 - **Purpose**: Add **`service_type_id`** to job/crew-related RPC result sets where needed for **trade-specific** ledger display prefixes.
-- **Impact**: Client formatters keyed by **`service_type_id`** ([`ledgerDisplayPrefixes.ts`](src/lib/ledgerDisplayPrefixes.ts)); stages/crew loads
+- **Impact**: Client formatters keyed by **`service_type_id`** ([`ledgerDisplayPrefixes.ts`](../src/lib/ledgerDisplayPrefixes.ts)); stages/crew loads
 - **Category**: Jobs / Bids / RPC
 
 **`20260430201832_service_types_ledger_display_prefixes.sql`**
 - **Purpose**: **`service_types.ledger_job_prefix`**, **`ledger_bid_prefix`** (nullable); backfill **Plumbing** `JP`/`BP`, **Electrical** `JE`/`BE`, **HVAC** `JH`/`BH`; replace **`search_jobs_ledger`** (returns **`service_type_id`**, prefix-aware HCP match) and **`search_bids_for_clock`** (returns **`service_type_id`**, prefix-aware bid match).
-- **Impact**: [`Settings.tsx`](src/pages/Settings.tsx) Service types modal; [`unifiedJobBidSearch.ts`](src/utils/unifiedJobBidSearch.ts), Clock In, Jobs, Bids, Documents, My Time, Edge **`notify-dispatch-request`** / **`notify-estimator-request`**; **`PROJECT_DOCUMENTATION.md`**, **`GLOSSARY.md`**, **`RECENT_FEATURES.md`** **v2.432**
+- **Impact**: [`Settings.tsx`](../src/pages/Settings.tsx) Service types modal; [`unifiedJobBidSearch.ts`](../src/utils/unifiedJobBidSearch.ts), Clock In, Jobs, Bids, Documents, My Time, Edge **`notify-dispatch-request`** / **`notify-estimator-request`**; **`PROJECT_DOCUMENTATION.md`**, **`GLOSSARY.md`**, **`RECENT_FEATURES.md`** **v2.432**
 - **Category**: Settings / service_types / Search RPC / RLS unchanged
 
 **`20260430071645_recurring_job_report_include_costs.sql`**
 - **Purpose**: Per-recipient **`include_costs`** on **`recurring_job_report_schedule_recipients`** — when true, recurring digest emails add a **Cost** column (**hours × people_pay_config.hourly_wage** matched on **`trim(users.name)` = `person_name`**); missing wage renders **—**.
-- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`** / **`test-send`** (**`include_costs`** body) / **`dispatch`** (**`select include_costs`**); **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`PROJECT_DOCUMENTATION.md`**, **`ACCESS_CONTROL.md`**
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`** / **`test-send`** (**`include_costs`** body) / **`dispatch`** (**`select include_costs`**); **[`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**, **`AGENTS.md`**, **`AI_CONTEXT.md`**, **`PROJECT_DOCUMENTATION.md`**, **`ACCESS_CONTROL.md`**
 - **Category**: Jobs / Reports / Email
 
 **`20260430064919_recurring_job_report_activity_scope_last_week.sql`**
 - **Purpose**: **`calendar_last_week`** on **`recurring_job_report_schedule_recipients.activity_scope`**; **`reporting_window_calendar_week_prior_to_anchor`** (Sun–Sat week **before** the week containing anchor; **`reporting_date`** = that week’s Sunday for dispatch dedup).
-- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)
 - **Category**: Jobs / Reports / Email / RPC
 
 **`20260430063059_recurring_job_report_activity_scope_crew_filter.sql`**
 - **Purpose**: Recipient columns **`activity_scope`** (`calendar_yesterday` \| `calendar_today` \| `calendar_week`) and **`crew_filter`** (`all_users` \| `my_team`); **drop **`job_scope`**; backfill from legacy **`job_scope`**; **`reporting_window_calendar_civil_day`**; extend **`reporting_window_for_recurring_job_email`** so **`calendar_yesterday`** matches **`prior_calendar_day`** (day before anchor).
-- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**, **[`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**
+- **Impact**: **`recurringJobReportCore`**, **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**, **[`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)**; **`EDGE_FUNCTIONS.md`**, **`RECENT_FEATURES.md`**
 - **Category**: Jobs / Reports / Email / RPC
 
 **`20260430060716_recurring_job_report_recipient_job_scopes_schedule.sql`**
 - **Purpose**: Recipient **`job_scope`** — `member_jobs_only`, `schedule_today`, `schedule_yesterday`, `schedule_this_week` (**drop `all_jobs`**; existing rows migrated to **`member_jobs_only`**); **`reporting_window_calendar_week_containing_anchor`**, optional **`p_anchor_date`** on **`reporting_window_for_recurring_job_email`** for preview anchoring; **`dispatch_log.reporting_date`** comment (week Sunday dedup for weekly scope).
-- **Impact**: Edge **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx)
+- **Impact**: Edge **`recurringJobReportCore`**, **`recurring-job-report-*`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx)
 - **Category**: Jobs / Reports / Email
 
 **`20260430054614_recurring_job_report_schedules.sql`**
 - **Purpose**: **Recurring Email Reports (Jobs)** — `recurring_job_report_schedules`, `recurring_job_report_schedule_recipients`, `recurring_job_report_dispatch_log`; RLS dev/master/assistant for schedule scope master; trigger for `days_of_week` 0–6; **`user_can_manage_recurring_job_report_scope`**, **`reporting_window_for_recurring_job_email`**; pg_cron **`recurring-job-report-dispatch`** (`*/15`) via `PROJECT_URL` / `CRON_SECRET` vault secrets
-- **Impact**: Edge **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**; [`RecurringEmailReportsModal.tsx`](src/components/jobs/RecurringEmailReportsModal.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx) Reports tab
+- **Impact**: Edge **`recurring-job-report-preview`**, **`recurring-job-report-test-send`**, **`recurring-job-report-dispatch`**; [`RecurringEmailReportsModal.tsx`](../src/components/jobs/RecurringEmailReportsModal.tsx), [`Jobs.tsx`](../src/pages/Jobs.tsx) Reports tab
 - **Category**: Jobs / Reports / Email / Cron / RLS
 
 #### April 20, 2026
@@ -361,25 +361,25 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260420234856_person_contract_documents_dashboard_prompt_after_clock_in.sql`**
 - **Purpose**: **Dashboard post–clock-in contract reminder** — **`person_contract_documents.dashboard_prompt_after_clock_in`** (staff-set); RPC **`list_my_contract_dashboard_prompts()`** returns unsigned flagged rows for the current user (roster **email** + **name** or **`users.name`** match).
 - **Changes**: **`ALTER TABLE person_contract_documents`**; **`CREATE FUNCTION list_my_contract_dashboard_prompts`**
-- **Impact**: [`People.tsx`](src/pages/People.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx), Edge **`get-contract-signing-link-for-self`**; **`RECENT_FEATURES.md`** v2.364
+- **Impact**: [`People.tsx`](../src/pages/People.tsx), [`Dashboard.tsx`](../src/pages/Dashboard.tsx), Edge **`get-contract-signing-link-for-self`**; **`RECENT_FEATURES.md`** v2.364
 - **Category**: People / Contracts / RPC / Dashboard
 
 **`20260420220523_revert_stripe_oob_invoice_payment.sql`**
 - **Purpose**: **Undo Stripe out-of-band** — **`revert_stripe_oob_invoice_payment`** removes **`jobs_ledger_payments`** for the invoice, sets invoice **billed**, recomputes **`payments_made`**, **`paid`→`billed`** via **`update_job_status`** when needed, audit **`stripe_oob_payment_reverts`**, resets **`job_collect_payment_flows`** from **`terminal_completed`** to **`approved_for_terminal`** when **`stripe_invoice_id`** matches.
 - **Changes**: **`CREATE TABLE stripe_oob_payment_reverts`** + RLS; **`CREATE FUNCTION revert_stripe_oob_invoice_payment`**
-- **Impact**: Edge **`reverse-stripe-invoice-out-of-band-payment`**, [`HostedStripeBillPanel.tsx`](src/components/jobs/HostedStripeBillPanel.tsx); **`RECENT_FEATURES.md`** v2.362; client refresh after unwind (**`onAfterOobUnwindSuccess`**, **`JobFormModal`** **`refreshEditingJobAndHydratePayments`**) — v2.363
+- **Impact**: Edge **`reverse-stripe-invoice-out-of-band-payment`**, [`HostedStripeBillPanel.tsx`](../src/components/jobs/HostedStripeBillPanel.tsx); **`RECENT_FEATURES.md`** v2.362; client refresh after unwind (**`onAfterOobUnwindSuccess`**, **`JobFormModal`** **`refreshEditingJobAndHydratePayments`**) — v2.363
 - **Category**: Jobs / Billing / Stripe / RPC
 
 **`20260420164136_person_contract_documents_signing_and_content.sql`**
 - **Purpose**: **People → Contracts** — inline **`signing_body_html`**, **`canonical_document_url`**, public signing token fields, signer audit columns, and private Storage bucket **`contract-signer-signatures`** (staff SELECT policy) for digital signing (parallels Estimates acceptance flow).
 - **Changes**: **`ALTER TABLE person_contract_documents`**; **`INSERT`** **`storage.buckets`**; **`CREATE POLICY`** **`contract_signer_signatures_select`**
-- **Impact**: [`People.tsx`](src/pages/People.tsx), [`ContractAccept.tsx`](src/pages/ContractAccept.tsx), Edge **`get-contract-for-signer`**, **`accept-contract`**, **`send-contract-for-signature`**; **`RECENT_FEATURES.md`** v2.346
+- **Impact**: [`People.tsx`](../src/pages/People.tsx), [`ContractAccept.tsx`](../src/pages/ContractAccept.tsx), Edge **`get-contract-for-signer`**, **`accept-contract`**, **`send-contract-for-signature`**; **`RECENT_FEATURES.md`** v2.346
 - **Category**: People / Contracts / Storage / Edge
 
 **`20260420175612_contract_template_documents_book_body_and_tags.sql`**
 - **Purpose**: **Contract Book** — **`contract_template_documents.book_body_html`** (nullable library body) and **`tags`** (**`TEXT[]`**, default **`{}`**) for staff-managed default text and labels per template document row.
 - **Changes**: **`ALTER TABLE contract_template_documents`**
-- **Impact**: [`People.tsx`](src/pages/People.tsx), [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx); **`RECENT_FEATURES.md`** v2.351
+- **Impact**: [`People.tsx`](../src/pages/People.tsx), [`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx); **`RECENT_FEATURES.md`** v2.351
 - **Category**: People / Contracts
 
 #### April 21, 2026
@@ -387,31 +387,31 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260421015435_contract_body_book_and_signing_format.sql`**
 - **Purpose**: **Contract body format** — **`contract_template_documents.book_body_format`** and **`person_contract_documents.signing_body_format`** (`html`|`plain`, default **`html`**) so staff can store plain text without HTML parsing on public/staff previews.
 - **Changes**: **`ALTER TABLE`** both tables + **`CHECK`** constraints
-- **Impact**: [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx), [`People.tsx`](src/pages/People.tsx), [`ContractAccept.tsx`](src/pages/ContractAccept.tsx), [`PersonContractSignedRecordModal.tsx`](src/components/contracts/PersonContractSignedRecordModal.tsx), Edge **`get-contract-for-signer`**
+- **Impact**: [`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx), [`People.tsx`](../src/pages/People.tsx), [`ContractAccept.tsx`](../src/pages/ContractAccept.tsx), [`PersonContractSignedRecordModal.tsx`](../src/components/contracts/PersonContractSignedRecordModal.tsx), Edge **`get-contract-for-signer`**
 - **Category**: People / Contracts
 
 **`20260421025157_contract_body_format_allow_markdown.sql`**
 - **Purpose**: Extend **`book_body_format`** / **`signing_body_format`** **`CHECK`** to allow **`markdown`** (stored source in `*_body_html` columns; client renders MD→HTML→sanitize).
 - **Changes**: **`DROP CONSTRAINT`** / **`ADD CONSTRAINT`** on both tables; **`COMMENT ON COLUMN`**
-- **Impact**: [`contractBodyFormat.ts`](src/lib/contractBodyFormat.ts), [`ContractBodyDisplay.tsx`](src/components/contracts/ContractBodyDisplay.tsx), contract UI toggles
+- **Impact**: [`contractBodyFormat.ts`](../src/lib/contractBodyFormat.ts), [`ContractBodyDisplay.tsx`](../src/components/contracts/ContractBodyDisplay.tsx), contract UI toggles
 - **Category**: People / Contracts
 
 **`20260421044527_update_contract_book_entry.sql`**
 - **Purpose**: **`update_contract_book_entry`** — atomic **Contract Book** save (library **`book_body_*`**, **`tags`**) plus optional **document name** rename that cascades to matching **`person_contract_documents`** for template assignees.
 - **Changes**: **`CREATE OR REPLACE FUNCTION`** **`update_contract_book_entry`** (initial signature without **`canonical_document_url`**)
-- **Impact**: [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx); superseded by later migrations extending the RPC
+- **Impact**: [`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx); superseded by later migrations extending the RPC
 - **Category**: People / Contracts / RPC
 
 **`20260421051202_contract_template_documents_canonical_url.sql`**
 - **Purpose**: **`contract_template_documents.canonical_document_url`** (optional authoritative Doc/PDF link per library row); RPC signature gains **`p_canonical_document_url`**.
 - **Changes**: **`ALTER TABLE`**; **`DROP FUNCTION`** / **`CREATE OR REPLACE`** **`update_contract_book_entry`**
-- **Impact**: [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx), [`People.tsx`](src/pages/People.tsx)
+- **Impact**: [`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx), [`People.tsx`](../src/pages/People.tsx)
 - **Category**: People / Contracts / RPC
 
 **`20260421052041_contract_template_documents_updated_at.sql`**
 - **Purpose**: **`contract_template_documents.updated_at`** (not null, default now) + **`BEFORE UPDATE`** trigger — drives **Applied version** “latest library row” logic when **`applied_contract_template_document_id`** is null.
 - **Changes**: **`ALTER TABLE`**; **`CREATE TRIGGER`** **`update_contract_template_documents_updated_at`**
-- **Impact**: [`People.tsx`](src/pages/People.tsx) (Applied version display)
+- **Impact**: [`People.tsx`](../src/pages/People.tsx) (Applied version display)
 - **Category**: People / Contracts
 
 **`20260421053133_update_contract_book_entry_sync_signing_to_assignees.sql`**
@@ -423,55 +423,55 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260421053919_revert_update_contract_book_entry_person_signing_sync.sql`**
 - **Purpose**: **Revert** bulk sync from book save — person signing text is edited per assignee; **`update_contract_book_entry`** updates library + renames person rows on name change only (no mass **`UPDATE`** of signing fields). **Supersedes** the behavior introduced in **`20260421053133`**.
 - **Changes**: **`CREATE OR REPLACE`** **`update_contract_book_entry`**
-- **Impact**: [`People.tsx`](src/pages/People.tsx), [`ContractBookModal.tsx`](src/components/contracts/ContractBookModal.tsx)
+- **Impact**: [`People.tsx`](../src/pages/People.tsx), [`ContractBookModal.tsx`](../src/components/contracts/ContractBookModal.tsx)
 - **Category**: People / Contracts / RPC
 
 **`20260421054257_applied_contract_template_document_id.sql`**
 - **Purpose**: **`person_contract_documents.applied_contract_template_document_id`** — optional FK pin to **`contract_template_documents`** for **Applied version** display; **`NULL`** = use max **`contract_template_documents.updated_at`** among assigned templates’ rows with the same **`document_name`**.
 - **Changes**: **`ALTER TABLE`** **`ADD COLUMN`** **`REFERENCES`** **`contract_template_documents`**
-- **Impact**: [`People.tsx`](src/pages/People.tsx)
+- **Impact**: [`People.tsx`](../src/pages/People.tsx)
 - **Category**: People / Contracts
 
 **`20260421055733_contract_lineage_versions.sql`**
 - **Purpose**: **Versioned** person contracts: **`contract_lineage_id`**, **`lineage_version`**, **`supersedes_person_contract_document_id`**; **`create_pending_contract_versions_after_book_save`** inserts a new **`unsent`** row when the latest row in a lineage is **`signed`** and **Contract Book** saved; **`update_contract_book_entry`** calls it after updating the library row.
 - **Changes**: **`ALTER TABLE`** / **`DROP CONSTRAINT`** / indexes; **`CREATE OR REPLACE`** **`create_pending_contract_versions_after_book_save`**, **`update_contract_book_entry`**
-- **Impact**: [`People.tsx`](src/pages/People.tsx); **`RECENT_FEATURES.md`** v2.365
+- **Impact**: [`People.tsx`](../src/pages/People.tsx); **`RECENT_FEATURES.md`** v2.365
 - **Category**: People / Contracts / RPC
 
 **`20260419180746_collect_payment_complete_on_invoice_paid.sql`**
 - **Purpose**: **Hosted invoice collect payment** — **`complete_job_collect_payment_flow_for_invoice(p_stripe_invoice_id)`** sets **`job_collect_payment_flows`** to **`terminal_completed`** when **`invoice.paid`** matches **`approved_for_terminal`** (**service role**). **`get_collect_payment_certify_payload`** adds **`collect_invoice`** JSON (**billed** **`jobs_ledger_invoices`** row linked from flow: **`hosted_invoice_url`**, **`stripe_invoice_id`**).
 - **Changes**: **`CREATE OR REPLACE`** RPCs; **`REVOKE`/`GRANT`** on **`complete_job_collect_payment_flow_for_invoice`**
-- **Impact**: [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts), [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Impact**: [`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts), [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
 - **Category**: Jobs / Billing / Stripe / RPC
 
 **`20260419183243_collect_payment_certify_payload_customer_email.sql`**
 - **Purpose**: Certify payload includes **`billing_customer`** (**email** / **name** from **`jobs_ledger`** + **`customers`**) for Step 3 display and **`update-collect-payment-stripe-customer-email`** alignment.
 - **Changes**: **`CREATE OR REPLACE`** **`get_collect_payment_certify_payload`**
-- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Impact**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
 - **Category**: Jobs / RPC
 
 **`20260419201229_collect_payment_return_to_dispatch.sql`**
 - **Purpose**: **`return_collect_payment_to_dispatch(p_job_id, p_note)`** — subcontractor moves flow from **`approved_for_terminal`** back to **`pending_dispatch`** with a note; **`certify_mode`** **`returned_from_terminal`** on **`job_collect_payment_flows`**.
 - **Changes**: **`ALTER`** **`job_collect_payment_flows_certify_mode_check`**; **`CREATE OR REPLACE`** RPC
-- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Impact**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
 - **Category**: Jobs / RPC
 
 **`20260419202031_collect_payment_return_set_initiated_by.sql`**
 - **Purpose**: **`return_collect_payment_to_dispatch`** sets **`initiated_by_user_id`** to the subcontractor returning the job (queue display).
 - **Changes**: **`CREATE OR REPLACE`** **`return_collect_payment_to_dispatch`**
-- **Impact**: [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Impact**: [`DashboardFieldCollectPaymentQueue.tsx`](../src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx); **`RECENT_FEATURES.md`** v2.344
 - **Category**: Jobs / RPC
 
 **`20260419223818_jobs_ledger_invoices_supabase_realtime.sql`**
 - **Purpose**: Add **`jobs_ledger_invoices`** to **`supabase_realtime`** publication so the field queue can refresh when invoice rows change (e.g. **`hosted_invoice_url`**, **`stripe_invoice_status`**) without relying on **`job_collect_payment_flows`** updates alone.
 - **Changes**: **`ALTER PUBLICATION supabase_realtime ADD TABLE`** (idempotent **`DO`** block)
-- **Impact**: [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Impact**: [`DashboardFieldCollectPaymentQueue.tsx`](../src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx); **`RECENT_FEATURES.md`** v2.344
 - **Category**: Jobs / Realtime
 
 **`20260419231724_collect_payment_payload_invoice_sent_at.sql`**
 - **Purpose**: **`collect_invoice`** in **`get_collect_payment_certify_payload`** includes **`sent_to_customer_at`** for Step 3 (“invoice emailed” UX).
 - **Changes**: **`CREATE OR REPLACE`** **`get_collect_payment_certify_payload`**
-- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
+- **Impact**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx); **`RECENT_FEATURES.md`** v2.344
 - **Category**: Jobs / RPC
 
 #### April 20, 2026
@@ -479,13 +479,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260420021701_job_book_entries_collect_payment.sql`**
 - **Purpose**: **Job Book** — org-wide catalog **`job_book_entries`** (**Work** / **Cost** / optional **`service_type_id`**) used on **Collect Payment** Step 1 (and in **Settings** / **Jobs** for maintenance). **RLS**: **SELECT** for all **`authenticated`**; **INSERT/UPDATE/DELETE** for **`dev`**, **`master_technician`**, **`assistant`** only. **`add_collect_payment_fixture_from_job_book`**: **subcontractor** on RTB team job inserts one **`jobs_ledger_fixtures`** row and syncs **`jobs_ledger.revenue`**. **`get_collect_payment_certify_payload`** adds **`job_service_type_id`** (from linked **`bids.service_type_id`**) for client-side catalog filtering.
 - **Changes**: **`CREATE TABLE`** **`job_book_entries`**; RLS policies; **`CREATE OR REPLACE`** **`get_collect_payment_certify_payload`**; **`CREATE`** **`add_collect_payment_fixture_from_job_book`** + **`GRANT`**
-- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx), [`JobBookSettingsSection.tsx`](src/components/settings/JobBookSettingsSection.tsx), [`JobBookEditorPanel.tsx`](src/components/settings/JobBookEditorPanel.tsx), [`JobBookModal.tsx`](src/components/jobs/JobBookModal.tsx), [`Settings.tsx`](src/pages/Settings.tsx); **`RECENT_FEATURES.md`** (v2.342 catalog, v2.343 Step 1 UX); **`ACCESS_CONTROL.md`**
+- **Impact**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx), [`JobBookSettingsSection.tsx`](../src/components/settings/JobBookSettingsSection.tsx), [`JobBookEditorPanel.tsx`](../src/components/settings/JobBookEditorPanel.tsx), [`JobBookModal.tsx`](../src/components/jobs/JobBookModal.tsx), [`Settings.tsx`](../src/pages/Settings.tsx); **`RECENT_FEATURES.md`** (v2.342 catalog, v2.343 Step 1 UX); **`ACCESS_CONTROL.md`**
 - **Category**: Jobs / Collect Payment / Settings / RLS / RPC
 
 **`20260420051645_pay_stub_additional_lines_source_clock_session.sql`**
 - **Purpose**: Link **`pay_stub_additional_lines`** to an originating **`clock_sessions`** row (for example **prevailing wage** top-up). **Partial unique index** on **`(pay_stub_id, source_clock_session_id)`** when **`source_clock_session_id`** is not null.
 - **Changes**: **`ALTER TABLE`** **`ADD COLUMN`** **`source_clock_session_id`** **`REFERENCES`** **`clock_sessions(id)`** **`ON DELETE SET NULL`**; **`CREATE UNIQUE INDEX`** **`pay_stub_additional_lines_stub_session_uniq`**
-- **Impact**: [`PayStubAdditionalModal.tsx`](src/components/pay/PayStubAdditionalModal.tsx), [`payStubPrevailingWageLine.ts`](src/lib/payStubPrevailingWageLine.ts); **`RECENT_FEATURES.md`** v2.345
+- **Impact**: [`PayStubAdditionalModal.tsx`](../src/components/pay/PayStubAdditionalModal.tsx), [`payStubPrevailingWageLine.ts`](../src/lib/payStubPrevailingWageLine.ts); **`RECENT_FEATURES.md`** v2.345
 - **Category**: People / Payroll / RLS (column only; RLS unchanged)
 
 #### April 19, 2026
@@ -493,19 +493,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260419230155_update_job_status_cancel_collect_payment_flow.sql`**
 - **Purpose**: **Ready to Bill → Working** (**`update_job_status`**) also **cancels** an in-progress **`job_collect_payment_flows`** row when **`status IN ('draft','pending_dispatch','approved_for_terminal')`** (sets **`cancelled`**, clears dispatch/terminal fields). Return JSON adds **`cancelled_collect_payment_flows`** count.
 - **Changes**: **`CREATE OR REPLACE FUNCTION`** **`update_job_status`**
-- **Impact**: [`Dashboard.tsx`](src/pages/Dashboard.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx) send-back UX; field queue no longer shows **`pending_dispatch`** for that job; **`RECENT_FEATURES.md`** v2.340
+- **Impact**: [`Dashboard.tsx`](../src/pages/Dashboard.tsx), [`Jobs.tsx`](../src/pages/Jobs.tsx) send-back UX; field queue no longer shows **`pending_dispatch`** for that job; **`RECENT_FEATURES.md`** v2.340
 - **Category**: Jobs / Billing / RPC
 
 **`20260419161731_job_collect_payment_flows.sql`**
 - **Purpose**: **Subcontractor field collect payment** — certify billable lines → staff **Approve for Terminal** → **Stripe Terminal** (PWA). Table **`job_collect_payment_flows`** (status machine, certify/dispatch/Stripe ids); **RLS** (team read, staff read; mutations via **`SECURITY DEFINER`** RPCs only); **Realtime** publication when missing. RPCs: **`get_collect_payment_certify_payload`**, **`submit_collect_payment_certification`**, **`approve_collect_payment_for_terminal`**, **`complete_job_collect_payment_flow_terminal`** (service role). **`list_ready_to_bill_assigned_jobs_for_dashboard()`** gains **`collect_payment_button_variant`** (`default` | `pending_dispatch` | `ready_terminal`).
 - **Changes**: **`CREATE TABLE`** **`job_collect_payment_flows`**; policies; triggers; **`CREATE OR REPLACE`** RPCs; **`DROP`/`CREATE`** list RTB RPC with extra column
-- **Impact**: [`CollectPaymentModal.tsx`](src/components/jobs/CollectPaymentModal.tsx), [`DashboardFieldCollectPaymentQueue.tsx`](src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx); Edge **`terminal-connection-token`**, **`create-terminal-collect-payment-intent`** (removed **v2.344** — hosted invoice + **`complete_job_collect_payment_flow_for_invoice`**); **`stripe-webhook`** `invoice.paid` / legacy `payment_intent.succeeded` branches; types; **`RECENT_FEATURES.md`** v2.339, v2.344
+- **Impact**: [`CollectPaymentModal.tsx`](../src/components/jobs/CollectPaymentModal.tsx), [`DashboardFieldCollectPaymentQueue.tsx`](../src/components/dashboard/DashboardFieldCollectPaymentQueue.tsx), [`Dashboard.tsx`](../src/pages/Dashboard.tsx); Edge **`terminal-connection-token`**, **`create-terminal-collect-payment-intent`** (removed **v2.344** — hosted invoice + **`complete_job_collect_payment_flow_for_invoice`**); **`stripe-webhook`** `invoice.paid` / legacy `payment_intent.succeeded` branches; types; **`RECENT_FEATURES.md`** v2.339, v2.344
 - **Category**: Jobs / Billing / Stripe Terminal / RPC
 
 **`20260419154440_list_ready_to_bill_assigned_jobs_for_dashboard.sql`**
 - **Purpose**: **Dashboard** **team-scoped Ready to Bill** for **`subcontractor`**, **`primary`**, **`superintendent`**, **`estimator`** — same row shape as **`list_assigned_jobs_for_dashboard()`** but **`jobs_ledger.status = 'ready_to_bill'`** and **`jobs_ledger_team_members`** join on **`auth.uid()`** (does **not** expose org-wide RTB like **`get_jobs_ledger_by_status`**).
 - **Changes**: **`CREATE OR REPLACE FUNCTION`** **`list_ready_to_bill_assigned_jobs_for_dashboard()`** **`RETURNS TABLE`** (mirrors assigned RPC columns); **`GRANT EXECUTE`** to **`authenticated`**
-- **Impact**: [`Dashboard.tsx`](src/pages/Dashboard.tsx) team **Ready to Bill** block; types in [`database.ts`](src/types/database.ts); **`RECENT_FEATURES.md`** v2.338
+- **Impact**: [`Dashboard.tsx`](../src/pages/Dashboard.tsx) team **Ready to Bill** block; types in [`database.ts`](../src/types/database.ts); **`RECENT_FEATURES.md`** v2.338
 - **Category**: Jobs / Dashboard / RPC
 
 #### April 16, 2026
@@ -513,13 +513,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260416182749_migrate_legacy_revenue_to_first_fixture.sql`**
 - **Purpose**: One-time backfill so **Edit Job** **Job Total** (Specific Work sum) matches legacy jobs that had **`jobs_ledger.revenue`** but no priced **named** fixture rows. Eligible: **`COALESCE(revenue,0) > 0`** and sum of **`round(count × COALESCE(line_unit_price,0), 2)`** over rows with **`trim(name) <> ''`** is **0**. **UPDATE** first fixture per job (**`line_unit_price`**, normalize **`count`**); **INSERT** **`Job total (migrated)`** when no fixtures. Does **not** change **`jobs_ledger.revenue`**.
 - **Changes**: **`DO`** block + temp eligible set; **`RAISE NOTICE`** update/insert counts
-- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **Job Total** / Stripe multi-line eligibility; **`RECENT_FEATURES.md`** v2.320
+- **Impact**: [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) **Job Total** / Stripe multi-line eligibility; **`RECENT_FEATURES.md`** v2.320
 - **Category**: Jobs / Billing / Data
 
 **`20260416154325_ncns_when_scheduled_no_clock.sql`**
 - **Purpose**: Allow **`record_ncns_and_reject_sessions_for_day`** to record **NCNS** when the subject has **no** **`clock_sessions`** on **`work_date`** but has at least one **`job_schedule_blocks`** row (scheduled, never clocked); **`metadata.scheduled_without_clock`**; duplicate **`attendance_incidents`** same user/day rejected.
 - **Changes**: **`CREATE OR REPLACE`** **`record_ncns_and_reject_sessions_for_day(uuid, date, text)`** — early branch before prior “no sessions” error
-- **Impact**: [`DashboardMyTimeDayEditorModal.tsx`](src/components/DashboardMyTimeDayEditorModal.tsx); **ACCESS_CONTROL** NCNS row
+- **Impact**: [`DashboardMyTimeDayEditorModal.tsx`](../src/components/DashboardMyTimeDayEditorModal.tsx); **ACCESS_CONTROL** NCNS row
 - **Category**: People / Attendance / Schedule
 
 #### April 15, 2026
@@ -527,13 +527,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260415222916_add_jobs_ledger_fixtures_unit_price_description.sql`**
 - **Purpose**: Optional **unit price** and **per-line description** (**scope**) on **`jobs_ledger_fixtures`** (New/Edit Job **Specific Work**). **`line_description`** is **not** the Bill Customer request-body **`line_description`** override; it **is** combined with **`name`** for each Stripe invoice line when **`create-stripe-invoice`** / **`preview-stripe-invoice`** build multiple lines from billable fixtures.
 - **Changes**: **`line_unit_price`** **`numeric(12,2) NULL`**, **`line_description`** **`text NULL`**
-- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx), [`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx) Billing grid; types
+- **Impact**: [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx), [`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx), [`Jobs.tsx`](../src/pages/Jobs.tsx) Billing grid; types
 - **Category**: Jobs / Billing
 
 **`20260415222132_drop_bids_count_rows_line_price_description.sql`**
 - **Purpose**: Drop **`bids_count_rows.line_unit_price`** and **`line_description`** (revert optional Counts fields; UI/import/CSV and Documents bid-proposal helpers restored without these columns)
 - **Changes**: **`ALTER TABLE public.bids_count_rows`** **`DROP COLUMN IF EXISTS`** for both columns
-- **Impact**: [`Bids.tsx`](src/pages/Bids.tsx), [`Documents.tsx`](src/pages/Documents.tsx), types
+- **Impact**: [`Bids.tsx`](../src/pages/Bids.tsx), [`Documents.tsx`](../src/pages/Documents.tsx), types
 - **Category**: Bids / Counts
 
 **`20260415221117_bids_count_rows_line_price_description.sql`**
@@ -547,13 +547,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260414064105_jobs_ledger_invoice_stripe_email_sends.sql`**
 - **Purpose**: Append-only log of successful **`send-stripe-invoice`** emails (one row per send); **SELECT** RLS aligned with **`jobs_ledger_invoices`**; **service role** inserts after invoice row update
 - **Changes**: Table **`jobs_ledger_invoice_stripe_email_sends`** (`jobs_ledger_invoice_id`, **`sent_at`**, optional **`stripe_invoice_id`**); index on **`(jobs_ledger_invoice_id, sent_at DESC)`**; **ON DELETE CASCADE** from invoice
-- **Impact**: [`send-stripe-invoice`](supabase/functions/send-stripe-invoice/index.ts), [`StripeInvoiceSendFromStripeButton.tsx`](src/components/jobs/StripeInvoiceSendFromStripeButton.tsx), types
+- **Impact**: [`send-stripe-invoice`](../supabase/functions/send-stripe-invoice/index.ts), [`StripeInvoiceSendFromStripeButton.tsx`](../src/components/jobs/StripeInvoiceSendFromStripeButton.tsx), types
 - **Category**: Jobs / Billing / Stripe
 
 **`20260414031557_ensure_rtb_primary_remainder_and_partials.sql`**
 - **Purpose**: Multiple **Ready to Bill** invoice rows per job: **`is_primary_rtb_bundle`** marks the single **remainder** line whose **`amount`** **`ensure_single_ready_to_bill_invoice_for_job`** keeps in sync; **partial** RTB lines stay fixed.
 - **Changes**: **`CREATE OR REPLACE`** **`ensure_single_ready_to_bill_invoice_for_job`** — drop “only one RTB” error; primary-only **UPDATE** / **INSERT**; error if &gt; one primary
-- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx), [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx), [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx); **`GLOSSARY.md`** (primary vs partial RTB)
+- **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx), [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx), [`SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx); **`GLOSSARY.md`** (primary vs partial RTB)
 - **Category**: Jobs / Billing
 
 #### April 9, 2026
@@ -561,7 +561,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260409032340_external_send_channel_stripe_value.sql`**
 - **Purpose**: Allow **`jobs_ledger_invoices.external_send_channel = 'stripe`** for finalized Stripe hosted invoices (Edge **`create-stripe-invoice`** sets this with **`sent_to_customer_at`**).
 - **Changes**: **CHECK** constraint **`jobs_ledger_invoices_external_send_channel_check`** — allowed values include **`stripe`**; column comment update
-- **Impact**: [`create-stripe-invoice`](supabase/functions/create-stripe-invoice/index.ts), [`SendRecordInvoiceModal.tsx`](src/components/jobs/SendRecordInvoiceModal.tsx)
+- **Impact**: [`create-stripe-invoice`](../supabase/functions/create-stripe-invoice/index.ts), [`SendRecordInvoiceModal.tsx`](../src/components/jobs/SendRecordInvoiceModal.tsx)
 - **Category**: Jobs / Billing / Stripe
 
 #### April 8, 2026
@@ -569,25 +569,25 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260408013952_jobs_ledger_last_work_date_clock_sessions_trigger.sql`**
 - **Purpose**: **`jobs_ledger.last_work_date`** — cached **`MAX(work_date)`** of **approved**, non-rejected, non-revoked **`clock_sessions`** for the job; fast Stages/lists
 - **Changes**: Column **`last_work_date date NULL`**; **`refresh_jobs_ledger_last_work_date(uuid)`** (`SECURITY DEFINER`); **`touch_jobs_ledger_last_work_date_from_clock_sessions`** + **AFTER INSERT/DELETE** and **AFTER UPDATE OF** **`job_ledger_id`**, **`work_date`**, **`approved_at`**, **`rejected_at`**, **`revoked_at`**; backfill; index **`idx_jobs_ledger_last_work_date`**
-- **Impact**: [`database.ts`](src/types/database.ts), [`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx), [`limitedJobDetailSnapshot.ts`](src/types/limitedJobDetailSnapshot.ts)
+- **Impact**: [`database.ts`](../src/types/database.ts), [`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx), [`limitedJobDetailSnapshot.ts`](../src/types/limitedJobDetailSnapshot.ts)
 - **Category**: Jobs / Time
 
 **`20260408014106_rename_estimated_completion_to_last_bill_date_and_fix_rtb_rpc.sql`**
 - **Purpose**: Rename job-level bill date to **`last_bill_date`** (manual + future Stripe); **`ensure_single_ready_to_bill_invoice_for_job`** reads **`jl.last_bill_date`** for new RTB invoice **`estimated_bill_date`**
 - **Changes**: **`RENAME COLUMN estimated_completion_date TO last_bill_date`**; **`CREATE OR REPLACE`** **`ensure_single_ready_to_bill_invoice_for_job`**
-- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx), [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx), [`DetailJobModal.tsx`](src/components/jobs/DetailJobModal.tsx), types
+- **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx), [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx), [`DetailJobModal.tsx`](../src/components/jobs/DetailJobModal.tsx), types
 - **Category**: Jobs / Billing
 
 **`20260408124821_bid_working_board.sql`**
 - **Purpose**: Bids **Working** tab — per-user Kanban columns and bid card placements (only when user is **`estimator_id`** or **`account_manager_id`** on the bid)
 - **Changes**: Tables **`bid_working_board_columns`** (`system_key` **`inbox`** / **`ready`** or custom — **`working`** added in **`20260422001732_bid_working_board_working_column.sql`**), **`bid_working_board_placements`** (`PRIMARY KEY (user_id, bid_id)`); helpers **`user_is_bid_estimator_or_account_manager`**, **`user_owns_working_board_column`**; **RLS** (own rows + assignment + column ownership); dev **SELECT** all; **Realtime** publication
-- **Impact**: [`Bids.tsx`](src/pages/Bids.tsx), [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx), [`BidBoardNotesPanel.tsx`](src/components/bids/BidBoardNotesPanel.tsx), [`database.ts`](src/types/database.ts)
+- **Impact**: [`Bids.tsx`](../src/pages/Bids.tsx), [`BidsWorkingBoard.tsx`](../src/components/bids/BidsWorkingBoard.tsx), [`BidBoardNotesPanel.tsx`](../src/components/bids/BidBoardNotesPanel.tsx), [`database.ts`](../src/types/database.ts)
 - **Category**: Bids
 
 **`20260422001732_bid_working_board_working_column.sql`**
 - **Purpose**: Fixed **Working** system column between **Inbox** and **Ready**; extends **`system_key`** check to **`working`**
 - **Changes**: **`DROP`/`ADD`** **`bid_working_board_columns_system_key_check`** (`inbox` / **`working`** / `ready`); per-user backfill: bump **`position >= 1`** by **1_000_000**, insert **`Working`** at **1**, renumber with **`row_number()`** (avoids **`(user_id, position)`** violations during shift)
-- **Impact**: [`BidsWorkingBoard.tsx`](src/components/bids/BidsWorkingBoard.tsx) (three-column bootstrap), [`fetchWorkingBoardClockBidPicks.ts`](src/lib/fetchWorkingBoardClockBidPicks.ts), [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx), [`database.ts`](src/types/database.ts)
+- **Impact**: [`BidsWorkingBoard.tsx`](../src/components/bids/BidsWorkingBoard.tsx) (three-column bootstrap), [`fetchWorkingBoardClockBidPicks.ts`](../src/lib/fetchWorkingBoardClockBidPicks.ts), [`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx), [`database.ts`](../src/types/database.ts)
 - **Category**: Bids / Clock
 
 #### April 7, 2026
@@ -595,31 +595,31 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260407033913_job_schedule_blocks.sql`**
 - **Purpose**: Planned per-job work windows (assignee, **`work_date`**, **`time_start`** / **`time_end`** in America/Chicago wall time, **4:00–20:00**) for Jobs **Schedule** modal and Calendar preview/chips
 - **Changes**: **`job_schedule_blocks`** (`REFERENCES jobs_ledger`, **`users`** for assignee and **`created_by`**); **`updated_at`** trigger; **`created_by`** default from **`auth.uid()`**; **RLS** aligned with job visibility / team / assignee read; **INSERT/UPDATE/DELETE** for **`dev`**, **`master_technician`**, **`assistant`**, **`superintendent`** with job manage access only
-- **Impact**: [`ScheduleJobModal.tsx`](src/components/jobs/ScheduleJobModal.tsx), [`PreviewJobModal.tsx`](src/components/calendar/PreviewJobModal.tsx), [`Calendar.tsx`](src/pages/Calendar.tsx), [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts)
+- **Impact**: [`ScheduleJobModal.tsx`](../src/components/jobs/ScheduleJobModal.tsx), [`PreviewJobModal.tsx`](../src/components/calendar/PreviewJobModal.tsx), [`Calendar.tsx`](../src/pages/Calendar.tsx), [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts)
 - **Category**: Jobs / Calendar
 
 **`20260407034037_list_assigned_jobs_project_id.sql`**
 - **Purpose**: **`list_assigned_jobs_for_dashboard`** adds **`project_id`** so Calendar **Job preview** can map workflow **`project_id`** to team jobs without broad **`jobs_ledger`** reads
 - **Changes**: **`DROP`/`CREATE`** same RPC with extra **`project_id`** column in **`RETURNS TABLE`** and **`SELECT`**
-- **Impact**: [`PreviewJobModal.tsx`](src/components/calendar/PreviewJobModal.tsx); types in [`database.ts`](src/types/database.ts)
+- **Impact**: [`PreviewJobModal.tsx`](../src/components/calendar/PreviewJobModal.tsx); types in [`database.ts`](../src/types/database.ts)
 - **Category**: Jobs / Calendar
 
 **`20260407052651_job_schedule_blocks_min_duration_30m.sql`**
 - **Purpose**: Align DB with client **`JOB_SCHEDULE_BLOCK_MIN_DURATION_MINUTES`** (30 minutes)
 - **Changes**: **`CHECK`** on **`job_schedule_blocks`**: **`(time_end - time_start) >= interval '30 minutes'`**
-- **Impact**: [`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx), [`ScheduleJobModal.tsx`](src/components/jobs/ScheduleJobModal.tsx), [`jobScheduleOverlap.ts`](src/lib/jobScheduleOverlap.ts)
+- **Impact**: [`ScheduleDispatch.tsx`](../src/pages/ScheduleDispatch.tsx), [`ScheduleJobModal.tsx`](../src/components/jobs/ScheduleJobModal.tsx), [`jobScheduleOverlap.ts`](../src/lib/jobScheduleOverlap.ts)
 - **Category**: Jobs / Calendar
 
 **`20260407061043_job_schedule_blocks_shared_block_group.sql`**
 - **Purpose**: **Crew / mirror** schedule legs — multiple assignees share one logical planned window (same times and note)
 - **Changes**: **`shared_block_group_id uuid NULL`** on **`job_schedule_blocks`**; partial index **`idx_job_schedule_blocks_shared_group`** where non-null; column comment
-- **Impact**: [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts), [`ScheduleDispatch.tsx`](src/pages/ScheduleDispatch.tsx), [`ScheduleDispatchGrid.tsx`](src/components/schedule/ScheduleDispatchGrid.tsx), [`ScheduleJobModal.tsx`](src/components/jobs/ScheduleJobModal.tsx); **`RECENT_FEATURES.md`** v2.257
+- **Impact**: [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts), [`ScheduleDispatch.tsx`](../src/pages/ScheduleDispatch.tsx), [`ScheduleDispatchGrid.tsx`](../src/components/schedule/ScheduleDispatchGrid.tsx), [`ScheduleJobModal.tsx`](../src/components/jobs/ScheduleJobModal.tsx); **`RECENT_FEATURES.md`** v2.257
 - **Category**: Jobs / Calendar
 
 **`20260407165443_move_job_schedule_block_group.sql`**
 - **Purpose**: Schedule **Dispatch** DnD — move all legs of a **linked** group to a new **`work_date`** in one transaction with per-assignee overlap validation on the target day (**`SECURITY INVOKER`**, **`GRANT EXECUTE`** to **`authenticated`**)
 - **Changes**: **`move_job_schedule_block_group(p_job_id, p_shared_block_group_id, p_new_work_date)`**
-- **Impact**: [`scheduleDispatchDragEnd.ts`](src/lib/scheduleDispatchDragEnd.ts), [`jobScheduleBlocks.ts`](src/lib/jobScheduleBlocks.ts); **`RECENT_FEATURES.md`** v2.258
+- **Impact**: [`scheduleDispatchDragEnd.ts`](../src/lib/scheduleDispatchDragEnd.ts), [`jobScheduleBlocks.ts`](../src/lib/jobScheduleBlocks.ts); **`RECENT_FEATURES.md`** v2.258
 - **Category**: Jobs / Calendar
 
 **`20260428000741_auto_assign_job_team_member_on_schedule_block.sql`**
@@ -631,13 +631,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260428231416_material_po_generator.sql`**
 - **Purpose**: **Materials PO Generator** — **`material_po_generator_entries`** (unique **`po_code`** 10000–99999, **`job_ledger_id`**, **`for_user_id`**, **`supply_house_id`**, notes, **`created_by`**); job-scoped **SELECT** **RLS** for dev / master / assistant (aligned with **`jobs_ledger`** visibility); **`insert_material_po_generator_entry`** (**`SECURITY DEFINER`**, random code retries)
 - **Changes**: **`CREATE TABLE`** + **RLS** + **RPC**
-- **Impact**: [`Materials.tsx`](src/pages/Materials.tsx) **PO Generator** tab; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.412
+- **Impact**: [`Materials.tsx`](../src/pages/Materials.tsx) **PO Generator** tab; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.412
 - **Category**: Materials / Ledger / RPC
 
 **`20260428232212_material_po_generator_supply_house_optional.sql`**
 - **Purpose**: **`supply_house_id`** nullable on **`material_po_generator_entries`**; **`insert_material_po_generator_entry`** accepts **`NULL`** supply house
 - **Changes**: **`ALTER COLUMN`** **DROP NOT NULL**; **`CREATE OR REPLACE`** **`insert_material_po_generator_entry`**
-- **Impact**: [`Materials.tsx`](src/pages/Materials.tsx); Supply Houses invoice **Purchase Order #** warning includes ledger rows with **null** **`supply_house_id`** ([`SupplyHousesTab.tsx`](src/components/SupplyHousesTab.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.412
+- **Impact**: [`Materials.tsx`](../src/pages/Materials.tsx); Supply Houses invoice **Purchase Order #** warning includes ledger rows with **null** **`supply_house_id`** ([`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.412
 - **Category**: Materials / Ledger / RPC
 
 #### April 5, 2026
@@ -645,25 +645,25 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260405072854_estimate_create_job_rpc.sql`**
 - **Purpose**: Staff create a **`jobs_ledger`** row from a **`customer_accepted`** estimate and set **`estimates.job_ledger_id`** in one transaction; idempotent when already linked
 - **Changes**: Partial unique index **`estimates_job_ledger_id_unique`** on **`estimates(job_ledger_id)`**; **`create_job_from_estimate`** (`SECURITY DEFINER`, `GRANT EXECUTE` to **`authenticated`**) — enforces **`user_can_access_estimate`** / **`superintendent_can_access_estimate`**, mirrors Jobs owner resolution (project **`master_user_id`** or **`job_owner_override_*`**), optional **`p_customer_id`** and field overrides
-- **Impact**: [`Estimates.tsx`](src/pages/Estimates.tsx) **Create job from estimate**; [`Jobs.tsx`](src/pages/Jobs.tsx) **Source estimate** strip + **[`CustomerAcceptanceRecordModal`](src/components/estimates/CustomerAcceptanceRecordModal.tsx)**; [`jobLedgerCustomer.ts`](src/lib/jobLedgerCustomer.ts), [`resolveEffectiveJobMasterUserId.ts`](src/lib/resolveEffectiveJobMasterUserId.ts)
+- **Impact**: [`Estimates.tsx`](../src/pages/Estimates.tsx) **Create job from estimate**; [`Jobs.tsx`](../src/pages/Jobs.tsx) **Source estimate** strip + **[`CustomerAcceptanceRecordModal`](../src/components/estimates/CustomerAcceptanceRecordModal.tsx)**; [`jobLedgerCustomer.ts`](../src/lib/jobLedgerCustomer.ts), [`resolveEffectiveJobMasterUserId.ts`](../src/lib/resolveEffectiveJobMasterUserId.ts)
 - **Category**: Estimates / Jobs
 
 **`20260405101849_count_unlinked_tally_stale_by_age.sql`**
 - **Purpose**: Dashboard **stale tally** callout — count unlinked linked-card Mercury rows whose **`posted_at`** Chicago calendar date is **more than `min_age_days`** before today (default **2**), with the same scope as **`count_unlinked_mercury_transactions_for_tally`** (**`job_tally_min_posted_ymd`** floor, no **`mercury_transaction_job_allocations`**)
 - **Changes**: **`count_unlinked_mercury_transactions_for_tally_stale(min_age_days integer DEFAULT 2)`** — `SECURITY DEFINER`, `GRANT EXECUTE` to **`authenticated`**
-- **Impact**: [`DashboardTallyStaleBanner.tsx`](src/components/DashboardTallyStaleBanner.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx) (focus refresh with tally unlinked count)
+- **Impact**: [`DashboardTallyStaleBanner.tsx`](../src/components/DashboardTallyStaleBanner.tsx), [`Dashboard.tsx`](../src/pages/Dashboard.tsx) (focus refresh with tally unlinked count)
 - **Category**: Dashboard / Job Parts Tally
 
 **`20260405211552_tally_stale_staff_followup.sql`**
 - **Purpose**: **Dev / master_technician / assistant** Dashboard follow-up for **other people’s** stale unlinked linked-card Mercury transactions (same age/floor/unlinked rules as **`count_unlinked_mercury_transactions_for_tally_stale`**); staff assign splits on behalf of the card owner
 - **Changes**: **`staff_can_view_user_for_tally_followup(viewer, target)`** (internal definer helper, not granted to **`authenticated`**); **`list_stale_unlinked_mercury_transactions_for_tally_staff(min_age_days)`** (flat rows with contact + tx fields, **`LIMIT 500`**); **`search_jobs_for_tally_mercury_assign_as_user(p_for_user_id, search_text)`**; **`replace_mercury_job_splits_for_linked_card_as_staff(p_for_user_id, p_mercury_transaction_id, p_rows)`** — `SECURITY DEFINER`, grants where applicable
-- **Impact**: [`DashboardTallyStaleStaffBanner.tsx`](src/components/DashboardTallyStaleStaffBanner.tsx), [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx), **`tallyActAsUserId`** on [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx)
+- **Impact**: [`DashboardTallyStaleStaffBanner.tsx`](../src/components/DashboardTallyStaleStaffBanner.tsx), [`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx), **`tallyActAsUserId`** on [`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx), [`Dashboard.tsx`](../src/pages/Dashboard.tsx)
 - **Category**: Dashboard / Job Parts Tally
 
 **`20260405213504_settings_job_counts_by_master.sql`**
 - **Purpose**: Dev **Settings → People & accounts** job counts per master without scanning every **`jobs_ledger`** row on the client
 - **Changes**: **`list_job_counts_by_master_for_dev_settings()`** — `RETURNS TABLE (master_user_id uuid, job_count bigint)`; **`SECURITY DEFINER`**, **`STABLE`**, **`is_dev()`** gate; `GROUP BY` on non-null **`master_user_id`**; **`REVOKE ALL`**, **`GRANT EXECUTE`** to **`authenticated`**
-- **Impact**: [`Settings.tsx`](src/pages/Settings.tsx) **`loadData`** (dev-only **`withSupabaseRetry`** RPC + parallel dev loaders)
+- **Impact**: [`Settings.tsx`](../src/pages/Settings.tsx) **`loadData`** (dev-only **`withSupabaseRetry`** RPC + parallel dev loaders)
 - **Category**: Settings / Performance
 
 #### April 6, 2026
@@ -671,62 +671,62 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260406155949_tally_staff_list_include_all_unlinked.sql`**
 - **Purpose**: Stale tally **staff follow-up** modal — optional **Show all** list (all unlinked linked-card rows) without Chicago calendar **min_age_days** filter; banner/hook still use stale-only
 - **Changes**: **`DROP`** single-arg **`list_stale_unlinked_mercury_transactions_for_tally_staff(integer)`**; **`CREATE`** **`(min_age_days integer DEFAULT 2, include_all_unlinked boolean DEFAULT false)`** — when **`include_all_unlinked`**, skip age predicate; **`REVOKE`/`GRANT EXECUTE`** on new signature
-- **Impact**: [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx), [`useStaleTallyStaffFollowUp.ts`](src/hooks/useStaleTallyStaffFollowUp.ts) (**`include_all_unlinked: false`** for counts)
+- **Impact**: [`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx), [`useStaleTallyStaffFollowUp.ts`](../src/hooks/useStaleTallyStaffFollowUp.ts) (**`include_all_unlinked: false`** for counts)
 - **Category**: Dashboard / Job Parts Tally
 
 **`20260406024629_estimate_customer_events.sql`**
 - **Purpose**: Append-only **customer activity** for Approach A estimates — public link views and successful accept submits
 - **Changes**: **`estimate_customer_events`** (`estimate_id`, `occurred_at`, `event_type`, `source`, `client_ip`, `user_agent`, `metadata` **`jsonb`**); **`CHECK`** on **`event_type`** (`public_link_view`, `public_accept_submitted`) and **`source`**; index **`(estimate_id, occurred_at DESC)`**; **RLS** **`SELECT`** aligned with **`estimates`** visibility; **`GRANT SELECT`** to **`authenticated`**; rows appended only via **`service_role`** Edge calls and **`SECURITY DEFINER`** Postgres (see later migrations: trigger + RPCs), not **`authenticated`** direct **`INSERT`**
-- **Impact**: [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts), [`accept-estimate`](supabase/functions/accept-estimate/index.ts), [`logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts); **Customer activity** on [`Estimates.tsx`](src/pages/Estimates.tsx) detail
+- **Impact**: [`get-estimate-for-customer`](../supabase/functions/get-estimate-for-customer/index.ts), [`accept-estimate`](../supabase/functions/accept-estimate/index.ts), [`logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts); **Customer activity** on [`Estimates.tsx`](../src/pages/Estimates.tsx) detail
 - **Category**: Estimates / Edge / Audit
 
 **`20260406025757_log_estimate_customer_event_rpc.sql`**
-- **Purpose**: **`log_estimate_customer_event`** — **`SECURITY DEFINER`** insert into **`estimate_customer_events`**; **`GRANT EXECUTE`** to **`service_role`** only (Edge **`rpc`** + optional insert fallback from [`logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts))
-- **Impact**: [`logEstimateCustomerEvent.ts`](supabase/functions/_shared/logEstimateCustomerEvent.ts); repeat **`accept-estimate`** (**`alreadyAccepted`**) audit
+- **Purpose**: **`log_estimate_customer_event`** — **`SECURITY DEFINER`** insert into **`estimate_customer_events`**; **`GRANT EXECUTE`** to **`service_role`** only (Edge **`rpc`** + optional insert fallback from [`logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts))
+- **Impact**: [`logEstimateCustomerEvent.ts`](../supabase/functions/_shared/logEstimateCustomerEvent.ts); repeat **`accept-estimate`** (**`alreadyAccepted`**) audit
 - **Category**: Estimates / Edge / Audit
 
 **`20260406033952_estimates_audit_customer_accepted_trigger.sql`**
 - **Purpose**: Reliable **`public_accept_submitted`** audit when **`estimates.status`** transitions **`sent` → `customer_accepted`** (same transaction as **`accept-estimate`** update)
 - **Changes**: **`estimates_audit_customer_accepted_row`** + **`estimates_audit_customer_accepted_trigger`** (`AFTER UPDATE OF status`); copies **`acceptor_ip`**, **`acceptor_user_agent`**, and signature presence into **`estimate_customer_events`**
-- **Impact**: [`accept-estimate`](supabase/functions/accept-estimate/index.ts) (main path relies on trigger, no duplicate Edge insert); **Customer activity** on [`Estimates.tsx`](src/pages/Estimates.tsx)
+- **Impact**: [`accept-estimate`](../supabase/functions/accept-estimate/index.ts) (main path relies on trigger, no duplicate Edge insert); **Customer activity** on [`Estimates.tsx`](../src/pages/Estimates.tsx)
 - **Category**: Estimates / Audit
 
 **`20260406034514_record_estimate_public_link_view_rpc.sql`**
 - **Purpose**: **`record_estimate_public_link_view`** — **`SECURITY DEFINER`** append **`public_link_view`** while the row is still **`sent`**; **`GRANT EXECUTE`** to **`service_role`**
-- **Impact**: [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) on each successful public **GET** **200**
+- **Impact**: [`get-estimate-for-customer`](../supabase/functions/get-estimate-for-customer/index.ts) on each successful public **GET** **200**
 - **Category**: Estimates / Edge / Audit
 
 **`20260412184127_dedupe_record_estimate_public_link_view.sql`**
 - **Purpose**: **`CREATE OR REPLACE`** **`record_estimate_public_link_view`** — skip insert when the same **`estimate_id`**, **`client_ip`**, and **`user_agent`** already have **`public_link_view`** within **5 seconds**; **`pg_advisory_xact_lock(hashtext(estimate_id::text))`** serializes concurrent calls per quote
-- **Impact**: Fewer duplicate **Customer activity** rows from double client loads (e.g. React **Strict Mode** remount); [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) unchanged
+- **Impact**: Fewer duplicate **Customer activity** rows from double client loads (e.g. React **Strict Mode** remount); [`get-estimate-for-customer`](../supabase/functions/get-estimate-for-customer/index.ts) unchanged
 - **Category**: Estimates / Edge / Audit
 
 **`20260412190051_update_estimate_thank_you_body_default.sql`**
 - **Purpose**: **`UPDATE`** **`app_settings`** **`estimate_thank_you_body`** — append “We are excited to see you soon.” to the default thank-you paragraph (public accept / thank-you page)
-- **Impact**: [`EstimateCustomerThankYou`](src/components/estimates/EstimateCustomerThankYou.tsx); [`estimateCustomerExperience.ts`](src/lib/estimateCustomerExperience.ts) builtin default kept in sync in app + Edge
+- **Impact**: [`EstimateCustomerThankYou`](../src/components/estimates/EstimateCustomerThankYou.tsx); [`estimateCustomerExperience.ts`](../src/lib/estimateCustomerExperience.ts) builtin default kept in sync in app + Edge
 - **Category**: Estimates / Customer experience
 
 **`20260412190601_update_estimate_accept_page_footer_tagline.sql`**
 - **Purpose**: **`UPDATE`** **`app_settings`** **`estimate_accept_page_footer`** — replace first-line tagline **Reliable plumbing today** → **Reliable service today** when the old phrase is present
-- **Impact**: [`estimateCustomerExperience.ts`](src/lib/estimateCustomerExperience.ts) **`BUILTIN_ACCEPT_PAGE_FOOTER`** + Edge shared copy; public accept footer via **`AcceptPageFooterBlock`**
+- **Impact**: [`estimateCustomerExperience.ts`](../src/lib/estimateCustomerExperience.ts) **`BUILTIN_ACCEPT_PAGE_FOOTER`** + Edge shared copy; public accept footer via **`AcceptPageFooterBlock`**
 - **Category**: Estimates / Customer experience
 
 **`20260412230827_delete_ready_to_bill_invoice_idempotent.sql`**
 - **Purpose**: **`delete_ready_to_bill_invoice(p_invoice_id)`** — **`SECURITY DEFINER`** delete **`jobs_ledger_invoices`** only when **`status = 'ready_to_bill'`** and caller has the same job access as the invoice **DELETE** policy; idempotent JSON **`{ ok, deleted?, error? }`** when the row is already gone (safe double-submit)
 - **Changes**: **`GRANT EXECUTE`** to **`authenticated`**
-- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx) **Delete draft bill**; [`database.ts`](src/types/database.ts)
+- **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx), [`Dashboard.tsx`](../src/pages/Dashboard.tsx) **Delete draft bill**; [`database.ts`](../src/types/database.ts)
 - **Category**: Jobs / Billing
 
 **`20260406173212_stale_tally_staff_job_search_scope.sql`**
 - **Purpose**: Stale tally **Assign to jobs** — **`search_jobs_for_tally_mercury_assign_as_user`** uses **`jobs_ledger_row_visible_for_tally_assign(jl.id, auth.uid())`** (staff invoker ledger scope) for **non-subcontractor** card owners; **subcontractor** targets keep **`p_for_user_id`** (team-only) so results stay aligned with **`replace_mercury_job_splits_for_linked_card_as_staff`**
 - **Changes**: **`CREATE OR REPLACE`** **`search_jobs_for_tally_mercury_assign_as_user`** — **`CASE`** on whether **`p_for_user_id`** is a subcontractor; updated **`COMMENT`**; **`REVOKE`/`GRANT EXECUTE`**
-- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) (unchanged client); [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx) (unchanged client); [`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)
 - **Category**: Dashboard / Job Parts Tally
 
 **`20260406175808_tally_assign_search_all_jobs_staff.sql`**
 - **Purpose**: Stale tally **Assign to jobs** — **`dev` / `master_technician` / `assistant`** invokers can list **any** **`jobs_ledger`** row matching **`search_text`** (still **`LIMIT 50`**) for **non-subcontractor** targets, alongside **`staff_can_view_user_for_tally_followup`**; **subcontractor** targets unchanged (team-only via **`jobs_ledger_row_visible_for_tally_assign`**); other invokers fall back to invoker ledger visibility
 - **Changes**: **`CREATE OR REPLACE`** **`search_jobs_for_tally_mercury_assign_as_user`** — three-branch **`OR`** on visibility; updated **`COMMENT`**; **`REVOKE`/`GRANT EXECUTE`**
-- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx); [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx)
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx); [`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)
 - **Category**: Dashboard / Job Parts Tally
 
 #### April 8, 2026
@@ -734,7 +734,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260405010252_estimate_customer_experience_defaults_snapshot.sql`**
 - **Purpose**: Dev-editable estimate customer copy defaults in **`app_settings`**; per-estimate **`customer_experience_overrides`**; frozen **`customer_experience_sent`** written when **send-estimate-to-customer** sets **`sent`**
 - **Changes**: `customer_experience_overrides` / `customer_experience_sent` **`jsonb`** on **`public.estimates`** (object check); **`INSERT`** default **`estimate_*`** `app_settings` keys; extend **`estimates_protect_after_accept`** to freeze both json columns after **`customer_accepted`**
-- **Impact**: [`Settings.tsx`](src/pages/Settings.tsx) defaults; [`Estimates.tsx`](src/pages/Estimates.tsx) overrides + previews; [`EstimateAccept.tsx`](src/pages/EstimateAccept.tsx); Edge [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts) / [`send-estimate-to-customer`](supabase/functions/send-estimate-to-customer/index.ts); [`src/lib/estimateCustomerExperience.ts`](src/lib/estimateCustomerExperience.ts)
+- **Impact**: [`Settings.tsx`](../src/pages/Settings.tsx) defaults; [`Estimates.tsx`](../src/pages/Estimates.tsx) overrides + previews; [`EstimateAccept.tsx`](../src/pages/EstimateAccept.tsx); Edge [`get-estimate-for-customer`](../supabase/functions/get-estimate-for-customer/index.ts) / [`send-estimate-to-customer`](../supabase/functions/send-estimate-to-customer/index.ts); [`src/lib/estimateCustomerExperience.ts`](../src/lib/estimateCustomerExperience.ts)
 - **Category**: Estimates / Edge / Settings
 
 #### April 7, 2026
@@ -742,7 +742,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260405003103_estimates_global_estimate_number.sql`**
 - **Purpose**: Global sequential **Quote #** on **`public.estimates`** (`estimate_number`), immutable after assignment
 - **Changes**: `estimate_number` column + unique index; `estimates_estimate_number_seq` owned by column; `BEFORE INSERT` assigns number; `BEFORE UPDATE` rejects changes to `estimate_number`; backfill existing rows by `created_at`; extend post-accept immutability trigger to treat `estimate_number` like other frozen columns
-- **Impact**: Staff URLs **`/estimates/{estimate_number}`** (UUID path still works); list/detail **Quote #** in [`Estimates.tsx`](src/pages/Estimates.tsx)
+- **Impact**: Staff URLs **`/estimates/{estimate_number}`** (UUID path still works); list/detail **Quote #** in [`Estimates.tsx`](../src/pages/Estimates.tsx)
 - **Category**: Estimates
 
 #### April 4, 2026
@@ -750,7 +750,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260404212052_estimates_approach_a.sql`**
 - **Purpose**: **`public.estimates`** — simple customer proposals with public token accept flow (Approach A); distinct from bid **`cost_estimates`**
 - **Changes**: `estimate_status` enum; `estimates` table (snapshots, token hash, acceptance audit); `user_can_access_estimate` / `superintendent_can_access_estimate`; RLS for staff; triggers for `updated_at` and post-accept immutability; draft-only updates from authenticated clients
-- **Impact**: [`Estimates.tsx`](src/pages/Estimates.tsx), Edge [`get-estimate-for-customer`](supabase/functions/get-estimate-for-customer/index.ts), [`accept-estimate`](supabase/functions/accept-estimate/index.ts), [`send-estimate-to-customer`](supabase/functions/send-estimate-to-customer/index.ts)
+- **Impact**: [`Estimates.tsx`](../src/pages/Estimates.tsx), Edge [`get-estimate-for-customer`](../supabase/functions/get-estimate-for-customer/index.ts), [`accept-estimate`](../supabase/functions/accept-estimate/index.ts), [`send-estimate-to-customer`](../supabase/functions/send-estimate-to-customer/index.ts)
 - **Category**: Estimates / Edge
 
 ### July 2026
@@ -768,14 +768,14 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`**
 - **Purpose**: Header **Task** modal end-to-end for **subcontractor**, **helpers**, and **estimator** — checklist **`INSERT`** / assignees / instances without widening **`is_dev_or_master_or_assistant()`** globally.
 - **Changes**: **`can_define_task_style_checklist_items()`**; extend **`checklist_items`** (SELECT **`created_by_user_id`**, mutating policies), **`checklist_item_assignees`**, **`checklist_instance_assignees`**, **`checklist_instances`** — field roles scoped to items they created (**superseded in part** by **`20260501205038`** for recursion-safe ownership checks after policies referenced **`checklist_items`** from junction **`EXISTS`**).
-- **Impact**: **[`Layout.tsx`](src/components/Layout.tsx)** + **[`headerTaskDispatchEstimatorEligible.ts`](src/lib/headerTaskDispatchEstimatorEligible.ts)** + **[`ChecklistAddModal.tsx`](src/components/ChecklistAddModal.tsx)**; **`ACCESS_CONTROL.md`**; **`RECENT_FEATURES.md`** **v2.450**
+- **Impact**: **[`Layout.tsx`](../src/components/Layout.tsx)** + **[`headerTaskDispatchEstimatorEligible.ts`](../src/lib/headerTaskDispatchEstimatorEligible.ts)** + **[`ChecklistAddModal.tsx`](../src/components/ChecklistAddModal.tsx)**; **`ACCESS_CONTROL.md`**; **`RECENT_FEATURES.md`** **v2.450**
 - **Category**: Checklist / RLS / Field roles
 
 #### July 18, 2026
 
 **`20270518120000_list_assigned_jobs_service_type_name.sql`**
 - **Purpose**: **`list_assigned_jobs_for_dashboard`** adds **`service_type_name`** (scalar subquery on **`service_types`**) and restores **`job_pictures_link`**, **`service_type_id`** on the recreated function (aligns with post-**`20270507120000`** RPC shape) so the Clock In default job list can show **trade** pills without an extra client fetch.
-- **Impact**: [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx); regenerate **`src/types/database.ts`**; **`RECENT_FEATURES.md`** **v2.433**
+- **Impact**: [`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx); regenerate **`src/types/database.ts`**; **`RECENT_FEATURES.md`** **v2.433**
 - **Category**: Dashboard / RPC
 
 #### July 16, 2026
@@ -791,7 +791,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270515120000_report_list_rpc_include_coordinates.sql`**
 - **Purpose**: Align **`reported_at_lat`** / **`reported_at_lng`** visibility in report **list** RPCs with roles that legitimately see location metadata (supersedes office-only NULL masking introduced in **`20260415120006`** / **`20260415120007`**)
 - **Changes**: **`CREATE OR REPLACE`** on **`list_reports_with_job_info`**, **`list_reports_for_job_ledger`**, **`list_my_reports`** — return coordinates for **primary**, **superintendent**, **estimator**; **helpers** / **subcontractor** receive values **only on rows they authored** (`created_by_user_id = auth.uid()`)
-- **Impact**: **[`JobReportsModal.tsx`](src/components/JobReportsModal.tsx)** **`ReportLocationMapsLink`** when list payloads include coords; **`RECENT_FEATURES.md`** v2.418
+- **Impact**: **[`JobReportsModal.tsx`](../src/components/JobReportsModal.tsx)** **`ReportLocationMapsLink`** when list payloads include coords; **`RECENT_FEATURES.md`** v2.418
 - **Category**: Reports / RPC / Access control
 
 #### July 14, 2026
@@ -831,7 +831,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270507120000_dashboard_my_last_report_at.sql`**
 - **Purpose**: **Dashboard** assigned / ready-to-bill / superintendent job lists — **`my_last_report_at`** for **Leave Report** schedule reminders (max **`reports.created_at`** per job filtered to **`created_by_user_id = auth.uid()`**)
 - **Changes**: **`CREATE OR REPLACE`** on **`list_assigned_jobs_for_dashboard`**, **`list_ready_to_bill_assigned_jobs_for_dashboard`**, **`list_superintendent_jobs_for_dashboard`** — add **`my_last_report_at timestamptz`** column
-- **Impact**: [`Dashboard.tsx`](src/pages/Dashboard.tsx) + [`shouldShowLeaveReportScheduleReminder`](src/lib/leaveReportScheduleReminder.ts); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.411
+- **Impact**: [`Dashboard.tsx`](../src/pages/Dashboard.tsx) + [`shouldShowLeaveReportScheduleReminder`](../src/lib/leaveReportScheduleReminder.ts); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.411
 - **Category**: Dashboard / Reports
 
 #### July 6, 2026
@@ -878,7 +878,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270408150000_tally_staff_followup_assistant_any_target.sql`**
 - **Purpose**: Dashboard / Quickfill **stale tally staff follow-up** — **assistant** role sees **all** target users for Mercury stale-unlinked list and staff assign flows (same scope as **dev** via **`staff_can_view_user_for_tally_followup`**)
 - **Changes**: **`CREATE OR REPLACE`** **`staff_can_view_user_for_tally_followup`** — treat **`v_role = 'assistant'`** like dev (**`RETURN true`** for any **`p_target`**); remove previous **`assistants_share_master`** / adopting-master-only branch; updated **`COMMENT`**
-- **Impact**: [`useStaleTallyStaffFollowUp.ts`](src/hooks/useStaleTallyStaffFollowUp.ts), [`DashboardStaleTallyStaffFollowUpModal.tsx`](src/components/DashboardStaleTallyStaffFollowUpModal.tsx) (`list_stale_*`, `search_jobs_for_tally_mercury_assign_as_user`, `replace_mercury_job_splits_for_linked_card_as_staff`); [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) stale tally row
+- **Impact**: [`useStaleTallyStaffFollowUp.ts`](../src/hooks/useStaleTallyStaffFollowUp.ts), [`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx) (`list_stale_*`, `search_jobs_for_tally_mercury_assign_as_user`, `replace_mercury_job_splits_for_linked_card_as_staff`); [`ACCESS_CONTROL.md`](ACCESS_CONTROL.md) stale tally row
 - **Category**: Dashboard / Job Parts Tally / Access
 
 **`20270408151000_tally_staff_followup_assistant_adopted_masters_job_team.sql`**
@@ -902,19 +902,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270408160000_invoice_allocation_lines_for_job_summary.sql`**
 - **Purpose**: **Job Summary** tab **Parts Cost** — per-invoice supply-house lines allocated to jobs (not only rolled-up totals)
 - **Changes**: **`get_invoice_allocation_lines_for_jobs(p_job_ids uuid[])`** — `RETURNS TABLE` (**`job_id`**, **`invoice_id`**, **`allocated_amount`**, invoice metadata, **`supply_house_name`**, **`pct`**); **`STABLE`**, **`SECURITY DEFINER`**, job visibility matches **`get_invoice_amounts_for_jobs`**; **`GRANT EXECUTE`** to **`authenticated`**
-- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx) Job Summary **Parts Cost**
+- **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx) Job Summary **Parts Cost**
 - **Category**: Jobs / Materials / Invoices
 
 **`20270408161000_tally_staff_split_save_align_subcontractor_targets.sql`**
 - **Purpose**: **Stale tally staff follow-up** — when **dev** / **master_technician** / **assistant** saves Mercury **job splits** for a **subcontractor’s** linked card, allow any **`jobs_ledger`** row the staff search could return (align with **`search_jobs_for_tally_mercury_assign_as_user`**), instead of requiring **`jobs_ledger_team_members`** per job
 - **Changes**: **`CREATE OR REPLACE`** **`replace_mercury_job_splits_for_linked_card_as_staff`**
-- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) **`tallyActAsUserId`** save path
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx) **`tallyActAsUserId`** save path
 - **Category**: Dashboard / Job Parts Tally
 
 **`20270408163000_person_offsets_employee_credit_type.sql`**
 - **Purpose**: **`person_offsets`** — **`employee_credit`** type for amounts **owed to** the person (e.g. overpayment held as a pending offset); distinct from **backcharge** / **damage** deductions
 - **Changes**: Replace **`person_offsets_type_check`** — **`CHECK (type IN ('backcharge', 'damage', 'employee_credit'))`**; **`COMMENT ON TABLE`**
-- **Impact**: [`PersonOffsetFormModal.tsx`](src/components/pay/PersonOffsetFormModal.tsx), [`People.tsx`](src/pages/People.tsx) **Offsets** + pay HTML, [`PayStubLessModal.tsx`](src/components/pay/PayStubLessModal.tsx) (**Employee credit** listed, **Apply** disabled); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.252
+- **Impact**: [`PersonOffsetFormModal.tsx`](../src/components/pay/PersonOffsetFormModal.tsx), [`People.tsx`](../src/pages/People.tsx) **Offsets** + pay HTML, [`PayStubLessModal.tsx`](../src/components/pay/PayStubLessModal.tsx) (**Employee credit** listed, **Apply** disabled); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.252
 - **Category**: People / Pay
 
 #### April 10, 2027
@@ -922,7 +922,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270410120000_invoice_linked_payments_partial_mark_paid.sql`**
 - **Purpose**: **Partial invoice payments** — link **`jobs_ledger_payments`** rows to **`jobs_ledger_invoices`**; **`mark_invoice_paid`** accepts optional **`p_amount`**, **`p_paid_on`**, **`p_note`** (remaining balance when amount omitted); **`mark_job_paid`** same optional fields for whole-job billed payments; **`mark_invoice_paid_from_stripe`** applies **remainder** after prior **`invoice_id`** payments and sets **`invoice_id`** on insert (idempotent if already **paid**)
 - **Changes**: **`invoice_id`** on **`jobs_ledger_payments`**; **`DROP`/`CREATE`** RPCs (replace single-arg **`mark_invoice_paid`** / **`mark_job_paid`** with defaulted-args versions)
-- **Impact**: [`BilledPaymentConfirmationModal.tsx`](src/components/jobs/BilledPaymentConfirmationModal.tsx), [`Jobs.tsx`](src/pages/Jobs.tsx), [`Dashboard.tsx`](src/pages/Dashboard.tsx), [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts); [`database.ts`](src/types/database.ts)
+- **Impact**: [`BilledPaymentConfirmationModal.tsx`](../src/components/jobs/BilledPaymentConfirmationModal.tsx), [`Jobs.tsx`](../src/pages/Jobs.tsx), [`Dashboard.tsx`](../src/pages/Dashboard.tsx), [`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts); [`database.ts`](../src/types/database.ts)
 - **Category**: Jobs / Billing
 
 **`20270410130100_drop_duplicate_mark_invoice_paid_overload.sql`**
@@ -934,20 +934,20 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270410130300_stripe_webhook_events_dedupe.sql`**
 - **Purpose**: **Stripe webhook dedupe log** — **`stripe_webhook_events`** stores **`stripe_event_id`** (unique) plus payload snapshot for **`invoice.*`**, **`payment_intent.*`**, **`charge.*`**; **`stripe-webhook`** inserts before processing and bails on duplicate
 - **Changes**: **`CREATE TABLE`** + indexes; **dev-only** SELECT RLS (`is_dev()`)
-- **Impact**: [`stripe-webhook`](supabase/functions/stripe-webhook/index.ts); Banking **Stripe** → **Data** ([`BankingStripeWebhookEventsPanel.tsx`](src/components/BankingStripeWebhookEventsPanel.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.284
+- **Impact**: [`stripe-webhook`](../supabase/functions/stripe-webhook/index.ts); Banking **Stripe** → **Data** ([`BankingStripeWebhookEventsPanel.tsx`](../src/components/BankingStripeWebhookEventsPanel.tsx)); [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.284
 - **Category**: Jobs / Billing / Dev tooling
 
 #### April 19, 2027
 
 **`20270419120001_ar_bank_allocations_breakdown.sql`**
 - **Purpose**: **`list_ar_allocations_for_mercury_transaction`** ( **`jobs_ledger_payments`** linked to a Mercury row, with job/invoice labels); **`CREATE OR REPLACE`** **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** with **`includeFullyApplied`** only — inadvertently omitted **`returned`** and **`includeHiddenArDeposits`** (restored in **`20270419120002`**)
-- **Impact**: [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx) **Applied to jobs** breakdown; list/count filter
+- **Impact**: [`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx) **Applied to jobs** breakdown; list/count filter
 - **Category**: Jobs / Banking / AR
 
 **`20270419120002_list_mercury_bank_payments_returned_column.sql`**
 - **Purpose**: Restore **`returned`** on **`list_mercury_transactions_for_bank_payments`** and **`includeHiddenArDeposits`** (or legacy **`includeFullyApplied`**) visibility for zero-remainder and **mercury_transaction_ar_returned** rows; align **`count_mercury_transactions_for_bank_payments`** with the same rules (**fixes regression** from **`20270419120001`** dropping the join)
 - **Changes**: **`CREATE OR REPLACE`** both RPCs; **`LEFT JOIN`** **`mercury_transaction_ar_returned`**
-- **Impact**: [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx); types **`returned`** on list returns
+- **Impact**: [`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx); types **`returned`** on list returns
 - **Category**: Jobs / Banking / AR
 
 #### April 25, 2027
@@ -955,13 +955,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20270425120000_allow_ready_to_bill_migrate_job_ledger_delete.sql`**
 - **Purpose**: **`migrate_job_ledger_costs_and_delete`** — allow source **`jobs_ledger.status`** **`working`** or **`ready_to_bill`** (invoices, payments, `payments_made`, collect-payment flow guards unchanged; supersedes **Working**-only check from **`20270424120000_migrate_job_ledger_costs_and_delete.sql`**)
 - **Changes**: **`CREATE OR REPLACE FUNCTION`**; updated first billing-guard branch and function **`COMMENT`**
-- **Impact**: [`JobFormModal.tsx`](src/components/jobs/JobFormModal.tsx) **`billingBlockedForMigrate`**; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.394
+- **Impact**: [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) **`billingBlockedForMigrate`**; [`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.394
 - **Category**: Jobs / Billing / RPC
 
 **`20270426120000_checklist_tech_tree.sql`**
 - **Purpose**: **Checklist → Roadmap** — groups, per-group tasks, task assignees, prerequisite edges; RLS using **`is_dev_or_master_or_assistant()`** for structure and assignee/staff task completion.
 - **Changes**: **`CREATE TABLE`** **`checklist_tech_tree_groups`**, **`checklist_tech_tree_group_tasks`**, **`checklist_tech_tree_task_assignees`**, **`checklist_tech_tree_edges`**
-- **Impact**: [`Checklist.tsx`](src/pages/Checklist.tsx) **`?tab=roadmap`**, [`ChecklistTechTreeTab.tsx`](src/components/checklist/ChecklistTechTreeTab.tsx)
+- **Impact**: [`Checklist.tsx`](../src/pages/Checklist.tsx) **`?tab=roadmap`**, [`ChecklistTechTreeTab.tsx`](../src/components/checklist/ChecklistTechTreeTab.tsx)
 - **Category**: Checklist
 
 **`20270427120000_checklist_tech_tree_multi_roadmap.sql`**
@@ -1485,13 +1485,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260401052909_mercury_transactions_ledger.sql`**
 - **Purpose**: **Banking (dev)**: ledger table **`mercury_transactions`** synced from Mercury API (`sync-mercury-transactions` / **`mercury-webhook`**); **RLS** dev-only **`SELECT`**, no client writes (service role upserts)
 - **Changes**: `CREATE TABLE mercury_transactions` (Mercury tx id, account, amounts, status/kind, category JSON, `raw`, `synced_at`); indexes; policies
-- **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) read-only grid; Edge Functions documented in **`EDGE_FUNCTIONS.md`**
+- **Impact**: [`Banking.tsx`](../src/pages/Banking.tsx) read-only grid; Edge Functions documented in **`EDGE_FUNCTIONS.md`**
 - **Category**: Banking / Integrations / RLS
 
 **`20260401195701_mercury_account_nicknames.sql`**
 - **Purpose**: **Banking (dev)**: optional friendly labels per **`mercury_account_id`**; **RLS** dev **`SELECT` / **`INSERT`** / **`UPDATE`** / **`DELETE`** (edited from the Banking UI)
 - **Changes**: `CREATE TABLE mercury_account_nicknames` (`mercury_account_id` PK, `nickname` 1–120 chars, `updated_at`); dev policies; **`GRANT`** to **`authenticated`** and **`service_role`**
-- **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) account filter labels, sortable grid, nickname management block
+- **Impact**: [`Banking.tsx`](../src/pages/Banking.tsx) account filter labels, sortable grid, nickname management block
 - **Category**: Banking / Integrations / RLS
 
 #### April 2, 2026
@@ -1499,19 +1499,19 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260402003356_mercury_job_allocation_note.sql`**
 - **Purpose**: **Banking** Mercury job splits: optional per-allocation **`note`**; **`replace_mercury_transaction_splits`** persists **`note`** from **`p_rows`**
 - **Changes**: **`ALTER TABLE mercury_transaction_job_allocations ADD COLUMN note text`**; **`CREATE OR REPLACE`** **`replace_mercury_transaction_splits`** (insert includes **`note`** via **`NULLIF(trim(elem->>'note'), '')`**)
-- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](src/components/MercuryTransactionAllocationsModal.tsx) positive charge / **$**–**%** UI saves notes; [`Banking.tsx`](src/pages/Banking.tsx) loads **`note`**
+- **Impact**: [`MercuryTransactionAllocationsModal.tsx`](../src/components/MercuryTransactionAllocationsModal.tsx) positive charge / **$**–**%** UI saves notes; [`Banking.tsx`](../src/pages/Banking.tsx) loads **`note`**
 - **Category**: Banking / RLS
 
 **`20260402120000_clock_sessions_sync_crew_assignments_trigger.sql`**
 - **Purpose**: Keep **`people_crew_jobs`** / **`people_crew_bids`** aligned when **`job_ledger_id`** or **`bid_id`** changes on an **approved** **`clock_sessions`** row (strip **Assign** / **Change** without a second approve); enable Realtime for crew tables
 - **Changes**: Function **`clock_sessions_sync_crew_assignments_after_job_bid()`**; trigger **`clock_sessions_sync_crew_assignments_tr`** **`AFTER UPDATE OF job_ledger_id, bid_id`**; **`PERFORM`** **`sync_crew_jobs_from_clock`** and **`sync_crew_bids_from_clock`** when **`approved_at IS NOT NULL`**, **`rejected_at`** / **`revoked_at`** null, name present; conditional **`ALTER PUBLICATION supabase_realtime ADD TABLE`** for **`people_crew_jobs`** and **`people_crew_bids`**
-- **Impact**: [`CrewJobsBlock.tsx`](src/components/CrewJobsBlock.tsx) **`postgres_changes`** subscription receives writes from approve/sync/trigger; **Quickfill** and **Jobs → Team Labor** refetch automatically
+- **Impact**: [`CrewJobsBlock.tsx`](../src/components/CrewJobsBlock.tsx) **`postgres_changes`** subscription receives writes from approve/sync/trigger; **Quickfill** and **Jobs → Team Labor** refetch automatically
 - **Category**: Hours / Clock Sessions / Crew Jobs / Realtime
 
 **`20260401004452_attendance_incidents_subject_select_own.sql`**
 - **Purpose**: Let the **subject** of an attendance incident **SELECT** their own row (Calendar NCNS chip)
 - **Changes**: `CREATE POLICY "Attendance incidents subject select own"` **`FOR SELECT`** **`USING (subject_user_id = auth.uid())`**
-- **Impact**: [`Calendar.tsx`](src/pages/Calendar.tsx) can load NCNS for signed-in user without staff/team-lead role; staff policies unchanged (ORed)
+- **Impact**: [`Calendar.tsx`](../src/pages/Calendar.tsx) can load NCNS for signed-in user without staff/team-lead role; staff policies unchanged (ORed)
 - **Category**: People / RLS / Calendar
 
 **`20260401190823_can_edit_clock_sessions_option_a_roles.sql`**
@@ -1525,7 +1525,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260403051729_mercury_transactions_supabase_realtime.sql`**
 - **Purpose**: **Realtime** for **`mercury_transactions`** so **Banking** / **Quickfill Banking sorting** refetch when the ledger changes (e.g. **`mercury-webhook`** upsert or **`sync-mercury-transactions`**)
 - **Changes**: Conditional **`ALTER PUBLICATION supabase_realtime ADD TABLE public.mercury_transactions`** when not already published
-- **Impact**: [`Banking.tsx`](src/pages/Banking.tsx) and [`BankingSortingSnapshotSection.tsx`](src/components/quickfill/BankingSortingSnapshotSection.tsx) **`postgres_changes`** subscriptions (debounced **`loadRows`** / **`loadMercurySnapshot`**)
+- **Impact**: [`Banking.tsx`](../src/pages/Banking.tsx) and [`BankingSortingSnapshotSection.tsx`](../src/components/quickfill/BankingSortingSnapshotSection.tsx) **`postgres_changes`** subscriptions (debounced **`loadRows`** / **`loadMercurySnapshot`**)
 - **Category**: Banking / Integrations / Realtime
 
 #### April 4, 2026
@@ -1541,7 +1541,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260424161028_mercury_debit_card_auto_assign_user.sql`**
 - **Purpose**: **Banking** — optional auto-assignment of Mercury **person**/ **user** on linked-card transactions: switch from **`auto_assign_person_id`** to **`mercury_debit_card_user_links.auto_assign_user_id`** (FK **`public.users`**, same roster as Tally / User Card Link). Replaces trigger logic so **`mercury_transaction_attributions.user_id`** is set for unattributed rows; includes **`backfill_mercury_auto_attributions_for_debit_card`** for staff to backfill a card.
 - **Changes**: **`ADD COLUMN auto_assign_user_id`**; **`DROP COLUMN auto_assign_person_id`**; **`CREATE OR REPLACE`** **`mercury_transactions_apply_debit_card_auto_attribution`**; backfill RPC updated for **`user_id`**
-- **Impact**: [`BankingUserCardLinkModal.tsx`](src/components/BankingUserCardLinkModal.tsx); see **`RECENT_FEATURES.md`** v2.401, **`PROJECT_DOCUMENTATION.md`** §15 Banking
+- **Impact**: [`BankingUserCardLinkModal.tsx`](../src/components/BankingUserCardLinkModal.tsx); see **`RECENT_FEATURES.md`** v2.401, **`PROJECT_DOCUMENTATION.md`** §15 Banking
 - **Category**: Banking / Integrations
 
 #### April 25, 2026
@@ -1549,13 +1549,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260425064129_get_invoice_allocation_lines_website_url.sql`**
 - **Purpose**: **Job Summary** — **`get_invoice_allocation_lines_for_jobs`** return shape adds **`website_url`** from **`supply_houses`** so the invoice column can open the same Materials / **Open website** URL as the supply house form.
 - **Changes**: **`CREATE OR REPLACE FUNCTION`** — **`RETURNS TABLE`** + **`sh.website_url`**
-- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx) Job Summary **Invoices from supply houses** (and Parts detail table)
+- **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx) Job Summary **Invoices from supply houses** (and Parts detail table)
 - **Category**: Jobs / Materials / Invoices
 
 **`20260425065352_get_invoice_allocation_lines_invoice_link.sql`**
-- **Purpose**: **Job Summary** — RPC adds **`invoice_link`** from **`supply_house_invoices.link`** (per-invoice **View** URL in [SupplyHousesTab](src/components/SupplyHousesTab.tsx)), preferred over the supply house **website** in the client.
+- **Purpose**: **Job Summary** — RPC adds **`invoice_link`** from **`supply_house_invoices.link`** (per-invoice **View** URL in [SupplyHousesTab](../src/components/SupplyHousesTab.tsx)), preferred over the supply house **website** in the client.
 - **Changes**: **`DROP` / `CREATE FUNCTION`** — **`i.link`**
-- **Impact**: [`Jobs.tsx`](src/pages/Jobs.tsx) job summary invoice table click target
+- **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx) job summary invoice table click target
 - **Category**: Jobs / Materials / Invoices
 
 **`20260425120000_add_job_owner_override_robert.sql`**
@@ -1757,25 +1757,25 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260418061005_count_mercury_transactions_for_bank_payments.sql`**
 - **Purpose**: Dashboard **Unallocated bank deposits** count and Jobs **Bank Payments** parity — same eligibility filter + remainder rules as **`list_mercury_transactions_for_bank_payments`**
 - **Changes**: Create **`count_mercury_transactions_for_bank_payments(p_filter jsonb)`** (SECURITY DEFINER; dev / master_technician / assistant / primary)
-- **Impact**: [`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts); [`DashboardArBankUnallocatedBanner.tsx`](src/components/DashboardArBankUnallocatedBanner.tsx)
+- **Impact**: [`useArBankUnallocatedCount.ts`](../src/hooks/useArBankUnallocatedCount.ts); [`DashboardArBankUnallocatedBanner.tsx`](../src/components/DashboardArBankUnallocatedBanner.tsx)
 - **Category**: Banking / Accounts Receivable / Dashboard
 
 **`20260418063154_ar_sorting_exclude_counterparty_note.sql`**
 - **Purpose**: **Accounts Receivable Sorting** — optional case-insensitive substring exclusions on Mercury **`counterparty_name`** and **`note`** (no SQL `LIKE` metacharacters)
 - **Changes**: Replace **`list_mercury_transactions_for_bank_payments`** to apply **`excludeCounterpartyContains`** / **`excludeNoteContains`** from **`p_filter`**; align **`count_mercury_transactions_for_bank_payments`** with the same logic
-- **Impact**: [`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts); [`BankingSortingConfigModal.tsx`](src/components/BankingSortingConfigModal.tsx); [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx)
+- **Impact**: [`bankingSortingConfig.ts`](../src/lib/bankingSortingConfig.ts); [`BankingSortingConfigModal.tsx`](../src/components/BankingSortingConfigModal.tsx); [`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx)
 - **Category**: Banking / Accounts Receivable
 
 **`20260418073359_bank_payments_kind_badges_app_settings_doc.sql`**
 - **Purpose**: Document **`app_settings.key`** **`bank_payments_kind_badges_v1`** for org-wide Jobs **Bank Payments** Mercury Kind badge JSON (no DDL; no seed row)
 - **Changes**: Comment-only migration (`SELECT 1`) so local-only **`localStorage`** fallback stays correct before first dev upsert
-- **Impact**: [`bankPaymentsKindBadges.ts`](src/lib/bankPaymentsKindBadges.ts); [`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts)
+- **Impact**: [`bankPaymentsKindBadges.ts`](../src/lib/bankPaymentsKindBadges.ts); [`appSettingsKeys.ts`](../src/lib/appSettingsKeys.ts)
 - **Category**: Banking / Accounts Receivable / Settings
 
 **`20260418074400_bank_payments_sorting_config_app_settings_doc.sql`**
 - **Purpose**: Document **`app_settings.key`** **`bank_payments_sorting_config_v1`** for org-wide Jobs **Accounts Receivable Sorting** Mercury filter JSON (`BankingSortingConfigV1`; no DDL; no seed row)
 - **Changes**: Comment-only migration (`SELECT 1`) so legacy per-user **`localStorage`** fallback stays correct before first dev upsert
-- **Impact**: [`bankingSortingConfig.ts`](src/lib/bankingSortingConfig.ts); [`appSettingsKeys.ts`](src/lib/appSettingsKeys.ts); [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx); [`useArBankUnallocatedCount.ts`](src/hooks/useArBankUnallocatedCount.ts)
+- **Impact**: [`bankingSortingConfig.ts`](../src/lib/bankingSortingConfig.ts); [`appSettingsKeys.ts`](../src/lib/appSettingsKeys.ts); [`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx); [`useArBankUnallocatedCount.ts`](../src/hooks/useArBankUnallocatedCount.ts)
 - **Category**: Banking / Accounts Receivable / Settings
 
 **`20260418120000_create_dev_ignored_checklist_items.sql`**
@@ -1787,7 +1787,7 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 **`20260418184112_mercury_transaction_ar_returned_and_include_hidden.sql`**
 - **Purpose**: Jobs AR **Bank Payments** — hide “returned” Mercury deposits by default (e.g. bounced cheque still showing as credit); clearer **`p_filter`** key **`includeHiddenArDeposits`**
 - **Changes**: **`mercury_transaction_ar_returned`** + RLS; **`set_mercury_transaction_ar_returned`**; replace **`list_mercury_transactions_for_bank_payments`** / **`count_mercury_transactions_for_bank_payments`** ( **`returned`** column; **`includeHiddenArDeposits`** with legacy **`includeFullyApplied`** fallback)
-- **Impact**: [`BankPaymentsModal.tsx`](src/components/jobs/BankPaymentsModal.tsx); [`src/types/database.ts`](src/types/database.ts)
+- **Impact**: [`BankPaymentsModal.tsx`](../src/components/jobs/BankPaymentsModal.tsx); [`src/types/database.ts`](../src/types/database.ts)
 - **Category**: Banking / Accounts Receivable
 
 #### April 10, 2026
@@ -3406,9 +3406,9 @@ supabase db diff
 ## Related Documentation
 
 - [PROJECT_DOCUMENTATION.md - Database Schema](./PROJECT_DOCUMENTATION.md#database-schema)
-- [DATABASE_IMPROVEMENTS_SUMMARY.md](./DATABASE_IMPROVEMENTS_SUMMARY.md) - v2.22 improvements
-- [DATABASE_FIXES_TEST_PLAN.md](./DATABASE_FIXES_TEST_PLAN.md) - Testing procedures
-- [supabase/archive/README.md](./supabase/archive/README.md) - Migration directory readme
+- DATABASE_IMPROVEMENTS_SUMMARY.md - v2.22 improvements
+- DATABASE_FIXES_TEST_PLAN.md - Testing procedures
+- [supabase/archive/README.md](../supabase/archive/README.md) - Migration directory readme
 
 ---
 

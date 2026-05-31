@@ -3,7 +3,7 @@
  *
  * **Salary sync caveat:** `salary_sync_one_user_clock_sessions` can rewrite or recreate
  * `salary_schedule` rows for a day; user-edited seams on salary-linked rows may be reverted
- * on the next sync. See `SALARY_CLOCK_SESSIONS.md` (cross-row merge note).
+ * on the next sync. See `docs/SALARY_CLOCK_SESSIONS.md` (cross-row merge note).
  */
 import {
   CLUSTER_CONTIGUITY_EPS_MS,

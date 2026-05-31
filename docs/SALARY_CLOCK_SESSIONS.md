@@ -105,9 +105,9 @@ Week editability uses **America/Chicago** (current week for single session; this
 
 ## UI references
 
-- **Settings**: [`SalaryWorkScheduleSettings.tsx`](src/components/SalaryWorkScheduleSettings.tsx), [`salaryScheduleEndTimeDisplay.ts`](src/lib/salaryScheduleEndTimeDisplay.ts) (Day end / session end labels, `+1 day`, split first-block default).
-- **Dashboard**: [`ClockInOutButton.tsx`](src/components/ClockInOutButton.tsx) — On shift / Off shift when salaried.
-- **Calendar**: scheduled salary projection — PTO and template resolution; see [`calendarClockedHoursByDate.ts`](src/lib/calendarClockedHoursByDate.ts) and related.
+- **Settings**: [`SalaryWorkScheduleSettings.tsx`](../src/components/SalaryWorkScheduleSettings.tsx), [`salaryScheduleEndTimeDisplay.ts`](../src/lib/salaryScheduleEndTimeDisplay.ts) (Day end / session end labels, `+1 day`, split first-block default).
+- **Dashboard**: [`ClockInOutButton.tsx`](../src/components/ClockInOutButton.tsx) — On shift / Off shift when salaried.
+- **Calendar**: scheduled salary projection — PTO and template resolution; see [`calendarClockedHoursByDate.ts`](../src/lib/calendarClockedHoursByDate.ts) and related.
 
 ---
 

@@ -2862,7 +2862,7 @@ export default function Bids() {
           bids={bids}
           authUser={authUser}
           isDev={myRole === 'dev'}
-          ledgerPrefixMap={ledgerPrefixMap}
+                ledgerPrefixMap={ledgerPrefixMap}
           bidPreview={bidPreview}
           sectionOpen={bidBoardSectionOpen}
           onSectionOpenChange={setBidBoardSectionOpen}
@@ -2881,7 +2881,7 @@ export default function Bids() {
           onOpenLostSummary={() => setLostSummaryModalOpen(true)}
           onCloseLostSummary={closeLostSummaryModal}
           showLostModalLabor={showLostModalLabor}
-          onSaveLossReason={saveLossReasonFromLostSummaryModal}
+                onSaveLossReason={saveLossReasonFromLostSummaryModal}
           workingBoardArchivedBids={workingBoardArchivedBids}
         />
       )}
@@ -2996,9 +2996,9 @@ export default function Bids() {
           setTakeoffMappings={setTakeoffMappings}
           takeoffRoughPartLines={takeoffRoughPartLines}
           setTakeoffRoughPartLines={setTakeoffRoughPartLines}
-          takeoffRoughCatalogLowestByPartId={takeoffRoughCatalogLowestByPartId}
+                                      takeoffRoughCatalogLowestByPartId={takeoffRoughCatalogLowestByPartId}
           setTakeoffRoughCatalogLowestByPartId={setTakeoffRoughCatalogLowestByPartId}
-          materialTemplates={materialTemplates}
+                                      materialTemplates={materialTemplates}
           draftPOs={draftPOs}
           takeoffBookVersions={takeoffBookVersions}
           takeoffBookEntries={takeoffBookEntries}
@@ -3188,7 +3188,7 @@ export default function Bids() {
           onOpenParty={openGcBuilderOrCustomerModal}
           lastContactFromEntries={lastContactFromEntries}
           customerContacts={customerContacts}
-          estimatorUsers={estimatorUsers}
+                  estimatorUsers={estimatorUsers}
           onError={(m) => setError(m)}
           onReloadBids={() => { void loadBids() }}
           onReloadCustomerContacts={() => { void loadCustomerContacts() }}
@@ -3640,7 +3640,7 @@ We saw some structural issues with your plans and I wanted to get clarity...
         </div>
       )}
 
-      </div>
+            </div>
     </>
   )
 }

@@ -1,6 +1,6 @@
 # AI Agent Instructions
 
-> **Start here.** Read [AI_CONTEXT.md](./AI_CONTEXT.md) for the full project overview, code map, and documentation index. This file is the entry point; AI_CONTEXT.md is the source of truth.
+> **Start here.** Read [AI_CONTEXT.md](./docs/AI_CONTEXT.md) for the full project overview, code map, and documentation index. This file is the entry point; AI_CONTEXT.md is the source of truth.
 
 ---
 
@@ -44,7 +44,7 @@
 | Edge Functions API | `EDGE_FUNCTIONS.md` → All Edge Functions with examples |
 | Migration history | `MIGRATIONS.md` → All migrations by date and category |
 | **Linked** DB: local vs remote migration history mismatch, **`repair`**, **`db push --include-all`** | [Migration history drift (linked project)](#migration-history-drift-linked-project) below |
-| Company calendar / Central time (`America/Chicago`), instants vs naive wall time | [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md); canonical constant **`APP_CALENDAR_TZ`** in `src/utils/dateUtils.ts`; `npm run check:timezone` |
+| Company calendar / Central time (`America/Chicago`), instants vs naive wall time | [`TIME_AND_ZONES.md`](./docs/TIME_AND_ZONES.md); canonical constant **`APP_CALENDAR_TZ`** in `src/utils/dateUtils.ts`; `npm run check:timezone` |
 | Apply migrations / run SQL on linked Supabase (when Docker local unavailable) | Cursor **Supabase MCP** — read tool descriptors in `.cursor/.../mcps/` first; `apply_migration` for new files, `execute_sql` for ad-hoc queries; see [Supabase MCP](#supabase-mcp-cursor) below |
 | Workflow features | `WORKFLOW_FEATURES.md` → Stage management, financials |
 | Clock In/Out, pending sessions, Revoke, accountability, Quickfill Hours, Crew Jobs / Bids, unified job/bid search (**legacy J/B + configured `ledger_*_prefix`**, **`service_type_id`**, **`service_type_name`** + trade pills on jobs — **v2.433**; ledger prefixes — **v2.432**), Pay Report Jobs/Bids | `RECENT_FEATURES.md` → **v2.433**, **v2.432**, v2.100, v2.105, v2.114, v2.120; `PROJECT_DOCUMENTATION.md` → Dashboard, Hours, Quickfill, People; `GLOSSARY.md` → Clock Sessions |
@@ -147,7 +147,7 @@
 4. **No `any` types** — TypeScript strict mode. Use proper types or `unknown`.
 5. **Wrap Supabase calls** — Use `withSupabaseRetry()` from `@/utils/errorHandling`
 6. **Test all 8 roles** — dev, master, assistant, subcontractor, helpers (UI label **Helper**), estimator, primary, superintendent
-7. **Company time zone** — Use **`APP_CALENDAR_TZ`** from [`src/utils/dateUtils.ts`](./src/utils/dateUtils.ts) (or Edge [`_shared/appTimeZone.ts`](./supabase/functions/_shared/appTimeZone.ts)); do not introduce new `'America/Chicago'` string literals in app/Edge TS (see [`TIME_AND_ZONES.md`](./TIME_AND_ZONES.md), `npm run check:timezone`).
+7. **Company time zone** — Use **`APP_CALENDAR_TZ`** from [`src/utils/dateUtils.ts`](./src/utils/dateUtils.ts) (or Edge [`_shared/appTimeZone.ts`](./supabase/functions/_shared/appTimeZone.ts)); do not introduce new `'America/Chicago'` string literals in app/Edge TS (see [`TIME_AND_ZONES.md`](./docs/TIME_AND_ZONES.md), `npm run check:timezone`).
 8. **Realtime subscriptions** — Use **`useRealtimeChannel`** from [`src/hooks/useRealtimeChannel.ts`](./src/hooks/useRealtimeChannel.ts) for every `postgres_changes` listener; do not call `supabase.channel(...).on('postgres_changes', …)` directly in feature code. Filter rows server-side via the `filter` string, not client-side from the payload. Do not add a table to the **`supabase_realtime`** publication unless a subscriber lands in the same PR. Full rules in [.cursor/rules/supabase-realtime.mdc](./.cursor/rules/supabase-realtime.mdc); background in **`RECENT_FEATURES.md`** v2.454 / Tier 1.
 9. **Branch + PR workflow** — `main` is **branch-protected**; never push to it directly. Work on a branch and open a PR (`gh pr create --fill`); the CI `checks` job (`npm run typecheck` + `npm run lint` + `npm test`) must pass before merge, and the deploy workflow re-runs it as a gate. Before opening a PR, run those locally plus `npm run build` (all green). Lint is warn-level for now (`eslint.config.js`) — warnings don't block, but don't add new errors.
 
@@ -227,7 +227,7 @@ When this workspace has the **Supabase MCP** server enabled, agents can apply ne
 
 ## Next Steps
 
-1. **Read [AI_CONTEXT.md](./AI_CONTEXT.md)** — Full overview, file structure, patterns, glossary
+1. **Read [AI_CONTEXT.md](./docs/AI_CONTEXT.md)** — Full overview, file structure, patterns, glossary
 2. **Consult the table above** — For your task, open the relevant doc
 3. **Review code** — `src/pages/` for UI, `supabase/` for backend
 4. **App crash / Supabase outage triage** — [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) (see table **Where to Look For**)
@@ -236,4 +236,4 @@ When this workspace has the **Supabase MCP** server enabled, agents can apply ne
 
 ---
 
-*Full documentation lives in [AI_CONTEXT.md](./AI_CONTEXT.md). Keep that file updated; this file stays minimal.*
+*Full documentation lives in [AI_CONTEXT.md](./docs/AI_CONTEXT.md). Keep that file updated; this file stays minimal.*

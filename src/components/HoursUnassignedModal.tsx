@@ -541,7 +541,7 @@ export function HoursUnassignedModal({
 
     void (async () => {
       type QuickOrd = { kind: 'job' | 'bid'; id: string }
-      let clockOrdered: QuickOrd[] = []
+      const clockOrdered: QuickOrd[] = []
       let clockFetchError: string | null = null
 
       try {

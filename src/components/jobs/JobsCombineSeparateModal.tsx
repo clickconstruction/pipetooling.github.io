@@ -379,7 +379,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
         if (!cancelled) setSSessions(sessRows)
 
         const uids = [...new Set(sessRows.map((s) => s.user_id))]
-        let nameById: Record<string, string> = {}
+        const nameById: Record<string, string> = {}
         if (uids.length > 0) {
           const users = await withSupabaseRetry(
             () => supabase.from('users').select('id, name').in('id', uids),

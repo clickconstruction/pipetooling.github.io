@@ -4531,7 +4531,7 @@ export default function JobFormModal({
                           return
                         }
                         const rem = breakOffRemaining
-                        let useCents = Math.min(Math.round(n * 100), Math.round(rem * 100))
+                        const useCents = Math.min(Math.round(n * 100), Math.round(rem * 100))
                         let clamped = useCents / 100
                         const total = jobTotalBidDollars
                         if (total > 0) {

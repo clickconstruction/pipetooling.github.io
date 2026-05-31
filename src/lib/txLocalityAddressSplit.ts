@@ -84,7 +84,7 @@ export function splitJobAddressForPrefill(full: string): {
     return { street: t, city: '', state: '', zip: '' }
   }
 
-  let leftRemainder = t.slice(0, tail.index).trim().replace(/,\s*$/, '')
+  const leftRemainder = t.slice(0, tail.index).trim().replace(/,\s*$/, '')
   let city = ''
   let street = ''
 

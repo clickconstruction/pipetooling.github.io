@@ -3442,7 +3442,7 @@ export default function Dashboard() {
         ;(i.checklist_instance_assignees ?? []).forEach((a) => userIds.add(a.user_id))
         if (i.completed_by_user_id) userIds.add(i.completed_by_user_id)
       })
-      let userMap = new Map<string, string>()
+      const userMap = new Map<string, string>()
       if (userIds.size > 0) {
         const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', Array.from(userIds))
         ;(usersData ?? []).forEach((u: { id: string; name: string | null; email: string | null }) => {
@@ -3645,12 +3645,12 @@ export default function Dashboard() {
       checklist_items?: { title?: string; links?: string[] | null; repeat_type?: string } | null
       checklist_instance_assignees?: Array<{ user_id: string }>
     }>
-    let instances = raw.filter((inst) => {
+    const instances = raw.filter((inst) => {
       const assignees = inst.checklist_instance_assignees ?? []
       return assignees.length > 0 && (inst.checklist_items as { repeat_type?: string } | null)?.repeat_type === 'once'
     })
     const itemIds = [...new Set(instances.map((i) => i.checklist_item_id))]
-    let orderMap = new Map<string, number>()
+    const orderMap = new Map<string, number>()
     if (itemIds.length > 0) {
       const { data: orderData } = await supabase
         .from('checklist_item_assignees')

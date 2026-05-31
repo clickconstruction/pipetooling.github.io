@@ -10,7 +10,7 @@ last_updated: 2026-05-31
 
 ## Overview
 
-[`src/pages/Bids.tsx`](../src/pages/Bids.tsx) was a ~18,800-line "God component"; after extracting every workflow tab it is now ~4,119 lines. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented** — for feature/workflow/DB behavior, see [`BIDS_SYSTEM.md`](../BIDS_SYSTEM.md). **All 14 tabs are now extracted to their own components; the parent retains the shared bid pointer, URL deep-link router, the `useBidPricingEngine` seam, and a few shared page-level modals.**
+[`src/pages/Bids.tsx`](../src/pages/Bids.tsx) was a ~18,800-line "God component"; after extracting every workflow tab it is now ~4,119 lines. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented** — for feature/workflow/DB behavior, see [`BIDS_SYSTEM.md`](./BIDS_SYSTEM.md). **All 14 tabs are now extracted to their own components; the parent retains the shared bid pointer, URL deep-link router, the `useBidPricingEngine` seam, and a few shared page-level modals.**
 
 The tabs are switched on a single `activeTab` state ([`Bids.tsx:337`](../src/pages/Bids.tsx)):
 

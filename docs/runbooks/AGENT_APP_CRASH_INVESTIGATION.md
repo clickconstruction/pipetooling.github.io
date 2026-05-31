@@ -2,7 +2,7 @@
 
 **Use when the user says things like:** *find why the app crashed*, *outage*, *Supabase down*, *everyone stuck loading*, *503 / timeout*, *database slow*.
 
-**Not this playbook alone:** pure **white screen** with **200** responses — start with [`TROUBLESHOOTING.md`](../../TROUBLESHOOTING.md) (*White screen after app update*) and [`TROUBLESHOOT_404.md`](../../TROUBLESHOOT_404.md).
+**Not this playbook alone:** pure **white screen** with **200** responses — start with [`TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) (*White screen after app update*) and `TROUBLESHOOT_404.md`.
 
 ---
 
@@ -46,6 +46,6 @@ Writes under `docs/runbooks/supabase-inspect-snapshot/incident-<UTC>/` (gitignor
 | Doc | Role |
 |-----|------|
 | [`SUPABASE_INCIDENT_RUNBOOK.md`](./SUPABASE_INCIDENT_RUNBOOK.md) | Full procedure, Phase A checklist, Dashboard export |
-| [`TROUBLESHOOTING.md`](../../TROUBLESHOOTING.md) | Disk I/O, long-query SQL, runbook link |
+| [`TROUBLESHOOTING.md`](../TROUBLESHOOTING.md) | Disk I/O, long-query SQL, runbook link |
 | [`.cursor/rules/supabase-incident-triage.mdc`](../../.cursor/rules/supabase-incident-triage.mdc) | Cursor: natural-language outage prompts → this playbook + inspect / capture script |
-| [`RECENT_FEATURES.md`](../../RECENT_FEATURES.md) **v2.454** | Client Realtime debounce / visibility / narrower subscriptions |
+| [`RECENT_FEATURES.md`](../RECENT_FEATURES.md) **v2.454** | Client Realtime debounce / visibility / narrower subscriptions |

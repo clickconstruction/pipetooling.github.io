@@ -173,7 +173,7 @@ export function resolvePhysicalInvoiceLinePresentation(
     }
   }
 
-  let serviceTarget = Math.round((billRounded - matSum) * 100) / 100
+  const serviceTarget = Math.round((billRounded - matSum) * 100) / 100
   if (serviceTarget <= EPS) {
     if (Math.abs(matSum - billRounded) <= EPS) {
       return {

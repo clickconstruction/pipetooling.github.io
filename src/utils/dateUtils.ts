@@ -2,7 +2,7 @@
  * Company default IANA time zone: America/Chicago (Central; CST/CDT via DST).
  * Use for work_date, week boundaries, dispatch calendar, and Chicago-wall schedule fields.
  * Do not hard-code CDT/CST offsets or duplicate this string elsewhere — import this constant
- * or (Edge) `supabase/functions/_shared/appTimeZone.ts`. See `TIME_AND_ZONES.md`.
+ * or (Edge) `supabase/functions/_shared/appTimeZone.ts`. See `docs/TIME_AND_ZONES.md`.
  */
 export const APP_CALENDAR_TZ = 'America/Chicago'
 

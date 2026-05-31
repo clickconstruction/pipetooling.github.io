@@ -429,7 +429,7 @@ export function repairMixedClusterSplitForRowContainment(
   }
 
   const maxPasses = Math.max(2, split.boundaries.length)
-  let b = [...split.boundaries]
+  const b = [...split.boundaries]
   for (let pass = 0; pass < maxPasses; pass++) {
     let changed = false
     for (let k = 1; k < b.length - 1; k++) {

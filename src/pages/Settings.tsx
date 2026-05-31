@@ -8211,7 +8211,7 @@ export default function Settings() {
             {roleVisibilityExpanded && (
               <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
                 <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                  Page access by role. See ACCESS_CONTROL.md for full feature-level permissions.
+                  Page access by role. See docs/ACCESS_CONTROL.md for full feature-level permissions.
                 </p>
                 <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
                   <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>

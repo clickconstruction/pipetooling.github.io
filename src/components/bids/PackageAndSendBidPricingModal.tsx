@@ -495,6 +495,7 @@ export function PackageAndSendBidPricingModal({
           <div
             className="package-send-preview"
             style={previewWrapStyle}
+            // eslint-disable-next-line react/no-danger -- app-generated pricing-table HTML; values are escaped by the tested buildBidPricingPackageTableHtml builder
             dangerouslySetInnerHTML={{ __html: tableHtml }}
           />
         </div>

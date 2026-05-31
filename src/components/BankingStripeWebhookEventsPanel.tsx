@@ -41,7 +41,7 @@ export function BankingStripeWebhookEventsPanel() {
     <div>
       <p style={{ margin: '0 0 0.75rem', color: '#4b5563', maxWidth: 720, fontSize: '0.9375rem', lineHeight: 1.55 }}>
         Events recorded when the <code>stripe-webhook</code> Edge Function accepts a delivery (dedupe by Stripe event id). Dev-only read;
-        see <strong>EDGE_FUNCTIONS.md</strong>.
+        see <strong>docs/EDGE_FUNCTIONS.md</strong>.
       </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
         <button

@@ -163,7 +163,7 @@ export function buildPhysicalInvoiceDocument(opts: {
   let serviceLines: PhysicalInvoiceServiceLine[] = []
   let materialLines: PhysicalInvoiceMaterialLine[] = []
   let paymentHistory: PhysicalInvoicePaymentHistoryRow[] = []
-  let invoiceNumberDisplay =
+  const invoiceNumberDisplay =
     detailFromJob?.invoiceSequenceOrder != null ? `#${detailFromJob.invoiceSequenceOrder}` : hcp ? `#${hcp}` : '—'
 
   if (detailFromJob) {

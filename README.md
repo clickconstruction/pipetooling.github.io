@@ -36,7 +36,7 @@ A web application for Master Plumbers to track plumbing work across multiple pro
 
 ## Contributing / branch workflow
 
-`main` is **branch-protected** — no direct pushes. All changes land via a pull request whose CI `checks` job (typecheck + lint + test) must pass; merging then triggers the GitHub Pages deploy. See the "Branch workflow" section in [AI_CONTEXT.md](./AI_CONTEXT.md).
+`main` is **branch-protected** — no direct pushes. All changes land via a pull request whose CI `checks` job (typecheck + lint + test) must pass; merging then triggers the GitHub Pages deploy. See the "Branch workflow" section in [AI_CONTEXT.md](./docs/AI_CONTEXT.md).
 
 ```bash
 git checkout -b my-change
@@ -48,30 +48,30 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 
 ## For AI Agents / New Developers
 
-**Start here**: [AGENTS.md](./AGENTS.md) → [AI_CONTEXT.md](./AI_CONTEXT.md) (entry point + 30-second project overview)
+**Start here**: [AGENTS.md](./AGENTS.md) → [AI_CONTEXT.md](./docs/AI_CONTEXT.md) (entry point + 30-second project overview)
 
 **Then consult based on your task**:
 
 | Your Task | Documentation to Read |
 |-----------|----------------------|
-| Understanding roles/permissions | [ACCESS_CONTROL.md](./ACCESS_CONTROL.md) - Complete permissions matrix |
-| Adding a new role | [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) - Step-by-step guide |
-| Working with database/schema | [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) - "Database Schema" section |
-| Bids system features | [BIDS_SYSTEM.md](./BIDS_SYSTEM.md) - All 10 tabs documented |
+| Understanding roles/permissions | [ACCESS_CONTROL.md](./docs/ACCESS_CONTROL.md) - Complete permissions matrix |
+| Adding a new role | [ADDING_A_NEW_ROLE.md](./docs/ADDING_A_NEW_ROLE.md) - Step-by-step guide |
+| Working with database/schema | [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) - "Database Schema" section |
+| Bids system features | [BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md) - All 10 tabs documented |
 | Decomposing a large page (Bids/People) | [docs/BIDS_TABS_ARCHITECTURE.md](./docs/BIDS_TABS_ARCHITECTURE.md), [docs/PEOPLE_TABS_ARCHITECTURE.md](./docs/PEOPLE_TABS_ARCHITECTURE.md) - per-tab state/coupling maps + extraction order |
-| Edge Functions / API | [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) - Complete API reference |
-| Recent changes/features | [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Chronological updates |
-| App crash / outage / Supabase load (AI + CLI triage; Cursor: `.cursor/rules/supabase-incident-triage.mdc`) | [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md); capture: [`scripts/capture-supabase-incident.sh`](./scripts/capture-supabase-incident.sh); client mitigation: [RECENT_FEATURES.md](./RECENT_FEATURES.md) **v2.454** |
-| Troubleshooting | [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) - White screen, Supabase, sign-in, load investigation |
-| Migration history | [MIGRATIONS.md](./MIGRATIONS.md) - All database changes |
-| Understanding terminology | [GLOSSARY.md](./GLOSSARY.md) - All domain terms and concepts defined |
+| Edge Functions / API | [EDGE_FUNCTIONS.md](./docs/EDGE_FUNCTIONS.md) - Complete API reference |
+| Recent changes/features | [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) - Chronological updates |
+| App crash / outage / Supabase load (AI + CLI triage; Cursor: `.cursor/rules/supabase-incident-triage.mdc`) | [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md); capture: [`scripts/capture-supabase-incident.sh`](./scripts/capture-supabase-incident.sh); client mitigation: [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) **v2.454** |
+| Troubleshooting | [TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md) - White screen, Supabase, sign-in, load investigation |
+| Migration history | [MIGRATIONS.md](./docs/MIGRATIONS.md) - All database changes |
+| Understanding terminology | [GLOSSARY.md](./docs/GLOSSARY.md) - All domain terms and concepts defined |
 
 **Common AI Agent Tasks**:
 - **Adding a table**: Create migration → Update RLS policies → Regenerate types → Document
 - **Adding a page**: Create component → Add route → Update navigation → Verify role access
 - **Fixing RLS issue**: Check user role → Review table policies → Verify adoption/sharing
 - **Understanding feature**: Check RECENT_FEATURES.md → Read relevant system doc → Review code
-- **App crash / Supabase load**: Cursor rule [`.cursor/rules/supabase-incident-triage.mdc`](./.cursor/rules/supabase-incident-triage.mdc) — say *Supabase crashed* / *503* etc.; agent follows [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → Run `./scripts/capture-supabase-incident.sh` (or `supabase inspect`) → Full detail in [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md). Client Realtime mitigation: [RECENT_FEATURES.md](./RECENT_FEATURES.md) **v2.454**.
+- **App crash / Supabase load**: Cursor rule [`.cursor/rules/supabase-incident-triage.mdc`](./.cursor/rules/supabase-incident-triage.mdc) — say *Supabase crashed* / *503* etc.; agent follows [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) → Run `./scripts/capture-supabase-incident.sh` (or `supabase inspect`) → Full detail in [SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md). Client Realtime mitigation: [RECENT_FEATURES.md](./docs/RECENT_FEATURES.md) **v2.454**.
 
 **Key Constraints to Remember**:
 - Never edit existing migrations (append-only)
@@ -85,33 +85,33 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 ## Documentation
 
 📖 **Main Documentation**:
-- **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** - Comprehensive project documentation (architecture, database schema, patterns)
-- **[GLOSSARY.md](./GLOSSARY.md)** - Definitions of all domain terms and technical concepts
-- **[RECENT_FEATURES.md](./RECENT_FEATURES.md)** - Summary of all recent features and updates
-- **[WORKFLOW_FEATURES.md](./WORKFLOW_FEATURES.md)** - Detailed workflow features documentation
+- **[PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md)** - Comprehensive project documentation (architecture, database schema, patterns)
+- **[GLOSSARY.md](./docs/GLOSSARY.md)** - Definitions of all domain terms and technical concepts
+- **[RECENT_FEATURES.md](./docs/RECENT_FEATURES.md)** - Summary of all recent features and updates
+- **[WORKFLOW_FEATURES.md](./docs/WORKFLOW_FEATURES.md)** - Detailed workflow features documentation
 
 📋 **System-Specific Documentation**:
-- **[BIDS_SYSTEM.md](./BIDS_SYSTEM.md)** - Complete Bids system documentation (10 tabs, book systems, workflows)
-- **[EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md)** - Edge Functions API reference (user management, notifications)
-- **[ACCESS_CONTROL.md](./ACCESS_CONTROL.md)** - Role-based permissions matrix and access patterns
-- **[MIGRATIONS.md](./MIGRATIONS.md)** - Database migration history and tracking
+- **[BIDS_SYSTEM.md](./docs/BIDS_SYSTEM.md)** - Complete Bids system documentation (10 tabs, book systems, workflows)
+- **[EDGE_FUNCTIONS.md](./docs/EDGE_FUNCTIONS.md)** - Edge Functions API reference (user management, notifications)
+- **[ACCESS_CONTROL.md](./docs/ACCESS_CONTROL.md)** - Role-based permissions matrix and access patterns
+- **[MIGRATIONS.md](./docs/MIGRATIONS.md)** - Database migration history and tracking
 
 🔧 **Troubleshooting & incidents**:
-- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - White screen, Supabase issues, sign-in, duplicate pins, load investigation links
+- **[TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)** - White screen, Supabase issues, sign-in, duplicate pins, load investigation links
 - **[`.cursor/rules/supabase-incident-triage.mdc`](./.cursor/rules/supabase-incident-triage.mdc)** - Cursor agent: natural-language Supabase/Postgres outage triage (runs inspect / capture script playbook)
 - **[docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md)** - AI/agent playbook (*find why the app crashed*)
 - **[docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)** - Full Supabase CLI + Dashboard log workflow
 - **[scripts/capture-supabase-incident.sh](./scripts/capture-supabase-incident.sh)** - One-shot `supabase inspect` capture (gitignored output under `docs/runbooks/supabase-inspect-snapshot/`)
 
 📝 **Feature-Specific Documentation**:
-- **[PRIVATE_NOTES_SETUP.md](./PRIVATE_NOTES_SETUP.md)** - Private notes, line items, and projections setup
-- **[EMAIL_TEMPLATES_SETUP.md](./EMAIL_TEMPLATES_SETUP.md)** - Email templates database setup
-- **[EMAIL_TESTING.md](./EMAIL_TESTING.md)** - Email testing and integration status
+- **[PRIVATE_NOTES_SETUP.md](./docs/PRIVATE_NOTES_SETUP.md)** - Private notes, line items, and projections setup
+- **EMAIL_TEMPLATES_SETUP.md** - Email templates database setup
+- **EMAIL_TESTING.md** - Email testing and integration status
 
 🔧 **Database & Technical Documentation**:
-- **[SALARY_CLOCK_SESSIONS.md](./SALARY_CLOCK_SESSIONS.md)** - Salaried **`salary_schedule`** clock sessions (sync, split RPCs, overlap guards, migrations)
-- **[DATABASE_IMPROVEMENTS_SUMMARY.md](./DATABASE_IMPROVEMENTS_SUMMARY.md)** - Database layer improvements (triggers, constraints, transactions)
-- **[DATABASE_FIXES_TEST_PLAN.md](./DATABASE_FIXES_TEST_PLAN.md)** - Comprehensive testing plan for database improvements
+- **[SALARY_CLOCK_SESSIONS.md](./docs/SALARY_CLOCK_SESSIONS.md)** - Salaried **`salary_schedule`** clock sessions (sync, split RPCs, overlap guards, migrations)
+- **DATABASE_IMPROVEMENTS_SUMMARY.md** - Database layer improvements (triggers, constraints, transactions)
+- **DATABASE_FIXES_TEST_PLAN.md** - Comprehensive testing plan for database improvements
 
 The main documentation includes:
 - Project overview and architecture
@@ -131,7 +131,7 @@ The main documentation includes:
 - **Backend**: Supabase (PostgreSQL + Auth + Edge Functions)
 - **Hosting**: GitHub Pages
 
-The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase table and RPC types are maintained in **`src/types/database.ts`**; update them when the database schema or RPCs change so `npm run build` stays clean. See [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) for type-update patterns and known issues.
+The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase table and RPC types are maintained in **`src/types/database.ts`**; update them when the database schema or RPCs change so `npm run build` stays clean. See [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) for type-update patterns and known issues.
 
 ## Features
 
@@ -186,9 +186,9 @@ The project automatically deploys to GitHub Pages when changes land on the `main
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 
-See [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md) for detailed deployment instructions.
+See [PROJECT_DOCUMENTATION.md](./docs/PROJECT_DOCUMENTATION.md) for detailed deployment instructions.
 
-**SPA / 404**: Deep links may show **404** on the document request in DevTools; see [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md). In-app **Hard Reload** uses [`/?nocache=…`](src/lib/hardReload.ts) plus `history.replaceState` to reduce noisy 404s on cache-bust reloads.
+**SPA / 404**: Deep links may show **404** on the document request in DevTools; see TROUBLESHOOT_404.md. In-app **Hard Reload** uses [`/?nocache=…`](src/lib/hardReload.ts) plus `history.replaceState` to reduce noisy 404s on cache-bust reloads.
 
 ### Sync to Testing Site
 

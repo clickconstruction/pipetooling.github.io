@@ -1,0 +1,20 @@
+---
+description: How to decompose a God-component page (src/pages/*.tsx tab-switched megafiles) into per-tab components + shared hooks + tested pure logic. Read before refactoring/extracting/shrinking People.tsx, Jobs.tsx, Settings.tsx, Dashboard.tsx, Materials.tsx, Estimates.tsx, Workflow.tsx, or any large tab-switched page.
+alwaysApply: false
+---
+
+# Page decomposition
+
+When asked to shrink, refactor, or "extract a tab from" a large tab-switched page in `src/pages/*.tsx`, follow the repeatable process in [`docs/PAGE_DECOMPOSITION_PLAYBOOK.md`](../../docs/PAGE_DECOMPOSITION_PLAYBOOK.md). Do not re-derive the strategy.
+
+The non-negotiables:
+
+- **Stage A before Stage B.** First move pure logic (calc/format/parse/PDF/CSV builders) to `src/lib/*` with colocated `*.test.ts`. *Then* move the tab's JSX + tab-local state into `src/components/<page>/<Page><Tab>Tab.tsx`; the parent renders a thin `<...Tab .../>` wrapper.
+- **Selection + URL deep-link state stays in the parent**, passed to the tab as controlled props (`selectedX` + `onSelectX`/`onClose`). The tab never owns its own selection.
+- **Tab-local state moves with the tab; state shared across tabs / the URL router / shared modals stays in the parent** and is injected as props/callbacks.
+- **High-coupling tab clusters get a shared hook seam first** (`src/hooks/use<Page><Engine>.ts` returning one object the parent destructures), then each cluster tab consumes it via props.
+- **Extract lowest-coupling tabs first** (value ÷ risk). **Behavior-preserving only** — no logic/UX/schema changes in the same pass.
+- **Verify after every step:** `npm run typecheck && npm run lint && npm test`. Commit per tab (or per Stage).
+- **Keep the map current:** update the page's `docs/<PAGE>_TABS_ARCHITECTURE.md` dossier (Status → `extracted`, link the new file, note what stayed in the parent).
+
+Reference implementations: `docs/BIDS_TABS_ARCHITECTURE.md` (complete) and `docs/PEOPLE_TABS_ARCHITECTURE.md` (in progress).

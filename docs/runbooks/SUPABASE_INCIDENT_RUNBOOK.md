@@ -103,7 +103,7 @@ When `inspect` or logs show contention on **`clock_sessions`**, **`jobs_ledger`*
 | `statement timeout`, one query dominates `outliers` / `calls` | Index / rewrite query / batching; may be migration |
 | `deadlock detected` | Capture both statements from `postgres_logs`; fix lock order or shorten transactions (migration/RPC) |
 | Blocking chains on **same table** you recognize from Phase D | Narrow trigger/RPC scope, defer work, or advisory-lock design — **new migration only** (append-only; see [AGENTS.md](../../AGENTS.md)) |
-| Only browser white screen, Network **200** | Likely frontend / service worker — see [TROUBLESHOOTING.md](../../TROUBLESHOOTING.md) *White screen after app update* |
+| Only browser white screen, Network **200** | Likely frontend / service worker — see [TROUBLESHOOTING.md](../TROUBLESHOOTING.md) *White screen after app update* |
 
 ---
 

@@ -45,7 +45,7 @@ export function allocateProportionalCents(rawCents: number[], target: number): n
 
   const exact = rawCents.map((c) => (target * c) / S)
   const floors = exact.map((e) => Math.floor(e))
-  let sumFloors = floors.reduce((a, b) => a + b, 0)
+  const sumFloors = floors.reduce((a, b) => a + b, 0)
   const rem = target - sumFloors
   const frac = exact.map((e, i) => ({ i, f: e - Math.floor(e) }))
   frac.sort((a, b) => (b.f !== a.f ? b.f - a.f : a.i - b.i))

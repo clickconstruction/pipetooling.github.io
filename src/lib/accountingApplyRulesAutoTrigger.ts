@@ -1,6 +1,6 @@
 /**
  * Pure helpers for the Banking Mercury Accounting "Apply rules by default"
- * toggle (per `RECENT_FEATURES.md` v2.580). Lives outside React so the gate
+ * toggle (per `docs/RECENT_FEATURES.md` v2.580). Lives outside React so the gate
  * predicate and signature builder can be unit-tested without rendering the
  * toolbar.
  *

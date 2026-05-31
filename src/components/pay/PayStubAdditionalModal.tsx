@@ -345,7 +345,7 @@ export function PayStubAdditionalModal({
     const othersSum = round2(
       lines.filter((l) => l.id !== selId).reduce((s, l) => s + Number(l.line_total), 0),
     )
-    let remaining = round2(target - othersSum)
+    const remaining = round2(target - othersSum)
     if (remaining < 0) {
       showToast('Target is below the sum of other lines.', 'warning')
       return

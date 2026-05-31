@@ -70,7 +70,7 @@ Options: wait for it to finish, or temporarily upgrade compute to speed it up.
 
 ## Cursor agents: “Supabase crashed” / outage triage
 
-In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](.cursor/rules/supabase-incident-triage.mdc)** (**always-on** for this project). Say things like **Help me figure out why Supabase crashed** or **Postgres was unhealthy** and the agent should run **`./scripts/capture-supabase-incident.sh`** (or equivalent **`supabase inspect db … --linked`**) and follow **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`**. You still need **`supabase link`** (or MCP) on the machine running commands, and **Dashboard → Logs** export for the same UTC window when gateway/API errors dominate.
+In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](../.cursor/rules/supabase-incident-triage.mdc)** (**always-on** for this project). Say things like **Help me figure out why Supabase crashed** or **Postgres was unhealthy** and the agent should run **`./scripts/capture-supabase-incident.sh`** (or equivalent **`supabase inspect db … --linked`**) and follow **`docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md`**. You still need **`supabase link`** (or MCP) on the machine running commands, and **Dashboard → Logs** export for the same UTC window when gateway/API errors dominate.
 
 **Related:** **`RECENT_FEATURES.md`** **v2.454** — app-side Realtime/refetch mitigation (**`useDocumentVisibility`**, debounced financial pins, narrower **`clock_sessions`** subscriptions on Dashboard / People / Banking).
 
@@ -99,7 +99,7 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 4. **Redirect URLs**: Add your production URL pattern, e.g. `https://pipetooling.com/**`
 5. Save and try imitate again
 
-**See also**: [login-as-user DEPLOY.md](supabase/functions/login-as-user/DEPLOY.md) Step 3
+**See also**: [login-as-user DEPLOY.md](../supabase/functions/login-as-user/DEPLOY.md) Step 3
 
 ---
 
@@ -119,10 +119,10 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 
 **Solutions**:
 1. Reload PostgREST schema: `NOTIFY pgrst, 'reload schema';` in Supabase SQL Editor
-2. Ensure client uses `db: { schema: 'public' }` (see [src/lib/supabase.ts](src/lib/supabase.ts))
-3. For approve_clock_sessions, the app uses [approveClockSessions](src/lib/approveClockSessions.ts) helper with fetch fallback
+2. Ensure client uses `db: { schema: 'public' }` (see [src/lib/supabase.ts](../src/lib/supabase.ts))
+3. For approve_clock_sessions, the app uses [approveClockSessions](../src/lib/approveClockSessions.ts) helper with fetch fallback
 
-**See**: [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) → RPC 404 and SPA document `/dashboard` 404; [RECENT_FEATURES.md](./RECENT_FEATURES.md) v2.125, v2.191
+**See**: TROUBLESHOOT_404.md → RPC 404 and SPA document `/dashboard` 404; [RECENT_FEATURES.md](./RECENT_FEATURES.md) v2.125, v2.191
 
 ---
 
@@ -130,8 +130,8 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 
 For **timeouts**, **503s**, **DB contention**, or “everyone clocked out and the app died”:
 
-1. **AI agents / Cursor:** start with **[docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md)** (ordered checklist, what CLI cannot see, 28P01 auth). Same file is linked from [AGENTS.md](./AGENTS.md).
-2. Follow **[docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)** — `supabase inspect db … --linked`, Dashboard log export, and a correlation table for `clock_sessions` / `jobs_ledger` triggers.
+1. **AI agents / Cursor:** start with **[docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md)** (ordered checklist, what CLI cannot see, 28P01 auth). Same file is linked from [AGENTS.md](../AGENTS.md).
+2. Follow **[docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md)** — `supabase inspect db … --linked`, Dashboard log export, and a correlation table for `clock_sessions` / `jobs_ledger` triggers.
 3. **Quick capture:** from repo root run `./scripts/capture-supabase-incident.sh` — writes **`docs/runbooks/supabase-inspect-snapshot/incident-<UTC>/`** (gitignored); attach that folder when asking an agent to analyze an incident.
 4. The CLI does **not** replace hosted **Logs Explorer** exports for API/Auth; capture those for the same UTC window as the incident.
 
@@ -139,7 +139,7 @@ For **timeouts**, **503s**, **DB contention**, or “everyone clocked out and th
 
 ## Related docs
 
-- [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md) - Agent playbook: *find why the app crashed*
-- [docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md) - Supabase CLI inspect + platform logs workflow
-- [TROUBLESHOOT_404.md](./TROUBLESHOOT_404.md) - RPC and Edge function 404 issues
+- [docs/runbooks/AGENT_APP_CRASH_INVESTIGATION.md](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md) - Agent playbook: *find why the app crashed*
+- [docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) - Supabase CLI inspect + platform logs workflow
+- TROUBLESHOOT_404.md - RPC and Edge function 404 issues
 - [RECENT_FEATURES.md](./RECENT_FEATURES.md) - Fix app and pin features (v2.51)

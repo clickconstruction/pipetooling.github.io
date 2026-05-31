@@ -135,8 +135,8 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
         cy = margin
       }
       const cells: string[] = r === -1 ? headers : rows[r] ?? []
-      let cellY = cy + 4
-      let rowH = tableLineHeight
+      const cellY = cy + 4
+      const rowH = tableLineHeight
       for (let c = 0; c < colWidths.length; c++) {
         const x = left + colWidths.slice(0, c).reduce((a, w) => a + w, 0)
         const w = colWidths[c] ?? 0
@@ -296,7 +296,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const versionId = b.selected_price_book_version_id ?? null
   const { data: countData } = await supabase.from('bids_count_rows').select('*').eq('bid_id', bidId).order('sequence_order', { ascending: true })
   const countRows = (countData as BidCountRow[]) ?? []
-  let pricingContent = 'No price book selected or no count rows.'
+  const pricingContent = 'No price book selected or no count rows.'
   if (versionId && countRows.length > 0) {
     const [entriesRes, assignRes, customRes, hidesRes] = await Promise.all([
       supabase.from('price_book_entries').select('*, fixture_types(name)').eq('version_id', versionId),

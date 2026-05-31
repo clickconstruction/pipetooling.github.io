@@ -9,9 +9,9 @@
 
 | Where | Export |
 |-------|--------|
-| Web app | `APP_CALENDAR_TZ` in [`src/utils/dateUtils.ts`](src/utils/dateUtils.ts) |
-| Job schedule helpers | `JOB_SCHEDULE_TIMEZONE` in [`src/lib/jobScheduleChicago.ts`](src/lib/jobScheduleChicago.ts) (same value as `APP_CALENDAR_TZ`) |
-| Edge Functions (Deno) | `APP_CALENDAR_TZ` in [`supabase/functions/_shared/appTimeZone.ts`](supabase/functions/_shared/appTimeZone.ts) — **keep in sync** with `dateUtils.ts` |
+| Web app | `APP_CALENDAR_TZ` in [`src/utils/dateUtils.ts`](../src/utils/dateUtils.ts) |
+| Job schedule helpers | `JOB_SCHEDULE_TIMEZONE` in [`src/lib/jobScheduleChicago.ts`](../src/lib/jobScheduleChicago.ts) (same value as `APP_CALENDAR_TZ`) |
+| Edge Functions (Deno) | `APP_CALENDAR_TZ` in [`supabase/functions/_shared/appTimeZone.ts`](../supabase/functions/_shared/appTimeZone.ts) — **keep in sync** with `dateUtils.ts` |
 
 Run `npm run check:timezone` before merge to ensure no stray `'America/Chicago'` literals were added outside those files.
 
@@ -26,7 +26,7 @@ Never treat a naive `time` column as UTC. Avoid `new Date(year, monthIndex, day,
 
 ## Display and parsing
 
-- **Calendar weeks, “today,” `YYYY-MM-DD` in Chicago:** [`src/utils/dateUtils.ts`](src/utils/dateUtils.ts).
-- **Naive schedule `HH:MM[:SS]` strings (labels):** [`src/lib/jobScheduleChicago.ts`](src/lib/jobScheduleChicago.ts) (e.g. `scheduleFormatWindow`).
+- **Calendar weeks, “today,” `YYYY-MM-DD` in Chicago:** [`src/utils/dateUtils.ts`](../src/utils/dateUtils.ts).
+- **Naive schedule `HH:MM[:SS]` strings (labels):** [`src/lib/jobScheduleChicago.ts`](../src/lib/jobScheduleChicago.ts) (e.g. `scheduleFormatWindow`).
 
 SQL migrations and RPCs may embed `'America/Chicago'` for `timezone()` / defaults; that is expected and not checked by `check:timezone` (script scopes app + Edge TS only).

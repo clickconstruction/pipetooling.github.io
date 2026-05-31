@@ -1537,7 +1537,7 @@ export default function Banking() {
       setUserIdByTxId(userMap)
 
       const jobIds = [...new Set(allocRows.map((r) => r.job_id))]
-      let jobLabels: Record<string, string> = {}
+      const jobLabels: Record<string, string> = {}
       if (jobIds.length > 0) {
         const jobRowsData = await withSupabaseRetry(
           async () =>
@@ -1552,7 +1552,7 @@ export default function Banking() {
       }
       setJobLabelByIdBanking(jobLabels)
 
-      let names: Record<string, string> = {}
+      const names: Record<string, string> = {}
       if (personIds.size > 0) {
         const peopleRowsData = await withSupabaseRetry(
           async () => supabase.from('people').select('id, name').in('id', [...personIds]),
@@ -1565,7 +1565,7 @@ export default function Banking() {
       }
       setPersonNameById(names)
 
-      let userNames: Record<string, string> = {}
+      const userNames: Record<string, string> = {}
       if (userIds.size > 0) {
         const userRowsData = await withSupabaseRetry(
           async () => supabase.from('users').select('id, name').in('id', [...userIds]),

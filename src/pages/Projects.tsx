@@ -261,7 +261,7 @@ export default function Projects() {
 
         // Build superintendentsByProject
         const superintendentIds = [...new Set([...psData.map((r) => r.superintendent_id), ...msData.map((r) => r.superintendent_id)])]
-        let usersMap: Record<string, { id: string; name: string | null; email: string | null }> = {}
+        const usersMap: Record<string, { id: string; name: string | null; email: string | null }> = {}
         if (superintendentIds.length > 0) {
           const { data: usersData } = await supabase.from('users').select('id, name, email').in('id', superintendentIds)
           if (cancelled) return

@@ -78,7 +78,7 @@ async function fetchMercuryRelationsState(
   }
 
   const jobIds = [...new Set(allocRows.map((r) => r.job_id))]
-  let jobLabelById: Record<string, string> = {}
+  const jobLabelById: Record<string, string> = {}
   if (jobIds.length > 0) {
     const jobRowsData = await withSupabaseRetry(
       async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', jobIds),
@@ -95,7 +95,7 @@ async function fetchMercuryRelationsState(
   for (const row of attrRows) {
     if (row.person_id) personIds.add(row.person_id)
   }
-  let personNameById: Record<string, string> = {}
+  const personNameById: Record<string, string> = {}
   if (personIds.size > 0) {
     const peopleRowsData = await withSupabaseRetry(
       async () => supabase.from('people').select('id, name').in('id', [...personIds]),

@@ -91,7 +91,7 @@ export function segmentBStartFromBreak(params: {
 }): string | null {
   const anchor = params.anchorWorkDateYmd.trim()
   if (!/^(\d{4})-(\d{2})-(\d{2})$/.test(anchor)) return null
-  let br = Math.round(params.breakMinutes / 15) * 15
+  const br = Math.round(params.breakMinutes / 15) * 15
   if (!Number.isFinite(br) || br < 0 || br > 480) return null
   const aEndMs = sessionAEndUtcMs({
     segmentAStart: params.segmentAStart,

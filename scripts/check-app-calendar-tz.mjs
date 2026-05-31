@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Fails if 'America/Chicago' or "America/Chicago" appears outside allowlisted definition files.
- * See TIME_AND_ZONES.md
+ * See docs/TIME_AND_ZONES.md
  */
 import fs from 'node:fs'
 import path from 'node:path'

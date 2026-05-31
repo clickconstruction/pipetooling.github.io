@@ -375,7 +375,7 @@ export function UserMercuryWindowSection({
         const modalJobIds = new Set<string>(initialAllocations.map((a) => a.job_id))
         for (const id of Object.keys(jobLabelById)) modalJobIds.add(id)
         const missingIds = [...modalJobIds].filter((id) => !jobLabelById[id])
-        let labels: Record<string, string> = { ...jobLabelById }
+        const labels: Record<string, string> = { ...jobLabelById }
         if (missingIds.length > 0) {
           try {
             const more = await withSupabaseRetry(

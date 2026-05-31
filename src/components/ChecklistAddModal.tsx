@@ -225,7 +225,7 @@ export default function ChecklistAddModal() {
       const targetDows = item.repeat_days_of_week ?? []
       const maxWeeks = 104
       for (const targetDow of targetDows) {
-        let d = new Date(start)
+        const d = new Date(start)
         while (d.getDay() !== targetDow) d.setDate(d.getDate() + 1)
         for (let w = 0; w < maxWeeks; w++) {
           if (endDate && d > endDate) break

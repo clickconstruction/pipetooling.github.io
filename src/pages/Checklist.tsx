@@ -325,7 +325,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
     }
     const merged = [...overdueData, ...(todayData ?? [])] as ChecklistInstance[]
     const mergedItemIds = [...new Set(merged.map((r) => r.checklist_item_id))]
-    let orderMap = new Map<string, number>()
+    const orderMap = new Map<string, number>()
     if (mergedItemIds.length > 0) {
       const { data: orderData } = await supabase
         .from('checklist_item_assignees')
@@ -1713,7 +1713,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
     }
     const userIds = [...map.keys()]
     const itemIds = [...new Set(instances.map((i) => i.checklist_item_id))]
-    let orderMap = new Map<string, Map<string, number>>()
+    const orderMap = new Map<string, Map<string, number>>()
     if (userIds.length > 0 && itemIds.length > 0) {
       const { data: orderData } = await supabase
         .from('checklist_item_assignees')

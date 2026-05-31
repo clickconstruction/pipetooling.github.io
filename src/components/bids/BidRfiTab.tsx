@@ -327,6 +327,7 @@ export function BidRfiTab({ bids, authUser, selectedBid, onSelectBid, onClose, o
               <div
                 key={`combined-preview-rfi-${bid.id}-${bid.bid_date_sent ?? ''}-${(bid as { submitted_to?: string | null }).submitted_to ?? ''}-${form.contactPerson}-${form.phoneEmail}-${form.responseRequestDate}-${form.detailedDescription}-${form.impactStatement}`}
                 style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
+                // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested rfi builder
                 dangerouslySetInnerHTML={{ __html: combinedHtml }}
               />
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
