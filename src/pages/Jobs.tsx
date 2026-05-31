@@ -28,10 +28,21 @@ import {
   formatPrintDaysSince,
   formatTimeSince,
   formatUsdNoCents,
-  formatYmdOrIsoDateForPrintDisplay,
   jobSummaryPartsCostIsZero,
   personMatchesJobSummaryBreakdownFilter,
 } from '../lib/jobs/jobFormatting'
+import {
+  effectiveInvoiceEstBillDate,
+  invoiceOpenRemainingOnJob,
+  jobStagesInvoiceJumpChipTargets,
+  printBilledRowReferenceDate,
+  sortStageRowsForTotalByNameDetail,
+  stageRowBilledAgeDays,
+  stageRowBilledLineLabel,
+  stageRowBilledRemainingAmount,
+  stagesJobLevelStripeEmailedHintInvoice,
+  sumInvoiceAppliedFromJobPayments,
+} from '../lib/jobs/invoiceBilling'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -168,7 +179,6 @@ import {
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
   stagesJobsWithoutCustomerFromFiltered,
-  stagesMergedBillingInvoiceId,
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
@@ -506,85 +516,6 @@ function renderStagesThreeLineHeader(line1: string, line2: string, line3: string
   )
 }
 
-/** Per-invoice est. bill date when set; else job-level manual last bill date (`last_bill_date`). */
-function effectiveInvoiceEstBillDate(inv: JobsLedgerInvoice, job: JobWithDetails): string | null {
-  return inv.estimated_bill_date ?? job.last_bill_date ?? null
-}
-
-function sumInvoiceAppliedFromJobPayments(job: JobWithDetails, invoiceId: string): number {
-  let s = 0
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
-  }
-  return s
-}
-
-function invoiceOpenRemainingOnJob(inv: JobsLedgerInvoice, job: JobWithDetails): number {
-  const applied = sumInvoiceAppliedFromJobPayments(job, inv.id)
-  return Math.max(0, Number(inv.amount ?? 0) - applied)
-}
-
-function stageRowBilledRemainingAmount(r: StageRow): number {
-  if (r.kind === 'job') {
-    return Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
-  }
-  return invoiceOpenRemainingOnJob(r.inv, r.job)
-}
-
-function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | null {
-  const iso =
-    r.kind === 'job'
-      ? r.job.last_bill_date ?? null
-      : effectiveInvoiceEstBillDate(r.inv, r.job)
-  if (!iso) return null
-  const days = calendarDaysSinceDateUtc(iso, now)
-  if (days < 0) return null
-  return days
-}
-
-function stageRowBilledLineLabel(r: StageRow): string {
-  const hcp = r.job.hcp_number || '—'
-  if (r.kind === 'job') return `${hcp} · Job balance`
-  if (r.kind === 'job_with_merged_billed') return `${hcp} · Billed line`
-  return `${hcp} · Invoice #${r.inv.sequence_order}`
-}
-
-function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] {
-  return [...rows].sort((a, b) => {
-    const da = stageRowBilledAgeDays(a)
-    const db = stageRowBilledAgeDays(b)
-    if (da != null && db != null && da !== db) return db - da
-    if (da != null && db == null) return -1
-    if (da == null && db != null) return 1
-    return stageRowBilledRemainingAmount(b) - stageRowBilledRemainingAmount(a)
-  })
-}
-
-/** Reference date and whole calendar days since, for Billed Awaiting Payment printout. */
-function printBilledRowReferenceDate(r: StageRow, now = new Date()): { display: string; ageDays: number | null } {
-  if (r.kind === 'job') {
-    const iso = r.job.last_bill_date?.trim() ?? null
-    if (!iso) return { display: '—', ageDays: null }
-    const days = calendarDaysSinceDateUtc(iso, now)
-    if (days < 0) return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: null }
-    return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: days }
-  }
-  const billedAt = r.inv.billed_at?.trim()
-  if (billedAt) {
-    const datePart = billedAt.length >= 10 ? billedAt.slice(0, 10) : billedAt
-    const days = calendarDaysSinceDateUtc(datePart, now)
-    const display = formatYmdOrIsoDateForPrintDisplay(datePart)
-    if (days < 0) return { display, ageDays: null }
-    return { display, ageDays: days }
-  }
-  const est = effectiveInvoiceEstBillDate(r.inv, r.job)
-  if (!est) return { display: '—', ageDays: null }
-  const days = calendarDaysSinceDateUtc(est, now)
-  const display = `${formatYmdOrIsoDateForPrintDisplay(est)} (est.)`
-  if (days < 0) return { display, ageDays: null }
-  return { display, ageDays: days }
-}
-
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
@@ -624,35 +555,6 @@ function formatAddressTwoLines(addr: string | null): { line1: string; line2?: st
   return { line1: a }
 }
 
-/** Stages jump chips: open RTB / billed billing lines only, same rows as the board. */
-function jobStagesActiveBillingInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
-  return (job.invoices ?? [])
-    .filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
-    .slice()
-    .sort((a, b) => a.sequence_order - b.sequence_order)
-}
-
-/** Jump targets: standalone invoice rows only (omit line merged into the job shell on Stages). */
-function jobStagesInvoiceJumpChipTargets(job: JobWithDetails): JobsLedgerInvoice[] {
-  const all = jobStagesActiveBillingInvoices(job)
-  const merged = stagesMergedBillingInvoiceId(job)
-  if (merged == null) return all
-  return all.filter((i) => i.id !== merged)
-}
-
-/** Stages Last activity: one billed Stripe line with recorded customer email only (skip when ambiguous). */
-function stagesJobLevelStripeEmailedHintInvoice(job: JobWithDetails): JobsLedgerInvoice | undefined {
-  const matches = (job.invoices ?? []).filter(
-    (i) =>
-      i.status === 'billed' &&
-      i.external_send_channel === 'stripe' &&
-      String(i.stripe_invoice_id ?? '').trim() !== '' &&
-      i.sent_to_customer_at != null &&
-      String(i.sent_to_customer_at).trim() !== '',
-  )
-  if (matches.length !== 1) return undefined
-  return matches[0]
-}
 
 type JobDetailPrefillLocationState = {
   jobDetailPrefill?: { prefillRowLabel: string | null; prefillAddress: string | null }
