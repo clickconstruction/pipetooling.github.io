@@ -23,6 +23,7 @@ import { PeopleHoursDueSummaries } from '../components/people/PeopleHoursDueSumm
 import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
 import { PeopleHoursGridJobHighlight, type HoursGridJobHighlightPick } from '../components/people/PeopleHoursGridJobHighlight'
+import { PeopleHoursPendingBanner } from '../components/people/PeopleHoursPendingBanner'
 import {
   getDaysInRange,
   HOURS_TAB_SECTION_ANCHOR_STYLE,
@@ -3582,56 +3583,12 @@ export default function People() {
                   No one in this list has that job on crew assignments this week.
                 </p>
               ) : null}
-              {peopleHoursPendingSummary.totalSessions > 0 && (canAccessHours || canAccessPay) ? (
-                <div
-                  role="status"
-                  style={{
-                    marginBottom: '0.5rem',
-                    padding: '0.45rem 0.6rem',
-                    border: '1px solid #f59e0b',
-                    background: '#fef3c7',
-                    color: '#92400e',
-                    borderRadius: 6,
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    fontSize: '0.8125rem',
-                    lineHeight: 1.35,
-                  }}
-                >
-                  <span aria-hidden style={{ fontSize: '0.95rem', lineHeight: 1 }}>⚠</span>
-                  <span style={{ flex: '1 1 auto', minWidth: 0 }}>
-                    <strong>Pending: {peopleHoursPendingSummary.peopleCount}</strong>{' '}
-                    {peopleHoursPendingSummary.peopleCount === 1 ? 'person' : 'people'} ·{' '}
-                    <strong>{peopleHoursPendingSummary.totalDiffHours.toFixed(2)} h</strong> not yet in payroll
-                    {peopleHoursPendingSummary.workDates.length > 0 ? (
-                      <>
-                        {' '}across{' '}
-                        {peopleHoursPendingSummary.workDates.length}{' '}
-                        {peopleHoursPendingSummary.workDates.length === 1 ? 'day' : 'days'}
-                      </>
-                    ) : null}
-                    .
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setBulkApprovePendingOpen(true)}
-                    style={{
-                      padding: '0.25rem 0.6rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: 600,
-                      border: '1px solid #b45309',
-                      background: '#b45309',
-                      color: 'white',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Review &amp; approve
-                  </button>
-                </div>
-              ) : null}
+              <PeopleHoursPendingBanner
+                summary={peopleHoursPendingSummary}
+                canAccessHours={canAccessHours}
+                canAccessPay={canAccessPay}
+                onReviewApprove={() => setBulkApprovePendingOpen(true)}
+              />
               <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
                 <colgroup>
