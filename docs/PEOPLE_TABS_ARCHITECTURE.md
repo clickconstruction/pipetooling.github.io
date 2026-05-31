@@ -10,12 +10,12 @@ last_updated: 2026-05-31
 
 ## Overview
 
-[`src/pages/People.tsx`](../src/pages/People.tsx) was a ~21,435-line "God component"; decomposition is well underway and it is now **~8,598 lines**. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented**. It mirrors the approach proven on [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md), which took `Bids.tsx` from ~18,800 lines to ~3,650.
+[`src/pages/People.tsx`](../src/pages/People.tsx) was a ~21,435-line "God component"; decomposition is well underway and it is now **~7,712 lines**. This map is a refactoring aid: for each tab it records what state, derived data, handlers, sub-components, and external systems the tab touches, plus its extraction status and risk. It is **coupling/refactor-oriented**. It mirrors the approach proven on [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md), which took `Bids.tsx` from ~18,800 lines to ~3,650.
 
 ### Progress
-- **Phase 1 (low/med-coupling tab extractions) — DONE.** `vehicles`, `housing`, `licenses`, `offsets`, `contracts` extracted to `src/components/people/People<Tab>Tab.tsx`; `activity` + `writeups` cleaned up (state/loaders moved into their existing components). With `teams`/`feedback` already thin, the tabs still inline are `users`, `pay_stubs`, `hours` (the remaining pay/hours hub).
+- **Phase 1 (low/med-coupling tab extractions) — DONE.** `vehicles`, `housing`, `licenses`, `offsets`, `contracts` extracted to `src/components/people/People<Tab>Tab.tsx`; `activity` + `writeups` cleaned up (state/loaders moved into their existing components). With `teams`/`feedback` already thin, the tabs still inline are `users`, `hours` (the remaining pay/hours hub).
 - **Phase 2 (shared hooks) — DONE.** Extracted: `usePeopleAccess`, `usePeopleRoster`, `useCrewJobMap`, `usePayConfig`, `usePeopleHoursData` (under `src/hooks/`). `useTeamSummaryData` was folded into the `review` extraction (intricate review-UI orchestration) rather than a standalone hook; its pure kernel lives at `src/lib/people/derivePersonTeamSummary.ts`.
-- **Phase 3 (hub tabs) — IN PROGRESS.** ~~`overhead`~~ (`PeopleOverheadTab`) and ~~`review`~~ (`PeopleReviewTab`) are extracted. Remaining: `pay_stubs` → `users` → `hours` (hours last), consuming the Phase-2 hooks.
+- **Phase 3 (hub tabs) — IN PROGRESS.** ~~`overhead`~~ (`PeopleOverheadTab`), ~~`review`~~ (`PeopleReviewTab`), and ~~`pay_stubs`~~ (`PeoplePayStubsTab`, the **Ledger** half only — see the dossier) are extracted. Remaining: `users` → `hours` (hours last), consuming the Phase-2 hooks.
 
 Tabs switch on a single `activeTab` state ([`People.tsx:537`](../src/pages/People.tsx)), type `PeopleTab` at [line 417](../src/pages/People.tsx):
 
@@ -40,7 +40,7 @@ Tabs switch on a single `activeTab` state ([`People.tsx:537`](../src/pages/Peopl
 | `users` | 11845-12357 (+person form 20986-21025) | ~513 + tags | inline | ~30 (roster + tag system + notes) | reads `people`/`users`, `contractSigningStatusByPersonName`, push/location | high | Extract tag subsystem, then roster (Phase 3) |
 | `teams` | 12359-12361 | ~3 | extracted (`PeopleTeamsTab`) | 0 in parent | `authUser`/`authRole` | low | Done |
 | `overhead` | thin wrapper | ~1,989 | extracted (`PeopleOverheadTab`) | 0 in parent | reads `payConfig` only (NOT `crewJobsByDatePerson`) | low data / dev-master | Done |
-| `pay_stubs` | 13634-14388 (+calendar 21314-21431) | ~870 | inline | ~35 (`payStub*`, `draftPayroll*`) | reads `payConfig`, `peopleHours`, rosters | high | Phase 3 (after hooks) |
+| `pay_stubs` | thin wrapper (Ledger) | ~883 | extracted (`PeoplePayStubsTab`, Ledger half) | draft-payroll + mark-paid clusters stay in parent | high | Done — conservative seam (see dossier) |
 | `hours` | 14391-16725 | ~2,335 | inline | ~45 (`hours*`, `costMatrix*`, clock sessions) | **owns** `payConfig`/`teams`/`crewJobsByDatePerson` | very high | Phase 3 — extract LAST |
 | `vehicles` | thin wrapper | ~235 | extracted (`PeopleVehiclesTab`) | 0 in parent | `users` prop | low | Done (PR #19) |
 | `housing` | thin wrapper | ~200 | extracted (`PeopleHousingTab`) | 0 in parent | `users` prop | low | Done (PR #20) |
@@ -81,6 +81,12 @@ Tabs switch on a single `activeTab` state ([`People.tsx:537`](../src/pages/Peopl
 - **Coupling/risk:** **med.** Self-contained data; shares only `payConfig`. Dev/master gate → low blast radius.
 
 ### `pay_stubs` — Pay Stubs
+> **Extracted (conservative seam)** to [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx) (~883 lines). The parent renders a thin gate `{activeTab === 'pay_stubs' && canAccessPay && <PeoplePayStubsTab .../>}` and shrank ~886 lines (8,598 → 7,712). **Only the self-contained Ledger half moved** — the table, the **Less/Additional/Note/Calendar** modals + their tab-local state, the `ledgerFilteredPayStubs`/`ledgerOpenBalanceSummary` memos, the `ledgerPersonSearch`, the mount load effect (calls the injected `loadPayConfig`/`loadPayStubs`), and the calendar load effect. Stage A lifted the pure print-HTML builder to [`src/lib/peopleDocuments/buildPayStubHtml.ts`](../src/lib/peopleDocuments/buildPayStubHtml.ts) (+`openPayStubWindow`, with tests); the three callers (`printPayStub`/`viewPayStub`/`generatePayStub`) now call it.
+>
+> **Props:** `payStubs` + the 3 `*ByStubId` maps + `loadPayStubs` (the shared data layer, parent-owned because `offsets` + draft-payroll also read it), `payConfig`, `users`, `authUser`, `isDev`, `error`/`onError`, `loadPayConfig`, `markingPayStubId`, `deletingPayStubId`, and callbacks `onPrintStub`, `onRecordPayment`, `onRequestDeleteStub`, `onOpenMyTimeForDay`, `onOpenForecast`/`forecastDisabled`, `onOpenDraftPayroll`/`draftPayrollDisabled`. It also **re-exports `type PayStubRow`** (the parent now imports it).
+>
+> **Stayed in the parent — two deliberate bridges (no tests cover these flows):** (1) the **Draft Payroll / Forecast** cluster — `DraftPayrollModal`/`PayrollForecastModal`/`DraftPayrollPersonHoursBreakdownModal` + their state + `generatePayStub`/`viewPayStub`/`bulkGenerateMissingPayStubsInModal`/`shiftPayStubWeek`/`getPriorWeekPayStubRangeEnCa` + the realtime `draftPayrollRealtimeSnapRef`/`loadDraftPayrollPendingApprovals` — because it consumes Hours-owned compute (`showPeopleForHours`/`getCostForPersonDate`/`getEffectiveHours`/`getRunPayrollReviewDayItems`) that moves to **Hours (last)**; the child opens it via `onOpenForecast`/`onOpenDraftPayroll` callbacks. (2) the **Record-payment / mark-paid** cluster — `payStubMarkPaid*` state + modal + `confirmPayStubMarkPaid` + `openEmployeeCreditFromRecordPayment` + `recordPaymentRefreshAfterEmployeeCreditRef` — because the "Record employee credit…" path is wired to the **parent-owned `PersonOffsetFormModal`** (shared with `offsets`), whose `onSaved` reaches back into the mark-paid target/amount; the child opens it via `onRecordPayment`. The **delete-confirm** modal also stays (its `deletePayStub` does an optimistic `setPayStubs` on parent state); the child requests deletes via `onRequestDeleteStub`. The dossier below is the pre-extraction inventory.
+
 - **Render:** [`13634-14388`](../src/pages/People.tsx) + modal cluster (PayStubLess/Additional/Delete/Note/MarkPaid 14030-14318, Forecast 14321, DraftPayroll 14330, breakdown 14374) + **calendar modal 21314-21431** (~870 total). `canAccessPay` only.
 - **Owned state (~35):** `payStubs`(752), `payStub*ByStubId` (753-755), modal stubs (756-757), `payStubsLoading`(768), period (769/776), calendar (783-786), action flags (787-796), confirm/mark-paid (807-814), `ledgerPersonSearch`(816).
 - **Cross-tab/shared:** reads `payConfig`(594), `peopleHours`(643) + `loadPeopleHours`, `hoursDaysCorrect`(717), rosters. `payStubCalendarPerson`(783) is a pay_stubs-local pointer.
@@ -261,7 +267,7 @@ Lowest-coupling, domain-isolated, permission-gated tabs first; the pay/hours hub
 7. **Shared-hook prep (refactor, not a move):** `usePeopleAccess` ~~DONE (PR #25)~~, `usePeopleRoster` ~~DONE (PR #26)~~, `useCrewJobMap` ~~DONE (PR #27)~~, `usePayConfig` ~~DONE~~, `usePeopleHoursData` ~~DONE (2 PRs)~~. `useTeamSummaryData` ~~folded into the `review` extraction~~ (review-UI-centric; its pure kernel is `lib/people/derivePersonTeamSummary`). **Phase 2 complete.**
 8. ~~**`overhead`**~~ — **DONE** (`PeopleOverheadTab`; `payConfig`-only prop). First Phase-3 hub-tab move; `People.tsx` 15,970 → 13,981.
 9. ~~**`review`**~~ — **DONE** (`PeopleReviewTab` + `lib/people/derivePersonTeamSummary` kernel/tests; Review↔Hours bridge kept in the parent). `People.tsx` 13,487 → 8,598.
-10. **`pay_stubs`** — after `usePayConfig` + `usePeopleHoursData`.
+10. ~~**`pay_stubs`**~~ — **DONE** (`PeoplePayStubsTab` + `lib/peopleDocuments/buildPayStubHtml` Stage-A builder/tests). Conservative seam: only the Ledger half moved; the draft-payroll/forecast cluster (Hours-coupled) and the mark-paid/employee-credit cluster (offset-modal-coupled) stayed in the parent. `People.tsx` 8,598 → 7,712.
 11. **`users`** — extract the tag subsystem first, then the roster UI; the person-edit form already lives in `usePeopleRoster`.
 12. **`hours`** — **last.** The hub; extract once everything it feeds is on the shared hooks.
 
