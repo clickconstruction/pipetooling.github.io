@@ -22,6 +22,7 @@ import { PeopleHoursTeams, type PeopleHoursTeam } from '../components/people/Peo
 import { PeopleHoursDueSummaries } from '../components/people/PeopleHoursDueSummaries'
 import { PeopleHoursSessions } from '../components/people/PeopleHoursSessions'
 import { PeopleHoursWeekRange } from '../components/people/PeopleHoursWeekRange'
+import { PeopleHoursGridJobHighlight, type HoursGridJobHighlightPick } from '../components/people/PeopleHoursGridJobHighlight'
 import {
   getDaysInRange,
   HOURS_TAB_SECTION_ANCHOR_STYLE,
@@ -357,14 +358,7 @@ export default function People() {
       document.getElementById(domId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
   }, [])
-  type HoursGridJobHighlightPick = { id: string; hcp_number: string; job_name: string }
-  const [hoursGridJobHighlightSearch, setHoursGridJobHighlightSearch] = useState('')
-  const [hoursGridJobHighlightResults, setHoursGridJobHighlightResults] = useState<
-    Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-  >([])
-  const [hoursGridJobHighlightListOpen, setHoursGridJobHighlightListOpen] = useState(false)
   const [selectedJobHighlight, setSelectedJobHighlight] = useState<HoursGridJobHighlightPick | null>(null)
-  const hoursGridJobHighlightBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [editClockSession, setEditClockSession] = useState<ClockSessionRow | null>(null)
   const [hoursMyTimeEditor, setHoursMyTimeEditor] = useState<{
     subjectUserId: string
@@ -2303,22 +2297,6 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, hoursDateStart, hoursDateEnd, canAccessHours])
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const q = hoursGridJobHighlightSearch.trim()
-      if (!q) {
-        setHoursGridJobHighlightResults([])
-        return
-      }
-      void supabase.rpc('search_jobs_ledger', { search_text: q }).then(({ data }) => {
-        setHoursGridJobHighlightResults(
-          (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
-        )
-      })
-    }, 300)
-    return () => clearTimeout(t)
-  }, [hoursGridJobHighlightSearch])
-
   const loadAllClockSessionsRef = useRef<() => void>()
   loadAllClockSessionsRef.current = () => {
     loadAllClockSessions(hoursDateStart, hoursDateEnd)
@@ -3595,122 +3573,10 @@ export default function People() {
             <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. In Hours, open People pay config and check Show in Hours for people to track.</p>
           ) : (
             <>
-              <div
-                style={{ marginBottom: '0.5rem', display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.5rem' }}
-                title="Highlights people whose crew row lists this job (assignments on that person’s row only, not crew-lead inheritance)."
-              >
-                <span style={{ fontSize: '0.875rem', color: '#374151', fontWeight: 500, paddingTop: '0.35rem', flexShrink: 0 }}>Highlight by job</span>
-                <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180, maxWidth: 400 }}>
-                  <input
-                    type="search"
-                    value={hoursGridJobHighlightSearch}
-                    onChange={(e) => setHoursGridJobHighlightSearch(e.target.value)}
-                    onFocus={() => {
-                      if (hoursGridJobHighlightBlurTimeoutRef.current) clearTimeout(hoursGridJobHighlightBlurTimeoutRef.current)
-                      setHoursGridJobHighlightListOpen(true)
-                    }}
-                    onBlur={() => {
-                      hoursGridJobHighlightBlurTimeoutRef.current = setTimeout(() => setHoursGridJobHighlightListOpen(false), 175)
-                    }}
-                    placeholder="Search HCP, job name, address…"
-                    aria-label="Search job to highlight on hours grid"
-                    autoComplete="off"
-                    style={{
-                      width: '100%',
-                      padding: '0.35rem 0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 4,
-                      fontSize: '0.875rem',
-                      boxSizing: 'border-box',
-                    }}
-                  />
-                  {hoursGridJobHighlightListOpen && hoursGridJobHighlightResults.length > 0 ? (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        zIndex: 25,
-                        marginTop: 2,
-                        maxHeight: 220,
-                        overflowY: 'auto',
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 6,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                      }}
-                    >
-                      {hoursGridJobHighlightResults.map((j) => (
-                        <button
-                          key={j.id}
-                          type="button"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => {
-                            setSelectedJobHighlight({ id: j.id, hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '' })
-                            setHoursGridJobHighlightSearch('')
-                            setHoursGridJobHighlightResults([])
-                            setHoursGridJobHighlightListOpen(false)
-                          }}
-                          style={{
-                            display: 'block',
-                            width: '100%',
-                            padding: '0.5rem 0.65rem',
-                            textAlign: 'left',
-                            border: 'none',
-                            borderBottom: '1px solid #f3f4f6',
-                            background: 'none',
-                            cursor: 'pointer',
-                            fontSize: '0.875rem',
-                          }}
-                        >
-                          <div style={{ fontWeight: 500 }}>
-                            J{(j.hcp_number || '').trim() || '—'} · {j.job_name || '—'}
-                          </div>
-                          {j.job_address ? (
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>
-                          ) : null}
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                {selectedJobHighlight ? (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      padding: '0.3rem 0.55rem',
-                      background: '#eff6ff',
-                      border: '1px solid #93c5fd',
-                      borderRadius: 6,
-                      fontSize: '0.8125rem',
-                      maxWidth: '100%',
-                    }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      J{(selectedJobHighlight.hcp_number || '').trim() || '—'} · {selectedJobHighlight.job_name || '—'}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label="Clear job highlight"
-                      onClick={() => setSelectedJobHighlight(null)}
-                      style={{
-                        padding: '0 0.25rem',
-                        border: 'none',
-                        background: 'none',
-                        cursor: 'pointer',
-                        color: '#64748b',
-                        fontSize: '1.125rem',
-                        lineHeight: 1,
-                      }}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ) : null}
-              </div>
+              <PeopleHoursGridJobHighlight
+                selectedJobHighlight={selectedJobHighlight}
+                setSelectedJobHighlight={setSelectedJobHighlight}
+              />
               {selectedJobHighlight && jobHighlightPeople.size === 0 ? (
                 <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.5rem 0' }}>
                   No one in this list has that job on crew assignments this week.
