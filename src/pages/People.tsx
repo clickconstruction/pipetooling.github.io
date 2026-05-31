@@ -17,6 +17,15 @@ import {
   KIND_TO_USER_ROLE,
   KINDS,
 } from '../components/people/peopleUsersTabShared'
+import { PeopleHoursSharing } from '../components/people/PeopleHoursSharing'
+import {
+  HOURS_TAB_SECTION_ANCHOR_STYLE,
+  HOURS_TAB_SECTION_CHEVRON,
+  HOURS_TAB_SECTION_SHELL,
+  HOURS_TAB_SECTION_TOGGLE_BTN,
+  hoursTabSectionHeaderGap,
+  textColorForBackground,
+} from '../components/people/peopleHoursTabShared'
 import { useSearchParams } from 'react-router-dom'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
@@ -163,53 +172,12 @@ const INITIAL_HOURS_TAB_SECTIONS_OPEN: Record<HoursTabCollapsibleSectionId, bool
   sharing: false,
 }
 
-const HOURS_TAB_SECTION_ANCHOR_STYLE: CSSProperties = { scrollMarginTop: '3.5rem' }
-
 const HOURS_TAB_SECTIONS_STACK_GAP = '0.75rem'
 
 const HOURS_TAB_SECTIONS_STACK: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: HOURS_TAB_SECTIONS_STACK_GAP,
-}
-
-/** Uniform card shell for People → Hours collapsible sections */
-const HOURS_TAB_SECTION_SHELL: CSSProperties = {
-  ...HOURS_TAB_SECTION_ANCHOR_STYLE,
-  border: '1px solid #e5e7eb',
-  borderRadius: 8,
-  padding: '0.65rem 0.85rem',
-  background: '#fafafa',
-  boxSizing: 'border-box',
-}
-
-/** Primary section header control (chevron + label) */
-const HOURS_TAB_SECTION_TOGGLE_BTN: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '0.4rem',
-  padding: '0.35rem 0.55rem',
-  border: '1px solid #d1d5db',
-  borderRadius: 6,
-  background: '#ffffff',
-  cursor: 'pointer',
-  fontSize: '0.875rem',
-  fontWeight: 600,
-  color: '#111827',
-  fontFamily: 'inherit',
-  lineHeight: 1.25,
-  textAlign: 'left',
-}
-
-const HOURS_TAB_SECTION_CHEVRON: CSSProperties = {
-  fontSize: '0.65rem',
-  color: '#6b7280',
-  flexShrink: 0,
-  lineHeight: 1,
-}
-
-function hoursTabSectionHeaderGap(open: boolean): CSSProperties {
-  return { marginBottom: open ? '0.75rem' : 0 }
 }
 
 const tabStyle = (active: boolean) => ({
@@ -372,10 +340,6 @@ export default function People() {
       setSalariedWorkdaysModalOpen(false)
     }
   }, [activeTab])
-  const [costMatrixShareSectionOpen, setCostMatrixShareSectionOpen] = useState(false)
-  const [costMatrixTagColorsSectionOpen, setCostMatrixTagColorsSectionOpen] = useState(false)
-  const [newTagName, setNewTagName] = useState('')
-  const [newTagColor, setNewTagColor] = useState('#e5e7eb')
   const [tagLedgerModalTag, setTagLedgerModalTag] = useState<string | null>(null)
   const [teamLedgerModalTeam, setTeamLedgerModalTeam] = useState<PeopleTeam | null>(null)
   const [personTimeDetailModalPerson, setPersonTimeDetailModalPerson] = useState<string | null>(null)
@@ -2559,16 +2523,6 @@ export default function People() {
     const day = new Date(workDate + 'T12:00:00').getDay()
     if (day >= 1 && day <= 5) return wage * 8
     return getCostForPersonDate(personName, workDate)
-  }
-
-  function textColorForBackground(hex: string): string {
-    const m = hex.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i)
-    if (!m) return '#374151'
-    const r = parseInt(m[1] ?? '00', 16) / 255
-    const g = parseInt(m[2] ?? '00', 16) / 255
-    const b = parseInt(m[3] ?? '00', 16) / 255
-    const luminance = 0.299 * r + 0.587 * g + 0.114 * b
-    return luminance < 0.5 ? '#ffffff' : '#374151'
   }
 
   function getDaysInRange(start: string, end: string): string[] {
@@ -5599,193 +5553,20 @@ export default function People() {
             </section>
             )}
             {(isDev || canAccessPay) && (
-            <section id="people-hours-sharing" style={HOURS_TAB_SECTION_SHELL}>
-              <div style={hoursTabSectionHeaderGap(hoursTabSectionsOpen.sharing)}>
-                <button
-                  type="button"
-                  aria-expanded={hoursTabSectionsOpen.sharing}
-                  onClick={() => setHoursTabSectionsOpen((p) => ({ ...p, sharing: !p.sharing }))}
-                  style={HOURS_TAB_SECTION_TOGGLE_BTN}
-                >
-                  <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{hoursTabSectionsOpen.sharing ? '▼' : '▶'}</span>
-                  Sharing & tag colors
-                </button>
-              </div>
-              {hoursTabSectionsOpen.sharing ? (
-              <>
-            {isDev && (
-            <div style={{ marginBottom: '1rem' }}>
-              <button
-                type="button"
-                onClick={() => setCostMatrixShareSectionOpen((prev) => !prev)}
-                style={{
-                  ...HOURS_TAB_SECTION_TOGGLE_BTN,
-                  marginBottom: costMatrixShareSectionOpen ? '0.75rem' : 0,
-                }}
-              >
-                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{costMatrixShareSectionOpen ? '▼' : '▶'}</span>
-                Share Cost Matrix and Teams
-              </button>
-              {costMatrixShareSectionOpen && (
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                    Select Masters or assistants to grant view-only access to Cost matrix and Teams.
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                    {costMatrixShareCandidates.map((u) => (
-                      <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
-                        <input
-                          type="checkbox"
-                          checked={costMatrixSharedUserIds.has(u.id)}
-                          onChange={(e) => toggleCostMatrixShare(u.id, e.target.checked)}
-                          disabled={costMatrixShareSaving}
-                        />
-                        {u.name || u.email || 'Unknown'} ({u.role === 'master_technician' ? 'Master' : 'Assistant'})
-                      </label>
-                    ))}
-                  </div>
-                  {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
-                </div>
-              )}
-            </div>
-            )}
-            {canAccessPay && (
-            <div>
-              <button
-                type="button"
-                onClick={() => setCostMatrixTagColorsSectionOpen((prev) => !prev)}
-                style={{
-                  ...HOURS_TAB_SECTION_TOGGLE_BTN,
-                  marginBottom: costMatrixTagColorsSectionOpen ? '0.75rem' : 0,
-                }}
-              >
-                <span aria-hidden style={HOURS_TAB_SECTION_CHEVRON}>{costMatrixTagColorsSectionOpen ? '▼' : '▶'}</span>
-                Tag colors
-              </button>
-              {costMatrixTagColorsSectionOpen && (
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                    Click a tag to change its color.
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
-                    {(() => {
-                      const tagsInUse = new Set<string>()
-                      for (const tags of Object.values(costMatrixTags)) {
-                        for (const t of (tags ?? '').split(',').map((x) => x.trim()).filter(Boolean)) {
-                          tagsInUse.add(t)
-                        }
-                      }
-                      const tagsWithColors = new Set(Object.keys(costMatrixTagColors))
-                      const allTags = [...new Set([...tagsInUse, ...tagsWithColors])].sort()
-                      return (
-                        <>
-                          {allTags.map((tag) => {
-                            const bg = costMatrixTagColors[tag] ?? '#e5e7eb'
-                            return (
-                              <label
-                                key={tag}
-                                style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }}
-                                title="Click to change color"
-                              >
-                                <input
-                                  type="color"
-                                  value={bg}
-                                  onChange={(e) => saveTagColor(tag, e.target.value)}
-                                  style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    opacity: 0,
-                                    cursor: 'pointer',
-                                    width: '100%',
-                                    height: '100%',
-                                  }}
-                                />
-                                <span
-                                  style={{
-                                    display: 'inline-block',
-                                    padding: '0.1rem 0.35rem',
-                                    background: bg,
-                                    borderRadius: 4,
-                                    fontSize: '0.7rem',
-                                    color: textColorForBackground(bg),
-                                  }}
-                                >
-                                  {tag}
-                                </span>
-                              </label>
-                            )
-                          })}
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginLeft: '0.25rem' }}>
-                            <input
-                              type="text"
-                              placeholder="Add tag"
-                              value={newTagName}
-                              onChange={(e) => setNewTagName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  const t = newTagName.trim()
-                                  if (t) {
-                                    saveTagColor(t, newTagColor)
-                                    setNewTagName('')
-                                    setNewTagColor('#e5e7eb')
-                                  }
-                                }
-                              }}
-                              style={{ width: 80, padding: '0.1rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.7rem' }}
-                            />
-                            <label style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }} title="Color for new tag">
-                              <input
-                                type="color"
-                                value={newTagColor}
-                                onChange={(e) => setNewTagColor(e.target.value)}
-                                style={{
-                                  position: 'absolute',
-                                  inset: 0,
-                                  opacity: 0,
-                                  cursor: 'pointer',
-                                  width: '100%',
-                                  height: '100%',
-                                }}
-                              />
-                              <span
-                                style={{
-                                  display: 'inline-block',
-                                  padding: '0.1rem 0.35rem',
-                                  background: newTagColor,
-                                  borderRadius: 4,
-                                  fontSize: '0.7rem',
-                                  color: textColorForBackground(newTagColor),
-                                }}
-                              >
-                                +
-                              </span>
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const t = newTagName.trim()
-                                if (t) {
-                                  saveTagColor(t, newTagColor)
-                                  setNewTagName('')
-                                  setNewTagColor('#e5e7eb')
-                                }
-                              }}
-                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
-                            >
-                              Add
-                            </button>
-                          </span>
-                        </>
-                      )
-                    })()}
-                  </div>
-                </div>
-              )}
-            </div>
-            )}
-              </>
-              ) : null}
-            </section>
+              <PeopleHoursSharing
+                isDev={isDev}
+                canAccessPay={canAccessPay}
+                open={hoursTabSectionsOpen.sharing}
+                onToggle={() => setHoursTabSectionsOpen((p) => ({ ...p, sharing: !p.sharing }))}
+                costMatrixShareCandidates={costMatrixShareCandidates}
+                costMatrixSharedUserIds={costMatrixSharedUserIds}
+                costMatrixShareSaving={costMatrixShareSaving}
+                costMatrixShareError={costMatrixShareError}
+                toggleCostMatrixShare={toggleCostMatrixShare}
+                costMatrixTags={costMatrixTags}
+                costMatrixTagColors={costMatrixTagColors}
+                saveTagColor={saveTagColor}
+              />
             )}
             </>
           </div>
