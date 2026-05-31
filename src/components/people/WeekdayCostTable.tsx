@@ -1,3 +1,5 @@
+import { computeWeekdayCostTotals } from '../../lib/people/computeWeekdayCostTotals'
+
 export interface WeekdayCostRow {
   label: string
   byDay: number[]
@@ -18,10 +20,7 @@ export function WeekdayCostTable({
   fontSize?: string
   marginTop?: string
 }) {
-  const columnTotals = WEEKDAY_NAMES.map((_, dayOfWeek) =>
-    rows.reduce((sum, r) => sum + (r.byDay[dayOfWeek] ?? 0), 0)
-  )
-  const grandTotal = columnTotals.reduce((sum, v) => sum + v, 0)
+  const { columnTotals, grandTotal } = computeWeekdayCostTotals(rows)
   return (
     <table style={{ width: '100%', marginTop, fontSize, borderCollapse: 'collapse' }}>
       <thead>
