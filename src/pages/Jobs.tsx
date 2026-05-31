@@ -53,9 +53,10 @@ import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollect
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import { findEarliestTxLocalityIndex } from '../lib/txLocalityAddressSplit'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
 import { normalizeUrl } from '../lib/projectsForecastStageLineItems'
+import { laborJobSubCost } from '../lib/jobs/subLaborCost'
+import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -473,36 +474,6 @@ const jobSummaryCostSectionBodyStyle: CSSProperties = {
   borderLeft: '2px solid #e5e7eb',
 }
 
-/** Sub labor book row cost (line totals + drive); matches jobSummaryData / laborCostByHcp aggregation. */
-function laborJobSubCost(lj: LaborJob, mileageCost: number, timePerMile: number): number {
-  const jobRate = lj.labor_rate ?? 0
-  const lineTotal = laborItemsSubtotal(lj.items, jobRate)
-  const miles = Number(lj.distance_miles) || 0
-  const driveCost =
-    miles > 0 && jobRate > 0
-      ? miles * mileageCost + miles * timePerMile * jobRate
-      : miles > 0
-        ? miles * mileageCost
-        : 0
-  return lineTotal + driveCost
-}
-
-function resolvedLaborInvoiceLink(raw: string): string | null {
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-  const normalized = normalizeUrl(trimmed)
-  return normalized || null
-}
-
-function buildClickToolingUrl(job: JobWithDetails): string {
-  const params = new URLSearchParams()
-  params.set('name', (job.customer_name ?? '').trim())
-  params.set('email', (job.customer_email ?? '').trim())
-  params.set('phone', (job.customer_phone ?? '').trim())
-  params.set('location', (job.job_address ?? '').trim())
-  return `https://clicktooling.com/?${params.toString()}`
-}
-
 /** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
 const stagesThreeLineHeaderLineStyle: CSSProperties = { display: 'block', whiteSpace: 'nowrap' }
 
@@ -519,41 +490,6 @@ function renderStagesThreeLineHeader(line1: string, line2: string, line3: string
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
-
-const ADDRESS_STREET_SUFFIX_RE = /\b(Way|Circle|Dr\.?|Drive|Ln\.?|Lane|St\.?|Street|Rd\.?|Road|Ave\.?|Avenue|Blvd\.?|Boulevard|Ct\.?|Court|Pl\.?|Place|Ter\.?|Terrace|Trl\.?|Trail|Pkwy\.?|Parkway|Hwy\.?|Highway)\b/gi
-
-function formatAddressTwoLines(addr: string | null): { line1: string; line2?: string } | null {
-  const a = (addr ?? '').trim()
-  if (!a) return null
-  const bestIdx = findEarliestTxLocalityIndex(a)
-  if (bestIdx !== -1 && bestIdx > 0) {
-    const line1 = a.slice(0, bestIdx).trim()
-    const line2 = a.slice(bestIdx).trim()
-    return { line1, line2: line2 || undefined }
-  }
-  const commaIdx = a.indexOf(',')
-  if (commaIdx !== -1) {
-    const line1 = a.slice(0, commaIdx).trim()
-    const line2 = a.slice(commaIdx + 1).trim()
-    return { line1, line2: line2 || undefined }
-  }
-  let suffixEndIdx = -1
-  let m: RegExpExecArray | null
-  ADDRESS_STREET_SUFFIX_RE.lastIndex = 0
-  while ((m = ADDRESS_STREET_SUFFIX_RE.exec(a)) !== null) {
-    if (m[0].toLowerCase() === 'st' || m[0].toLowerCase() === 'st.') {
-      if (m.index === 0) continue
-    }
-    const end = m.index + m[0].length
-    if (end > suffixEndIdx) suffixEndIdx = end
-  }
-  if (suffixEndIdx > 0) {
-    const line1 = a.slice(0, suffixEndIdx).trim()
-    const line2 = a.slice(suffixEndIdx).trim()
-    if (line2) return { line1, line2 }
-  }
-  return { line1: a }
-}
 
 
 type JobDetailPrefillLocationState = {
