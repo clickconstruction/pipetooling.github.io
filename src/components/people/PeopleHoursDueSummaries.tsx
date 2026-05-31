@@ -7,6 +7,7 @@ import {
   hoursTabSectionHeaderGap,
 } from './peopleHoursTabShared'
 import type { PeopleHoursTeam } from './PeopleHoursTeams'
+import { WeekdayCostTable } from './WeekdayCostTable'
 
 export interface PeopleHoursDueSummariesProps {
   open: boolean
@@ -144,10 +145,6 @@ export function PeopleHoursDueSummaries({
           const total = byDay.reduce((s, v) => s + v, 0)
           return { personName, byDay, total }
         })
-        const costByWeekday = dayNames.map((_, dayOfWeek) =>
-          memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
-        )
-        const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
         return (
           <div
             style={{
@@ -185,35 +182,10 @@ export function PeopleHoursDueSummaries({
                   Close
                 </button>
               </div>
-              <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
-                    {dayNames.map((name) => (
-                      <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
-                    ))}
-                    <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {memberCostByWeekday.map(({ personName, byDay, total }) => (
-                    <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
-                      {byDay.map((val, i) => (
-                        <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                      ))}
-                      <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
-                    </tr>
-                  ))}
-                  <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
-                    <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
-                    {costByWeekday.map((val, i) => (
-                      <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                    ))}
-                    <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
-                  </tr>
-                </tbody>
-              </table>
+              <WeekdayCostTable
+                fontSize="0.8125rem"
+                rows={memberCostByWeekday.map((r) => ({ label: r.personName, byDay: r.byDay, total: r.total }))}
+              />
             </div>
           </div>
         )
@@ -230,10 +202,6 @@ export function PeopleHoursDueSummaries({
           const total = byDay.reduce((s, v) => s + v, 0)
           return { personName, byDay, total }
         })
-        const costByWeekday = dayNames.map((_, dayOfWeek) =>
-          memberCostByWeekday.reduce((s, r) => s + (r.byDay[dayOfWeek] ?? 0), 0)
-        )
-        const periodTotal = costByWeekday.reduce((s, v) => s + v, 0)
         return (
           <div
             style={{
@@ -271,35 +239,10 @@ export function PeopleHoursDueSummaries({
                   Close
                 </button>
               </div>
-              <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left' }}>Person</th>
-                    {dayNames.map((name) => (
-                      <th key={name} style={{ padding: '0.25rem 0.35rem', textAlign: 'right', minWidth: 50 }}>{name}</th>
-                    ))}
-                    <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600 }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {memberCostByWeekday.map(({ personName, byDay, total }) => (
-                    <tr key={personName} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.2rem 0.5rem' }}>{personName}</td>
-                      {byDay.map((val, i) => (
-                        <td key={dayNames[i]} style={{ padding: '0.2rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                      ))}
-                      <td style={{ padding: '0.2rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${Math.round(total).toLocaleString('en-US')}</td>
-                    </tr>
-                  ))}
-                  <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
-                    <td style={{ padding: '0.25rem 0.5rem' }}>Total</td>
-                    {costByWeekday.map((val, i) => (
-                      <td key={dayNames[i]} style={{ padding: '0.25rem 0.35rem', textAlign: 'right' }}>${Math.round(val).toLocaleString('en-US')}</td>
-                    ))}
-                    <td style={{ padding: '0.25rem 0.5rem', textAlign: 'right' }}>${Math.round(periodTotal).toLocaleString('en-US')}</td>
-                  </tr>
-                </tbody>
-              </table>
+              <WeekdayCostTable
+                fontSize="0.8125rem"
+                rows={memberCostByWeekday.map((r) => ({ label: r.personName, byDay: r.byDay, total: r.total }))}
+              />
             </div>
           </div>
         )
