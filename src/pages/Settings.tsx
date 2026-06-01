@@ -36,6 +36,8 @@ import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSe
 import SettingsRecentPushNotifications from '../components/settings/SettingsRecentPushNotifications'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
+import SettingsHowItWorksTab from '../components/settings/SettingsHowItWorksTab'
+import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import type { Database } from '../types/database'
@@ -12225,63 +12227,17 @@ export default function Settings() {
       </SettingsGroup>
 
       {!isSubcontractorLikeRole(myRole) && (
-      <div id="settings-advanced-tools" style={{ marginTop: '2rem', marginBottom: '1.5rem', display: activeSettingsTab === 'settings-advanced-tools' ? undefined : 'none' }}>
-        <button
-          type="button"
-          onClick={() => setAdvancedSectionOpen((prev) => !prev)}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-            margin: 0,
-            padding: '1rem',
-            width: '100%',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            fontSize: '0.9375rem',
-            fontWeight: 500,
-            textAlign: 'left',
-            color: '#6b7280',
-          }}
-        >
-          <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{advancedSectionOpen ? '▼' : '▶'}</span>
-          Advanced
-        </button>
-        {advancedSectionOpen && (
-          <div style={{ padding: '1rem 0 0 0' }}>
-            <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-              <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Fix app</h2>
-              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                If the app shows a white screen after an update (e.g. phone was open during deploy), open{' '}
-                <a href="/fix-cache.html" style={{ color: '#2563eb', fontWeight: 500 }}>
-                  Fix app
-                </a>{' '}
-                to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
-              </p>
-            </div>
-            <form onSubmit={handleClaimCode}>
-              <label htmlFor="code" style={{ display: 'block', marginBottom: 4 }}>Enter code</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input
-                  id="code"
-                  type="text"
-                  value={code}
-                  onChange={(e) => { setCode(e.target.value); setCodeError(null) }}
-                  disabled={codeSubmitting}
-                  placeholder="Admin code"
-                  style={{ padding: '0.5rem', minWidth: 160 }}
-                  autoComplete="one-time-code"
-                />
-                <button type="submit" disabled={codeSubmitting || !code.trim()}>
-                  {codeSubmitting ? 'Checking…' : 'Submit'}
-                </button>
-              </div>
-              {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
-            </form>
-          </div>
-        )}
-      </div>
+        <SettingsAdvancedTab
+          active={activeSettingsTab === 'settings-advanced-tools'}
+          advancedSectionOpen={advancedSectionOpen}
+          setAdvancedSectionOpen={setAdvancedSectionOpen}
+          code={code}
+          setCode={setCode}
+          codeError={codeError}
+          setCodeError={setCodeError}
+          codeSubmitting={codeSubmitting}
+          handleClaimCode={handleClaimCode}
+        />
       )}
 
       {showMyReports && (
@@ -12328,67 +12284,7 @@ export default function Settings() {
         onSaved={() => loadMutedTasks()}
       />
 
-      <div id="settings-how-it-works" style={{ display: activeSettingsTab === 'settings-how-it-works' ? undefined : 'none' }}>
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
-          <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-            PipeTooling helps Masters better manage Projects with Subs.
-            <br />
-            Three types of People: Masters, Assistants, Subs
-          </div>
-          <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
-          <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-            <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
-            <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
-            <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
-            <li>When People complete Stages, Masters are updated</li>
-          </ol>
-          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Sharing</strong>:
-            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
-              <li style={{ marginBottom: '0.5rem' }}>
-                Masters can choose to adopt assistants in Settings
-                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
-                  → they can manage stages and see private notes but not financial totals
-                </div>
-              </li>
-              <li>
-                Masters can choose to share with other Masters
-                <div style={{ marginLeft: '1.25rem', marginTop: '0.25rem' }}>
-                  → they have the same permissions as assistants
-                </div>
-              </li>
-            </ul>
-          </div>
-          <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
-            <strong>Subcontractors</strong>:
-            <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
-              <li>Only see a stage when it is assigned to them</li>
-              <li>Can only Start and Complete their stages</li>
-              <li>Cannot see private notes or financials</li>
-              <li>Cannot add, edit, delete, or assign stages</li>
-            </ul>
-            <div style={{ marginTop: '0.5rem' }}>
-              When a Master or Assistant selects to Notify when a stage updates, that stage will show up in their Subscribed Stages on the Dashboard.
-            </div>
-          </div>
-        </div>
-      <div
-        style={{
-          marginTop: '2.5rem',
-          padding: '1.5rem',
-          backgroundColor: '#f9fafb',
-          borderRadius: '0.5rem',
-          border: '1px solid #e5e7eb',
-        }}
-      >
-        <p style={{ margin: 0, lineHeight: '1.6', color: '#374151', fontSize: '0.9375rem' }}>
-          PipeTooling is a web application designed to decrease the actions and thinking necessary for Plumbers,
-          Electricians, and HVAC techs to engage and win work while reducing the comunication risk of completing that
-          work with Assistance, Teammates, Subs, and Customers. Our mission is to reduce uncertainty so better and
-          faster decisions can be made.
-        </p>
-      </div>
-      </div>
+      <SettingsHowItWorksTab active={activeSettingsTab === 'settings-how-it-works'} />
     </div>
   )
 }
