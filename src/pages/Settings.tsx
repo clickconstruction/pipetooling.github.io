@@ -50,6 +50,14 @@ import {
 } from '../lib/appSettingsKeys'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
+  NOTIFICATION_VARIABLE_HINT,
+  substituteNotificationVariables,
+  VARIABLE_HINT,
+  WORKFLOW_FN_EMAIL_TEST_OPTIONS,
+  WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID,
+  type WorkflowFnEmailTemplateType,
+} from '../lib/settingsTemplates'
+import {
   builtinEstimateExperience,
   ESTIMATE_APP_SETTING_LABELS,
   ESTIMATE_EXPERIENCE_APP_KEY_LIST,
@@ -213,56 +221,6 @@ type GoalPickerUserRow = { id: string; name: string | null; email: string | null
 function displayLabelForGoalPickerUser(userId: string, users: GoalPickerUserRow[]): string {
   const u = users.find((x) => x.id === userId)
   return u?.name?.trim() || u?.email || userId
-}
-
-const VARIABLE_HINT = '{{name}}, {{email}}, {{role}}, {{link}}'
-const NOTIFICATION_VARIABLE_HINT = '{{assignee_name}}, {{item_title}}, {{name}}, {{stage_name}}, {{project_name}}, {{assigned_to_name}}, {{next_stage_name}}, {{rejection_reason}}'
-
-/** Placeholder step id for send-workflow-notification test (no recipient_user_id → no notification_history insert). */
-const WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID = '00000000-0000-4000-8000-000000000001'
-
-type WorkflowFnEmailTemplateType = Exclude<
-  EmailTemplate['template_type'],
-  'invitation' | 'sign_in' | 'login_as'
->
-
-const WORKFLOW_FN_EMAIL_TEST_OPTIONS: Array<{ type: WorkflowFnEmailTemplateType; label: string }> = [
-  { type: 'stage_assigned_started', label: 'Stage Started (Assigned)' },
-  { type: 'stage_assigned_complete', label: 'Stage Complete (Assigned)' },
-  { type: 'stage_assigned_reopened', label: 'Stage Re-opened (Assigned)' },
-  { type: 'stage_me_started', label: 'Stage Started (ME)' },
-  { type: 'stage_me_complete', label: 'Stage Complete (ME)' },
-  { type: 'stage_me_reopened', label: 'Stage Re-opened (ME)' },
-  { type: 'stage_next_complete_or_approved', label: 'Next Stage Ready' },
-  { type: 'stage_prior_rejected', label: 'Prior work incomplete' },
-]
-
-function substituteNotificationVariables(
-  template: NotificationTemplate,
-  targetUser: UserRow
-): { title: string; body: string } {
-  const displayName = targetUser.name?.trim() || targetUser.email || 'Test User'
-  const replacements: Record<string, string> = {
-    '{{assignee_name}}': displayName,
-    '{{name}}': displayName,
-    '{{assigned_to_name}}': displayName,
-    '{{item_title}}': 'Sample checklist item',
-    '{{stage_name}}': 'Sample stage',
-    '{{project_name}}': 'Sample project',
-    '{{next_stage_name}}': 'Next stage',
-    '{{rejection_reason}}': 'Sample rejection reason',
-  }
-  const replaceAll = (s: string) => {
-    let out = s
-    for (const [key, val] of Object.entries(replacements)) {
-      out = out.split(key).join(val)
-    }
-    return out
-  }
-  return {
-    title: replaceAll(template.push_title),
-    body: replaceAll(template.push_body),
-  }
 }
 
 function timeSinceAgo(iso: string | null): string {
