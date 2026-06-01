@@ -41,3 +41,36 @@ export interface ServiceType {
   ledger_job_prefix?: string | null
   ledger_bid_prefix?: string | null
 }
+
+export interface FixtureType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PartType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
+export interface AssemblyType {
+  id: string
+  service_type_id: string
+  name: string
+  category: string | null
+  sequence_order: number
+  created_at: string
+  updated_at: string
+}
+
+export type CountsFixtureGroup = { id: string; service_type_id: string; label: string; sequence_order: number }
+export type CountsFixtureGroupItem = { id: string; group_id: string; name: string; sequence_order: number }
