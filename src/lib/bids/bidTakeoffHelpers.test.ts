@@ -5,6 +5,8 @@ import {
   normalizeMaterialsModel,
   takeoffFixtureCountLabel,
   sumRoughLinesPreTax,
+  roughCountMultiplier,
+  sumRoughLinesPreTaxWithCount,
   mergePartLinesToTakeoffTemplateItems,
   STAGE_LABELS,
 } from './bidTakeoffHelpers'
@@ -72,6 +74,45 @@ describe('sumRoughLinesPreTax', () => {
 
   it('returns 0 for an empty list', () => {
     expect(sumRoughLinesPreTax([])).toBe(0)
+  })
+})
+
+describe('roughCountMultiplier', () => {
+  it('returns the count when it is a positive number', () => {
+    expect(roughCountMultiplier(2)).toBe(2)
+    expect(roughCountMultiplier('3')).toBe(3)
+  })
+
+  it('falls back to 1 for missing / zero / invalid counts', () => {
+    expect(roughCountMultiplier(1)).toBe(1)
+    expect(roughCountMultiplier(0)).toBe(1)
+    expect(roughCountMultiplier(null)).toBe(1)
+    expect(roughCountMultiplier(undefined)).toBe(1)
+    expect(roughCountMultiplier('abc')).toBe(1)
+  })
+})
+
+describe('sumRoughLinesPreTaxWithCount', () => {
+  it('weights each line by its fixture count (count x qty x unit_price)', () => {
+    const counts = new Map<string, number | null>([
+      ['a', 2],
+      ['b', 1],
+    ])
+    expect(
+      sumRoughLinesPreTaxWithCount(
+        [
+          { count_row_id: 'a', quantity: 1, unit_price: 10 }, // 2 * 1 * 10 = 20
+          { count_row_id: 'b', quantity: 3, unit_price: 5 }, //  1 * 3 * 5  = 15
+        ],
+        counts,
+      ),
+    ).toBe(35)
+  })
+
+  it('treats a line with no matching count as count 1', () => {
+    expect(
+      sumRoughLinesPreTaxWithCount([{ count_row_id: 'missing', quantity: 2, unit_price: 10 }], new Map()),
+    ).toBe(20)
   })
 })
 

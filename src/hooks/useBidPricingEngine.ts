@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { expandTemplate } from '../lib/materialPOUtils'
-import { normalizeMaterialsModel, sumRoughLinesPreTax, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
+import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import type { BidCountRow } from '../types/bids'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
@@ -419,11 +419,20 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setTravelMealsRate((est as any).travel_meals_rate != null ? String((est as any).travel_meals_rate) : '')
       setTravelHotelRate((est as any).travel_hotel_rate != null ? String((est as any).travel_hotel_rate) : '')
       if (mm === 'rough') {
-        const { data: roughLines } = await supabase
-          .from('bids_takeoff_rough_part_lines')
-          .select('quantity, unit_price')
-          .eq('bid_id', bidId)
-        const sum = sumRoughLinesPreTax((roughLines ?? []) as Array<{ quantity: number; unit_price: number }>)
+        const [{ data: roughLines }, { data: crsForCount }] = await Promise.all([
+          supabase
+            .from('bids_takeoff_rough_part_lines')
+            .select('count_row_id, quantity, unit_price')
+            .eq('bid_id', bidId),
+          supabase.from('bids_count_rows').select('id, count').eq('bid_id', bidId),
+        ])
+        const countByRowId = new Map(
+          ((crsForCount ?? []) as Array<{ id: string; count: number | null }>).map((r) => [r.id, r.count]),
+        )
+        const sum = sumRoughLinesPreTaxWithCount(
+          (roughLines ?? []) as Array<{ count_row_id: string | null; quantity: number; unit_price: number }>,
+          countByRowId,
+        )
         setCostEstimateMaterialTotalRoughIn(sum)
         setCostEstimateMaterialTotalTopOut(null)
         setCostEstimateMaterialTotalTrimSet(null)
@@ -815,7 +824,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       }
       const roughLines =
         (roughLinesRes.data ?? []) as Array<{ count_row_id: string; quantity: number; unit_price: number }>
-      const roughTotal = sumRoughLinesPreTax(roughLines)
+      const countByRowId = new Map(countRows.map((cr) => [cr.id, cr.count]))
+      const roughTotal = sumRoughLinesPreTaxWithCount(roughLines, countByRowId)
       setPricingMaterialTotalRoughIn(roughTotal)
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
@@ -843,7 +853,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
             sum += Number(ln.quantity) * Number(ln.unit_price)
           }
         }
-        fixtureMaterials[countRow.id] = sum
+        fixtureMaterials[countRow.id] = sum * roughCountMultiplier(countRow.count)
       }
       if (pricingBidIdRef.current === bidId) {
         setPricingFixtureMaterialsFromTakeoff(fixtureMaterials)

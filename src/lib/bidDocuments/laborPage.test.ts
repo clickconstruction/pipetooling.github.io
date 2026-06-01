@@ -69,15 +69,16 @@ describe('buildRoughLaborPageHtml', () => {
     expect(html).not.toContain('Sink <span')
   })
 
-  it('formats material line unit, qty and total', () => {
+  it('formats material line unit, qty and count-weighted total', () => {
     const html = buildRoughLaborPageHtml(base)
-    // Wax Ring: unit $5.00, qty 2, total $10.00
+    // Totals are count-weighted (Toilet count 3).
+    // Wax Ring: unit $5.00, qty 2, x3 = $30.00
     expect(html).toContain('>$5.00</td>')
     expect(html).toContain('>2</td>')
-    expect(html).toContain('>$10.00</td>')
-    // PVC Pipe: unit $1.50, qty 4, total $6.00
+    expect(html).toContain('>$30.00</td>')
+    // PVC Pipe: unit $1.50, qty 4, x3 = $18.00
     expect(html).toContain('>$1.50</td>')
-    expect(html).toContain('>$6.00</td>')
+    expect(html).toContain('>$18.00</td>')
   })
 
   it('escapes material part names', () => {

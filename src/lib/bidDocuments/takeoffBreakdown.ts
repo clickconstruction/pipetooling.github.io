@@ -12,6 +12,7 @@
  */
 
 import { escapeHtml } from './htmlDoc'
+import { roughCountMultiplier } from '../bids/bidTakeoffHelpers'
 
 export interface RoughTakeoffBreakdownInput {
   /** Raw (unescaped) document title; the builder escapes it. */
@@ -51,7 +52,7 @@ export function buildRoughTakeoffBreakdownHtml(input: RoughTakeoffBreakdownInput
           const nm = escapeHtml(input.partNameById[l.partId] ?? l.partId.slice(0, 8))
           const q = Number(l.quantity)
           const up = Number(l.unitPrice)
-          const tot = q * up
+          const tot = q * up * roughCountMultiplier(row.count)
           return `<tr><td style="padding:0.25rem 0.5rem; border:1px solid #ccc">${nm}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${up.toFixed(2)}</td><td style="padding:0.25rem 0.5rem; text-align:center; border:1px solid #ccc">${q}</td><td style="padding:0.25rem 0.5rem; text-align:right; border:1px solid #ccc">$${tot.toFixed(2)}</td></tr>`
         })
         .join('')

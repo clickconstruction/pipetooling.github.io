@@ -38,6 +38,28 @@ export function sumRoughLinesPreTax(lines: Array<{ quantity: number; unit_price:
   return lines.reduce((s, r) => s + Number(r.quantity) * Number(r.unit_price), 0)
 }
 
+/**
+ * Fixture-count multiplier for Combined (rough) takeoff lines: a rough line's material cost is
+ * `fixtureCount × quantity × unit_price` (so 2 of a fixture doubles its parts), mirroring how
+ * By Stage assemblies default their quantity to the fixture count. A missing/zero/invalid count
+ * falls back to 1 (no multiplication), preserving prior behavior for those edge rows.
+ */
+export function roughCountMultiplier(count: number | string | null | undefined): number {
+  const c = Number(count)
+  return Number.isFinite(c) && c > 0 ? c : 1
+}
+
+/** Count-weighted pre-tax rough materials total: Σ fixtureCount × quantity × unit_price. */
+export function sumRoughLinesPreTaxWithCount(
+  lines: Array<{ count_row_id?: string | null; quantity: number; unit_price: number }>,
+  countByRowId: ReadonlyMap<string, number | string | null | undefined>,
+): number {
+  return lines.reduce((s, l) => {
+    const count = l.count_row_id != null ? countByRowId.get(l.count_row_id) : undefined
+    return s + Number(l.quantity) * Number(l.unit_price) * roughCountMultiplier(count)
+  }, 0)
+}
+
 export function mergePartLinesToTakeoffTemplateItems(
   lines: Array<{ partId: string; quantity: number }>
 ): Array<{ item_type: 'part' | 'template'; part_id: string | null; nested_template_id: string | null; quantity: number }> {
