@@ -9,7 +9,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react'
-import { FileSpreadsheet, Folder, Images, PanelRightOpen, Pencil } from 'lucide-react'
+import { FileSpreadsheet } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import {
@@ -28,10 +28,21 @@ import {
   formatPrintDaysSince,
   formatTimeSince,
   formatUsdNoCents,
-  formatYmdOrIsoDateForPrintDisplay,
   jobSummaryPartsCostIsZero,
   personMatchesJobSummaryBreakdownFilter,
 } from '../lib/jobs/jobFormatting'
+import {
+  effectiveInvoiceEstBillDate,
+  invoiceOpenRemainingOnJob,
+  jobStagesInvoiceJumpChipTargets,
+  printBilledRowReferenceDate,
+  sortStageRowsForTotalByNameDetail,
+  stageRowBilledAgeDays,
+  stageRowBilledLineLabel,
+  stageRowBilledRemainingAmount,
+  stagesJobLevelStripeEmailedHintInvoice,
+  sumInvoiceAppliedFromJobPayments,
+} from '../lib/jobs/invoiceBilling'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -42,14 +53,15 @@ import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollect
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
-import { findEarliestTxLocalityIndex } from '../lib/txLocalityAddressSplit'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
-import { normalizeUrl } from '../lib/projectsForecastStageLineItems'
+import { laborJobSubCost } from '../lib/jobs/subLaborCost'
+import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
+import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
+import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../types/laborJob'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
-import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
-import RecurringEmailReportsModal from '../components/jobs/RecurringEmailReportsModal'
-import AddInspectionModal from '../components/AddInspectionModal'
+import JobsInspectionsTab from '../components/jobs/JobsInspectionsTab'
+import JobsReportsTab from '../components/jobs/JobsReportsTab'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { jobBillingContextFromJob } from '../lib/jobBillingContext'
 import { useBillCustomerModal } from '../contexts/BillCustomerModalContext'
@@ -109,8 +121,6 @@ import {
   type TallyLineForPersonRollup,
 } from '../lib/partsPerPersonCostSummary'
 import { normalizePersonNameKey } from '../lib/personNameKey'
-import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
-import { formatReportFieldValueInlineList } from '../lib/reportSignatureField'
 import {
   filterJobSummaryMercuryRowsForPersonName,
   filterJobSummaryMercuryRowsForPersonNames,
@@ -168,7 +178,6 @@ import {
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
   stagesJobsWithoutCustomerFromFiltered,
-  stagesMergedBillingInvoiceId,
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
@@ -183,7 +192,6 @@ import { showAiaG702G703 } from '../lib/aiaG702G703Eligibility'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
-type InspectionRow = Database['public']['Tables']['inspections']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
 
 type TallyPartRow = {
@@ -208,31 +216,6 @@ type TallyPartRow = {
 }
 
 type JobsTab = 'reports' | 'stages' | 'billing' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
-
-const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES =
-  "Customer Files isn't linked for this job yet. Contact Dispatch to have it added."
-
-const JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES =
-  "Customer Pictures isn't linked for this job yet. Contact Dispatch to have it added."
-
-/** Row shape from `list_reports_with_job_info` (Reports tab); link columns added in 20270517120000 migration. */
-type ReportWithJob = {
-  id: string
-  template_id: string
-  template_name: string
-  created_by_user_id: string
-  created_by_name: string
-  created_at: string
-  updated_at: string
-  field_values: Record<string, string>
-  job_ledger_id: string | null
-  project_id: string | null
-  job_display_name: string
-  job_hcp_number: string
-  job_google_drive_link?: string | null
-  job_job_pictures_link?: string | null
-  job_address?: string | null
-}
 
 /** Align with Layout mobile breakpoint; shortens primary create button to "New". */
 const JOBS_SHORT_NEW_JOB_BUTTON_MQ = '(max-width: 640px)'
@@ -270,28 +253,6 @@ type LaborFixtureRow = {
   is_fixed: boolean
   labor_rate: number
   direct_labor_amount: number | null
-}
-type LaborJobPayment = { id: string; amount: number; memo: string | null; created_at: string }
-type LaborJob = {
-  id: string
-  assigned_to_name: string
-  address: string
-  job_number: string | null
-  labor_rate: number | null
-  job_date: string | null
-  created_at: string | null
-  distance_miles?: number | null
-  paid_at?: string | null
-  invoice_link?: string | null
-  items?: Array<{
-    fixture: string
-    count: number
-    hrs_per_unit: number
-    is_fixed?: boolean
-    labor_rate?: number | null
-    direct_labor_amount?: number | null
-  }>
-  payments?: LaborJobPayment[]
 }
 type CrewJobAssignment = { job_id: string; pct: number }
 type CrewJobRow = { job_assignments: CrewJobAssignment[] }
@@ -463,36 +424,6 @@ const jobSummaryCostSectionBodyStyle: CSSProperties = {
   borderLeft: '2px solid #e5e7eb',
 }
 
-/** Sub labor book row cost (line totals + drive); matches jobSummaryData / laborCostByHcp aggregation. */
-function laborJobSubCost(lj: LaborJob, mileageCost: number, timePerMile: number): number {
-  const jobRate = lj.labor_rate ?? 0
-  const lineTotal = laborItemsSubtotal(lj.items, jobRate)
-  const miles = Number(lj.distance_miles) || 0
-  const driveCost =
-    miles > 0 && jobRate > 0
-      ? miles * mileageCost + miles * timePerMile * jobRate
-      : miles > 0
-        ? miles * mileageCost
-        : 0
-  return lineTotal + driveCost
-}
-
-function resolvedLaborInvoiceLink(raw: string): string | null {
-  const trimmed = raw.trim()
-  if (!trimmed) return null
-  const normalized = normalizeUrl(trimmed)
-  return normalized || null
-}
-
-function buildClickToolingUrl(job: JobWithDetails): string {
-  const params = new URLSearchParams()
-  params.set('name', (job.customer_name ?? '').trim())
-  params.set('email', (job.customer_email ?? '').trim())
-  params.set('phone', (job.customer_phone ?? '').trim())
-  params.set('location', (job.job_address ?? '').trim())
-  return `https://clicktooling.com/?${params.toString()}`
-}
-
 /** Stages table headers: one visual line per phrase when the table is narrow (no mid-phrase wrap). */
 const stagesThreeLineHeaderLineStyle: CSSProperties = { display: 'block', whiteSpace: 'nowrap' }
 
@@ -506,153 +437,10 @@ function renderStagesThreeLineHeader(line1: string, line2: string, line3: string
   )
 }
 
-/** Per-invoice est. bill date when set; else job-level manual last bill date (`last_bill_date`). */
-function effectiveInvoiceEstBillDate(inv: JobsLedgerInvoice, job: JobWithDetails): string | null {
-  return inv.estimated_bill_date ?? job.last_bill_date ?? null
-}
-
-function sumInvoiceAppliedFromJobPayments(job: JobWithDetails, invoiceId: string): number {
-  let s = 0
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
-  }
-  return s
-}
-
-function invoiceOpenRemainingOnJob(inv: JobsLedgerInvoice, job: JobWithDetails): number {
-  const applied = sumInvoiceAppliedFromJobPayments(job, inv.id)
-  return Math.max(0, Number(inv.amount ?? 0) - applied)
-}
-
-function stageRowBilledRemainingAmount(r: StageRow): number {
-  if (r.kind === 'job') {
-    return Number(r.job.revenue ?? 0) - Number(r.job.payments_made ?? 0)
-  }
-  return invoiceOpenRemainingOnJob(r.inv, r.job)
-}
-
-function stageRowBilledAgeDays(r: StageRow, now = new Date()): number | null {
-  const iso =
-    r.kind === 'job'
-      ? r.job.last_bill_date ?? null
-      : effectiveInvoiceEstBillDate(r.inv, r.job)
-  if (!iso) return null
-  const days = calendarDaysSinceDateUtc(iso, now)
-  if (days < 0) return null
-  return days
-}
-
-function stageRowBilledLineLabel(r: StageRow): string {
-  const hcp = r.job.hcp_number || '—'
-  if (r.kind === 'job') return `${hcp} · Job balance`
-  if (r.kind === 'job_with_merged_billed') return `${hcp} · Billed line`
-  return `${hcp} · Invoice #${r.inv.sequence_order}`
-}
-
-function sortStageRowsForTotalByNameDetail(rows: StageRow[]): StageRow[] {
-  return [...rows].sort((a, b) => {
-    const da = stageRowBilledAgeDays(a)
-    const db = stageRowBilledAgeDays(b)
-    if (da != null && db != null && da !== db) return db - da
-    if (da != null && db == null) return -1
-    if (da == null && db != null) return 1
-    return stageRowBilledRemainingAmount(b) - stageRowBilledRemainingAmount(a)
-  })
-}
-
-/** Reference date and whole calendar days since, for Billed Awaiting Payment printout. */
-function printBilledRowReferenceDate(r: StageRow, now = new Date()): { display: string; ageDays: number | null } {
-  if (r.kind === 'job') {
-    const iso = r.job.last_bill_date?.trim() ?? null
-    if (!iso) return { display: '—', ageDays: null }
-    const days = calendarDaysSinceDateUtc(iso, now)
-    if (days < 0) return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: null }
-    return { display: formatYmdOrIsoDateForPrintDisplay(iso), ageDays: days }
-  }
-  const billedAt = r.inv.billed_at?.trim()
-  if (billedAt) {
-    const datePart = billedAt.length >= 10 ? billedAt.slice(0, 10) : billedAt
-    const days = calendarDaysSinceDateUtc(datePart, now)
-    const display = formatYmdOrIsoDateForPrintDisplay(datePart)
-    if (days < 0) return { display, ageDays: null }
-    return { display, ageDays: days }
-  }
-  const est = effectiveInvoiceEstBillDate(r.inv, r.job)
-  if (!est) return { display: '—', ageDays: null }
-  const days = calendarDaysSinceDateUtc(est, now)
-  const display = `${formatYmdOrIsoDateForPrintDisplay(est)} (est.)`
-  if (days < 0) return { display, ageDays: null }
-  return { display, ageDays: days }
-}
-
 const JOBS_TABS: JobsTab[] = ['reports', 'stages', 'billing', 'sub_sheet_ledger', 'combined-labor', 'teams-summary', 'parts', 'job-summary', 'inspections', 'billed']
 
 const LABOR_ASSIGNED_DELIMITER = ' | '
 
-const ADDRESS_STREET_SUFFIX_RE = /\b(Way|Circle|Dr\.?|Drive|Ln\.?|Lane|St\.?|Street|Rd\.?|Road|Ave\.?|Avenue|Blvd\.?|Boulevard|Ct\.?|Court|Pl\.?|Place|Ter\.?|Terrace|Trl\.?|Trail|Pkwy\.?|Parkway|Hwy\.?|Highway)\b/gi
-
-function formatAddressTwoLines(addr: string | null): { line1: string; line2?: string } | null {
-  const a = (addr ?? '').trim()
-  if (!a) return null
-  const bestIdx = findEarliestTxLocalityIndex(a)
-  if (bestIdx !== -1 && bestIdx > 0) {
-    const line1 = a.slice(0, bestIdx).trim()
-    const line2 = a.slice(bestIdx).trim()
-    return { line1, line2: line2 || undefined }
-  }
-  const commaIdx = a.indexOf(',')
-  if (commaIdx !== -1) {
-    const line1 = a.slice(0, commaIdx).trim()
-    const line2 = a.slice(commaIdx + 1).trim()
-    return { line1, line2: line2 || undefined }
-  }
-  let suffixEndIdx = -1
-  let m: RegExpExecArray | null
-  ADDRESS_STREET_SUFFIX_RE.lastIndex = 0
-  while ((m = ADDRESS_STREET_SUFFIX_RE.exec(a)) !== null) {
-    if (m[0].toLowerCase() === 'st' || m[0].toLowerCase() === 'st.') {
-      if (m.index === 0) continue
-    }
-    const end = m.index + m[0].length
-    if (end > suffixEndIdx) suffixEndIdx = end
-  }
-  if (suffixEndIdx > 0) {
-    const line1 = a.slice(0, suffixEndIdx).trim()
-    const line2 = a.slice(suffixEndIdx).trim()
-    if (line2) return { line1, line2 }
-  }
-  return { line1: a }
-}
-
-/** Stages jump chips: open RTB / billed billing lines only, same rows as the board. */
-function jobStagesActiveBillingInvoices(job: JobWithDetails): JobsLedgerInvoice[] {
-  return (job.invoices ?? [])
-    .filter((i) => i.status === 'ready_to_bill' || i.status === 'billed')
-    .slice()
-    .sort((a, b) => a.sequence_order - b.sequence_order)
-}
-
-/** Jump targets: standalone invoice rows only (omit line merged into the job shell on Stages). */
-function jobStagesInvoiceJumpChipTargets(job: JobWithDetails): JobsLedgerInvoice[] {
-  const all = jobStagesActiveBillingInvoices(job)
-  const merged = stagesMergedBillingInvoiceId(job)
-  if (merged == null) return all
-  return all.filter((i) => i.id !== merged)
-}
-
-/** Stages Last activity: one billed Stripe line with recorded customer email only (skip when ambiguous). */
-function stagesJobLevelStripeEmailedHintInvoice(job: JobWithDetails): JobsLedgerInvoice | undefined {
-  const matches = (job.invoices ?? []).filter(
-    (i) =>
-      i.status === 'billed' &&
-      i.external_send_channel === 'stripe' &&
-      String(i.stripe_invoice_id ?? '').trim() !== '' &&
-      i.sent_to_customer_at != null &&
-      String(i.sent_to_customer_at).trim() !== '',
-  )
-  if (matches.length !== 1) return undefined
-  return matches[0]
-}
 
 type JobDetailPrefillLocationState = {
   jobDetailPrefill?: { prefillRowLabel: string | null; prefillAddress: string | null }
@@ -836,12 +624,11 @@ export default function Jobs() {
   const [laborJobNamesByHcp, setLaborJobNamesByHcp] = useState<Record<string, string>>({})
   const [laborJobsLoading, setLaborJobsLoading] = useState(false)
   const [laborJobDeletingId, setLaborJobDeletingId] = useState<string | null>(null)
-  const [expandedSubLaborJobIds, setExpandedSubLaborJobIds] = useState<Set<string>>(new Set())
-  const [makePaymentLaborJob, setMakePaymentLaborJob] = useState<{ id: string; contractor: string; hcp: string; totalCost: number; paid: number; outstanding: number } | null>(null)
+  const [makePaymentLaborJob, setMakePaymentLaborJob] = useState<SubLaborPaymentTarget | null>(null)
   const [makePaymentAmount, setMakePaymentAmount] = useState('')
   const [makePaymentMemo, setMakePaymentMemo] = useState('')
   const [makePaymentSaving, setMakePaymentSaving] = useState(false)
-  const [backchargeLaborJob, setBackchargeLaborJob] = useState<{ id: string; contractor: string; hcp: string; totalCost: number; paid: number } | null>(null)
+  const [backchargeLaborJob, setBackchargeLaborJob] = useState<SubLaborBackchargeTarget | null>(null)
   const [backchargeAmount, setBackchargeAmount] = useState('')
   const [backchargeMemo, setBackchargeMemo] = useState('')
   const [backchargeSaving, setBackchargeSaving] = useState(false)
@@ -916,41 +703,6 @@ export default function Jobs() {
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
 
-  // Reports tab state
-  const [reportsList, setReportsList] = useState<ReportWithJob[]>([])
-  const [reportsLoading, setReportsLoading] = useState(false)
-  const [reportsSearch, setReportsSearch] = useState('')
-  const [reportsViewMode, setReportsViewMode] = useState<'job' | 'person'>('job')
-  const [reportsExpandedJobs, setReportsExpandedJobs] = useState<Set<string>>(new Set())
-  const [reportsExpandedPersons, setReportsExpandedPersons] = useState<Set<string>>(new Set())
-  const [newReportModalOpen, setNewReportModalOpen] = useState(false)
-  const [recurringEmailReportsModalOpen, setRecurringEmailReportsModalOpen] = useState(false)
-  const [reportsDeletingId, setReportsDeletingId] = useState<string | null>(null)
-  const [addInspectionModalOpen, setAddInspectionModalOpen] = useState(false)
-  const [inspections, setInspections] = useState<InspectionRow[]>([])
-  const [inspectionsLoading, setInspectionsLoading] = useState(false)
-  const [inspectionsMonth, setInspectionsMonth] = useState(() => {
-    const now = new Date()
-    return new Date(now.getFullYear(), now.getMonth(), 1)
-  })
-  const [inspectionsSelectedDay, setInspectionsSelectedDay] = useState<Date | null>(null)
-  const [inspectionTypesModalOpen, setInspectionTypesModalOpen] = useState(false)
-  const [inspectionTypesList, setInspectionTypesList] = useState<Array<{ name: string; sequence_order: number }>>([])
-  const [inspectionTypesLoading, setInspectionTypesLoading] = useState(false)
-  const [inspectionTypeFormOpen, setInspectionTypeFormOpen] = useState(false)
-  const [editingInspectionTypeName, setEditingInspectionTypeName] = useState<string | null>(null)
-  const [newInspectionTypeName, setNewInspectionTypeName] = useState('')
-  const [inspectionTypeSaving, setInspectionTypeSaving] = useState(false)
-  const [inspectionTypeDeletingName, setInspectionTypeDeletingName] = useState<string | null>(null)
-  const [quickLinksModalOpen, setQuickLinksModalOpen] = useState(false)
-  const [quickLinksList, setQuickLinksList] = useState<Array<{ id: string; label: string; url: string; sequence_order: number }>>([])
-  const [quickLinksLoading, setQuickLinksLoading] = useState(false)
-  const [quickLinkFormOpen, setQuickLinkFormOpen] = useState(false)
-  const [editingQuickLinkId, setEditingQuickLinkId] = useState<string | null>(null)
-  const [newQuickLinkLabel, setNewQuickLinkLabel] = useState('')
-  const [newQuickLinkUrl, setNewQuickLinkUrl] = useState('')
-  const [quickLinkSaving, setQuickLinkSaving] = useState(false)
-  const [quickLinkDeletingId, setQuickLinkDeletingId] = useState<string | null>(null)
   const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
   const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
   const [invoiceAmountByJob, setInvoiceAmountByJob] = useState<Record<string, number>>({})
@@ -1065,17 +817,6 @@ export default function Jobs() {
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
   const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
-  const [reportTemplatesModalOpen, setReportTemplatesModalOpen] = useState(false)
-  const [reportTemplatesList, setReportTemplatesList] = useState<
-    Array<{ id: string; name: string; sequence_order: number; app_managed: boolean }>
-  >([])
-  const [reportTemplatesLoading, setReportTemplatesLoading] = useState(false)
-  const [templateFormOpen, setTemplateFormOpen] = useState(false)
-  const [editingReportTemplateId, setEditingReportTemplateId] = useState<string | null>(null)
-  const [newTemplateName, setNewTemplateName] = useState('')
-  const [newTemplateFields, setNewTemplateFields] = useState<string[]>([''])
-  const [templateSaving, setTemplateSaving] = useState(false)
-  const [templateDeletingId, setTemplateDeletingId] = useState<string | null>(null)
   const [stagesSectionOpen, setStagesSectionOpen] = useState({
     working: true,
     readyToBill: true,
@@ -1715,417 +1456,6 @@ export default function Jobs() {
     setShowAddSubcontractorModal(false)
     setNewSubcontractor({ name: '', email: '', phone: '', notes: '' })
     setSavingAddSubcontractor(false)
-  }
-
-  async function loadReports() {
-    if (!authUser?.id) return
-    setReportsLoading(true)
-    setError(null)
-    const { data, error: err } = await supabase.rpc('list_reports_with_job_info')
-    if (err) {
-      setError(`Failed to load reports: ${err.message}`)
-    } else {
-      setReportsList((Array.isArray(data) ? data : []) as ReportWithJob[])
-    }
-    setReportsLoading(false)
-  }
-
-  async function loadInspections(month?: Date) {
-    if (!authUser?.id) return
-    setInspectionsLoading(true)
-    const m = month ?? inspectionsMonth
-    const start = new Date(m.getFullYear(), m.getMonth() - 1, 1)
-    const end = new Date(m.getFullYear(), m.getMonth() + 2, 0)
-    const startStr = start.toLocaleDateString('en-CA')
-    const endStr = end.toLocaleDateString('en-CA')
-    const { data, error: err } = await supabase
-      .from('inspections')
-      .select('*')
-      .gte('scheduled_date', startStr)
-      .lte('scheduled_date', endStr)
-      .order('scheduled_date', { ascending: true })
-    if (err) {
-      setError(`Failed to load inspections: ${err.message}`)
-      setInspections([])
-    } else {
-      setInspections((data as InspectionRow[]) ?? [])
-    }
-    setInspectionsLoading(false)
-  }
-
-  async function loadInspectionTypes() {
-    setInspectionTypesLoading(true)
-    const { data, error: err } = await supabase.from('inspection_types').select('name, sequence_order').order('sequence_order')
-    if (err) {
-      setError(`Failed to load inspection types: ${err.message}`)
-      setInspectionTypesList([])
-    } else {
-      setInspectionTypesList((data as Array<{ name: string; sequence_order: number }>) ?? [])
-    }
-    setInspectionTypesLoading(false)
-  }
-
-  function openInspectionTypesModal() {
-    setInspectionTypesModalOpen(true)
-    setInspectionTypeFormOpen(false)
-    setEditingInspectionTypeName(null)
-    loadInspectionTypes()
-  }
-
-  function openAddInspectionType() {
-    setEditingInspectionTypeName(null)
-    setNewInspectionTypeName('')
-    setInspectionTypeFormOpen(true)
-  }
-
-  function openEditInspectionType(typeRow: { name: string; sequence_order: number }) {
-    setEditingInspectionTypeName(typeRow.name)
-    setNewInspectionTypeName(typeRow.name)
-    setInspectionTypeFormOpen(true)
-  }
-
-  function closeInspectionTypeForm() {
-    setInspectionTypeFormOpen(false)
-    setEditingInspectionTypeName(null)
-  }
-
-  async function saveInspectionType(e: React.FormEvent) {
-    e.preventDefault()
-    const name = newInspectionTypeName.trim()
-    if (!name) return
-    setInspectionTypeSaving(true)
-    setError(null)
-    if (editingInspectionTypeName) {
-      const { error: err } = await supabase.from('inspection_types').update({ name }).eq('name', editingInspectionTypeName)
-      if (err) {
-        setError(err.message)
-        setInspectionTypeSaving(false)
-        return
-      }
-    } else {
-      const { error: err } = await supabase.from('inspection_types').insert({ name, sequence_order: inspectionTypesList.length })
-      if (err) {
-        setError(err.message)
-        setInspectionTypeSaving(false)
-        return
-      }
-    }
-    await loadInspectionTypes()
-    setInspectionTypeSaving(false)
-    closeInspectionTypeForm()
-  }
-
-  async function deleteInspectionType(name: string) {
-    if (!confirm(`Delete inspection type "${name}"? This will fail if any inspections use it.`)) return
-    setInspectionTypeDeletingName(name)
-    setError(null)
-    const { error: err } = await supabase.from('inspection_types').delete().eq('name', name)
-    if (err) {
-      setError(err.message.includes('violates foreign key') ? `Cannot delete: inspections are using this type.` : err.message)
-    } else {
-      await loadInspectionTypes()
-      closeInspectionTypeForm()
-    }
-    setInspectionTypeDeletingName(null)
-  }
-
-  async function loadQuickLinks() {
-    setQuickLinksLoading(true)
-    const { data, error: err } = await supabase.from('inspection_quick_links').select('id, label, url, sequence_order').order('sequence_order')
-    if (err) {
-      setError(`Failed to load quick links: ${err.message}`)
-      setQuickLinksList([])
-    } else {
-      setQuickLinksList((data as Array<{ id: string; label: string; url: string; sequence_order: number }>) ?? [])
-    }
-    setQuickLinksLoading(false)
-  }
-
-  function openQuickLinksModal() {
-    setQuickLinksModalOpen(true)
-    setQuickLinkFormOpen(false)
-    setEditingQuickLinkId(null)
-    loadQuickLinks()
-  }
-
-  function openAddQuickLink() {
-    setEditingQuickLinkId(null)
-    setNewQuickLinkLabel('')
-    setNewQuickLinkUrl('')
-    setQuickLinkFormOpen(true)
-  }
-
-  function openEditQuickLink(link: { id: string; label: string; url: string; sequence_order: number }) {
-    setEditingQuickLinkId(link.id)
-    setNewQuickLinkLabel(link.label)
-    setNewQuickLinkUrl(link.url)
-    setQuickLinkFormOpen(true)
-  }
-
-  function closeQuickLinkForm() {
-    setQuickLinkFormOpen(false)
-    setEditingQuickLinkId(null)
-  }
-
-  async function saveQuickLink(e: React.FormEvent) {
-    e.preventDefault()
-    const label = newQuickLinkLabel.trim()
-    const url = newQuickLinkUrl.trim()
-    if (!label || !url) return
-    setQuickLinkSaving(true)
-    setError(null)
-    if (editingQuickLinkId) {
-      const { error: err } = await supabase.from('inspection_quick_links').update({ label, url }).eq('id', editingQuickLinkId)
-      if (err) {
-        setError(err.message)
-        setQuickLinkSaving(false)
-        return
-      }
-    } else {
-      const { error: err } = await supabase.from('inspection_quick_links').insert({ label, url, sequence_order: quickLinksList.length })
-      if (err) {
-        setError(err.message)
-        setQuickLinkSaving(false)
-        return
-      }
-    }
-    await loadQuickLinks()
-    setQuickLinkSaving(false)
-    closeQuickLinkForm()
-  }
-
-  async function deleteQuickLink(id: string) {
-    if (!confirm('Delete this quick link?')) return
-    setQuickLinkDeletingId(id)
-    setError(null)
-    const { error: err } = await supabase.from('inspection_quick_links').delete().eq('id', id)
-    if (err) {
-      setError(err.message)
-    } else {
-      await loadQuickLinks()
-      closeQuickLinkForm()
-    }
-    setQuickLinkDeletingId(null)
-  }
-
-  async function loadReportTemplates() {
-    setReportTemplatesLoading(true)
-    const { data, error: err } = await supabase.from('report_templates').select('id, name, sequence_order, app_managed').order('sequence_order')
-    if (err) {
-      setError(`Failed to load templates: ${err.message}`)
-    } else {
-      setReportTemplatesList(
-        ((data ?? []) as Array<{ id: string; name: string; sequence_order: number; app_managed: boolean | null }>).map(
-          (row) => ({ ...row, app_managed: !!row.app_managed }),
-        ),
-      )
-    }
-    setReportTemplatesLoading(false)
-  }
-
-  async function deleteReport(id: string) {
-    if (!confirm('Delete this report?')) return
-    setReportsDeletingId(id)
-    const { error: err } = await supabase.from('reports').delete().eq('id', id)
-    if (err) setError(`Failed to delete report: ${err.message}`)
-    else await loadReports()
-    setReportsDeletingId(null)
-  }
-
-  const canManageTemplates = myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant'
-
-  const [scopeMastersForRecurringReports, setScopeMastersForRecurringReports] = useState<
-    readonly { id: string; label: string }[]
-  >([])
-
-  useEffect(() => {
-    if (!authUser?.id) {
-      setScopeMastersForRecurringReports([])
-      return
-    }
-    if (!(authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant')) {
-      setScopeMastersForRecurringReports([])
-      return
-    }
-    let cancelled = false
-
-    if (authRole === 'master_technician') {
-      const label = ((authProfileName ?? authUser.email ?? authUser.id) as string).trim()
-      setScopeMastersForRecurringReports([{ id: authUser.id, label }])
-      return
-    }
-
-    async function load() {
-      if (authRole === 'assistant') {
-        const { data: maps, error } = await supabase
-          .from('master_assistants')
-          .select('master_id')
-          .eq('assistant_id', authUser!.id)
-        if (cancelled) return
-        if (error || !maps?.length) {
-          setScopeMastersForRecurringReports([])
-          return
-        }
-        const mids = [...new Set(maps.map((r) => r.master_id))]
-        const { data: masters } = await supabase.from('users').select('id,name').in('id', mids)
-        if (cancelled) return
-        setScopeMastersForRecurringReports(
-          ((masters ?? []) as Array<{ id: string; name: string }>).map((u) => ({
-            id: u.id,
-            label: (u.name ?? '').trim() || u.id,
-          })),
-        )
-        return
-      }
-
-      if (authRole === 'dev') {
-        const { data: masters } = await supabase
-          .from('users')
-          .select('id,name')
-          .eq('role', 'master_technician')
-          .is('archived_at', null)
-          .order('name', { ascending: true })
-          .limit(200)
-        if (cancelled) return
-        setScopeMastersForRecurringReports(
-          ((masters ?? []) as Array<{ id: string; name: string }>).map((u) => ({
-            id: u.id,
-            label: (u.name ?? '').trim() || u.id,
-          })),
-        )
-      }
-    }
-
-    void load()
-    return () => {
-      cancelled = true
-    }
-  }, [authUser?.id, authUser?.email, authRole, authProfileName])
-
-  function openReportTemplatesModal() {
-    setReportTemplatesModalOpen(true)
-    setTemplateFormOpen(false)
-    setEditingReportTemplateId(null)
-    loadReportTemplates()
-  }
-
-  function openAddTemplate() {
-    setEditingReportTemplateId(null)
-    setNewTemplateName('')
-    setNewTemplateFields([''])
-    setTemplateFormOpen(true)
-  }
-
-  async function openEditReportTemplate(template: { id: string; name: string; sequence_order: number; app_managed: boolean }) {
-    if (template.app_managed) {
-      setError('Built-in templates cannot be edited.')
-      return
-    }
-    setEditingReportTemplateId(template.id)
-    setNewTemplateName(template.name)
-    const { data: fields } = await supabase
-      .from('report_template_fields')
-      .select('label')
-      .eq('template_id', template.id)
-      .order('sequence_order')
-    const labels = (fields as Array<{ label: string }> | null)?.map((f) => f.label) ?? []
-    setNewTemplateFields(labels.length > 0 ? labels : [''])
-    setTemplateFormOpen(true)
-  }
-
-  function closeTemplateForm() {
-    setTemplateFormOpen(false)
-    setEditingReportTemplateId(null)
-  }
-
-  async function saveTemplate(e: React.FormEvent) {
-    e.preventDefault()
-    if (!newTemplateName.trim()) return
-    const editingMeta = editingReportTemplateId ? reportTemplatesList.find((x) => x.id === editingReportTemplateId) : undefined
-    if (editingMeta?.app_managed) {
-      setError('Built-in templates cannot be edited.')
-      return
-    }
-    setTemplateSaving(true)
-    setError(null)
-    const fields = newTemplateFields.map((l) => l.trim()).filter(Boolean)
-
-    if (editingReportTemplateId) {
-      const { error: tErr } = await supabase
-        .from('report_templates')
-        .update({ name: newTemplateName.trim() })
-        .eq('id', editingReportTemplateId)
-      if (tErr) {
-        setError(tErr.message)
-        setTemplateSaving(false)
-        return
-      }
-      const { error: delErr } = await supabase.from('report_template_fields').delete().eq('template_id', editingReportTemplateId)
-      if (delErr) {
-        setError(delErr.message)
-        setTemplateSaving(false)
-        return
-      }
-      if (fields.length > 0) {
-        const { error: fErr } = await supabase.from('report_template_fields').insert(
-          fields.map((label, i) => ({ template_id: editingReportTemplateId, label, sequence_order: i }))
-        )
-        if (fErr) {
-          setError(fErr.message)
-          setTemplateSaving(false)
-          return
-        }
-      }
-    } else {
-      const { data: t, error: tErr } = await supabase
-        .from('report_templates')
-        .insert({ name: newTemplateName.trim(), sequence_order: 999 })
-        .select('id')
-        .single()
-      if (tErr) {
-        setError(tErr.message)
-        setTemplateSaving(false)
-        return
-      }
-      const templateId = (t as { id: string }).id
-      if (fields.length > 0) {
-        const { error: fErr } = await supabase.from('report_template_fields').insert(
-          fields.map((label, i) => ({ template_id: templateId, label, sequence_order: i }))
-        )
-        if (fErr) {
-          setError(fErr.message)
-          setTemplateSaving(false)
-          return
-        }
-      }
-    }
-
-    closeTemplateForm()
-    setTemplateSaving(false)
-    loadReportTemplates()
-    loadReports()
-  }
-
-  async function deleteReportTemplate(id: string) {
-    const tmpl = reportTemplatesList.find((t) => t.id === id)
-    if (tmpl?.app_managed) {
-      setError('Built-in templates cannot be deleted.')
-      return
-    }
-    const { count } = await supabase.from('reports').select('*', { count: 'exact', head: true }).eq('template_id', id)
-    if ((count ?? 0) > 0) {
-      setError('Cannot delete: this template has reports.')
-      return
-    }
-    if (!confirm('Delete this template?')) return
-    setTemplateDeletingId(id)
-    const { error: err } = await supabase.from('report_templates').delete().eq('id', id)
-    setTemplateDeletingId(null)
-    if (err) setError(err.message)
-    else {
-      closeTemplateForm()
-      loadReportTemplates()
-    }
   }
 
   function isAlreadyUser(email: string | null): boolean {
@@ -4769,16 +4099,6 @@ ${totalsHtml}
     }
   }, [activeTab, expandedPartsJobIds, mercuryCardChargesByJobId, loadPartsTabMercuryForJob])
 
-  useEffect(() => {
-    if (activeTab === 'inspections' && authUser?.id) {
-      const t = setTimeout(() => {
-        loadInspections()
-        loadQuickLinks()
-      }, 80)
-      return () => clearTimeout(t)
-    }
-  }, [activeTab, authUser?.id, inspectionsMonth])
-
   // Fetch job IDs where current user is a team member (for "show my jobs only" filter)
   useEffect(() => {
     if (activeTab === 'parts' && authUser?.id) {
@@ -4856,15 +4176,6 @@ ${totalsHtml}
     else setDefaultLaborRateModalOpen(false)
   }
 
-  useEffect(() => {
-    if (activeTab === 'reports' && authUser?.id) {
-      const t = setTimeout(() => {
-        loadReports()
-        loadReportTemplates()
-      }, 80)
-      return () => clearTimeout(t)
-    }
-  }, [activeTab, authUser?.id])
 
 
   const laborJobHcps = useMemo(
@@ -5519,504 +4830,20 @@ ${totalsHtml}
 
       {activeTab === 'reports' && (
         <ErrorBoundary>
-        <div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setNewReportModalOpen(true)}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-            >
-              New report
-            </button>
-            {canManageTemplates ? (
-              <button
-                type="button"
-                onClick={() => setRecurringEmailReportsModalOpen(true)}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  color: '#111827',
-                }}
-              >
-                Recurring Email Reports
-              </button>
-            ) : null}
-            {canManageTemplates && (
-              <button
-                type="button"
-                onClick={openReportTemplatesModal}
-                title="Manage templates"
-                aria-label="Manage report templates"
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
-              >
-                Templates
-              </button>
-            )}
-            <input
-              type="text"
-              placeholder={reportsViewMode === 'person' ? 'Search by job, HCP, or person' : 'Search by job name, HCP, or address'}
-              value={reportsSearch}
-              onChange={(e) => setReportsSearch(e.target.value)}
-              style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 200 }}
-            />
-            <div style={{ display: 'flex', gap: 0, border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden', marginLeft: 'auto' }}>
-              <button
-                type="button"
-                onClick={() => setReportsViewMode('job')}
-                style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'job' ? '#3b82f6' : '#f9fafb', color: reportsViewMode === 'job' ? 'white' : '#374151', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                By Job
-              </button>
-              <button
-                type="button"
-                onClick={() => setReportsViewMode('person')}
-                style={{ padding: '0.5rem 0.75rem', background: reportsViewMode === 'person' ? '#3b82f6' : '#f9fafb', color: reportsViewMode === 'person' ? 'white' : '#374151', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                By Person
-              </button>
-            </div>
-          </div>
-          {reportTemplatesModalOpen && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-                {templateFormOpen ? (
-                  <>
-                    <h3 style={{ margin: '0 0 1rem 0' }}>{editingReportTemplateId ? 'Edit template' : 'Add template'}</h3>
-                    <form onSubmit={saveTemplate}>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Template name *</label>
-                        <input type="text" value={newTemplateName} onChange={(e) => setNewTemplateName(e.target.value)} required placeholder="e.g. Walk Report" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                      </div>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Field labels</label>
-                        {newTemplateFields.map((val, i) => (
-                          <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                            <input type="text" value={val} onChange={(e) => setNewTemplateFields((prev) => { const n = [...prev]; n[i] = e.target.value; return n })} placeholder="e.g. What is the status?" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                            <button type="button" onClick={() => setNewTemplateFields((prev) => prev.filter((_, j) => j !== i))} style={{ padding: '0.5rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Remove</button>
-                          </div>
-                        ))}
-                        <button type="button" onClick={() => setNewTemplateFields((prev) => [...prev, ''])} style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Add field</button>
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button type="button" onClick={closeTemplateForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                          {editingReportTemplateId && (
-                            <button type="button" onClick={() => editingReportTemplateId && deleteReportTemplate(editingReportTemplateId)} disabled={!!templateDeletingId} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: templateDeletingId ? 'not-allowed' : 'pointer' }}>{templateDeletingId ? '…' : 'Delete'}</button>
-                          )}
-                        </div>
-                        <button type="submit" disabled={templateSaving || !newTemplateName.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: templateSaving ? 'not-allowed' : 'pointer' }}>{templateSaving ? 'Saving…' : 'Save'}</button>
-                      </div>
-                    </form>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <h3 style={{ margin: 0 }}>Report Templates</h3>
-                      <button type="button" onClick={() => setReportTemplatesModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
-                    </div>
-                    <button type="button" onClick={openAddTemplate} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add template</button>
-                    {reportTemplatesLoading ? (
-                      <p style={{ color: '#6b7280' }}>Loading templates…</p>
-                    ) : reportTemplatesList.length === 0 ? (
-                      <p style={{ color: '#6b7280' }}>No templates yet.</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {reportTemplatesList.map((t) => (
-                          <li key={t.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                            <span>{t.name}</span>
-                            {t.app_managed ? (
-                              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} title="Built-in template">
-                                Built-in
-                              </span>
-                            ) : (
-                              <button type="button" onClick={() => openEditReportTemplate(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
-                                Edit
-                              </button>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-          {reportsLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading reports…</p>
-          ) : (
-            (() => {
-              const q = reportsSearch.trim().toLowerCase()
-              const filtered = q
-                ? reportsList.filter(
-                    (r) =>
-                      (r.job_display_name ?? '').toLowerCase().includes(q) ||
-                      (r.job_hcp_number ?? '').toLowerCase().includes(q) ||
-                      (r.created_by_name ?? '').toLowerCase().includes(q)
-                  )
-                : reportsList
-              if (reportsViewMode === 'person') {
-                const byPersonKey = new Map<string, ReportWithJob[]>()
-                for (const r of filtered) {
-                  const key = r.created_by_user_id
-                  const arr = byPersonKey.get(key) ?? []
-                  arr.push(r)
-                  byPersonKey.set(key, arr)
-                }
-                const personGroups = Array.from(byPersonKey.entries())
-                  .map(([key, reps]) => ({ key, reps: reps.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) }))
-                  .filter(({ reps }) => reps.length > 0)
-                  .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
-                if (personGroups.length === 0) {
-                  return <p style={{ color: '#6b7280' }}>No reports yet. Click New report to add one.</p>
-                }
-                return (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {personGroups.map(({ key, reps }) => {
-                      const person = reps[0]!
-                      const displayName = person.created_by_name || 'Unknown'
-                      const isExpanded = reportsExpandedPersons.has(key)
-                      return (
-                        <div key={key} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setReportsExpandedPersons((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(key)) next.delete(key)
-                                else next.add(key)
-                                return next
-                              })
-                            }
-                            style={{
-                              width: '100%',
-                              minWidth: 0,
-                              padding: '0.75rem 1rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              background: '#f9fafb',
-                              border: 'none',
-                              cursor: 'pointer',
-                              textAlign: 'left',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            <span
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {displayName}
-                            </span>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                flexShrink: 0,
-                                marginLeft: 'auto',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
-                                {reps.length} report{reps.length !== 1 ? 's' : ''}
-                              </span>
-                              <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
-                            </span>
-                          </button>
-                          {isExpanded && (
-                            <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                              {reps.map((r) => (
-                                <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                                    <div>
-                                      <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
-                                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                                        {new Date(r.created_at).toLocaleString()} · {r.job_display_name || 'Unknown job'}
-                                        {r.job_hcp_number ? ` (HCP: ${r.job_hcp_number})` : ''}
-                                      </span>
-                                    </div>
-                                    {myRole === 'dev' && (
-                                      <button
-                                        type="button"
-                                        onClick={() => deleteReport(r.id)}
-                                        disabled={reportsDeletingId === r.id}
-                                        title="Delete"
-                                        aria-label="Delete"
-                                        style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                      >
-                                        {reportsDeletingId === r.id ? '…' : 'Delete'}
-                                      </button>
-                                    )}
-                                  </div>
-                                  {r.field_values && Object.keys(r.field_values).length > 0 && (
-                                    <div style={{ fontSize: '0.875rem' }}>
-                                      {Object.entries(r.field_values).map(([label, val]) =>
-                                        val ? (
-                                          <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                            <span style={{ color: '#6b7280' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
-                                          </div>
-                                        ) : null
-                                      )}
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                )
-              }
-              const byJobKey = new Map<string, ReportWithJob[]>()
-              for (const r of filtered) {
-                const key = `${r.job_ledger_id ?? ''}-${r.project_id ?? ''}`
-                const arr = byJobKey.get(key) ?? []
-                arr.push(r)
-                byJobKey.set(key, arr)
-              }
-              const jobGroups = Array.from(byJobKey.entries())
-                .map(([key, reps]) => ({ key, reps: reps.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) }))
-                .filter(({ reps }) => reps.length > 0)
-                .sort((a, b) => new Date(b.reps[0]!.created_at).getTime() - new Date(a.reps[0]!.created_at).getTime())
-              if (jobGroups.length === 0) {
-                return <p style={{ color: '#6b7280' }}>No reports yet. Click New report to add one.</p>
-              }
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {jobGroups.map(({ key, reps }) => {
-                    const job = reps[0]!
-                    const displayName = job.job_display_name || 'Unknown job'
-                    const hcp = job.job_hcp_number ? ` (HCP: ${job.job_hcp_number})` : ''
-                    const isExpanded = reportsExpandedJobs.has(key)
-                    return (
-                      <div key={key} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', background: '#f9fafb' }}>
-                          {job.job_ledger_id ? (
-                            <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0, paddingLeft: '0.5rem' }}>
-                              {(() => {
-                                const jid = job.job_ledger_id as string
-                                const drive = (job.job_google_drive_link ?? '').trim()
-                                const jpics = (job.job_job_pictures_link ?? '').trim()
-                                const iconBtnBase: CSSProperties = {
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  padding: '0.25rem',
-                                  flexShrink: 0,
-                                  border: 'none',
-                                  background: 'none',
-                                  cursor: 'pointer',
-                                  borderRadius: 4,
-                                  color: 'inherit',
-                                }
-                                return (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        drive
-                                          ? openInExternalBrowser(drive)
-                                          : showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES, 'warning', undefined, undefined, 'center')
-                                      }
-                                      title={
-                                        drive
-                                          ? 'Open Customer Files'
-                                          : JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_FILES
-                                      }
-                                      aria-label={
-                                        drive
-                                          ? 'Open Customer Files link'
-                                          : 'Customer Files not linked; contact Dispatch'
-                                      }
-                                      style={{
-                                        ...iconBtnBase,
-                                        color: drive ? '#2563eb' : '#dc2626',
-                                      }}
-                                    >
-                                      <Folder size={18} strokeWidth={2} aria-hidden />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        jpics
-                                          ? openInExternalBrowser(jpics)
-                                          : showToast(JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES, 'warning', undefined, undefined, 'center')
-                                      }
-                                      title={
-                                        jpics
-                                          ? 'Open Customer Pictures'
-                                          : JOBS_REPORTS_TAB_TOAST_NO_CUSTOMER_PICTURES
-                                      }
-                                      aria-label={
-                                        jpics
-                                          ? 'Open Customer Pictures link'
-                                          : 'Customer Pictures not linked; contact Dispatch'
-                                      }
-                                      style={{
-                                        ...iconBtnBase,
-                                        color: jpics ? '#2563eb' : '#dc2626',
-                                      }}
-                                    >
-                                      <Images size={18} strokeWidth={2} aria-hidden />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        tryOpenEditJob(jid, {
-                                          initialJob: jobs.find((jRow) => jRow.id === jid),
-                                          onSaved: () => {
-                                            void loadJobs()
-                                            void loadReports()
-                                          },
-                                        })
-                                      }
-                                      title="Edit job"
-                                      aria-label="Edit job"
-                                      style={{
-                                        ...iconBtnBase,
-                                        color: '#2563eb',
-                                      }}
-                                    >
-                                      <Pencil size={18} strokeWidth={2} aria-hidden />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        const hLabel = (job.job_hcp_number ?? '').trim() || '—'
-                                        const nameLabel = (job.job_display_name ?? '').trim() || 'Job'
-                                        jobDetailModal?.openJobDetail({
-                                          jobId: jid,
-                                          prefillRowLabel: `${hLabel} · ${nameLabel}`,
-                                          prefillAddress: (job.job_address ?? '').trim() || null,
-                                          onEditJobSaved: () => void loadJobs(),
-                                        })
-                                      }}
-                                      title="Job preview"
-                                      aria-label={`Job preview — ${displayName}`}
-                                      style={{
-                                        ...iconBtnBase,
-                                        color: '#2563eb',
-                                      }}
-                                    >
-                                      <PanelRightOpen size={18} strokeWidth={2} aria-hidden />
-                                    </button>
-                                  </>
-                                )
-                              })()}
-                            </div>
-                          ) : null}
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setReportsExpandedJobs((prev) => {
-                                const next = new Set(prev)
-                                if (next.has(key)) next.delete(key)
-                                else next.add(key)
-                                return next
-                              })
-                            }
-                            style={{
-                              flex: 1,
-                              minWidth: 0,
-                              padding: '0.75rem 1rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.5rem',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              textAlign: 'left',
-                              fontSize: '0.875rem',
-                            }}
-                          >
-                            <span
-                              style={{
-                                flex: 1,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                minWidth: 0,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {displayName}
-                              {hcp}
-                            </span>
-                            <span
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                flexShrink: 0,
-                                marginLeft: 'auto',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
-                                {reps.length} report{reps.length !== 1 ? 's' : ''}
-                              </span>
-                              <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', flexShrink: 0 }}>▼</span>
-                            </span>
-                          </button>
-                        </div>
-                        {isExpanded && (
-                          <div style={{ padding: '0.5rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                            {reps.map((r) => (
-                              <div key={r.id} style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                                  <div>
-                                    <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, authRole)}</span>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                                      {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
-                                    </span>
-                                  </div>
-                                  {myRole === 'dev' && (
-                                    <button
-                                      type="button"
-                                      onClick={() => deleteReport(r.id)}
-                                      disabled={reportsDeletingId === r.id}
-                                      title="Delete"
-                                      aria-label="Delete"
-                                      style={{ padding: '0.25rem', cursor: reportsDeletingId === r.id ? 'not-allowed' : 'pointer', background: 'none', border: 'none', color: '#dc2626', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                                    >
-                                      {reportsDeletingId === r.id ? '…' : 'Delete'}
-                                    </button>
-                                  )}
-                                </div>
-                                {r.field_values && Object.keys(r.field_values).length > 0 && (
-                                  <div style={{ fontSize: '0.875rem' }}>
-                                    {Object.entries(r.field_values).map(([label, val]) =>
-                                      val ? (
-                                        <div key={label} style={{ marginBottom: '0.25rem' }}>
-                                          <span style={{ color: '#6b7280' }}>{label}:</span> {formatReportFieldValueInlineList(val)}
-                                        </div>
-                                      ) : null
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })()
-          )}
-        </div>
+          <JobsReportsTab
+            authUserId={authUser?.id ?? null}
+            authUserEmail={authUser?.email ?? null}
+            authRole={authRole}
+            authProfileName={authProfileName}
+            myRole={myRole}
+            jobs={jobs}
+            loadJobs={loadJobs}
+            tryOpenEditJob={tryOpenEditJob}
+            jobDetailModal={jobDetailModal}
+            showToast={showToast}
+            error={error}
+            onError={setError}
+          />
         </ErrorBoundary>
       )}
 
@@ -9203,276 +8030,24 @@ ${totalsHtml}
       )}
 
       {activeTab === 'sub_sheet_ledger' && (
-        <div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <input
-              type="search"
-              placeholder="Search contractor, HCP, address…"
-              value={subLaborSearch}
-              onChange={(e) => setSubLaborSearch(e.target.value)}
-              style={{ flex: '1 1 200px', minWidth: 200, maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-            />
-            <button
-              type="button"
-              onClick={openNewLaborJob}
-              style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              New Sub Labor
-            </button>
-            <button
-              type="button"
-              onClick={() => { loadDriveSettings(); setDriveSettingsOpen(true); }}
-              style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              Drive Settings
-            </button>
-            {myRole === 'dev' && (
-              <button
-                type="button"
-                onClick={() => { loadDefaultLaborRate(); setDefaultLaborRateModalOpen(true); }}
-                style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                Default Labor Rate
-              </button>
-            )}
-            </div>
-            <div style={{ fontSize: '1rem', fontWeight: 600 }}>
-              Sub Labor Due: ${formatCurrency(subLaborDueTotal)}
-            </div>
-          </div>
-          {laborJobsLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading sub sheet ledger…</p>
-          ) : laborJobs.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No jobs yet. Click New Sub Labor to add one.</p>
-          ) : (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
-              <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractor</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Due</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sub Sheet</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                    <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid #e5e7eb' }} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {laborJobs
-                    .filter((job) => {
-                      const q = subLaborSearch.trim().toLowerCase()
-                      if (!q) return true
-                      const contractor = (job.assigned_to_name ?? '').toLowerCase()
-                      const hcp = (job.job_number ?? '').toLowerCase()
-                      const addr = (job.address ?? '').toLowerCase()
-                      const jobName = laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]?.toLowerCase() ?? ''
-                      return contractor.includes(q) || hcp.includes(q) || addr.includes(q) || jobName.includes(q)
-                    })
-                    .flatMap((job) => {
-                    const jobRate = job.labor_rate ?? 0
-                    const laborTotal = laborItemsSubtotal(job.items, jobRate)
-                    let totalCost = laborTotal
-                    const jobPayments = job.payments ?? []
-                    const paid = jobPayments.filter((p) => Number(p.amount) >= 0).reduce((s, p) => s + Number(p.amount), 0)
-                    const backcharges = jobPayments.filter((p) => Number(p.amount) < 0).reduce((s, p) => s + Math.abs(Number(p.amount)), 0)
-                    if (totalCost === 0 && (paid > 0 || backcharges > 0)) {
-                      totalCost = paid + backcharges
-                    }
-                    const balance = totalCost - paid - backcharges
-                    const dateInputValue = job.job_date ?? (job.created_at ? job.created_at.slice(0, 10) : '')
-                    const expanded = expandedSubLaborJobIds.has(job.id)
-                    const toggle = () => {
-                      setExpandedSubLaborJobIds((prev) => {
-                        const next = new Set(prev)
-                        if (next.has(job.id)) next.delete(job.id)
-                        else next.add(job.id)
-                        return next
-                      })
-                    }
-                    return [
-                      <tr
-                        key={job.id}
-                        style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer', background: expanded ? '#f9fafb' : undefined }}
-                        onClick={toggle}
-                      >
-                        <td style={{ padding: '0.75rem', width: 32 }}>{expanded ? '▼' : '▶'}</td>
-                        <td style={{ padding: '0.75rem' }}>{job.assigned_to_name}</td>
-                        <td style={{ padding: '0.75rem', maxWidth: 220 }}>
-                          <div style={{ lineHeight: 1.4 }}>
-                            <div style={{ fontWeight: 500 }}>
-                              {job.job_number ?? '—'}
-                              {laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()] ? (
-                                <> | {laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]}</>
-                              ) : null}
-                            </div>
-                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
-                              {job.address ? (
-                                <a
-                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ color: '#2563eb', textDecoration: 'none' }}
-                                  title={job.address}
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {job.address}
-                                </a>
-                              ) : (
-                                '—'
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right' }}>{totalCost > 0 ? `$${formatCurrency(totalCost)}` : '—'}</td>
-                        <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
-                          {totalCost > 0 ? (
-                            balance > 0 ? (
-                              <span style={{ color: '#b91c1c' }}>${formatCurrency(balance)} due</span>
-                            ) : balance < 0 ? (
-                              <span style={{ color: '#059669' }}>Over ${formatCurrency(-balance)}</span>
-                            ) : (
-                              <span style={{ color: '#059669' }}>Paid</span>
-                            )
-                          ) : '—'}
-                        </td>
-                        <td style={{ padding: '0.75rem', textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                          <button type="button" onClick={() => printJobSubSheet(job)} style={{ padding: '0.25rem 0.5rem', background: '#6b7280', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
-                            Print
-                          </button>
-                        </td>
-                        <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="date"
-                            value={dateInputValue}
-                            onChange={(e) => updateLaborJobDate(job.id, e.target.value || null)}
-                            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
-                          />
-                        </td>
-                        <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'stretch' }}>
-                            <button
-                              type="button"
-                              onClick={() => { setMakePaymentAmount(balance > 0 ? String(balance) : ''); setMakePaymentMemo(''); setMakePaymentLaborJob({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid, outstanding: Math.max(0, balance) }) }}
-                              style={{ padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                            >
-                              Payment
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => { setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeLaborJob({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid }) }}
-                              style={{ padding: '0.25rem 0.5rem', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
-                            >
-                              Backcharge
-                            </button>
-                            <button type="button" onClick={() => openEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
-                              Edit
-                            </button>
-                          </div>
-                        </td>
-                      </tr>,
-                      ...(expanded
-                        ? [
-                            <tr key={`${job.id}-expand`}>
-                              <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
-                                <div onClick={(e) => e.stopPropagation()} style={{ padding: '1rem' }}>
-                                  <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 500 }}>
-                                    Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)}
-                                  </p>
-                                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Invoice link</h4>
-                                  {job.invoice_link?.trim() ? (
-                                    <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
-                                      <a
-                                        href={normalizeUrl(job.invoice_link)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ color: '#2563eb', textDecoration: 'none' }}
-                                      >
-                                        {job.invoice_link}
-                                      </a>
-                                    </p>
-                                  ) : (
-                                    <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#9ca3af' }}>No invoice linked.</p>
-                                  )}
-                                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Specific Work (Line Items)</h4>
-                                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                      <thead style={{ background: '#f9fafb' }}>
-                                        <tr>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rate</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {(job.items ?? []).map((i, idx) => {
-                                          const hrs = Number(i.hrs_per_unit) || 0
-                                          const laborHrs = (i.is_fixed ?? false) ? hrs : (Number(i.count) || 0) * hrs
-                                          const rate = i.labor_rate != null ? Number(i.labor_rate) : jobRate
-                                          const cost = lineLaborCost(i, jobRate)
-                                          const isDirect =
-                                            i.direct_labor_amount != null && Number.isFinite(Number(i.direct_labor_amount))
-                                          return (
-                                            <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                              <td style={{ padding: '0.5rem 0.75rem' }}>{i.fixture ?? '—'}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : Number(i.count)}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : hrs.toFixed(2)}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : laborHrs.toFixed(2)}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{isDirect ? '—' : `$${rate.toFixed(2)}`}</td>
-                                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(cost)}</td>
-                                            </tr>
-                                          )
-                                        })}
-                                        {(job.items ?? []).length === 0 && (
-                                          <tr><td colSpan={6} style={{ padding: '0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>No line items yet</td></tr>
-                                        )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                  <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments</h4>
-                                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-                                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                      <thead style={{ background: '#f9fafb' }}>
-                                        <tr>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Memo</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {(job.payments ?? []).map((p) => (
-                                          <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                            <td style={{ padding: '0.5rem 0.75rem' }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
-                                            <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
-                                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
-                                            <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo?.trim() ? p.memo : '—'}</td>
-                                          </tr>
-                                        ))}
-                                        {(job.payments ?? []).length === 0 && (
-                                          <tr><td colSpan={4} style={{ padding: '0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>No payments yet</td></tr>
-                                        )}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              </td>
-                            </tr>,
-                          ]
-                        : []),
-                    ]
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <JobsSubLaborTab
+          error={error}
+          subLaborSearch={subLaborSearch}
+          onSubLaborSearchChange={setSubLaborSearch}
+          laborJobs={laborJobs}
+          laborJobsLoading={laborJobsLoading}
+          laborJobNamesByHcp={laborJobNamesByHcp}
+          subLaborDueTotal={subLaborDueTotal}
+          myRole={myRole}
+          onNewLaborJob={openNewLaborJob}
+          onEditLaborJob={openEditLaborJob}
+          onOpenDriveSettings={() => { loadDriveSettings(); setDriveSettingsOpen(true); }}
+          onOpenDefaultLaborRate={() => { loadDefaultLaborRate(); setDefaultLaborRateModalOpen(true); }}
+          onPrintJobSubSheet={printJobSubSheet}
+          onUpdateLaborJobDate={updateLaborJobDate}
+          onOpenMakePayment={(target, defaultAmount) => { setMakePaymentAmount(defaultAmount); setMakePaymentMemo(''); setMakePaymentLaborJob(target) }}
+          onOpenBackcharge={(target) => { setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeLaborJob(target) }}
+        />
       )}
 
       {activeTab === 'combined-labor' && (
@@ -12672,316 +11247,8 @@ ${totalsHtml}
       )}
 
       {activeTab === 'inspections' && (
-        <div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={() => setAddInspectionModalOpen(true)}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-            >
-              Add Inspection
-            </button>
-            <button
-              type="button"
-              onClick={openInspectionTypesModal}
-              style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-            >
-              Edit Inspection Types
-            </button>
-          </div>
-          <section style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Quick Links</h3>
-              <button
-                type="button"
-                onClick={openQuickLinksModal}
-                style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                Edit Quick Inspection Links
-              </button>
-            </div>
-            {quickLinksLoading ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
-                {quickLinksList.map(({ id, label, url }) => (
-                  <a
-                    key={id}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => { e.preventDefault(); openInExternalBrowser(url) }}
-                    style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, color: '#2563eb', textDecoration: 'none', fontSize: '0.875rem' }}
-                  >
-                    {label}
-                  </a>
-                ))}
-              </div>
-            )}
-          </section>
-          <section style={{ marginBottom: '1.5rem' }}>
-            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Upcoming</h3>
-            {inspectionsLoading ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
-            ) : (
-              (() => {
-                const today = new Date()
-                const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-                const endKey = (() => {
-                  const d = new Date(today)
-                  d.setDate(d.getDate() + 14)
-                  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                })()
-                const upcoming = inspections.filter((i) => i.scheduled_date >= todayKey && i.scheduled_date <= endKey).slice(0, 14)
-                return upcoming.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No upcoming inspections in the next 14 days.</p>
-                ) : (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {upcoming.map((i) => {
-                      const parts = i.scheduled_date.split('-').map(Number)
-                      const scheduled = new Date(parts[0] ?? 0, (parts[1] ?? 1) - 1, parts[2] ?? 1)
-                      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-                      const diffDays = Math.round((scheduled.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000))
-                      const dayOfWeek = scheduled.toLocaleDateString('en-US', { weekday: 'long' })
-                      const formatted = `${i.scheduled_date} (${diffDays}) ${dayOfWeek}`
-                      return (
-                        <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, fontSize: '0.875rem' }}>
-                          <div>
-                            <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>{formatted}</span>
-                            <span style={{ color: '#4b5563' }}>{' - '}{i.inspection_type}</span>
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
-                            <span style={{ fontWeight: 500 }}>{i.address}</span>
-                            {i.address?.trim() && (
-                              <a
-                                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
-                                title={`View ${i.address} on map`}
-                                style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0 }}
-                              >
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
-                                  <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
-                                </svg>
-                              </a>
-                            )}
-                          </div>
-                        </li>
-                      )
-                    })}
-                  </ul>
-                )
-              })()
-            )}
-          </section>
-          <section>
-            <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', fontWeight: 600 }}>Inspection Schedule</h3>
-            {inspectionsLoading ? (
-              <p style={{ color: '#6b7280' }}>Loading…</p>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <button type="button" onClick={() => setInspectionsMonth(new Date(inspectionsMonth.getFullYear(), inspectionsMonth.getMonth() - 1, 1))} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>←</button>
-                    <span style={{ minWidth: 180, textAlign: 'center', fontWeight: 500 }}>{inspectionsMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</span>
-                    <button type="button" onClick={() => setInspectionsMonth(new Date(inspectionsMonth.getFullYear(), inspectionsMonth.getMonth() + 1, 1))} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>→</button>
-                  </div>
-                  <button type="button" onClick={() => setInspectionsMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>Today</button>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb' }}>
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                    <div key={d} style={{ background: 'white', padding: '0.5rem', textAlign: 'center', fontWeight: 500, fontSize: '0.875rem' }}>{d}</div>
-                  ))}
-                  {(() => {
-                    const year = inspectionsMonth.getFullYear()
-                    const month = inspectionsMonth.getMonth()
-                    const firstDay = new Date(year, month, 1)
-                    const lastDay = new Date(year, month + 1, 0)
-                    const days: Date[] = []
-                    const startDayOfWeek = firstDay.getDay()
-                    for (let i = startDayOfWeek - 1; i >= 0; i--) days.push(new Date(year, month, -i))
-                    for (let day = 1; day <= lastDay.getDate(); day++) days.push(new Date(year, month, day))
-                    for (let day = 1; day <= 6 - lastDay.getDay(); day++) days.push(new Date(year, month + 1, day))
-                    const today = new Date()
-                    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-                    return days.map((day, idx) => {
-                      const dateKey = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}`
-                      const dayInspections = inspections.filter((i) => i.scheduled_date === dateKey)
-                      const isCurrentMonth = day.getMonth() === month
-                      const isToday = dateKey === todayKey
-                      return (
-                        <div
-                          key={idx}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setInspectionsSelectedDay(day)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setInspectionsSelectedDay(day) } }}
-                          style={{
-                            background: 'white',
-                            minHeight: 100,
-                            padding: '0.5rem',
-                            border: isToday ? '2px solid #2563eb' : 'none',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <div style={{ fontSize: '0.875rem', color: isCurrentMonth ? '#111827' : '#9ca3af', fontWeight: isToday ? 600 : 400, marginBottom: '0.25rem' }}>{day.getDate()}</div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'auto', flex: 1, minHeight: 0 }}>
-                            {dayInspections.slice(0, 3).map((i) => (
-                              <div key={i.id} style={{ fontSize: '0.7rem', padding: '2px 4px', background: '#dbeafe', color: '#1e40af', borderRadius: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${i.address} - ${i.inspection_type}`}>
-                                {i.address} - {i.inspection_type}
-                              </div>
-                            ))}
-                            {dayInspections.length > 3 && <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>+{dayInspections.length - 3} more</div>}
-                          </div>
-                        </div>
-                      )
-                    })
-                  })()}
-                </div>
-              </>
-            )}
-          </section>
-          {inspectionsSelectedDay && (() => {
-            const dateKey = `${inspectionsSelectedDay.getFullYear()}-${String(inspectionsSelectedDay.getMonth() + 1).padStart(2, '0')}-${String(inspectionsSelectedDay.getDate()).padStart(2, '0')}`
-            const dayInspections = inspections.filter((i) => i.scheduled_date === dateKey)
-            const dateStr = inspectionsSelectedDay.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
-            return (
-              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={() => setInspectionsSelectedDay(null)}>
-                <div style={{ background: 'white', borderRadius: 8, padding: '1.5rem', maxWidth: 400, width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} onClick={(e) => e.stopPropagation()}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '1.125rem' }}>{dateStr}</h3>
-                    <button type="button" onClick={() => setInspectionsSelectedDay(null)} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Close</button>
-                  </div>
-                  {dayInspections.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No inspections on this day.</p>
-                  ) : (
-                    <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                      {dayInspections.map((i) => (
-                        <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4 }}>
-                          <div style={{ fontWeight: 500 }}>{i.address}</div>
-                          <div style={{ fontSize: '0.875rem', color: '#4b5563' }}>{i.inspection_type}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </div>
-            )
-          })()}
-          {inspectionTypesModalOpen && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-                {inspectionTypeFormOpen ? (
-                  <>
-                    <h3 style={{ margin: '0 0 1rem 0' }}>{editingInspectionTypeName ? 'Edit inspection type' : 'Add inspection type'}</h3>
-                    <form onSubmit={saveInspectionType}>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name *</label>
-                        <input type="text" value={newInspectionTypeName} onChange={(e) => setNewInspectionTypeName(e.target.value)} required placeholder="e.g. Plumbing Rough-In" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button type="button" onClick={closeInspectionTypeForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                          {editingInspectionTypeName && (
-                            <button type="button" onClick={() => deleteInspectionType(editingInspectionTypeName)} disabled={!!inspectionTypeDeletingName} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: inspectionTypeDeletingName ? 'not-allowed' : 'pointer' }}>{inspectionTypeDeletingName === editingInspectionTypeName ? '…' : 'Delete'}</button>
-                          )}
-                        </div>
-                        <button type="submit" disabled={inspectionTypeSaving || !newInspectionTypeName.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: inspectionTypeSaving ? 'not-allowed' : 'pointer' }}>{inspectionTypeSaving ? 'Saving…' : 'Save'}</button>
-                      </div>
-                    </form>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <h3 style={{ margin: 0 }}>Inspection Types</h3>
-                      <button type="button" onClick={() => setInspectionTypesModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
-                    </div>
-                    <button type="button" onClick={openAddInspectionType} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add type</button>
-                    {inspectionTypesLoading ? (
-                      <p style={{ color: '#6b7280' }}>Loading…</p>
-                    ) : inspectionTypesList.length === 0 ? (
-                      <p style={{ color: '#6b7280' }}>No inspection types yet.</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {inspectionTypesList.map((t) => (
-                          <li key={t.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                            <span>{t.name}</span>
-                            <button type="button" onClick={() => openEditInspectionType(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-          {quickLinksModalOpen && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-                {quickLinkFormOpen ? (
-                  <>
-                    <h3 style={{ margin: '0 0 1rem 0' }}>{editingQuickLinkId ? 'Edit quick link' : 'Add quick link'}</h3>
-                    <form onSubmit={saveQuickLink}>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Label *</label>
-                        <input type="text" value={newQuickLinkLabel} onChange={(e) => setNewQuickLinkLabel(e.target.value)} required placeholder="e.g. City of New Braunfels" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                      </div>
-                      <div style={{ marginBottom: '0.75rem' }}>
-                        <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>URL *</label>
-                        <input type="url" value={newQuickLinkUrl} onChange={(e) => setNewQuickLinkUrl(e.target.value)} required placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button type="button" onClick={closeQuickLinkForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                          {editingQuickLinkId && (
-                            <button type="button" onClick={() => deleteQuickLink(editingQuickLinkId)} disabled={!!quickLinkDeletingId} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: quickLinkDeletingId ? 'not-allowed' : 'pointer' }}>{quickLinkDeletingId === editingQuickLinkId ? '…' : 'Delete'}</button>
-                          )}
-                        </div>
-                        <button type="submit" disabled={quickLinkSaving || !newQuickLinkLabel.trim() || !newQuickLinkUrl.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: quickLinkSaving ? 'not-allowed' : 'pointer' }}>{quickLinkSaving ? 'Saving…' : 'Save'}</button>
-                      </div>
-                    </form>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <h3 style={{ margin: 0 }}>Quick Inspection Links</h3>
-                      <button type="button" onClick={() => setQuickLinksModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
-                    </div>
-                    <button type="button" onClick={openAddQuickLink} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add link</button>
-                    {quickLinksLoading ? (
-                      <p style={{ color: '#6b7280' }}>Loading…</p>
-                    ) : quickLinksList.length === 0 ? (
-                      <p style={{ color: '#6b7280' }}>No quick links yet.</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {quickLinksList.map((link) => (
-                          <li key={link.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
-                            <span>{link.label}</span>
-                            <button type="button" onClick={() => openEditQuickLink(link)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <JobsInspectionsTab authUserId={authUser?.id ?? null} error={error} onError={setError} />
       )}
-
-      <AddInspectionModal
-        open={addInspectionModalOpen}
-        onClose={() => setAddInspectionModalOpen(false)}
-        onSaved={() => { setAddInspectionModalOpen(false); loadInspections(); }}
-        authUserId={authUser?.id ?? null}
-      />
 
       {(laborModalOpen || editingLaborJob) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
@@ -14142,20 +12409,6 @@ ${totalsHtml}
         </div>
       )}
 
-      <NewReportModal
-        open={newReportModalOpen}
-        onClose={() => setNewReportModalOpen(false)}
-        onSaved={() => { setNewReportModalOpen(false); loadReports(); }}
-        authUserId={authUser?.id ?? null}
-        userRole={authRole}
-      />
-      <RecurringEmailReportsModal
-        open={recurringEmailReportsModalOpen}
-        onClose={() => setRecurringEmailReportsModalOpen(false)}
-        authUserId={authUser?.id}
-        authRole={authRole}
-        scopeMasterChoices={scopeMastersForRecurringReports}
-      />
       {viewReportsJob && (
         <JobReportsModal
           open={!!viewReportsJob}
