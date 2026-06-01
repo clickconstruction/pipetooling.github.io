@@ -13,6 +13,10 @@ import {
 } from '../../lib/bids/bidCostCalc'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from './GenerateUnitCostModal'
+import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
+import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
+import { resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
+import { MyBidsToggle } from './MyBidsToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
 import {
   printPricingPage as printPricingPageDoc,
@@ -75,6 +79,7 @@ type BidsPricingTabProps = {
   loadPriceBookVersions: () => Promise<void>
   loadPriceBookEntries: (versionId: string | null) => Promise<void>
   loadBidPricingAssignments: (bidId: string, versionId: string | null, signal?: AbortSignal) => Promise<void>
+  reloadPricingForBid: (bidId: string, signal?: AbortSignal) => Promise<void>
   saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null) => Promise<void>
   openMaterialsModelSwitch: (next: MaterialsModel, sourceTab: 'takeoffs' | 'labor' | 'pricing') => void
   // Shared pricing-rows calc (from useBidPricingRows)
@@ -86,6 +91,32 @@ type BidsPricingTabProps = {
   onEditBid: (bid: BidWithBuilder) => void
   onNavigateToLabor: () => void
   onNavigateBidToTab: (bid: BidWithBuilder, tab: 'takeoffs' | 'labor') => void
+  onlyMyBids: boolean
+  setOnlyMyBids: (next: boolean) => void
+  isMyBid: (bid: BidWithBuilder) => boolean
+}
+
+/** Margin flag → text color (replaces the old colored status circles). */
+const MARGIN_FLAG_COLOR: Record<'red' | 'yellow' | 'green', string> = {
+  red: '#dc2626',
+  yellow: '#ca8a04',
+  green: '#16a34a',
+}
+
+/** Self-contained payload for the per-line breakdown modal (Revenue → Cost → Margin). */
+type PricingBreakdownRow = {
+  fixture: string
+  count: number
+  unitPrice: number
+  isFixedPrice: boolean
+  revenue: number
+  materialsBeforeTax: number
+  taxAmount: number
+  taxPercent: number
+  laborCost: number
+  cost: number
+  margin: number | null
+  materialsFromTakeoff: number | null
 }
 
 export function BidsPricingTab({
@@ -124,6 +155,7 @@ export function BidsPricingTab({
   loadPriceBookVersions,
   loadPriceBookEntries,
   loadBidPricingAssignments,
+  reloadPricingForBid,
   saveBidSelectedPriceBookVersion,
   openMaterialsModelSwitch,
   pricingRowsForGrid,
@@ -133,6 +165,9 @@ export function BidsPricingTab({
   onEditBid,
   onNavigateToLabor,
   onNavigateBidToTab,
+  onlyMyBids,
+  setOnlyMyBids,
+  isMyBid,
 }: BidsPricingTabProps) {
   const { showToast } = useToastContext()
 
@@ -158,7 +193,8 @@ export function BidsPricingTab({
   const [priceBookSearchQuery, setPriceBookSearchQuery] = useState('')
   const [pricingAssignmentSearches, setPricingAssignmentSearches] = useState<Record<string, string>>({})
   const [pricingAssignmentDropdownOpen, setPricingAssignmentDropdownOpen] = useState<string | null>(null)
-  const [pricingRowBreakdownModalCountRow, setPricingRowBreakdownModalCountRow] = useState<BidCountRow | null>(null)
+  const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
+  const [assignTakeoffRow, setAssignTakeoffRow] = useState<{ countRowId: string; fixture: string } | null>(null)
   const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
   const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
   const [generateUnitCostModalParams, setGenerateUnitCostModalParams] = useState<{
@@ -632,27 +668,31 @@ export function BidsPricingTab({
     if (err) setError(err)
   }
 
+  const bidsScopedForPricing = onlyMyBids ? bids.filter(isMyBid) : bids
   const filteredBidsForPricing: BidWithBuilder[] = pricingSearchQuery.trim()
-    ? bids.filter(
+    ? bidsScopedForPricing.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
           (b.bids_gc_builders?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false)
       )
-    : bids
+    : bidsScopedForPricing
 
   return (
     <>
       <div>
         {!selectedBidForPricing && (
-          <input
-            type="text"
-            placeholder="Search bids (project name or GC/Builder)..."
-            value={pricingSearchQuery}
-            onChange={(e) => setPricingSearchQuery(e.target.value)}
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-          />
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+            <input
+              type="text"
+              placeholder="Search bids (project name or GC/Builder)..."
+              value={pricingSearchQuery}
+              onChange={(e) => setPricingSearchQuery(e.target.value)}
+              style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            />
+            <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
+          </div>
         )}
         {selectedBidForPricing && (
           <div
@@ -979,6 +1019,28 @@ export function BidsPricingTab({
                   canToggleOmitSubmission: pricingRowCanToggleOmitFromSubmission(pr.countRow.id),
                 }
               })
+              // Fixtures with a Sale Price but no Takeoffs Unit-price cost: their margin reads "—"
+              // (no cost basis), and the bid-level Total margin treats them as full profit — so it
+              // is overstated until those costs are entered in Takeoffs.
+              const uncostedRevenueRows = rows.filter(
+                (r) => r.revenue > 0 && (r.materialsFromTakeoff == null || r.materialsFromTakeoff === 0),
+              )
+              const uncostedRevenue = uncostedRevenueRows.reduce((s, r) => s + r.revenue, 0)
+              const openRowBreakdown = (r: (typeof rows)[number]) =>
+                setPricingBreakdownRow({
+                  fixture: r.countRow.fixture ?? '',
+                  count: r.count,
+                  unitPrice: r.unitPrice,
+                  isFixedPrice: r.isFixedPrice,
+                  revenue: r.revenue,
+                  materialsBeforeTax: r.materialsBeforeTax,
+                  taxAmount: r.taxAmount,
+                  taxPercent,
+                  laborCost: r.laborCost,
+                  cost: r.cost,
+                  margin: r.margin,
+                  materialsFromTakeoff: r.materialsFromTakeoff,
+                })
               return (
                 <>
                 <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'visible' }}>
@@ -1016,10 +1078,10 @@ export function BidsPricingTab({
                             </button>
                           </span>
                         </th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Unit Cost'}</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Sale Price'}</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
                         <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin/Total</th>
-                        <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
+                        <th style={{ width: 0, padding: 0, borderBottom: '1px solid #e5e7eb' }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -1325,15 +1387,15 @@ export function BidsPricingTab({
                             style={{ padding: '0.75rem', textAlign: 'right', cursor: 'pointer' }}
                             role="button"
                             tabIndex={0}
-                            title="Cost breakdown"
+                            title="Revenue, cost & margin breakdown"
                             onClick={(e) => {
                               e.stopPropagation()
-                              setPricingRowBreakdownModalCountRow(row.countRow)
+                              openRowBreakdown(row)
                             }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault()
-                                setPricingRowBreakdownModalCountRow(row.countRow)
+                                openRowBreakdown(row)
                               }
                             }}
                           >
@@ -1344,7 +1406,61 @@ export function BidsPricingTab({
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                                <span style={{ fontSize: '0.875rem' }}>{row.materialsFromTakeoff == null || row.materialsFromTakeoff === 0 ? '—' : row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}</span>
+                                {row.materialsFromTakeoff == null || row.materialsFromTakeoff === 0 ? (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setAssignTakeoffRow({ countRowId: row.countRow.id, fixture: row.countRow.fixture ?? '' })
+                                    }}
+                                    title="No Takeoffs cost yet — assign a part or assembly"
+                                    aria-label="No Takeoffs cost yet — assign a part or assembly"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      background: 'none',
+                                      border: 'none',
+                                      padding: 0,
+                                      margin: 0,
+                                      color: '#dc2626',
+                                      cursor: 'pointer',
+                                      lineHeight: 0,
+                                    }}
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} aria-hidden focusable="false">
+                                      <path
+                                        fill="currentColor"
+                                        d="M102.8 57.3C108.2 51.9 116.6 51.1 123 55.3L241.9 134.5C250.8 140.4 256.1 150.4 256.1 161.1L256.1 210.7L346.9 301.5C380.2 286.5 420.8 292.6 448.1 320L574.2 446.1C592.9 464.8 592.9 495.2 574.2 514L514.1 574.1C495.4 592.8 465 592.8 446.2 574.1L320.1 448C292.7 420.6 286.6 380.1 301.6 346.8L210.8 256L161.2 256C150.5 256 140.5 250.7 134.6 241.8L55.4 122.9C51.2 116.6 52 108.1 57.4 102.7L102.8 57.3zM247.8 360.8C241.5 397.7 250.1 436.7 274 468L179.1 563C151 591.1 105.4 591.1 77.3 563C49.2 534.9 49.2 489.3 77.3 461.2L212.7 325.7L247.9 360.8zM416.1 64C436.2 64 455.5 67.7 473.2 74.5C483.2 78.3 485 91 477.5 98.6L420.8 155.3C417.8 158.3 416.1 162.4 416.1 166.6L416.1 208C416.1 216.8 423.3 224 432.1 224L473.5 224C477.7 224 481.8 222.3 484.8 219.3L541.5 162.6C549.1 155.1 561.8 156.9 565.6 166.9C572.4 184.6 576.1 203.9 576.1 224C576.1 267.2 558.9 306.3 531.1 335.1L482 286C448.9 253 403.5 240.3 360.9 247.6L304.1 190.8L304.1 161.1L303.9 156.1C303.1 143.7 299.5 131.8 293.4 121.2C322.8 86.2 366.8 64 416.1 63.9z"
+                                      />
+                                    </svg>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      openRowBreakdown(row)
+                                    }}
+                                    title="How this margin was computed"
+                                    style={{
+                                      background: 'none',
+                                      border: 'none',
+                                      padding: 0,
+                                      margin: 0,
+                                      font: 'inherit',
+                                      fontSize: '0.875rem',
+                                      fontWeight: 600,
+                                      color: row.flag ? MARGIN_FLAG_COLOR[row.flag] : '#374151',
+                                      cursor: 'pointer',
+                                      textDecoration: 'underline',
+                                      textDecorationStyle: 'dotted',
+                                      textUnderlineOffset: '2px',
+                                    }}
+                                  >
+                                    {row.margin != null ? `${row.margin.toFixed(1)}%` : '—'}
+                                  </button>
+                                )}
                                 <span style={{ color: '#9ca3af' }}>/</span>
                                 {(() => {
                                   const pctDisplay =
@@ -1443,21 +1559,7 @@ export function BidsPricingTab({
                                 })()}
                               </div>
                           </td>
-                          <td style={{ padding: '0.75rem' }}>
-                            {row.flag && (
-                              <span
-                                title={row.flag === 'red' ? '< 20%' : row.flag === 'yellow' ? '< 40%' : '≥ 40%'}
-                                style={{
-                                  display: 'inline-block',
-                                  width: 16,
-                                  height: 16,
-                                  borderRadius: '50%',
-                                  background: row.flag === 'red' ? '#dc2626' : row.flag === 'yellow' ? '#ca8a04' : '#16a34a',
-                                }}
-                                aria-hidden
-                              />
-                            )}
-                          </td>
+                          <td style={{ width: 0, padding: 0 }} />
                         </tr>
                       ))}
                       <tr style={{ background: '#fffbeb' }}>
@@ -1532,28 +1634,40 @@ export function BidsPricingTab({
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>{pricingViewModel === 'cost' ? `$${formatCurrency(totalCost)}` : ''}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(totalRevenue)}</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                          {`${totalRevenue > 0 ? `${(((totalRevenue - totalCost) / totalRevenue) * 100).toFixed(1)}%` : '—'} / 100%`}
-                        </td>
-                        <td style={{ padding: '0.75rem' }}>
-                          {totalRevenue > 0 && (() => {
-                            const m = ((totalRevenue - totalCost) / totalRevenue) * 100
-                            const f = marginFlag(m)
-                            return f ? (
-                              <span
-                                title={f === 'red' ? '< 20%' : f === 'yellow' ? '< 40%' : '≥ 40%'}
-                                style={{
-                                  display: 'inline-block',
-                                  width: 16,
-                                  height: 16,
-                                  borderRadius: '50%',
-                                  background: f === 'red' ? '#dc2626' : f === 'yellow' ? '#ca8a04' : '#16a34a',
-                                }}
-                                aria-hidden
-                              />
-                            ) : null
+                          {(() => {
+                            const m = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : null
+                            const f = m != null ? marginFlag(m) : null
+                            return (
+                              <>
+                                <span style={{ color: f ? MARGIN_FLAG_COLOR[f] : undefined }}>
+                                  {m != null ? `${m.toFixed(1)}%` : '—'}
+                                </span>
+                                {' / 100%'}
+                              </>
+                            )
                           })()}
                         </td>
+                        <td style={{ width: 0, padding: 0 }} />
                       </tr>
+                      {uncostedRevenueRows.length > 0 && (
+                        <tr style={{ background: '#fffbeb' }}>
+                          <td
+                            colSpan={7}
+                            style={{
+                              padding: '0.6rem 0.75rem',
+                              fontSize: '0.8125rem',
+                              color: '#92400e',
+                              borderTop: '1px solid #fde68a',
+                              textAlign: 'center',
+                            }}
+                          >
+                            ⚠ {uncostedRevenueRows.length} item
+                            {uncostedRevenueRows.length === 1 ? '' : 's'} with a Sale Price but no Takeoffs cost
+                            {` (${`$${formatCurrency(uncostedRevenue)}`}${totalRevenue > 0 ? `, ${((uncostedRevenue / totalRevenue) * 100).toFixed(0)}% of revenue` : ''})`}
+                            {' '}Currently counts as 100% margin.
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1562,20 +1676,26 @@ export function BidsPricingTab({
             })()}
           </div>
         )}
-        {pricingRowBreakdownModalCountRow && selectedBidForPricing && pricingCostEstimate && (() => {
-          const totalMaterials = (pricingMaterialTotalRoughIn ?? 0) + (pricingMaterialTotalTopOut ?? 0) + (pricingMaterialTotalTrimSet ?? 0)
-          const rate = pricingLaborRate ?? 0
-          const totalLaborHours = pricingLaborRows.reduce((s, r) => s + laborRowHours(r), 0)
-          const taxPercent = parseFloat(costEstimatePOModalTaxPercent || '8.25') || 0
-          const laborRow = pricingLaborRows.find((l) => (l.fixture ?? '').toLowerCase() === (pricingRowBreakdownModalCountRow!.fixture ?? '').toLowerCase())
-          const laborHrs = laborRow ? laborRowHours(laborRow) : 0
-          const laborCost = laborHrs * rate
-          const materialsFromTakeoff = pricingFixtureMaterialsFromTakeoff[pricingRowBreakdownModalCountRow!.id]
-          const materialsBeforeTax = materialsFromTakeoff != null
-            ? materialsFromTakeoff
-            : (totalLaborHours > 0 ? totalMaterials * (laborHrs / totalLaborHours) : 0)
-          const taxAmount = materialsFromTakeoff != null ? materialsBeforeTax * (taxPercent / 100) : 0
-          const ourCost = laborCost + materialsBeforeTax + taxAmount
+        {pricingBreakdownRow && (() => {
+          const b = pricingBreakdownRow
+          const profit = b.revenue - b.cost
+          const marginPct = b.revenue > 0 ? (profit / b.revenue) * 100 : null
+          const uncosted = b.materialsFromTakeoff == null || b.materialsFromTakeoff === 0
+          const sectionLabelStyle: CSSProperties = {
+            fontSize: '0.6875rem',
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            textTransform: 'uppercase',
+            color: '#9ca3af',
+            margin: '0.75rem 0 0.25rem',
+          }
+          const lineStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '1rem' }
+          const subtotalStyle: CSSProperties = {
+            ...lineStyle,
+            fontWeight: 600,
+            paddingTop: '0.4rem',
+            borderTop: '1px solid #e5e7eb',
+          }
           return (
             <div
               role="dialog"
@@ -1590,44 +1710,103 @@ export function BidsPricingTab({
                 justifyContent: 'center',
                 zIndex: 1000,
               }}
-              onClick={() => setPricingRowBreakdownModalCountRow(null)}
+              onClick={() => setPricingBreakdownRow(null)}
             >
               <div
                 style={{
                   background: 'white',
                   borderRadius: 8,
                   padding: '1.5rem 2rem',
-                  minWidth: 320,
+                  minWidth: 360,
+                  maxWidth: 440,
                   boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
                 }}
                 onClick={(e) => e.stopPropagation()}
               >
-                <h2 id="pricing-breakdown-title" style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>
-                  Cost breakdown: {pricingRowBreakdownModalCountRow.fixture ?? ''}
+                <h2 id="pricing-breakdown-title" style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>
+                  Margin breakdown: {b.fixture}
                 </h2>
-                <dl style={{ margin: 0, display: 'grid', gap: '0.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                    <dt style={{ margin: 0, color: '#6b7280' }}>Materials {materialsFromTakeoff != null ? '(from takeoff)' : '(proportional)'}</dt>
-                    <dd style={{ margin: 0 }}>${formatCurrency(materialsBeforeTax)}</dd>
+
+                <p style={sectionLabelStyle}>Revenue</p>
+                <div style={{ display: 'grid', gap: '0.35rem' }}>
+                  <div style={lineStyle}>
+                    <span style={{ color: '#6b7280' }}>Sale Price {b.isFixedPrice ? '(fixed)' : '(per unit)'}</span>
+                    <span>${formatCurrency(b.unitPrice)}</span>
                   </div>
-                  {taxAmount > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                      <dt style={{ margin: 0, color: '#6b7280' }}>Tax ({taxPercent}%)</dt>
-                      <dd style={{ margin: 0 }}>${formatCurrency(taxAmount)}</dd>
+                  {b.isFixedPrice ? (
+                    <div style={lineStyle}>
+                      <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>Fixed price — not multiplied by count</span>
+                      <span />
+                    </div>
+                  ) : (
+                    <div style={lineStyle}>
+                      <span style={{ color: '#6b7280' }}>× Count</span>
+                      <span>{b.count}</span>
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                    <dt style={{ margin: 0, color: '#6b7280' }}>Labor</dt>
-                    <dd style={{ margin: 0 }}>${formatCurrency(laborCost)}</dd>
+                  <div style={subtotalStyle}>
+                    <span>Revenue</span>
+                    <span>${formatCurrency(b.revenue)}</span>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', fontWeight: 600, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
-                    <dt style={{ margin: 0 }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Unit Cost'}</dt>
-                    <dd style={{ margin: 0 }}>${formatCurrency(ourCost)}</dd>
+                </div>
+
+                <p style={sectionLabelStyle}>Our cost</p>
+                <div style={{ display: 'grid', gap: '0.35rem' }}>
+                  <div style={lineStyle}>
+                    <span style={{ color: '#6b7280' }}>
+                      Materials {b.materialsFromTakeoff != null ? '(from Takeoffs)' : '(proportional)'}
+                    </span>
+                    <span>${formatCurrency(b.materialsBeforeTax)}</span>
                   </div>
-                </dl>
+                  {b.taxAmount > 0 && (
+                    <div style={lineStyle}>
+                      <span style={{ color: '#6b7280' }}>Tax ({b.taxPercent}%)</span>
+                      <span>${formatCurrency(b.taxAmount)}</span>
+                    </div>
+                  )}
+                  <div style={lineStyle}>
+                    <span style={{ color: '#6b7280' }}>Labor</span>
+                    <span>${formatCurrency(b.laborCost)}</span>
+                  </div>
+                  <div style={subtotalStyle}>
+                    <span>Our cost</span>
+                    <span>${formatCurrency(b.cost)}</span>
+                  </div>
+                </div>
+
+                <p style={sectionLabelStyle}>Margin</p>
+                <div style={{ display: 'grid', gap: '0.35rem' }}>
+                  <div style={lineStyle}>
+                    <span style={{ color: '#6b7280' }}>Profit (Revenue − Our cost)</span>
+                    <span style={{ color: profit < 0 ? '#dc2626' : undefined }}>${formatCurrency(profit)}</span>
+                  </div>
+                  <div style={{ ...subtotalStyle, fontSize: '1.0625rem' }}>
+                    <span>Margin (Profit ÷ Revenue)</span>
+                    <span>{marginPct != null ? `${marginPct.toFixed(1)}%` : '—'}</span>
+                  </div>
+                </div>
+
+                {uncosted && (
+                  <p
+                    style={{
+                      margin: '1rem 0 0',
+                      padding: '0.6rem 0.75rem',
+                      background: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      borderRadius: 6,
+                      fontSize: '0.8125rem',
+                      color: '#92400e',
+                    }}
+                  >
+                    This fixture has no Takeoffs cost, so the grid shows “—” for its margin. The figures
+                    above use only the costs entered so far — the real margin will be lower once you add this
+                    fixture’s parts in Takeoffs.
+                  </p>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => setPricingRowBreakdownModalCountRow(null)}
+                  onClick={() => setPricingBreakdownRow(null)}
                   style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', width: '100%' }}
                 >
                   Close
@@ -1636,11 +1815,27 @@ export function BidsPricingTab({
             </div>
           )
         })()}
+        {assignTakeoffRow && selectedBidForPricing && (
+          <AssignTakeoffPartModal
+            bidId={selectedBidForPricing.id}
+            serviceTypeId={selectedBidForPricing.service_type_id ?? selectedServiceTypeId}
+            countRowId={assignTakeoffRow.countRowId}
+            fixture={assignTakeoffRow.fixture}
+            materialsModel={normalizeMaterialsModel(selectedBidForPricing.materials_model)}
+            defaultQuantity={Number(pricingCountRows.find((r) => r.id === assignTakeoffRow.countRowId)?.count) || 1}
+            onClose={() => setAssignTakeoffRow(null)}
+            onAssigned={async () => {
+              await reloadPricingForBid(selectedBidForPricing.id)
+              setAssignTakeoffRow(null)
+            }}
+          />
+        )}
         {!selectedBidForPricing && (
           <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: '#f9fafb' }}>
                 <tr>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                 </tr>
@@ -1655,6 +1850,11 @@ export function BidsPricingTab({
                       borderBottom: '1px solid #e5e7eb',
                     }}
                   >
+                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
+                      {bid.bid_number?.trim() ? (
+                        <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={bid.bid_number.trim()} />
+                      ) : '—'}
+                    </td>
                     <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                   </tr>

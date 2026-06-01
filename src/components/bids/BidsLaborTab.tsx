@@ -6,6 +6,9 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../../lib/bids/laborRowHours'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
+import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
+import { MyBidsToggle } from './MyBidsToggle'
+import { resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import {
   printCostEstimatePage as printCostEstimatePageDoc,
   printRoughInSubSheet as printRoughInSubSheetDoc,
@@ -87,6 +90,10 @@ type BidsLaborTabProps = {
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
+  ledgerPrefixMap: LedgerPrefixMap
+  onlyMyBids: boolean
+  setOnlyMyBids: (next: boolean) => void
+  isMyBid: (bid: BidWithBuilder) => boolean
 }
 
 export function BidsLaborTab({
@@ -147,6 +154,10 @@ export function BidsLaborTab({
   onSelectBid,
   onClose,
   onEditBid,
+  ledgerPrefixMap,
+  onlyMyBids,
+  setOnlyMyBids,
+  isMyBid,
 }: BidsLaborTabProps) {
   const [costEstimateSearchQuery, setCostEstimateSearchQuery] = useState('')
   const [costEstimateAutosaveStatus, setCostEstimateAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -685,27 +696,31 @@ export function BidsLaborTab({
     printAllSubSheetsDoc(ctx)
   }
 
+  const bidsScopedForCostEstimate = onlyMyBids ? bids.filter(isMyBid) : bids
   const filteredBidsForCostEstimate: BidWithBuilder[] = costEstimateSearchQuery.trim()
-    ? bids.filter(
+    ? bidsScopedForCostEstimate.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false) ||
           (b.bids_gc_builders?.name?.toLowerCase().includes(costEstimateSearchQuery.toLowerCase()) ?? false)
       )
-    : bids
+    : bidsScopedForCostEstimate
   const costEstimateBidList: BidWithBuilder[] = Array.from(filteredBidsForCostEstimate, (row) => row as BidWithBuilder)
 
   return (
     <div>
       {!selectedBidForCostEstimate && (
-        <input
-          type="text"
-          placeholder="Search bids (project name or GC/Builder)..."
-          value={costEstimateSearchQuery}
-          onChange={(e) => setCostEstimateSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-        />
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+          <input
+            type="text"
+            placeholder="Search bids (project name or GC/Builder)..."
+            value={costEstimateSearchQuery}
+            onChange={(e) => setCostEstimateSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+          />
+          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
+        </div>
       )}
       {selectedBidForCostEstimate && (
         <div
@@ -1310,6 +1325,7 @@ export function BidsLaborTab({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: '#f9fafb' }}>
               <tr>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
               </tr>
@@ -1328,6 +1344,11 @@ export function BidsLaborTab({
                       background: (sel?.id != null && sel.id === bid.id) ? '#eff6ff' : undefined,
                     }}
                   >
+                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
+                      {bid.bid_number?.trim() ? (
+                        <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={bid.bid_number.trim()} />
+                      ) : '—'}
+                    </td>
                     <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                   </tr>
