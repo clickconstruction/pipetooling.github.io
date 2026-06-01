@@ -51,6 +51,8 @@ import { useAuth, type UserRole } from '../hooks/useAuth'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
+import { usePartsLedgerData } from '../hooks/usePartsLedgerData'
+import type { TallyPartRow } from '../types/tallyPart'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
@@ -193,27 +195,6 @@ import { showAiaG702G703 } from '../lib/aiaG702G703Eligibility'
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type UserRow = { id: string; name: string; email: string | null; role: string; notes: string | null }
-
-type TallyPartRow = {
-  id: string
-  job_id: string
-  fixture_name: string
-  part_id: string | null
-  quantity: number
-  created_by_user_id: string
-  created_at: string
-  price_at_time: number | null
-  fixture_cost: number | null
-  purchase_order_id: string | null
-  purchase_order_name: string | null
-  purchase_order_status: string | null
-  hcp_number: string | null
-  job_name: string | null
-  job_address: string | null
-  part_name: string | null
-  part_manufacturer: string | null
-  created_by_name: string | null
-}
 
 type JobsTab = 'reports' | 'stages' | 'billing' | 'sub_sheet_ledger' | 'combined-labor' | 'teams-summary' | 'parts' | 'job-summary' | 'inspections' | 'billed'
 
@@ -703,17 +684,25 @@ export default function Jobs() {
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
 
-  const [tallyParts, setTallyParts] = useState<TallyPartRow[]>([])
-  const [tallyPartsLoading, setTallyPartsLoading] = useState(false)
-  const [invoiceAmountByJob, setInvoiceAmountByJob] = useState<Record<string, number>>({})
+  const {
+    tallyParts,
+    tallyPartsLoading,
+    invoiceAmountByJob,
+    deletingTallyPartId,
+    updatingFixtureCostId,
+    deleteTallyPart,
+    updateFixtureCost,
+  } = usePartsLedgerData({
+    authUserId: authUser?.id ?? null,
+    isActive: activeTab === 'parts' || activeTab === 'job-summary',
+    onError: setError,
+  })
   const [tallyPartsSearch, setTallyPartsSearch] = useState('')
   const [showMyJobsOnly, setShowMyJobsOnly] = useState(false)
   const [subLaborSearch, setSubLaborSearch] = useState('')
   const [jobSummarySearch, setJobSummarySearch] = useState('')
   const [printCostBreakdownJobId, setPrintCostBreakdownJobId] = useState<string | null>(null)
   const [myJobIds, setMyJobIds] = useState<Set<string> | null>(null)
-  const [deletingTallyPartId, setDeletingTallyPartId] = useState<string | null>(null)
-  const [updatingFixtureCostId, setUpdatingFixtureCostId] = useState<string | null>(null)
   const [expandedPartsJobIds, setExpandedPartsJobIds] = useState<Set<string>>(new Set())
   const [expandedJobSummaryJobIds, setExpandedJobSummaryJobIds] = useState<Set<string>>(new Set())
   /** Job Summary Team Labor: `${jobId}::${breakdownIndex}` expanded (drives deferred clock_sessions fetch). */
@@ -1747,67 +1736,6 @@ export default function Jobs() {
       return { jobId, hcpNumber: info.hcp_number, jobName: info.job_name, jobAddress: info.job_address, people, manHours, jobCost, breakdown }
     })
     setTeamLaborData(rows)
-  }
-
-  async function loadTallyParts() {
-    if (!authUser?.id) return
-    setTallyPartsLoading(true)
-    setError(null)
-    const { data, error: err } = await supabase.rpc('list_tally_parts_with_po')
-    if (err) {
-      setError(err.message)
-      setTallyParts([])
-      setInvoiceAmountByJob({})
-    } else {
-      const parts = (data ?? []) as TallyPartRow[]
-      setTallyParts(parts)
-      const tallyJobIds = new Set(parts.map((r) => r.job_id))
-      const { data: allocData } = await supabase
-        .from('supply_house_invoice_job_allocations')
-        .select('job_id')
-      for (const row of allocData ?? []) {
-        tallyJobIds.add(row.job_id)
-      }
-      const jobIds = [...tallyJobIds]
-      if (jobIds.length > 0) {
-        const { data: amountsData } = await supabase.rpc('get_invoice_amounts_for_jobs', { p_job_ids: jobIds })
-        const map: Record<string, number> = {}
-        for (const r of (amountsData ?? []) as { job_id: string; invoice_amount: number }[]) {
-          map[r.job_id] = Number(r.invoice_amount ?? 0)
-        }
-        setInvoiceAmountByJob(map)
-      } else {
-        setInvoiceAmountByJob({})
-      }
-    }
-    setTallyPartsLoading(false)
-  }
-
-  async function deleteTallyPart(id: string) {
-    if (!confirm('Remove this part from the tally?')) return
-    setDeletingTallyPartId(id)
-    setError(null)
-    const { error: err } = await supabase.from('jobs_tally_parts').delete().eq('id', id)
-    if (err) {
-      setError(err.message)
-    } else {
-      setTallyParts((prev) => prev.filter((r) => r.id !== id))
-    }
-    setDeletingTallyPartId(null)
-  }
-
-  async function updateFixtureCost(id: string, cost: number) {
-    setUpdatingFixtureCostId(id)
-    setError(null)
-    const { error: err } = await supabase.from('jobs_tally_parts').update({ fixture_cost: cost }).eq('id', id)
-    if (err) {
-      setError(err.message)
-    } else {
-      setTallyParts((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, fixture_cost: cost } : r))
-      )
-    }
-    setUpdatingFixtureCostId(null)
   }
 
   function getFixtureTypeIdByName(name: string): string | null {
@@ -3780,13 +3708,6 @@ ${totalsHtml}
       }
     }
   }, [activeTab, expandedJobSummaryJobIds, invoiceAmountByJob, loadJobSummaryInvoiceLinesForJob])
-
-  useEffect(() => {
-    if ((activeTab === 'parts' || activeTab === 'job-summary') && authUser?.id) {
-      const t = setTimeout(() => loadTallyParts(), 80)
-      return () => clearTimeout(t)
-    }
-  }, [activeTab, authUser?.id])
 
   useEffect(() => {
     if (activeTab !== 'job-summary' || !authUser?.id) return
