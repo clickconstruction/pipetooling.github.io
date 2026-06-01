@@ -12,6 +12,47 @@ export const NOTIFICATION_VARIABLE_HINT =
 /** Placeholder step id for send-workflow-notification test (no recipient_user_id → no notification_history insert). */
 export const WORKFLOW_FN_TEST_PLACEHOLDER_STEP_ID = '00000000-0000-4000-8000-000000000001'
 
+/** Stored email-template row (settings → email templates). */
+export type EmailTemplate = {
+  id: string
+  template_type:
+    | 'invitation'
+    | 'sign_in'
+    | 'login_as'
+    | 'stage_assigned_started'
+    | 'stage_assigned_complete'
+    | 'stage_assigned_reopened'
+    | 'stage_me_started'
+    | 'stage_me_complete'
+    | 'stage_me_reopened'
+    | 'stage_next_complete_or_approved'
+    | 'stage_prior_rejected'
+  subject: string
+  body: string
+  updated_at: string | null
+}
+
+export type NotificationTemplateType =
+  | 'checklist_completed'
+  | 'test_notification'
+  | 'stage_assigned_started'
+  | 'stage_assigned_complete'
+  | 'stage_assigned_reopened'
+  | 'stage_me_started'
+  | 'stage_me_complete'
+  | 'stage_me_reopened'
+  | 'stage_next_complete_or_approved'
+  | 'stage_prior_rejected'
+
+/** Stored push-notification template row (settings → notification templates). */
+export type NotificationTemplate = {
+  id: string
+  template_type: NotificationTemplateType
+  push_title: string
+  push_body: string
+  updated_at: string | null
+}
+
 /** Email template types that the workflow-email Edge Function test can target
  * (the transactional `invitation` / `sign_in` / `login_as` types are excluded). */
 export type WorkflowFnEmailTemplateType =
