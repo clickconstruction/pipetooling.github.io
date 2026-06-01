@@ -38,6 +38,7 @@ import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/Physic
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import SettingsHowItWorksTab from '../components/settings/SettingsHowItWorksTab'
 import SettingsAdvancedTab from '../components/settings/SettingsAdvancedTab'
+import SettingsDataTab from '../components/settings/SettingsDataTab'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import type { Database } from '../types/database'
@@ -9041,122 +9042,32 @@ export default function Settings() {
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title="Data & migration">
       {myRole === 'dev' && (
-        <>
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-          <button
-            type="button"
-              aria-expanded={dataBackupSectionOpen}
-              onClick={() => setDataBackupSectionOpen((prev) => !prev)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              margin: 0,
-              padding: '1rem',
-              width: '100%',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '1rem',
-              fontWeight: 600,
-              textAlign: 'left',
-            }}
-          >
-              <span style={{ fontSize: '0.75rem' }}>{dataBackupSectionOpen ? '▼' : '▶'}</span>
-              Data backup (dev)
-          </button>
-            {dataBackupSectionOpen && (
-          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-                  Export projects, materials, bids, people & access, jobs, checklist, reports, prospects, or settings & reference as JSON for backup. Use &quot;Export all backup&quot; to download everything in one file. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
-                </p>
-                {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    onClick={exportProjectsBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportProjectsLoading ? 'Exporting…' : 'Export projects backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportMaterialsBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#065f46', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportMaterialsLoading ? 'Exporting…' : 'Export materials backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportBidsBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#7c2d12', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportBidsLoading ? 'Exporting…' : 'Export bids backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportPeopleBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#4c1d95', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportPeopleLoading ? 'Exporting…' : 'Export people backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportJobsBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#0e7490', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportJobsLoading ? 'Exporting…' : 'Export jobs backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportChecklistBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#b45309', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportChecklistLoading ? 'Exporting…' : 'Export checklist backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportReportsBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#1e3a8a', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportReportsLoading ? 'Exporting…' : 'Export reports backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportProspectsBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#6b21a8', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportProspectsLoading ? 'Exporting…' : 'Export prospects backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportSettingsBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#374151', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
-                  >
-                    {exportSettingsLoading ? 'Exporting…' : 'Export settings backup'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={exportAllBackup}
-                    disabled={exportBackupBusy}
-                    style={{ padding: '0.5rem 1rem', background: '#111827', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
-                  >
-                    {exportAllLoading ? 'Exporting…' : 'Export all backup'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </>
+        <SettingsDataTab
+          dataBackupSectionOpen={dataBackupSectionOpen}
+          setDataBackupSectionOpen={setDataBackupSectionOpen}
+          exportError={exportError}
+          exportBackupBusy={exportBackupBusy}
+          exportProjectsBackup={exportProjectsBackup}
+          exportProjectsLoading={exportProjectsLoading}
+          exportMaterialsBackup={exportMaterialsBackup}
+          exportMaterialsLoading={exportMaterialsLoading}
+          exportBidsBackup={exportBidsBackup}
+          exportBidsLoading={exportBidsLoading}
+          exportPeopleBackup={exportPeopleBackup}
+          exportPeopleLoading={exportPeopleLoading}
+          exportJobsBackup={exportJobsBackup}
+          exportJobsLoading={exportJobsLoading}
+          exportChecklistBackup={exportChecklistBackup}
+          exportChecklistLoading={exportChecklistLoading}
+          exportReportsBackup={exportReportsBackup}
+          exportReportsLoading={exportReportsLoading}
+          exportProspectsBackup={exportProspectsBackup}
+          exportProspectsLoading={exportProspectsLoading}
+          exportSettingsBackup={exportSettingsBackup}
+          exportSettingsLoading={exportSettingsLoading}
+          exportAllBackup={exportAllBackup}
+          exportAllLoading={exportAllLoading}
+        />
       )}
       </SettingsGroup>
 
