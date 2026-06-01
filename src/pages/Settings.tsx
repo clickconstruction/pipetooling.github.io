@@ -51,6 +51,7 @@ import SettingsPeopleTab from '../components/settings/SettingsPeopleTab'
 import SettingsDashboardTab from '../components/settings/SettingsDashboardTab'
 import SettingsCatalogsTab from '../components/settings/SettingsCatalogsTab'
 import SettingsCatalogsProspectsTab from '../components/settings/SettingsCatalogsProspectsTab'
+import SettingsAccountTab from '../components/settings/SettingsAccountTab'
 import { ROLES } from '../lib/userRoles'
 import type {
   AssemblyType,
@@ -5376,217 +5377,39 @@ export default function Settings() {
           ) : null
         }
       >
-
-
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
-        <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>My Profile</h2>
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
-          Update your name, email, and phone. Your phone is used in prospect copy templates.
-        </p>
-        <form onSubmit={saveMyProfile}>
-          {myProfileError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{myProfileError}</p>}
-          <div style={{ marginBottom: '0.75rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Name</label>
-            <input
-              type="text"
-              value={myProfileName}
-              onChange={(e) => setMyProfileName(e.target.value)}
-              readOnly={isSubcontractorLikeRole(myRole)}
-              disabled={isSubcontractorLikeRole(myRole)}
-              style={{
-                width: '100%',
-                maxWidth: 320,
-                padding: '0.5rem',
-                border: '1px solid #d1d5db',
-                borderRadius: 4,
-                boxSizing: 'border-box',
-                ...(isSubcontractorLikeRole(myRole) && { background: '#f3f4f6', cursor: 'not-allowed' }),
-              }}
-            />
-            {isSubcontractorLikeRole(myRole) && (
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-                Name is managed by admins. Contact a master or dev to change it.
-              </p>
-            )}
-          </div>
-          <div style={{ marginBottom: '0.75rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Email</label>
-            <input
-              type="email"
-              value={myProfileEmail}
-              onChange={(e) => setMyProfileEmail(e.target.value)}
-              required
-              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
-            />
-          </div>
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500, fontSize: '0.875rem' }}>Phone</label>
-            <input
-              type="tel"
-              value={myProfilePhone}
-              onChange={(e) => setMyProfilePhone(e.target.value)}
-              placeholder="e.g. (555) 123-4567"
-              style={{ width: '100%', maxWidth: 320, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={myProfileSaving}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: myProfileSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
-          >
-            {myProfileSaving ? 'Saving…' : 'Save'}
-          </button>
-        </form>
-      </div>
-
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Push Notifications</h2>
-        <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
-          Get browser notifications when a workflow stage is completed and it&apos;s your turn to pick up the task.
-        </p>
-        {!pushNotifications.supported && (
-          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-            Push notifications require HTTPS (or localhost) and a supporting browser. Try the deployed app or use Chrome/Firefox on localhost.
-          </p>
-        )}
-        {pushNotifications.supported && pushNotifications.error && (
-          <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{pushNotifications.error}</p>
-        )}
-        {pushNotifications.supported && !pushNotifications.vapidConfigured && (
-          <p style={{ color: '#92400e', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
-            Push notifications are not configured. Set VITE_VAPID_PUBLIC_KEY in your environment.
-          </p>
-        )}
-        {pushNotifications.supported && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {pushNotifications.isSubscribed ? (
-                <>
-                  <span style={{ fontSize: '0.875rem', color: '#059669' }}>Enabled</span>
-        <button
-          type="button"
-                    onClick={() => pushNotifications.disable()}
-                    disabled={pushNotifications.loading}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}
-                  >
-                    {pushNotifications.loading ? 'Disabling…' : 'Disable'}
-        </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => pushNotifications.enable()}
-                  disabled={pushNotifications.loading || !pushNotifications.vapidConfigured}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#1e40af', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                >
-                  {pushNotifications.loading ? 'Enabling…' : 'Enable push notifications'}
-                </button>
-            )}
-          </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-          <button
-            type="button"
-                onClick={handleTestNotification}
-                disabled={!pushNotifications.isSubscribed || testNotificationSending || !pushNotifications.vapidConfigured}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
-              >
-                {testNotificationSending ? 'Sending…' : 'Test notification'}
-          </button>
-              {!pushNotifications.isSubscribed && pushNotifications.vapidConfigured && (
-                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Enable push notifications first to test</span>
-              )}
-            </div>
-            <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-              Allow location for location-based reminders
-            </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
-              {locationPermission === 'granted' ? (
-                <span style={{ fontSize: '0.875rem', color: '#059669' }}>Location based reminders enabled</span>
-              ) : locationPermission === 'denied' ? (
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                  Location based reminders disabled — enable in browser settings to allow location based reminders
-                </span>
-              ) : (
-                          <button
-                            type="button"
-                  onClick={handleEnableLocation}
-                  disabled={locationLoading}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', background: 'white' }}
-                          >
-                  {locationLoading ? 'Requesting…' : 'Enable Location based Reminders'}
-                          </button>
-              )}
-                        </div>
-            {testNotificationSuccess && (
-              <p style={{ color: '#059669', margin: 0, fontSize: '0.875rem' }}>{testNotificationSuccess}</p>
-            )}
-            {testNotificationError && (
-              <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{testNotificationError}</p>
-              )}
-            </div>
-          )}
-        </div>
-
-      {/* Inline Change Password form - toggled from header button */}
-      {passwordChangeOpen && (
-        <form onSubmit={handlePasswordChange} style={{ marginBottom: '2rem', padding: '1rem 0' }}>
-            <div style={{ marginBottom: '1rem' }}>
-              <PasswordInput
-                id="current-password"
-                label="Current password *"
-                value={currentPassword}
-                onChange={(e) => {
-                  setCurrentPassword(e.target.value)
-                  setPasswordChangeError(null)
-                }}
-                required
-                autoComplete="current-password"
-                style={{ width: '100%', maxWidth: 400 }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <PasswordInput
-                id="new-password"
-                label="New password *"
-                value={newPassword}
-                onChange={(e) => {
-                  setNewPassword(e.target.value)
-                  setPasswordChangeError(null)
-                }}
-                required
-                autoComplete="new-password"
-                minLength={6}
-                style={{ width: '100%', maxWidth: 400 }}
-              />
-            </div>
-            <div style={{ marginBottom: '1rem' }}>
-              <PasswordInput
-                id="confirm-password"
-                label="Confirm new password *"
-                value={confirmPassword}
-                onChange={(e) => {
-                  setConfirmPassword(e.target.value)
-                  setPasswordChangeError(null)
-                }}
-                required
-                autoComplete="new-password"
-                minLength={6}
-                style={{ width: '100%', maxWidth: 400 }}
-              />
-            </div>
-            {passwordChangeError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{passwordChangeError}</p>}
-            {passwordChangeSuccess && <p style={{ color: '#059669', marginBottom: '1rem' }}>Password changed successfully!</p>}
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="submit" disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
-                {passwordChangeSubmitting ? 'Changing…' : 'Change password'}
-              </button>
-              <button type="button" onClick={closePasswordChange} disabled={passwordChangeSubmitting} style={{ padding: '0.5rem 1rem' }}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        )}
-
+        <SettingsAccountTab
+          closePasswordChange={closePasswordChange}
+          confirmPassword={confirmPassword}
+          currentPassword={currentPassword}
+          handleEnableLocation={handleEnableLocation}
+          handlePasswordChange={handlePasswordChange}
+          handleTestNotification={handleTestNotification}
+          locationLoading={locationLoading}
+          locationPermission={locationPermission}
+          myProfileEmail={myProfileEmail}
+          myProfileError={myProfileError}
+          myProfileName={myProfileName}
+          myProfilePhone={myProfilePhone}
+          myProfileSaving={myProfileSaving}
+          myRole={myRole}
+          newPassword={newPassword}
+          passwordChangeError={passwordChangeError}
+          passwordChangeOpen={passwordChangeOpen}
+          passwordChangeSubmitting={passwordChangeSubmitting}
+          passwordChangeSuccess={passwordChangeSuccess}
+          pushNotifications={pushNotifications}
+          saveMyProfile={saveMyProfile}
+          setConfirmPassword={setConfirmPassword}
+          setCurrentPassword={setCurrentPassword}
+          setMyProfileEmail={setMyProfileEmail}
+          setMyProfileName={setMyProfileName}
+          setMyProfilePhone={setMyProfilePhone}
+          setNewPassword={setNewPassword}
+          setPasswordChangeError={setPasswordChangeError}
+          testNotificationError={testNotificationError}
+          testNotificationSending={testNotificationSending}
+          testNotificationSuccess={testNotificationSuccess}
+        />
       </SettingsGroup>
 
       {activeSettingsTab === 'settings-account' &&
