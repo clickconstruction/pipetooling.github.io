@@ -93,7 +93,7 @@ describe('buildBidPricingPackageTableHtml', () => {
     })
     expect(html).toContain('Fixture or Tie-in')
     expect(html).toContain('Count')
-    expect(html).toContain('Unit price')
+    expect(html).toContain('Sale Price')
     expect(html).toContain('Revenue')
     expect(html).toContain('$200.00')
     expect(html).toContain('Total')

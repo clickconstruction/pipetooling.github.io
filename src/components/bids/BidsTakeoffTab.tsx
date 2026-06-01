@@ -27,6 +27,7 @@ import {
   normalizeMaterialsModel,
   takeoffFixtureCountLabel,
   mergePartLinesToTakeoffTemplateItems,
+  roughCountMultiplier,
   STAGE_LABELS,
   type TakeoffStage,
 } from '../../lib/bids/bidTakeoffHelpers'
@@ -4559,7 +4560,7 @@ function SortableRoughPartLineRow({
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: line.id })
   const roughQtyPadActive = roughQtyNumpadLineId === line.id
-  const lineTotal = Number(line.quantity) * Number(line.unitPrice)
+  const lineTotal = Number(line.quantity) * Number(line.unitPrice) * roughCountMultiplier(row.count)
   const partName = line.partId ? (takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? '') : ''
   const roughCatalogLow = line.partId ? takeoffRoughCatalogLowestByPartId[line.partId] : undefined
   const roughMatchesLowest =

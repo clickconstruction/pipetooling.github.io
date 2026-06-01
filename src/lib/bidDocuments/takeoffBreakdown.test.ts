@@ -36,11 +36,12 @@ describe('buildRoughTakeoffBreakdownHtml', () => {
     const body = tbodyContents(buildRoughTakeoffBreakdownHtml(base))[0] ?? ''
     // p1 (seq 0) comes before p2 (seq 1).
     expect(body.indexOf('PVC Pipe')).toBeLessThan(body.indexOf('Wax Ring'))
-    // p1: unit $1.50, qty 4, total $6.00 ; p2: unit $5.00, qty 2, total $10.00
+    // Totals are count-weighted (Toilet count 3): p1 unit $1.50 x qty 4 x 3 = $18.00 ;
+    // p2 unit $5.00 x qty 2 x 3 = $30.00.
     expect(body).toContain('$1.50')
-    expect(body).toContain('$6.00')
+    expect(body).toContain('$18.00')
     expect(body).toContain('$5.00')
-    expect(body).toContain('$10.00')
+    expect(body).toContain('$30.00')
   })
 
   it('shows the (count N) label and em dash for a null fixture', () => {

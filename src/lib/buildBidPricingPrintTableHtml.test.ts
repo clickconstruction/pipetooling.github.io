@@ -35,7 +35,7 @@ describe('buildBidPricingPrintTableHtml — cost view', () => {
       'Fixture or Tie-in',
       'Count',
       'Price book entry',
-      'Unit price',
+      'Sale Price',
       'Our cost',
       'Revenue',
       'Margin %',
@@ -80,7 +80,7 @@ describe('buildBidPricingPrintTableHtml — price view', () => {
     expect(headers).toEqual([
       'Fixture or Tie-in',
       'Count',
-      'Unit price',
+      'Sale Price',
       'Revenue',
       '% of Total',
     ])

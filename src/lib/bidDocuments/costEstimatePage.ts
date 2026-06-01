@@ -4,7 +4,7 @@ import { buildCostEstimatePOHtml, type CostEstimatePOModalItem } from './costEst
 import { buildRoughLaborPageHtml, buildExactLaborPageHtml } from './laborPage'
 import { buildLaborSubSheetHtml, buildAllLaborSubSheetsHtml } from './laborSubSheet'
 import { laborRowHours, laborRowRough, laborRowTop, laborRowTrim } from '../bids/laborRowHours'
-import { normalizeMaterialsModel, sumRoughLinesPreTax } from '../bids/bidTakeoffHelpers'
+import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount } from '../bids/bidTakeoffHelpers'
 import { computeTravelCost, costEstimateEstimatorCost } from '../bids/bidCostCalc'
 import { bidDisplayName } from '../bids/bidFormatting'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
@@ -70,7 +70,8 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
       : { data: [] as { id: string; name: string }[] }
     const nameById = new Map((partsData ?? []).map((p) => [p.id, p.name ?? '']))
     const taxPercent = ctx.taxPercent
-    const totalMaterials = ctx.materialTotalRoughIn ?? sumRoughLinesPreTax(lines)
+    const countByRowId = new Map(countRows.map((cr) => [cr.id, cr.count]))
+    const totalMaterials = ctx.materialTotalRoughIn ?? sumRoughLinesPreTaxWithCount(lines, countByRowId)
     const materials = countRows.map((cr) => ({
       fixture: cr.fixture ?? null,
       count: Number(cr.count),
