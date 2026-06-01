@@ -10,6 +10,22 @@
 
 ---
 
+## Logging in as an agent — password-free dev login
+
+**Need an authenticated session to run, test, or verify the app? Do NOT stop at the email/password screen.** In local dev there is a built-in password-free login:
+
+1. Start the app: `npm run dev` (use the port Vite actually prints — usually `5173`).
+2. Navigate the browser to `http://localhost:<port>/dev-login?as=<existing-email>&to=/<path>`
+   - Example: `http://localhost:5173/dev-login?as=robert@douglasmining.com&to=/settings`
+   - `as=` must be an email that exists in `auth.users`; `to=` is where to land after login (defaults to `/dashboard`).
+3. It auto-fires on page load (no clicks) — mints a magic link via the `dev-login` Edge Function and drops you onto the app authenticated.
+
+**Requirements:** `VITE_DEV_LOGIN_SECRET` in `.env.local` (already set locally) + server-side `DEV_LOGIN_SECRET`.
+**Safety:** dev-only — gated on `import.meta.env.DEV`; production builds redirect `/dev-login` → sign-in.
+**Full details:** [`docs/EDGE_FUNCTIONS.md` → dev-login](./docs/EDGE_FUNCTIONS.md) · [`docs/AI_CONTEXT.md` → Testing Without Credentials](./docs/AI_CONTEXT.md) · frontend [`src/pages/DevLogin.tsx`](./src/pages/DevLogin.tsx), function [`supabase/functions/dev-login/index.ts`](./supabase/functions/dev-login/index.ts).
+
+---
+
 ## Where to Look For...
 
 | Need | Documentation |
