@@ -9,7 +9,7 @@ import {
 import type { BidCountRow } from '../../types/bids'
 
 const PRICING_HEADER =
-  'Fixture or Tie-in,Count,Price book entry,Fixed price,Unit price,Our cost,Revenue,Margin %,% of bid revenue'
+  'Fixture or Tie-in,Count,Price book entry,Fixed price,Sale Price,Our cost,Revenue,Margin %,% of bid revenue'
 
 function row(partial: Partial<BidCountRow>): BidCountRow {
   return { count: 0, fixture: '', group_tag: null, page: null, ...partial } as BidCountRow

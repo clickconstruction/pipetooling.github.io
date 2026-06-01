@@ -52,7 +52,7 @@ export function buildPricingCsv(
     'Count',
     'Price book entry',
     'Fixed price',
-    'Unit price',
+    'Sale Price',
     'Our cost',
     'Revenue',
     'Margin %',

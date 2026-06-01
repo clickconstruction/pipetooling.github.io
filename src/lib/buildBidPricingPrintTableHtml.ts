@@ -8,8 +8,8 @@
  *
  * The viewModel branch:
  * - `'cost'` keeps the legacy 7-column layout (Fixture or Tie-in / Count / Price book entry /
- *   Unit price / Our cost / Revenue / Margin %).
- * - `'price'` emits a 5-column layout (Fixture or Tie-in / Count / Unit price / Revenue /
+ *   Sale Price / Our cost / Revenue / Margin %).
+ * - `'price'` emits a 5-column layout (Fixture or Tie-in / Count / Sale Price / Revenue /
  *   % of Total) — mirrors the on-screen "Price Model" View by dropping cost-only columns and
  *   substituting `% of Total` (`pctOfGrandTotal`) for `Margin %`.
  *
@@ -57,7 +57,7 @@ function buildCostTable(args: {
     '<th>Fixture or Tie-in</th>' +
     '<th style="text-align:center">Count</th>' +
     '<th>Price book entry</th>' +
-    '<th style="text-align:right">Unit price</th>' +
+    '<th style="text-align:right">Sale Price</th>' +
     '<th style="text-align:right">Our cost</th>' +
     '<th style="text-align:right">Revenue</th>' +
     '<th style="text-align:center">Margin %</th>' +
@@ -108,7 +108,7 @@ function buildPriceTable(args: {
     '<thead><tr>' +
     '<th>Fixture or Tie-in</th>' +
     '<th style="text-align:center">Count</th>' +
-    '<th style="text-align:right">Unit price</th>' +
+    '<th style="text-align:right">Sale Price</th>' +
     '<th style="text-align:right">Revenue</th>' +
     '<th style="text-align:center">% of Total</th>' +
     '</tr></thead>'

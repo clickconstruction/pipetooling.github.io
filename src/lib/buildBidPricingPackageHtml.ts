@@ -6,7 +6,7 @@
  * `physicalInvoiceFixtureScaling.ts` ↔ `stripeInvoiceItemsFromFixtures.ts` — Edge bundles
  * can't import from `src/lib/`, so the file is mirrored.
  *
- * External audience: only 4 columns (Fixture/Tie-in, Count, Unit price, Revenue). Hidden rows
+ * External audience: only 4 columns (Fixture/Tie-in, Count, Sale Price, Revenue). Hidden rows
  * (omitFromSubmissionDocuments) are dropped; revenue total in the footer still reflects all
  * rows so it matches the Bids Pricing tab footer.
  *
@@ -110,7 +110,7 @@ export function buildBidPricingPackageTableHtml(args: {
     '<thead><tr>' +
     th('Fixture or Tie-in') +
     th('Count', 'center') +
-    th('Unit price', 'right') +
+    th('Sale Price', 'right') +
     th('Revenue', 'right') +
     '</tr></thead>' +
     `<tbody>${bodyRows}${footer}</tbody>` +
@@ -173,7 +173,7 @@ export function buildBidPricingPackagePlainText(args: {
     lines.push('')
   }
 
-  const HDR = ['Fixture or Tie-in', 'Count', 'Unit price', 'Revenue']
+  const HDR = ['Fixture or Tie-in', 'Count', 'Sale Price', 'Revenue']
   const body = externalRows.map((r) => [
     r.fixture || '',
     String(r.count),
