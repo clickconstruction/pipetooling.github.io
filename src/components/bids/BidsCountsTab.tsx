@@ -16,6 +16,9 @@ import { SortableCountRow } from './CountRow'
 import { NewCountRow } from './NewCountRow'
 import { ClearAllCountsModal } from './ClearAllCountsModal'
 import { ModalShell } from './ModalShell'
+import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
+import { MyBidsToggle } from './MyBidsToggle'
+import { resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 
 type BidsCountsTabProps = {
   bids: BidWithBuilder[]
@@ -29,6 +32,10 @@ type BidsCountsTabProps = {
   onSelectBid: (bid: BidWithBuilder) => void
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
+  ledgerPrefixMap: LedgerPrefixMap
+  onlyMyBids: boolean
+  setOnlyMyBids: (next: boolean) => void
+  isMyBid: (bid: BidWithBuilder) => boolean
 }
 
 export function BidsCountsTab({
@@ -43,6 +50,10 @@ export function BidsCountsTab({
   onSelectBid,
   onClose,
   onEditBid,
+  ledgerPrefixMap,
+  onlyMyBids,
+  setOnlyMyBids,
+  isMyBid,
 }: BidsCountsTabProps) {
   const { showToast } = useToastContext()
 
@@ -230,15 +241,16 @@ export function BidsCountsTab({
     showToast('Counts exported to CSV.', 'success')
   }
 
+  const bidsScopedForCounts = onlyMyBids ? bids.filter(isMyBid) : bids
   const filteredBidsForCounts = countsSearchQuery.trim()
-    ? bids.filter(
+    ? bidsScopedForCounts.filter(
         (b) =>
           (b.project_name?.toLowerCase().includes(countsSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(countsSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(countsSearchQuery.toLowerCase()) ?? false) ||
           (b.bids_gc_builders?.name?.toLowerCase().includes(countsSearchQuery.toLowerCase()) ?? false)
       )
-    : bids
+    : bidsScopedForCounts
 
   return (
     <div>
@@ -492,19 +504,23 @@ export function BidsCountsTab({
         </ModalShell>
       )}
       {!selectedBidForCounts && (
-        <input
-          type="text"
-          placeholder="Search bids (project name or GC/Builder)..."
-          value={countsSearchQuery}
-          onChange={(e) => setCountsSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-        />
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+          <input
+            type="text"
+            placeholder="Search bids (project name or GC/Builder)..."
+            value={countsSearchQuery}
+            onChange={(e) => setCountsSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+          />
+          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
+        </div>
       )}
       {!selectedBidForCounts && (
         <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: '#f9fafb' }}>
               <tr>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
               </tr>
@@ -519,6 +535,11 @@ export function BidsCountsTab({
                     cursor: 'pointer',
                   }}
                 >
+                  <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
+                    {bid.bid_number?.trim() ? (
+                      <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={bid.bid_number.trim()} />
+                    ) : '—'}
+                  </td>
                   <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
                   <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                 </tr>

@@ -259,6 +259,14 @@ export default function Bids() {
   >({})
 
   const [estimatorUsers, setEstimatorUsers] = useState<EstimatorUser[]>([])
+  // "Only my bids" filter (shared across the workflow tab list views): bids the
+  // current user is the account manager or estimator for.
+  const [onlyMyBids, setOnlyMyBids] = useState(false)
+  const isMyBid = useCallback(
+    (bid: BidWithBuilder) =>
+      !!authUser?.id && (bid.account_manager_id === authUser.id || bid.estimator_id === authUser.id),
+    [authUser?.id],
+  )
   const [bidDateSent, setBidDateSent] = useState('')
   const savedBidDateSentRef = useRef('')
   const [bidSentAttestModalOpen, setBidSentAttestModalOpen] = useState(false)
@@ -551,7 +559,7 @@ export default function Bids() {
     loadPurchaseOrdersForCostEstimate, loadCostEstimate,
     ensureCostEstimateForBid, loadCostEstimateData,
     loadLaborBookVersions, loadLaborBookEntries, saveBidSelectedLaborBookVersion,
-    loadPriceBookVersions, loadPriceBookEntries, loadBidPricingAssignments,
+    loadPriceBookVersions, loadPriceBookEntries, loadBidPricingAssignments, loadPricingDataForBid,
     saveBidSelectedPriceBookVersion, setCostEstimatePO, openMaterialsModelSwitch, confirmMaterialsModelSwitch,
   } = useBidPricingEngine({
     selectedBidForCounts,
@@ -2969,6 +2977,10 @@ export default function Bids() {
           refreshAfterCountsChange={refreshAfterCountsChange}
           skipNextLoadCountRowsRef={skipNextLoadCountRowsRef}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'counts')}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
+          ledgerPrefixMap={ledgerPrefixMap}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
         />
@@ -3024,6 +3036,10 @@ export default function Bids() {
           setCostEstimatePO={setCostEstimatePO}
           openMaterialsModelSwitch={openMaterialsModelSwitch}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'takeoffs')}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
+          ledgerPrefixMap={ledgerPrefixMap}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
         />
@@ -3087,6 +3103,10 @@ export default function Bids() {
           saveBidSelectedLaborBookVersion={saveBidSelectedLaborBookVersion}
           openMaterialsModelSwitch={openMaterialsModelSwitch}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'labor')}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
+          ledgerPrefixMap={ledgerPrefixMap}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
         />
@@ -3130,11 +3150,15 @@ export default function Bids() {
           loadPriceBookVersions={loadPriceBookVersions}
           loadPriceBookEntries={loadPriceBookEntries}
           loadBidPricingAssignments={loadBidPricingAssignments}
+          reloadPricingForBid={loadPricingDataForBid}
           saveBidSelectedPriceBookVersion={saveBidSelectedPriceBookVersion}
           openMaterialsModelSwitch={openMaterialsModelSwitch}
           pricingRowsForGrid={pricingRowsForGrid}
           pricingPackageSource={pricingPackageSource}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'pricing')}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
           onNavigateToLabor={() => setActiveTab('labor')}
@@ -3170,6 +3194,10 @@ export default function Bids() {
           coverLetterIncludeFixturesPerPlanByBid={coverLetterIncludeFixturesPerPlanByBid}
           setCoverLetterIncludeFixturesPerPlanByBid={setCoverLetterIncludeFixturesPerPlanByBid}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'cover-letter')}
+          onlyMyBids={onlyMyBids}
+          setOnlyMyBids={setOnlyMyBids}
+          isMyBid={isMyBid}
+          ledgerPrefixMap={ledgerPrefixMap}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
           onSaveBidSubmissionQuickAdd={saveBidSubmissionQuickAdd}

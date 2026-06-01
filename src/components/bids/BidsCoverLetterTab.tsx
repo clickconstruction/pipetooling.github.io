@@ -3,6 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { bidDisplayName, formatDateYYMMDD, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
+import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
+import { MyBidsToggle } from './MyBidsToggle'
+import { resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { addressLines, printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import {
   buildCoverLetterHtml,
@@ -51,6 +54,10 @@ type BidsCoverLetterTabProps = {
   onClose: () => void
   onEditBid: (bid: BidWithBuilder) => void
   onSaveBidSubmissionQuickAdd: (bidId: string, value: string) => Promise<void>
+  ledgerPrefixMap: LedgerPrefixMap
+  onlyMyBids: boolean
+  setOnlyMyBids: (next: boolean) => void
+  isMyBid: (bid: BidWithBuilder) => boolean
 }
 
 export function BidsCoverLetterTab({
@@ -82,6 +89,10 @@ export function BidsCoverLetterTab({
   onClose,
   onEditBid,
   onSaveBidSubmissionQuickAdd,
+  ledgerPrefixMap,
+  onlyMyBids,
+  setOnlyMyBids,
+  isMyBid,
 }: BidsCoverLetterTabProps) {
   // Cover-letter-only UI state
   const [coverLetterSearchQuery, setCoverLetterSearchQuery] = useState('')
@@ -133,36 +144,41 @@ export function BidsCoverLetterTab({
     setCoverLetterBidSubmissionQuickAddValue('')
   }
 
+  const coverLetterVisibleBids = (onlyMyBids ? bids.filter(isMyBid) : bids).filter((b) => {
+    const q = coverLetterSearchQuery.toLowerCase()
+    if (!q) return true
+    const name = bidDisplayName(b).toLowerCase()
+    const cust = (b.customers?.name ?? '').toLowerCase()
+    const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
+    return name.includes(q) || cust.includes(q) || gc.includes(q)
+  })
+
   return (
     <div>
       {!selectedBidForPricing && (
-        <input
-          type="text"
-          placeholder="Search bids (project name or GC/Builder)..."
-          value={coverLetterSearchQuery}
-          onChange={(e) => setCoverLetterSearchQuery(e.target.value)}
-          style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
-        />
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+          <input
+            type="text"
+            placeholder="Search bids (project name or GC/Builder)..."
+            value={coverLetterSearchQuery}
+            onChange={(e) => setCoverLetterSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+          />
+          <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
+        </div>
       )}
       {!selectedBidForPricing ? (
         <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: '#f9fafb' }}>
               <tr>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
               </tr>
             </thead>
             <tbody>
-              {bids
-                .filter((b) => {
-                  const q = coverLetterSearchQuery.toLowerCase()
-                  if (!q) return true
-                  const name = bidDisplayName(b).toLowerCase()
-                  const cust = (b.customers?.name ?? '').toLowerCase()
-                  const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
-                  return name.includes(q) || cust.includes(q) || gc.includes(q)
-                })
+              {coverLetterVisibleBids
                 .map((bid) => (
                   <tr
                     key={bid.id}
@@ -174,21 +190,23 @@ export function BidsCoverLetterTab({
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                   >
+                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
+                      {bid.bid_number?.trim() ? (
+                        <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={bid.bid_number.trim()} />
+                      ) : '—'}
+                    </td>
                     <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                   </tr>
                 ))}
-              {bids.filter((b) => {
-                const q = coverLetterSearchQuery.toLowerCase()
-                if (!q) return true
-                const name = bidDisplayName(b).toLowerCase()
-                const cust = (b.customers?.name ?? '').toLowerCase()
-                const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
-                return name.includes(q) || cust.includes(q) || gc.includes(q)
-              }).length === 0 && (
+              {coverLetterVisibleBids.length === 0 && (
                 <tr>
-                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
-                    {bids.length === 0 ? 'No bids yet.' : 'No bids match your search.'}
+                  <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    {bids.length === 0
+                      ? 'No bids yet.'
+                      : onlyMyBids
+                        ? 'No bids you are the account manager or estimator for.'
+                        : 'No bids match your search.'}
                   </td>
                 </tr>
               )}
