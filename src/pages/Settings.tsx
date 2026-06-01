@@ -37,6 +37,7 @@ import SettingsRecentPushNotifications from '../components/settings/SettingsRece
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
 import TeamFeedbackMasterAggregates from '../components/team-feedback/TeamFeedbackMasterAggregates'
+import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import type { Database } from '../types/database'
 import {
   APP_SETTINGS_KEY_FIELD_DISPATCH_PHONE,
@@ -281,12 +282,14 @@ function SettingsGroup({
   title,
   description,
   titleTrailing,
+  hidden,
   children,
 }: {
   id: string
   title: string
   description?: string
   titleTrailing?: React.ReactNode
+  hidden?: boolean
   children: React.ReactNode
 }) {
   const headingId = `${id}-heading`
@@ -306,7 +309,7 @@ function SettingsGroup({
     </h2>
   )
   return (
-    <section id={id} aria-labelledby={headingId} style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem' }}>
+    <section id={id} aria-labelledby={headingId} style={{ marginBottom: '2rem', scrollMarginTop: '0.75rem', display: hidden ? 'none' : undefined }}>
       {titleTrailing ? (
         <div
           style={{
@@ -331,26 +334,40 @@ function SettingsGroup({
   )
 }
 
-function SettingsJumpNav({ groups }: { groups: { id: string; label: string }[] }) {
+function SettingsTabBar({
+  groups,
+  activeId,
+  onSelect,
+}: {
+  groups: { id: string; label: string }[]
+  activeId: string
+  onSelect: (id: string) => void
+}) {
   if (groups.length === 0) return null
   return (
-    <nav aria-label="Settings sections" style={{ marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem' }}>Jump to</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.75rem', alignItems: 'center' }}>
-        {groups.map((g) => (
-          <a
-            key={g.id}
-            href={`#${g.id}`}
-            onClick={(e) => {
-              e.preventDefault()
-              document.getElementById(g.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            }}
-            style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}
-          >
-            {g.label}
-          </a>
-        ))}
-      </div>
+    <nav
+      aria-label="Settings sections"
+      role="tablist"
+      style={{
+        display: 'flex',
+        gap: '0.25rem',
+        marginBottom: '1.5rem',
+        borderBottom: '1px solid #e5e7eb',
+        overflowX: 'auto',
+      }}
+    >
+      {groups.map((g) => (
+        <button
+          key={g.id}
+          type="button"
+          role="tab"
+          aria-selected={activeId === g.id}
+          onClick={() => onSelect(g.id)}
+          style={pageUnderlineTabStyle(activeId === g.id)}
+        >
+          {g.label}
+        </button>
+      ))}
     </nav>
   )
 }
@@ -372,6 +389,7 @@ function getSettingsJumpGroups(myRole: UserRole | null): { id: string; label: st
   if (r === 'dev' || r === 'estimator') groups.push({ id: 'settings-catalogs', label: 'Catalogs & trades' })
   if (r === 'dev') groups.push({ id: 'settings-templates', label: 'Templates & testing' })
   if (!isSubcontractorLikeRole(r)) groups.push({ id: 'settings-advanced-tools', label: 'Advanced' })
+  groups.push({ id: 'settings-how-it-works', label: 'How it works' })
   return groups
 }
 
@@ -408,6 +426,7 @@ export default function Settings() {
   const { reload: reloadLedgerPrefixMap } = useLedgerDisplayPrefixes()
   const allSalariedDevNarrowViewport = useNarrowViewport640()
   const [myRole, setMyRole] = useState<UserRole | null>(null)
+  const [activeSettingsTab, setActiveSettingsTab] = useState<string>('')
   const [myEstimatorProspectsAccess, setMyEstimatorProspectsAccess] = useState(false)
   const [estimatorServiceTypeIds, setEstimatorServiceTypeIds] = useState<string[] | null>(null)
   const [users, setUsers] = useState<UserRow[]>([])
@@ -5384,6 +5403,13 @@ export default function Settings() {
       : 'Select user…'
 
   const settingsJumpGroups = useMemo(() => getSettingsJumpGroups(myRole), [myRole])
+  useEffect(() => {
+    const first = settingsJumpGroups[0]
+    if (!first) return
+    if (!settingsJumpGroups.some((g) => g.id === activeSettingsTab)) {
+      setActiveSettingsTab(first.id)
+    }
+  }, [settingsJumpGroups, activeSettingsTab])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -5472,12 +5498,15 @@ export default function Settings() {
         </div>
       </div>
 
-      <SettingsJumpNav groups={settingsJumpGroups} />
+      <SettingsTabBar groups={settingsJumpGroups} activeId={activeSettingsTab} onSelect={setActiveSettingsTab} />
 
-      <SettingsRecentPushNotifications userId={authUser?.id} />
+      <div style={{ display: activeSettingsTab === 'settings-recent-push' ? undefined : 'none' }}>
+        <SettingsRecentPushNotifications userId={authUser?.id} />
+      </div>
 
       <SettingsGroup
         id="settings-account"
+        hidden={activeSettingsTab !== 'settings-account'}
         title="Your account"
         titleTrailing={
           myRole === 'dev' ? (
@@ -5752,7 +5781,8 @@ export default function Settings() {
 
       </SettingsGroup>
 
-      {authUser?.id &&
+      {activeSettingsTab === 'settings-account' &&
+        authUser?.id &&
         (myRole === 'dev' || (selfPaySalaryLoaded && selfIsSalariedInPayConfig)) && (
         <section
           id="settings-salary-workday"
@@ -5979,7 +6009,7 @@ export default function Settings() {
         </section>
       )}
 
-      {authUser?.id && (
+      {activeSettingsTab === 'settings-account' && authUser?.id && (
         <section
           id="settings-time-off"
           aria-labelledby="settings-time-off-heading"
@@ -6022,7 +6052,7 @@ export default function Settings() {
         </section>
       )}
 
-      <SettingsGroup id="settings-dashboard" title="Dashboard & alerts">
+      <SettingsGroup id="settings-dashboard" hidden={activeSettingsTab !== 'settings-dashboard'} title="Dashboard & alerts">
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
         <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
@@ -7642,7 +7672,7 @@ export default function Settings() {
 
       </SettingsGroup>
 
-      <SettingsGroup id="settings-people" title="People & accounts">
+      <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title="People & accounts">
       {myRole === 'dev' && (
         <>
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
@@ -9007,7 +9037,7 @@ export default function Settings() {
 
       </SettingsGroup>
 
-      <SettingsGroup id="settings-data" title="Data & migration">
+      <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title="Data & migration">
       {myRole === 'dev' && (
         <>
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
@@ -9128,7 +9158,7 @@ export default function Settings() {
       )}
       </SettingsGroup>
 
-      <SettingsGroup id="settings-jobs" title="Jobs & dispatch">
+      <SettingsGroup id="settings-jobs" hidden={activeSettingsTab !== 'settings-jobs'} title="Jobs & dispatch">
       {myRole === 'dev' && (
         <>
           {/* Job creation overrides */}
@@ -9347,7 +9377,7 @@ export default function Settings() {
       )}
       </SettingsGroup>
 
-      {myRole === 'dev' && (
+      {activeSettingsTab === 'settings-catalogs' && myRole === 'dev' && (
         <>
           <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button
@@ -10222,7 +10252,7 @@ export default function Settings() {
         </div>
       )}
 
-      <SettingsGroup id="settings-catalogs" title="Catalogs & trades">
+      <SettingsGroup id="settings-catalogs" hidden={activeSettingsTab !== 'settings-catalogs'} title="Catalogs & trades">
       {(myRole === 'dev' || myRole === 'estimator') && (
         <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
           <button
@@ -11196,7 +11226,7 @@ export default function Settings() {
       )}
       </SettingsGroup>
 
-      <SettingsGroup id="settings-templates" title="Templates & testing">
+      <SettingsGroup id="settings-templates" hidden={activeSettingsTab !== 'settings-templates'} title="Templates & testing">
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />
@@ -12195,7 +12225,7 @@ export default function Settings() {
       </SettingsGroup>
 
       {!isSubcontractorLikeRole(myRole) && (
-      <div id="settings-advanced-tools" style={{ marginTop: '2rem', marginBottom: '1.5rem' }}>
+      <div id="settings-advanced-tools" style={{ marginTop: '2rem', marginBottom: '1.5rem', display: activeSettingsTab === 'settings-advanced-tools' ? undefined : 'none' }}>
         <button
           type="button"
           onClick={() => setAdvancedSectionOpen((prev) => !prev)}
@@ -12298,7 +12328,7 @@ export default function Settings() {
         onSaved={() => loadMutedTasks()}
       />
 
-      {(myRole === 'master_technician' || myRole === 'dev') && (
+      <div id="settings-how-it-works" style={{ display: activeSettingsTab === 'settings-how-it-works' ? undefined : 'none' }}>
         <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
           <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
             PipeTooling helps Masters better manage Projects with Subs.
@@ -12342,7 +12372,6 @@ export default function Settings() {
             </div>
           </div>
         </div>
-      )}
       <div
         style={{
           marginTop: '2.5rem',
@@ -12358,6 +12387,7 @@ export default function Settings() {
           work with Assistance, Teammates, Subs, and Customers. Our mission is to reduce uncertainty so better and
           faster decisions can be made.
         </p>
+      </div>
       </div>
     </div>
   )
