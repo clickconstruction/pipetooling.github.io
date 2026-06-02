@@ -7894,6 +7894,98 @@ export type Database = {
           },
         ]
       }
+      schedule_share_recurring: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          days_of_week: number[]
+          enabled: boolean
+          id: string
+          include_current_day: boolean
+          recipient_user_id: string
+          scope: string
+          time_local: string
+          timezone: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          days_of_week: number[]
+          enabled?: boolean
+          id?: string
+          include_current_day?: boolean
+          recipient_user_id: string
+          scope?: string
+          time_local: string
+          timezone?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          days_of_week?: number[]
+          enabled?: boolean
+          id?: string
+          include_current_day?: boolean
+          recipient_user_id?: string
+          scope?: string
+          time_local?: string
+          timezone?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_share_recurring_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_share_recurring_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_share_recurring_log: {
+        Row: {
+          error: string | null
+          id: string
+          run_date: string
+          sent_at: string
+          status: string
+          subscription_id: string
+        }
+        Insert: {
+          error?: string | null
+          id?: string
+          run_date: string
+          sent_at?: string
+          status?: string
+          subscription_id: string
+        }
+        Update: {
+          error?: string | null
+          id?: string
+          run_date?: string
+          sent_at?: string
+          status?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_share_recurring_log_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_share_recurring"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_types: {
         Row: {
           color: string | null

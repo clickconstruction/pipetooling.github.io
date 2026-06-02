@@ -1,4 +1,4 @@
-import type { CSSProperties, KeyboardEvent, MouseEvent } from 'react'
+import type { CSSProperties, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -2092,6 +2092,8 @@ type Props = {
   userTimeOffByCell?: ReadonlyMap<string, UserTimeOffCellInfo>
   /** Optional click handler for the "Not coming in" chip — opens the undo confirm modal. */
   onRequestUndoNotComingIn?: (personUserId: string, workDate: string) => void
+  /** Right-aligned content for the week-nav row (e.g. the Share button). */
+  weekNavRightSlot?: ReactNode
 }
 
 const HUB_PEOPLE_TOOLBAR_BTN_H = 32
@@ -2179,6 +2181,7 @@ export function ScheduleDispatchHub({
   showHideWeekendToggle = true,
   userTimeOffByCell,
   onRequestUndoNotComingIn,
+  weekNavRightSlot,
 }: Props) {
   const tabForKey = showHubViewTabs ? hubTab : 'people'
   const hubJobsColumnScrollKey = `${weekStart}-${columnFocusDayYmd}-jobs-${tabForKey}`
@@ -2198,6 +2201,7 @@ export function ScheduleDispatchHub({
           onWeekShift={onWeekShift}
           onThisWeek={onThisWeek}
           dateRangeOverride={weekNavDateRangeOverride}
+          rightSlot={weekNavRightSlot}
         />
       ) : null}
 
