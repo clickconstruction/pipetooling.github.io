@@ -115,7 +115,7 @@ export function buildShareEmail(params: {
   const { dates, blocks } = params
   const multiDay = dates.length > 1
   const rangeLabel = dateRangeLabel(dates)
-  const subject = `Dispatch schedule — ${rangeLabel} (${APP_CALENDAR_TZ})`
+  const subject = `Dispatch schedule — ${rangeLabel}`
 
   if (blocks.length === 0) {
     const text = `No scheduled dispatch blocks for ${rangeLabel}.\n`
