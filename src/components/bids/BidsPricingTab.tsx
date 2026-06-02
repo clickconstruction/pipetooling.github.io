@@ -733,20 +733,21 @@ export function BidsPricingTab({
                     title={
                       !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate
                         ? 'Select a price book and ensure Counts and Labor exist'
-                        : 'Package and send pricing (Job Plans + 4-column table) to a teammate'
+                        : 'Share pricing (Job Plans + 4-column table) with a teammate'
                     }
                     style={{
                       padding: '0.5rem 1rem',
                       background:
-                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#f3f4f6',
-                      color: '#111827',
-                      border: '1px solid #d1d5db',
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#e5e7eb' : '#16a34a',
+                      color:
+                        !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? '#9ca3af' : 'white',
+                      border: 'none',
                       borderRadius: 4,
                       cursor:
                         !selectedPricingVersionId || pricingCountRows.length === 0 || !pricingCostEstimate ? 'not-allowed' : 'pointer',
                     }}
                   >
-                    Package and send
+                    Share
                   </button>
                 ) : null}
                 <button
