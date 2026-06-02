@@ -942,7 +942,7 @@ export type Database = {
           count_row_id: string
           created_at: string | null
           id: string
-          part_id: string
+          part_id: string | null
           quantity: number
           sequence_order: number
           source_material_part_price_id: string | null
@@ -955,7 +955,7 @@ export type Database = {
           count_row_id: string
           created_at?: string | null
           id?: string
-          part_id: string
+          part_id?: string | null
           quantity?: number
           sequence_order?: number
           source_material_part_price_id?: string | null
@@ -968,7 +968,7 @@ export type Database = {
           count_row_id?: string
           created_at?: string | null
           id?: string
-          part_id?: string
+          part_id?: string | null
           quantity?: number
           sequence_order?: number
           source_material_part_price_id?: string | null
@@ -4527,6 +4527,51 @@ export type Database = {
           },
           {
             foreignKeyName: "material_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "material_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_template_prices: {
+        Row: {
+          created_at: string | null
+          effective_date: string | null
+          id: string
+          price: number
+          supply_house_id: string
+          template_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string
+          price: number
+          supply_house_id: string
+          template_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          effective_date?: string | null
+          id?: string
+          price?: number
+          supply_house_id?: string
+          template_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_template_prices_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_template_prices_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "material_templates"

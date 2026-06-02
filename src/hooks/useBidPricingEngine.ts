@@ -192,7 +192,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       const savedRough = (roughData ?? []) as Array<{
         id: string
         count_row_id: string
-        part_id: string
+        part_id: string | null
         quantity: number
         unit_price: number
         sequence_order: number
@@ -203,7 +203,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         savedRough.map((r) => ({
           id: r.id,
           countRowId: r.count_row_id,
-          partId: r.part_id,
+          partId: r.part_id ?? null,
           quantity: Number(r.quantity),
           unitPrice: Number(r.unit_price),
           sourceMaterialPartPriceId: r.source_material_part_price_id ?? null,

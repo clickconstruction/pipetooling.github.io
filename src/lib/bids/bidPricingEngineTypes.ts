@@ -23,12 +23,17 @@ export type TakeoffMapping = { id: string; countRowId: string; templateId: strin
 export type TakeoffRoughPartLineRow = {
   id: string
   countRowId: string
-  partId: string
+  /** The material part for this line, or null for an assembly BUNDLE line (sourceTemplateId set). */
+  partId: string | null
   quantity: number
   unitPrice: number
   /** When set, unit_price came from this catalog row; null after manual price edit. */
   sourceMaterialPartPriceId: string | null
-  /** When set, line was created from expanding this assembly (Add assembly). Cleared when user picks another part. */
+  /**
+   * When set without a partId, this line is an assembly bought as a supply-house bundle —
+   * one opaque line priced from material_template_prices. When set WITH a partId, the line
+   * was created by expanding this assembly (Add assembly → expand to parts).
+   */
   sourceTemplateId: string | null
   sequenceOrder: number
   isSaved: boolean

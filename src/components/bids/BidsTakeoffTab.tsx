@@ -33,9 +33,9 @@ import {
 } from '../../lib/bids/bidTakeoffHelpers'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { ModalShell } from './ModalShell'
-import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
+import { BidProjectCell } from './BidProjectCell'
 import { MyBidsToggle } from './MyBidsToggle'
-import { resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { PartFormModal } from '../PartFormModal'
 import { NumericEntryPad } from '../NumericEntryPad'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
@@ -441,7 +441,10 @@ export function BidsTakeoffTab({
 
   function openSaveAsAssemblyFromRough(countRowId: string, row: BidCountRow) {
     const lines = takeoffRoughPartLines
-      .filter((l) => l.countRowId === countRowId && l.partId.trim())
+      .filter(
+        (l): l is TakeoffRoughPartLineRow & { partId: string } =>
+          l.countRowId === countRowId && typeof l.partId === 'string' && l.partId.trim() !== '',
+      )
       .sort((a, b) => a.sequenceOrder - b.sequenceOrder)
     if (lines.length === 0) return
     const merged = mergePartLinesToTakeoffTemplateItems(lines)
@@ -1231,7 +1234,9 @@ export function BidsTakeoffTab({
   }
 
   async function persistTakeoffRoughPartLine(line: TakeoffRoughPartLineRow) {
-    if (!selectedBidForTakeoff?.id || !line.partId.trim()) return
+    if (!selectedBidForTakeoff?.id) return
+    const isBundle = line.partId == null && line.sourceTemplateId != null
+    if (!isBundle && !line.partId?.trim()) return
     const q = Math.max(0.0001, Number(line.quantity) || 0.0001)
     const up = Math.max(0, Number(line.unitPrice) || 0)
     const src = line.sourceMaterialPartPriceId
@@ -1295,7 +1300,7 @@ export function BidsTakeoffTab({
         l.id === lineId ? { ...l, partId, unitPrice, sourceMaterialPartPriceId, sourceTemplateId: null } : l
       )
       const line = mapped.find((l) => l.id === lineId)
-      if (line?.partId.trim()) {
+      if (line?.partId?.trim()) {
         queueMicrotask(() => {
           void persistTakeoffRoughPartLine(line)
         })
@@ -1306,10 +1311,11 @@ export function BidsTakeoffTab({
 
   async function resetRoughLineToCatalogPrice(lineId: string) {
     const line = takeoffRoughPartLines.find((l) => l.id === lineId)
-    if (!line?.partId.trim()) return
+    const partId = line?.partId
+    if (!partId?.trim()) return
     let low: Awaited<ReturnType<typeof fetchLowestPartPrice>> = null
     try {
-      low = await fetchLowestPartPrice(supabase, line.partId)
+      low = await fetchLowestPartPrice(supabase, partId)
     } catch (e) {
       showToast(formatErrorMessage(e, 'Failed to load catalog price'), 'error')
       return
@@ -1326,12 +1332,13 @@ export function BidsTakeoffTab({
 
   async function openRoughLineCatalogApplyPicker(lineId: string) {
     const line = takeoffRoughPartLines.find((l) => l.id === lineId)
-    if (!line?.partId.trim()) return
-    const partName = takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part'
+    if (!line?.partId?.trim()) return
+    const partId = line.partId
+    const partName = takeoffAddTemplateParts.find((p) => p.id === partId)?.name ?? 'Part'
     const { data, error } = await supabase
       .from('material_part_prices')
       .select('id, price, supply_house_id, supply_houses(name)')
-      .eq('part_id', line.partId)
+      .eq('part_id', partId)
       .order('price', { ascending: true })
     if (error) {
       showToast(formatErrorMessage(error, 'Failed to load catalog prices'), 'error')
@@ -1345,7 +1352,7 @@ export function BidsTakeoffTab({
     )
     if (rows.length === 0) {
       showToast('No catalog prices for this part. Opening catalog prices.', 'info')
-      setPartPricesModal({ partId: line.partId, partName })
+      setPartPricesModal({ partId, partName })
       return
     }
     setRoughLineCatalogApplyPriceId(rows[0]!.id)
@@ -1382,7 +1389,7 @@ export function BidsTakeoffTab({
         selectedBidForTakeoff?.id &&
         normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
       ) {
-        const ids = Array.from(new Set(takeoffRoughPartLines.map((l) => l.partId.trim()).filter(Boolean)))
+        const ids = Array.from(new Set(takeoffRoughPartLines.map((l) => (l.partId ?? '').trim()).filter(Boolean)))
         void refreshTakeoffRoughCatalogLowest(ids)
       }
     } catch (e) {
@@ -1404,7 +1411,7 @@ export function BidsTakeoffTab({
     setTakeoffRoughPartLines((prev) => {
       const mapped = prev.map((l) => (l.id === lineId ? { ...l, ...updates } : l))
       const line = mapped.find((l) => l.id === lineId)
-      if (line?.partId.trim()) {
+      if (line?.partId?.trim()) {
         queueMicrotask(() => {
           void persistTakeoffRoughPartLine(line)
         })
@@ -1555,7 +1562,7 @@ export function BidsTakeoffTab({
     })
     try {
       const saved = withSeq.filter((l) => l.isSaved)
-      const unsavedWithPart = withSeq.filter((l) => !l.isSaved && l.partId.trim())
+      const unsavedWithPart = withSeq.filter((l) => !l.isSaved && (l.partId?.trim() || l.sourceTemplateId))
       await Promise.all(
         saved.map((l) =>
           withSupabaseRetry(
@@ -1706,7 +1713,7 @@ export function BidsTakeoffTab({
   async function printTakeoffBreakdown() {
     if (!selectedBidForTakeoff) return
     if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough') {
-      const filled = takeoffRoughPartLines.filter((l) => l.partId.trim())
+      const filled = takeoffRoughPartLines.filter((l) => (l.partId ?? '').trim() || l.sourceTemplateId)
       if (filled.length === 0) {
         setError('Add at least one part line with a selected part to print.')
         return
@@ -1714,11 +1721,18 @@ export function BidsTakeoffTab({
       setTakeoffPrinting(true)
       setError(null)
       try {
-        const partIds = Array.from(new Set(filled.map((l) => l.partId)))
+        const partIds = Array.from(new Set(filled.map((l) => l.partId).filter((x): x is string => !!x)))
         const { data: partsData } = await supabase.from('material_parts').select('id, name').in('id', partIds)
         const partNameById: Record<string, string> = {}
         for (const p of partsData ?? []) {
           if (p?.id) partNameById[p.id] = p.name ?? ''
+        }
+        // Bundle lines (no part) display the assembly name.
+        for (const l of filled) {
+          if (!l.partId && l.sourceTemplateId) {
+            const tn = materialTemplates.find((t) => t.id === l.sourceTemplateId)?.name ?? 'Assembly'
+            partNameById[l.sourceTemplateId] = `${tn} (bundle)`
+          }
         }
         printHtmlInNewWindow(
           buildRoughTakeoffBreakdownHtml({
@@ -1726,7 +1740,7 @@ export function BidsTakeoffTab({
             rows: takeoffCountRows.map((row) => ({ id: row.id, fixture: row.fixture ?? null, count: Number(row.count) })),
             lines: filled.map((l) => ({
               countRowId: l.countRowId,
-              partId: l.partId,
+              partId: l.partId ?? l.sourceTemplateId ?? '',
               quantity: l.quantity,
               unitPrice: l.unitPrice,
               sequenceOrder: l.sequenceOrder,
@@ -1821,7 +1835,7 @@ export function BidsTakeoffTab({
   const takeoffRoughCatalogLowestPartIdsKey = useMemo(() => {
     if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return ''
     if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return ''
-    const ids = takeoffRoughPartLines.map((l) => l.partId.trim()).filter(Boolean)
+    const ids = takeoffRoughPartLines.map((l) => (l.partId ?? '').trim()).filter(Boolean)
     return Array.from(new Set(ids)).sort().join(',')
   }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, takeoffRoughPartLines])
 
@@ -1879,7 +1893,7 @@ export function BidsTakeoffTab({
         })
       }
 
-      const missingPrice = newLines.filter((l) => !priceMap.has(l.partId))
+      const missingPrice = newLines.filter((l) => !priceMap.has(l.partId ?? ''))
       if (missingPrice.length > 0) {
         showToast(
           `${missingPrice.length} part(s) have no catalog price; set prices in Materials or edit lines.`,
@@ -1905,6 +1919,51 @@ export function BidsTakeoffTab({
       closeRoughAddAssemblyModal()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Failed to add assembly'), 'error')
+    } finally {
+      setRoughAddAssemblyExpanding(false)
+    }
+  }
+
+  /** Add an assembly as a single opaque BUNDLE line, priced at its lowest supply-house price. */
+  async function applyRoughAddAssemblyBundle(countRowId: string | null, templateId: string) {
+    if (!countRowId || !selectedBidForTakeoff?.id) return
+    setRoughAddAssemblyExpanding(true)
+    setError(null)
+    try {
+      const { data: priceRows } = await supabase
+        .from('material_template_prices')
+        .select('id, price')
+        .eq('template_id', templateId)
+        .order('price', { ascending: true })
+        .limit(1)
+      const lowest = (priceRows ?? [])[0]
+      const unitPrice = lowest ? Math.max(0, Number(lowest.price) || 0) : 0
+
+      const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
+      const maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
+      const newLine: TakeoffRoughPartLineRow = {
+        id: crypto.randomUUID(),
+        countRowId,
+        partId: null,
+        quantity: 1,
+        unitPrice,
+        sourceMaterialPartPriceId: null,
+        sourceTemplateId: templateId,
+        sequenceOrder: maxSeq + 1,
+        isSaved: false,
+      }
+      setTakeoffRoughPartLines((prev) => [...prev, newLine])
+      await persistTakeoffRoughPartLine(newLine)
+
+      const asmName = materialTemplates.find((t) => t.id === templateId)?.name ?? 'Assembly'
+      if (lowest) {
+        showToast(`Added "${asmName}" as a bundle ($${unitPrice.toFixed(2)}).`, 'success')
+      } else {
+        showToast(`Added "${asmName}" as a bundle at $0 — set a supply-house price in Materials → Assembly Book.`, 'info')
+      }
+      closeRoughAddAssemblyModal()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to add assembly bundle'), 'error')
     } finally {
       setRoughAddAssemblyExpanding(false)
     }
@@ -2151,12 +2210,13 @@ export function BidsTakeoffTab({
           (b.project_name?.toLowerCase().includes(takeoffSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(takeoffSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(takeoffSearchQuery.toLowerCase()) ?? false) ||
-          (b.bids_gc_builders?.name?.toLowerCase().includes(takeoffSearchQuery.toLowerCase()) ?? false)
+          (b.bids_gc_builders?.name?.toLowerCase().includes(takeoffSearchQuery.toLowerCase()) ?? false) ||
+          bidNumberMatchesQuery(b, takeoffSearchQuery, ledgerPrefixMap)
       )
     : bidsScopedForTakeoff
 
   const takeoffMappedCount = takeoffMappings.filter((m) => m.templateId.trim()).length
-  const takeoffRoughFilledLineCount = takeoffRoughPartLines.filter((l) => l.partId.trim()).length
+  const takeoffRoughFilledLineCount = takeoffRoughPartLines.filter((l) => (l.partId?.trim() || l.sourceTemplateId)).length
 
   function filterTemplatesByQuery(
     templates: MaterialTemplateWithAssemblyType[],
@@ -2270,7 +2330,7 @@ export function BidsTakeoffTab({
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
               <input
                 type="text"
-                placeholder="Search bids (project name or GC/Builder)..."
+                placeholder="Search bids (bid #, project name, or GC/Builder)..."
                 value={takeoffSearchQuery}
                 onChange={(e) => setTakeoffSearchQuery(e.target.value)}
                 style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
@@ -2307,61 +2367,9 @@ export function BidsTakeoffTab({
                     previewEnabled={bidPreview != null}
                     onOpenPreview={() => bidPreview?.openBidPreviewFromBid(selectedBidForTakeoff)}
                   />
-                  {(() => {
-                    const takeoffMaterialsModel = normalizeMaterialsModel(selectedBidForTakeoff.materials_model)
-                    return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexWrap: 'wrap' }}>
-                        <span
-                          style={{
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            marginRight: '0.25rem',
-                            color: '#4b5563',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          Materials
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => openMaterialsModelSwitch('exact', 'takeoffs')}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            fontSize: '0.8125rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: takeoffMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontWeight: takeoffMaterialsModel === 'exact' ? 600 : 400,
-                            color: takeoffMaterialsModel === 'exact' ? '#111827' : '#6b7280',
-                            boxShadow: takeoffMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
-                          }}
-                        >
-                          By Stage
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => openMaterialsModelSwitch('rough', 'takeoffs')}
-                          style={{
-                            padding: '0.35rem 0.75rem',
-                            fontSize: '0.8125rem',
-                            border: '1px solid #d1d5db',
-                            borderRadius: 4,
-                            background: takeoffMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
-                            cursor: 'pointer',
-                            fontWeight: takeoffMaterialsModel === 'rough' ? 600 : 400,
-                            color: takeoffMaterialsModel === 'rough' ? '#111827' : '#6b7280',
-                            boxShadow: takeoffMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
-                          }}
-                        >
-                          Combined
-                        </button>
-                      </div>
-                    )
-                  })()}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Takeoff book version</label>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Takeoff book</label>
                   <select
                     value={selectedTakeoffBookVersionId ?? ''}
                     onChange={(e) => {
@@ -2374,7 +2382,18 @@ export function BidsTakeoffTab({
                         saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
                       }
                     }}
-                    style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '10rem', fontSize: '0.875rem' }}
+                    title={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? undefined}
+                    style={{
+                      padding: '0.35rem 0.5rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: '0.875rem',
+                      boxSizing: 'border-box',
+                      width: 'calc(10ch + 2.25rem)',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
                     <option value="">— Select version —</option>
                     {takeoffBookVersions.map((v) => (
@@ -2395,9 +2414,19 @@ export function BidsTakeoffTab({
                           borderRadius: 4,
                           cursor: applyingTakeoffBookTemplates ? 'wait' : 'pointer',
                           fontSize: '0.875rem',
+                          textAlign: 'center',
+                          lineHeight: 1.2,
                         }}
                       >
-                        {applyingTakeoffBookTemplates ? 'Applying…' : 'Apply matching Fixture Assemblies'}
+                        {applyingTakeoffBookTemplates ? (
+                          'Applying…'
+                        ) : (
+                          <>
+                            Apply Matching
+                            <br />
+                            Fixture Assemblies
+                          </>
+                        )}
                       </button>
                       {takeoffBookApplyMessage && (
                         <span style={{ color: '#059669', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
@@ -2417,6 +2446,58 @@ export function BidsTakeoffTab({
                   ) : null}
                 </div>
               </div>
+              {(() => {
+                const takeoffMaterialsModel = normalizeMaterialsModel(selectedBidForTakeoff.materials_model)
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
+                    <span
+                      style={{
+                        fontSize: '0.875rem',
+                        fontWeight: 500,
+                        marginRight: '0.25rem',
+                        color: '#4b5563',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Materials
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openMaterialsModelSwitch('exact', 'takeoffs')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: takeoffMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: takeoffMaterialsModel === 'exact' ? 600 : 400,
+                        color: takeoffMaterialsModel === 'exact' ? '#111827' : '#6b7280',
+                        boxShadow: takeoffMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      By Stage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openMaterialsModelSwitch('rough', 'takeoffs')}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        fontSize: '0.8125rem',
+                        border: '1px solid #d1d5db',
+                        borderRadius: 4,
+                        background: takeoffMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
+                        cursor: 'pointer',
+                        fontWeight: takeoffMaterialsModel === 'rough' ? 600 : 400,
+                        color: takeoffMaterialsModel === 'rough' ? '#111827' : '#6b7280',
+                        boxShadow: takeoffMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
+                      }}
+                    >
+                      Combined
+                    </button>
+                  </div>
+                )
+              })()}
               {takeoffCountRows.length === 0 ? (
                 <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
               ) : (
@@ -2877,7 +2958,7 @@ export function BidsTakeoffTab({
                                       line={line}
                                       lineIdx={lineIdx}
                                       row={row}
-                                      showSaveAsAssembly={linesForRow.some((l) => l.partId.trim())}
+                                      showSaveAsAssembly={linesForRow.some((l) => l.partId?.trim())}
                                       onSaveAsAssembly={() => openSaveAsAssemblyFromRough(row.id, row)}
                                       takeoffAddTemplateParts={takeoffAddTemplateParts}
                                       takeoffRoughPartPickerLineId={takeoffRoughPartPickerLineId}
@@ -3143,9 +3224,6 @@ export function BidsTakeoffTab({
                     ×
                   </button>
                 </div>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
-                  Expand an assembly and add its parts as new lines (quantities merged by part).
-                </p>
                 <input
                   type="text"
                   value={roughAddAssemblySearchQuery}
@@ -3159,7 +3237,7 @@ export function BidsTakeoffTab({
                     margin: 0,
                     padding: 0,
                     listStyle: 'none',
-                    maxHeight: 280,
+                    maxHeight: '70vh',
                     overflowY: 'auto',
                     border: '1px solid #e5e7eb',
                     borderRadius: 4,
@@ -3169,19 +3247,20 @@ export function BidsTakeoffTab({
                     <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li>
                   ) : (
                     filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).map((t) => (
-                      <li key={t.id}>
+                      <li key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #f3f4f6' }}>
                         <button
                           type="button"
                           disabled={roughAddAssemblyExpanding}
+                          title="Expand this assembly into individual part lines"
                           onClick={() => {
                             void applyRoughAddAssemblyTemplate(roughAddAssemblyModalCountRowId, t.id)
                           }}
                           style={{
-                            width: '100%',
+                            flex: 1,
+                            minWidth: 0,
                             textAlign: 'left',
                             padding: '0.5rem 0.75rem',
                             border: 'none',
-                            borderBottom: '1px solid #f3f4f6',
                             background: roughAddAssemblyExpanding ? '#f9fafb' : '#fff',
                             cursor: roughAddAssemblyExpanding ? 'not-allowed' : 'pointer',
                           }}
@@ -3190,6 +3269,28 @@ export function BidsTakeoffTab({
                           {t.description ? (
                             <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>
                           ) : null}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={roughAddAssemblyExpanding}
+                          title="Add as one bundle line, priced at this assembly's supply-house price"
+                          onClick={() => {
+                            void applyRoughAddAssemblyBundle(roughAddAssemblyModalCountRowId, t.id)
+                          }}
+                          style={{
+                            flexShrink: 0,
+                            padding: '0.5rem 0.75rem',
+                            border: 'none',
+                            borderLeft: '1px solid #f3f4f6',
+                            background: roughAddAssemblyExpanding ? '#f9fafb' : '#eff6ff',
+                            color: '#1d4ed8',
+                            fontWeight: 600,
+                            fontSize: '0.8125rem',
+                            whiteSpace: 'nowrap',
+                            cursor: roughAddAssemblyExpanding ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          Add as bundle
                         </button>
                       </li>
                     ))
@@ -3281,8 +3382,7 @@ export function BidsTakeoffTab({
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead style={{ background: '#f9fafb' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
                     <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                   </tr>
                 </thead>
@@ -3296,12 +3396,7 @@ export function BidsTakeoffTab({
                         cursor: 'pointer',
                       }}
                     >
-                      <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
-                        {bid.bid_number?.trim() ? (
-                          <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={bid.bid_number.trim()} />
-                        ) : '—'}
-                      </td>
-                      <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
+                      <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
                       <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                     </tr>
                   ))}
@@ -4561,6 +4656,11 @@ function SortableRoughPartLineRow({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: line.id })
   const roughQtyPadActive = roughQtyNumpadLineId === line.id
   const lineTotal = Number(line.quantity) * Number(line.unitPrice) * roughCountMultiplier(row.count)
+  // Assembly bundle line: one opaque line priced from material_template_prices (no individual part).
+  const isBundle = line.partId == null && line.sourceTemplateId != null
+  const bundleName = isBundle
+    ? (materialTemplates.find((t) => t.id === line.sourceTemplateId)?.name ?? 'Assembly')
+    : ''
   const partName = line.partId ? (takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? '') : ''
   const roughCatalogLow = line.partId ? takeoffRoughCatalogLowestByPartId[line.partId] : undefined
   const roughMatchesLowest =
@@ -4629,6 +4729,27 @@ function SortableRoughPartLineRow({
         ) : null}
       </td>
       <td style={{ padding: '0.75rem', minWidth: 200 }}>
+        {isBundle ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+            <span style={{ fontWeight: 500 }}>{bundleName}</span>
+            <span
+              style={{
+                alignSelf: 'flex-start',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                textTransform: 'uppercase',
+                letterSpacing: '0.03em',
+                color: '#1d4ed8',
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: 4,
+                padding: '0.05rem 0.35rem',
+              }}
+            >
+              Assembly bundle
+            </span>
+          </div>
+        ) : (
         <div style={{ position: 'relative' }}>
           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
             <input
@@ -4762,7 +4883,7 @@ function SortableRoughPartLineRow({
                 title="Edit part"
                 onClick={(e) => {
                   e.stopPropagation()
-                  onOpenEditTakeoffPart(line.partId)
+                  onOpenEditTakeoffPart(line.partId ?? '')
                 }}
                 style={{
                   flexShrink: 0,
@@ -4784,6 +4905,7 @@ function SortableRoughPartLineRow({
             </div>
           ) : null}
         </div>
+        )}
       </td>
       <td style={{ padding: '0.75rem 0.25rem 0.75rem 0.75rem', textAlign: 'left', verticalAlign: 'top' }}>
         {!line.partId ? (
@@ -4874,7 +4996,7 @@ function SortableRoughPartLineRow({
                   tabIndex={0}
                   onClick={() =>
                     setPartPricesModal({
-                      partId: line.partId,
+                      partId: line.partId ?? '',
                       partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
                     })
                   }
@@ -4882,7 +5004,7 @@ function SortableRoughPartLineRow({
                     if (e.key === 'Enter' || e.key === ' ') {
                       e.preventDefault()
                       setPartPricesModal({
-                        partId: line.partId,
+                        partId: line.partId ?? '',
                         partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
                       })
                     }

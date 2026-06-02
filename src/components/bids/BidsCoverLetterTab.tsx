@@ -3,9 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import { bidDisplayName, formatDateYYMMDD, formatDesignDrawingPlanDate, formatDesignDrawingPlanDateLabel } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
-import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
+import { BidProjectCell } from './BidProjectCell'
 import { MyBidsToggle } from './MyBidsToggle'
-import { resolveBidLedgerPrefix, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { addressLines, printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import {
   buildCoverLetterHtml,
@@ -150,7 +150,7 @@ export function BidsCoverLetterTab({
     const name = bidDisplayName(b).toLowerCase()
     const cust = (b.customers?.name ?? '').toLowerCase()
     const gc = (b.bids_gc_builders?.name ?? '').toLowerCase()
-    return name.includes(q) || cust.includes(q) || gc.includes(q)
+    return name.includes(q) || cust.includes(q) || gc.includes(q) || bidNumberMatchesQuery(b, coverLetterSearchQuery, ledgerPrefixMap)
   })
 
   return (
@@ -159,7 +159,7 @@ export function BidsCoverLetterTab({
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
           <input
             type="text"
-            placeholder="Search bids (project name or GC/Builder)..."
+            placeholder="Search bids (bid #, project name, or GC/Builder)..."
             value={coverLetterSearchQuery}
             onChange={(e) => setCoverLetterSearchQuery(e.target.value)}
             style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
@@ -172,8 +172,7 @@ export function BidsCoverLetterTab({
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead style={{ background: '#f9fafb' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
                 <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
               </tr>
             </thead>
@@ -190,18 +189,13 @@ export function BidsCoverLetterTab({
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                   >
-                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
-                      {bid.bid_number?.trim() ? (
-                        <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={bid.bid_number.trim()} />
-                      ) : '—'}
-                    </td>
-                    <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                    <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                   </tr>
                 ))}
               {coverLetterVisibleBids.length === 0 && (
                 <tr>
-                  <td colSpan={3} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
                     {bids.length === 0
                       ? 'No bids yet.'
                       : onlyMyBids
