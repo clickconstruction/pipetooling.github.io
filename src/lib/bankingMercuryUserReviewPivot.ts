@@ -141,9 +141,9 @@ function compareColumns(a: UserReviewColumn, b: UserReviewColumn): number {
 }
 
 function compareRows(a: UserReviewRow, b: UserReviewRow): number {
-  // Unassigned always last
-  if (a.rowKey === USER_REVIEW_UNASSIGNED_USER_KEY && b.rowKey !== USER_REVIEW_UNASSIGNED_USER_KEY) return 1
-  if (b.rowKey === USER_REVIEW_UNASSIGNED_USER_KEY && a.rowKey !== USER_REVIEW_UNASSIGNED_USER_KEY) return -1
+  // Unassigned always first
+  if (a.rowKey === USER_REVIEW_UNASSIGNED_USER_KEY && b.rowKey !== USER_REVIEW_UNASSIGNED_USER_KEY) return -1
+  if (b.rowKey === USER_REVIEW_UNASSIGNED_USER_KEY && a.rowKey !== USER_REVIEW_UNASSIGNED_USER_KEY) return 1
   return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })
 }
 

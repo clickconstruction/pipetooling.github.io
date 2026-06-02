@@ -145,8 +145,8 @@ describe('buildUserReviewPivot', () => {
       allLabels,
     })
 
-    // t1+t2 → Alice; t3 → Bob; t4 → unassigned
-    expect(pivot.rows.map((r) => r.displayName)).toEqual(['Alice', 'Bob', 'Unassigned'])
+    // t1+t2 → Alice; t3 → Bob; t4 → unassigned (Unassigned sorts first)
+    expect(pivot.rows.map((r) => r.displayName)).toEqual(['Unassigned', 'Alice', 'Bob'])
 
     // COGS (10) → Office (20) → Fuel (30) → Unlabeled
     expect(pivot.columns.map((c) => c.displayName)).toEqual(['COGS', 'Office', 'Fuel / Gas', 'Unlabeled'])
@@ -218,7 +218,7 @@ describe('buildUserReviewPivot', () => {
     expect(pivotAllLabeled.columns.some((c) => c.colKey === USER_REVIEW_UNLABELED_COL_KEY)).toBe(false)
   })
 
-  it('keeps Unassigned last in row ordering and Unlabeled last in column ordering', () => {
+  it('keeps Unassigned first in row ordering and Unlabeled last in column ordering', () => {
     const pivot = buildUserReviewPivot({
       transactions: [
         tx('t1', -100),
@@ -240,7 +240,7 @@ describe('buildUserReviewPivot', () => {
       ]),
       allLabels,
     })
-    expect(pivot.rows[pivot.rows.length - 1]?.rowKey).toBe(USER_REVIEW_UNASSIGNED_USER_KEY)
+    expect(pivot.rows[0]?.rowKey).toBe(USER_REVIEW_UNASSIGNED_USER_KEY)
     expect(pivot.columns[pivot.columns.length - 1]?.colKey).toBe(USER_REVIEW_UNLABELED_COL_KEY)
   })
 
