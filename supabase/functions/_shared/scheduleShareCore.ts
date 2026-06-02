@@ -156,17 +156,17 @@ ${dateCell}<td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;vertical-a
 </tr>`
         })
         .join('')
-      const headCells = `${
-        multiDay
-          ? '<th align="left" style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:12px">Date</th>'
-          : ''
-      }<th align="left" style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:12px">Window</th>` +
-        `<th align="left" style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:12px">Job</th>`
+      // Header row is just the person's name (15px), spanning all columns —
+      // no "Date"/"Window"/"Job" column labels.
+      const colCount = multiDay ? 3 : 2
+      const headerRow =
+        `<th colspan="${colCount}" align="left" ` +
+        `style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-size:15px">` +
+        `${escapeHtml(person)}</th>`
       return (
         `<div style="margin:0 0 18px">` +
-        `<h3 style="margin:0 0 6px;font-size:15px">${escapeHtml(person)}</h3>` +
         `<table style="border-collapse:collapse;width:100%;max-width:720px">` +
-        `<thead><tr style="background:#f9fafb">${headCells}</tr></thead>` +
+        `<thead><tr style="background:#f9fafb">${headerRow}</tr></thead>` +
         `<tbody>${rowsHtml}</tbody></table></div>`
       )
     })
