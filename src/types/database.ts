@@ -5069,6 +5069,45 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_supply_house_invoice_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string
+          mercury_transaction_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id: string
+          mercury_transaction_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string
+          mercury_transaction_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_supply_house_in_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_supply_house_invoice_links_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transactions: {
         Row: {
           amount: number
@@ -9576,6 +9615,10 @@ export type Database = {
         }
         Returns: Json
       }
+      _replace_mercury_transaction_invoice_links: {
+        Args: { p_invoice_ids: string[]; p_mercury_transaction_id: string }
+        Returns: undefined
+      }
       add_collect_payment_fixture_from_job_book: {
         Args: { p_job_book_entry_id: string; p_job_id: string }
         Returns: Json
@@ -10309,6 +10352,7 @@ export type Database = {
           amount: number
           counterparty_name: string
           currency: string
+          invoices_summary: string
           job_splits: Json
           jobs_summary: string
           mercury_account_id: string
@@ -10467,6 +10511,24 @@ export type Database = {
           my_last_report_at: string
           project_id: string
           revenue: number
+        }[]
+      }
+      list_supply_house_invoices_for_tally_link: {
+        Args: { p_mercury_transaction_id: string; search_text?: string }
+        Returns: {
+          already_linked: boolean
+          amount: number
+          counterparty_match: boolean
+          due_date: string
+          invoice_date: string
+          invoice_id: string
+          invoice_number: string
+          is_paid: boolean
+          job_allocation_summary: string
+          link: string
+          purchase_order_number: string
+          supply_house_id: string
+          supply_house_name: string
         }[]
       }
       list_tally_parts_with_po: {
@@ -10715,6 +10777,14 @@ export type Database = {
       }
       replace_mercury_job_splits_for_my_linked_card: {
         Args: { p_mercury_transaction_id: string; p_rows: Json }
+        Returns: undefined
+      }
+      replace_mercury_transaction_invoice_links_as_staff: {
+        Args: { p_invoice_ids: string[]; p_mercury_transaction_id: string }
+        Returns: undefined
+      }
+      replace_mercury_transaction_invoice_links_for_my_linked_card: {
+        Args: { p_invoice_ids: string[]; p_mercury_transaction_id: string }
         Returns: undefined
       }
       replace_mercury_transaction_splits: {

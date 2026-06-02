@@ -18,9 +18,10 @@ import { filterTallyLinkedMercuryRowsBySearchQuery } from '../lib/tallyTransacti
 import {
   type TallyLinkedMercuryRow,
   mercuryTxRowFromTallyRpc,
-  tallyRowHasJobAllocations,
+  tallyRowIsResolved,
   tallyUniqueJobSplitEntries,
 } from '../lib/mercuryTxRowFromTally'
+import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFromRaw'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
@@ -357,13 +358,13 @@ export default function JobTally() {
   }, [tallyTxRowsGlobalFiltered, tallyDebitCardFilterId])
 
   const tallyUnlinkedCountInScope = useMemo(
-    () => tallyTxRowsFiltered.filter((r) => !tallyRowHasJobAllocations(r)).length,
+    () => tallyTxRowsFiltered.filter((r) => !tallyRowIsResolved(r)).length,
     [tallyTxRowsFiltered],
   )
 
   const tallyTxRowsForTable = useMemo(() => {
     if (tallyTxScope === 'all') return tallyTxRowsFiltered
-    return tallyTxRowsFiltered.filter((r) => !tallyRowHasJobAllocations(r))
+    return tallyTxRowsFiltered.filter((r) => !tallyRowIsResolved(r))
   }, [tallyTxRowsFiltered, tallyTxScope])
 
   const tallyTxRowsForSearch = useMemo(
@@ -1132,6 +1133,7 @@ export default function JobTally() {
                 <tbody>
                   {tallyTxSorted.map((row) => {
                     const txId = row.mercury_transaction_id
+                    const bankDescription = mercuryBankDescriptionFromRaw(row.raw)
                     const noteText = row.note?.trim() ?? ''
                     const hasNote = noteText.length > 0
                     const noteOpen = tallyOpenNoteTxId === txId
@@ -1233,6 +1235,11 @@ export default function JobTally() {
                                 >
                                   {row.counterparty_name?.trim() || '—'}
                                 </div>
+                                {bankDescription ? (
+                                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: 4 }}>
+                                    {bankDescription}
+                                  </div>
+                                ) : null}
                                 <div
                                   style={{
                                     display: 'flex',
@@ -1516,6 +1523,21 @@ export default function JobTally() {
                                 <div style={tallyJobsSubRowBannerStyle(true)}>
                                   <div style={rowFlexEnd}>
                                     <span style={{ color: '#111827' }}>{row.jobs_summary.trim()}</span>
+                                    <span aria-hidden="true" style={{ color: '#047857' }}>
+                                      {' | '}
+                                    </span>
+                                    {assignJobsCompactBtn}
+                                  </div>
+                                </div>
+                              )
+                            }
+                            if (row.invoices_summary?.trim()) {
+                              return (
+                                <div style={tallyJobsSubRowBannerStyle(true)}>
+                                  <div style={rowFlexEnd}>
+                                    <span style={{ color: '#111827' }}>
+                                      Invoice: {row.invoices_summary.trim()}
+                                    </span>
                                     <span aria-hidden="true" style={{ color: '#047857' }}>
                                       {' | '}
                                     </span>

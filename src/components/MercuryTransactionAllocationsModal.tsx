@@ -15,6 +15,7 @@ import {
   type SearchableSelectSelectableOption,
 } from './SearchableSelect'
 import { useAuth } from '../hooks/useAuth'
+import MercuryTransactionInvoiceLinkModal from './MercuryTransactionInvoiceLinkModal'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledgerDisplayPrefixes'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../lib/dragSortDefaultLabels'
@@ -304,6 +305,7 @@ export function MercuryTransactionAllocationsModal({
   const [jobSearch, setJobSearch] = useState('')
   const [jobResults, setJobResults] = useState<JobSearchRow[]>([])
   const [jobSearchLoading, setJobSearchLoading] = useState(false)
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false)
   const [recentPersonIds, setRecentPersonIds] = useState<string[]>([])
   const [staffDayScheduleJobs, setStaffDayScheduleJobs] = useState<DispatchScheduledJobForAssign[]>([])
   const [staffDaySessionJobs, setStaffDaySessionJobs] = useState<JobSearchRow[]>([])
@@ -901,6 +903,7 @@ export function MercuryTransactionAllocationsModal({
   const summaryCounterparty = transaction.counterparty_name ?? '—'
 
   return (
+    <>
     <div
       role="presentation"
       onClick={(e) => {
@@ -1056,7 +1059,24 @@ export function MercuryTransactionAllocationsModal({
               textAlign: 'center',
             }}
           >
-            Adding multiple jobs splits the cost across those jobs. This happens rarely.
+            Adding multiple jobs splits the cost across those jobs. Or{' '}
+            <button
+              type="button"
+              onClick={() => setInvoiceModalOpen(true)}
+              disabled={internalTransfersLabelLocked === true}
+              style={{
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                color: internalTransfersLabelLocked === true ? '#9ca3af' : '#2563eb',
+                textDecoration: 'underline',
+                cursor: internalTransfersLabelLocked === true ? 'not-allowed' : 'pointer',
+                font: 'inherit',
+              }}
+            >
+              choose invoices
+            </button>
+            {' '}(paid by card).
           </div>
         ) : null}
         {jobSearch.trim().length > 2 && jobSearchLoading ? (
@@ -1493,5 +1513,23 @@ export function MercuryTransactionAllocationsModal({
         </div>
       </div>
     </div>
+
+    <MercuryTransactionInvoiceLinkModal
+      open={invoiceModalOpen}
+      onClose={() => setInvoiceModalOpen(false)}
+      transaction={transaction}
+      tallySelfService={tallySelfService}
+      tallyActAsUserId={tallyActAsUserId}
+      onSaved={() => {
+        onSaved({
+          mercuryTransactionId: transaction.id,
+          userId: tallySelfService ? tallyActAsUserId ?? null : null,
+          personId: null,
+          allocations: [],
+        })
+        onClose()
+      }}
+    />
+    </>
   )
 }
