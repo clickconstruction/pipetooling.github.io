@@ -45,6 +45,7 @@ export function PartFormModal({
   const [partName, setPartName] = useState('')
   const [partManufacturer, setPartManufacturer] = useState('')
   const [partPartTypeId, setPartPartTypeId] = useState('')
+  const [partLink, setPartLink] = useState('')
   const [partNotes, setPartNotes] = useState('')
   const [savingPart, setSavingPart] = useState(false)
   const [partPrices, setPartPrices] = useState<Array<{
@@ -64,6 +65,7 @@ export function PartFormModal({
         setPartName(editingPart.name)
         setPartManufacturer(editingPart.manufacturer || '')
         setPartPartTypeId((editingPart as any).part_type_id || '')
+        setPartLink(editingPart.link || '')
         setPartNotes(editingPart.notes || '')
         setPartPrices([])
         setPricesSectionExpanded(false)
@@ -73,6 +75,7 @@ export function PartFormModal({
         setPartName(initialName)
         setPartManufacturer('')
         setPartPartTypeId('')
+        setPartLink('')
         setPartNotes('')
         setPartPrices([])
         setPricesSectionExpanded(false)
@@ -103,6 +106,7 @@ export function PartFormModal({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
           part_type_id: partPartTypeId,
+          link: partLink.trim() || null,
           notes: partNotes.trim() || null,
         })
         .eq('id', editingPart.id)
@@ -128,6 +132,7 @@ export function PartFormModal({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
           part_type_id: partPartTypeId,
+          link: partLink.trim() || null,
           notes: partNotes.trim() || null,
           service_type_id: selectedServiceTypeId,
         })
@@ -199,7 +204,7 @@ export function PartFormModal({
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
       <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-        <h2 style={{ marginBottom: '1rem' }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
+        <h2 style={{ margin: '0 0 1rem' }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
         {!editingPart && (
           <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
             <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
@@ -251,6 +256,34 @@ export function PartFormModal({
                 No part types available. Devs can add them in Settings.
               </p>
             )}
+          </div>
+          <div style={{ marginBottom: '1rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Link</label>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              {partLink.trim() ? (
+                <button
+                  type="button"
+                  title="Open link in a new tab"
+                  aria-label="Open link in a new tab"
+                  onClick={() => {
+                    const raw = partLink.trim()
+                    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
+                    window.open(url, '_blank', 'noopener,noreferrer')
+                  }}
+                  style={{ flexShrink: 0, padding: '0.5rem 0.75rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  Open ↗
+                </button>
+              ) : null}
+              <input
+                type="text"
+                inputMode="url"
+                value={partLink}
+                onChange={(e) => setPartLink(e.target.value)}
+                placeholder="grainger.com/product/… or https://…"
+                style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              />
+            </div>
           </div>
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Notes (SKU, etc.)</label>
