@@ -6,6 +6,7 @@ import { MercuryTransactionAllocationsModal } from './MercuryTransactionAllocati
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from './pay/PersonOffsetFormModal'
 import { parseTallyJobSplitsJson } from '../lib/tallyJobSplits'
 import { isUnlinkedMercuryRowStaleForTallyStaffFollowUp } from '../lib/tallyStaleMinAgeDays'
+import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFromRaw'
 import { useToastContext } from '../contexts/ToastContext'
 import { fetchOffsetPersonNameOptions } from '../lib/offsetPersonNameOptions'
 import { useAuth } from '../hooks/useAuth'
@@ -405,6 +406,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                       <tbody>
                         {g.rows.map((r) => {
                           const rowStale = isUnlinkedMercuryRowStaleForTallyStaffFollowUp(r.posted_at, minAgeDays)
+                          const bankDescription = mercuryBankDescriptionFromRaw(r.raw)
                           return (
                             <tr
                               key={r.mercury_transaction_id}
@@ -417,17 +419,30 @@ export function DashboardStaleTallyStaffFollowUpModal({
                             <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                               {formatCurrency(Number(r.amount))}
                             </td>
-                            <td
-                              style={{
-                                padding: '0.45rem 0.65rem',
-                                maxWidth: 200,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                              title={r.counterparty_name ?? ''}
-                            >
-                              {r.counterparty_name ?? '—'}
+                            <td style={{ padding: '0.45rem 0.65rem', maxWidth: 200 }}>
+                              <div
+                                style={{
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={r.counterparty_name ?? ''}
+                              >
+                                {r.counterparty_name ?? '—'}
+                              </div>
+                              {bankDescription ? (
+                                <div
+                                  style={{
+                                    fontSize: '0.7rem',
+                                    color: '#6b7280',
+                                    marginTop: '0.125rem',
+                                    whiteSpace: 'normal',
+                                    wordBreak: 'break-word',
+                                  }}
+                                >
+                                  {bankDescription}
+                                </div>
+                              ) : null}
                             </td>
                             <td
                               style={{
