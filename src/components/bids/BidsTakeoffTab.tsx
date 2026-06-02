@@ -205,14 +205,6 @@ export function BidsTakeoffTab({
   const [reorderingRoughPartLine, setReorderingRoughPartLine] = useState(false)
   const [takeoffRoughPartPickerLineId, setTakeoffRoughPartPickerLineId] = useState<string | null>(null)
   const [takeoffRoughPartSearchQuery, setTakeoffRoughPartSearchQuery] = useState('')
-  const [roughLineCatalogApplyModal, setRoughLineCatalogApplyModal] = useState<{
-    lineId: string
-    partName: string
-    unitPrice: number
-    rows: Array<{ id: string; label: string }>
-  } | null>(null)
-  const [roughLineCatalogApplyPriceId, setRoughLineCatalogApplyPriceId] = useState('')
-  const [roughLineCatalogApplySaving, setRoughLineCatalogApplySaving] = useState(false)
   const [roughAddAssemblyModalCountRowId, setRoughAddAssemblyModalCountRowId] = useState<string | null>(null)
   const [roughAddAssemblySearchQuery, setRoughAddAssemblySearchQuery] = useState('')
   const [roughAddAssemblyExpanding, setRoughAddAssemblyExpanding] = useState(false)
@@ -260,7 +252,11 @@ export function BidsTakeoffTab({
   const [takeoffNewTemplateName, setTakeoffNewTemplateName] = useState('')
   const [takeoffNewTemplateDescription, setTakeoffNewTemplateDescription] = useState('')
   const [takeoffNewTemplateItems, setTakeoffNewTemplateItems] = useState<Array<{ item_type: 'part' | 'template'; part_id: string | null; nested_template_id: string | null; quantity: number }>>([])
-  
+  // Draft supply-house bundle prices for the new assembly (saved together on "Save").
+  const [takeoffNewTemplatePrices, setTakeoffNewTemplatePrices] = useState<Array<{ supplyHouseId: string; supplyHouseName: string; price: number }>>([])
+  const [takeoffNewTemplatePriceSupplyHouseId, setTakeoffNewTemplatePriceSupplyHouseId] = useState('')
+  const [takeoffNewTemplatePriceValue, setTakeoffNewTemplatePriceValue] = useState('')
+
   type MaterialPartWithType = MaterialPart & { part_types?: PartType | null }
   const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPartWithType[]>([])
   
@@ -313,8 +309,8 @@ export function BidsTakeoffTab({
   const [savingTemplateParts, setSavingTemplateParts] = useState(false)
 
   // Part Prices modal (check/modify prices from Add Assembly / Edit Assembly item rows)
-  const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string } | null>(null)
-  const prevPartPricesModalRef = useRef<{ partId: string; partName: string } | null>(null)
+  const [partPricesModal, setPartPricesModal] = useState<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
+  const prevPartPricesModalRef = useRef<{ partId: string; partName: string; defaultAddPrice?: string } | null>(null)
   const [partPricesModalData, setPartPricesModalData] = useState<Array<{ price_id: string; supply_house_name: string; supply_house_id: string; price: number; website_url: string | null }> | 'loading' | null>(null)
   const [partPricesModalEditing, setPartPricesModalEditing] = useState<Record<string, string>>({})
   const [partPricesModalUpdating, setPartPricesModalUpdating] = useState<string | null>(null)
@@ -437,6 +433,9 @@ export function BidsTakeoffTab({
     setTakeoffNewItemQuantity('1')
     setTakeoffNewItemPartSearchQuery('')
     setTakeoffNewItemTemplateSearchQuery('')
+    setTakeoffNewTemplatePrices([])
+    setTakeoffNewTemplatePriceSupplyHouseId('')
+    setTakeoffNewTemplatePriceValue('')
   }
 
   function openSaveAsAssemblyFromRough(countRowId: string, row: BidCountRow) {
@@ -516,6 +515,20 @@ export function BidsTakeoffTab({
       })
       if (itemError) {
         setError(itemError.message)
+        setSavingTakeoffNewTemplate(false)
+        return
+      }
+    }
+    if (takeoffNewTemplatePrices.length > 0) {
+      const { error: priceError } = await supabase.from('material_template_prices').insert(
+        takeoffNewTemplatePrices.map((p) => ({
+          template_id: templateId,
+          supply_house_id: p.supplyHouseId,
+          price: p.price,
+        })),
+      )
+      if (priceError) {
+        setError(priceError.message)
         setSavingTakeoffNewTemplate(false)
         return
       }
@@ -1330,74 +1343,6 @@ export function BidsTakeoffTab({
     })
   }
 
-  async function openRoughLineCatalogApplyPicker(lineId: string) {
-    const line = takeoffRoughPartLines.find((l) => l.id === lineId)
-    if (!line?.partId?.trim()) return
-    const partId = line.partId
-    const partName = takeoffAddTemplateParts.find((p) => p.id === partId)?.name ?? 'Part'
-    const { data, error } = await supabase
-      .from('material_part_prices')
-      .select('id, price, supply_house_id, supply_houses(name)')
-      .eq('part_id', partId)
-      .order('price', { ascending: true })
-    if (error) {
-      showToast(formatErrorMessage(error, 'Failed to load catalog prices'), 'error')
-      return
-    }
-    const rows = (data ?? []).map(
-      (r: { id: string; price: number; supply_houses: { name?: string } | null }) => ({
-        id: r.id,
-        label: `${(r.supply_houses as { name?: string } | null)?.name ?? 'Supplier'} — $${Number(r.price).toFixed(2)}`,
-      })
-    )
-    if (rows.length === 0) {
-      showToast('No catalog prices for this part. Opening catalog prices.', 'info')
-      setPartPricesModal({ partId, partName })
-      return
-    }
-    setRoughLineCatalogApplyPriceId(rows[0]!.id)
-    setRoughLineCatalogApplyModal({
-      lineId,
-      partName,
-      unitPrice: Math.max(0, Number(line.unitPrice) || 0),
-      rows,
-    })
-  }
-
-  async function confirmRoughLineCatalogApply() {
-    if (!roughLineCatalogApplyModal || !roughLineCatalogApplyPriceId) return
-    setRoughLineCatalogApplySaving(true)
-    try {
-      const priceRowId = roughLineCatalogApplyPriceId
-      await withSupabaseRetry(
-        async () =>
-          await supabase
-            .from('material_part_prices')
-            .update({ price: roughLineCatalogApplyModal.unitPrice })
-            .eq('id', priceRowId),
-        'apply rough line price to catalog'
-      )
-      updateTakeoffRoughPartLine(roughLineCatalogApplyModal.lineId, {
-        unitPrice: roughLineCatalogApplyModal.unitPrice,
-        sourceMaterialPartPriceId: priceRowId,
-      })
-      showToast('Catalog price updated.', 'success')
-      setRoughLineCatalogApplyModal(null)
-      setRoughLineCatalogApplyPriceId('')
-      if (
-        activeTab === 'takeoffs' &&
-        selectedBidForTakeoff?.id &&
-        normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'rough'
-      ) {
-        const ids = Array.from(new Set(takeoffRoughPartLines.map((l) => (l.partId ?? '').trim()).filter(Boolean)))
-        void refreshTakeoffRoughCatalogLowest(ids)
-      }
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Failed to update catalog'), 'error')
-    } finally {
-      setRoughLineCatalogApplySaving(false)
-    }
-  }
 
   function updateTakeoffRoughPartLine(
     lineId: string,
@@ -2103,6 +2048,8 @@ export function BidsTakeoffTab({
       setPartPricesModalAddPrice('')
       return
     }
+    // Pre-fill the "Add price" field with the line's unit price when opened from a takeoff line.
+    setPartPricesModalAddPrice(partPricesModal.defaultAddPrice ?? '')
     setPartPricesModalData('loading')
     supabase
       .from('material_part_prices')
@@ -2970,7 +2917,6 @@ export function BidsTakeoffTab({
                                       updateTakeoffRoughPartLine={updateTakeoffRoughPartLine}
                                       resetRoughLineToCatalogPrice={resetRoughLineToCatalogPrice}
                                       setPartPricesModal={setPartPricesModal}
-                                      openRoughLineCatalogApplyPicker={openRoughLineCatalogApplyPicker}
                                       onRequestRemoveRoughLine={(lineId) => setTakeoffRemoveConfirm({ kind: 'rough_line', lineId })}
                                       openBidsPartFormForCreate={openBidsPartFormForCreate}
                                       onOpenEditTakeoffPart={(partId) => {
@@ -3176,6 +3122,53 @@ export function BidsTakeoffTab({
                         </tbody>
                       </table>
                     </div>
+                  </div>
+                  <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
+                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                      Optional: a bundle price a supply house quotes for this whole assembly. Saved with the assembly and usable later via Add assembly → Add as bundle.
+                    </p>
+                    {takeoffNewTemplatePrices.length > 0 && (
+                      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
+                        <tbody>
+                          {takeoffNewTemplatePrices.map((p, idx) => (
+                            <tr key={p.supplyHouseId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              <td style={{ padding: '0.4rem 0.5rem' }}>{p.supplyHouseName}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>${p.price.toFixed(2)}</td>
+                              <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
+                                <button type="button" onClick={() => setTakeoffNewTemplatePrices((prev) => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>Remove</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                    {(() => {
+                      const used = new Set(takeoffNewTemplatePrices.map((p) => p.supplyHouseId))
+                      const available = supplyHouses.filter((sh) => !used.has(sh.id))
+                      if (available.length === 0) {
+                        return <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Every supply house already has a price.</p>
+                      }
+                      const priceNum = parseFloat(takeoffNewTemplatePriceValue)
+                      const canAdd = !!takeoffNewTemplatePriceSupplyHouseId && !isNaN(priceNum) && priceNum >= 0
+                      const addPrice = () => {
+                        const sh = supplyHouses.find((s) => s.id === takeoffNewTemplatePriceSupplyHouseId)
+                        if (!sh || !canAdd) return
+                        setTakeoffNewTemplatePrices((prev) => [...prev, { supplyHouseId: sh.id, supplyHouseName: sh.name, price: priceNum }])
+                        setTakeoffNewTemplatePriceSupplyHouseId('')
+                        setTakeoffNewTemplatePriceValue('')
+                      }
+                      return (
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#f9fafb', padding: '0.75rem', borderRadius: 4 }}>
+                          <select value={takeoffNewTemplatePriceSupplyHouseId} onChange={(e) => setTakeoffNewTemplatePriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                            <option value="">Select supply house</option>
+                            {available.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}</option>)}
+                          </select>
+                          <input type="number" min={0} step="0.01" value={takeoffNewTemplatePriceValue} onChange={(e) => setTakeoffNewTemplatePriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                          <button type="button" disabled={!canAdd} onClick={addPrice} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : '#e5e7eb', color: canAdd ? 'white' : '#9ca3af', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>Add</button>
+                        </div>
+                      )
+                    })()}
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
                     <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
@@ -4402,93 +4395,6 @@ export function BidsTakeoffTab({
         </div>
       )}
 
-      {roughLineCatalogApplyModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1210,
-          }}
-          onClick={() => {
-            if (roughLineCatalogApplySaving) return
-            setRoughLineCatalogApplyModal(null)
-            setRoughLineCatalogApplyPriceId('')
-          }}
-        >
-          <div
-            style={{
-              background: 'white',
-              padding: '1.5rem',
-              borderRadius: 8,
-              maxWidth: 420,
-              width: '90%',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem' }}>Apply line price to catalog</h3>
-            <p style={{ margin: '0 0 0.35rem', fontSize: '0.875rem', color: '#374151' }}>
-              <strong>{roughLineCatalogApplyModal.partName}</strong>
-            </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-              Set the selected supplier row to{' '}
-              <strong>${roughLineCatalogApplyModal.unitPrice.toFixed(2)}</strong> (this bid line stays linked to that row).
-            </p>
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>
-              Catalog row
-            </label>
-            <select
-              value={roughLineCatalogApplyPriceId}
-              onChange={(e) => setRoughLineCatalogApplyPriceId(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem' }}
-            >
-              {roughLineCatalogApplyModal.rows.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.label}
-                </option>
-              ))}
-            </select>
-            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                disabled={roughLineCatalogApplySaving}
-                onClick={() => {
-                  setRoughLineCatalogApplyModal(null)
-                  setRoughLineCatalogApplyPriceId('')
-                }}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 4,
-                  cursor: roughLineCatalogApplySaving ? 'wait' : 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={!roughLineCatalogApplyPriceId || roughLineCatalogApplySaving}
-                onClick={() => void confirmRoughLineCatalogApply()}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: roughLineCatalogApplyPriceId && !roughLineCatalogApplySaving ? '#059669' : '#d1d5db',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 4,
-                  cursor: roughLineCatalogApplyPriceId && !roughLineCatalogApplySaving ? 'pointer' : 'not-allowed',
-                }}
-              >
-                {roughLineCatalogApplySaving ? 'Saving…' : 'Apply'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {roughQtyNumpadLineId != null && roughQtyNumpadPos != null
         ? createPortal(
             <div
@@ -4604,7 +4510,6 @@ function SortableRoughPartLineRow({
   updateTakeoffRoughPartLine,
   resetRoughLineToCatalogPrice,
   setPartPricesModal,
-  openRoughLineCatalogApplyPicker,
   onRequestRemoveRoughLine,
   openBidsPartFormForCreate,
   onOpenEditTakeoffPart,
@@ -4639,8 +4544,7 @@ function SortableRoughPartLineRow({
     >
   ) => void
   resetRoughLineToCatalogPrice: (lineId: string) => void | Promise<void>
-  setPartPricesModal: (v: { partId: string; partName: string } | null) => void
-  openRoughLineCatalogApplyPicker: (lineId: string) => void | Promise<void>
+  setPartPricesModal: (v: { partId: string; partName: string; defaultAddPrice?: string } | null) => void
   onRequestRemoveRoughLine: (lineId: string) => void
   openBidsPartFormForCreate: (initialName: string) => void
   onOpenEditTakeoffPart: (partId: string) => void
@@ -4998,6 +4902,7 @@ function SortableRoughPartLineRow({
                     setPartPricesModal({
                       partId: line.partId ?? '',
                       partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
+                      defaultAddPrice: Number(line.unitPrice) > 0 ? String(line.unitPrice) : '',
                     })
                   }
                   onKeyDown={(e) => {
@@ -5006,6 +4911,7 @@ function SortableRoughPartLineRow({
                       setPartPricesModal({
                         partId: line.partId ?? '',
                         partName: takeoffAddTemplateParts.find((p) => p.id === line.partId)?.name ?? 'Part',
+                        defaultAddPrice: Number(line.unitPrice) > 0 ? String(line.unitPrice) : '',
                       })
                     }
                   }}
@@ -5020,30 +4926,6 @@ function SortableRoughPartLineRow({
                 >
                   Catalog prices
                 </span>
-                {!line.sourceMaterialPartPriceId ? (
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => void openRoughLineCatalogApplyPicker(line.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        void openRoughLineCatalogApplyPicker(line.id)
-                      }
-                    }}
-                    style={{
-                      fontSize: '0.7rem',
-                      color: '#4b5563',
-                      cursor: 'pointer',
-                      textDecoration: 'underline',
-                      textUnderlineOffset: '2px',
-                      textAlign: 'left',
-                      maxWidth: '12rem',
-                    }}
-                  >
-                    Apply line price to catalog…
-                  </span>
-                ) : null}
               </div>
             </div>
           </div>
