@@ -1,13 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { MERCURY_BASE, mapMercuryTransactionToRow } from '../_shared/mercuryTransaction.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
-const MERCURY_BASE = 'https://api.mercury.com/api/v1'
 const DEFAULT_LIMIT = 500
 const MAX_PAGES = 120
 
@@ -35,27 +35,6 @@ function defaultEndYmd(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function mapMercuryTransactionToRow(t: Record<string, unknown>, syncedAt: string) {
-  return {
-    mercury_id: t.id as string,
-    mercury_account_id: t.accountId as string,
-    amount: t.amount as number,
-    currency: 'USD',
-    created_at: t.createdAt as string,
-    posted_at: (t.postedAt as string | null | undefined) ?? null,
-    status: t.status as string,
-    kind: t.kind as string,
-    counterparty_id: (t.counterpartyId as string | null | undefined) ?? null,
-    counterparty_name: t.counterpartyName as string,
-    note: (t.note as string | null | undefined) ?? null,
-    external_memo: (t.externalMemo as string | null | undefined) ?? null,
-    dashboard_link: (t.dashboardLink as string | null | undefined) ?? null,
-    mercury_category: t.mercuryCategory ?? null,
-    raw: t,
-    synced_at: syncedAt,
-  }
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -66,16 +45,11 @@ serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return jsonResponse({ error: 'Missing authorization' }, 401)
-    }
-    const token = authHeader.replace(/^Bearer\s+/i, '')
-
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
     const supabaseAnon = Deno.env.get('SUPABASE_ANON_KEY')!
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const mercuryKey = Deno.env.get('MERCURY_API_KEY')
+    const cronSecret = Deno.env.get('CRON_SECRET')
 
     if (!serviceKey) {
       return jsonResponse({ error: 'Server misconfigured: SUPABASE_SERVICE_ROLE_KEY' }, 500)
@@ -84,20 +58,32 @@ serve(async (req) => {
       return jsonResponse({ error: 'Server misconfigured: MERCURY_API_KEY' }, 500)
     }
 
-    const userClient = createClient(supabaseUrl, supabaseAnon, {
-      global: { headers: { Authorization: authHeader } },
-    })
-    const {
-      data: { user },
-      error: authErr,
-    } = await userClient.auth.getUser(token)
-    if (authErr || !user) {
-      return jsonResponse({ error: 'Invalid session' }, 401)
-    }
-
-    const { data: userRow, error: roleErr } = await userClient.from('users').select('role').eq('id', user.id).maybeSingle()
-    if (roleErr || (userRow as { role?: string } | null)?.role !== 'dev') {
-      return jsonResponse({ error: 'Forbidden — dev only' }, 403)
+    // Auth: either an X-Cron-Secret match (unattended reconciliation cron) or a dev JWT.
+    const isCron = !!cronSecret && req.headers.get('X-Cron-Secret') === cronSecret
+    if (!isCron) {
+      const authHeader = req.headers.get('Authorization')
+      if (!authHeader?.startsWith('Bearer ')) {
+        return jsonResponse({ error: 'Missing authorization' }, 401)
+      }
+      const token = authHeader.replace(/^Bearer\s+/i, '')
+      const userClient = createClient(supabaseUrl, supabaseAnon, {
+        global: { headers: { Authorization: authHeader } },
+      })
+      const {
+        data: { user },
+        error: authErr,
+      } = await userClient.auth.getUser(token)
+      if (authErr || !user) {
+        return jsonResponse({ error: 'Invalid session' }, 401)
+      }
+      const { data: userRow, error: roleErr } = await userClient
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+      if (roleErr || (userRow as { role?: string } | null)?.role !== 'dev') {
+        return jsonResponse({ error: 'Forbidden — dev only' }, 403)
+      }
     }
 
     let body: SyncBody = {}
