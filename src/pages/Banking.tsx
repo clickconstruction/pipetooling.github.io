@@ -50,7 +50,7 @@ import {
 } from '../lib/bankingSortingConfig'
 import { countSortingUnmatched, filterMercuryRowsForSorting } from '../lib/bankingSortingCounts'
 import { shortUuidPrefix } from '../lib/shortUuidPrefix'
-import { fetchAttributionsByMercuryTxIds, fetchJobAllocationsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
+import { fetchAllAttributions, fetchAllJobAllocations } from '../lib/fetchMercuryRelationsByTxIds'
 import { pageUnderlineTabStyle } from '../lib/pageUnderlineTabStyle'
 import {
   MercuryTransactionAllocationsModal,
@@ -1503,9 +1503,13 @@ export default function Banking() {
     }
     const ids = rows.map((r) => r.id)
     try {
+      // The relation tables (allocations ~1k, attributions ~5k) are small and we've loaded
+      // every transaction, so one unfiltered select each (in parallel) beats chunking ~10k
+      // ids into 200-id batches (~110 sequential round-trips → 2). Extra rows for txs beyond
+      // the loaded set are harmless: lookups are keyed by loaded tx id.
       const [allocRows, attrRows] = await Promise.all([
-        fetchJobAllocationsByMercuryTxIds(ids, 'load'),
-        fetchAttributionsByMercuryTxIds(ids, 'load'),
+        fetchAllJobAllocations('load'),
+        fetchAllAttributions('load'),
       ])
 
       const allocMap = new Map<string, MercuryJobSplit[]>()
@@ -2431,6 +2435,11 @@ export default function Banking() {
             personIdByTxId={personIdByTxId}
             userNameById={userNameById}
             personNameById={personNameById}
+            userOptions={usersSelectOptions}
+            recentPersonPicksStorageKey={user?.id ?? null}
+            onAttributionChanged={() => {
+              void loadMercuryAllocations()
+            }}
           />
         </div>
       ) : null}

@@ -20,6 +20,9 @@ import {
   type UserReviewTimeWindow,
 } from '../../lib/bankingMercuryUserReviewTimeWindow'
 import { BankingMercuryUserReviewLedgerModal } from './BankingMercuryUserReviewLedgerModal'
+import { TransactionDetailModal } from './TransactionDetailModal'
+import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
+import type { SearchableSelectOption } from '../SearchableSelect'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -33,6 +36,12 @@ export type BankingMercuryUserReviewTabProps = {
   personIdByTxId: Map<string, string | null>
   userNameById: Record<string, string>
   personNameById: Record<string, string>
+  /** Assignable users for the in-modal "assign person" tool. */
+  userOptions: SearchableSelectOption[]
+  /** Operator auth user id (for recent-pick chips); null when unknown. */
+  recentPersonPicksStorageKey: string | null
+  /** Called after an attribution is set/changed/cleared so the parent reloads maps. */
+  onAttributionChanged: () => void
 }
 
 function formatUsd(amount: number): string {
@@ -93,6 +102,9 @@ export function BankingMercuryUserReviewTab({
   personIdByTxId,
   userNameById,
   personNameById,
+  userOptions,
+  recentPersonPicksStorageKey,
+  onAttributionChanged,
 }: BankingMercuryUserReviewTabProps) {
   const { showToast } = useToastContext()
 
@@ -104,6 +116,7 @@ export function BankingMercuryUserReviewTab({
 
   const [drillRowKey, setDrillRowKey] = useState<string | null>(null)
   const [drillColKey, setDrillColKey] = useState<string | null>(null)
+  const [detailTx, setDetailTx] = useState<MercuryTxRow | null>(null)
   const [expandedColKeys, setExpandedColKeys] = useState<Set<string>>(() => new Set())
   const [timeWindow, setTimeWindow] = useState<UserReviewTimeWindow>(() => readTimeWindowFromStorage())
   const [selectedRowKey, setSelectedRowKey] = useState<string | null>(null)
@@ -170,21 +183,18 @@ export function BankingMercuryUserReviewTab({
     }
     setAssignmentsLoading(true)
     try {
-      const ids = [...idSet]
-      const batchSize = 400
+      // One unfiltered select (assignments table is small) then filter to the visible window,
+      // instead of chunking the ~10k windowed ids into 400-id batches (~28 sequential calls).
+      const rows = await withSupabaseRetry(async () => {
+        return supabase
+          .from('mercury_transaction_drag_sort_assignments')
+          .select('mercury_transaction_id, label_id')
+          .limit(100000)
+      }, 'user review load drag assignments')
       const map = new Map<string, string>()
-      for (let i = 0; i < ids.length; i += batchSize) {
-        const slice = ids.slice(i, i + batchSize)
-        const rows = await withSupabaseRetry(async () => {
-          return supabase
-            .from('mercury_transaction_drag_sort_assignments')
-            .select('mercury_transaction_id, label_id')
-            .in('mercury_transaction_id', slice)
-        }, 'user review load drag assignments')
-        for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
-          if (idSet.has(row.mercury_transaction_id)) {
-            map.set(row.mercury_transaction_id, row.label_id)
-          }
+      for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
+        if (idSet.has(row.mercury_transaction_id)) {
+          map.set(row.mercury_transaction_id, row.label_id)
         }
       }
       setAssignmentLabelByTxId(map)
@@ -235,6 +245,23 @@ export function BankingMercuryUserReviewTab({
     for (const r of windowedTransactions) m.set(r.id, r)
     return m
   }, [windowedTransactions])
+
+  const openTransactionDetail = useCallback(
+    (txId: string) => {
+      const row = txByIdMap.get(txId)
+      if (!row) return
+      setDetailTx(row) // open immediately; hydrate raw for debit-card/bankDescription/rules below
+      void (async () => {
+        try {
+          const raw = await fetchMercuryTransactionRawById(txId, 'user review tx detail raw')
+          setDetailTx((prev) => (prev && prev.id === txId ? { ...prev, raw } : prev))
+        } catch {
+          /* header/rules degrade gracefully without raw */
+        }
+      })()
+    },
+    [txByIdMap],
+  )
 
   const drillRow = useMemo(() => {
     if (drillRowKey == null) return null
@@ -925,6 +952,22 @@ export function BankingMercuryUserReviewTab({
         rows={drillRows}
         totalAmount={drillTotalAmount}
         nicknameCtx={mercurySearchNicknameCtx}
+        userOptions={userOptions}
+        currentUserId={drillRow?.source === 'user' ? drillRow.sourceId : null}
+        recentPersonPicksStorageKey={recentPersonPicksStorageKey}
+        onAttributionChanged={onAttributionChanged}
+        onOpenTransactionDetail={openTransactionDetail}
+      />
+
+      <TransactionDetailModal
+        open={detailTx != null}
+        onClose={() => setDetailTx(null)}
+        transaction={detailTx}
+        usersOptions={userOptions}
+        nicknameByAccount={mercurySearchNicknameCtx.nicknameByAccount}
+        nicknameByDebitCard={mercurySearchNicknameCtx.nicknameByDebitCard}
+        recentPersonPicksStorageKey={recentPersonPicksStorageKey}
+        onChanged={onAttributionChanged}
       />
     </div>
   )

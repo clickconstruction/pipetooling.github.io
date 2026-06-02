@@ -140,3 +140,44 @@ export function matchAccountingLabelRuleCriteria(
   }
   return true
 }
+
+export type AccountingRuleForMatch = {
+  id: string
+  name: string
+  label_id: string
+  enabled: boolean
+  sort_order: number
+  criteria: Json
+}
+
+export type MatchingAccountingRule = {
+  id: string
+  name: string
+  labelId: string
+  /** True for the first matching rule in engine order — the label the engine would suggest. */
+  isFirstMatch: boolean
+}
+
+/**
+ * Returns the enabled rules that match a transaction, in engine order
+ * (sort_order ASC, id ASC), flagging the first match. Read-only / informational
+ * (e.g. the TransactionDetail "Applicable Rules" section).
+ */
+export function matchingAccountingRulesForTx(
+  tx: AccountingLabelRuleMatchTx,
+  rules: ReadonlyArray<AccountingRuleForMatch>,
+): MatchingAccountingRule[] {
+  const eligible = rules
+    .filter((r) => r.enabled)
+    .slice()
+    .sort((a, b) => a.sort_order - b.sort_order || a.id.localeCompare(b.id))
+  const out: MatchingAccountingRule[] = []
+  for (const r of eligible) {
+    const criteria = parseAccountingLabelRuleCriteria(r.criteria)
+    if (!criteria) continue
+    if (matchAccountingLabelRuleCriteria(tx, criteria)) {
+      out.push({ id: r.id, name: r.name, labelId: r.label_id, isFirstMatch: out.length === 0 })
+    }
+  }
+  return out
+}

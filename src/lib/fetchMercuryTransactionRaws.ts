@@ -46,6 +46,56 @@ export async function fetchMercuryTransactionRawsByIds(
   return map
 }
 
+export type MercuryUserReviewTxMeta = {
+  /** raw.bankDescription (the bank-line text). */
+  bankDescription: string | null
+  /** Lowercased raw.details.debitCardInfo.id, for nickname lookup. */
+  debitCardId: string | null
+}
+
+/**
+ * Fetch a few small fields out of each transaction's `raw` jsonb, by id — currently the
+ * `bankDescription` line and the debit-card id — by PROJECTING those jsonb fields server-side
+ * so we don't pull the whole large `raw` blob. Chunked + parallel like the raw fetch.
+ * Used by the User Review cell modal (which doesn't hydrate `raw`).
+ */
+export async function fetchMercuryUserReviewTxMetaByTxIds(
+  ids: string[],
+  operationName: string,
+): Promise<Map<string, MercuryUserReviewTxMeta>> {
+  const map = new Map<string, MercuryUserReviewTxMeta>()
+  if (ids.length === 0) return map
+  const slices: string[][] = []
+  for (let i = 0; i < ids.length; i += RAW_FETCH_CHUNK) {
+    slices.push(ids.slice(i, i + RAW_FETCH_CHUNK))
+  }
+  await Promise.all(
+    slices.map(async (slice) => {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('mercury_transactions')
+            .select('id, bankDescription:raw->>bankDescription, debitCardId:raw->details->debitCardInfo->>id')
+            .in('id', slice),
+        operationName,
+      )
+      for (const row of (data ?? []) as unknown as Array<{
+        id: string
+        bankDescription: string | null
+        debitCardId: string | null
+      }>) {
+        const bd = row.bankDescription
+        const bankDescription = bd != null && String(bd).trim() !== '' ? String(bd).trim() : null
+        const cid = row.debitCardId
+        const debitCardId =
+          cid != null && String(cid).trim() !== '' ? String(cid).trim().toLowerCase() : null
+        map.set(row.id, { bankDescription, debitCardId })
+      }
+    }),
+  )
+  return map
+}
+
 export async function fetchMercuryTransactionRawById(
   txId: string,
   operationName: string,
