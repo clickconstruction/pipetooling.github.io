@@ -425,6 +425,7 @@ export function ScheduleShareModal({
                 disabled={sending || userOptions.length === 0}
                 listAriaLabel="Add recipient"
                 portalZIndex={1400}
+                minSearchChars={2}
               />
               {selectedIds.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
@@ -583,6 +584,7 @@ export function ScheduleShareModal({
                   disabled={savingForm || userOptions.length === 0}
                   listAriaLabel="Recurring recipient"
                   portalZIndex={1400}
+                  minSearchChars={2}
                 />
               </div>
 
