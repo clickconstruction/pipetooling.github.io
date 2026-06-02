@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { useMemo } from 'react'
 import { getScheduleDispatchWeekNavParts, ymdAddDays } from '../../utils/dateUtils'
 
@@ -24,6 +24,8 @@ type ScheduleDispatchWeekNavProps = {
   dateRangeOverride?: string
   hideWeekend?: boolean
   onHideWeekendChange?: (hide: boolean) => void
+  /** Right-aligned content (e.g. a Share button) shown across from "This week". */
+  rightSlot?: ReactNode
 }
 
 export function ScheduleDispatchWeekNav({
@@ -33,6 +35,7 @@ export function ScheduleDispatchWeekNav({
   dateRangeOverride,
   hideWeekend = true,
   onHideWeekendChange,
+  rightSlot,
 }: ScheduleDispatchWeekNavProps) {
   const weekEnd = useMemo(() => ymdAddDays(weekStart, 6), [weekStart])
   const { weekTitle, dateRange } = useMemo(
@@ -103,6 +106,7 @@ export function ScheduleDispatchWeekNav({
           Hide weekend
         </label>
       ) : null}
+      {rightSlot ? <div style={{ marginLeft: 'auto' }}>{rightSlot}</div> : null}
     </div>
   )
 }

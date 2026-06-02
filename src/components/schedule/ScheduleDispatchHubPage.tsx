@@ -36,6 +36,7 @@ import { ScheduleDispatchBlockNoteModal } from './ScheduleDispatchBlockNoteModal
 import { ScheduleDispatchAssignJobPickerModal } from './ScheduleDispatchAssignJobPickerModal'
 import { LinkedScheduleGroupModal } from './LinkedScheduleGroupModal'
 import { ScheduleDispatchHub } from './ScheduleDispatchHub'
+import { ScheduleShareModal } from './ScheduleShareModal'
 import type { ScheduleDispatchCardPlacementMode } from './ScheduleDispatchGrid'
 import {
   aggregateWeekSummariesByJob,
@@ -271,6 +272,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [hubHourlyWageByUserId, setHubHourlyWageByUserId] = useState<Map<string, number>>(() => new Map())
   const [hubPayApprovedMasterIds, setHubPayApprovedMasterIds] = useState<Set<string>>(() => new Set())
   const [hubSalariedUserIds, setHubSalariedUserIds] = useState<Set<string>>(() => new Set())
+  const [shareModalOpen, setShareModalOpen] = useState(false)
   const canEdit = role != null && CAN_USE_SCHEDULE_DISPATCH.has(role)
 
   useEffect(() => {
@@ -1804,6 +1806,26 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             showWeekNavigation={!isTomorrow}
             showHubViewTabs={!isTomorrow}
             showHideWeekendToggle={!isTomorrow}
+            weekNavRightSlot={
+              canEdit && !isTomorrow ? (
+                <button
+                  type="button"
+                  onClick={() => setShareModalOpen(true)}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    border: '1px solid #ff6600',
+                    borderRadius: 4,
+                    background: '#ff6600',
+                    color: '#fff',
+                    fontWeight: 600,
+                    fontSize: '0.8125rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Share
+                </button>
+              ) : undefined
+            }
             columnFocusDayYmd={columnFocusDayYmd}
             rows={hubMergedRows}
             loading={hubLoading}
@@ -1856,6 +1878,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
             onRequestUndoNotComingIn={canEdit ? handleRequestUndoNotComingIn : undefined}
           />
         </DndContext>
+        <ScheduleShareModal
+          open={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          baseDateYmd={scheduleTodayYmd}
+        />
         {hubMultiCellAddActive && !hubAssignJobPickerOpen ? (
           <div
             style={{
