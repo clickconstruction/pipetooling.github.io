@@ -32,3 +32,7 @@ vite.config.ts.timestamp-*.mjs
 
 # Local Supabase inspect snapshots (see docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md)
 docs/runbooks/supabase-inspect-snapshot/
+
+# Claude Code local config (machine-specific; .mcp.json is shared and tracked)
+.claude/settings.local.json
+.claude/launch.json
