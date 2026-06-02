@@ -34,6 +34,24 @@ export function resolveBidLedgerPrefix(serviceTypeId: string | null | undefined,
   return map[serviceTypeId]?.bid ?? DEFAULT_BID_LEDGER_PREFIX
 }
 
+/**
+ * True when `query` matches a bid's number or its prefixed label.
+ * Spaces are ignored, so "287", "BP287" and "bp 287" all match bid #287 with prefix BP.
+ */
+export function bidNumberMatchesQuery(
+  bid: { bid_number?: string | null; service_type_id?: string | null },
+  query: string,
+  map: LedgerPrefixMap,
+): boolean {
+  const q = query.trim().toLowerCase().replace(/\s+/g, '')
+  if (!q) return false
+  const num = (bid.bid_number ?? '').trim().toLowerCase()
+  if (!num) return false
+  if (num.includes(q)) return true
+  const label = `${resolveBidLedgerPrefix(bid.service_type_id, map)}${num}`.toLowerCase()
+  return label.includes(q)
+}
+
 export function formatJobLedgerNumberLabel(prefix: string, hcpNumber: string | null | undefined): string {
   const pref = (prefix ?? '').trim() || DEFAULT_JOB_LEDGER_PREFIX
   const n = (hcpNumber ?? '').trim() || '—'

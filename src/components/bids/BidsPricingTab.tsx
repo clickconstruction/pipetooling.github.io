@@ -1,7 +1,7 @@
 import { useEffect, useState, type CSSProperties, type Dispatch, type SetStateAction } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
-import { bidDisplayName, formatDateYYMMDD, marginFlag } from '../../lib/bids/bidFormatting'
+import { formatDateYYMMDD, marginFlag } from '../../lib/bids/bidFormatting'
 import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/bids/bidStyles'
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
@@ -14,8 +14,8 @@ import {
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from './GenerateUnitCostModal'
 import { AssignTakeoffPartModal } from './AssignTakeoffPartModal'
-import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
-import { resolveBidLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
+import { BidProjectCell } from './BidProjectCell'
+import { bidNumberMatchesQuery } from '../../lib/ledgerDisplayPrefixes'
 import { MyBidsToggle } from './MyBidsToggle'
 import { PackageAndSendBidPricingModal, type PackageAndSendPricingRowInput } from './PackageAndSendBidPricingModal'
 import {
@@ -675,7 +675,8 @@ export function BidsPricingTab({
           (b.project_name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
           (b.address?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
           (b.customers?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
-          (b.bids_gc_builders?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false)
+          (b.bids_gc_builders?.name?.toLowerCase().includes(pricingSearchQuery.toLowerCase()) ?? false) ||
+          bidNumberMatchesQuery(b, pricingSearchQuery, ledgerPrefixMap)
       )
     : bidsScopedForPricing
 
@@ -686,7 +687,7 @@ export function BidsPricingTab({
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
             <input
               type="text"
-              placeholder="Search bids (project name or GC/Builder)..."
+              placeholder="Search bids (bid #, project name, or GC/Builder)..."
               value={pricingSearchQuery}
               onChange={(e) => setPricingSearchQuery(e.target.value)}
               style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
@@ -1688,6 +1689,7 @@ export function BidsPricingTab({
             textTransform: 'uppercase',
             color: '#9ca3af',
             margin: '0.75rem 0 0.25rem',
+            textAlign: 'center',
           }
           const lineStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: '1rem' }
           const subtotalStyle: CSSProperties = {
@@ -1835,8 +1837,7 @@ export function BidsPricingTab({
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead style={{ background: '#f9fafb' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid #</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project Name</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
                 </tr>
               </thead>
@@ -1850,12 +1851,7 @@ export function BidsPricingTab({
                       borderBottom: '1px solid #e5e7eb',
                     }}
                   >
-                    <td style={{ padding: '0.75rem', whiteSpace: 'nowrap' }}>
-                      {bid.bid_number?.trim() ? (
-                        <BidBoardBidNumberMark bidPrefix={resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap)} bidNumber={bid.bid_number.trim()} />
-                      ) : '—'}
-                    </td>
-                    <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || '—'}</td>
+                    <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
                   </tr>
                 ))}

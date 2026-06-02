@@ -57,18 +57,27 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
     const bidId = bid.id
     const { data: roughLines } = await supabase
       .from('bids_takeoff_rough_part_lines')
-      .select('count_row_id, quantity, unit_price, part_id, sequence_order')
+      .select('count_row_id, quantity, unit_price, part_id, source_template_id, sequence_order')
       .eq('bid_id', bidId)
     const lines = [...(roughLines ?? [])].sort((a, b) => {
       const ca = String(a.count_row_id).localeCompare(String(b.count_row_id))
       if (ca !== 0) return ca
       return Number(a.sequence_order) - Number(b.sequence_order)
-    }) as Array<{ count_row_id: string; quantity: number; unit_price: number; part_id: string; sequence_order: number }>
-    const partIds = Array.from(new Set(lines.map((l) => l.part_id)))
+    }) as Array<{ count_row_id: string; quantity: number; unit_price: number; part_id: string | null; source_template_id: string | null; sequence_order: number }>
+    const partIds = Array.from(new Set(lines.map((l) => l.part_id).filter((x): x is string => !!x)))
     const { data: partsData } = partIds.length
       ? await supabase.from('material_parts').select('id, name').in('id', partIds)
       : { data: [] as { id: string; name: string }[] }
     const nameById = new Map((partsData ?? []).map((p) => [p.id, p.name ?? '']))
+    // Bundle lines (no part) show the assembly name.
+    const templateIds = Array.from(
+      new Set(lines.filter((l) => !l.part_id && l.source_template_id).map((l) => l.source_template_id as string)),
+    )
+    const templateNameById = new Map<string, string>()
+    if (templateIds.length) {
+      const { data: tplData } = await supabase.from('material_templates').select('id, name').in('id', templateIds)
+      for (const t of (tplData ?? []) as { id: string; name: string | null }[]) templateNameById.set(t.id, t.name ?? '')
+    }
     const taxPercent = ctx.taxPercent
     const countByRowId = new Map(countRows.map((cr) => [cr.id, cr.count]))
     const totalMaterials = ctx.materialTotalRoughIn ?? sumRoughLinesPreTaxWithCount(lines, countByRowId)
@@ -78,7 +87,9 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
       lines: lines
         .filter((l) => l.count_row_id === cr.id)
         .map((l) => ({
-          partName: nameById.get(l.part_id) ?? l.part_id.slice(0, 8),
+          partName: l.part_id
+            ? (nameById.get(l.part_id) ?? l.part_id.slice(0, 8))
+            : `${templateNameById.get(l.source_template_id ?? '') ?? 'Assembly'} (bundle)`,
           unitPrice: Number(l.unit_price),
           quantity: Number(l.quantity),
         })),
