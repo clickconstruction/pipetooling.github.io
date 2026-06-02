@@ -426,6 +426,7 @@ export function ScheduleShareModal({
                 listAriaLabel="Add recipient"
                 portalZIndex={1400}
                 minSearchChars={2}
+                searchReplacesTrigger
               />
               {selectedIds.length > 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
@@ -585,6 +586,7 @@ export function ScheduleShareModal({
                   listAriaLabel="Recurring recipient"
                   portalZIndex={1400}
                   minSearchChars={2}
+                  searchReplacesTrigger
                 />
               </div>
 
