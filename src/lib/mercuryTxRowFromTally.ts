@@ -24,9 +24,17 @@ export function tallyUniqueJobSplitEntries(jobSplits: TallyLinkedMercuryRow['job
   return out
 }
 
-/** Matches Job Tally unlinked scope: no parsed job_splits and no jobs_summary string. */
-export function tallyRowHasJobAllocations(row: TallyLinkedMercuryRow): boolean {
-  return tallyUniqueJobSplitEntries(row.job_splits).length > 0 || !!row.jobs_summary?.trim()
+/**
+ * A "resolved" Tally transaction (drops out of the unlinked scope): has job
+ * allocations (parsed job_splits or jobs_summary), or is linked to supply-house
+ * invoice(s) (invoices_summary).
+ */
+export function tallyRowIsResolved(row: TallyLinkedMercuryRow): boolean {
+  return (
+    tallyUniqueJobSplitEntries(row.job_splits).length > 0 ||
+    !!row.jobs_summary?.trim() ||
+    !!row.invoices_summary?.trim()
+  )
 }
 
 export function mercuryTxRowFromTallyRpc(row: TallyLinkedMercuryRow): MercuryTxRow {
@@ -61,6 +69,6 @@ export function filterTallyRowsToUnlinkedWithOptionalMinPosted(
     if (minPostedYmd != null && minPostedYmd !== '' && !mercuryRowPassesSortingStartDate(r.posted_at, minPostedYmd)) {
       return false
     }
-    return !tallyRowHasJobAllocations(r)
+    return !tallyRowIsResolved(r)
   })
 }
