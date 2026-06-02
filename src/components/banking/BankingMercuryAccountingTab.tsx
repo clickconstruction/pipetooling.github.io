@@ -489,21 +489,18 @@ export function BankingMercuryAccountingTab({
     }
     setAssignmentsLoading(true)
     try {
-      const ids = [...idSet]
-      const batchSize = 400
+      // One unfiltered select (the assignments table is small) then filter to the visible set,
+      // instead of chunking the ~10k ids into 400-id batches (~28 sequential round-trips).
+      const rows = await withSupabaseRetry(async () => {
+        return supabase
+          .from('mercury_transaction_drag_sort_assignments')
+          .select('mercury_transaction_id, label_id')
+          .limit(100000)
+      }, 'accounting load drag assignments')
       const map = new Map<string, string>()
-      for (let i = 0; i < ids.length; i += batchSize) {
-        const slice = ids.slice(i, i + batchSize)
-        const rows = await withSupabaseRetry(async () => {
-          return supabase
-            .from('mercury_transaction_drag_sort_assignments')
-            .select('mercury_transaction_id, label_id')
-            .in('mercury_transaction_id', slice)
-        }, 'accounting load drag assignments')
-        for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
-          if (idSet.has(row.mercury_transaction_id)) {
-            map.set(row.mercury_transaction_id, row.label_id)
-          }
+      for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
+        if (idSet.has(row.mercury_transaction_id)) {
+          map.set(row.mercury_transaction_id, row.label_id)
         }
       }
       setAssignmentLabelByTxId(map)
