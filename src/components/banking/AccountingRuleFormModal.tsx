@@ -6,7 +6,10 @@ import { buildSortedAccountingLabelSelectOptions } from '../../lib/accountingLab
 import {
   type AccountingLabelRuleCriteriaV1,
   accountingRuleEffectiveClauseCount,
+  defaultAccountingLabelRuleCriteriaV1,
+  parseAccountingLabelRuleCriteria,
 } from '../../lib/accountingLabelRuleMatch'
+import type { Json } from '../../types/database'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -52,6 +55,30 @@ function ruleNameWithLabelSuffix(baseName: string, labelId: string, labels: Drag
   const ln = L?.name?.trim()
   if (!ln) return baseName.trimEnd()
   return appendLabelSuffixToRuleName(baseName, ln)
+}
+
+/** Convert a stored rule row into editable form state. Shared by the Accounting rules
+ * manager and the Transaction Detail "edit applicable rule" flow. */
+export function ruleRowToForm(
+  rule: { name: string; enabled: boolean; label_id: string; criteria: Json },
+  fallbackLabelId: string,
+): AccountingRuleFormState {
+  const parsed = parseAccountingLabelRuleCriteria(rule.criteria) ?? defaultAccountingLabelRuleCriteriaV1()
+  const base = emptyRuleForm()
+  base.name = rule.name
+  base.enabled = rule.enabled
+  base.labelId = rule.label_id || fallbackLabelId
+  if (parsed.amount?.min !== undefined) base.amountMin = String(parsed.amount.min)
+  if (parsed.amount?.max !== undefined) base.amountMax = String(parsed.amount.max)
+  if (parsed.counterparty) {
+    base.counterpartyOp = parsed.counterparty.op
+    base.counterpartyValue = parsed.counterparty.value
+  }
+  if (parsed.bankDescription) {
+    base.bankOp = parsed.bankDescription.op
+    base.bankValue = parsed.bankDescription.value
+  }
+  return base
 }
 
 export function emptyRuleForm(): AccountingRuleFormState {
@@ -109,7 +136,8 @@ export type AccountingRuleFormModalProps = {
   labelAssignmentCountById: Record<string, number>
   labelsLoading?: boolean
   onClose: () => void
-  onRunTest: (criteria: AccountingLabelRuleCriteriaV1) => void
+  /** When set, shows a "Test" button; omit to hide it (e.g. opened from Transaction Detail). */
+  onRunTest?: (criteria: AccountingLabelRuleCriteriaV1) => void
   onSave: (draft: AccountingRuleSaveDraft) => Promise<void>
   /** When set, shows Save and apply (persist + run apply-rules scan). */
   onSaveAndApply?: (draft: AccountingRuleSaveDraft) => Promise<void>
@@ -117,6 +145,8 @@ export type AccountingRuleFormModalProps = {
   applyRulesBusy?: boolean
   /** When set and `editingRuleId !== null`, renders a trash icon in the header that opens a nested confirm modal. */
   onDelete?: () => Promise<void>
+  /** Overlay z-index (default 1200); raise when opened above another modal. */
+  zIndex?: number
 }
 
 export function AccountingRuleFormModal({
@@ -131,6 +161,7 @@ export function AccountingRuleFormModal({
   onSaveAndApply,
   applyRulesBusy = false,
   onDelete,
+  zIndex = 1200,
 }: AccountingRuleFormModalProps) {
   const { showToast } = useToastContext()
   const accountingLabelFieldId = useId()
@@ -175,7 +206,7 @@ export function AccountingRuleFormModal({
   }, [editingRuleId, form.labelId, form.name, labels])
 
   const handleTest = () => {
-    if (controlsDisabled) return
+    if (controlsDisabled || !onRunTest) return
     const c = formToCriteria(form)
     if (accountingRuleEffectiveClauseCount(c) === 0) {
       showToast('Add at least one criterion to test.', 'error')
@@ -259,7 +290,7 @@ export function AccountingRuleFormModal({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 1200,
+        zIndex,
         padding: '1rem',
         boxSizing: 'border-box',
       }}
@@ -458,22 +489,26 @@ export function AccountingRuleFormModal({
               justifyContent: 'space-between',
             }}
           >
-            <button
-              type="button"
-              onClick={handleTest}
-              disabled={controlsDisabled}
-              style={{
-                padding: '0.45rem 0.85rem',
-                fontWeight: 600,
-                background: controlsDisabled ? '#e5e7eb' : '#f1f5f9',
-                border: '1px solid #e2e8f0',
-                borderRadius: 6,
-                cursor: controlsDisabled ? 'not-allowed' : 'pointer',
-                color: controlsDisabled ? '#64748b' : '#0f172a',
-              }}
-            >
-              Test
-            </button>
+            {onRunTest ? (
+              <button
+                type="button"
+                onClick={handleTest}
+                disabled={controlsDisabled}
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  fontWeight: 600,
+                  background: controlsDisabled ? '#e5e7eb' : '#f1f5f9',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 6,
+                  cursor: controlsDisabled ? 'not-allowed' : 'pointer',
+                  color: controlsDisabled ? '#64748b' : '#0f172a',
+                }}
+              >
+                Test
+              </button>
+            ) : (
+              <span />
+            )}
             <div
               style={{
                 display: 'flex',
@@ -550,7 +585,7 @@ export function AccountingRuleFormModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1201,
+            zIndex: zIndex + 1,
             padding: '1rem',
             boxSizing: 'border-box',
           }}

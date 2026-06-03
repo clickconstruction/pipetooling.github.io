@@ -47,7 +47,6 @@ import { mercuryTxDragSortBankNoteRowVisible } from './MercuryTxNotesDisclosure'
 import {
   type AccountingLabelRuleCriteriaV1,
   accountingRuleEffectiveClauseCount,
-  defaultAccountingLabelRuleCriteriaV1,
   matchAccountingLabelRuleCriteria,
   parseAccountingLabelRuleCriteria,
 } from '../../lib/accountingLabelRuleMatch'
@@ -84,6 +83,7 @@ import { MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS } from '../../lib/fetchMercur
 import {
   AccountingRuleFormModal,
   emptyRuleForm,
+  ruleRowToForm,
   suggestedRuleNameFromCounterparty,
   type AccountingRuleFormState,
   type AccountingRuleSaveDraft,
@@ -191,25 +191,6 @@ type PendingApproval = {
 
 function criteriaToJson(c: AccountingLabelRuleCriteriaV1): Json {
   return c as unknown as Json
-}
-
-function ruleRowToForm(rule: RuleRow, fallbackLabelId: string): AccountingRuleFormState {
-  const parsed = parseAccountingLabelRuleCriteria(rule.criteria) ?? defaultAccountingLabelRuleCriteriaV1()
-  const base = emptyRuleForm()
-  base.name = rule.name
-  base.enabled = rule.enabled
-  base.labelId = rule.label_id || fallbackLabelId
-  if (parsed.amount?.min !== undefined) base.amountMin = String(parsed.amount.min)
-  if (parsed.amount?.max !== undefined) base.amountMax = String(parsed.amount.max)
-  if (parsed.counterparty) {
-    base.counterpartyOp = parsed.counterparty.op
-    base.counterpartyValue = parsed.counterparty.value
-  }
-  if (parsed.bankDescription) {
-    base.bankOp = parsed.bankDescription.op
-    base.bankValue = parsed.bankDescription.value
-  }
-  return base
 }
 
 const TEST_PREVIEW_LIMIT = 40
