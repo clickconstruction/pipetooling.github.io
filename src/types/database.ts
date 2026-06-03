@@ -4862,6 +4862,7 @@ export type Database = {
       }
       mercury_drag_sort_labels: {
         Row: {
+          account_type: string | null
           created_at: string
           default_key: string | null
           description: string | null
@@ -4872,6 +4873,7 @@ export type Database = {
           sort_order: number
         }
         Insert: {
+          account_type?: string | null
           created_at?: string
           default_key?: string | null
           description?: string | null
@@ -4882,6 +4884,7 @@ export type Database = {
           sort_order?: number
         }
         Update: {
+          account_type?: string | null
           created_at?: string
           default_key?: string | null
           description?: string | null

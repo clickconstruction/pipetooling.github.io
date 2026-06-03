@@ -1,4 +1,5 @@
 import type { Database } from '../types/database'
+import type { AccountType } from './bankingAccountTypes'
 import {
   USER_REVIEW_UNLABELED_COL_KEY,
   type UserReviewLabelRow,
@@ -165,4 +166,94 @@ export function totalsForCategoryReviewEntries(entries: CategoryReviewEntry[]): 
     totalAmount += e.totalAmount
   }
   return { count, totalAmount }
+}
+
+// ---------------------------------------------------------------------------
+// Financial statement grouping (P&L + cash-basis Balance Sheet).
+// Amounts follow the ledger convention: money out is negative, money in positive.
+// ---------------------------------------------------------------------------
+
+export type TypedCategoryEntry = CategoryReviewEntry & { accountType: AccountType | null }
+
+export type FinancialSection = { entries: TypedCategoryEntry[]; total: number }
+
+/** Attach each entry's account_type (from the label set); Unlabeled stays null. */
+export function attachAccountTypes(
+  entries: CategoryReviewEntry[],
+  accountTypeByLabelId: ReadonlyMap<string, AccountType | null>,
+): TypedCategoryEntry[] {
+  return entries.map((e) => ({
+    ...e,
+    accountType: e.labelId ? accountTypeByLabelId.get(e.labelId) ?? null : null,
+  }))
+}
+
+function section(entries: TypedCategoryEntry[]): FinancialSection {
+  return { entries, total: entries.reduce((s, e) => s + e.totalAmount, 0) }
+}
+
+export type ProfitAndLoss = {
+  income: FinancialSection
+  expense: FinancialSection
+  netIncome: number
+  /** Categories (and Unlabeled) with no P&L classification — surfaced so they get classified. */
+  uncategorized: FinancialSection
+}
+
+/** Build a cash-basis P&L from typed entries for a period. Excludes transfer/asset/liability/equity. */
+export function buildProfitAndLoss(entries: TypedCategoryEntry[]): ProfitAndLoss {
+  const income = entries.filter((e) => e.accountType === 'income')
+  const expense = entries.filter((e) => e.accountType === 'expense')
+  const uncategorized = entries.filter((e) => e.accountType == null && (e.count > 0 || !e.isUnlabeled))
+  const incomeSec = section(income)
+  const expenseSec = section(expense)
+  return {
+    income: incomeSec,
+    expense: expenseSec,
+    netIncome: incomeSec.total + expenseSec.total,
+    uncategorized: section(uncategorized.filter((e) => e.count > 0)),
+  }
+}
+
+export type BalanceSheet = {
+  cash: number
+  otherAssets: FinancialSection
+  assetsTotal: number
+  liabilities: FinancialSection
+  liabilitiesTotal: number
+  ownersEquity: FinancialSection
+  retainedEarnings: number
+  equityTotal: number
+  liabilitiesPlusEquity: number
+  /** Assets − (Liabilities + Equity): nonzero = unreconciled (unlabeled txs / partial history). */
+  unreconciled: number
+}
+
+/**
+ * Build a cash-basis Balance Sheet. `cash` is the live bank balance (assets' cash line);
+ * other lines are the all-time net of their account-typed cash flows. Retained earnings =
+ * all-time net income from the same entries. Approximate — `unreconciled` exposes the gap.
+ */
+export function buildBalanceSheet(entries: TypedCategoryEntry[], cash: number): BalanceSheet {
+  const otherAssets = section(entries.filter((e) => e.accountType === 'asset'))
+  const liabilities = section(entries.filter((e) => e.accountType === 'liability'))
+  const ownersEquity = section(entries.filter((e) => e.accountType === 'equity'))
+  const income = entries.filter((e) => e.accountType === 'income').reduce((s, e) => s + e.totalAmount, 0)
+  const expense = entries.filter((e) => e.accountType === 'expense').reduce((s, e) => s + e.totalAmount, 0)
+  const retainedEarnings = income + expense
+  const assetsTotal = cash + otherAssets.total
+  const equityTotal = ownersEquity.total + retainedEarnings
+  const liabilitiesPlusEquity = liabilities.total + equityTotal
+  return {
+    cash,
+    otherAssets,
+    assetsTotal,
+    liabilities,
+    liabilitiesTotal: liabilities.total,
+    ownersEquity,
+    retainedEarnings,
+    equityTotal,
+    liabilitiesPlusEquity,
+    unreconciled: assetsTotal - liabilitiesPlusEquity,
+  }
 }

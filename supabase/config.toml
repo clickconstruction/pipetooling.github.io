@@ -368,6 +368,10 @@ verify_jwt = false
 [functions.manage-manual-account]
 verify_jwt = false
 
+# Validates JWT + Banking role in-body; returns live Mercury account balances (Balance Sheet cash).
+[functions.get-mercury-account-balances]
+verify_jwt = false
+
 [functions.create-stripe-invoice]
 verify_jwt = false
 
