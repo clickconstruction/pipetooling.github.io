@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
+import { mercuryBankDescriptionFromRaw } from '../../lib/mercuryBankDescriptionFromRaw'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 
@@ -153,10 +154,18 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
   if (!open || !anchor) return null
 
   const renderRow = (r: MercuryTxRow, isAnchor: boolean) => {
+    const cp = r.counterparty_name?.trim() || ''
+    const bankDesc = mercuryBankDescriptionFromRaw(r.raw)?.trim() || ''
+    const showBankDesc = bankDesc !== '' && bankDesc.toLowerCase() !== cp.toLowerCase()
     const cells = (
       <>
         <td style={{ ...td, whiteSpace: 'nowrap' }}>{fmtDate(r.posted_at)}</td>
-        <td style={td}>{r.counterparty_name?.trim() || <span style={{ color: '#9ca3af' }}>—</span>}</td>
+        <td style={td}>
+          {cp ? <span>{cp}</span> : !showBankDesc ? <span style={{ color: '#9ca3af' }}>—</span> : null}
+          {showBankDesc ? (
+            <span style={{ display: 'block', fontSize: '0.7rem', color: '#94a3b8', wordBreak: 'break-word' }}>{bankDesc}</span>
+          ) : null}
+        </td>
         <td style={{ ...td, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>{acct(r.mercury_account_id, nicknameByAccount)}</td>
         <td style={{ ...td, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap' }}>{formatMercuryKind(r.kind)}</td>
         <td style={{ ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: amountColor(Number(r.amount)), fontWeight: 500, whiteSpace: 'nowrap' }}>
