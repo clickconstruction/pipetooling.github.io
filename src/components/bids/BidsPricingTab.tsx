@@ -157,7 +157,6 @@ export function BidsPricingTab({
   loadBidPricingAssignments,
   reloadPricingForBid,
   saveBidSelectedPriceBookVersion,
-  openMaterialsModelSwitch,
   pricingRowsForGrid,
   pricingPackageSource,
   onSelectBid,
@@ -810,36 +809,12 @@ export function BidsPricingTab({
               <div
                 style={{
                   display: 'flex',
-                  justifyContent: 'space-between',
+                  justifyContent: 'flex-end',
                   alignItems: 'center',
                   flexWrap: 'wrap',
                   gap: '0.5rem',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: '0 0 auto', minWidth: 0 }}>
-                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem', whiteSpace: 'nowrap' }}>Price book</label>
-                  <select
-                    value={selectedPricingVersionId ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v) handlePricingVersionChange(selectedBidForPricing.id, v)
-                    }}
-                    style={{
-                      padding: '0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 4,
-                      boxSizing: 'border-box',
-                      width: 'max-content',
-                      maxWidth: '100%',
-                      ...( { fieldSizing: 'content' } as CSSProperties ),
-                    }}
-                  >
-                    <option value="">— Select version —</option>
-                    {priceBookVersions.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                </div>
                 {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flex: '0 0 auto', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem' }}>View:</span>
@@ -880,68 +855,51 @@ export function BidsPricingTab({
                   </div>
                 ) : null}
               </div>
-              {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && selectedBidForPricing ? (
-                (() => {
-                  const pricingMaterialsModel = normalizeMaterialsModel(selectedBidForPricing.materials_model)
-                  return (
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        alignItems: 'center',
-                        gap: '0.25rem',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '0.875rem',
-                          fontWeight: 500,
-                          marginRight: '0.25rem',
-                          color: '#4b5563',
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        Materials
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => openMaterialsModelSwitch('exact', 'pricing')}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.8125rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 4,
-                          background: pricingMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
-                          cursor: 'pointer',
-                          fontWeight: pricingMaterialsModel === 'exact' ? 600 : 400,
-                          color: pricingMaterialsModel === 'exact' ? '#111827' : '#6b7280',
-                          boxShadow: pricingMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
-                        }}
-                      >
-                        By Stage
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openMaterialsModelSwitch('rough', 'pricing')}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          fontSize: '0.8125rem',
-                          border: '1px solid #d1d5db',
-                          borderRadius: 4,
-                          background: pricingMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
-                          cursor: 'pointer',
-                          fontWeight: pricingMaterialsModel === 'rough' ? 600 : 400,
-                          color: pricingMaterialsModel === 'rough' ? '#111827' : '#6b7280',
-                          boxShadow: pricingMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
-                        }}
-                      >
-                        Combined
-                      </button>
-                    </div>
-                  )
-                })()
-              ) : null}
+            </div>
+            {/* Price book selector (left) + partial-fill (right), styled like the Labor/Takeoffs tabs. */}
+            <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div>
+                <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Price book</label>
+                <select
+                  value={selectedPricingVersionId ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    if (v) handlePricingVersionChange(selectedBidForPricing.id, v)
+                  }}
+                  style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                >
+                  <option value="">— Select version —</option>
+                  {priceBookVersions.map((v) => (
+                    <option key={v.id} value={v.id}>{v.name}</option>
+                  ))}
+                </select>
+              </div>
+              {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPricingAssignmentSearches((prev) => {
+                      const next = { ...prev }
+                      for (const cr of pricingCountRows) {
+                        next[cr.id] = (cr.fixture ?? '').slice(0, 3)
+                      }
+                      return next
+                    })
+                  }}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.875rem',
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                  }}
+                  title="Pre-fill each fixture's search box to find matching price book entries"
+                >
+                  Apply Matching Price Book Entries
+                </button>
+              )}
             </div>
             {!pricingCostEstimate && pricingCountRows.length > 0 && (
               <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -1051,35 +1009,7 @@ export function BidsPricingTab({
                       <tr>
                         <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
                         <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                            Price book entry
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPricingAssignmentSearches((prev) => {
-                                  const next = { ...prev }
-                                  for (const row of rows) {
-                                    const fixture = row.countRow.fixture ?? ''
-                                    next[row.countRow.id] = fixture.slice(0, 3)
-                                  }
-                                  return next
-                                })
-                              }}
-                              style={{
-                                padding: '0.2rem 0.4rem',
-                                fontSize: '0.75rem',
-                                background: '#f3f4f6',
-                                border: '1px solid #d1d5db',
-                                borderRadius: 4,
-                                cursor: 'pointer'
-                              }}
-                              title="Pre-fill first 3 letters of each fixture into search"
-                            >
-                              partial-fill
-                            </button>
-                          </span>
-                        </th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price book entry</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{pricingViewModel === 'cost' ? 'Our cost' : 'Sale Price'}</th>
                         <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue</th>
                         <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Margin/Total</th>

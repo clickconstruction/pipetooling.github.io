@@ -2549,70 +2549,14 @@ export function BidsTakeoffTab({
                   />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Takeoff book</label>
-                  <select
-                    value={selectedTakeoffBookVersionId ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      if (v) {
-                        setSelectedTakeoffBookVersionId(v)
-                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, v)
-                      } else {
-                        setSelectedTakeoffBookVersionId(null)
-                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
-                      }
-                    }}
-                    title={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? undefined}
-                    style={{
-                      padding: '0.35rem 0.5rem',
-                      border: '1px solid #d1d5db',
-                      borderRadius: 4,
-                      fontSize: '0.875rem',
-                      boxSizing: 'border-box',
-                      width: 'calc(10ch + 2.25rem)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
+                  <button
+                    type="button"
+                    onClick={() => void printTakeoffBreakdown()}
+                    disabled={takeoffPrinting}
+                    style={{ padding: '0.5rem 1rem', background: takeoffPrinting ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: takeoffPrinting ? 'wait' : 'pointer' }}
                   >
-                    <option value="">— Select version —</option>
-                    {takeoffBookVersions.map((v) => (
-                      <option key={v.id} value={v.id}>{v.name}</option>
-                    ))}
-                  </select>
-                  {takeoffCountRows.length > 0 && selectedTakeoffBookVersionId && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => applyTakeoffBookTemplates()}
-                        disabled={applyingTakeoffBookTemplates}
-                        style={{
-                          padding: '0.35rem 0.75rem',
-                          background: applyingTakeoffBookTemplates ? '#9ca3af' : '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: 4,
-                          cursor: applyingTakeoffBookTemplates ? 'wait' : 'pointer',
-                          fontSize: '0.875rem',
-                          textAlign: 'center',
-                          lineHeight: 1.2,
-                        }}
-                      >
-                        {applyingTakeoffBookTemplates ? (
-                          'Applying…'
-                        ) : (
-                          <>
-                            Apply Matching
-                            <br />
-                            Fixture Assemblies
-                          </>
-                        )}
-                      </button>
-                      {takeoffBookApplyMessage && (
-                        <span style={{ color: '#059669', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
-                      )}
-                    </>
-                  )}
+                    {takeoffPrinting ? 'Preparing…' : 'Print'}
+                  </button>
                   {!narrowViewport640 ? (
                     <button
                       type="button"
@@ -2678,6 +2622,55 @@ export function BidsTakeoffTab({
                   </div>
                 )
               })()}
+              {/* Takeoff book selector (left) + Apply button (right), styled like the Labor tab. */}
+              <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div>
+                  <label style={{ fontSize: '0.875rem', marginRight: '0.5rem' }}>Takeoff book</label>
+                  <select
+                    value={selectedTakeoffBookVersionId ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v) {
+                        setSelectedTakeoffBookVersionId(v)
+                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, v)
+                      } else {
+                        setSelectedTakeoffBookVersionId(null)
+                        saveBidSelectedTakeoffBookVersion(selectedBidForTakeoff.id, null)
+                      }
+                    }}
+                    title={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? undefined}
+                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                  >
+                    <option value="">— Select version —</option>
+                    {takeoffBookVersions.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </select>
+                </div>
+                {takeoffCountRows.length > 0 && selectedTakeoffBookVersionId && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => applyTakeoffBookTemplates()}
+                      disabled={applyingTakeoffBookTemplates}
+                      style={{
+                        padding: '0.35rem 0.75rem',
+                        background: applyingTakeoffBookTemplates ? '#9ca3af' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 4,
+                        cursor: applyingTakeoffBookTemplates ? 'wait' : 'pointer',
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {applyingTakeoffBookTemplates ? 'Applying…' : 'Apply Matching Fixture Assemblies'}
+                    </button>
+                    {takeoffBookApplyMessage && (
+                      <span style={{ color: '#059669', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
+                    )}
+                  </div>
+                )}
+              </div>
               {takeoffCountRows.length === 0 ? (
                 <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
               ) : (
@@ -5577,8 +5570,11 @@ function SortableRoughPartLineRow({
             )}
           </td>
           <td style={{ padding: '0.4rem 0.25rem', textAlign: 'center', fontSize: '0.8125rem' }}>{bp.quantity}</td>
-          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontSize: '0.7rem', fontStyle: 'italic' }}>
-            not counted
+          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontSize: '0.7rem' }}>
+            <div style={{ fontStyle: 'italic' }}>not counted</div>
+            {bp.supplyHouseName ? (
+              <div style={{ color: '#9ca3af', fontStyle: 'normal' }}>{bp.supplyHouseName}</div>
+            ) : null}
           </td>
           <td style={{ padding: '0.4rem 0.75rem' }} />
         </tr>
