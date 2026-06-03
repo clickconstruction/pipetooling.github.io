@@ -31,6 +31,7 @@ import {
   STAGE_LABELS,
   type TakeoffStage,
 } from '../../lib/bids/bidTakeoffHelpers'
+import { loadBundleBreakdown, loadBundlePartLines, type BundleBreakdown, type BundlePartLine } from '../../lib/bids/assemblyBundleBreakdown'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { ModalShell } from './ModalShell'
 import { BidProjectCell } from './BidProjectCell'
@@ -256,6 +257,12 @@ export function BidsTakeoffTab({
   const [takeoffNewTemplatePrices, setTakeoffNewTemplatePrices] = useState<Array<{ supplyHouseId: string; supplyHouseName: string; price: number }>>([])
   const [takeoffNewTemplatePriceSupplyHouseId, setTakeoffNewTemplatePriceSupplyHouseId] = useState('')
   const [takeoffNewTemplatePriceValue, setTakeoffNewTemplatePriceValue] = useState('')
+  // When the Add-Assembly modal was opened via "Save as Assembly" from a rough count
+  // row, this holds that count row id. On save, if a bundle price is selected below,
+  // the row's individual part lines are collapsed into one bundle line at that price.
+  const [saveAsAssemblyCountRowId, setSaveAsAssemblyCountRowId] = useState<string | null>(null)
+  // Index into takeoffNewTemplatePrices chosen to override the takeoff line (null = none).
+  const [takeoffNewTemplateApplyPriceIndex, setTakeoffNewTemplateApplyPriceIndex] = useState<number | null>(null)
 
   type MaterialPartWithType = MaterialPart & { part_types?: PartType | null }
   const [takeoffAddTemplateParts, setTakeoffAddTemplateParts] = useState<MaterialPartWithType[]>([])
@@ -318,6 +325,14 @@ export function BidsTakeoffTab({
   const [partPricesModalAddPrice, setPartPricesModalAddPrice] = useState('')
   const [partPricesModalAdding, setPartPricesModalAdding] = useState(false)
 
+  // Bundle breakdown modal: parts-vs-bundle comparison for a rough Assembly bundle line.
+  const [bundleBreakdownModal, setBundleBreakdownModal] = useState<{ templateId: string; lineId: string; assemblyName: string } | null>(null)
+  const [bundleBreakdownData, setBundleBreakdownData] = useState<BundleBreakdown | 'loading' | null>(null)
+  // Inline grayed part rows shown beneath each Combined bundle line (display-only, never
+  // persisted, never summed). Cached by assembly template id; collapse tracked per line id.
+  const [bundlePartsByTemplateId, setBundlePartsByTemplateId] = useState<Record<string, BundlePartLine[]>>({})
+  const [collapsedBundleLineIds, setCollapsedBundleLineIds] = useState<Set<string>>(new Set())
+
   // Edit Template Modal state
   const [editTemplateModalOpen, setEditTemplateModalOpen] = useState(false)
   const [editTemplateModalId, setEditTemplateModalId] = useState<string | null>(null)
@@ -332,6 +347,12 @@ export function BidsTakeoffTab({
   const [editTemplateNewItemPartDropdownOpen, setEditTemplateNewItemPartDropdownOpen] = useState(false)
   const [editTemplateNewItemTemplateDropdownOpen, setEditTemplateNewItemTemplateDropdownOpen] = useState(false)
   const [editTemplateAddingItem, setEditTemplateAddingItem] = useState(false)
+  // Bundle supply-house prices (material_template_prices) edited inline in the Edit Assembly modal.
+  const [editTemplatePrices, setEditTemplatePrices] = useState<Array<{ id: string; supply_house_id: string; supply_house_name: string; price: number }>>([])
+  const [editTemplateNewPriceSupplyHouseId, setEditTemplateNewPriceSupplyHouseId] = useState('')
+  const [editTemplateNewPriceValue, setEditTemplateNewPriceValue] = useState('')
+  const [editTemplatePriceSaving, setEditTemplatePriceSaving] = useState(false)
+  const [editTemplatePriceEditing, setEditTemplatePriceEditing] = useState<Record<string, string>>({})
 
   const [costEstimatePOModalPoId, setCostEstimatePOModalPoId] = useState<string | null>(null)
   const [costEstimatePOModalData, setCostEstimatePOModalData] = useState<{ name: string; items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> } | 'loading' | null>(null)
@@ -436,6 +457,8 @@ export function BidsTakeoffTab({
     setTakeoffNewTemplatePrices([])
     setTakeoffNewTemplatePriceSupplyHouseId('')
     setTakeoffNewTemplatePriceValue('')
+    setSaveAsAssemblyCountRowId(null)
+    setTakeoffNewTemplateApplyPriceIndex(null)
   }
 
   function openSaveAsAssemblyFromRough(countRowId: string, row: BidCountRow) {
@@ -452,6 +475,8 @@ export function BidsTakeoffTab({
     setTakeoffNewTemplateName(fx ? `${fx} assembly` : 'New assembly')
     setTakeoffNewTemplateDescription('')
     setTakeoffAddTemplateForMappingId(null)
+    setSaveAsAssemblyCountRowId(countRowId)
+    setTakeoffNewTemplateApplyPriceIndex(null)
     setTakeoffNewItemType('part')
     setTakeoffNewItemPartId('')
     setTakeoffNewItemTemplateId('')
@@ -537,6 +562,35 @@ export function BidsTakeoffTab({
     if (takeoffAddTemplateForMappingId) {
       setTakeoffMapping(takeoffAddTemplateForMappingId, { templateId })
     }
+
+    // Save-as-Assembly override: if launched from a rough count row and the user picked
+    // a bundle price with "Use for takeoff", collapse that fixture's individual part lines
+    // into one bundle line at the chosen price.
+    const overrideCountRowId = saveAsAssemblyCountRowId
+    const overridePrice =
+      takeoffNewTemplateApplyPriceIndex != null
+        ? takeoffNewTemplatePrices[takeoffNewTemplateApplyPriceIndex]?.price
+        : undefined
+    if (overrideCountRowId && overridePrice != null) {
+      const existingForRow = takeoffRoughPartLines.filter((l) => l.countRowId === overrideCountRowId)
+      const savedIds = existingForRow.filter((l) => l.isSaved).map((l) => l.id)
+      if (savedIds.length > 0) {
+        const { error: delError } = await supabase
+          .from('bids_takeoff_rough_part_lines')
+          .delete()
+          .in('id', savedIds)
+        if (delError) {
+          setError(`Failed to replace part lines: ${delError.message}`)
+          setSavingTakeoffNewTemplate(false)
+          return
+        }
+      }
+      setTakeoffRoughPartLines((prev) => prev.filter((l) => l.countRowId !== overrideCountRowId))
+      await insertRoughBundleLine(overrideCountRowId, templateId, overridePrice)
+      const asmName = takeoffNewTemplateName.trim() || 'Assembly'
+      showToast(`Saved "${asmName}" and applied its bundle price ($${overridePrice.toFixed(2)}).`, 'success')
+    }
+
     closeTakeoffAddTemplateModal()
     setSavingTakeoffNewTemplate(false)
   }
@@ -607,8 +661,12 @@ export function BidsTakeoffTab({
     setEditTemplateNewItemTemplateSearchQuery('')
     setEditTemplateNewItemPartDropdownOpen(false)
     setEditTemplateNewItemTemplateDropdownOpen(false)
+    setEditTemplateNewPriceSupplyHouseId('')
+    setEditTemplateNewPriceValue('')
+    setEditTemplatePriceEditing({})
+    setEditTemplatePrices([])
     setEditTemplateModalOpen(true)
-    await loadEditTemplateItems(templateId)
+    await Promise.all([loadEditTemplateItems(templateId), loadEditTemplatePrices(templateId)])
   }
 
   function closeEditTemplateModal() {
@@ -621,6 +679,79 @@ export function BidsTakeoffTab({
     setEditTemplateNewItemQuantity('1')
     setEditTemplateNewItemPartSearchQuery('')
     setEditTemplateNewItemTemplateSearchQuery('')
+    setEditTemplatePrices([])
+    setEditTemplateNewPriceSupplyHouseId('')
+    setEditTemplateNewPriceValue('')
+    setEditTemplatePriceEditing({})
+  }
+
+  async function loadEditTemplatePrices(templateId: string) {
+    const { data, error } = await supabase
+      .from('material_template_prices')
+      .select('id, supply_house_id, price, supply_houses(name)')
+      .eq('template_id', templateId)
+      .order('price', { ascending: true })
+    if (error) {
+      setError(`Failed to load bundle prices: ${error.message}`)
+      setEditTemplatePrices([])
+      return
+    }
+    type Row = { id: string; supply_house_id: string; price: number; supply_houses?: { name: string } | { name: string }[] | null }
+    const rows = ((data ?? []) as Row[]).map((r) => {
+      const sh = Array.isArray(r.supply_houses) ? r.supply_houses[0] : r.supply_houses
+      return { id: r.id, supply_house_id: r.supply_house_id, supply_house_name: sh?.name ?? '—', price: Number(r.price) || 0 }
+    })
+    setEditTemplatePrices(rows)
+  }
+
+  async function addEditTemplatePrice() {
+    if (!editTemplateModalId) return
+    const sh = supplyHouses.find((s) => s.id === editTemplateNewPriceSupplyHouseId)
+    const price = parseFloat(editTemplateNewPriceValue)
+    if (!sh || Number.isNaN(price) || price < 0) return
+    setEditTemplatePriceSaving(true)
+    setError(null)
+    const { error: insertErr } = await supabase
+      .from('material_template_prices')
+      .insert({ template_id: editTemplateModalId, supply_house_id: sh.id, price })
+    if (insertErr) {
+      setError(`Failed to add bundle price: ${insertErr.message}`)
+    } else {
+      setEditTemplateNewPriceSupplyHouseId('')
+      setEditTemplateNewPriceValue('')
+      await loadEditTemplatePrices(editTemplateModalId)
+    }
+    setEditTemplatePriceSaving(false)
+  }
+
+  async function updateEditTemplatePrice(priceId: string, newPrice: number) {
+    if (!editTemplateModalId) return
+    setError(null)
+    const { error: updErr } = await supabase
+      .from('material_template_prices')
+      .update({ price: Math.max(0, Number(newPrice) || 0) })
+      .eq('id', priceId)
+    if (updErr) {
+      setError(`Failed to update bundle price: ${updErr.message}`)
+      return
+    }
+    setEditTemplatePriceEditing((prev) => {
+      const next = { ...prev }
+      delete next[priceId]
+      return next
+    })
+    await loadEditTemplatePrices(editTemplateModalId)
+  }
+
+  async function removeEditTemplatePrice(priceId: string) {
+    if (!editTemplateModalId) return
+    setError(null)
+    const { error: delErr } = await supabase.from('material_template_prices').delete().eq('id', priceId)
+    if (delErr) {
+      setError(`Failed to remove bundle price: ${delErr.message}`)
+      return
+    }
+    await loadEditTemplatePrices(editTemplateModalId)
   }
 
   async function loadEditTemplateItems(templateId: string) {
@@ -669,6 +800,7 @@ export function BidsTakeoffTab({
           setError(updateErr.message)
         } else {
           await loadEditTemplateItems(editTemplateModalId)
+          invalidateBundleParts(editTemplateModalId)
           setEditTemplateNewItemPartId('')
           setEditTemplateNewItemTemplateId('')
           setEditTemplateNewItemQuantity('1')
@@ -698,6 +830,7 @@ export function BidsTakeoffTab({
       setError(insertError.message)
     } else {
       await loadEditTemplateItems(editTemplateModalId)
+      invalidateBundleParts(editTemplateModalId)
       setEditTemplateNewItemPartId('')
       setEditTemplateNewItemTemplateId('')
       setEditTemplateNewItemQuantity('1')
@@ -720,6 +853,7 @@ export function BidsTakeoffTab({
       setError(deleteError.message)
     } else {
       await loadEditTemplateItems(editTemplateModalId)
+      invalidateBundleParts(editTemplateModalId)
       setTakeoffTemplatePreviewCache((prev) => ({ ...prev, [editTemplateModalId]: 'loading' }))
       getTemplatePartsPreview(supabase, editTemplateModalId)
         .then((res) => setTakeoffTemplatePreviewCache((p) => ({ ...p, [editTemplateModalId]: res })))
@@ -1356,7 +1490,10 @@ export function BidsTakeoffTab({
     setTakeoffRoughPartLines((prev) => {
       const mapped = prev.map((l) => (l.id === lineId ? { ...l, ...updates } : l))
       const line = mapped.find((l) => l.id === lineId)
-      if (line?.partId?.trim()) {
+      // Persist parts (partId set) and assembly-bundle lines (partId null + sourceTemplateId),
+      // matching persistTakeoffRoughPartLine's own isBundle guard.
+      const persistable = !!line && (!!line.partId?.trim() || (line.partId == null && !!line.sourceTemplateId))
+      if (persistable && line) {
         queueMicrotask(() => {
           void persistTakeoffRoughPartLine(line)
         })
@@ -1870,6 +2007,34 @@ export function BidsTakeoffTab({
   }
 
   /** Add an assembly as a single opaque BUNDLE line, priced at its lowest supply-house price. */
+  /**
+   * Append one assembly-bundle rough line (partId=null, sourceTemplateId set) to a
+   * count row at the given unit price and persist it. Returns the new line so callers
+   * can chain. Shared by "Add as bundle" and Save-as-Assembly's bundle override.
+   */
+  async function insertRoughBundleLine(
+    countRowId: string,
+    templateId: string,
+    unitPrice: number,
+  ): Promise<TakeoffRoughPartLineRow> {
+    const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
+    const maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
+    const newLine: TakeoffRoughPartLineRow = {
+      id: crypto.randomUUID(),
+      countRowId,
+      partId: null,
+      quantity: 1,
+      unitPrice: Math.max(0, Number(unitPrice) || 0),
+      sourceMaterialPartPriceId: null,
+      sourceTemplateId: templateId,
+      sequenceOrder: maxSeq + 1,
+      isSaved: false,
+    }
+    setTakeoffRoughPartLines((prev) => [...prev, newLine])
+    await persistTakeoffRoughPartLine(newLine)
+    return newLine
+  }
+
   async function applyRoughAddAssemblyBundle(countRowId: string | null, templateId: string) {
     if (!countRowId || !selectedBidForTakeoff?.id) return
     setRoughAddAssemblyExpanding(true)
@@ -1884,21 +2049,7 @@ export function BidsTakeoffTab({
       const lowest = (priceRows ?? [])[0]
       const unitPrice = lowest ? Math.max(0, Number(lowest.price) || 0) : 0
 
-      const forRow = takeoffRoughPartLines.filter((l) => l.countRowId === countRowId)
-      const maxSeq = forRow.length === 0 ? 0 : Math.max(...forRow.map((l) => l.sequenceOrder), 0)
-      const newLine: TakeoffRoughPartLineRow = {
-        id: crypto.randomUUID(),
-        countRowId,
-        partId: null,
-        quantity: 1,
-        unitPrice,
-        sourceMaterialPartPriceId: null,
-        sourceTemplateId: templateId,
-        sequenceOrder: maxSeq + 1,
-        isSaved: false,
-      }
-      setTakeoffRoughPartLines((prev) => [...prev, newLine])
-      await persistTakeoffRoughPartLine(newLine)
+      await insertRoughBundleLine(countRowId, templateId, unitPrice)
 
       const asmName = materialTemplates.find((t) => t.id === templateId)?.name ?? 'Assembly'
       if (lowest) {
@@ -1938,6 +2089,58 @@ export function BidsTakeoffTab({
       cancelled = true
     }
   }, [takeoffRoughCatalogLowestPartIdsKey, showToast])
+
+  // Distinct assembly template ids among the on-screen Combined bundle lines.
+  const takeoffBundleTemplateIdsKey = useMemo(() => {
+    if (activeTab !== 'takeoffs' || !selectedBidForTakeoff?.id) return ''
+    if (normalizeMaterialsModel(selectedBidForTakeoff.materials_model) !== 'rough') return ''
+    const ids = takeoffRoughPartLines
+      .filter((l) => l.partId == null && l.sourceTemplateId)
+      .map((l) => l.sourceTemplateId as string)
+    return Array.from(new Set(ids)).sort().join(',')
+  }, [activeTab, selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, takeoffRoughPartLines])
+
+  // Lazily load the grayed part rows for each bundle assembly that isn't cached yet.
+  useEffect(() => {
+    const ids = takeoffBundleTemplateIdsKey.split(',').filter(Boolean)
+    const missing = ids.filter((id) => !(id in bundlePartsByTemplateId))
+    if (missing.length === 0) return
+    let cancelled = false
+    void (async () => {
+      for (const templateId of missing) {
+        try {
+          const lines = await loadBundlePartLines(supabase, templateId)
+          if (cancelled) return
+          setBundlePartsByTemplateId((prev) => ({ ...prev, [templateId]: lines }))
+        } catch (e) {
+          if (!cancelled) showToast(formatErrorMessage(e, 'Failed to load bundle parts'), 'error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [takeoffBundleTemplateIdsKey, bundlePartsByTemplateId, showToast])
+
+  // Drop a template's cached grayed part rows so the lazy effect refetches them
+  // after the assembly's parts change.
+  function invalidateBundleParts(templateId: string) {
+    setBundlePartsByTemplateId((prev) => {
+      if (!(templateId in prev)) return prev
+      const next = { ...prev }
+      delete next[templateId]
+      return next
+    })
+  }
+
+  function toggleBundleLineCollapsed(lineId: string) {
+    setCollapsedBundleLineIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(lineId)) next.delete(lineId)
+      else next.add(lineId)
+      return next
+    })
+  }
 
   useEffect(() => {
     const prev = prevPartPricesModalRef.current
@@ -2072,6 +2275,36 @@ export function BidsTakeoffTab({
         setPartPricesModalEditing({})
       })
   }, [partPricesModal?.partId])
+
+  useEffect(() => {
+    const tid = bundleBreakdownModal?.templateId
+    if (!tid) {
+      setBundleBreakdownData(null)
+      return
+    }
+    let cancelled = false
+    setBundleBreakdownData('loading')
+    void (async () => {
+      try {
+        const data = await loadBundleBreakdown(supabase, tid)
+        if (!cancelled) setBundleBreakdownData(data)
+      } catch (e) {
+        if (!cancelled) {
+          setBundleBreakdownData(null)
+          showToast(formatErrorMessage(e, 'Failed to load bundle breakdown'), 'error')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [bundleBreakdownModal?.templateId])
+
+  function applyBundleQuoteToLine(lineId: string, price: number, supplyHouseName: string) {
+    updateTakeoffRoughPartLine(lineId, { unitPrice: Math.max(0, Number(price) || 0), sourceMaterialPartPriceId: null })
+    setBundleBreakdownModal(null)
+    showToast(`Applied ${supplyHouseName} bundle price ($${(Number(price) || 0).toFixed(2)}).`, 'success')
+  }
 
   async function updatePartPriceInModal(priceId: string, newPrice: number) {
     if (!partPricesModal) return
@@ -2918,6 +3151,10 @@ export function BidsTakeoffTab({
                                       resetRoughLineToCatalogPrice={resetRoughLineToCatalogPrice}
                                       setPartPricesModal={setPartPricesModal}
                                       onRequestRemoveRoughLine={(lineId) => setTakeoffRemoveConfirm({ kind: 'rough_line', lineId })}
+                                      onOpenBundleBreakdown={(templateId, lineId, assemblyName) => setBundleBreakdownModal({ templateId, lineId, assemblyName })}
+                                      bundlePartLines={line.partId == null && line.sourceTemplateId ? bundlePartsByTemplateId[line.sourceTemplateId] : undefined}
+                                      bundleCollapsed={collapsedBundleLineIds.has(line.id)}
+                                      onToggleBundleCollapsed={() => toggleBundleLineCollapsed(line.id)}
                                       openBidsPartFormForCreate={openBidsPartFormForCreate}
                                       onOpenEditTakeoffPart={(partId) => {
                                         const p = takeoffAddTemplateParts.find((x) => x.id === partId)
@@ -3126,17 +3363,45 @@ export function BidsTakeoffTab({
                   <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
                     <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
                     <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
-                      Optional: a bundle price a supply house quotes for this whole assembly. Saved with the assembly and usable later via Add assembly → Add as bundle.
+                      {saveAsAssemblyCountRowId
+                        ? 'Optional: a bundle price a supply house quotes for this whole assembly. Pick one below with “Use for takeoff” to replace this fixture’s part lines with a single bundle line at that price.'
+                        : 'Optional: a bundle price a supply house quotes for this whole assembly. Saved with the assembly and usable later via Add assembly → Add as bundle.'}
                     </p>
                     {takeoffNewTemplatePrices.length > 0 && (
                       <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
                         <tbody>
                           {takeoffNewTemplatePrices.map((p, idx) => (
                             <tr key={p.supplyHouseId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                              {saveAsAssemblyCountRowId && (
+                                <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>
+                                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151' }}>
+                                    <input
+                                      type="radio"
+                                      name="takeoff-apply-bundle-price"
+                                      checked={takeoffNewTemplateApplyPriceIndex === idx}
+                                      onChange={() => setTakeoffNewTemplateApplyPriceIndex(idx)}
+                                    />
+                                    Use for takeoff
+                                  </label>
+                                </td>
+                              )}
                               <td style={{ padding: '0.4rem 0.5rem' }}>{p.supplyHouseName}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>${p.price.toFixed(2)}</td>
                               <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
-                                <button type="button" onClick={() => setTakeoffNewTemplatePrices((prev) => prev.filter((_, i) => i !== idx))} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>Remove</button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setTakeoffNewTemplatePrices((prev) => prev.filter((_, i) => i !== idx))
+                                    setTakeoffNewTemplateApplyPriceIndex((cur) => {
+                                      if (cur == null) return cur
+                                      if (cur === idx) return null
+                                      return cur > idx ? cur - 1 : cur
+                                    })
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
+                                >
+                                  Remove
+                                </button>
                               </td>
                             </tr>
                           ))}
@@ -4281,6 +4546,102 @@ export function BidsTakeoffTab({
               </div>
             </div>
 
+            <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+              <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                Bundle prices a supply house quotes for this whole assembly. Used when adding this assembly as a bundle and shown in the bundle breakdown.
+              </p>
+              {editTemplatePrices.length > 0 && (
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '0.75rem' }}>
+                  <tbody>
+                    {editTemplatePrices.map((p) => {
+                      const editingVal = editTemplatePriceEditing[p.id]
+                      const isEditing = editingVal !== undefined
+                      return (
+                        <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.4rem 0.5rem' }}>{p.supply_house_name}</td>
+                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
+                            {isEditing ? (
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.01"
+                                value={editingVal}
+                                autoFocus
+                                onChange={(e) => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                                style={{ width: '7rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                              />
+                            ) : (
+                              `$${p.price.toFixed(2)}`
+                            )}
+                          </td>
+                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const n = parseFloat(editingVal)
+                                    if (!Number.isNaN(n) && n >= 0) void updateEditTemplatePrice(p.id, n)
+                                  }}
+                                  style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', marginRight: '0.5rem' }}
+                                >
+                                  Save
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditTemplatePriceEditing((prev) => { const next = { ...prev }; delete next[p.id]; return next })}
+                                  style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: String(p.price) }))}
+                                  style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', marginRight: '0.5rem' }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void removeEditTemplatePrice(p.id)}
+                                  style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
+                                >
+                                  Remove
+                                </button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              )}
+              {(() => {
+                const used = new Set(editTemplatePrices.map((p) => p.supply_house_id))
+                const available = supplyHouses.filter((sh) => !used.has(sh.id))
+                if (available.length === 0) {
+                  return <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Every supply house already has a price.</p>
+                }
+                const priceNum = parseFloat(editTemplateNewPriceValue)
+                const canAdd = !editTemplatePriceSaving && !!editTemplateNewPriceSupplyHouseId && !Number.isNaN(priceNum) && priceNum >= 0
+                return (
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#f9fafb', padding: '0.75rem', borderRadius: 4 }}>
+                    <select value={editTemplateNewPriceSupplyHouseId} onChange={(e) => setEditTemplateNewPriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                      <option value="">Select supply house</option>
+                      {available.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}</option>)}
+                    </select>
+                    <input type="number" min={0} step="0.01" value={editTemplateNewPriceValue} onChange={(e) => setEditTemplateNewPriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : '#e5e7eb', color: canAdd ? 'white' : '#9ca3af', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
+                  </div>
+                )
+              })()}
+            </div>
+
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={closeEditTemplateModal} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
             </div>
@@ -4289,6 +4650,120 @@ export function BidsTakeoffTab({
       )}
 
       {/* Part Prices modal - check/modify prices for a part from Add/Edit Assembly */}
+      {bundleBreakdownModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }} onClick={() => setBundleBreakdownModal(null)}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 560, width: '92%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>{bundleBreakdownModal.assemblyName}</h3>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  Compare buying the parts individually vs. a supply-house bundle quote. Click a bundle price to use it for this line.
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const { templateId, assemblyName } = bundleBreakdownModal
+                    setBundleBreakdownModal(null)
+                    void openEditTemplateModal(templateId, assemblyName)
+                  }}
+                  style={{ padding: '0.35rem 0.75rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                >
+                  Edit assembly
+                </button>
+                <button type="button" onClick={() => setBundleBreakdownModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280', lineHeight: 1 }}>×</button>
+              </div>
+            </div>
+            {bundleBreakdownData === 'loading' || bundleBreakdownData == null ? (
+              <p style={{ margin: 0, color: '#6b7280' }}>Loading breakdown…</p>
+            ) : (
+              <>
+                {/* Parts in the assembly */}
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.4rem' }}>
+                  Parts in assembly ({bundleBreakdownData.parts.length})
+                </div>
+                {bundleBreakdownData.parts.length === 0 ? (
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>This assembly has no parts.</p>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', marginBottom: '1rem' }}>
+                    <thead style={{ background: '#f9fafb' }}>
+                      <tr>
+                        <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', color: '#6b7280', fontWeight: 500 }}>Part</th>
+                        <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', color: '#6b7280', fontWeight: 500 }}>Qty</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bundleBreakdownData.parts.map((p) => (
+                        <tr key={p.partId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.35rem 0.5rem' }}>{p.name}</td>
+                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{p.quantity}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* À-la-carte: all parts combined at each supply house */}
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.4rem' }}>
+                  Parts total by supply house
+                </div>
+                {bundleBreakdownData.perSupplyHouse.length === 0 ? (
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>No catalog prices found for these parts.</p>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', marginBottom: '1rem' }}>
+                    <tbody>
+                      {bundleBreakdownData.perSupplyHouse.map((h) => (
+                        <tr key={h.supplyHouseId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.4rem 0.5rem' }}>
+                            {h.supplyHouseName}
+                            {h.missingCount > 0 && (
+                              <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '0.05rem 0.3rem' }}>
+                                missing {h.missingCount}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>${formatCurrency(h.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {/* Supply-house bundle quotes (clickable to apply) */}
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.4rem' }}>
+                  Bundle quotes
+                </div>
+                {bundleBreakdownData.bundleQuotes.length === 0 ? (
+                  <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+                    No bundle prices yet. Add one in Materials → Assembly Book, or via Save as Assembly.
+                  </p>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                    <tbody>
+                      {bundleBreakdownData.bundleQuotes.map((q) => (
+                        <tr key={q.priceId} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                          <td style={{ padding: '0.4rem 0.5rem' }}>{q.supplyHouseName}</td>
+                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', whiteSpace: 'nowrap' }}>${formatCurrency(q.price)}</td>
+                          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right' }}>
+                            <button
+                              type="button"
+                              onClick={() => applyBundleQuoteToLine(bundleBreakdownModal.lineId, q.price, q.supplyHouseName)}
+                              style={{ padding: '0.3rem 0.6rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                            >
+                              Use this price
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {partPricesModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }} onClick={() => setPartPricesModal(null)}>
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 440, width: '90%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
@@ -4511,6 +4986,10 @@ function SortableRoughPartLineRow({
   resetRoughLineToCatalogPrice,
   setPartPricesModal,
   onRequestRemoveRoughLine,
+  onOpenBundleBreakdown,
+  bundlePartLines,
+  bundleCollapsed,
+  onToggleBundleCollapsed,
   openBidsPartFormForCreate,
   onOpenEditTakeoffPart,
   materialTemplates,
@@ -4546,6 +5025,10 @@ function SortableRoughPartLineRow({
   resetRoughLineToCatalogPrice: (lineId: string) => void | Promise<void>
   setPartPricesModal: (v: { partId: string; partName: string; defaultAddPrice?: string } | null) => void
   onRequestRemoveRoughLine: (lineId: string) => void
+  onOpenBundleBreakdown: (templateId: string, lineId: string, assemblyName: string) => void
+  bundlePartLines: BundlePartLine[] | undefined
+  bundleCollapsed: boolean
+  onToggleBundleCollapsed: () => void
   openBidsPartFormForCreate: (initialName: string) => void
   onOpenEditTakeoffPart: (partId: string) => void
   materialTemplates: MaterialTemplateWithAssemblyType[]
@@ -4590,14 +5073,16 @@ function SortableRoughPartLineRow({
     ) : (
       <span style={{ fontSize: '0.7rem', color: '#92400e', textAlign: 'left' }}>Bid override</span>
     )
+  const bundleRows = isBundle ? (bundlePartLines ?? []) : []
+  const showBundleRows = isBundle && !bundleCollapsed && bundleRows.length > 0
+  const rowTransformStyle = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
   return (
+    <>
     <tr
       ref={setNodeRef}
       style={{
-        borderBottom: '1px solid #e5e7eb',
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.5 : 1,
+        borderBottom: showBundleRows ? 'none' : '1px solid #e5e7eb',
+        ...rowTransformStyle,
       }}
     >
       <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
@@ -4636,7 +5121,13 @@ function SortableRoughPartLineRow({
         {isBundle ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
             <span style={{ fontWeight: 500 }}>{bundleName}</span>
-            <span
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              title="View parts and compare prices"
+              onClick={() => {
+                if (line.sourceTemplateId) onOpenBundleBreakdown(line.sourceTemplateId, line.id, bundleName)
+              }}
               style={{
                 alignSelf: 'flex-start',
                 fontSize: '0.7rem',
@@ -4648,10 +5139,39 @@ function SortableRoughPartLineRow({
                 border: '1px solid #bfdbfe',
                 borderRadius: 4,
                 padding: '0.05rem 0.35rem',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.25rem',
               }}
             >
               Assembly bundle
-            </span>
+              <span aria-hidden style={{ fontSize: '0.65rem' }}>▸</span>
+            </button>
+            {bundleRows.length > 0 && (
+              <button
+                type="button"
+                onClick={onToggleBundleCollapsed}
+                aria-expanded={!bundleCollapsed}
+                title={bundleCollapsed ? 'Show parts' : 'Hide parts'}
+                style={{
+                  alignSelf: 'flex-start',
+                  fontSize: '0.7rem',
+                  color: '#6b7280',
+                  background: 'none',
+                  border: 'none',
+                  padding: 0,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                <span aria-hidden>{bundleCollapsed ? '▸' : '▾'}</span>
+                {bundleRows.length} {bundleRows.length === 1 ? 'part' : 'parts'}
+              </button>
+            )}
+            </div>
           </div>
         ) : (
         <div style={{ position: 'relative' }}>
@@ -5013,5 +5533,56 @@ function SortableRoughPartLineRow({
         </div>
       </td>
     </tr>
+    {/* Grayed, display-only breakdown of the bundle's parts. These rows are NOT in
+        takeoffRoughPartLines, so they are never persisted and never counted toward any
+        total — only the bundle line's unit price above contributes. */}
+    {showBundleRows &&
+      bundleRows.map((bp, i) => (
+        <tr
+          key={`${line.id}-bp-${bp.partId}`}
+          style={{
+            borderBottom: i === bundleRows.length - 1 ? '1px solid #e5e7eb' : '1px solid #f3f4f6',
+            background: '#fafafa',
+            color: '#9ca3af',
+            ...rowTransformStyle,
+          }}
+        >
+          <td style={{ padding: '0.4rem 0.75rem' }} />
+          <td style={{ padding: '0.4rem 0.75rem 0.4rem 1.75rem', fontSize: '0.8125rem' }}>
+            {bp.name}
+          </td>
+          <td style={{ padding: '0.4rem 0.25rem 0.4rem 0.75rem', textAlign: 'left' }}>
+            {bp.hasPrice ? (
+              <input
+                type="text"
+                readOnly
+                disabled
+                value={`$${formatCurrency(bp.unitPrice)}`}
+                title={bp.supplyHouseName ? `lowest: ${bp.supplyHouseName}` : undefined}
+                aria-label={`${bp.name} catalog unit price (not counted)`}
+                style={{
+                  width: 96,
+                  minWidth: 88,
+                  padding: '0.4rem',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 4,
+                  textAlign: 'center',
+                  background: '#f3f4f6',
+                  color: '#9ca3af',
+                  cursor: 'not-allowed',
+                }}
+              />
+            ) : (
+              <span style={{ fontSize: '0.75rem' }}>— no catalog price</span>
+            )}
+          </td>
+          <td style={{ padding: '0.4rem 0.25rem', textAlign: 'center', fontSize: '0.8125rem' }}>{bp.quantity}</td>
+          <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontSize: '0.7rem', fontStyle: 'italic' }}>
+            not counted
+          </td>
+          <td style={{ padding: '0.4rem 0.75rem' }} />
+        </tr>
+      ))}
+    </>
   )
 }
