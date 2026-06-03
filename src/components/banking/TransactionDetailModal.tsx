@@ -34,6 +34,13 @@ import { formatJobLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../../lib/dragSortDefaultLabels'
 import { TransactionContextModal } from './TransactionContextModal'
+import {
+  AccountingRuleFormModal,
+  emptyRuleForm,
+  ruleRowToForm,
+  type AccountingRuleFormState,
+  type AccountingRuleSaveDraft,
+} from './AccountingRuleFormModal'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null }
@@ -98,6 +105,11 @@ export function TransactionDetailModal({
   const ledgerPrefixMap = useLedgerPrefixMap()
 
   const [contextOpen, setContextOpen] = useState(false)
+  const [ruleModalOpen, setRuleModalOpen] = useState(false)
+  const [editRuleId, setEditRuleId] = useState<string | null>(null)
+  const [ruleModalInitial, setRuleModalInitial] = useState<AccountingRuleFormState>(() => emptyRuleForm())
+  const [ruleModalKey, setRuleModalKey] = useState(0)
+  const [labelAssignmentCountById, setLabelAssignmentCountById] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
   const [attrValue, setAttrValue] = useState('')
   const [lines, setLines] = useState<SplitLine[]>([])
@@ -140,13 +152,14 @@ export function TransactionDetailModal({
     setJobResults([])
     void (async () => {
       try {
-        const [allocs, attrs, labelRows, ruleRows, assignRows, noteRows] = await Promise.all([
+        const [allocs, attrs, labelRows, ruleRows, assignRows, noteRows, countRows] = await Promise.all([
           fetchJobAllocationsByMercuryTxIds([txId], 'tx detail allocations'),
           fetchAttributionsByMercuryTxIds([txId], 'tx detail attributions'),
           withSupabaseRetry(async () => supabase.from('mercury_drag_sort_labels').select('*').order('sort_order', { ascending: true }), 'tx detail labels'),
           withSupabaseRetry(async () => supabase.from('mercury_accounting_label_rules').select('id, name, label_id, enabled, sort_order, criteria'), 'tx detail rules'),
           withSupabaseRetry(async () => supabase.from('mercury_transaction_drag_sort_assignments').select('label_id').eq('mercury_transaction_id', txId).limit(1), 'tx detail label assignment'),
           withSupabaseRetry(async () => supabase.from('mercury_transaction_org_notes').select('body').eq('mercury_transaction_id', txId).limit(1), 'tx detail org note'),
+          withSupabaseRetry(async () => supabase.rpc('list_mercury_drag_sort_label_assignment_counts'), 'tx detail label assignment counts'),
         ])
         if (cancelled) return
 
@@ -178,6 +191,11 @@ export function TransactionDetailModal({
 
         setLabels((labelRows ?? []) as AccountingDragLabelRow[])
         setRules((ruleRows ?? []) as AccountingRuleForMatch[])
+        const counts: Record<string, number> = {}
+        for (const c of (countRows ?? []) as { label_id: string; assignment_count: number }[]) {
+          counts[c.label_id] = Number(c.assignment_count)
+        }
+        setLabelAssignmentCountById(counts)
         setCurrentLabelId(((assignRows ?? [])[0] as { label_id?: string } | undefined)?.label_id ?? '')
         const body = ((noteRows ?? [])[0] as { body?: string } | undefined)?.body ?? ''
         setNoteInitial(body)
@@ -273,6 +291,55 @@ export function TransactionDetailModal({
       rules,
     )
   }, [transaction, rules])
+
+  const reloadRules = useCallback(async () => {
+    const ruleRows = await withSupabaseRetry(
+      async () => supabase.from('mercury_accounting_label_rules').select('id, name, label_id, enabled, sort_order, criteria'),
+      'tx detail rules reload',
+    )
+    setRules((ruleRows ?? []) as AccountingRuleForMatch[])
+  }, [])
+
+  const openEditRule = useCallback(
+    (ruleId: string) => {
+      const rule = rules.find((r) => r.id === ruleId)
+      if (!rule) return
+      setRuleModalInitial(ruleRowToForm(rule, labels[0]?.id ?? rule.label_id))
+      setEditRuleId(ruleId)
+      setRuleModalKey((k) => k + 1)
+      setRuleModalOpen(true)
+    },
+    [rules, labels],
+  )
+
+  const handleSaveRule = useCallback(
+    async (draft: AccountingRuleSaveDraft) => {
+      if (!editRuleId) return
+      await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('mercury_accounting_label_rules')
+            .update({ name: draft.name, enabled: draft.enabled, label_id: draft.labelId, criteria: draft.criteria as unknown as Json })
+            .eq('id', editRuleId),
+        'tx detail update rule',
+      )
+      showToast('Rule updated.', 'success')
+      await reloadRules()
+      setRuleModalOpen(false)
+    },
+    [editRuleId, reloadRules, showToast],
+  )
+
+  const handleDeleteRule = useCallback(async () => {
+    if (!editRuleId) return
+    await withSupabaseRetry(
+      async () => supabase.from('mercury_accounting_label_rules').delete().eq('id', editRuleId),
+      'tx detail delete rule',
+    )
+    showToast('Rule deleted.', 'success')
+    await reloadRules()
+    setRuleModalOpen(false)
+  }, [editRuleId, reloadRules, showToast])
 
   const handleSavePersonJobs = useCallback(async () => {
     if (!transaction || !canSaveSplits) return
@@ -516,7 +583,15 @@ export function TransactionDetailModal({
             <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#374151' }}>
               {matchingRules.map((r) => (
                 <li key={r.id} style={{ marginBottom: '0.2rem' }}>
-                  <strong>{r.name}</strong> → {labelById.get(r.labelId)?.name ?? '—'}
+                  <button
+                    type="button"
+                    onClick={() => openEditRule(r.id)}
+                    title="Edit this rule"
+                    style={{ all: 'unset', cursor: 'pointer', color: '#1d4ed8', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                  >
+                    {r.name}
+                  </button>{' '}
+                  → {labelById.get(r.labelId)?.name ?? '—'}
                   {r.isFirstMatch ? <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#2563eb', fontWeight: 600 }}>(would apply)</span> : null}
                 </li>
               ))}
@@ -574,6 +649,19 @@ export function TransactionDetailModal({
       }}
       zIndex={zIndex + 100}
     />
+    {ruleModalOpen ? (
+      <AccountingRuleFormModal
+        key={ruleModalKey}
+        editingRuleId={editRuleId}
+        initialForm={ruleModalInitial}
+        labels={labels}
+        labelAssignmentCountById={labelAssignmentCountById}
+        onClose={() => setRuleModalOpen(false)}
+        onSave={handleSaveRule}
+        onDelete={handleDeleteRule}
+        zIndex={zIndex + 120}
+      />
+    ) : null}
     </>
   )
 }
