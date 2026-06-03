@@ -1429,8 +1429,9 @@ export default function Banking() {
   }, [myRole, labeledHasMore, labeledCursor, showToast])
 
   // Tab-aware dispatcher. Accounting + Hide labeled = unlabeled-only RPC;
-  // Accounting + show labeled = keyset-paginated first page; every other tab
-  // (Drag Sort, User Review, Category Review, Sorting, Ledger) keeps the
+  // Accounting + show labeled = keyset-paginated first page; User Review
+  // self-sources via its own `user_review_rows` RPC (skip the master fetch);
+  // every other tab (Drag Sort, Category Review, Sorting, Ledger) keeps the
   // existing master 15k fetch.
   const isAccountingLabeledView =
     bankingView.product === 'mercury' &&
@@ -1440,6 +1441,13 @@ export default function Banking() {
     async (options?: { silent?: boolean }) => {
       if (bankingView.product === 'mercury' && bankingView.mercuryTab === 'accounting') {
         return hideLabeledTransactions ? loadUnlabeledRows(options) : loadLabeledFirstPage(options)
+      }
+      // The User Review tab loads its own windowed, pre-joined rows from the
+      // `user_review_rows` RPC and ignores the parent master list, so don't pull
+      // the ~15k `mercury_transactions` fetch when it's the active tab.
+      if (bankingView.product === 'mercury' && bankingView.mercuryTab === 'user_review') {
+        if (options?.silent !== true) setLoading(false)
+        return
       }
       return loadAllRows(options)
     },
@@ -2549,14 +2557,7 @@ export default function Banking() {
       {bankingView.product === 'mercury' && bankingView.mercuryTab === 'user_review' && canAccessBanking ? (
         <div role="tabpanel" id="banking-panel-mercury-user-review" aria-labelledby="banking-tab-user-review">
           <BankingMercuryUserReviewTab
-            filteredTransactions={filteredSorted}
-            loading={loading}
-            loadError={error}
             mercurySearchNicknameCtx={nicknameCtx}
-            userIdByTxId={userIdByTxId}
-            personIdByTxId={personIdByTxId}
-            userNameById={userNameById}
-            personNameById={personNameById}
             attributionOptions={attributionOptions}
             recentPersonPicksStorageKey={user?.id ?? null}
             onAttributionChanged={() => {
