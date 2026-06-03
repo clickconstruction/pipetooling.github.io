@@ -215,6 +215,38 @@ export type Database = {
           },
         ]
       }
+      banking_user_prefs: {
+        Row: {
+          accounting_apply_rules_by_default: boolean | null
+          accounting_approve_by_default: boolean | null
+          accounting_hide_labeled: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accounting_apply_rules_by_default?: boolean | null
+          accounting_approve_by_default?: boolean | null
+          accounting_hide_labeled?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accounting_apply_rules_by_default?: boolean | null
+          accounting_approve_by_default?: boolean | null
+          accounting_hide_labeled?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "banking_user_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_count_row_custom_prices: {
         Row: {
           bid_id: string
