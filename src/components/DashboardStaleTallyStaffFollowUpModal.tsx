@@ -38,6 +38,9 @@ function mercuryTxRowFromStaffListRow(row: StaleStaffRow): MercuryTxRow {
     raw: row.raw ?? null,
     status: '—',
     synced_at: posted,
+    source: 'mercury',
+    manual_upload_id: null,
+    created_by: null,
   }
 }
 

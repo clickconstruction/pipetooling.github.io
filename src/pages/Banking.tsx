@@ -29,6 +29,8 @@ import { BankingMercuryAccountingTab } from '../components/banking/BankingMercur
 import { BankingMercuryUserReviewTab } from '../components/banking/BankingMercuryUserReviewTab'
 import { BankingMercuryCategoryReviewTab } from '../components/banking/BankingMercuryCategoryReviewTab'
 import { MercuryBackfillModal } from '../components/banking/MercuryBackfillModal'
+import { MercuryImportCsvModal, type ImportCsvSubmitPayload, type ImportCsvResult } from '../components/banking/MercuryImportCsvModal'
+import { ManualAccountsModal } from '../components/banking/ManualAccountsModal'
 import {
   mercuryTxHasNotePreview,
   MercuryTxNotesEditorPanel,
@@ -288,6 +290,10 @@ type BankingLedgerAdvancedMenuProps = {
   onReloadTable: () => void
   /** Dev-only; when undefined, the Backfill menu item is hidden. */
   onBackfillFromMercury?: () => void
+  /** Dev / master-tech only; when undefined, the Import CSV menu item is hidden. */
+  onImportCsv?: () => void
+  /** Dev / master-tech only; when undefined, the Manual accounts menu item is hidden. */
+  onManageManualAccounts?: () => void
 }
 
 function BankingLedgerAdvancedMenu({
@@ -298,6 +304,8 @@ function BankingLedgerAdvancedMenu({
   onRefreshFromMercury,
   onReloadTable,
   onBackfillFromMercury,
+  onImportCsv,
+  onManageManualAccounts,
 }: BankingLedgerAdvancedMenuProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -408,6 +416,32 @@ function BankingLedgerAdvancedMenu({
               Backfill from Mercury…
             </button>
           ) : null}
+          {onImportCsv ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onMenuOpenChange(false)
+                onImportCsv()
+              }}
+              style={itemStyle}
+            >
+              Import transactions (CSV)…
+            </button>
+          ) : null}
+          {onManageManualAccounts ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onMenuOpenChange(false)
+                onManageManualAccounts()
+              }}
+              style={itemStyle}
+            >
+              Manual accounts…
+            </button>
+          ) : null}
           <button
             type="button"
             role="menuitem"
@@ -445,7 +479,7 @@ function sortMercuryRowsStable(list: MercuryTxRow[], sort: { key: SortKey; dir: 
   }
   const byAccount = (a: MercuryTxRow, b: MercuryTxRow) =>
     a.mercury_account_id.localeCompare(b.mercury_account_id) * dirMul
-  const byMercuryId = (a: MercuryTxRow, b: MercuryTxRow) => a.mercury_id.localeCompare(b.mercury_id) * dirMul
+  const byMercuryId = (a: MercuryTxRow, b: MercuryTxRow) => (a.mercury_id ?? '').localeCompare(b.mercury_id ?? '') * dirMul
 
   return [...list].sort((a, b) => {
     let c = 0
@@ -1058,6 +1092,8 @@ export default function Banking() {
   const [nicknamesMenuOpen, setNicknamesMenuOpen] = useState(false)
   const [ledgerAdvancedMenuOpen, setLedgerAdvancedMenuOpen] = useState(false)
   const [backfillModalOpen, setBackfillModalOpen] = useState(false)
+  const [importCsvModalOpen, setImportCsvModalOpen] = useState(false)
+  const [manualAccountsModalOpen, setManualAccountsModalOpen] = useState(false)
   const [recentTxDebitCardId, setRecentTxDebitCardId] = useState<string | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(defaultBankingSortingConfig)
@@ -1954,6 +1990,32 @@ export default function Banking() {
     }
   }
 
+  async function handleImportCsv(payload: ImportCsvSubmitPayload): Promise<ImportCsvResult> {
+    const { data, error: fnErr } = await supabase.functions.invoke('import-manual-transactions', {
+      body: payload,
+    })
+    if (fnErr) throw new Error(fnErr.message)
+    const body = data as
+      | { error?: string; ok?: boolean; accountId?: string; accountName?: string; inserted?: number; skipped?: number }
+      | null
+    if (body && typeof body.error === 'string') throw new Error(body.error)
+    const inserted = typeof body?.inserted === 'number' ? body.inserted : 0
+    const skipped = typeof body?.skipped === 'number' ? body.skipped : 0
+    showToast(
+      `Imported ${inserted.toLocaleString()} transaction${inserted === 1 ? '' : 's'} into “${payload.accountName}”` +
+        (skipped > 0 ? ` (${skipped} duplicate${skipped === 1 ? '' : 's'} skipped).` : '.'),
+      'success',
+    )
+    // Surface the new account + rows in the Ledger.
+    await Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])
+    return {
+      accountId: body?.accountId ?? '',
+      accountName: body?.accountName ?? payload.accountName,
+      inserted,
+      skipped,
+    }
+  }
+
   async function persistNickname(mercuryAccountId: string) {
     const raw = (nicknameDrafts[mercuryAccountId] ?? nicknameByAccount[mercuryAccountId] ?? '').trim()
     if (raw.length > 120) {
@@ -2627,6 +2689,16 @@ export default function Banking() {
                 onRefreshFromMercury={() => void handleSync()}
                 onReloadTable={() => void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])}
                 onBackfillFromMercury={isDevBanking ? () => setBackfillModalOpen(true) : undefined}
+                onImportCsv={
+                  myRole === 'dev' || myRole === 'master_technician'
+                    ? () => setImportCsvModalOpen(true)
+                    : undefined
+                }
+                onManageManualAccounts={
+                  myRole === 'dev' || myRole === 'master_technician'
+                    ? () => setManualAccountsModalOpen(true)
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -2796,6 +2868,22 @@ export default function Banking() {
           onSubmit={handleBackfill}
         />
       ) : null}
+
+      {(myRole === 'dev' || myRole === 'master_technician') && (
+        <MercuryImportCsvModal
+          open={importCsvModalOpen}
+          onClose={() => setImportCsvModalOpen(false)}
+          onSubmit={handleImportCsv}
+        />
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician') && (
+        <ManualAccountsModal
+          open={manualAccountsModalOpen}
+          onClose={() => setManualAccountsModalOpen(false)}
+          onChanged={() => void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])}
+        />
+      )}
 
       {canAccessBanking && (
         <MercuryTransactionAllocationsModal

@@ -57,6 +57,9 @@ export function mercuryTxRowFromTallyRpc(row: TallyLinkedMercuryRow): MercuryTxR
     raw: row.raw ?? null,
     status: '—',
     synced_at: posted,
+    source: 'mercury',
+    manual_upload_id: null,
+    created_by: null,
   }
 }
 

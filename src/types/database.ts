@@ -5114,17 +5114,20 @@ export type Database = {
           counterparty_id: string | null
           counterparty_name: string | null
           created_at: string
+          created_by: string | null
           currency: string
           dashboard_link: string | null
           external_memo: string | null
           id: string
           kind: string
+          manual_upload_id: string | null
           mercury_account_id: string
           mercury_category: Json | null
-          mercury_id: string
+          mercury_id: string | null
           note: string | null
           posted_at: string | null
           raw: Json | null
+          source: string
           status: string
           synced_at: string
         }
@@ -5133,17 +5136,20 @@ export type Database = {
           counterparty_id?: string | null
           counterparty_name?: string | null
           created_at: string
+          created_by?: string | null
           currency?: string
           dashboard_link?: string | null
           external_memo?: string | null
           id?: string
           kind: string
+          manual_upload_id?: string | null
           mercury_account_id: string
           mercury_category?: Json | null
-          mercury_id: string
+          mercury_id?: string | null
           note?: string | null
           posted_at?: string | null
           raw?: Json | null
+          source?: string
           status: string
           synced_at?: string
         }
@@ -5152,21 +5158,32 @@ export type Database = {
           counterparty_id?: string | null
           counterparty_name?: string | null
           created_at?: string
+          created_by?: string | null
           currency?: string
           dashboard_link?: string | null
           external_memo?: string | null
           id?: string
           kind?: string
+          manual_upload_id?: string | null
           mercury_account_id?: string
           mercury_category?: Json | null
-          mercury_id?: string
+          mercury_id?: string | null
           note?: string | null
           posted_at?: string | null
           raw?: Json | null
+          source?: string
           status?: string
           synced_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transactions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notification_history: {
         Row: {
@@ -10644,6 +10661,17 @@ export type Database = {
           purchase_order_name: string
           purchase_order_status: string
           quantity: number
+        }[]
+      }
+      list_manual_bank_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          mercury_account_id: string
+          name: string | null
+          tx_count: number
+          net_total: number
+          oldest_posted: string | null
+          newest_posted: string | null
         }[]
       }
       list_mercury_transactions_keyset: {
