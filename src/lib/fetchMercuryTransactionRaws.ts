@@ -6,7 +6,7 @@ export type MercuryTxRow = Database['public']['Tables']['mercury_transactions'][
 
 /** PostgREST `select` for Banking list loads — omits `raw` (large JSON) until hydrated. */
 export const MERCURY_TRANSACTIONS_BANKING_LIST_COLUMNS =
-  'amount,counterparty_id,counterparty_name,created_at,currency,dashboard_link,external_memo,id,kind,mercury_account_id,mercury_category,mercury_id,note,posted_at,status,synced_at' as const
+  'amount,counterparty_id,counterparty_name,created_at,currency,dashboard_link,external_memo,id,kind,mercury_account_id,mercury_category,mercury_id,note,posted_at,status,synced_at,duplicate_of_transaction_id,source' as const
 
 const RAW_FETCH_CHUNK = 400
 

@@ -239,3 +239,25 @@ export function writeAccountingRulesSectionExpanded(userId: string, expanded: bo
     /* quota or private mode */
   }
 }
+
+/** Per-user: Banking Mercury Accounting **Approvals** section groups pending suggestions by suggested label. Default **off** (flat list): presence of `'1'` = grouped. Same opt-in pattern as **`readAccountingApplyRulesByDefault`**. */
+const ACCOUNTING_APPROVALS_GROUP_BY_LABEL_PREFIX = 'banking_accounting_approvals_group_by_label_v1_'
+
+export function readAccountingApprovalsGroupByLabel(userId: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(ACCOUNTING_APPROVALS_GROUP_BY_LABEL_PREFIX + userId) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function writeAccountingApprovalsGroupByLabel(userId: string, value: boolean): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (value) window.localStorage.setItem(ACCOUNTING_APPROVALS_GROUP_BY_LABEL_PREFIX + userId, '1')
+    else window.localStorage.removeItem(ACCOUNTING_APPROVALS_GROUP_BY_LABEL_PREFIX + userId)
+  } catch {
+    /* quota or private mode */
+  }
+}

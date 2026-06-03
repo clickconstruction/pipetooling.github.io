@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -107,6 +107,9 @@ export function BankingMercuryUserReviewTab({
   // attributions/assignments fetches that the tab used to assemble client-side.
   const [userReviewRows, setUserReviewRows] = useState<UserReviewRpcRow[]>([])
   const [rowsLoading, setRowsLoading] = useState(false)
+  // Token guarding against out-of-order window responses: a slow "all" fetch
+  // started before switching to "this month" must not overwrite the newer set.
+  const rowsLoadSeqRef = useRef(0)
   const [rowsError, setRowsError] = useState<string | null>(null)
   const [hideEmptyColumns, setHideEmptyColumns] = useState<boolean>(() => readHideEmptyFromStorage())
 
@@ -170,6 +173,7 @@ export function BankingMercuryUserReviewTab({
   // attribution + label, computed server-side in `user_review_rows`. Replaces the
   // old three-source cascade (parent 15k master fetch + attributions + assignments).
   const loadUserReviewRows = useCallback(async () => {
+    const seq = ++rowsLoadSeqRef.current
     setRowsLoading(true)
     setRowsError(null)
     try {
@@ -180,12 +184,14 @@ export function BankingMercuryUserReviewTab({
           p_end_ymd: range?.endYmd,
         })
       }, 'user review rows')
+      if (rowsLoadSeqRef.current !== seq) return
       setUserReviewRows((data as UserReviewRpcRow[]) ?? [])
     } catch (e) {
+      if (rowsLoadSeqRef.current !== seq) return
       setRowsError(e instanceof Error ? e.message : 'Could not load transactions')
       setUserReviewRows([])
     } finally {
-      setRowsLoading(false)
+      if (rowsLoadSeqRef.current === seq) setRowsLoading(false)
     }
   }, [timeWindow])
 

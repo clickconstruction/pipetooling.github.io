@@ -258,6 +258,22 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
               <span style={{ color: '#64748b', fontSize: '0.92em' }}>{` (${counterpartyOccurrenceCount})`}</span>
             ) : null}
           </span>
+          {row.source === 'manual' ? (
+            <span
+              title="Manually-entered transaction (not synced from Mercury)"
+              style={{
+                alignSelf: 'flex-start',
+                fontSize: '0.62rem',
+                fontWeight: 700,
+                color: '#92400e',
+                background: '#fef3c7',
+                borderRadius: 999,
+                padding: '1px 6px',
+              }}
+            >
+              ✎ Manual
+            </span>
+          ) : null}
           {debitCardId ? (
             <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
               Card: {nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)}

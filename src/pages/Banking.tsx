@@ -853,6 +853,7 @@ function BankingMercuryTable({
             const mainRowBb = notesContinuationBelow ? 'none' : '1px solid #f3f4f6'
             const padMain = notesContinuationBelow ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
             const padExpand = notesContinuationBelow ? '0.5rem 0.35rem 0 0.35rem' : '0.5rem 0.35rem'
+            const isExcludedDup = !!r.duplicate_of_transaction_id
             function toggleExpand() {
               setExpandedRowId((cur) => (cur === r.id ? null : r.id))
             }
@@ -863,6 +864,8 @@ function BankingMercuryTable({
                   style={{
                     borderBottom: mainRowBb,
                     cursor: 'pointer',
+                    opacity: isExcludedDup ? 0.55 : 1,
+                    textDecoration: isExcludedDup ? 'line-through' : 'none',
                   }}
                 >
                   <td
@@ -894,7 +897,28 @@ function BankingMercuryTable({
                       <span aria-hidden style={{ fontSize: '0.65rem' }}>{expanded ? '▼' : '▶'}</span>
                     </button>
                   </td>
-                  <td style={{ padding: padMain, borderBottom: mainRowBb }}>{formatDate(r.posted_at)}</td>
+                  <td style={{ padding: padMain, borderBottom: mainRowBb }}>
+                    {formatDate(r.posted_at)}
+                    {isExcludedDup ? (
+                      <span
+                        title="Marked as a duplicate — excluded from the books. Manage it in the Accounting tab's Possible duplicates panel."
+                        style={{
+                          display: 'inline-block',
+                          marginTop: 2,
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          color: '#92400e',
+                          background: '#fef3c7',
+                          borderRadius: 999,
+                          padding: '1px 6px',
+                          textDecoration: 'none',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        Excluded duplicate
+                      </span>
+                    ) : null}
+                  </td>
                   <td
                     style={{
                       padding: padMain,
@@ -1132,6 +1156,18 @@ export default function Banking() {
   // Synchronous guard so a burst of scroll events can't fire overlapping
   // next-page requests (mirrors the Materials parts-book infinite scroll).
   const labeledLoadingMoreRef = useRef(false)
+  // How many labeled rows are currently loaded (page 1 + any scrolled pages).
+  // A silent realtime refresh reloads to this same depth instead of collapsing
+  // back to page 1, so a background sync doesn't yank the user to the top.
+  const labeledLoadedCountRef = useRef(0)
+  // Monotonic token for the primary list loaders. Each fresh load bumps it;
+  // an in-flight load whose token is no longer current (because the user
+  // switched tabs, toggled Hide labeled, or a realtime refresh superseded it)
+  // discards its response instead of clobbering the active view's data.
+  const listLoadSeqRef = useRef(0)
+  // True when the master 15k fetch (Ledger/Sorting) returned a full page,
+  // meaning older transactions exist beyond what's shown.
+  const [rowsTruncated, setRowsTruncated] = useState(false)
   // Per-user "Apply rules by default" toggle (RECENT_FEATURES v2.580).
   // Lifted to this component so we can bump `autoApplyResetTick` from
   // `handleSync` / `handleBackfill` and so the storage hydration mirrors
@@ -1385,6 +1421,7 @@ export default function Banking() {
   const loadAllRows = useCallback(async (options?: { silent?: boolean }) => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
     const silent = options?.silent === true
+    const seq = ++listLoadSeqRef.current
     if (!silent) {
       setError(null)
       setLoading(true)
@@ -1397,16 +1434,21 @@ export default function Banking() {
           .order('posted_at', { ascending: false, nullsFirst: false })
           .limit(MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)
       }, 'load mercury_transactions')
-      setRows((data as MercuryTxRow[]) ?? [])
+      if (listLoadSeqRef.current !== seq) return
+      const list = (data as MercuryTxRow[]) ?? []
+      setRows(list)
+      setRowsTruncated(list.length >= MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)
     } catch (e) {
+      if (listLoadSeqRef.current !== seq) return
       if (silent) {
         showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
       } else {
         setError(e instanceof Error ? e.message : 'Failed to load transactions')
         setRows([])
+        setRowsTruncated(false)
       }
     } finally {
-      if (!silent) setLoading(false)
+      if (!silent && listLoadSeqRef.current === seq) setLoading(false)
     }
   }, [myRole, showToast])
 
@@ -1419,24 +1461,33 @@ export default function Banking() {
   const loadUnlabeledRows = useCallback(async (options?: { silent?: boolean }) => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
     const silent = options?.silent === true
+    const seq = ++listLoadSeqRef.current
     if (!silent) {
       setError(null)
       setLoading(true)
     }
     try {
+      // Explicit cap (instead of leaning on PostgREST's project row ceiling) so
+      // we can detect truncation and surface it rather than silently dropping
+      // the oldest unlabeled rows.
       const data = await withSupabaseRetry(async () => {
-        return supabase.rpc('list_unlabeled_mercury_transactions', { p_limit: undefined })
+        return supabase.rpc('list_unlabeled_mercury_transactions', { p_limit: MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT })
       }, 'load mercury_transactions unlabeled')
-      setRows((data as MercuryTxRow[]) ?? [])
+      if (listLoadSeqRef.current !== seq) return
+      const list = (data as MercuryTxRow[]) ?? []
+      setRows(list)
+      setRowsTruncated(list.length >= MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT)
     } catch (e) {
+      if (listLoadSeqRef.current !== seq) return
       if (silent) {
         showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
       } else {
         setError(e instanceof Error ? e.message : 'Failed to load transactions')
         setRows([])
+        setRowsTruncated(false)
       }
     } finally {
-      if (!silent) setLoading(false)
+      if (!silent && listLoadSeqRef.current === seq) setLoading(false)
     }
   }, [myRole, showToast])
 
@@ -1446,8 +1497,14 @@ export default function Banking() {
   const loadLabeledFirstPage = useCallback(async (options?: { silent?: boolean }) => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
     const silent = options?.silent === true
+    const seq = ++listLoadSeqRef.current
     labeledLoadingMoreRef.current = false
     setLabeledLoadingMore(false)
+    // On a silent (realtime) refresh, reload to the depth the user has already
+    // scrolled to so they keep their place; a user-initiated load resets to one
+    // page. The keyset RPC reads newest-first, so requesting N rows from the top
+    // reproduces the current window (plus any new top-of-list inserts).
+    const limit = silent ? Math.max(ACCOUNTING_LABELED_PAGE_SIZE, labeledLoadedCountRef.current) : ACCOUNTING_LABELED_PAGE_SIZE
     if (!silent) {
       setError(null)
       setLoading(true)
@@ -1457,25 +1514,29 @@ export default function Banking() {
         return supabase.rpc('list_mercury_transactions_keyset', {
           p_after_posted_at: undefined,
           p_after_id: undefined,
-          p_limit: ACCOUNTING_LABELED_PAGE_SIZE,
+          p_limit: limit,
         })
       }, 'load mercury_transactions labeled page')
+      if (listLoadSeqRef.current !== seq) return
       const page = (data as MercuryTxRow[]) ?? []
       setRows(page)
+      labeledLoadedCountRef.current = page.length
       const last = page[page.length - 1]
       setLabeledCursor(last ? { postedAt: last.posted_at, id: last.id } : null)
-      setLabeledHasMore(page.length === ACCOUNTING_LABELED_PAGE_SIZE)
+      setLabeledHasMore(page.length === limit)
     } catch (e) {
+      if (listLoadSeqRef.current !== seq) return
       if (silent) {
         showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
       } else {
         setError(e instanceof Error ? e.message : 'Failed to load transactions')
         setRows([])
+        labeledLoadedCountRef.current = 0
         setLabeledCursor(null)
         setLabeledHasMore(false)
       }
     } finally {
-      if (!silent) setLoading(false)
+      if (!silent && listLoadSeqRef.current === seq) setLoading(false)
     }
   }, [myRole, showToast])
 
@@ -1484,6 +1545,11 @@ export default function Banking() {
   const loadLabeledNextPage = useCallback(async () => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
     if (labeledLoadingMoreRef.current || !labeledHasMore || !labeledCursor) return
+    // Snapshot the active-load token. If a first-page / realtime refresh fires
+    // while this page is in flight, it bumps the token and we drop this
+    // response rather than appending onto a freshly reset list (which would
+    // duplicate or misorder rows).
+    const seq = listLoadSeqRef.current
     labeledLoadingMoreRef.current = true
     setLabeledLoadingMore(true)
     try {
@@ -1494,21 +1560,27 @@ export default function Banking() {
           p_limit: ACCOUNTING_LABELED_PAGE_SIZE,
         })
       }, 'load mercury_transactions labeled next page')
+      if (listLoadSeqRef.current !== seq) return
       const page = (data as MercuryTxRow[]) ?? []
       const last = page[page.length - 1]
       if (last) {
         setRows((prev) => {
           const seen = new Set(prev.map((r) => r.id))
-          return [...prev, ...page.filter((r) => !seen.has(r.id))]
+          const next = [...prev, ...page.filter((r) => !seen.has(r.id))]
+          labeledLoadedCountRef.current = next.length
+          return next
         })
         setLabeledCursor({ postedAt: last.posted_at, id: last.id })
       }
       setLabeledHasMore(page.length === ACCOUNTING_LABELED_PAGE_SIZE)
     } catch (e) {
+      if (listLoadSeqRef.current !== seq) return
       showToast(e instanceof Error ? e.message : 'Failed to load more transactions.', 'error')
     } finally {
-      labeledLoadingMoreRef.current = false
-      setLabeledLoadingMore(false)
+      if (listLoadSeqRef.current === seq) {
+        labeledLoadingMoreRef.current = false
+        setLabeledLoadingMore(false)
+      }
     }
   }, [myRole, labeledHasMore, labeledCursor, showToast])
 
@@ -1946,10 +2018,22 @@ export default function Banking() {
     [updateOrgNoteLocal],
   )
 
-  const totalAmount = useMemo(() => filteredSorted.reduce((s, r) => s + Number(r.amount), 0), [filteredSorted])
-  const sortingTotalAmount = useMemo(
-    () => sortingFilteredSorted.reduce((s, r) => s + Number(r.amount), 0),
+  // Rows that count toward the books: exclude transactions marked as duplicates.
+  // The Ledger still *shows* excluded rows (struck-through) for audit, but they
+  // don't feed totals or the other working tabs.
+  const booksFilteredSorted = useMemo(
+    () => filteredSorted.filter((r) => !r.duplicate_of_transaction_id),
+    [filteredSorted],
+  )
+  const booksSortingFilteredSorted = useMemo(
+    () => sortingFilteredSorted.filter((r) => !r.duplicate_of_transaction_id),
     [sortingFilteredSorted],
+  )
+
+  const totalAmount = useMemo(() => booksFilteredSorted.reduce((s, r) => s + Number(r.amount), 0), [booksFilteredSorted])
+  const sortingTotalAmount = useMemo(
+    () => booksSortingFilteredSorted.reduce((s, r) => s + Number(r.amount), 0),
+    [booksSortingFilteredSorted],
   )
 
   const sortingUnmatchedCounts = useMemo(
@@ -2560,7 +2644,15 @@ export default function Banking() {
               </span>
             </div>
             <div style={{ marginLeft: 'auto', fontWeight: 600 }}>
-              Visible total: {formatCurrency(sortingTotalAmount)} ({sortingFilteredSorted.length} of {rows.length} loaded)
+              Visible total: {formatCurrency(sortingTotalAmount)} ({booksSortingFilteredSorted.length} of {rows.length} loaded)
+              {rowsTruncated ? (
+                <span
+                  title={`Only the newest ${MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()} transactions are loaded. Older transactions are not shown here.`}
+                  style={{ marginLeft: '0.5rem', fontWeight: 600, color: '#b45309' }}
+                >
+                  ⚠ capped at {MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()}
+                </span>
+              ) : null}
             </div>
           </div>
 
@@ -2568,7 +2660,7 @@ export default function Banking() {
             <div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>
           ) : (
             <BankingMercuryTable
-              displayRows={sortingFilteredSorted}
+              displayRows={booksSortingFilteredSorted}
               sort={sortingSort}
               onSortColumn={setSortingSortForColumn}
               expandedRowId={expandedRowId}
@@ -2604,7 +2696,7 @@ export default function Banking() {
         <div role="tabpanel" id="banking-panel-mercury-drag-sort" aria-labelledby="banking-tab-drag-sort">
           <BankingMercuryDragSortTab
             userId={user.id}
-            filteredTransactions={filteredSorted}
+            filteredTransactions={booksFilteredSorted}
             loading={loading}
             accountFilter={accountFilter}
             setAccountFilter={setAccountFilter}
@@ -2634,7 +2726,7 @@ export default function Banking() {
         <div role="tabpanel" id="banking-panel-mercury-accounting" aria-labelledby="banking-tab-accounting">
           <BankingMercuryAccountingTab
             userId={user.id}
-            filteredTransactions={filteredSorted}
+            filteredTransactions={booksFilteredSorted}
             loading={loading}
             loadError={error}
             mercurySearchNicknameCtx={nicknameCtx}
@@ -2680,7 +2772,7 @@ export default function Banking() {
       {bankingView.product === 'mercury' && bankingView.mercuryTab === 'category_review' && canAccessBanking ? (
         <div role="tabpanel" id="banking-panel-mercury-category-review" aria-labelledby="banking-tab-category-review">
           <BankingMercuryCategoryReviewTab
-            filteredTransactions={filteredSorted}
+            filteredTransactions={booksFilteredSorted}
             loading={loading}
             loadError={error}
             mercurySearchNicknameCtx={nicknameCtx}
@@ -2825,6 +2917,14 @@ export default function Banking() {
             </label>
             <div style={{ marginLeft: 'auto', fontWeight: 600 }}>
               Filtered total: {formatCurrency(totalAmount)} ({filteredSorted.length} of {rows.length} loaded)
+              {rowsTruncated ? (
+                <span
+                  title={`Only the newest ${MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()} transactions are loaded. Older transactions are not shown here.`}
+                  style={{ marginLeft: '0.5rem', fontWeight: 600, color: '#b45309' }}
+                >
+                  ⚠ capped at {MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT.toLocaleString()}
+                </span>
+              ) : null}
             </div>
           </div>
 

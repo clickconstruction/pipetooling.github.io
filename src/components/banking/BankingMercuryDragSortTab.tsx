@@ -504,9 +504,21 @@ export function BankingMercuryDragSortTab({
         }
       }
 
+      // Roll back ONLY this transaction, computed from the current state — not
+      // by restoring the whole captured snapshot, which would silently erase any
+      // other assignment the user changed while this request was in flight.
       const fail = (e: unknown) => {
-        setAssignmentLabelByTxId(mapSnapshot)
-        setBucketStats(buildBucketStats(filteredTransactions, mapSnapshot))
+        setAssignmentLabelByTxId((cur) => {
+          const next = new Map(cur)
+          if (prevLabel === null) next.delete(txId)
+          else next.set(txId, prevLabel)
+          return next
+        })
+        setBucketStats((s) => {
+          const next = cloneBucketStats(s)
+          applyAssignmentDelta(next, amt, nextLabelId, prevLabel)
+          return next
+        })
         showToast(
           e instanceof Error
             ? e.message
@@ -542,7 +554,6 @@ export function BankingMercuryDragSortTab({
     },
     [
       assignmentLabelByTxId,
-      filteredTransactions,
       txById,
       labelById,
       allocationsByTxId,
