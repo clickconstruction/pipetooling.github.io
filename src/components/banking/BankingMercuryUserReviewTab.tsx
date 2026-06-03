@@ -23,6 +23,7 @@ import { BankingMercuryUserReviewLedgerModal } from './BankingMercuryUserReviewL
 import { TransactionDetailModal } from './TransactionDetailModal'
 import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
 import type { SearchableSelectOption } from '../SearchableSelect'
+import { bankingAttributionValueForSource } from '../../lib/bankingAttributionOptions'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -36,8 +37,8 @@ export type BankingMercuryUserReviewTabProps = {
   personIdByTxId: Map<string, string | null>
   userNameById: Record<string, string>
   personNameById: Record<string, string>
-  /** Assignable users for the in-modal "assign person" tool. */
-  userOptions: SearchableSelectOption[]
+  /** Assignable users + people (prefixed values) for the in-modal "assign" tool. */
+  attributionOptions: SearchableSelectOption[]
   /** Operator auth user id (for recent-pick chips); null when unknown. */
   recentPersonPicksStorageKey: string | null
   /** Called after an attribution is set/changed/cleared so the parent reloads maps. */
@@ -102,7 +103,7 @@ export function BankingMercuryUserReviewTab({
   personIdByTxId,
   userNameById,
   personNameById,
-  userOptions,
+  attributionOptions,
   recentPersonPicksStorageKey,
   onAttributionChanged,
 }: BankingMercuryUserReviewTabProps) {
@@ -952,8 +953,8 @@ export function BankingMercuryUserReviewTab({
         rows={drillRows}
         totalAmount={drillTotalAmount}
         nicknameCtx={mercurySearchNicknameCtx}
-        userOptions={userOptions}
-        currentUserId={drillRow?.source === 'user' ? drillRow.sourceId : null}
+        attributionOptions={attributionOptions}
+        currentAttributionValue={bankingAttributionValueForSource(drillRow?.source ?? null, drillRow?.sourceId ?? null)}
         recentPersonPicksStorageKey={recentPersonPicksStorageKey}
         onAttributionChanged={onAttributionChanged}
         onOpenTransactionDetail={openTransactionDetail}
@@ -963,7 +964,7 @@ export function BankingMercuryUserReviewTab({
         open={detailTx != null}
         onClose={() => setDetailTx(null)}
         transaction={detailTx}
-        usersOptions={userOptions}
+        attributionOptions={attributionOptions}
         nicknameByAccount={mercurySearchNicknameCtx.nicknameByAccount}
         nicknameByDebitCard={mercurySearchNicknameCtx.nicknameByDebitCard}
         recentPersonPicksStorageKey={recentPersonPicksStorageKey}

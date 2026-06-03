@@ -8,7 +8,8 @@ import {
 import { formatMercuryKind } from '../../lib/mercuryKindLabels'
 import { shortUuidPrefix } from '../../lib/shortUuidPrefix'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
-import { mercurySetTransactionUserAttribution } from '../../lib/mercurySetUserAttribution'
+import { mercurySetTransactionAttribution } from '../../lib/mercurySetUserAttribution'
+import { parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
 import {
   fetchMercuryUserReviewTxMetaByTxIds,
   type MercuryUserReviewTxMeta,
@@ -30,10 +31,10 @@ export type BankingMercuryUserReviewLedgerModalProps = {
   totalAmount: number
   /** Nicknames passed to the search haystack builder. */
   nicknameCtx: BankingMercurySearchNicknames
-  /** Assignable users for the per-row + bulk "assign person" tool. */
-  userOptions: SearchableSelectOption[]
-  /** Current attribution for this cell's row (a user id), or null for person/unassigned rows. */
-  currentUserId: string | null
+  /** Assignable users + people for the per-row + bulk "assign" tool (prefixed values u:/p:). */
+  attributionOptions: SearchableSelectOption[]
+  /** This cell row's current attribution as a prefixed value ('u:<id>'/'p:<id>'), '' if none. */
+  currentAttributionValue: string
   /** Operator auth user id (for recent quick-picks); null when unknown. */
   recentPersonPicksStorageKey: string | null
   /** Reload attribution data in the parent after a change. */
@@ -67,9 +68,9 @@ function amountColor(amount: number): string {
 
 const UNASSIGN_OPTION = { value: '', label: '— Unassign —' } as const
 
-function userOptionLabel(userOptions: SearchableSelectOption[], userId: string): string {
-  for (const o of userOptions) {
-    if ('value' in o && o.value === userId) return o.label
+function optionLabel(options: SearchableSelectOption[], value: string): string {
+  for (const o of options) {
+    if ('value' in o && o.value === value) return o.label
   }
   return 'this person'
 }
@@ -82,8 +83,8 @@ export function BankingMercuryUserReviewLedgerModal({
   rows,
   totalAmount,
   nicknameCtx,
-  userOptions,
-  currentUserId,
+  attributionOptions,
+  currentAttributionValue,
   recentPersonPicksStorageKey,
   onAttributionChanged,
   onOpenTransactionDetail,
@@ -94,7 +95,7 @@ export function BankingMercuryUserReviewLedgerModal({
   const searchInputId = `${reactId}-user-review-search`
   const [query, setQuery] = useState('')
   const [savingTxIds, setSavingTxIds] = useState<Set<string>>(() => new Set())
-  const [bulkUserId, setBulkUserId] = useState('')
+  const [bulkValue, setBulkValue] = useState('')
   const [bulkBusy, setBulkBusy] = useState(false)
   const [metaByTxId, setMetaByTxId] = useState<Map<string, MercuryUserReviewTxMeta>>(() => new Map())
   const { showToast } = useToastContext()
@@ -129,7 +130,7 @@ export function BankingMercuryUserReviewLedgerModal({
   useEffect(() => {
     if (!open) return
     setQuery('')
-    setBulkUserId('')
+    setBulkValue('')
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
     }
@@ -167,17 +168,19 @@ export function BankingMercuryUserReviewLedgerModal({
   }, [open, sortedRows, query, haystackByTxId])
 
   const assignOne = useCallback(
-    async (txId: string, userId: string | null) => {
+    async (txId: string, value: string) => {
+      const { userId, personId } = parseBankingAttributionValue(value)
       setSavingTxIds((prev) => new Set(prev).add(txId))
       try {
-        await mercurySetTransactionUserAttribution({
+        await mercurySetTransactionAttribution({
           mercuryTransactionId: txId,
           userId,
+          personId,
           operationLabel: 'user review assign',
           recentPersonPicksStorageKey,
         })
         await onAttributionChanged()
-        showToast(userId ? 'Person assigned' : 'Attribution cleared', 'success')
+        showToast(userId || personId ? 'Person assigned' : 'Attribution cleared', 'success')
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Could not assign person', 'error')
       } finally {
@@ -192,10 +195,11 @@ export function BankingMercuryUserReviewLedgerModal({
   )
 
   const assignAllShown = useCallback(
-    async (userId: string | null) => {
+    async (value: string) => {
       const targets = filteredRows
       if (targets.length === 0) return
-      const label = userId ? userOptionLabel(userOptions, userId) : 'Unassigned'
+      const { userId, personId } = parseBankingAttributionValue(value)
+      const label = userId || personId ? optionLabel(attributionOptions, value) : 'Unassigned'
       if (
         targets.length > 1 &&
         !window.confirm(`Assign ${targets.length} transaction(s) to ${label}?`)
@@ -207,9 +211,10 @@ export function BankingMercuryUserReviewLedgerModal({
       try {
         for (const r of targets) {
           try {
-            await mercurySetTransactionUserAttribution({
+            await mercurySetTransactionAttribution({
               mercuryTransactionId: r.id,
               userId,
+              personId,
               operationLabel: 'user review bulk assign',
               recentPersonPicksStorageKey,
             })
@@ -225,10 +230,10 @@ export function BankingMercuryUserReviewLedgerModal({
         )
       } finally {
         setBulkBusy(false)
-        setBulkUserId('')
+        setBulkValue('')
       }
     },
-    [filteredRows, userOptions, onAttributionChanged, recentPersonPicksStorageKey, showToast],
+    [filteredRows, attributionOptions, onAttributionChanged, recentPersonPicksStorageKey, showToast],
   )
 
   if (!open) return null
@@ -371,9 +376,9 @@ export function BankingMercuryUserReviewLedgerModal({
           </span>
           <div style={{ minWidth: 220, flex: '0 1 280px' }}>
             <SearchableSelect
-              value={bulkUserId}
-              onChange={setBulkUserId}
-              options={userOptions}
+              value={bulkValue}
+              onChange={setBulkValue}
+              options={attributionOptions}
               placeholder="Choose a person…"
               listAriaLabel="Assign all shown to person"
               portalZIndex={selectZIndex}
@@ -382,17 +387,17 @@ export function BankingMercuryUserReviewLedgerModal({
           </div>
           <button
             type="button"
-            disabled={bulkBusy || bulkUserId === '' || filteredRows.length === 0}
-            onClick={() => void assignAllShown(bulkUserId)}
+            disabled={bulkBusy || bulkValue === '' || filteredRows.length === 0}
+            onClick={() => void assignAllShown(bulkValue)}
             style={{
               padding: '0.4rem 0.75rem',
               borderRadius: 6,
               border: '1px solid #2563eb',
-              background: bulkBusy || bulkUserId === '' || filteredRows.length === 0 ? '#93c5fd' : '#2563eb',
+              background: bulkBusy || bulkValue === '' || filteredRows.length === 0 ? '#93c5fd' : '#2563eb',
               color: '#fff',
               fontSize: '0.8125rem',
               fontWeight: 600,
-              cursor: bulkBusy || bulkUserId === '' || filteredRows.length === 0 ? 'default' : 'pointer',
+              cursor: bulkBusy || bulkValue === '' || filteredRows.length === 0 ? 'default' : 'pointer',
             }}
           >
             {bulkBusy ? 'Assigning…' : `Apply to ${filteredRows.length}`}
@@ -400,7 +405,7 @@ export function BankingMercuryUserReviewLedgerModal({
           <button
             type="button"
             disabled={bulkBusy || filteredRows.length === 0}
-            onClick={() => void assignAllShown(null)}
+            onClick={() => void assignAllShown('')}
             style={{
               padding: '0.4rem 0.5rem',
               borderRadius: 6,
@@ -524,9 +529,9 @@ export function BankingMercuryUserReviewLedgerModal({
                       </td>
                       <td style={{ ...cellStyle, minWidth: 200 }}>
                         <SearchableSelect
-                          value={currentUserId ?? ''}
-                          onChange={(v) => void assignOne(r.id, v === '' ? null : v)}
-                          options={userOptions}
+                          value={currentAttributionValue}
+                          onChange={(v) => void assignOne(r.id, v)}
+                          options={attributionOptions}
                           emptyOption={UNASSIGN_OPTION}
                           placeholder="Assign person…"
                           listAriaLabel="Assign person"

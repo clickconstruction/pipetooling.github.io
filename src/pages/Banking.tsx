@@ -59,6 +59,10 @@ import {
 } from '../components/MercuryTransactionAllocationsModal'
 import type { SearchableSelectOption } from '../components/SearchableSelect'
 import {
+  buildBankingAttributionOptions,
+  type BankingAttributionPersonRow,
+} from '../lib/bankingAttributionOptions'
+import {
   buildMercuryTxSearchHaystackWithJobPerson,
   mercuryTxMatchesSearchQuery,
 } from '../lib/bankingMercurySearch'
@@ -1065,6 +1069,7 @@ export default function Banking() {
   const [userNameById, setUserNameById] = useState<Record<string, string>>({})
   const [jobLabelByIdBanking, setJobLabelByIdBanking] = useState<Record<string, string>>({})
   const [usersSelectOptions, setUsersSelectOptions] = useState<SearchableSelectOption[]>([])
+  const [peopleAttribRows, setPeopleAttribRows] = useState<BankingAttributionPersonRow[]>([])
   const [allocModalTx, setAllocModalTx] = useState<MercuryTxRow | null>(null)
   // Lifted from `BankingMercuryAccountingTab` so `loadRowsForActiveView` can
   // pick the unlabeled-only RPC vs the master 15k fetch based on the current
@@ -1597,16 +1602,25 @@ export default function Banking() {
     let cancelled = false
     void (async () => {
       try {
-        const data = await withSupabaseRetry(
-          () => supabase.rpc('list_users_for_banking_attribution'),
-          'list users banking attribution',
-        )
+        const [usersData, peopleData] = await Promise.all([
+          withSupabaseRetry(
+            () => supabase.rpc('list_users_for_banking_attribution'),
+            'list users banking attribution',
+          ),
+          withSupabaseRetry(
+            // Cast: new RPC not yet in generated types (gen-types:linked will pick it up).
+            () => supabase.rpc('list_people_with_kind_for_banking_attribution' as unknown as 'list_users_for_banking_attribution'),
+            'list people banking attribution',
+          ),
+        ])
         if (cancelled) return
-        const rows = (data ?? []) as { id: string; name: string }[]
-        setUsersSelectOptions(rows.map((p) => ({ value: p.id, label: p.name })))
+        const userRows = (usersData ?? []) as { id: string; name: string }[]
+        setUsersSelectOptions(userRows.map((p) => ({ value: p.id, label: p.name })))
+        setPeopleAttribRows((peopleData ?? []) as BankingAttributionPersonRow[])
       } catch (e) {
         if (!cancelled) {
           setUsersSelectOptions([])
+          setPeopleAttribRows([])
           showToast(
             e instanceof Error ? e.message : 'Could not load users for Banking (apply latest migrations if this persists).',
             'error',
@@ -1618,6 +1632,14 @@ export default function Banking() {
       cancelled = true
     }
   }, [canAccessBanking, showToast])
+
+  // Combined attribution options for the User Review pickers: users + roster people (tagged
+  // by kind, e.g. "· Sub"), with type-prefixed values (u:/p:). Allocations + card-link modals
+  // keep using the user-only `usersSelectOptions`.
+  const attributionOptions = useMemo(
+    () => buildBankingAttributionOptions(usersSelectOptions, peopleAttribRows),
+    [usersSelectOptions, peopleAttribRows],
+  )
 
   const setSortForColumn = useCallback((key: SortKey) => {
     setSort((s) =>
@@ -2435,7 +2457,7 @@ export default function Banking() {
             personIdByTxId={personIdByTxId}
             userNameById={userNameById}
             personNameById={personNameById}
-            userOptions={usersSelectOptions}
+            attributionOptions={attributionOptions}
             recentPersonPicksStorageKey={user?.id ?? null}
             onAttributionChanged={() => {
               void loadMercuryAllocations()

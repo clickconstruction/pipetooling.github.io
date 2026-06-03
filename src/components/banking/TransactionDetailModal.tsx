@@ -5,6 +5,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import type { Database, Json } from '../../types/database'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
+import { parseBankingAttributionValue } from '../../lib/bankingAttributionOptions'
 import { pushRecentPersonUserId } from '../../lib/mercuryAllocRecentPersonUserIds'
 import {
   lineDisplayDollars,
@@ -48,7 +49,7 @@ export type TransactionDetailModalProps = {
   onClose: () => void
   /** Transaction row WITH `raw` hydrated. */
   transaction: MercuryTxRow | null
-  usersOptions: SearchableSelectOption[]
+  attributionOptions: SearchableSelectOption[]
   nicknameByAccount: Record<string, string>
   nicknameByDebitCard: Record<string, string>
   recentPersonPicksStorageKey: string | null
@@ -82,7 +83,7 @@ export function TransactionDetailModal({
   open,
   onClose,
   transaction,
-  usersOptions,
+  attributionOptions,
   nicknameByAccount,
   nicknameByDebitCard,
   recentPersonPicksStorageKey,
@@ -93,9 +94,7 @@ export function TransactionDetailModal({
   const ledgerPrefixMap = useLedgerPrefixMap()
 
   const [loading, setLoading] = useState(false)
-  const [userId, setUserId] = useState('')
-  const [initialUserId, setInitialUserId] = useState<string | null>(null)
-  const [initialPersonId, setInitialPersonId] = useState<string | null>(null)
+  const [attrValue, setAttrValue] = useState('')
   const [lines, setLines] = useState<SplitLine[]>([])
   const [jobSearch, setJobSearch] = useState('')
   const [jobResults, setJobResults] = useState<JobSearchRow[]>([])
@@ -147,9 +146,7 @@ export function TransactionDetailModal({
         if (cancelled) return
 
         const attr = (attrs[0] ?? null) as { person_id: string | null; user_id: string | null } | null
-        setInitialUserId(attr?.user_id ?? null)
-        setInitialPersonId(attr?.person_id ?? null)
-        setUserId(attr?.user_id ?? '')
+        setAttrValue(attr?.user_id ? `u:${attr.user_id}` : attr?.person_id ? `p:${attr.person_id}` : '')
 
         // Job labels for the existing allocation lines.
         const jobIds = [...new Set(allocs.map((a) => a.job_id))]
@@ -284,10 +281,7 @@ export function TransactionDetailModal({
         if (nt !== '') row.note = nt
         return row
       })
-      const uid = userId.trim()
-      const legacyOnly = Boolean(initialPersonId && !initialUserId)
-      const p_user_id = uid !== '' ? uid : null
-      const p_person_id = uid === '' && legacyOnly ? initialPersonId : null
+      const { userId: p_user_id, personId: p_person_id } = parseBankingAttributionValue(attrValue)
       const payload: ReplaceSplitsCall = {
         p_mercury_transaction_id: transaction.id,
         p_rows: p_rows as unknown as Json,
@@ -299,8 +293,6 @@ export function TransactionDetailModal({
         'tx detail replace splits',
       )
       if (p_user_id && recentPersonPicksStorageKey) pushRecentPersonUserId(recentPersonPicksStorageKey, p_user_id)
-      setInitialUserId(p_user_id)
-      setInitialPersonId(p_person_id)
       showToast('Saved person & jobs.', 'success')
       onChanged()
     } catch (e) {
@@ -308,7 +300,7 @@ export function TransactionDetailModal({
     } finally {
       setSavingSplits(false)
     }
-  }, [transaction, canSaveSplits, lines, displayTotal, allocationSign, userId, initialPersonId, initialUserId, recentPersonPicksStorageKey, showToast, onChanged])
+  }, [transaction, canSaveSplits, lines, displayTotal, allocationSign, attrValue, recentPersonPicksStorageKey, showToast, onChanged])
 
   const handleSaveLabel = useCallback(
     async (nextLabelId: string) => {
@@ -402,9 +394,9 @@ export function TransactionDetailModal({
         <div style={sectionStyle}>
           <h3 style={sectionTitleStyle}>Assigned person</h3>
           <SearchableSelect
-            value={userId}
-            onChange={setUserId}
-            options={usersOptions}
+            value={attrValue}
+            onChange={setAttrValue}
+            options={attributionOptions}
             emptyOption={{ value: '', label: '— Unassigned —' }}
             placeholder="Assign person…"
             listAriaLabel="Assigned person"

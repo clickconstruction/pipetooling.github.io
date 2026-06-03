@@ -25,19 +25,21 @@ export function mercuryJobSplitsToPayload(
 }
 
 /**
- * Set or clear the Mercury *user* attribution for a single transaction, preserving any
- * existing job splits. Unlike `mercuryQuickAssignUserAttribution`, this does NOT require
- * splits to exist (no splits → `p_rows: []`). Pass `userId: null` to clear the attribution
- * (i.e. move the transaction to "Unassigned").
+ * Set or clear the Mercury attribution (a user XOR a roster person) for a single transaction,
+ * preserving any existing job splits. Unlike `mercuryQuickAssignUserAttribution`, this does NOT
+ * require splits to exist (no splits → `p_rows: []`). Pass both `userId` and `personId` null to
+ * clear the attribution (move the transaction to "Unassigned"). At most one of userId/personId
+ * should be set (the RPC enforces the XOR).
  */
-export async function mercurySetTransactionUserAttribution(options: {
+export async function mercurySetTransactionAttribution(options: {
   mercuryTransactionId: string
   userId: string | null
+  personId: string | null
   operationLabel: string
-  /** Operator's auth user id; records the pick in recent person quick-picks when set. */
+  /** Operator's auth user id; records the pick in recent person quick-picks when a user is set. */
   recentPersonPicksStorageKey: string | null
 }): Promise<void> {
-  const { mercuryTransactionId, userId, operationLabel, recentPersonPicksStorageKey } = options
+  const { mercuryTransactionId, userId, personId, operationLabel, recentPersonPicksStorageKey } = options
 
   const allocs = await fetchJobAllocationsByMercuryTxIds(
     [mercuryTransactionId],
@@ -48,8 +50,8 @@ export async function mercurySetTransactionUserAttribution(options: {
   const payload = {
     p_mercury_transaction_id: mercuryTransactionId,
     p_rows: p_rows as unknown as Json,
-    p_person_id: null,
-    // null clears: the RPC deletes the attribution row when both person and user are null.
+    // null/null clears: the RPC deletes the attribution row when both person and user are null.
+    p_person_id: personId,
     p_user_id: userId,
   }
   await withSupabaseRetry(
