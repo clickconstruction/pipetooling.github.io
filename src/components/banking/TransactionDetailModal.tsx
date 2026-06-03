@@ -33,6 +33,7 @@ import {
 import { formatJobLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { INTERNAL_TRANSFERS_DEFAULT_KEY } from '../../lib/dragSortDefaultLabels'
+import { TransactionContextModal } from './TransactionContextModal'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null }
@@ -55,6 +56,8 @@ export type TransactionDetailModalProps = {
   recentPersonPicksStorageKey: string | null
   /** Called after any field is saved so the parent can refresh. */
   onChanged: () => void
+  /** Re-anchor the detail to another transaction (from the "around this date" context modal). */
+  onOpenTransaction?: (txId: string) => void
   zIndex?: number
 }
 
@@ -88,11 +91,13 @@ export function TransactionDetailModal({
   nicknameByDebitCard,
   recentPersonPicksStorageKey,
   onChanged,
+  onOpenTransaction,
   zIndex = 1250,
 }: TransactionDetailModalProps) {
   const { showToast } = useToastContext()
   const ledgerPrefixMap = useLedgerPrefixMap()
 
+  const [contextOpen, setContextOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [attrValue, setAttrValue] = useState('')
   const [lines, setLines] = useState<SplitLine[]>([])
@@ -365,6 +370,7 @@ export function TransactionDetailModal({
       : '—'
 
   return (
+    <>
     <div
       role="presentation"
       onMouseDown={(e) => {
@@ -387,7 +393,17 @@ export function TransactionDetailModal({
         {/* Read-only facts */}
         <div style={{ ...sectionStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.65rem' }}>
           <Fact label="Date" value={formatDate(transaction.created_at)} />
-          <Fact label="Posted" value={formatDate(transaction.posted_at)} />
+          <div>
+            <div style={factLabel}>Posted</div>
+            <button
+              type="button"
+              onClick={() => setContextOpen(true)}
+              title="See ledger transactions around this date"
+              style={{ all: 'unset', cursor: 'pointer', color: '#1d4ed8', fontWeight: 500, fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2 }}
+            >
+              {formatDate(transaction.posted_at)}
+            </button>
+          </div>
           <Fact label="Amount" value={formatCurrency(txAmount)} />
           <Fact label="Counterparty" value={transaction.counterparty_name?.trim() || '—'} />
           <Fact label="Kind" value={`${formatMercuryKind(transaction.kind)}${debitDisplay ? ` · ${debitDisplay}` : ''}`} />
@@ -547,6 +563,18 @@ export function TransactionDetailModal({
         </details>
       </div>
     </div>
+    <TransactionContextModal
+      open={contextOpen}
+      onClose={() => setContextOpen(false)}
+      anchor={transaction}
+      nicknameByAccount={nicknameByAccount}
+      onOpenTransaction={(txId) => {
+        setContextOpen(false)
+        onOpenTransaction?.(txId)
+      }}
+      zIndex={zIndex + 100}
+    />
+    </>
   )
 }
 

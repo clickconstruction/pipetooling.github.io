@@ -976,6 +976,7 @@ export function BankingMercuryUserReviewTab({
         nicknameByDebitCard={mercurySearchNicknameCtx.nicknameByDebitCard}
         recentPersonPicksStorageKey={recentPersonPicksStorageKey}
         onChanged={handleAttributionChanged}
+        onOpenTransaction={openTransactionDetail}
       />
     </div>
   )
