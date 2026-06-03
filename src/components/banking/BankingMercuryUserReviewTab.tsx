@@ -15,8 +15,8 @@ import {
 import {
   USER_REVIEW_TIME_WINDOW_DEFAULT,
   USER_REVIEW_TIME_WINDOW_OPTIONS,
-  filterMercuryTxByUserReviewTimeWindow,
   formatUserReviewTimeWindowRange,
+  getUserReviewTimeWindowRange,
   type UserReviewTimeWindow,
 } from '../../lib/bankingMercuryUserReviewTimeWindow'
 import { BankingMercuryUserReviewLedgerModal } from './BankingMercuryUserReviewLedgerModal'
@@ -27,21 +27,18 @@ import { bankingAttributionValueForSource } from '../../lib/bankingAttributionOp
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
+/** One windowed tx row from the `user_review_rows` RPC — the standard Banking list
+ * columns (minus `raw`) pre-joined with its attribution (user/person + names) and label. */
+type UserReviewRpcRow = Database['public']['Functions']['user_review_rows']['Returns'][number]
 
 export type BankingMercuryUserReviewTabProps = {
-  filteredTransactions: MercuryTxRow[]
-  loading: boolean
-  loadError: string | null
   mercurySearchNicknameCtx: BankingMercurySearchNicknames
-  userIdByTxId: Map<string, string | null>
-  personIdByTxId: Map<string, string | null>
-  userNameById: Record<string, string>
-  personNameById: Record<string, string>
   /** Assignable users + people (prefixed values) for the in-modal "assign" tool. */
   attributionOptions: SearchableSelectOption[]
   /** Operator auth user id (for recent-pick chips); null when unknown. */
   recentPersonPicksStorageKey: string | null
-  /** Called after an attribution is set/changed/cleared so the parent reloads maps. */
+  /** Called after an attribution is set/changed/cleared (the tab refetches its own rows;
+   * the parent may also refresh shared state). */
   onAttributionChanged: () => void
 }
 
@@ -57,8 +54,6 @@ function amountColor(amount: number): string {
 
 const HIDE_EMPTY_STORAGE_KEY = 'banking_mercury_user_review_hide_empty_v1'
 const TIME_WINDOW_STORAGE_KEY = 'banking_mercury_user_review_time_window_v1'
-/** Max ids per `.in(...)` batch when fetching assignments scoped to a bounded time window. */
-const ASSIGNMENTS_IN_CHUNK_SIZE = 400
 
 function readHideEmptyFromStorage(): boolean {
   try {
@@ -97,14 +92,7 @@ function writeTimeWindowToStorage(value: UserReviewTimeWindow): void {
 }
 
 export function BankingMercuryUserReviewTab({
-  filteredTransactions,
-  loading,
-  loadError,
   mercurySearchNicknameCtx,
-  userIdByTxId,
-  personIdByTxId,
-  userNameById,
-  personNameById,
   attributionOptions,
   recentPersonPicksStorageKey,
   onAttributionChanged,
@@ -113,8 +101,13 @@ export function BankingMercuryUserReviewTab({
 
   const [labels, setLabels] = useState<UserReviewLabelRow[]>([])
   const [labelsLoading, setLabelsLoading] = useState(false)
-  const [assignmentLabelByTxId, setAssignmentLabelByTxId] = useState<Map<string, string>>(new Map())
-  const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  // Windowed transactions pre-joined with attribution + label, from the
+  // `user_review_rows` RPC. Single source for the pivot, drill-down, detail
+  // panel, and search — replaces the parent's 15k master fetch + the separate
+  // attributions/assignments fetches that the tab used to assemble client-side.
+  const [userReviewRows, setUserReviewRows] = useState<UserReviewRpcRow[]>([])
+  const [rowsLoading, setRowsLoading] = useState(false)
+  const [rowsError, setRowsError] = useState<string | null>(null)
   const [hideEmptyColumns, setHideEmptyColumns] = useState<boolean>(() => readHideEmptyFromStorage())
 
   const [drillRowKey, setDrillRowKey] = useState<string | null>(null)
@@ -171,80 +164,67 @@ export function BankingMercuryUserReviewTab({
     void loadLabels()
   }, [loadLabels])
 
-  const windowedTransactions = useMemo(
-    () => filterMercuryTxByUserReviewTimeWindow(filteredTransactions, timeWindow),
-    [filteredTransactions, timeWindow],
-  )
-
   const windowedRangeLabel = useMemo(() => formatUserReviewTimeWindowRange(timeWindow), [timeWindow])
 
-  const loadAssignments = useCallback(async () => {
-    const ids = windowedTransactions.map((r) => r.id)
-    if (ids.length === 0) {
-      setAssignmentLabelByTxId(new Map())
-      return
-    }
-    setAssignmentsLoading(true)
+  // Single scoped fetch: the windowed transactions already joined with their
+  // attribution + label, computed server-side in `user_review_rows`. Replaces the
+  // old three-source cascade (parent 15k master fetch + attributions + assignments).
+  const loadUserReviewRows = useCallback(async () => {
+    setRowsLoading(true)
+    setRowsError(null)
     try {
-      const map = new Map<string, string>()
-      if (timeWindow === 'all') {
-        // 'All time' spans every tx, so one unfiltered select beats chunking ~15k
-        // ids into ~28 batches. Filter to the loaded set client-side.
-        const want = new Set(ids)
-        const rows = await withSupabaseRetry(async () => {
-          return supabase
-            .from('mercury_transaction_drag_sort_assignments')
-            .select('mercury_transaction_id, label_id')
-            .limit(100000)
-        }, 'user review load drag assignments (all)')
-        for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
-          if (want.has(row.mercury_transaction_id)) map.set(row.mercury_transaction_id, row.label_id)
-        }
-      } else {
-        // Bounded window (the default last-30-days etc.): fetch only the assignments
-        // for the windowed ids. For 30 days that's a handful of ids → one tiny request,
-        // instead of pulling the entire assignments table (tens of thousands of rows)
-        // just to discard ~all of it. Chunk the `.in(...)` list and run in parallel.
-        const chunks: string[][] = []
-        for (let i = 0; i < ids.length; i += ASSIGNMENTS_IN_CHUNK_SIZE) {
-          chunks.push(ids.slice(i, i + ASSIGNMENTS_IN_CHUNK_SIZE))
-        }
-        const results = await Promise.all(
-          chunks.map((chunk) =>
-            withSupabaseRetry(async () => {
-              return supabase
-                .from('mercury_transaction_drag_sort_assignments')
-                .select('mercury_transaction_id, label_id')
-                .in('mercury_transaction_id', chunk)
-            }, 'user review load drag assignments (scoped)'),
-          ),
-        )
-        for (const rows of results) {
-          for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
-            map.set(row.mercury_transaction_id, row.label_id)
-          }
-        }
-      }
-      setAssignmentLabelByTxId(map)
+      const range = getUserReviewTimeWindowRange(timeWindow)
+      const data = await withSupabaseRetry(async () => {
+        return supabase.rpc('user_review_rows', {
+          p_start_ymd: range?.startYmd,
+          p_end_ymd: range?.endYmd,
+        })
+      }, 'user review rows')
+      setUserReviewRows((data as UserReviewRpcRow[]) ?? [])
     } catch (e) {
-      showToast(e instanceof Error ? e.message : 'Could not load assignments', 'error')
-      setAssignmentLabelByTxId(new Map())
+      setRowsError(e instanceof Error ? e.message : 'Could not load transactions')
+      setUserReviewRows([])
     } finally {
-      setAssignmentsLoading(false)
+      setRowsLoading(false)
     }
-  }, [windowedTransactions, timeWindow, showToast])
+  }, [timeWindow])
 
   useEffect(() => {
-    void loadAssignments()
-  }, [loadAssignments])
+    void loadUserReviewRows()
+  }, [loadUserReviewRows])
 
-  const labelIdByTxId = useMemo(() => {
-    const m = new Map<string, string | null>()
-    for (const tx of windowedTransactions) {
-      m.set(tx.id, assignmentLabelByTxId.get(tx.id) ?? null)
+  // After an attribution is set/changed/cleared, refetch this tab's joined rows so
+  // the affected tx moves to its new user/person row; also let the parent refresh
+  // any shared Banking state it still derives from attributions.
+  const handleAttributionChanged = useCallback(() => {
+    onAttributionChanged()
+    void loadUserReviewRows()
+  }, [onAttributionChanged, loadUserReviewRows])
+
+  // The RPC rows carry the standard Banking list columns (minus `raw`), so they're
+  // shape-compatible with the `MercuryTxRow` the drill-down / detail / search expect.
+  const windowedTransactions = useMemo<MercuryTxRow[]>(
+    () => userReviewRows as unknown as MercuryTxRow[],
+    [userReviewRows],
+  )
+
+  // Attribution + label maps + display names, derived from the joined RPC rows
+  // (replaces the parent-supplied maps and the separate assignments fetch).
+  const { userIdByTxId, personIdByTxId, userNameById, personNameById, labelIdByTxId } = useMemo(() => {
+    const uById = new Map<string, string | null>()
+    const pById = new Map<string, string | null>()
+    const lById = new Map<string, string | null>()
+    const uNames: Record<string, string> = {}
+    const pNames: Record<string, string> = {}
+    for (const r of userReviewRows) {
+      uById.set(r.id, r.user_id)
+      pById.set(r.id, r.person_id)
+      lById.set(r.id, r.label_id)
+      if (r.user_id && r.user_name) uNames[r.user_id] = r.user_name
+      if (r.person_id && r.person_name) pNames[r.person_id] = r.person_name
     }
-    return m
-  }, [windowedTransactions, assignmentLabelByTxId])
+    return { userIdByTxId: uById, personIdByTxId: pById, userNameById: uNames, personNameById: pNames, labelIdByTxId: lById }
+  }, [userReviewRows])
 
   const pivot = useMemo(() => {
     return buildUserReviewPivot({
@@ -376,9 +356,9 @@ export function BankingMercuryUserReviewTab({
     if (!stillVisible) setSelectedRowKey(null)
   }, [selectedRowKey, pivot.rows])
 
-  const isLoadingAny = loading || labelsLoading || assignmentsLoading
+  const isLoadingAny = rowsLoading || labelsLoading
 
-  if (loadError) {
+  if (rowsError) {
     return (
       <div
         style={{
@@ -391,7 +371,7 @@ export function BankingMercuryUserReviewTab({
           fontSize: '0.875rem',
         }}
       >
-        {loadError}
+        {rowsError}
       </div>
     )
   }
@@ -983,7 +963,7 @@ export function BankingMercuryUserReviewTab({
         attributionOptions={attributionOptions}
         currentAttributionValue={bankingAttributionValueForSource(drillRow?.source ?? null, drillRow?.sourceId ?? null)}
         recentPersonPicksStorageKey={recentPersonPicksStorageKey}
-        onAttributionChanged={onAttributionChanged}
+        onAttributionChanged={handleAttributionChanged}
         onOpenTransactionDetail={openTransactionDetail}
       />
 
@@ -995,7 +975,7 @@ export function BankingMercuryUserReviewTab({
         nicknameByAccount={mercurySearchNicknameCtx.nicknameByAccount}
         nicknameByDebitCard={mercurySearchNicknameCtx.nicknameByDebitCard}
         recentPersonPicksStorageKey={recentPersonPicksStorageKey}
-        onChanged={onAttributionChanged}
+        onChanged={handleAttributionChanged}
       />
     </div>
   )

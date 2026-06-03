@@ -36,3 +36,4 @@ docs/runbooks/supabase-inspect-snapshot/
 # Claude Code local config (machine-specific; .mcp.json is shared and tracked)
 .claude/settings.local.json
 .claude/launch.json
+.claude/scheduled_tasks.lock

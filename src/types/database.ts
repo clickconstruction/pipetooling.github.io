@@ -11246,6 +11246,32 @@ export type Database = {
         Args: { column_uuid: string }
         Returns: boolean
       }
+      user_review_rows: {
+        Args: { p_start_ymd?: string; p_end_ymd?: string }
+        Returns: {
+          amount: number
+          counterparty_id: string | null
+          counterparty_name: string | null
+          created_at: string
+          currency: string
+          dashboard_link: string | null
+          external_memo: string | null
+          id: string
+          kind: string
+          label_id: string | null
+          mercury_account_id: string
+          mercury_category: Json | null
+          mercury_id: string
+          note: string | null
+          person_id: string | null
+          person_name: string | null
+          posted_at: string | null
+          status: string
+          synced_at: string
+          user_id: string | null
+          user_name: string | null
+        }[]
+      }
       validate_pay_stub_payments_vs_net: {
         Args: { p_stub: string }
         Returns: undefined
