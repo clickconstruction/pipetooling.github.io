@@ -10646,6 +10646,38 @@ export type Database = {
           quantity: number
         }[]
       }
+      list_mercury_transactions_keyset: {
+        Args: {
+          p_after_id?: string
+          p_after_posted_at?: string
+          p_limit?: number
+        }
+        Returns: {
+          amount: number
+          counterparty_id: string | null
+          counterparty_name: string | null
+          created_at: string
+          currency: string
+          dashboard_link: string | null
+          external_memo: string | null
+          id: string
+          kind: string
+          mercury_account_id: string
+          mercury_category: Json | null
+          mercury_id: string
+          note: string | null
+          posted_at: string | null
+          raw: Json | null
+          status: string
+          synced_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mercury_transactions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       list_unlabeled_mercury_transactions: {
         Args: { p_limit?: number }
         Returns: {

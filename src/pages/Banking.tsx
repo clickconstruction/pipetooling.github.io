@@ -88,6 +88,8 @@ const NO_MERCURY_TX_IDS_FOR_BANKING_NOTES: readonly string[] = []
 const DEBIT_CARD_RECENT_TX_CAP = 50
 /** Cap for the in-memory Banking → Mercury list. Sized to comfortably fit a 1-year backfill (~10k tx) plus headroom. */
 const MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000
+/** Page size for the Accounting tab's keyset-paginated "show labeled" (Hide labeled = off) view. */
+const ACCOUNTING_LABELED_PAGE_SIZE = 500
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
 
 type BankingProduct = 'mercury' | 'stripe'
@@ -1076,6 +1078,23 @@ export default function Banking() {
   // tab + the toggle. Defaults to **on** (the storage helper's null-userId
   // default) until the user-bound `useEffect` below hydrates the per-user pref.
   const [hideLabeledTransactions, setHideLabeledTransactions] = useState(true)
+  // Gates the initial data-load effect so the first fetch uses the *hydrated*
+  // per-user `hideLabeledTransactions` value rather than the default `true`.
+  // `user` is null at mount and resolves async (so a `useState` lazy read of
+  // the per-user localStorage key is impossible); deferring the first fetch
+  // until this flips true makes the dispatcher pick the right loader once,
+  // eliminating the default-vs-stored flash / double fetch.
+  const [accountingPrefsHydrated, setAccountingPrefsHydrated] = useState(false)
+  // Keyset cursor + paging flags for the Accounting "show labeled" (Hide off)
+  // view, which infinite-scrolls `list_mercury_transactions_keyset` in
+  // ACCOUNTING_LABELED_PAGE_SIZE pages instead of pulling the 15k master list.
+  // `labeledCursor` is the (posted_at, id) of the last loaded row.
+  const [labeledCursor, setLabeledCursor] = useState<{ postedAt: string | null; id: string } | null>(null)
+  const [labeledHasMore, setLabeledHasMore] = useState(false)
+  const [labeledLoadingMore, setLabeledLoadingMore] = useState(false)
+  // Synchronous guard so a burst of scroll events can't fire overlapping
+  // next-page requests (mirrors the Materials parts-book infinite scroll).
+  const labeledLoadingMoreRef = useRef(false)
   // Per-user "Apply rules by default" toggle (RECENT_FEATURES v2.580).
   // Lifted to this component so we can bump `autoApplyResetTick` from
   // `handleSync` / `handleBackfill` and so the storage hydration mirrors
@@ -1185,8 +1204,10 @@ export default function Banking() {
   }, [user?.id])
 
   useEffect(() => {
+    setAccountingPrefsHydrated(false)
     if (!user?.id) return
     setHideLabeledTransactions(readAccountingHideLabeledTransactions(user.id))
+    setAccountingPrefsHydrated(true)
   }, [user?.id])
 
   const onHideLabeledTransactionsChange = useCallback(
@@ -1335,21 +1356,94 @@ export default function Banking() {
     }
   }, [myRole, showToast])
 
+  // First page of the Accounting "show labeled" (Hide off) view: replaces the
+  // list with the newest ACCOUNTING_LABELED_PAGE_SIZE rows and arms the cursor
+  // so `loadLabeledNextPage` can keyset-scroll older rows.
+  const loadLabeledFirstPage = useCallback(async (options?: { silent?: boolean }) => {
+    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    const silent = options?.silent === true
+    labeledLoadingMoreRef.current = false
+    setLabeledLoadingMore(false)
+    if (!silent) {
+      setError(null)
+      setLoading(true)
+    }
+    try {
+      const data = await withSupabaseRetry(async () => {
+        return supabase.rpc('list_mercury_transactions_keyset', {
+          p_after_posted_at: undefined,
+          p_after_id: undefined,
+          p_limit: ACCOUNTING_LABELED_PAGE_SIZE,
+        })
+      }, 'load mercury_transactions labeled page')
+      const page = (data as MercuryTxRow[]) ?? []
+      setRows(page)
+      const last = page[page.length - 1]
+      setLabeledCursor(last ? { postedAt: last.posted_at, id: last.id } : null)
+      setLabeledHasMore(page.length === ACCOUNTING_LABELED_PAGE_SIZE)
+    } catch (e) {
+      if (silent) {
+        showToast(e instanceof Error ? e.message : 'Failed to refresh Mercury transactions.', 'error')
+      } else {
+        setError(e instanceof Error ? e.message : 'Failed to load transactions')
+        setRows([])
+        setLabeledCursor(null)
+        setLabeledHasMore(false)
+      }
+    } finally {
+      if (!silent) setLoading(false)
+    }
+  }, [myRole, showToast])
+
+  // Next keyset page for the "show labeled" view: appends older rows (id-deduped)
+  // and advances the cursor. No-op unless a cursor is armed and more remain.
+  const loadLabeledNextPage = useCallback(async () => {
+    if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    if (labeledLoadingMoreRef.current || !labeledHasMore || !labeledCursor) return
+    labeledLoadingMoreRef.current = true
+    setLabeledLoadingMore(true)
+    try {
+      const data = await withSupabaseRetry(async () => {
+        return supabase.rpc('list_mercury_transactions_keyset', {
+          p_after_posted_at: labeledCursor.postedAt ?? undefined,
+          p_after_id: labeledCursor.id,
+          p_limit: ACCOUNTING_LABELED_PAGE_SIZE,
+        })
+      }, 'load mercury_transactions labeled next page')
+      const page = (data as MercuryTxRow[]) ?? []
+      const last = page[page.length - 1]
+      if (last) {
+        setRows((prev) => {
+          const seen = new Set(prev.map((r) => r.id))
+          return [...prev, ...page.filter((r) => !seen.has(r.id))]
+        })
+        setLabeledCursor({ postedAt: last.posted_at, id: last.id })
+      }
+      setLabeledHasMore(page.length === ACCOUNTING_LABELED_PAGE_SIZE)
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Failed to load more transactions.', 'error')
+    } finally {
+      labeledLoadingMoreRef.current = false
+      setLabeledLoadingMore(false)
+    }
+  }, [myRole, labeledHasMore, labeledCursor, showToast])
+
   // Tab-aware dispatcher. Accounting + Hide labeled = unlabeled-only RPC;
-  // every other tab (Drag Sort, User Review, Category Review, Sorting,
-  // Ledger) keeps the existing master 15k fetch.
+  // Accounting + show labeled = keyset-paginated first page; every other tab
+  // (Drag Sort, User Review, Category Review, Sorting, Ledger) keeps the
+  // existing master 15k fetch.
+  const isAccountingLabeledView =
+    bankingView.product === 'mercury' &&
+    bankingView.mercuryTab === 'accounting' &&
+    !hideLabeledTransactions
   const loadRowsForActiveView = useCallback(
     async (options?: { silent?: boolean }) => {
-      if (
-        bankingView.product === 'mercury' &&
-        bankingView.mercuryTab === 'accounting' &&
-        hideLabeledTransactions
-      ) {
-        return loadUnlabeledRows(options)
+      if (bankingView.product === 'mercury' && bankingView.mercuryTab === 'accounting') {
+        return hideLabeledTransactions ? loadUnlabeledRows(options) : loadLabeledFirstPage(options)
       }
       return loadAllRows(options)
     },
-    [bankingView.product, bankingView.mercuryTab, hideLabeledTransactions, loadAllRows, loadUnlabeledRows],
+    [bankingView.product, bankingView.mercuryTab, hideLabeledTransactions, loadAllRows, loadUnlabeledRows, loadLabeledFirstPage],
   )
 
   const loadNicknames = useCallback(async () => {
@@ -1412,8 +1506,11 @@ export default function Banking() {
   // across that initial paint.
   useEffect(() => {
     if (myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') return
+    // Wait until the per-user Accounting prefs are hydrated so the dispatcher
+    // picks the right loader on the first fetch (no default-vs-stored flash).
+    if (!accountingPrefsHydrated) return
     void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])
-  }, [myRole, loadRowsForActiveView, loadNicknames, loadDebitCardNicknames])
+  }, [myRole, accountingPrefsHydrated, loadRowsForActiveView, loadNicknames, loadDebitCardNicknames])
 
   const bankingMercuryFilters = useMemo(
     () => [{ event: '*' as const, schema: 'public', table: 'mercury_transactions' }],
@@ -2442,6 +2539,9 @@ export default function Banking() {
             approveByDefault={approveByDefault}
             onApproveByDefaultChange={onApproveByDefaultChange}
             onAfterAssignmentChange={() => void loadRowsForActiveView({ silent: true })}
+            labeledHasMore={isAccountingLabeledView && labeledHasMore}
+            labeledLoadingMore={labeledLoadingMore}
+            onLoadMoreLabeled={() => void loadLabeledNextPage()}
           />
         </div>
       ) : null}

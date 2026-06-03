@@ -167,6 +167,16 @@ export type BankingMercuryAccountingTabProps = {
    * call this.
    */
   onAfterAssignmentChange?: () => void
+  /**
+   * Keyset infinite-scroll for the "show labeled" (Hide labeled = off) view.
+   * The parent paginates `list_mercury_transactions_keyset`; this child fires
+   * `onLoadMoreLabeled` as the user nears the bottom. `labeledHasMore` is
+   * already gated to the Accounting-show-labeled state by the parent, so the
+   * trigger is inert (no-op) on the Hide-on / other-tab paths.
+   */
+  labeledHasMore?: boolean
+  labeledLoadingMore?: boolean
+  onLoadMoreLabeled?: () => void
 }
 
 type PendingApproval = {
@@ -308,6 +318,9 @@ export function BankingMercuryAccountingTab({
   approveByDefault,
   onApproveByDefaultChange,
   onAfterAssignmentChange,
+  labeledHasMore = false,
+  labeledLoadingMore = false,
+  onLoadMoreLabeled,
 }: BankingMercuryAccountingTabProps) {
   const { showToast } = useToastContext()
   const [accountingSearchText, setAccountingSearchText] = useState('')
@@ -671,6 +684,24 @@ export function BankingMercuryAccountingTab({
     copy.sort((a, b) => compareMercuryLedgerRows(a, b, ledgerSort.key, ledgerSort.dir))
     return copy
   }, [displayTransactions, ledgerSort])
+
+  // Infinite scroll for the "show labeled" (Hide off) view: load the next
+  // keyset page when the user nears the bottom. Inert unless `labeledHasMore`
+  // (the parent gates it to the Accounting-show-labeled state). Mirrors the
+  // Materials parts-book window-scroll pattern.
+  useEffect(() => {
+    if (!labeledHasMore || !onLoadMoreLabeled) return
+    const onScroll = () => {
+      if (labeledLoadingMore) return
+      const scrollTop = window.scrollY || document.documentElement.scrollTop
+      const distanceFromBottom = document.documentElement.scrollHeight - scrollTop - window.innerHeight
+      if (distanceFromBottom < 400) onLoadMoreLabeled()
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    // Fire once in case the first page doesn't fill the viewport (no scroll yet).
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [labeledHasMore, labeledLoadingMore, onLoadMoreLabeled])
 
   const counterpartyFrequencyByKey = useMemo(
     () => counterpartyFrequencyCountMap(displayTransactions),
@@ -1806,6 +1837,11 @@ export function BankingMercuryAccountingTab({
             ) : hideLabeledTransactions && displayTransactions.length === 0 ? (
               <div style={{ padding: '1.5rem', color: '#6b7280' }}>
                 All matching transactions have an Accounting Label. Turn off <strong>Hide labeled transactions</strong> to see them.
+              </div>
+            ) : null}
+            {labeledHasMore ? (
+              <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
+                {labeledLoadingMore ? 'Loading more transactions…' : 'Scroll down to load more'}
               </div>
             ) : null}
           </div>
