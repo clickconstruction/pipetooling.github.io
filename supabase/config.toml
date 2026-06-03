@@ -364,6 +364,10 @@ verify_jwt = false
 [functions.import-manual-transactions]
 verify_jwt = false
 
+# Validates JWT + dev/master_technician role in-body; renames/deletes manual (CSV-imported) accounts.
+[functions.manage-manual-account]
+verify_jwt = false
+
 [functions.create-stripe-invoice]
 verify_jwt = false
 

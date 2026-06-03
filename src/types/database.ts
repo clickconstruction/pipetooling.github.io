@@ -10663,6 +10663,17 @@ export type Database = {
           quantity: number
         }[]
       }
+      list_manual_bank_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          mercury_account_id: string
+          name: string | null
+          tx_count: number
+          net_total: number
+          oldest_posted: string | null
+          newest_posted: string | null
+        }[]
+      }
       list_mercury_transactions_keyset: {
         Args: {
           p_after_id?: string

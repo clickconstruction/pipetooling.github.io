@@ -30,6 +30,7 @@ import { BankingMercuryUserReviewTab } from '../components/banking/BankingMercur
 import { BankingMercuryCategoryReviewTab } from '../components/banking/BankingMercuryCategoryReviewTab'
 import { MercuryBackfillModal } from '../components/banking/MercuryBackfillModal'
 import { MercuryImportCsvModal, type ImportCsvSubmitPayload, type ImportCsvResult } from '../components/banking/MercuryImportCsvModal'
+import { ManualAccountsModal } from '../components/banking/ManualAccountsModal'
 import {
   mercuryTxHasNotePreview,
   MercuryTxNotesEditorPanel,
@@ -291,6 +292,8 @@ type BankingLedgerAdvancedMenuProps = {
   onBackfillFromMercury?: () => void
   /** Dev / master-tech only; when undefined, the Import CSV menu item is hidden. */
   onImportCsv?: () => void
+  /** Dev / master-tech only; when undefined, the Manual accounts menu item is hidden. */
+  onManageManualAccounts?: () => void
 }
 
 function BankingLedgerAdvancedMenu({
@@ -302,6 +305,7 @@ function BankingLedgerAdvancedMenu({
   onReloadTable,
   onBackfillFromMercury,
   onImportCsv,
+  onManageManualAccounts,
 }: BankingLedgerAdvancedMenuProps) {
   const wrapRef = useRef<HTMLDivElement>(null)
 
@@ -423,6 +427,19 @@ function BankingLedgerAdvancedMenu({
               style={itemStyle}
             >
               Import transactions (CSV)…
+            </button>
+          ) : null}
+          {onManageManualAccounts ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                onMenuOpenChange(false)
+                onManageManualAccounts()
+              }}
+              style={itemStyle}
+            >
+              Manual accounts…
             </button>
           ) : null}
           <button
@@ -1076,6 +1093,7 @@ export default function Banking() {
   const [ledgerAdvancedMenuOpen, setLedgerAdvancedMenuOpen] = useState(false)
   const [backfillModalOpen, setBackfillModalOpen] = useState(false)
   const [importCsvModalOpen, setImportCsvModalOpen] = useState(false)
+  const [manualAccountsModalOpen, setManualAccountsModalOpen] = useState(false)
   const [recentTxDebitCardId, setRecentTxDebitCardId] = useState<string | null>(null)
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'posted_at', dir: 'desc' })
   const [sortingConfig, setSortingConfig] = useState<BankingSortingConfigV1>(defaultBankingSortingConfig)
@@ -2676,6 +2694,11 @@ export default function Banking() {
                     ? () => setImportCsvModalOpen(true)
                     : undefined
                 }
+                onManageManualAccounts={
+                  myRole === 'dev' || myRole === 'master_technician'
+                    ? () => setManualAccountsModalOpen(true)
+                    : undefined
+                }
               />
             </div>
           </div>
@@ -2851,6 +2874,14 @@ export default function Banking() {
           open={importCsvModalOpen}
           onClose={() => setImportCsvModalOpen(false)}
           onSubmit={handleImportCsv}
+        />
+      )}
+
+      {(myRole === 'dev' || myRole === 'master_technician') && (
+        <ManualAccountsModal
+          open={manualAccountsModalOpen}
+          onClose={() => setManualAccountsModalOpen(false)}
+          onChanged={() => void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])}
         />
       )}
 
