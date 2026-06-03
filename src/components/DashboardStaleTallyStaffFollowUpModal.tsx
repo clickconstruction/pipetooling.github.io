@@ -41,6 +41,7 @@ function mercuryTxRowFromStaffListRow(row: StaleStaffRow): MercuryTxRow {
     source: 'mercury',
     manual_upload_id: null,
     created_by: null,
+    duplicate_of_transaction_id: null,
   }
 }
 

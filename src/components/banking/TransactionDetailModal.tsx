@@ -211,15 +211,17 @@ export function TransactionDetailModal({
     }
   }, [open, txId, ledgerPrefixMap, showToast])
 
-  // Escape to close.
+  // Escape to close — but only when this is the topmost modal. With the rule
+  // editor or the "around this date" context modal stacked on top, Escape
+  // should dismiss that one (each handles its own key), not the detail beneath.
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key === 'Escape' && !ruleModalOpen && !contextOpen) onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, onClose])
+  }, [open, onClose, ruleModalOpen, contextOpen])
 
   // Job search.
   useEffect(() => {
@@ -441,7 +443,7 @@ export function TransactionDetailModal({
     <div
       role="presentation"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget && !savingSplits && !savingLabel && !savingNote) onClose()
       }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex, padding: '1rem', boxSizing: 'border-box' }}
     >

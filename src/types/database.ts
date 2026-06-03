@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       _freeze_crew_lead_bids_backup: {
@@ -5030,6 +5005,42 @@ export type Database = {
           },
         ]
       }
+      mercury_transaction_duplicate_dismissals: {
+        Row: {
+          dismissed_at: string
+          dismissed_by: string | null
+          id_hi: string
+          id_lo: string
+        }
+        Insert: {
+          dismissed_at?: string
+          dismissed_by?: string | null
+          id_hi: string
+          id_lo: string
+        }
+        Update: {
+          dismissed_at?: string
+          dismissed_by?: string | null
+          id_hi?: string
+          id_lo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_transaction_duplicate_dismissals_id_hi_fkey"
+            columns: ["id_hi"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_duplicate_dismissals_id_lo_fkey"
+            columns: ["id_lo"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mercury_transaction_job_allocations: {
         Row: {
           amount: number
@@ -5152,6 +5163,7 @@ export type Database = {
           created_by: string | null
           currency: string
           dashboard_link: string | null
+          duplicate_of_transaction_id: string | null
           external_memo: string | null
           id: string
           kind: string
@@ -5174,6 +5186,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           dashboard_link?: string | null
+          duplicate_of_transaction_id?: string | null
           external_memo?: string | null
           id?: string
           kind: string
@@ -5196,6 +5209,7 @@ export type Database = {
           created_by?: string | null
           currency?: string
           dashboard_link?: string | null
+          duplicate_of_transaction_id?: string | null
           external_memo?: string | null
           id?: string
           kind?: string
@@ -5218,7 +5232,35 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mercury_transactions_duplicate_of_transaction_id_fkey"
+            columns: ["duplicate_of_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      mercury_webhook_events: {
+        Row: {
+          event_key: string
+          received_at: string
+          resource_id: string | null
+          resource_type: string | null
+        }
+        Insert: {
+          event_key: string
+          received_at?: string
+          resource_id?: string | null
+          resource_type?: string | null
+        }
+        Update: {
+          event_key?: string
+          received_at?: string
+          resource_id?: string | null
+          resource_type?: string | null
+        }
+        Relationships: []
       }
       notification_history: {
         Row: {
@@ -9875,6 +9917,7 @@ export type Database = {
         Returns: boolean
       }
       can_manage_inspection_types: { Args: never; Returns: boolean }
+      can_manage_schedule_share: { Args: never; Returns: boolean }
       can_manage_team_leader_assignments: { Args: never; Returns: boolean }
       can_modify_people_labor_job: {
         Args: { p_job_id: string }
@@ -9896,6 +9939,10 @@ export type Database = {
       checklist_item_created_by_auth_user: {
         Args: { p_item_id: string }
         Returns: boolean
+      }
+      clear_mercury_transaction_duplicate: {
+        Args: { p_id: string }
+        Returns: undefined
       }
       complete_job_collect_payment_flow_for_invoice: {
         Args: { p_stripe_invoice_id: string }
@@ -9996,6 +10043,10 @@ export type Database = {
         Returns: Json
       }
       dev_reset_estimates_for_testing: { Args: never; Returns: number }
+      dismiss_mercury_duplicate_pair: {
+        Args: { p_id_a: string; p_id_b: string }
+        Returns: undefined
+      }
       dispatch_inbox_note_stats: {
         Args: { p_request_ids: string[] }
         Returns: {
@@ -10040,6 +10091,35 @@ export type Database = {
           last_note_at: string
           note_count: number
           request_id: string
+        }[]
+      }
+      find_possible_duplicate_mercury_transactions: {
+        Args: {
+          p_limit?: number
+          p_manual_only?: boolean
+          p_window_days?: number
+        }
+        Returns: {
+          a_amount: number
+          a_counterparty_name: string
+          a_created_at: string
+          a_id: string
+          a_kind: string
+          a_mercury_account_id: string
+          a_posted_at: string
+          a_raw: Json
+          a_source: string
+          b_amount: number
+          b_counterparty_name: string
+          b_created_at: string
+          b_id: string
+          b_kind: string
+          b_mercury_account_id: string
+          b_posted_at: string
+          b_raw: Json
+          b_source: string
+          days_apart: number
+          manual_involved: boolean
         }[]
       }
       get_archived_user_names: { Args: never; Returns: string[] }
@@ -10250,6 +10330,10 @@ export type Database = {
           total_parts: number
         }[]
       }
+      insert_accounting_label_suggestion_service: {
+        Args: { p_rows: Json }
+        Returns: number
+      }
       insert_material_po_generator_entry: {
         Args: {
           p_for_user_id: string
@@ -10442,6 +10526,17 @@ export type Database = {
           job_name: string
         }[]
       }
+      list_manual_bank_accounts: {
+        Args: never
+        Returns: {
+          mercury_account_id: string
+          name: string
+          net_total: number
+          newest_posted: string
+          oldest_posted: string
+          tx_count: number
+        }[]
+      }
       list_mercury_drag_sort_label_assignment_counts: {
         Args: never
         Returns: {
@@ -10466,6 +10561,78 @@ export type Database = {
           remaining_available: number
           returned: boolean
         }[]
+      }
+      list_mercury_transactions_keyset: {
+        Args: {
+          p_after_id?: string
+          p_after_posted_at?: string
+          p_limit?: number
+        }
+        Returns: {
+          amount: number
+          counterparty_id: string | null
+          counterparty_name: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          dashboard_link: string | null
+          duplicate_of_transaction_id: string | null
+          external_memo: string | null
+          id: string
+          kind: string
+          manual_upload_id: string | null
+          mercury_account_id: string
+          mercury_category: Json | null
+          mercury_id: string | null
+          note: string | null
+          posted_at: string | null
+          raw: Json | null
+          source: string
+          status: string
+          synced_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mercury_transactions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      list_mercury_transactions_keyset_before: {
+        Args: {
+          p_before_id?: string
+          p_before_posted_at?: string
+          p_limit?: number
+        }
+        Returns: {
+          amount: number
+          counterparty_id: string | null
+          counterparty_name: string | null
+          created_at: string
+          created_by: string | null
+          currency: string
+          dashboard_link: string | null
+          duplicate_of_transaction_id: string | null
+          external_memo: string | null
+          id: string
+          kind: string
+          manual_upload_id: string | null
+          mercury_account_id: string
+          mercury_category: Json | null
+          mercury_id: string | null
+          note: string | null
+          posted_at: string | null
+          raw: Json | null
+          source: string
+          status: string
+          synced_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "mercury_transactions"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       list_my_accessible_job_activity_events: {
         Args: { p_job_id: string; p_limit?: number }
@@ -10535,6 +10702,14 @@ export type Database = {
         Args: never
         Returns: {
           id: string
+          name: string
+        }[]
+      }
+      list_people_with_kind_for_banking_attribution: {
+        Args: never
+        Returns: {
+          id: string
+          kind: string
           name: string
         }[]
       }
@@ -10620,6 +10795,22 @@ export type Database = {
           updated_at: string
         }[]
       }
+      list_schedule_blocks_for_share: {
+        Args: { p_end: string; p_start: string; p_viewer: string }
+        Returns: {
+          assignee_name: string
+          assignee_user_id: string
+          id: string
+          job_address: string
+          job_hcp_number: string
+          job_id: string
+          job_name: string
+          note: string
+          time_end: string
+          time_start: string
+          work_date: string
+        }[]
+      }
       list_stale_unlinked_mercury_transactions_for_tally_staff: {
         Args: { include_all_unlinked?: boolean; min_age_days?: number }
         Returns: {
@@ -10698,81 +10889,6 @@ export type Database = {
           quantity: number
         }[]
       }
-      list_manual_bank_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          mercury_account_id: string
-          name: string | null
-          tx_count: number
-          net_total: number
-          oldest_posted: string | null
-          newest_posted: string | null
-        }[]
-      }
-      list_mercury_transactions_keyset: {
-        Args: {
-          p_after_id?: string
-          p_after_posted_at?: string
-          p_limit?: number
-        }
-        Returns: {
-          amount: number
-          counterparty_id: string | null
-          counterparty_name: string | null
-          created_at: string
-          currency: string
-          dashboard_link: string | null
-          external_memo: string | null
-          id: string
-          kind: string
-          mercury_account_id: string
-          mercury_category: Json | null
-          mercury_id: string
-          note: string | null
-          posted_at: string | null
-          raw: Json | null
-          status: string
-          synced_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "mercury_transactions"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
-      list_mercury_transactions_keyset_before: {
-        Args: {
-          p_before_id?: string
-          p_before_posted_at?: string
-          p_limit?: number
-        }
-        Returns: {
-          amount: number
-          counterparty_id: string | null
-          counterparty_name: string | null
-          created_at: string
-          currency: string
-          dashboard_link: string | null
-          external_memo: string | null
-          id: string
-          kind: string
-          mercury_account_id: string
-          mercury_category: Json | null
-          mercury_id: string
-          note: string | null
-          posted_at: string | null
-          raw: Json | null
-          status: string
-          synced_at: string
-        }[]
-        SetofOptions: {
-          from: "*"
-          to: "mercury_transactions"
-          isOneToOne: false
-          isSetofReturn: true
-        }
-      }
       list_unlabeled_mercury_transactions: {
         Args: { p_limit?: number }
         Returns: {
@@ -10780,17 +10896,21 @@ export type Database = {
           counterparty_id: string | null
           counterparty_name: string | null
           created_at: string
+          created_by: string | null
           currency: string
           dashboard_link: string | null
+          duplicate_of_transaction_id: string | null
           external_memo: string | null
           id: string
           kind: string
+          manual_upload_id: string | null
           mercury_account_id: string
           mercury_category: Json | null
-          mercury_id: string
+          mercury_id: string | null
           note: string | null
           posted_at: string | null
           raw: Json | null
+          source: string
           status: string
           synced_at: string
         }[]
@@ -11178,6 +11298,10 @@ export type Database = {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
       }
+      set_mercury_transaction_duplicate: {
+        Args: { p_duplicate_id: string; p_keeper_id: string }
+        Returns: undefined
+      }
       split_job_ledger_fixtures_to_new_job: {
         Args: {
           p_clock_session_ids?: string[]
@@ -11342,29 +11466,29 @@ export type Database = {
         Returns: boolean
       }
       user_review_rows: {
-        Args: { p_start_ymd?: string; p_end_ymd?: string }
+        Args: { p_end_ymd?: string; p_start_ymd?: string }
         Returns: {
           amount: number
-          counterparty_id: string | null
-          counterparty_name: string | null
+          counterparty_id: string
+          counterparty_name: string
           created_at: string
           currency: string
-          dashboard_link: string | null
-          external_memo: string | null
+          dashboard_link: string
+          external_memo: string
           id: string
           kind: string
-          label_id: string | null
+          label_id: string
           mercury_account_id: string
-          mercury_category: Json | null
+          mercury_category: Json
           mercury_id: string
-          note: string | null
-          person_id: string | null
-          person_name: string | null
-          posted_at: string | null
+          note: string
+          person_id: string
+          person_name: string
+          posted_at: string
           status: string
           synced_at: string
-          user_id: string | null
-          user_name: string | null
+          user_id: string
+          user_name: string
         }[]
       }
       validate_pay_stub_payments_vs_net: {
@@ -11526,9 +11650,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       estimate_status: [

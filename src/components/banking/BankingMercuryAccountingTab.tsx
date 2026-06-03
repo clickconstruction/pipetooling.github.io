@@ -13,8 +13,10 @@ import type { MercuryJobSplit } from '../MercuryTransactionAllocationsModal'
 import { ensureDragSortDefaultLabels, isInternalTransfersLabel } from '../../lib/dragSortDefaultLabels'
 import {
   clearAccountingLedgerFiltersStorage,
+  readAccountingApprovalsGroupByLabel,
   readAccountingLedgerFiltersRaw,
   readAccountingLedgerSort,
+  writeAccountingApprovalsGroupByLabel,
   writeAccountingLedgerFiltersRaw,
   writeAccountingLedgerSort,
 } from '../../lib/bankingDragSortStorage'
@@ -67,6 +69,13 @@ import { BankingMercuryAccountingOverlapsModal } from './BankingMercuryAccountin
 import { BankingMercuryAccountingApplyRulesConfirmModal } from './BankingMercuryAccountingApplyRulesConfirmModal'
 import { BankingMercuryAccountingRulesModal } from './BankingMercuryAccountingRulesModal'
 import { AccountingApprovalCard } from './AccountingApprovalCard'
+import { AccountingApprovalGroupHeader } from './AccountingApprovalGroupHeader'
+import { BankingMercuryDuplicatesPanel } from './BankingMercuryDuplicatesPanel'
+import {
+  filterApprovalItems,
+  groupApprovalItemsByLabel,
+  type ApprovalGroupItem,
+} from '../../lib/accountingApprovalGroups'
 import {
   BankingMercuryDragSortLedgerNotesEditorRow,
   BankingMercuryDragSortLedgerNotesPreviewRow,
@@ -316,6 +325,11 @@ export function BankingMercuryAccountingTab({
   const [labelAssignmentCountById, setLabelAssignmentCountById] = useState<Record<string, number>>({})
   const [assignmentLabelByTxId, setAssignmentLabelByTxId] = useState<Map<string, string>>(() => new Map())
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  // Monotonic tokens so an out-of-order async load (the parent's
+  // `filteredTransactions` changes on every refresh/scroll page) can't clobber
+  // the current view with a stale response.
+  const assignmentsLoadSeqRef = useRef(0)
+  const pendingLoadSeqRef = useRef(0)
   const [rules, setRules] = useState<RuleRow[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
   const [ruleUsageApproved, setRuleUsageApproved] = useState<Record<string, number>>({})
@@ -325,6 +339,13 @@ export function BankingMercuryAccountingTab({
   const [approveAllBusy, setApproveAllBusy] = useState(false)
   const [applyRulesConfirm, setApplyRulesConfirm] = useState<ApplyRulesPreflight | null>(null)
   const [approvalsVisibleCount, setApprovalsVisibleCount] = useState(APPROVALS_PAGE_SIZE)
+  // Approvals triage controls: free-text search (filters both views) and the
+  // group-by-label toggle (persisted per-user, hydrated below). Grouped view
+  // tracks which label buckets are expanded and a per-group visible window.
+  const [pendingSearch, setPendingSearch] = useState('')
+  const [groupByLabel, setGroupByLabel] = useState(false)
+  const [expandedGroupIds, setExpandedGroupIds] = useState<Set<string>>(() => new Set())
+  const [groupVisibleCount, setGroupVisibleCount] = useState<Record<string, number>>({})
   // Mirror of `pendingApprovals` so memoized AccountingApprovalCard callbacks
   // can resolve the current row by suggestionId without depending on the array
   // (which would break memo equality every state change).
@@ -388,6 +409,28 @@ export function BankingMercuryAccountingTab({
   useEffect(() => {
     setLedgerFiltersApplied(parseBankingAccountingLedgerFiltersJson(readAccountingLedgerFiltersRaw(userId)))
   }, [userId])
+
+  useEffect(() => {
+    setGroupByLabel(readAccountingApprovalsGroupByLabel(userId))
+  }, [userId])
+
+  const handleGroupByLabelChange = useCallback(
+    (next: boolean) => {
+      setGroupByLabel(next)
+      writeAccountingApprovalsGroupByLabel(userId, next)
+    },
+    [userId],
+  )
+
+  const toggleGroupExpanded = useCallback((labelId: string) => {
+    setExpandedGroupIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(labelId)) next.delete(labelId)
+      else next.add(labelId)
+      return next
+    })
+    setGroupVisibleCount((prev) => (prev[labelId] ? prev : { ...prev, [labelId]: APPROVALS_PAGE_SIZE }))
+  }, [])
 
   useEffect(() => {
     setLedgerSort(readAccountingLedgerSort(userId))
@@ -469,6 +512,10 @@ export function BankingMercuryAccountingTab({
   }, [loadLabels])
 
   const loadAssignmentsForList = useCallback(async () => {
+    // Bump the token first so any in-flight load (sync early-return or the async
+    // sweep below) that resolves after this call is discarded — switching the
+    // input set or re-running must not be clobbered by a stale response.
+    const seq = ++assignmentsLoadSeqRef.current
     // When the parent already pre-narrowed the input to the unlabeled set,
     // skip the assignment-marking sweep entirely — by definition every row
     // is unlabeled and `assignmentLabelByTxId` should be empty.
@@ -491,6 +538,7 @@ export function BankingMercuryAccountingTab({
           .select('mercury_transaction_id, label_id')
           .limit(100000)
       }, 'accounting load drag assignments')
+      if (assignmentsLoadSeqRef.current !== seq) return
       const map = new Map<string, string>()
       for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
         if (idSet.has(row.mercury_transaction_id)) {
@@ -499,10 +547,11 @@ export function BankingMercuryAccountingTab({
       }
       setAssignmentLabelByTxId(map)
     } catch (e) {
+      if (assignmentsLoadSeqRef.current !== seq) return
       showToast(e instanceof Error ? e.message : 'Could not load assignments', 'error')
       setAssignmentLabelByTxId(new Map())
     } finally {
-      setAssignmentsLoading(false)
+      if (assignmentsLoadSeqRef.current === seq) setAssignmentsLoading(false)
     }
   }, [filteredTransactions, inputIsUnlabeledOnly, showToast])
 
@@ -544,11 +593,13 @@ export function BankingMercuryAccountingTab({
   }, [loadRulesAndUsage])
 
   const loadPending = useCallback(async () => {
+    const seq = ++pendingLoadSeqRef.current
     setPendingLoading(true)
     try {
       const list = (await withSupabaseRetry(async () => {
         return supabase.from('mercury_accounting_label_suggestions').select('*').eq('status', 'pending')
       }, 'accounting load pending')) as SuggestionRow[] | null
+      if (pendingLoadSeqRef.current !== seq) return
       if (list == null || list.length === 0) {
         setPendingApprovals([])
         return
@@ -565,6 +616,7 @@ export function BankingMercuryAccountingTab({
       const missing = [...new Set(list.map((s) => s.mercury_transaction_id))].filter((id) => !txMap.has(id))
       if (missing.length > 0) {
         const fetched = await fetchAccountingPendingTxsByIds(missing)
+        if (pendingLoadSeqRef.current !== seq) return
         for (const t of fetched) txMap.set(t.id, t)
       }
       setPendingApprovals(
@@ -579,10 +631,11 @@ export function BankingMercuryAccountingTab({
         })),
       )
     } catch (e) {
+      if (pendingLoadSeqRef.current !== seq) return
       showToast(e instanceof Error ? e.message : 'Could not load approvals', 'error')
       setPendingApprovals([])
     } finally {
-      setPendingLoading(false)
+      if (pendingLoadSeqRef.current === seq) setPendingLoading(false)
     }
   }, [filteredTransactions, showToast])
 
@@ -710,14 +763,24 @@ export function BankingMercuryAccountingTab({
 
   const clearRowDragSortLabel = useCallback(
     async (txId: string) => {
-      const snap = new Map(assignmentLabelByTxId)
-      snap.delete(txId)
-      setAssignmentLabelByTxId(snap)
+      const prevLabel = assignmentLabelByTxId.get(txId) ?? null
+      setAssignmentLabelByTxId((cur) => {
+        const next = new Map(cur)
+        next.delete(txId)
+        return next
+      })
       try {
         await removeAssignment(txId)
         onAfterAssignmentChange?.()
       } catch (e) {
-        setAssignmentLabelByTxId(assignmentLabelByTxId)
+        // Restore only this row from current state, so a concurrent edit to a
+        // different transaction isn't wiped by the rollback.
+        setAssignmentLabelByTxId((cur) => {
+          const next = new Map(cur)
+          if (prevLabel === null) next.delete(txId)
+          else next.set(txId, prevLabel)
+          return next
+        })
         showToast(e instanceof Error ? e.message : 'Could not remove label', 'error')
       }
     },
@@ -783,6 +846,73 @@ export function BankingMercuryAccountingTab({
     return `${formatUsd(Number(tx.amount))} · ${tx.counterparty_name ?? '—'}`
   }, [quickAssignTxId, sortedDisplayTransactions, displayTransactions, filteredTransactions])
 
+  // Suggestion ids that can't be auto-approved: Internal Transfers suggested for
+  // a transaction that already has job splits (mutually exclusive). Shared by the
+  // bulk approvers, the auto-approve gate, and the grouped-view conflict badges.
+  const conflictSuggestionIds = useMemo(() => {
+    const s = new Set<string>()
+    for (const p of pendingApprovals) {
+      if (
+        isInternalTransfersLabel(labels.find((L) => L.id === p.suggestedLabelId)) &&
+        (allocationsByTxId.get(p.txId) ?? []).length > 0
+      ) {
+        s.add(p.suggestionId)
+      }
+    }
+    return s
+  }, [pendingApprovals, labels, allocationsByTxId])
+
+  // Projection of pending approvals for the pure grouping/filter kernel.
+  const pendingApprovalItems = useMemo<ApprovalGroupItem[]>(
+    () =>
+      pendingApprovals.map((p) => ({
+        suggestionId: p.suggestionId,
+        txId: p.txId,
+        suggestedLabelId: p.suggestedLabelId,
+        suggestedLabelName: p.suggestedLabelName,
+        ruleName: p.ruleName,
+        amount: p.tx ? Number(p.tx.amount) : null,
+        counterpartyName: p.tx?.counterparty_name ?? null,
+      })),
+    [pendingApprovals],
+  )
+  const filteredApprovalItems = useMemo(
+    () => filterApprovalItems(pendingApprovalItems, pendingSearch),
+    [pendingApprovalItems, pendingSearch],
+  )
+  const filteredSuggestionIds = useMemo(
+    () => new Set(filteredApprovalItems.map((i) => i.suggestionId)),
+    [filteredApprovalItems],
+  )
+  // Search-aware PendingApproval[] feeding both views and the global Approve all.
+  const pendingFilteredApprovals = useMemo(
+    () =>
+      pendingSearch.trim().length === 0
+        ? pendingApprovals
+        : pendingApprovals.filter((p) => filteredSuggestionIds.has(p.suggestionId)),
+    [pendingApprovals, filteredSuggestionIds, pendingSearch],
+  )
+  const approvalGroups = useMemo(
+    () => groupApprovalItemsByLabel(filteredApprovalItems, conflictSuggestionIds),
+    [filteredApprovalItems, conflictSuggestionIds],
+  )
+  // Label id → its filtered PendingApproval rows, so the grouped view can render
+  // a bucket's cards without re-scanning the whole list per group.
+  const pendingByLabel = useMemo(() => {
+    const m = new Map<string, PendingApproval[]>()
+    for (const p of pendingFilteredApprovals) {
+      const arr = m.get(p.suggestedLabelId)
+      if (arr) arr.push(p)
+      else m.set(p.suggestedLabelId, [p])
+    }
+    return m
+  }, [pendingFilteredApprovals])
+  const approvableFilteredCount = useMemo(
+    () => pendingFilteredApprovals.reduce((n, p) => (conflictSuggestionIds.has(p.suggestionId) ? n : n + 1), 0),
+    [pendingFilteredApprovals, conflictSuggestionIds],
+  )
+  const conflictFilteredCount = pendingFilteredApprovals.length - approvableFilteredCount
+
   const handleApprove = useCallback(
     async (p: PendingApproval, chosenLabelId: string) => {
       // Internal Transfers and job splits are mutually exclusive — block
@@ -837,104 +967,169 @@ export function BankingMercuryAccountingTab({
     ],
   )
 
-  const handleReject = useCallback(
-    async (p: PendingApproval) => {
+  // Reusable bulk-reject core: dismiss a set of pending suggestions (single row,
+  // a whole label group, or "all"). Chunked delete keeps large groups within
+  // request limits.
+  const rejectPendingItems = useCallback(
+    async (items: PendingApproval[]) => {
+      if (items.length === 0) return
+      const ids = items.map((p) => p.suggestionId)
+      const REJECT_CHUNK = 500
       try {
-        await withSupabaseRetry(async () => {
-          return supabase.from('mercury_accounting_label_suggestions').delete().eq('id', p.suggestionId)
-        }, 'accounting reject suggestion')
-        setPendingApprovals((rows) => rows.filter((r) => r.suggestionId !== p.suggestionId))
-        showToast('Suggestion dismissed.', 'success')
+        for (let i = 0; i < ids.length; i += REJECT_CHUNK) {
+          const slice = ids.slice(i, i + REJECT_CHUNK)
+          await withSupabaseRetry(async () => {
+            return supabase.from('mercury_accounting_label_suggestions').delete().in('id', slice)
+          }, 'accounting reject suggestions')
+        }
+        const idSet = new Set(ids)
+        setPendingApprovals((rows) => rows.filter((r) => !idSet.has(r.suggestionId)))
+        showToast(
+          ids.length === 1 ? 'Suggestion dismissed.' : `Dismissed ${ids.length.toLocaleString()} suggestions.`,
+          'success',
+        )
       } catch (e) {
         showToast(e instanceof Error ? e.message : 'Reject failed', 'error')
+        void loadPending()
       }
     },
-    [showToast],
+    [loadPending, showToast],
   )
 
-  const handleApproveAll = useCallback(async () => {
-    if (pendingLoading || pendingApprovals.length === 0) return
-    // Skip pending suggestions that would label a tx with existing job
-    // splits as Internal Transfers — those rows must be hand-cleaned first.
-    const skipped: PendingApproval[] = []
-    const snapshot: PendingApproval[] = []
-    for (const p of pendingApprovals) {
-      if (
-        isInternalTransfersLabel(labels.find((L) => L.id === p.suggestedLabelId)) &&
-        (allocationsByTxId.get(p.txId) ?? []).length > 0
-      ) {
-        skipped.push(p)
-        continue
+  // Reusable bulk-approve core: approve a set of pending suggestions to each
+  // row's suggested label. Splits off Internal-Transfers-with-splits conflicts
+  // (they need manual cleanup), applies the rest via the chunked bulk RPC, and
+  // optimistically updates assignments. Used by the global Approve all, the
+  // grouped per-label Approve all, and the auto-approve effect.
+  const approvePendingItems = useCallback(
+    async (items: PendingApproval[]) => {
+      if (pendingLoading || items.length === 0) return
+      const skipped: PendingApproval[] = []
+      const snapshot: PendingApproval[] = []
+      for (const p of items) {
+        if (conflictSuggestionIds.has(p.suggestionId)) skipped.push(p)
+        else snapshot.push(p)
       }
-      snapshot.push(p)
-    }
-    if (snapshot.length === 0) {
-      showToast(
-        'All pending suggestions would label a transaction with job splits as Internal Transfers. Clear the splits first.',
-        'error',
-      )
-      return
-    }
-    const prevAssignments = new Map(assignmentLabelByTxId)
-    setApproveAllBusy(true)
-    const APPROVE_CHUNK = 500
-    try {
-      for (let i = 0; i < snapshot.length; i += APPROVE_CHUNK) {
-        const chunk = snapshot.slice(i, i + APPROVE_CHUNK)
-        const pItems = chunk.map((p) => ({
-          suggestion_id: p.suggestionId,
-          mercury_transaction_id: p.txId,
-          label_id: p.suggestedLabelId,
-        }))
-        await withSupabaseRetry(async () => {
-          return supabase.rpc('bulk_approve_accounting_label_suggestions', { p_items: pItems })
-        }, 'accounting bulk approve')
+      if (snapshot.length === 0) {
+        showToast(
+          'These suggestions would label a transaction with job splits as Internal Transfers. Clear the splits first.',
+          'error',
+        )
+        return
       }
-      const next = new Map(prevAssignments)
-      for (const p of snapshot) {
-        next.set(p.txId, p.suggestedLabelId)
-      }
-      setAssignmentLabelByTxId(next)
-      setPendingApprovals((rows) => rows.filter((r) => skipped.some((s) => s.suggestionId === r.suggestionId)))
-      setRuleUsageApproved((u) => {
-        const out = { ...u }
-        for (const p of snapshot) {
-          out[p.ruleId] = (out[p.ruleId] ?? 0) + 1
+      const prevAssignments = new Map(assignmentLabelByTxId)
+      setApproveAllBusy(true)
+      const APPROVE_CHUNK = 500
+      try {
+        for (let i = 0; i < snapshot.length; i += APPROVE_CHUNK) {
+          const chunk = snapshot.slice(i, i + APPROVE_CHUNK)
+          const pItems = chunk.map((p) => ({
+            suggestion_id: p.suggestionId,
+            mercury_transaction_id: p.txId,
+            label_id: p.suggestedLabelId,
+          }))
+          await withSupabaseRetry(async () => {
+            return supabase.rpc('bulk_approve_accounting_label_suggestions', { p_items: pItems })
+          }, 'accounting bulk approve')
         }
-        return out
-      })
-      const approvedMsg =
-        snapshot.length === 1 ? 'Approved 1 suggestion.' : `Approved ${snapshot.length} suggestions.`
-      const skippedMsg =
-        skipped.length === 0
-          ? ''
-          : skipped.length === 1
-            ? ' Skipped 1 Internal Transfers suggestion with job splits.'
-            : ` Skipped ${skipped.length} Internal Transfers suggestions with job splits.`
-      showToast(`${approvedMsg}${skippedMsg}`, skipped.length > 0 ? 'info' : 'success')
-      void loadRulesAndUsage()
-      void loadPending()
-      onAfterAssignmentChange?.()
-    } catch (e) {
-      setAssignmentLabelByTxId(prevAssignments)
-      showToast(e instanceof Error ? e.message : 'Approve all failed', 'error')
-      void loadPending()
-      void loadAssignmentsForList()
-    } finally {
-      setApproveAllBusy(false)
-    }
-  }, [
-    allocationsByTxId,
-    assignmentLabelByTxId,
-    labels,
-    loadAssignmentsForList,
-    loadPending,
-    loadRulesAndUsage,
-    onAfterAssignmentChange,
-    pendingApprovals,
-    pendingLoading,
-    showToast,
-  ])
+        const next = new Map(prevAssignments)
+        for (const p of snapshot) {
+          next.set(p.txId, p.suggestedLabelId)
+        }
+        setAssignmentLabelByTxId(next)
+        const approvedIds = new Set(snapshot.map((p) => p.suggestionId))
+        setPendingApprovals((rows) => rows.filter((r) => !approvedIds.has(r.suggestionId)))
+        setRuleUsageApproved((u) => {
+          const out = { ...u }
+          for (const p of snapshot) {
+            out[p.ruleId] = (out[p.ruleId] ?? 0) + 1
+          }
+          return out
+        })
+        const approvedMsg =
+          snapshot.length === 1 ? 'Approved 1 suggestion.' : `Approved ${snapshot.length.toLocaleString()} suggestions.`
+        const skippedMsg =
+          skipped.length === 0
+            ? ''
+            : skipped.length === 1
+              ? ' Skipped 1 Internal Transfers suggestion with job splits.'
+              : ` Skipped ${skipped.length.toLocaleString()} Internal Transfers suggestions with job splits.`
+        showToast(`${approvedMsg}${skippedMsg}`, skipped.length > 0 ? 'info' : 'success')
+        void loadRulesAndUsage()
+        void loadPending()
+        onAfterAssignmentChange?.()
+      } catch (e) {
+        setAssignmentLabelByTxId(prevAssignments)
+        showToast(e instanceof Error ? e.message : 'Approve all failed', 'error')
+        void loadPending()
+        void loadAssignmentsForList()
+      } finally {
+        setApproveAllBusy(false)
+      }
+    },
+    [
+      assignmentLabelByTxId,
+      conflictSuggestionIds,
+      loadAssignmentsForList,
+      loadPending,
+      loadRulesAndUsage,
+      onAfterAssignmentChange,
+      pendingLoading,
+      showToast,
+    ],
+  )
+
+  const handleReject = useCallback(
+    async (p: PendingApproval) => {
+      await rejectPendingItems([p])
+    },
+    [rejectPendingItems],
+  )
+
+  // Global Approve all — operates on the search-filtered set so it does what the
+  // user currently sees.
+  const handleApproveAll = useCallback(async () => {
+    await approvePendingItems(pendingFilteredApprovals)
+  }, [approvePendingItems, pendingFilteredApprovals])
+
+  const GROUP_BULK_CONFIRM_THRESHOLD = 25
+
+  const handleApproveGroup = useCallback(
+    async (labelId: string) => {
+      const items = pendingFilteredApprovals.filter(
+        (p) => p.suggestedLabelId === labelId && !conflictSuggestionIds.has(p.suggestionId),
+      )
+      if (items.length === 0) return
+      if (
+        items.length > GROUP_BULK_CONFIRM_THRESHOLD &&
+        !window.confirm(`Approve ${items.length.toLocaleString()} suggestions to "${items[0]?.suggestedLabelName}"?`)
+      ) {
+        return
+      }
+      await approvePendingItems(items)
+    },
+    [approvePendingItems, conflictSuggestionIds, pendingFilteredApprovals],
+  )
+
+  const handleRejectGroup = useCallback(
+    async (labelId: string) => {
+      const items = pendingFilteredApprovals.filter((p) => p.suggestedLabelId === labelId)
+      if (items.length === 0) return
+      if (
+        items.length > GROUP_BULK_CONFIRM_THRESHOLD &&
+        !window.confirm(`Dismiss all ${items.length.toLocaleString()} suggestions in "${items[0]?.suggestedLabelName}"?`)
+      ) {
+        return
+      }
+      setApproveAllBusy(true)
+      try {
+        await rejectPendingItems(items)
+      } finally {
+        setApproveAllBusy(false)
+      }
+    },
+    [pendingFilteredApprovals, rejectPendingItems],
+  )
 
   // Stable callbacks for AccountingApprovalCard. These look up the current
   // PendingApproval row by id from `pendingApprovalsRef` (not via state) so
@@ -1176,15 +1371,8 @@ export function BankingMercuryAccountingTab({
   // `handleApproveAll`'s "All pending suggestions are conflicts" toast on
   // every re-render.
   const autoApprovablePending = useMemo(
-    () =>
-      pendingApprovals.filter((p) => {
-        const isInternalTransfers = isInternalTransfersLabel(
-          labels.find((L) => L.id === p.suggestedLabelId),
-        )
-        if (!isInternalTransfers) return true
-        return (allocationsByTxId.get(p.txId) ?? []).length === 0
-      }),
-    [pendingApprovals, labels, allocationsByTxId],
+    () => pendingApprovals.filter((p) => !conflictSuggestionIds.has(p.suggestionId)),
+    [pendingApprovals, conflictSuggestionIds],
   )
 
   // Tracks the last `pendingSuggestionId-set` we ran auto-approve on. The
@@ -1205,13 +1393,16 @@ export function BankingMercuryAccountingTab({
     })
     if (!allow) return
     lastAutoApprovedSignatureRef.current = sig
-    void handleApproveAll()
+    // Automation approves the full approvable set regardless of any manual
+    // search filter the user may have typed.
+    void approvePendingItems(pendingApprovals)
   }, [
     approveByDefault,
     autoApprovablePending,
+    pendingApprovals,
     pendingLoading,
     approveAllBusy,
-    handleApproveAll,
+    approvePendingItems,
   ])
 
   const cancelApplyRulesConfirm = useCallback(() => {
@@ -1455,6 +1646,8 @@ export function BankingMercuryAccountingTab({
         </div>
       ) : null}
 
+      <BankingMercuryDuplicatesPanel onAfterChange={() => onAfterAssignmentChange?.()} />
+
       <section style={{ marginBottom: '2rem' }}>
         <div
           style={{
@@ -1467,36 +1660,71 @@ export function BankingMercuryAccountingTab({
           }}
         >
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Approvals</h2>
-          <button
-            type="button"
-            title="Approve every pending suggestion using each row’s Accounting Label choice"
-            aria-label="Approve all pending suggestions"
-            disabled={pendingLoading || pendingApprovals.length === 0 || approveAllBusy}
-            onClick={() => void handleApproveAll()}
-            style={{
-              padding: '0.45rem 0.9rem',
-              fontWeight: 600,
-              background: approveAllBusy ? '#94a3b8' : '#059669',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              cursor: pendingLoading || pendingApprovals.length === 0 || approveAllBusy ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {approveAllBusy
-              ? 'Approving…'
-              : pendingApprovals.length > 0
-                ? `Approve all (${pendingApprovals.length.toLocaleString()})`
-                : 'Approve all'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {conflictFilteredCount > 0 ? (
+              <span style={{ fontSize: '0.8rem', color: '#b45309' }}>
+                {conflictFilteredCount.toLocaleString()} need splits cleared
+              </span>
+            ) : null}
+            <button
+              type="button"
+              title="Approve every pending suggestion shown, using each row’s Accounting Label"
+              aria-label="Approve all pending suggestions"
+              disabled={pendingLoading || approvableFilteredCount === 0 || approveAllBusy}
+              onClick={() => void handleApproveAll()}
+              style={{
+                padding: '0.45rem 0.9rem',
+                fontWeight: 600,
+                background: approveAllBusy ? '#94a3b8' : '#059669',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 6,
+                cursor: pendingLoading || approvableFilteredCount === 0 || approveAllBusy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {approveAllBusy
+                ? 'Approving…'
+                : approvableFilteredCount > 0
+                  ? `Approve all (${approvableFilteredCount.toLocaleString()})`
+                  : 'Approve all'}
+            </button>
+          </div>
         </div>
         <div
           style={{
             display: 'flex',
-            justifyContent: 'flex-end',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: '0.5rem 1rem',
             marginBottom: '0.5rem',
           }}
         >
+          <input
+            type="search"
+            value={pendingSearch}
+            onChange={(e) => setPendingSearch(e.target.value)}
+            placeholder="Search pending (counterparty, label, rule)…"
+            aria-label="Search pending suggestions"
+            style={{
+              flex: '1 1 16rem',
+              minWidth: 0,
+              padding: '0.4rem 0.6rem',
+              border: '1px solid #d1d5db',
+              borderRadius: 6,
+              fontSize: '0.875rem',
+            }}
+          />
+          <label
+            style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}
+            title="Group pending suggestions into buckets by their suggested Accounting Label, with Approve all / Reject all per bucket."
+          >
+            <input
+              type="checkbox"
+              checked={groupByLabel}
+              onChange={(e) => handleGroupByLabelChange(e.target.checked)}
+            />
+            Group by label
+          </label>
           <label
             style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' }}
             title="When on, runs Approve all automatically every time new pending suggestions appear. Internal Transfers conflicts (rows with job splits) are still skipped and stay pending for manual review."
@@ -1516,10 +1744,74 @@ export function BankingMercuryAccountingTab({
           <div style={{ color: '#64748b' }}>Loading…</div>
         ) : pendingApprovals.length === 0 ? (
           <div style={{ color: '#64748b' }}>No pending suggestions.</div>
+        ) : pendingFilteredApprovals.length === 0 ? (
+          <div style={{ color: '#64748b' }}>No suggestions match your search.</div>
+        ) : groupByLabel ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {approvalGroups.map((g) => {
+              const expanded = expandedGroupIds.has(g.labelId)
+              const groupItems = pendingByLabel.get(g.labelId) ?? []
+              const visible = groupVisibleCount[g.labelId] ?? APPROVALS_PAGE_SIZE
+              return (
+                <div key={g.labelId} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <AccountingApprovalGroupHeader
+                    group={g}
+                    expanded={expanded}
+                    busy={approveAllBusy}
+                    onToggle={toggleGroupExpanded}
+                    onApproveGroup={(labelId) => void handleApproveGroup(labelId)}
+                    onRejectGroup={(labelId) => void handleRejectGroup(labelId)}
+                  />
+                  {expanded ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingLeft: '1rem' }}>
+                      {groupItems.slice(0, visible).map((p) => (
+                        <AccountingApprovalCard
+                          key={p.suggestionId}
+                          approval={p}
+                          labels={labels}
+                          nicknameByDebitCard={nicknameByDebitCard}
+                          approveAllBusy={approveAllBusy}
+                          rulesLoading={rulesLoading}
+                          onApprove={handleApproveCard}
+                          onReject={handleRejectCard}
+                          onLabelChange={handleLabelChangeCard}
+                          onOpenEditRule={openEditRuleById}
+                        />
+                      ))}
+                      {groupItems.length > visible ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setGroupVisibleCount((prev) => ({
+                              ...prev,
+                              [g.labelId]: Math.min(groupItems.length, (prev[g.labelId] ?? APPROVALS_PAGE_SIZE) + APPROVALS_PAGE_SIZE),
+                            }))
+                          }
+                          style={{
+                            alignSelf: 'flex-start',
+                            padding: '0.35rem 0.75rem',
+                            background: '#fff',
+                            color: '#1f2937',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            fontSize: '0.85rem',
+                          }}
+                        >
+                          Show {APPROVALS_PAGE_SIZE} more ({(groupItems.length - visible).toLocaleString()} hidden)
+                        </button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
+          </div>
         ) : (
           <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {pendingApprovals.slice(0, approvalsVisibleCount).map((p) => (
+              {pendingFilteredApprovals.slice(0, approvalsVisibleCount).map((p) => (
                 <AccountingApprovalCard
                   key={p.suggestionId}
                   approval={p}
@@ -1534,7 +1826,7 @@ export function BankingMercuryAccountingTab({
                 />
               ))}
             </div>
-            {pendingApprovals.length > approvalsVisibleCount ? (
+            {pendingFilteredApprovals.length > approvalsVisibleCount ? (
               <div
                 style={{
                   display: 'flex',
@@ -1550,14 +1842,14 @@ export function BankingMercuryAccountingTab({
               >
                 <span>
                   Showing {approvalsVisibleCount.toLocaleString()} of{' '}
-                  {pendingApprovals.length.toLocaleString()}.
+                  {pendingFilteredApprovals.length.toLocaleString()}.
                 </span>
                 <span style={{ display: 'flex', gap: '0.5rem' }}>
                   <button
                     type="button"
                     onClick={() =>
                       setApprovalsVisibleCount((n) =>
-                        Math.min(pendingApprovals.length, n + APPROVALS_PAGE_SIZE),
+                        Math.min(pendingFilteredApprovals.length, n + APPROVALS_PAGE_SIZE),
                       )
                     }
                     style={{
@@ -1574,7 +1866,7 @@ export function BankingMercuryAccountingTab({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setApprovalsVisibleCount(pendingApprovals.length)}
+                    onClick={() => setApprovalsVisibleCount(pendingFilteredApprovals.length)}
                     style={{
                       padding: '0.4rem 0.85rem',
                       background: '#fff',
@@ -1585,7 +1877,7 @@ export function BankingMercuryAccountingTab({
                       fontWeight: 500,
                     }}
                   >
-                    Show all ({pendingApprovals.length.toLocaleString()})
+                    Show all ({pendingFilteredApprovals.length.toLocaleString()})
                   </button>
                 </span>
               </div>

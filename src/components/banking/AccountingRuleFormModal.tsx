@@ -180,6 +180,17 @@ export function AccountingRuleFormModal({
     [labels, labelAssignmentCountById],
   )
 
+  // Escape closes the modal, but never while a save/apply/delete is running —
+  // tearing it down mid-operation would leave the write in flight and fire
+  // callbacks against an unmounted modal.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !controlsDisabled) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [controlsDisabled, onClose])
+
   useEffect(() => {
     if (editingRuleId === null) {
       setNameManuallyEdited(false)
@@ -238,6 +249,7 @@ export function AccountingRuleFormModal({
   }
 
   const handleSave = async () => {
+    if (controlsDisabled) return
     const draft = buildValidatedDraft()
     if (!draft) return
     setSaveActionKind('save')
@@ -295,7 +307,7 @@ export function AccountingRuleFormModal({
         boxSizing: 'border-box',
       }}
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose()
+        if (e.target === e.currentTarget && !controlsDisabled) onClose()
       }}
     >
       <div
@@ -521,14 +533,14 @@ export function AccountingRuleFormModal({
               <button
                 type="button"
                 onClick={onClose}
-                disabled={submitBusy}
+                disabled={controlsDisabled}
                 style={{
                   padding: '0.45rem 0.85rem',
                   fontWeight: 600,
                   background: '#fff',
                   border: '1px solid #e5e7eb',
                   borderRadius: 6,
-                  cursor: submitBusy ? 'not-allowed' : 'pointer',
+                  cursor: controlsDisabled ? 'not-allowed' : 'pointer',
                 }}
               >
                 Cancel

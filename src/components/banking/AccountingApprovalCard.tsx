@@ -62,10 +62,29 @@ export const AccountingApprovalCard = memo(function AccountingApprovalCard({
     >
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center' }}>
         <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
-          <div style={{ fontWeight: 600 }}>
-            {p.tx
-              ? `${formatUsd(Number(p.tx.amount))} · ${p.tx.counterparty_name ?? '—'}`
-              : `Transaction ${p.txId.slice(0, 8)}… (not in current list)`}
+          <div style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+            <span>
+              {p.tx
+                ? `${formatUsd(Number(p.tx.amount))} · ${p.tx.counterparty_name ?? '—'}`
+                : `Transaction ${p.txId.slice(0, 8)}… (not in current list)`}
+            </span>
+            {p.tx ? (
+              p.tx.source === 'manual' ? (
+                <span
+                  title="Manually-entered transaction (not synced from Mercury)"
+                  style={{ fontSize: '0.62rem', fontWeight: 700, color: '#92400e', background: '#fef3c7', borderRadius: 999, padding: '1px 6px' }}
+                >
+                  ✎ Manual
+                </span>
+              ) : (
+                <span
+                  title="Synced from Mercury"
+                  style={{ fontSize: '0.62rem', fontWeight: 700, color: '#075985', background: '#e0f2fe', borderRadius: 999, padding: '1px 6px' }}
+                >
+                  Synced
+                </span>
+              )
+            ) : null}
           </div>
           <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 4 }}>
             Rule:{' '}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { Database } from '../../types/database'
 import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -197,6 +197,9 @@ export function BankingMercuryCategoryReviewTab({
   const [labelsLoading, setLabelsLoading] = useState(false)
   const [assignmentLabelByTxId, setAssignmentLabelByTxId] = useState<Map<string, string>>(new Map())
   const [assignmentsLoading, setAssignmentsLoading] = useState(false)
+  // Token guarding against out-of-order responses when the time window or
+  // input set changes while a batched fetch is in flight.
+  const assignmentsLoadSeqRef = useRef(0)
 
   const [hideEmptyCategories, setHideEmptyCategories] = useState<boolean>(() => readHideEmptyFromStorage())
   const [timeWindow, setTimeWindow] = useState<UserReviewTimeWindow>(() => readTimeWindowFromStorage())
@@ -258,6 +261,7 @@ export function BankingMercuryCategoryReviewTab({
   const windowedRangeLabel = useMemo(() => formatUserReviewTimeWindowRange(timeWindow), [timeWindow])
 
   const loadAssignments = useCallback(async () => {
+    const seq = ++assignmentsLoadSeqRef.current
     const idSet = new Set(windowedTransactions.map((r) => r.id))
     if (idSet.size === 0) {
       setAssignmentLabelByTxId(new Map())
@@ -276,6 +280,7 @@ export function BankingMercuryCategoryReviewTab({
             .select('mercury_transaction_id, label_id')
             .in('mercury_transaction_id', slice)
         }, 'category review load drag assignments')
+        if (assignmentsLoadSeqRef.current !== seq) return
         for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
           if (idSet.has(row.mercury_transaction_id)) {
             map.set(row.mercury_transaction_id, row.label_id)
@@ -284,10 +289,11 @@ export function BankingMercuryCategoryReviewTab({
       }
       setAssignmentLabelByTxId(map)
     } catch (e) {
+      if (assignmentsLoadSeqRef.current !== seq) return
       showToast(e instanceof Error ? e.message : 'Could not load assignments', 'error')
       setAssignmentLabelByTxId(new Map())
     } finally {
-      setAssignmentsLoading(false)
+      if (assignmentsLoadSeqRef.current === seq) setAssignmentsLoading(false)
     }
   }, [windowedTransactions, showToast])
 
