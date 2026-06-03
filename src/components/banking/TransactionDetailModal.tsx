@@ -353,6 +353,16 @@ export function TransactionDetailModal({
   const bankDescription = mercuryBankDescriptionFromRaw(transaction.raw)
   const labelOptions = buildSortedAccountingLabelSelectOptions(labels, {})
   const noteDirty = noteDraft.trim() !== noteInitial.trim()
+  const rawText =
+    transaction.raw != null
+      ? (() => {
+          try {
+            return JSON.stringify(transaction.raw, null, 2)
+          } catch {
+            return String(transaction.raw)
+          }
+        })()
+      : '—'
 
   return (
     <div
@@ -513,6 +523,28 @@ export function TransactionDetailModal({
             <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{noteDraft.length}/{NOTE_MAX}</span>
           </div>
         </div>
+
+        {/* Raw (Mercury API) — collapsed, matches the Ledger's raw block */}
+        <details style={{ marginTop: '0.75rem' }}>
+          <summary style={{ ...sectionTitleStyle, cursor: 'pointer', marginBottom: 0 }}>Raw (Mercury API)</summary>
+          <pre
+            style={{
+              margin: '0.5rem 0 0',
+              padding: '0.75rem',
+              maxHeight: 'min(50vh, 24rem)',
+              overflow: 'auto',
+              fontSize: '0.75rem',
+              lineHeight: 1.4,
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+              borderRadius: 4,
+              fontFamily: 'monospace',
+              wordBreak: 'break-all',
+            }}
+          >
+            {rawText}
+          </pre>
+        </details>
       </div>
     </div>
   )
