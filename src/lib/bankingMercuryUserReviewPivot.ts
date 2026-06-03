@@ -10,6 +10,11 @@ export type UserReviewLabelRow = {
   name: string
   default_key: string | null
   sort_order: number
+  /** Optional: present when the loader selects them (Category Review / detail modal). */
+  account_type?: string | null
+  description?: string | null
+  schedule_c_line?: string | null
+  is_system_default?: boolean
 }
 
 export const USER_REVIEW_UNASSIGNED_USER_KEY = '__unassigned__'

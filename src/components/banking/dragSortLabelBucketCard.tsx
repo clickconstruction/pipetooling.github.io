@@ -26,6 +26,8 @@ export type DragSortLabelBucketCardProps = {
   expanded: boolean
   visualState?: DragSortLabelBucketVisualState
   onDelete?: () => void
+  /** Opens the Category detail modal (set account type / name / notes). */
+  onOpenDetail?: () => void
   /** Sidebar list vs modal grid spacing */
   variant: 'sidebar' | 'grid'
   /**
@@ -131,6 +133,7 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
       expanded,
       visualState = 'idle',
       onDelete,
+      onOpenDetail,
       variant,
       defaultKey = null,
     },
@@ -179,6 +182,25 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
           >
             {labelName}
           </div>
+          {expanded && onOpenDetail ? (
+            <button
+              type="button"
+              onClick={onOpenDetail}
+              title="Category detail — set account type, name, notes"
+              style={{
+                flexShrink: 0,
+                padding: '2px 6px',
+                fontSize: '0.7rem',
+                color: '#2563eb',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              Details
+            </button>
+          ) : null}
           {expanded && onDelete ? (
             <button
               type="button"

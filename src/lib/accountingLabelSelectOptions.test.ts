@@ -15,6 +15,7 @@ function label(id: string, name: string, sort_order: number): AccountingDragLabe
     is_system_default: false,
     default_key: null,
     schedule_c_line: null,
+    account_type: null,
   }
 }
 

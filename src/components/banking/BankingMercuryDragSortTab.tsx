@@ -30,6 +30,7 @@ import { mercuryTxDragSortBankNoteRowVisible } from './MercuryTxNotesDisclosure'
 import BankingMercuryDragSortFocusModal from './BankingMercuryDragSortFocusModal'
 import { MercuryCounterpartyFrequencyModal } from './MercuryCounterpartyFrequencyModal'
 import { DragSortLabelBucketCard } from './dragSortLabelBucketCard'
+import { CategoryDetailModal, type CategoryDetailLabel } from './CategoryDetailModal'
 import {
   BANKING_DRAG_SORT_HANDLE_BORDER,
   BANKING_DRAG_SORT_HANDLE_DOTS,
@@ -192,6 +193,7 @@ function LabelDropZone({
   amountSum,
   expanded,
   onDelete,
+  onOpenDetail,
   defaultKey,
 }: {
   labelId: string
@@ -202,6 +204,7 @@ function LabelDropZone({
   amountSum: number
   expanded: boolean
   onDelete?: () => void
+  onOpenDetail?: () => void
   defaultKey?: string | null
 }) {
   const dropId = `label:${labelId}`
@@ -219,6 +222,7 @@ function LabelDropZone({
       expanded={expanded}
       visualState={isOver ? 'droppableHover' : 'idle'}
       onDelete={onDelete}
+      onOpenDetail={onOpenDetail}
       defaultKey={defaultKey}
     />
   )
@@ -309,6 +313,7 @@ export function BankingMercuryDragSortTab({
   const [labelsCardsExpanded, setLabelsCardsExpanded] = useState(true)
   const [activeDragTxId, setActiveDragTxId] = useState<string | null>(null)
   const [addLabelModalOpen, setAddLabelModalOpen] = useState(false)
+  const [detailLabel, setDetailLabel] = useState<CategoryDetailLabel | null>(null)
   const [counterpartyFrequencyModalOpen, setCounterpartyFrequencyModalOpen] = useState(false)
   const [dragSortHelpOpen, setDragSortHelpOpen] = useState(false)
   const [quickLabelModalOpen, setQuickLabelModalOpen] = useState(false)
@@ -1115,6 +1120,16 @@ export function BankingMercuryDragSortTab({
                     onDelete={
                       L.is_system_default ? undefined : () => void removeLabel(L.id)
                     }
+                    onOpenDetail={() =>
+                      setDetailLabel({
+                        id: L.id,
+                        name: L.name,
+                        account_type: L.account_type,
+                        schedule_c_line: L.schedule_c_line,
+                        description: L.description,
+                        is_system_default: L.is_system_default,
+                      })
+                    }
                     defaultKey={L.default_key}
                   />
                 )
@@ -1153,6 +1168,13 @@ export function BankingMercuryDragSortTab({
           </div>
         </div>
       </div>
+
+      <CategoryDetailModal
+        open={detailLabel != null}
+        label={detailLabel}
+        onClose={() => setDetailLabel(null)}
+        onSaved={() => void loadLabels()}
+      />
 
       {addLabelModalOpen ? (
         <div

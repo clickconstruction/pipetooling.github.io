@@ -17,12 +17,18 @@ import {
   type UserReviewTimeWindow,
 } from '../../lib/bankingMercuryUserReviewTimeWindow'
 import {
+  attachAccountTypes,
+  buildBalanceSheet,
   buildCategoryReviewEntries,
+  buildProfitAndLoss,
   sortCategoryReviewEntries,
   totalsForCategoryReviewEntries,
   type CategoryReviewEntry,
   type CategoryReviewSort,
 } from '../../lib/bankingMercuryCategoryReview'
+import { accountTypeLabel, isAccountType, type AccountType } from '../../lib/bankingAccountTypes'
+import { CategoryDetailModal, type CategoryDetailLabel } from './CategoryDetailModal'
+import { BankingFinancialStatements } from './BankingFinancialStatements'
 import { TransactionDetailModal } from './TransactionDetailModal'
 import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
 import type { SearchableSelectOption } from '../SearchableSelect'
@@ -200,22 +206,34 @@ export function BankingMercuryCategoryReviewTab({
   const [search, setSearch] = useState('')
   const [txSort, setTxSort] = useState(DEFAULT_TX_SORT)
 
+  const [viewMode, setViewMode] = useState<'activity' | 'pnl' | 'balance_sheet'>('activity')
+  const [detailLabel, setDetailLabel] = useState<CategoryDetailLabel | null>(null)
+  const [cashBalance, setCashBalance] = useState<number | null>(null)
+  const [balancesLoading, setBalancesLoading] = useState(false)
+  const [balancesError, setBalancesError] = useState<string | null>(null)
+
   const loadLabels = useCallback(async () => {
     setLabelsLoading(true)
     try {
       const data = await withSupabaseRetry(async () => {
         return supabase
           .from('mercury_drag_sort_labels')
-          .select('id, name, default_key, sort_order')
+          .select('id, name, default_key, sort_order, account_type, description, schedule_c_line, is_system_default')
           .order('sort_order', { ascending: true })
           .order('name', { ascending: true })
       }, 'category review load drag sort labels')
-      setLabels(((data as Pick<DragLabelRow, 'id' | 'name' | 'default_key' | 'sort_order'>[]) ?? []).map((l) => ({
-        id: l.id,
-        name: l.name,
-        default_key: l.default_key,
-        sort_order: l.sort_order,
-      })))
+      setLabels(
+        ((data as Pick<DragLabelRow, 'id' | 'name' | 'default_key' | 'sort_order' | 'account_type' | 'description' | 'schedule_c_line' | 'is_system_default'>[]) ?? []).map((l) => ({
+          id: l.id,
+          name: l.name,
+          default_key: l.default_key,
+          sort_order: l.sort_order,
+          account_type: l.account_type,
+          description: l.description,
+          schedule_c_line: l.schedule_c_line,
+          is_system_default: l.is_system_default,
+        })),
+      )
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not load accounting labels', 'error')
       setLabels([])
@@ -228,9 +246,13 @@ export function BankingMercuryCategoryReviewTab({
     void loadLabels()
   }, [loadLabels])
 
+  // The Balance Sheet is a point-in-time view of all activity to date, so it ignores
+  // the period selector; Activity and P&L use the chosen window.
+  const effectiveTimeWindow: UserReviewTimeWindow = viewMode === 'balance_sheet' ? 'all' : timeWindow
+
   const windowedTransactions = useMemo(
-    () => filterMercuryTxByUserReviewTimeWindow(filteredTransactions, timeWindow),
-    [filteredTransactions, timeWindow],
+    () => filterMercuryTxByUserReviewTimeWindow(filteredTransactions, effectiveTimeWindow),
+    [filteredTransactions, effectiveTimeWindow],
   )
 
   const windowedRangeLabel = useMemo(() => formatUserReviewTimeWindowRange(timeWindow), [timeWindow])
@@ -298,6 +320,66 @@ export function BankingMercuryCategoryReviewTab({
   )
 
   const ledgerTotals = useMemo(() => totalsForCategoryReviewEntries(entriesCanonical), [entriesCanonical])
+
+  const accountTypeByLabelId = useMemo(() => {
+    const m = new Map<string, AccountType | null>()
+    for (const l of labels) m.set(l.id, isAccountType(l.account_type) ? l.account_type : null)
+    return m
+  }, [labels])
+
+  const typedEntries = useMemo(
+    () => attachAccountTypes(entriesCanonical, accountTypeByLabelId),
+    [entriesCanonical, accountTypeByLabelId],
+  )
+  const pnl = useMemo(() => buildProfitAndLoss(typedEntries), [typedEntries])
+  const balanceSheet = useMemo(() => buildBalanceSheet(typedEntries, cashBalance ?? 0), [typedEntries, cashBalance])
+
+  const labelById = useMemo(() => {
+    const m = new Map<string, UserReviewLabelRow>()
+    for (const l of labels) m.set(l.id, l)
+    return m
+  }, [labels])
+
+  const openCategoryDetail = useCallback(
+    (labelId: string | null) => {
+      if (!labelId) return
+      const l = labelById.get(labelId)
+      if (!l) return
+      setDetailLabel({
+        id: l.id,
+        name: l.name,
+        account_type: l.account_type ?? null,
+        schedule_c_line: l.schedule_c_line ?? null,
+        description: l.description ?? null,
+        is_system_default: l.is_system_default ?? false,
+      })
+    },
+    [labelById],
+  )
+
+  // Live Mercury bank balance for the Balance Sheet cash line (fetched when that view opens).
+  useEffect(() => {
+    if (viewMode !== 'balance_sheet' || cashBalance != null) return
+    let cancelled = false
+    setBalancesLoading(true)
+    setBalancesError(null)
+    void (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('get-mercury-account-balances', { body: {} })
+        if (error) throw new Error(error.message)
+        const body = data as { error?: string; totalCurrentBalance?: number } | null
+        if (body && typeof body.error === 'string') throw new Error(body.error)
+        if (!cancelled) setCashBalance(typeof body?.totalCurrentBalance === 'number' ? body.totalCurrentBalance : 0)
+      } catch (e) {
+        if (!cancelled) setBalancesError(e instanceof Error ? e.message : 'Could not load bank balance')
+      } finally {
+        if (!cancelled) setBalancesLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [viewMode, cashBalance])
 
   const txByIdMap = useMemo(() => {
     const m = new Map<string, MercuryTxRow>()
@@ -418,9 +500,31 @@ export function BankingMercuryCategoryReviewTab({
           </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+          <div role="tablist" aria-label="Category review view" style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
+            {([['activity', 'Activity'], ['pnl', 'P&L'], ['balance_sheet', 'Balance Sheet']] as const).map(([v, lbl]) => (
+              <button
+                key={v}
+                type="button"
+                role="tab"
+                aria-selected={viewMode === v}
+                onClick={() => setViewMode(v)}
+                style={{
+                  padding: '0.4rem 0.7rem',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  background: viewMode === v ? '#2563eb' : '#fff',
+                  color: viewMode === v ? '#fff' : '#374151',
+                }}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
           <label
             style={{
-              display: 'inline-flex',
+              display: viewMode === 'balance_sheet' ? 'none' : 'inline-flex',
               alignItems: 'center',
               gap: '0.4rem',
               fontSize: '0.8125rem',
@@ -514,7 +618,18 @@ export function BankingMercuryCategoryReviewTab({
         </div>
       ) : null}
 
-      {entriesDisplay.length === 0 ? (
+      {viewMode !== 'activity' ? (
+        <BankingFinancialStatements
+          mode={viewMode === 'balance_sheet' ? 'balance_sheet' : 'pnl'}
+          pnl={pnl}
+          balanceSheet={balanceSheet}
+          periodLabel={windowedRangeLabel}
+          cashBalance={cashBalance}
+          balancesLoading={balancesLoading}
+          balancesError={balancesError}
+          onOpenCategory={openCategoryDetail}
+        />
+      ) : entriesDisplay.length === 0 ? (
         <div
           style={{
             padding: '1.5rem',
@@ -548,36 +663,60 @@ export function BankingMercuryCategoryReviewTab({
                     key={entry.colKey}
                     style={{ borderBottom: '1px solid #f3f4f6', background: isSelected ? '#eff6ff' : undefined }}
                   >
-                    <td style={{ ...ledgerTdStyle, background: rowBg, padding: 0 }}>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedColKey((prev) => (prev === entry.colKey ? null : entry.colKey))
-                          setSearch('')
-                          setTxSort(DEFAULT_TX_SORT)
-                        }}
-                        aria-pressed={isSelected}
-                        aria-label={`${isSelected ? 'Hide' : 'Show'} ledger for ${entry.displayName}`}
-                        style={{
-                          all: 'unset',
-                          display: 'block',
-                          width: '100%',
-                          padding: '0.55rem 0.65rem',
-                          cursor: 'pointer',
-                          boxSizing: 'border-box',
-                          color: entry.isUnlabeled ? '#9ca3af' : '#111827',
-                          fontStyle: entry.isUnlabeled ? 'italic' : 'normal',
-                          fontWeight: 500,
-                          borderLeft: isSelected ? '3px solid #2563eb' : '3px solid transparent',
-                        }}
-                      >
-                        <span>{entry.displayName}</span>
-                        {entry.defaultKey ? (
-                          <span style={{ display: 'block', fontSize: '0.6875rem', color: '#9ca3af', marginTop: '0.125rem' }}>
-                            {entry.defaultKey}
-                          </span>
+                    <td
+                      style={{
+                        ...ledgerTdStyle,
+                        background: rowBg,
+                        padding: '0.5rem 0.65rem',
+                        borderLeft: isSelected ? '3px solid #2563eb' : '3px solid transparent',
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedColKey((prev) => (prev === entry.colKey ? null : entry.colKey))
+                            setSearch('')
+                            setTxSort(DEFAULT_TX_SORT)
+                          }}
+                          aria-pressed={isSelected}
+                          aria-label={`${isSelected ? 'Hide' : 'Show'} ledger for ${entry.displayName}`}
+                          style={{
+                            all: 'unset',
+                            cursor: 'pointer',
+                            color: entry.isUnlabeled ? '#9ca3af' : '#111827',
+                            fontStyle: entry.isUnlabeled ? 'italic' : 'normal',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {entry.displayName}
+                        </button>
+                        {entry.labelId ? (
+                          (() => {
+                            const at = accountTypeByLabelId.get(entry.labelId) ?? null
+                            const unclassified = at == null
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => openCategoryDetail(entry.labelId)}
+                                title="Open category detail (set account type, name, notes)"
+                                style={{
+                                  all: 'unset',
+                                  cursor: 'pointer',
+                                  fontSize: '0.68rem',
+                                  fontWeight: 600,
+                                  padding: '1px 8px',
+                                  borderRadius: 999,
+                                  background: unclassified ? '#fffbeb' : '#f1f5f9',
+                                  color: unclassified ? '#b45309' : '#475569',
+                                }}
+                              >
+                                {accountTypeLabel(at)}
+                              </button>
+                            )
+                          })()
                         ) : null}
-                      </button>
+                      </div>
                     </td>
                     <td
                       style={{
@@ -639,7 +778,7 @@ export function BankingMercuryCategoryReviewTab({
         </div>
       )}
 
-      {selectedEntry ? (
+      {viewMode === 'activity' && selectedEntry ? (
         <div
           style={{
             marginTop: '1rem',
@@ -826,6 +965,13 @@ export function BankingMercuryCategoryReviewTab({
           void loadAssignments()
           onAttributionChanged()
         }}
+      />
+
+      <CategoryDetailModal
+        open={detailLabel != null}
+        label={detailLabel}
+        onClose={() => setDetailLabel(null)}
+        onSaved={() => void loadLabels()}
       />
     </div>
   )
