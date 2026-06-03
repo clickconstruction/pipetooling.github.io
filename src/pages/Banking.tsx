@@ -83,6 +83,7 @@ import {
   writeAccountingApproveByDefault,
   writeAccountingHideLabeledTransactions,
 } from '../lib/bankingDragSortStorage'
+import { fetchAccountingPrefs, saveBankingPref } from '../lib/bankingUserPrefs'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 /** Stable empty list for org-note fetch ids when not on Mercury Banking (avoid spurious refetches). */
@@ -1246,12 +1247,25 @@ export default function Banking() {
     setAccountingPrefsHydrated(true)
   }, [user?.id])
 
+  // Each toggle change writes the instant localStorage cache AND the per-user
+  // `banking_user_prefs` row so the setting follows the user across devices.
+  const syncPrefAcrossDevices = useCallback(
+    (column: 'accounting_hide_labeled' | 'accounting_apply_rules_by_default' | 'accounting_approve_by_default', v: boolean) => {
+      if (!user?.id) return
+      void saveBankingPref(user.id, column, v).catch(() =>
+        showToast('Saved here, but could not sync this preference across devices.', 'error'),
+      )
+    },
+    [user?.id, showToast],
+  )
+
   const onHideLabeledTransactionsChange = useCallback(
     (v: boolean) => {
       setHideLabeledTransactions(v)
       if (user?.id) writeAccountingHideLabeledTransactions(user.id, v)
+      syncPrefAcrossDevices('accounting_hide_labeled', v)
     },
-    [user?.id],
+    [user?.id, syncPrefAcrossDevices],
   )
 
   useEffect(() => {
@@ -1263,8 +1277,9 @@ export default function Banking() {
     (v: boolean) => {
       setApplyRulesByDefault(v)
       if (user?.id) writeAccountingApplyRulesByDefault(user.id, v)
+      syncPrefAcrossDevices('accounting_apply_rules_by_default', v)
     },
-    [user?.id],
+    [user?.id, syncPrefAcrossDevices],
   )
 
   useEffect(() => {
@@ -1276,9 +1291,42 @@ export default function Banking() {
     (v: boolean) => {
       setApproveByDefault(v)
       if (user?.id) writeAccountingApproveByDefault(user.id, v)
+      syncPrefAcrossDevices('accounting_approve_by_default', v)
     },
-    [user?.id],
+    [user?.id, syncPrefAcrossDevices],
   )
+
+  // Source of truth: after the instant localStorage hydration above, load the
+  // per-user prefs row and apply any value set on another device (mirroring it
+  // back into localStorage so this device is instant-correct next time).
+  useEffect(() => {
+    if (!user?.id) return
+    const uid = user.id
+    let cancelled = false
+    void (async () => {
+      try {
+        const row = await fetchAccountingPrefs(uid)
+        if (cancelled || !row) return
+        if (row.accounting_hide_labeled != null) {
+          setHideLabeledTransactions(row.accounting_hide_labeled)
+          writeAccountingHideLabeledTransactions(uid, row.accounting_hide_labeled)
+        }
+        if (row.accounting_apply_rules_by_default != null) {
+          setApplyRulesByDefault(row.accounting_apply_rules_by_default)
+          writeAccountingApplyRulesByDefault(uid, row.accounting_apply_rules_by_default)
+        }
+        if (row.accounting_approve_by_default != null) {
+          setApproveByDefault(row.accounting_approve_by_default)
+          writeAccountingApproveByDefault(uid, row.accounting_approve_by_default)
+        }
+      } catch {
+        /* prefs sync is best-effort; the localStorage values already applied */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id])
 
   useEffect(() => {
     if (myRole && myRole !== 'dev' && myRole !== 'assistant' && myRole !== 'master_technician') {
