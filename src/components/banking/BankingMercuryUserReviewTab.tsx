@@ -57,6 +57,8 @@ function amountColor(amount: number): string {
 
 const HIDE_EMPTY_STORAGE_KEY = 'banking_mercury_user_review_hide_empty_v1'
 const TIME_WINDOW_STORAGE_KEY = 'banking_mercury_user_review_time_window_v1'
+/** Max ids per `.in(...)` batch when fetching assignments scoped to a bounded time window. */
+const ASSIGNMENTS_IN_CHUNK_SIZE = 400
 
 function readHideEmptyFromStorage(): boolean {
   try {
@@ -177,25 +179,50 @@ export function BankingMercuryUserReviewTab({
   const windowedRangeLabel = useMemo(() => formatUserReviewTimeWindowRange(timeWindow), [timeWindow])
 
   const loadAssignments = useCallback(async () => {
-    const idSet = new Set(windowedTransactions.map((r) => r.id))
-    if (idSet.size === 0) {
+    const ids = windowedTransactions.map((r) => r.id)
+    if (ids.length === 0) {
       setAssignmentLabelByTxId(new Map())
       return
     }
     setAssignmentsLoading(true)
     try {
-      // One unfiltered select (assignments table is small) then filter to the visible window,
-      // instead of chunking the ~10k windowed ids into 400-id batches (~28 sequential calls).
-      const rows = await withSupabaseRetry(async () => {
-        return supabase
-          .from('mercury_transaction_drag_sort_assignments')
-          .select('mercury_transaction_id, label_id')
-          .limit(100000)
-      }, 'user review load drag assignments')
       const map = new Map<string, string>()
-      for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
-        if (idSet.has(row.mercury_transaction_id)) {
-          map.set(row.mercury_transaction_id, row.label_id)
+      if (timeWindow === 'all') {
+        // 'All time' spans every tx, so one unfiltered select beats chunking ~15k
+        // ids into ~28 batches. Filter to the loaded set client-side.
+        const want = new Set(ids)
+        const rows = await withSupabaseRetry(async () => {
+          return supabase
+            .from('mercury_transaction_drag_sort_assignments')
+            .select('mercury_transaction_id, label_id')
+            .limit(100000)
+        }, 'user review load drag assignments (all)')
+        for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
+          if (want.has(row.mercury_transaction_id)) map.set(row.mercury_transaction_id, row.label_id)
+        }
+      } else {
+        // Bounded window (the default last-30-days etc.): fetch only the assignments
+        // for the windowed ids. For 30 days that's a handful of ids → one tiny request,
+        // instead of pulling the entire assignments table (tens of thousands of rows)
+        // just to discard ~all of it. Chunk the `.in(...)` list and run in parallel.
+        const chunks: string[][] = []
+        for (let i = 0; i < ids.length; i += ASSIGNMENTS_IN_CHUNK_SIZE) {
+          chunks.push(ids.slice(i, i + ASSIGNMENTS_IN_CHUNK_SIZE))
+        }
+        const results = await Promise.all(
+          chunks.map((chunk) =>
+            withSupabaseRetry(async () => {
+              return supabase
+                .from('mercury_transaction_drag_sort_assignments')
+                .select('mercury_transaction_id, label_id')
+                .in('mercury_transaction_id', chunk)
+            }, 'user review load drag assignments (scoped)'),
+          ),
+        )
+        for (const rows of results) {
+          for (const row of (rows ?? []) as { mercury_transaction_id: string; label_id: string }[]) {
+            map.set(row.mercury_transaction_id, row.label_id)
+          }
         }
       }
       setAssignmentLabelByTxId(map)
@@ -205,7 +232,7 @@ export function BankingMercuryUserReviewTab({
     } finally {
       setAssignmentsLoading(false)
     }
-  }, [windowedTransactions, showToast])
+  }, [windowedTransactions, timeWindow, showToast])
 
   useEffect(() => {
     void loadAssignments()
