@@ -2049,13 +2049,14 @@ interface Body {
 
 **Endpoint**: `POST /functions/v1/sync-mercury-transactions`
 
-**Authentication**: **`Authorization: Bearer <user JWT>`**. Function validates session and **`users.role = 'dev'`**.
+**Authentication**: either **`Authorization: Bearer <user JWT>`** (function validates session and **`users.role = 'dev'`**) **or** an **`X-Cron-Secret`** header matching the **`CRON_SECRET`** secret — the latter (v2.590) lets the unattended reconciliation cron call it without a dev JWT.
 
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `MERCURY_API_KEY` — read-only Mercury API token ([Getting Started](https://docs.mercury.com/docs/getting-started))
+- `CRON_SECRET` — (v2.590) matched against the `X-Cron-Secret` header for the reconciliation cron; must equal Vault `cron_secret`.
 
 #### Request body (optional JSON)
 
@@ -2074,11 +2075,15 @@ Internal: 500 rows per Mercury page, **`MAX_PAGES = 120`** (so up to **60,000 tr
 
 **Gateway JWT**: [`supabase/config.toml`](../supabase/config.toml) sets **`verify_jwt = false`**; JWT is validated in the function (same pattern as **`create-stripe-invoice`**). Deploy with **`supabase functions deploy sync-mercury-transactions --no-verify-jwt`** if the hosted gateway still enforces JWT.
 
+#### Reconciliation cron (v2.590)
+
+Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules this function **every 30 minutes** with body `{"lookback_days": 2}` via pg_cron + `net.http_post` (Vault `project_url` + `cron_secret`, sent as the **`X-Cron-Secret`** header). It is a **safety net for missed webhook deliveries** — `mercury-webhook` is the ~1s real-time path; this slow sweep re-syncs the last 2 days to repair any gaps. `mapMercuryTransactionToRow` + `MERCURY_BASE` are shared with `mercury-webhook` via [`supabase/functions/_shared/mercuryTransaction.ts`](../supabase/functions/_shared/mercuryTransaction.ts).
+
 ---
 
 ### mercury-webhook
 
-**Purpose**: Receive Mercury **[webhook](https://docs.mercury.com/reference/webhooks)** events for **`transaction`** resources; verify **`Mercury-Signature`**, **`GET /transaction/{id}`**, upsert into **`mercury_transactions`**.
+**Purpose**: Receive Mercury **[webhook](https://docs.mercury.com/reference/webhooks)** events for **`transaction`** resources; verify **`Mercury-Signature`**, **dedupe** the delivery, **`GET /transaction/{id}`**, upsert into **`mercury_transactions`** (shared mapper), then **pre-tag** the transaction with a suggested accounting label.
 
 **Endpoint**: `POST /functions/v1/mercury-webhook`
 
@@ -2091,6 +2096,12 @@ Internal: 500 rows per Mercury page, **`MAX_PAGES = 120`** (so up to **60,000 tr
 - `MERCURY_WEBHOOK_SECRET` — endpoint **`secretKey`** for HMAC verification (`t` + `.` + raw body per Mercury docs)
 
 **Non-transaction events** (e.g. balance updates) return **200** with `skipped: true`.
+
+**Dedup + auto-suggest** (v2.590):
+- **Delivery dedup** — after signature verify, inserts the per-delivery signature into **`mercury_webhook_events`** (insert-first; unique-violation → `200 { duplicate: true }`). Mercury retries at-least-once; the downstream upsert is idempotent regardless, so dedup is an optimization.
+- **Server-side label suggestion** — after the upsert, runs the **same accounting-rules matcher** as the Banking Accounting tab (pure copy in [`supabase/functions/_shared/accountingLabelRuleMatch.ts`](../supabase/functions/_shared/accountingLabelRuleMatch.ts)) and, on first match, inserts a **pending** `mercury_accounting_label_suggestions` row via the **service-role** RPC **`insert_accounting_label_suggestion_service`** (the existing `bulk_insert_accounting_label_suggestions` requires `auth.uid()`, which a service-role Edge call lacks). Best-effort — failures here never fail the webhook.
+- **Shared mapper** — `mapMercuryTransactionToRow` + `fetchMercuryTransactionById` live in [`supabase/functions/_shared/mercuryTransaction.ts`](../supabase/functions/_shared/mercuryTransaction.ts) (shared with `sync-mercury-transactions`).
+- **Migrations**: `20270605120000_mercury_webhook_events_dedupe.sql`, `20270605130000_insert_accounting_label_suggestion_service_rpc.sql`.
 
 **Ops**: Register HTTPS URL **`https://<project-ref>.supabase.co/functions/v1/mercury-webhook`** in Mercury. Webhooks are **not** available in Mercury sandbox.
 

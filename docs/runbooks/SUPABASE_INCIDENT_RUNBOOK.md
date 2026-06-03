@@ -75,7 +75,7 @@ The **hosted** log streams are in **Supabase Dashboard → Logs** (or Observabil
 
 **Export**: use the UI action to download results (often CSV/spreadsheet). **Redact** JWTs, keys, and magic links before sharing.
 
-**Optional — Cursor Supabase MCP**: If enabled, use the MCP server’s log tools (see [AGENTS.md](../../AGENTS.md) — read tool descriptors under `.cursor/.../mcps/` before calling).
+**Preferred — Supabase MCP (v2.590+)**: The project has a Supabase MCP connected ([`.mcp.json`](../../.mcp.json), hosted HTTP + OAuth), so an agent can pull hosted logs **without** the Dashboard UI: `get_logs` (service: `postgres` / `api` / `auth` / `edge-function` / `realtime` / `storage` — **last 24h**), plus `execute_sql` for live `pg_stat_activity` / `pg_stat_statements` and `get_advisors` for security/performance. This addresses the CLI-only caveat above for recent windows; for windows older than 24h, still export from **Dashboard → Logs**. (Cursor's own Supabase MCP also works if enabled — see [AGENTS.md](../../AGENTS.md).) Redact JWTs/keys before sharing.
 
 **Optional — ongoing**: [Log Drains](https://supabase.com/docs/guides/telemetry/log-drains) to S3, Loki, Datadog, etc., for retention past dashboard limits.
 

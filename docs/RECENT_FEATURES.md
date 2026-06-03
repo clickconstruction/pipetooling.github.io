@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-05-28 (v2.589)
+last_updated: 2026-06-02 (v2.590)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1966,6 +1966,58 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.590)
+
+**Date**: 2026-06-02
+
+Banking → Mercury review, attribution, performance, and ingest hardening (one combined release).
+
+### Banking → Mercury — TransactionDetail modal
+
+New reusable [`TransactionDetailModal`](../src/components/banking/TransactionDetailModal.tsx): click a transaction to open one screen with all of its facts (Date, Posted, Amount, Counterparty, Kind + debit-card nickname, Account, Bank Description) and every editable user field — **Assigned person**, **Jobs** (inline dollar/percent split editor), **Accounting label**, read-only **Applicable rules** (which accounting rules match → the label they'd assign), and the org **Transaction note** — plus a collapsed **Raw (Mercury API)** JSON section at the bottom (matches the Ledger's raw block). Each section saves independently; the modal self-loads the transaction's current state on open and hydrates `raw` via `fetchMercuryTransactionRawById`.
+
+- **Opened from** the **User Review** cell modal (click the counterparty name) and the **Category Review** drill-in (click the transaction date).
+- Reuses tested split math ([`src/lib/mercurySplitMath.ts`](../src/lib/mercurySplitMath.ts)) — the existing `MercuryTransactionAllocationsModal` is **left untouched** (no regression to Drag Sort / Accounting / Tally) — and `matchingAccountingRulesForTx` in [`src/lib/accountingLabelRuleMatch.ts`](../src/lib/accountingLabelRuleMatch.ts).
+
+### Banking → User Review — inline assignment, Unassigned-first, richer rows
+
+- Per-row **"Assign to" person picker** plus a **bulk "assign all shown"** control (and Unassign) in the cell ledger modal, writing attribution via [`mercurySetTransactionAttribution`](../src/lib/mercurySetUserAttribution.ts) (preserves job splits; works on split-less transactions).
+- The **Unassigned** row sorts **first** in the pivot (was last) — [`src/lib/bankingMercuryUserReviewPivot.ts`](../src/lib/bankingMercuryUserReviewPivot.ts).
+- Each transaction shows its **bankDescription** and, for debit-card transactions, the **debit-card nickname** (fallback to a compact card id) in place of the meaningless transaction id — both via one projected fetch (`raw->>bankDescription`, `raw->details->debitCardInfo->>id`) in [`fetchMercuryUserReviewTxMetaByTxIds`](../src/lib/fetchMercuryTransactionRaws.ts).
+
+### Banking — attribution picker widened to all users + roster people (incl. External Subcontractors)
+
+The "Assign to" picker (User Review + TransactionDetail) now lists **every non-archived user** (`list_users_for_banking_attribution` dropped its 9-role allowlist — migration `20270605160000`) **and roster people** tagged by kind (e.g. "Joe · Sub"), so **External Subcontractors** (`people.kind='sub'`) are selectable. New SECURITY DEFINER RPC `list_people_with_kind_for_banking_attribution` (migration `20270605170000`) + combined type-prefixed options (`u:`/`p:`) in [`src/lib/bankingAttributionOptions.ts`](../src/lib/bankingAttributionOptions.ts); the save writes `user_id` XOR `person_id`. Attribution is banking categorization only — it does **not** feed any person's overhead/pay/cost-matrix. The allocations + card-link modals stay user-only.
+
+### Banking — Stale tally follow-up modal
+
+The Dashboard "Stale tally follow-up" modal shows **bankDescription** under the counterparty name ([`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx)).
+
+### Banking — load performance
+
+- **User Review** load: replaced ~80+ sequential chunked-by-id round-trips with **single full-table fetches** for attributions/allocations/assignments (relation tables are small; the page loads all transactions anyway) — `fetchAllAttributions`/`fetchAllJobAllocations` in [`fetchMercuryRelationsByTxIds.ts`](../src/lib/fetchMercuryRelationsByTxIds.ts).
+- **Accounting** tab: `loadAssignmentsForList` (hide-labeled-OFF path) collapsed ~28 sequential batches into one select.
+
+### Mercury ingest — webhook hardening + reconciliation cron
+
+`mercury-webhook` now **dedupes** deliveries (`mercury_webhook_events`) and **pre-tags** each transaction with a server-side accounting-label suggestion (service-role RPC `insert_accounting_label_suggestion_service`); `sync-mercury-transactions` gained an `X-Cron-Secret` bypass and a **30-min reconciliation cron** (2-day lookback) to backfill missed webhooks. Shared mapper in `supabase/functions/_shared/mercuryTransaction.ts`. See [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md) (migrations `20270605120000`–`20270605150000`).
+
+### Database / infra
+
+- **RLS `auth_rls_initplan` fix** — wrapped `auth.uid()`/`auth.role()` as `(select …)` across **509 policies** (one InitPlan eval per query instead of per row) — migration `20270604160000`. Was the dominant cost behind slow `clock_sessions` / `job_schedule_blocks` reads during a connection-saturation incident.
+- **FK indexes** on 21 hot/sizable foreign keys — migration `20270604170000`.
+- **Supabase MCP** connected for the project ([`.mcp.json`](../.mcp.json); hosted HTTP + OAuth) — enables `get_logs` / `execute_sql` / advisors for incident triage (the prior CLI-only caveat in the incident runbook).
+
+#### Verification
+
+`npx tsc -b` clean; `npm run lint` clean; full `vitest run` green (**1466 tests**, incl. new split-math, attribution-options, matching-rules, and pivot tests). DB migrations + both Edge functions applied to **production** via the Supabase MCP.
+
+#### Files
+
+New: [`TransactionDetailModal.tsx`](../src/components/banking/TransactionDetailModal.tsx), [`mercurySplitMath.ts`](../src/lib/mercurySplitMath.ts), [`mercurySetUserAttribution.ts`](../src/lib/mercurySetUserAttribution.ts), [`bankingAttributionOptions.ts`](../src/lib/bankingAttributionOptions.ts) (+ tests); `supabase/functions/_shared/{mercuryTransaction,accountingLabelRuleMatch}.ts`; migrations `20270604160000`, `20270604170000`, `20270605120000`–`20270605170000`. Modified: [`Banking.tsx`](../src/pages/Banking.tsx), the User Review + Category Review tabs + ledger modal, `mercury-webhook` + `sync-mercury-transactions`, [`DashboardStaleTallyStaffFollowUpModal.tsx`](../src/components/DashboardStaleTallyStaffFollowUpModal.tsx), [`fetchMercuryTransactionRaws.ts`](../src/lib/fetchMercuryTransactionRaws.ts), [`fetchMercuryRelationsByTxIds.ts`](../src/lib/fetchMercuryRelationsByTxIds.ts), [`accountingLabelRuleMatch.ts`](../src/lib/accountingLabelRuleMatch.ts), [`bankingMercuryUserReviewPivot.ts`](../src/lib/bankingMercuryUserReviewPivot.ts).
+
 ---
 
 ## Latest Updates (v2.584)
