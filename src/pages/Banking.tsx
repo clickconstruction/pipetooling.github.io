@@ -2477,6 +2477,11 @@ export default function Banking() {
             personIdByTxId={personIdByTxId}
             userNameById={userNameById}
             personNameById={personNameById}
+            attributionOptions={attributionOptions}
+            recentPersonPicksStorageKey={user?.id ?? null}
+            onAttributionChanged={() => {
+              void loadMercuryAllocations()
+            }}
           />
         </div>
       ) : null}

@@ -23,6 +23,9 @@ import {
   type CategoryReviewEntry,
   type CategoryReviewSort,
 } from '../../lib/bankingMercuryCategoryReview'
+import { TransactionDetailModal } from './TransactionDetailModal'
+import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
+import type { SearchableSelectOption } from '../SearchableSelect'
 
 type MercuryTxRow = Database['public']['Tables']['mercury_transactions']['Row']
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
@@ -36,6 +39,12 @@ export type BankingMercuryCategoryReviewTabProps = {
   personIdByTxId: Map<string, string | null>
   userNameById: Record<string, string>
   personNameById: Record<string, string>
+  /** Users + people (prefixed values) for the TransactionDetail person picker. */
+  attributionOptions: SearchableSelectOption[]
+  /** Operator auth user id (recent-pick chips); null when unknown. */
+  recentPersonPicksStorageKey: string | null
+  /** Refresh parent attribution data after a TransactionDetail edit. */
+  onAttributionChanged: () => void
 }
 
 function formatUsd(amount: number): string {
@@ -172,6 +181,9 @@ export function BankingMercuryCategoryReviewTab({
   loading,
   loadError,
   mercurySearchNicknameCtx,
+  attributionOptions,
+  recentPersonPicksStorageKey,
+  onAttributionChanged,
 }: BankingMercuryCategoryReviewTabProps) {
   const { showToast } = useToastContext()
 
@@ -292,6 +304,24 @@ export function BankingMercuryCategoryReviewTab({
     for (const r of windowedTransactions) m.set(r.id, r)
     return m
   }, [windowedTransactions])
+
+  const [detailTx, setDetailTx] = useState<MercuryTxRow | null>(null)
+  const openTransactionDetail = useCallback(
+    (txId: string) => {
+      const row = txByIdMap.get(txId)
+      if (!row) return
+      setDetailTx(row) // open immediately; hydrate raw for debit-card/bankDescription/rules below
+      void (async () => {
+        try {
+          const raw = await fetchMercuryTransactionRawById(txId, 'category review tx detail raw')
+          setDetailTx((prev) => (prev && prev.id === txId ? { ...prev, raw } : prev))
+        } catch {
+          /* header/rules degrade gracefully without raw */
+        }
+      })()
+    },
+    [txByIdMap],
+  )
 
   const selectedEntry = useMemo(() => {
     if (selectedColKey == null) return null
@@ -740,7 +770,25 @@ export function BankingMercuryCategoryReviewTab({
                   <tbody>
                     {selectedSortedRows.map((r) => (
                       <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
-                        <td style={detailTdStyle}>{formatBankingDate(r.posted_at)}</td>
+                        <td style={detailTdStyle}>
+                          <button
+                            type="button"
+                            onClick={() => openTransactionDetail(r.id)}
+                            title="View transaction detail"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              padding: 0,
+                              color: '#1d4ed8',
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              font: 'inherit',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {formatBankingDate(r.posted_at)}
+                          </button>
+                        </td>
                         <td style={detailTdStyle}>
                           {r.counterparty_name?.trim() || <span style={{ color: '#9ca3af' }}>—</span>}
                         </td>
@@ -765,6 +813,20 @@ export function BankingMercuryCategoryReviewTab({
           </div>
         </div>
       ) : null}
+
+      <TransactionDetailModal
+        open={detailTx != null}
+        onClose={() => setDetailTx(null)}
+        transaction={detailTx}
+        attributionOptions={attributionOptions}
+        nicknameByAccount={mercurySearchNicknameCtx.nicknameByAccount}
+        nicknameByDebitCard={mercurySearchNicknameCtx.nicknameByDebitCard}
+        recentPersonPicksStorageKey={recentPersonPicksStorageKey}
+        onChanged={() => {
+          void loadAssignments()
+          onAttributionChanged()
+        }}
+      />
     </div>
   )
 }
