@@ -360,6 +360,10 @@ verify_jwt = false
 [functions.send-workflow-notification]
 verify_jwt = false
 
+# Validates JWT + dev/master_technician role in-body; inserts manual (CSV-imported) transactions.
+[functions.import-manual-transactions]
+verify_jwt = false
+
 [functions.create-stripe-invoice]
 verify_jwt = false
 

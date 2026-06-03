@@ -44,7 +44,8 @@ export function buildMercuryTxSearchHaystack(
 
   parts.push(row.kind, formatMercuryKind(row.kind))
 
-  parts.push(row.mercury_id, row.id)
+  if (row.mercury_id) parts.push(row.mercury_id)
+  parts.push(row.id)
   if (row.counterparty_id) parts.push(row.counterparty_id)
 
   parts.push(row.mercury_account_id)
