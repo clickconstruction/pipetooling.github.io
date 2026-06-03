@@ -965,6 +965,7 @@ export function BankingMercuryCategoryReviewTab({
           void loadAssignments()
           onAttributionChanged()
         }}
+        onOpenTransaction={openTransactionDetail}
       />
 
       <CategoryDetailModal
