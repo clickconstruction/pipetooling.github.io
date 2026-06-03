@@ -102,7 +102,7 @@ serve(async (req) => {
 
     // Resolve the target synthetic account.
     let accountId = (body.accountId ?? '').trim()
-    let accountName = (body.accountName ?? '').trim()
+    const accountName = (body.accountName ?? '').trim()
     if (accountId) {
       // Guard: never write manual rows onto a real Mercury account.
       const { count: mercuryCount } = await admin
@@ -122,31 +122,38 @@ serve(async (req) => {
       if (nickErr) return jsonResponse({ error: `Could not create account: ${nickErr.message}` }, 500)
     }
 
-    // De-dup against existing manual rows already on this account.
+    // De-dup against manual rows already on this account, by MULTISET count: two
+    // identical incoming rows are two real transactions, but a re-upload of rows
+    // that already exist should be skipped. So we only skip an incoming row when it
+    // matches a *pre-existing* row not yet accounted for — genuinely-distinct
+    // duplicates within one upload all import.
     const { data: existing } = await admin
       .from('mercury_transactions')
       .select('posted_at, amount, counterparty_name, external_memo')
       .eq('mercury_account_id', accountId)
       .eq('source', 'manual')
-    const seen = new Set<string>()
+    const existingCounts = new Map<string, number>()
     for (const e of (existing ?? []) as Array<{ posted_at: string | null; amount: number; counterparty_name: string | null; external_memo: string | null }>) {
       const ymd = (e.posted_at ?? '').slice(0, 10)
-      seen.add(dedupKey(ymd, Number(e.amount), e.counterparty_name, e.external_memo))
+      const k = dedupKey(ymd, Number(e.amount), e.counterparty_name, e.external_memo)
+      existingCounts.set(k, (existingCounts.get(k) ?? 0) + 1)
     }
 
     const manualUploadId = crypto.randomUUID()
     const nowIso = new Date().toISOString()
+    const usedCounts = new Map<string, number>()
     const toInsert: Record<string, unknown>[] = []
     let skipped = 0
     for (const r of rows) {
       const payee = r.payee?.trim() || null
       const memo = r.memo?.trim() || null
       const key = dedupKey(r.postedDate, r.amount, payee, memo)
-      if (seen.has(key)) {
-        skipped++
+      const used = usedCounts.get(key) ?? 0
+      usedCounts.set(key, used + 1)
+      if (used < (existingCounts.get(key) ?? 0)) {
+        skipped++ // already present from a prior upload
         continue
       }
-      seen.add(key)
       toInsert.push({
         mercury_id: null,
         mercury_account_id: accountId,
