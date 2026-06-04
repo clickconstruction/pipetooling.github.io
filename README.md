@@ -67,7 +67,7 @@ gh pr merge --squash --delete-branch   # once "checks" is green
 | Understanding terminology | [GLOSSARY.md](./docs/GLOSSARY.md) - All domain terms and concepts defined |
 
 **Common AI Agent Tasks**:
-- **Adding a table**: Create migration → Update RLS policies → Regenerate types → Document
+- **Adding a table**: Create migration (`supabase migration new …`) → Update RLS policies → **Apply** (`supabase db push`) → Regenerate types → Document
 - **Adding a page**: Create component → Add route → Update navigation → Verify role access
 - **Fixing RLS issue**: Check user role → Review table policies → Verify adoption/sharing
 - **Understanding feature**: Check RECENT_FEATURES.md → Read relevant system doc → Review code
@@ -181,6 +181,8 @@ The app uses strict TypeScript (`strict`, `noUncheckedIndexedAccess`). Supabase 
 ## Deployment
 
 The project automatically deploys to GitHub Pages when changes land on the `main` branch. Because `main` is branch-protected, changes reach it via a merged PR. CI runs `typecheck` + `lint` + `test` on every PR ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)); the deploy workflow ([`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)) re-runs the same `checks` job as a gate before building, so a broken `main` never ships.
+
+> **⚠️ The client and the database deploy on separate tracks.** Merging to `main` deploys only the **client** (GitHub Pages) — CI does **not** run `supabase db push`. Database migrations are applied **manually** (`supabase db push` against the linked prod project `yewfzhbofbbyvkvtaatw`). When a change couples the two (a migration the new client must understand, or vice-versa), **sequence them** — usually deploy the client first, then apply the migration. See [docs/MIGRATIONS.md](./docs/MIGRATIONS.md) and the [drift runbook](./AGENTS.md#migration-history-drift-linked-project).
 
 **Required GitHub Secrets**:
 - `VITE_SUPABASE_URL`
