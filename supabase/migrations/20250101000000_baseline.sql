@@ -47764,3 +47764,13 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.people_crew_jobs;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.people_hours;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.quickfill_office_arriving_daily_checks;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.reports;
+
+
+-- ---------------------------------------------------------------------
+-- Restore prod's restricted client grants that db dump captured as plain GRANTs
+-- but which the local default-privileges would otherwise widen to ALL.
+-- ---------------------------------------------------------------------
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.mercury_tally_transaction_notes FROM anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.mercury_transaction_org_notes FROM anon, authenticated;
+REVOKE INSERT, UPDATE, DELETE ON TABLE public.mercury_transaction_supply_house_invoice_links FROM anon, authenticated;
+REVOKE ALL ON FUNCTION public.insert_accounting_label_suggestion_service(jsonb) FROM anon, authenticated;

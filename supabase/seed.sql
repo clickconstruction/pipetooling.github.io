@@ -17,7 +17,7 @@ SET session_replication_role = replica;
 -- PostgreSQL database dump
 --
 
--- \restrict NgXIn307ul6RKsIfkM018gH8VOXdNCWKYomKQ0dY2saOHak1cNQP7IZt7iYaNgD
+-- \restrict icxGRUJIi9xk1huISyjNNcvc04WESxb73slsNTe5sBNWBsKMwD22MDu7DZPChI2
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 17.6
@@ -644,6 +644,41 @@ INSERT INTO "public"."notification_templates" ("id", "template_type", "push_titl
 
 
 --
+-- Data for Name: part_types; Type: TABLE DATA; Schema: public; Owner: postgres
+--
+
+INSERT INTO "public"."part_types" ("id", "service_type_id", "name", "category", "sequence_order", "created_at", "updated_at") VALUES
+	('11bb142a-8ae7-4b26-945b-7d67031762da', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Fitting', 'Parts', 1, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('9ef9562c-a6bc-4040-a144-64bdf11005d6', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Pipe', 'Parts', 2, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('e7a59bff-e20f-41a0-bae4-afcc7c8e473b', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Drain', 'Parts', 3, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('ea89f241-2438-45f9-99d7-8138ed2be8ce', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Sink', 'Fixtures', 4, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('7531832c-7e13-4f16-bf56-3de49c667548', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Faucet', 'Fixtures', 5, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('6fdda064-432a-4d52-9566-6058d8be61b5', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Toilet', 'Fixtures', 6, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('571019d5-8e1b-4dd8-8a0f-4f4e892286b6', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Shower', 'Fixtures', 7, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('d6c555a8-09e8-49e2-8653-3527361e6bee', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Bathtub', 'Fixtures', 8, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('013f453d-343e-4639-aed9-dddb3a57011a', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Valve', 'Parts', 9, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('fc2f35e2-de62-4ad3-b9ca-e667a267e1aa', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Water Heater', 'Appliances', 10, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('2f895723-3c99-45b6-998c-4fbda9658cbf', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Wire', NULL, 1, '2026-02-11 17:37:03.117381+00', '2026-02-11 17:37:03.117381+00'),
+	('104b2e8f-0f5e-4206-974e-c51da54e94b0', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Trap', 'Parts', 12, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('06e77de3-8cc2-49aa-9e90-f28149c6ac2d', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Elbow', 'Parts', 13, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('dc8bfbd7-fc21-4603-af6c-0a5f82205978', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Tee', 'Parts', 14, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('9ce33c18-64e3-44a3-a97f-327bcbb8b746', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Coupling', 'Parts', 15, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('4050a8a4-f75e-4085-8013-8329cea23b03', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Other', 'Parts', 16, '2026-02-10 18:28:47.304693+00', '2026-02-10 18:28:47.304693+00'),
+	('401ef201-2f2a-4a5a-9ddc-a9debff6d6ad', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Gear', NULL, 2, '2026-02-11 17:37:07.069418+00', '2026-02-11 17:37:07.069418+00'),
+	('67e4566c-65b7-4394-977a-77826eb1e836', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Lighting Fixtures', NULL, 3, '2026-02-11 17:37:12.092031+00', '2026-02-11 17:37:12.092031+00'),
+	('9d57172e-857c-4738-a24a-a249c48099bc', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Other', NULL, 4, '2026-02-11 17:37:19.272478+00', '2026-02-11 17:37:19.272478+00'),
+	('e76c8007-62b3-4264-ae77-5231e30e5a9a', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Rental Equipment', NULL, 5, '2026-02-11 17:37:28.961136+00', '2026-02-11 17:37:28.961136+00'),
+	('6a096288-2383-4f92-813b-1edf0f83c8e9', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Rental Equipment', NULL, 17, '2026-02-11 17:37:37.966621+00', '2026-02-11 17:37:37.966621+00'),
+	('bfa497ff-bd3a-495b-9fe0-90c7145514e4', '21296f21-9b81-4487-9a09-8b5fb292585e', 'Rental Equipment', NULL, 1, '2026-02-11 17:37:41.744892+00', '2026-02-11 17:37:41.744892+00'),
+	('4b849ff8-c000-426b-a031-42eb2670e764', '21296f21-9b81-4487-9a09-8b5fb292585e', 'Ducts', NULL, 2, '2026-02-11 17:37:47.10832+00', '2026-02-11 17:37:47.10832+00'),
+	('0e622aa1-6e45-4f62-b75b-1736dc9f00ad', '21296f21-9b81-4487-9a09-8b5fb292585e', 'Other', NULL, 3, '2026-02-11 17:37:51.71868+00', '2026-02-11 17:37:51.71868+00'),
+	('5a5b09d1-6dfb-4c4e-90c5-a17d442611ac', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Digging', NULL, 6, '2026-02-11 17:38:17.29022+00', '2026-02-11 17:38:17.29022+00'),
+	('c53ee014-251f-4d7e-9630-2a3a0a01ef4c', 'd53845ab-79ed-498b-88d1-d3a069cf2e73', 'Digging', NULL, 18, '2026-02-11 17:38:24.626039+00', '2026-02-11 17:38:24.626039+00'),
+	('681b2c12-20b7-4126-b987-3d8b8bbe1a59', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Couplings', NULL, 7, '2026-02-12 16:44:20.729043+00', '2026-02-12 16:44:20.729043+00'),
+	('fc730144-25b5-4fdf-9ea1-0bb0572d93f2', '6c1aa49c-35c0-4c0b-baa8-7ae347846561', 'Conduit', NULL, 8, '2026-02-12 16:44:37.880128+00', '2026-02-12 16:44:37.880128+00');
+
+
+--
 -- Data for Name: report_templates; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
@@ -709,7 +744,7 @@ SELECT pg_catalog.setval('"public"."projects_project_number_seq"', 7, true);
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict NgXIn307ul6RKsIfkM018gH8VOXdNCWKYomKQ0dY2saOHak1cNQP7IZt7iYaNgD
+-- \unrestrict icxGRUJIi9xk1huISyjNNcvc04WESxb73slsNTe5sBNWBsKMwD22MDu7DZPChI2
 
 RESET ALL;
 
