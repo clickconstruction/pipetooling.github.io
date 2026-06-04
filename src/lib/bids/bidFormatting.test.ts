@@ -4,6 +4,7 @@ import {
   formatAmountFromString,
   formatCompactCurrency,
   formatBidValueShort,
+  formatDateYYMMDD,
   formatDateYYMMDDParts,
   formatDesignDrawingPlanDate,
   formatDesignDrawingPlanDateLabel,
@@ -64,9 +65,27 @@ describe('formatBidValueShort', () => {
   })
 })
 
+describe('formatDateYYMMDD', () => {
+  it('renders em dash for null', () => {
+    expect(formatDateYYMMDD(null)).toBe('—')
+  })
+
+  it('renders em dash for an unparseable date instead of NaN/NaN', () => {
+    expect(formatDateYYMMDD('not-a-date')).toBe('—')
+  })
+
+  it('formats the date portion as MM/DD with a day-count bracket', () => {
+    expect(formatDateYYMMDD('2026-03-05')).toMatch(/^03\/05 \[[+-]\d+\]$/)
+  })
+})
+
 describe('formatDateYYMMDDParts', () => {
   it('returns null for null input', () => {
     expect(formatDateYYMMDDParts(null)).toBeNull()
+  })
+
+  it('returns null for an unparseable date instead of NaN parts', () => {
+    expect(formatDateYYMMDDParts('not-a-date')).toBeNull()
   })
 
   it('formats the stable date portion as MM/DD', () => {
