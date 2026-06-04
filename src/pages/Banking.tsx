@@ -28,6 +28,7 @@ import { BankingMercuryDragSortTab } from '../components/banking/BankingMercuryD
 import { BankingMercuryAccountingTab } from '../components/banking/BankingMercuryAccountingTab'
 import { BankingMercuryUserReviewTab } from '../components/banking/BankingMercuryUserReviewTab'
 import { BankingMercuryCategoryReviewTab } from '../components/banking/BankingMercuryCategoryReviewTab'
+import { BankingMercuryReconciliationTab } from '../components/banking/BankingMercuryReconciliationTab'
 import { MercuryBackfillModal } from '../components/banking/MercuryBackfillModal'
 import { MercuryImportCsvModal, type ImportCsvSubmitPayload, type ImportCsvResult } from '../components/banking/MercuryImportCsvModal'
 import { ManualAccountsModal } from '../components/banking/ManualAccountsModal'
@@ -96,7 +97,7 @@ const ACCOUNTING_LABELED_PAGE_SIZE = 500
 type SortKey = 'posted_at' | 'mercury_account_id' | 'mercury_id'
 
 type BankingProduct = 'mercury' | 'stripe'
-type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review'
+type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'user_review' | 'category_review' | 'reconciliation'
 type StripeBankingTab = 'invoices' | 'data'
 
 type BankingView = {
@@ -128,9 +129,11 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
             ? 'user_review'
             : tabRaw === 'category_review'
               ? 'category_review'
-              : tabRaw === 'sorting'
-                ? 'sorting'
-                : 'accounting'
+              : tabRaw === 'reconciliation'
+                ? 'reconciliation'
+                : tabRaw === 'sorting'
+                  ? 'sorting'
+                  : 'accounting'
     return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
   if (role !== 'dev') {
@@ -154,6 +157,7 @@ function parseBankingView(params: URLSearchParams, role: BankingPageRole): Banki
   else if (tabRaw === 'accounting') mercuryTab = 'accounting'
   else if (tabRaw === 'user_review') mercuryTab = 'user_review'
   else if (tabRaw === 'category_review') mercuryTab = 'category_review'
+  else if (tabRaw === 'reconciliation') mercuryTab = 'reconciliation'
   else if (tabRaw === 'ledger') mercuryTab = 'ledger'
   else if (tabRaw === 'invoices' || tabRaw === 'data') mercuryTab = 'ledger'
 
@@ -1227,7 +1231,7 @@ export default function Banking() {
           if (product === 'mercury') {
             p.set('product', 'mercury')
             const t = prev.get('tab')
-            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort' || t === 'accounting' || t === 'user_review' || t === 'category_review') p.set('tab', t)
+            if (t === 'sorting' || t === 'ledger' || t === 'drag_sort' || t === 'accounting' || t === 'user_review' || t === 'category_review' || t === 'reconciliation') p.set('tab', t)
             else p.set('tab', 'ledger')
           } else {
             p.set('product', 'stripe')
@@ -1379,7 +1383,8 @@ export default function Banking() {
         tab === 'drag_sort' ||
         tab === 'accounting' ||
         tab === 'user_review' ||
-        tab === 'category_review') &&
+        tab === 'category_review' ||
+        tab === 'reconciliation') &&
       product !== 'stripe' &&
       (product === null || product === 'mercury')
     ) {
@@ -1398,7 +1403,9 @@ export default function Banking() {
                     ? 'user_review'
                     : tab === 'category_review'
                       ? 'category_review'
-                      : 'sorting',
+                      : tab === 'reconciliation'
+                        ? 'reconciliation'
+                        : 'sorting',
             )
             return p
           },
@@ -2404,6 +2411,16 @@ export default function Banking() {
                     >
                       Category Review
                     </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={bankingView.mercuryTab === 'reconciliation'}
+                      id="banking-tab-reconciliation"
+                      onClick={() => setMercurySubTab('reconciliation')}
+                      style={pageUnderlineTabStyle(bankingView.mercuryTab === 'reconciliation')}
+                    >
+                      Reconciliation
+                    </button>
                   </>
                 ) : (
                   <>
@@ -2786,6 +2803,12 @@ export default function Banking() {
               void loadMercuryAllocations()
             }}
           />
+        </div>
+      ) : null}
+
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'reconciliation' && canAccessBanking ? (
+        <div role="tabpanel" id="banking-panel-mercury-reconciliation" aria-labelledby="banking-tab-reconciliation">
+          <BankingMercuryReconciliationTab />
         </div>
       ) : null}
 

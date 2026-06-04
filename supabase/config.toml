@@ -372,6 +372,10 @@ verify_jwt = false
 [functions.get-mercury-account-balances]
 verify_jwt = false
 
+# Validates JWT + Banking role in-body; reconciles books vs Mercury statements/balances.
+[functions.mercury-reconcile]
+verify_jwt = false
+
 [functions.create-stripe-invoice]
 verify_jwt = false
 
