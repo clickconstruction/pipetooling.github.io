@@ -142,10 +142,13 @@ export function BankingMercuryUserReviewLedgerModal({
     if (!open) return new Map<string, string>()
     const out = new Map<string, string>()
     for (const r of rows) {
-      out.set(r.id, buildMercuryTxSearchHaystack(r, nicknameCtx).toLowerCase())
+      // bankDescription comes from the separately-hydrated meta (raw is omitted
+      // from the User Review RPC); including it makes the bank line searchable.
+      const bankDescription = metaByTxId.get(r.id)?.bankDescription ?? null
+      out.set(r.id, buildMercuryTxSearchHaystack(r, nicknameCtx, bankDescription).toLowerCase())
     }
     return out
-  }, [open, rows, nicknameCtx])
+  }, [open, rows, nicknameCtx, metaByTxId])
 
   const sortedRows = useMemo(() => {
     if (!open) return [] as MercuryTxRow[]
@@ -334,7 +337,7 @@ export function BankingMercuryUserReviewLedgerModal({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Counterparty, memo, card, amount…"
+            placeholder="Counterparty, memo, card, bank description, amount…"
             style={{
               width: '100%',
               padding: '0.45rem 0.65rem',

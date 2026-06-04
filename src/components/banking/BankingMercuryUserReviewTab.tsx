@@ -20,6 +20,8 @@ import {
   type UserReviewTimeWindow,
 } from '../../lib/bankingMercuryUserReviewTimeWindow'
 import { BankingMercuryUserReviewLedgerModal } from './BankingMercuryUserReviewLedgerModal'
+import { BankingMercuryUserReviewPieView } from './BankingMercuryUserReviewPieView'
+import { readUserReviewChartView, writeUserReviewChartView, type UserReviewChartView } from '../../lib/bankingDragSortStorage'
 import { TransactionDetailModal } from './TransactionDetailModal'
 import { fetchMercuryTransactionRawById } from '../../lib/fetchMercuryTransactionRaws'
 import type { SearchableSelectOption } from '../SearchableSelect'
@@ -112,6 +114,7 @@ export function BankingMercuryUserReviewTab({
   const rowsLoadSeqRef = useRef(0)
   const [rowsError, setRowsError] = useState<string | null>(null)
   const [hideEmptyColumns, setHideEmptyColumns] = useState<boolean>(() => readHideEmptyFromStorage())
+  const [chartView, setChartView] = useState<UserReviewChartView>(() => readUserReviewChartView())
 
   const [drillRowKey, setDrillRowKey] = useState<string | null>(null)
   const [drillColKey, setDrillColKey] = useState<string | null>(null)
@@ -471,6 +474,37 @@ export function BankingMercuryUserReviewTab({
             />
             Hide empty columns
           </label>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: '#374151' }}>
+            <span style={{ color: '#6b7280' }}>View</span>
+            <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden' }}>
+              {(['table', 'pie'] as const).map((v, i) => {
+                const active = chartView === v
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => {
+                      setChartView(v)
+                      writeUserReviewChartView(v)
+                    }}
+                    style={{
+                      padding: '0.3rem 0.7rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: 600,
+                      border: '1px solid #d1d5db',
+                      borderLeft: i === 0 ? '1px solid #d1d5db' : 'none',
+                      borderRadius: i === 0 ? '6px 0 0 6px' : '0 6px 6px 0',
+                      background: active ? '#2563eb' : '#fff',
+                      color: active ? '#fff' : '#374151',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {v === 'table' ? 'Table' : 'Pie chart'}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -490,7 +524,21 @@ export function BankingMercuryUserReviewTab({
         </div>
       ) : null}
 
-      {pivot.rows.length === 0 || pivot.columns.length === 0 ? (
+      {chartView === 'pie' ? (
+        <BankingMercuryUserReviewPieView
+          transactions={windowedTransactions.map((r) => ({ id: r.id, amount: r.amount, kind: r.kind }))}
+          userIdByTxId={userIdByTxId}
+          personIdByTxId={personIdByTxId}
+          userNameById={userNameById}
+          personNameById={personNameById}
+          labelIdByTxId={labelIdByTxId}
+          labels={labels}
+          onOpenCell={(personKey, categoryKey) => {
+            setDrillRowKey(personKey)
+            setDrillColKey(categoryKey)
+          }}
+        />
+      ) : pivot.rows.length === 0 || pivot.columns.length === 0 ? (
         <div
           style={{
             padding: '1.5rem',
@@ -768,7 +816,7 @@ export function BankingMercuryUserReviewTab({
         </div>
       )}
 
-      {selectedRow && selectedRowTotals ? (
+      {chartView === 'table' && selectedRow && selectedRowTotals ? (
         <div
           style={{
             marginTop: '1rem',
