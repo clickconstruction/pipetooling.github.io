@@ -261,3 +261,26 @@ export function writeAccountingApprovalsGroupByLabel(userId: string, value: bool
     /* quota or private mode */
   }
 }
+
+/** Banking Mercury User Review view mode: pivot **table** (default) or **pie** chart. Device-global (matches this tab's other prefs). */
+export type UserReviewChartView = 'table' | 'pie'
+const USER_REVIEW_CHART_VIEW_KEY = 'banking_mercury_user_review_chart_view_v1'
+
+export function readUserReviewChartView(): UserReviewChartView {
+  if (typeof window === 'undefined') return 'table'
+  try {
+    return window.localStorage.getItem(USER_REVIEW_CHART_VIEW_KEY) === 'pie' ? 'pie' : 'table'
+  } catch {
+    return 'table'
+  }
+}
+
+export function writeUserReviewChartView(value: UserReviewChartView): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (value === 'pie') window.localStorage.setItem(USER_REVIEW_CHART_VIEW_KEY, 'pie')
+    else window.localStorage.removeItem(USER_REVIEW_CHART_VIEW_KEY)
+  } catch {
+    /* quota or private mode */
+  }
+}
