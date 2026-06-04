@@ -52,6 +52,7 @@ export function formatShortDate(iso: string | null): string {
 export function formatDateYYMMDD(dateStr: string | null): string {
   if (!dateStr) return '—'
   const d = new Date(dateStr + 'T12:00:00')
+  if (isNaN(d.getTime())) return '—'
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
 
@@ -71,6 +72,7 @@ export function formatDateYYMMDD(dateStr: string | null): string {
 export function formatDateYYMMDDParts(dateStr: string | null): { date: string; bracket: string } | null {
   if (!dateStr) return null
   const d = new Date(dateStr + 'T12:00:00')
+  if (isNaN(d.getTime())) return null
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
 

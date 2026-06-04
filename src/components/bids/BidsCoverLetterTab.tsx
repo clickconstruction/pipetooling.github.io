@@ -234,7 +234,9 @@ export function BidsCoverLetterTab({
         const terms = coverLetterTermsByBid[bid.id] ?? ''
         const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
         const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
-        const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || (coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false)
+        // The Design Drawings Plan Date and Fixtures-per-plan toggles are independent:
+        // each is included strictly per its own checkbox (one, the other, both, or none).
+        const effectiveIncludeFixtures = coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false
         const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
         const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
         const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] === true, effectiveIncludeFixtures)
@@ -443,24 +445,16 @@ export function BidsCoverLetterTab({
             </div>
             {pricingCountRows.length > 0 && (
               <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) ? 'pointer' : 'default', opacity: (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) ? 1 : 0.7 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
-                    checked={(coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) ? (coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false) : true}
-                    disabled={!(coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date)}
-                    onChange={() => (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) && setCoverLetterIncludeFixturesPerPlanByBid((prev) => ({
+                    checked={coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}
+                    onChange={() => setCoverLetterIncludeFixturesPerPlanByBid((prev) => ({
                       ...prev,
                       [bid.id]: prev[bid.id] === false
                     }))}
                   />
                   Include Fixtures provided and installed by us per plan
-                  {!(coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && !!bid.design_drawing_plan_date) && (
-                    <span style={{ fontSize: '0.8em', color: '#6b7280' }}>
-                      {!bid.design_drawing_plan_date
-                        ? '(Set Design Drawing Plan Date in Edit bid to toggle)'
-                        : '(Check Design Drawings Plan Date above to toggle)'}
-                    </span>
-                  )}
                 </label>
               </div>
             )}
