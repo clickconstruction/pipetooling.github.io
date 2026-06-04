@@ -338,6 +338,7 @@ export default function Bids() {
   const openBidEditHandledRef = useRef<string | null>(null)
   const contactTableRef = useRef<HTMLDivElement | null>(null)
   const [scrollToContactFromBidBoard, setScrollToContactFromBidBoard] = useState(false)
+  const [scrollToLaborDirectCosts, setScrollToLaborDirectCosts] = useState(false)
   const [submissionSectionOpen, setSubmissionSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [bidBoardSectionOpen, setBidBoardSectionOpen] = useState({ unsent: true, pending: true, won: true, startedOrComplete: true, lost: false })
   const [lostSummaryModalOpen, setLostSummaryModalOpen] = useState(false)
@@ -539,6 +540,16 @@ export default function Bids() {
     travelNights, setTravelNights,
     travelMealsRate, setTravelMealsRate,
     travelHotelRate, setTravelHotelRate,
+    costEstimateEquipmentRows, setCostEstimateEquipmentRows,
+    pricingEquipmentRows,
+    costEstimatePermitRows, setCostEstimatePermitRows,
+    pricingPermitRows,
+    costEstimateSubcontractorRows, setCostEstimateSubcontractorRows,
+    pricingSubcontractorRows,
+    costEstimateWasteRows, setCostEstimateWasteRows,
+    pricingWasteRows,
+    costEstimateOtherRows, setCostEstimateOtherRows,
+    pricingOtherRows,
     teamLaborDataForBids,
     priceBookVersions,
     priceBookEntries, setPriceBookEntries,
@@ -1416,6 +1427,24 @@ export default function Bids() {
       setScrollToContactFromBidBoard(false)
     }
   }, [activeTab, selectedBidForSubmission?.id, scrollToContactFromBidBoard])
+
+  // From Pricing's "Direct Costs" header: after switching to the Labor tab, scroll
+  // its DIRECT COSTS section into view. Retries briefly while the tab renders.
+  useEffect(() => {
+    if (activeTab !== 'labor' || !scrollToLaborDirectCosts) return
+    let tries = 0
+    const tick = () => {
+      const el = document.getElementById('labor-direct-costs')
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        setScrollToLaborDirectCosts(false)
+        return
+      }
+      if (tries++ < 20) setTimeout(tick, 50)
+      else setScrollToLaborDirectCosts(false)
+    }
+    tick()
+  }, [activeTab, scrollToLaborDirectCosts])
 
 
 
@@ -3090,6 +3119,16 @@ export default function Bids() {
           setTravelMealsRate={setTravelMealsRate}
           travelHotelRate={travelHotelRate}
           setTravelHotelRate={setTravelHotelRate}
+          equipmentRows={costEstimateEquipmentRows}
+          setEquipmentRows={setCostEstimateEquipmentRows}
+          permitRows={costEstimatePermitRows}
+          setPermitRows={setCostEstimatePermitRows}
+          subcontractorRows={costEstimateSubcontractorRows}
+          setSubcontractorRows={setCostEstimateSubcontractorRows}
+          wasteRows={costEstimateWasteRows}
+          setWasteRows={setCostEstimateWasteRows}
+          otherRows={costEstimateOtherRows}
+          setOtherRows={setCostEstimateOtherRows}
           laborBookVersions={laborBookVersions}
           laborBookEntries={laborBookEntries}
           setLaborBookEntries={setLaborBookEntries}
@@ -3156,6 +3195,12 @@ export default function Bids() {
           pricingRowsForGrid={pricingRowsForGrid}
           pricingPackageSource={pricingPackageSource}
           onSelectBid={(bid) => selectBidAndSyncUrl(bid, 'pricing')}
+          onNavigateToLaborDirectCosts={(bid) => { selectBidAndSyncUrl(bid, 'labor'); setScrollToLaborDirectCosts(true) }}
+          pricingEquipmentRows={pricingEquipmentRows}
+          pricingPermitRows={pricingPermitRows}
+          pricingSubcontractorRows={pricingSubcontractorRows}
+          pricingWasteRows={pricingWasteRows}
+          pricingOtherRows={pricingOtherRows}
           onlyMyBids={onlyMyBids}
           setOnlyMyBids={setOnlyMyBids}
           isMyBid={isMyBid}

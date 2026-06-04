@@ -56,3 +56,19 @@ export function costEstimateEstimatorCost(ce: unknown, countLen: number): number
     ? Number(row.estimator_cost_flat_amount)
     : countLen * (Number(row.estimator_cost_per_count) || 10)
 }
+
+/**
+ * Equipment & Tool Rental direct cost: the sum across all rows of each row's
+ * per-stage amounts (Rough In + Top Out + Trim Set). Null/blank/NaN/negative
+ * stage values count as 0, so the total is 0 until amounts are entered.
+ */
+export function sumEquipmentRows(
+  rows: ReadonlyArray<{ rough_in?: unknown; top_out?: unknown; trim_set?: unknown }> | null | undefined,
+): number {
+  if (!rows || rows.length === 0) return 0
+  const stage = (v: unknown): number => {
+    const n = Number(v)
+    return Number.isFinite(n) && n > 0 ? n : 0
+  }
+  return rows.reduce((s, r) => s + stage(r.rough_in) + stage(r.top_out) + stage(r.trim_set), 0)
+}
