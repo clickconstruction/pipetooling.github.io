@@ -123,11 +123,17 @@ export async function withRetry<T>(
         throw error
       }
       
-      // Calculate delay with exponential backoff
-      const delay = Math.min(
+      // Exponential backoff with EQUAL JITTER: half the computed backoff is
+      // fixed, half is randomized, so the delay lands in [cap/2, cap]. Without
+      // jitter, many clients that fail at the same instant (e.g. a brief origin
+      // blip) retry in lockstep and re-saturate the recovering origin — a
+      // synchronized retry storm. See the 2026-06-04 incident: the HTTP 522
+      // burst was dominated by lockstep retries of the activity heartbeat.
+      const cap = Math.min(
         opts.initialDelay * Math.pow(opts.backoffFactor, attempt),
         opts.maxDelay
       )
+      const delay = Math.round(cap / 2 + Math.random() * (cap / 2))
       
       if (opts.logRetries) {
         console.warn(

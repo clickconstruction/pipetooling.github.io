@@ -23,9 +23,14 @@ export function useAppActivityHeartbeat(userId: string | undefined): void {
     }
 
     const tick = () => {
+      // Best-effort telemetry: do NOT retry. A missed beat is harmless (the
+      // next one fires in 60s), and retrying during an outage just amplifies
+      // load on a struggling origin. The 2026-06-04 522 burst was dominated by
+      // this heartbeat retrying every few seconds across every open tab.
       void withSupabaseRetry(
         () => supabase.rpc('bump_user_app_activity', { p_seconds: 60 }),
-        'bump_user_app_activity'
+        'bump_user_app_activity',
+        { maxRetries: 0, logRetries: false }
       ).catch(() => {
         /* ignore heartbeat errors */
       })
