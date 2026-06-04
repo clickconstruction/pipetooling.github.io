@@ -1698,6 +1698,226 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_estimate_equipment_rows: {
+        Row: {
+          cost_estimate_id: string
+          created_at: string | null
+          id: string
+          note: string | null
+          rough_in: number
+          sequence_order: number
+          top_out: number
+          trim_set: number
+          updated_at: string | null
+        }
+        Insert: {
+          cost_estimate_id: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cost_estimate_id?: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_equipment_rows_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_estimate_other_rows: {
+        Row: {
+          cost_estimate_id: string
+          created_at: string | null
+          id: string
+          note: string | null
+          rough_in: number
+          sequence_order: number
+          top_out: number
+          trim_set: number
+          updated_at: string | null
+        }
+        Insert: {
+          cost_estimate_id: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cost_estimate_id?: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_other_rows_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_estimate_waste_rows: {
+        Row: {
+          cost_estimate_id: string
+          created_at: string | null
+          id: string
+          note: string | null
+          rough_in: number
+          sequence_order: number
+          top_out: number
+          trim_set: number
+          updated_at: string | null
+        }
+        Insert: {
+          cost_estimate_id: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cost_estimate_id?: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_waste_rows_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_estimate_subcontractor_rows: {
+        Row: {
+          cost_estimate_id: string
+          created_at: string | null
+          id: string
+          note: string | null
+          rough_in: number
+          sequence_order: number
+          top_out: number
+          trim_set: number
+          updated_at: string | null
+        }
+        Insert: {
+          cost_estimate_id: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cost_estimate_id?: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_subcontractor_rows_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_estimate_permit_rows: {
+        Row: {
+          cost_estimate_id: string
+          created_at: string | null
+          id: string
+          note: string | null
+          rough_in: number
+          sequence_order: number
+          top_out: number
+          trim_set: number
+          updated_at: string | null
+        }
+        Insert: {
+          cost_estimate_id: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cost_estimate_id?: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_permit_rows_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_estimate_labor_rows: {
         Row: {
           cost_estimate_id: string

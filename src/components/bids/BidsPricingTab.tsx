@@ -10,6 +10,7 @@ import {
   costEstimateDrivingRate,
   costEstimateHoursPerTrip,
   costEstimateEstimatorCost,
+  sumEquipmentRows,
 } from '../../lib/bids/bidCostCalc'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
 import { GenerateUnitCostModal, GenerateUnitCostTriggerIcon } from './GenerateUnitCostModal'
@@ -34,6 +35,11 @@ import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
+  CostEstimateEquipmentRow,
+  CostEstimatePermitRow,
+  CostEstimateSubcontractorRow,
+  CostEstimateWasteRow,
+  CostEstimateOtherRow,
   PriceBookVersion,
   PriceBookEntryWithFixture,
   BidPricingAssignment,
@@ -70,6 +76,11 @@ type BidsPricingTabProps = {
   pricingCountRows: BidCountRow[]
   pricingCostEstimate: CostEstimate | null
   pricingLaborRows: CostEstimateLaborRow[]
+  pricingEquipmentRows: CostEstimateEquipmentRow[]
+  pricingPermitRows: CostEstimatePermitRow[]
+  pricingSubcontractorRows: CostEstimateSubcontractorRow[]
+  pricingWasteRows: CostEstimateWasteRow[]
+  pricingOtherRows: CostEstimateOtherRow[]
   pricingMaterialTotalRoughIn: number | null
   pricingMaterialTotalTopOut: number | null
   pricingMaterialTotalTrimSet: number | null
@@ -91,6 +102,7 @@ type BidsPricingTabProps = {
   onEditBid: (bid: BidWithBuilder) => void
   onNavigateToLabor: () => void
   onNavigateBidToTab: (bid: BidWithBuilder, tab: 'takeoffs' | 'labor') => void
+  onNavigateToLaborDirectCosts: (bid: BidWithBuilder) => void
   onlyMyBids: boolean
   setOnlyMyBids: (next: boolean) => void
   isMyBid: (bid: BidWithBuilder) => boolean
@@ -146,6 +158,11 @@ export function BidsPricingTab({
   pricingCountRows,
   pricingCostEstimate,
   pricingLaborRows,
+  pricingEquipmentRows,
+  pricingPermitRows,
+  pricingSubcontractorRows,
+  pricingWasteRows,
+  pricingOtherRows,
   pricingMaterialTotalRoughIn,
   pricingMaterialTotalTopOut,
   pricingMaterialTotalTrimSet,
@@ -164,6 +181,7 @@ export function BidsPricingTab({
   onEditBid,
   onNavigateToLabor,
   onNavigateBidToTab,
+  onNavigateToLaborDirectCosts,
   onlyMyBids,
   setOnlyMyBids,
   isMyBid,
@@ -929,9 +947,14 @@ export function BidsPricingTab({
               const drivingCost = numTrips * ratePerMile * distance
               const estimatorCost = costEstimateEstimatorCost(pricingCostEstimate, pricingCountRows.length)
               const travelCost = computeTravelCost(pricingCostEstimate)
+              const equipmentRentalCost = sumEquipmentRows(pricingEquipmentRows)
+              const permitCost = sumEquipmentRows(pricingPermitRows)
+              const subcontractorCost = sumEquipmentRows(pricingSubcontractorRows)
+              const wasteCost = sumEquipmentRows(pricingWasteRows)
+              const otherCost = sumEquipmentRows(pricingOtherRows)
               const teamLaborCostByBidId = new Map(teamLaborDataForBids.map((r) => [r.bidId, r.bidCost]))
               const teamLaborCost = selectedBidForPricing?.id ? (teamLaborCostByBidId.get(selectedBidForPricing.id) ?? 0) : 0
-              const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost + travelCost
+              const totalCost = totalMaterials + laborCost + drivingCost + estimatorCost + teamLaborCost + travelCost + equipmentRentalCost + permitCost + subcontractorCost + wasteCost + otherCost
               const assignmentsForVersion = bidPricingAssignments.filter(
                 (a) => a.price_book_version_id === selectedPricingVersionId,
               )
@@ -1526,39 +1549,73 @@ export function BidsPricingTab({
                           </button>
                         </td>
                       </tr>
-                      <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                        <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Manhours</td>
-                        <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((laborCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
-                        <td colSpan={3} />
+                      {(() => {
+                        const laborSubtotal = laborCost + drivingCost + travelCost + estimatorCost + teamLaborCost
+                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
+                        const lineRow = (label: React.ReactNode, value: number) => (
+                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
+                            <td colSpan={3} />
+                          </tr>
+                        )
+                        const subtotalRow = (label: string, value: number) => (
+                          <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', background: '#f9fafb' }}>
+                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>{label}</td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
+                            <td colSpan={3} />
+                          </tr>
+                        )
+                        return (
+                          <>
+                            {lineRow('Manhours', laborCost)}
+                            {lineRow(
+                              <>Vehicle Travel <span style={{ color: '#6b7280' }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span></>,
+                              drivingCost,
+                            )}
+                            {lineRow(<>Lodging &amp; Meals <span style={{ color: '#6b7280' }}>(meals + hotels)</span></>, travelCost)}
+                            {lineRow('Estimators Time', estimatorCost)}
+                            {lineRow('Team Labor (clocked)', teamLaborCost)}
+                            {subtotalRow('Labor subtotal', laborSubtotal)}
+                          </>
+                        )
+                      })()}
+                      <tr style={{ fontSize: '0.8125rem' }}>
+                        <td colSpan={7} style={{ padding: '0.35rem 0.75rem' }}>
+                          <button
+                            type="button"
+                            onClick={() => { if (selectedBidForPricing) onNavigateToLaborDirectCosts(selectedBidForPricing) }}
+                            style={{ background: 'none', border: 'none', padding: 0, color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                          >
+                            Direct Costs
+                          </button>
+                        </td>
                       </tr>
-                      {distance > 0 && totalLaborHours > 0 && (
-                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Driving <span style={{ color: '#6b7280' }}>({numTrips.toFixed(1)} trips × ${ratePerMile.toFixed(2)}/mi × {distance.toFixed(0)} mi)</span></td>
-                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(drivingCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((drivingCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
-                          <td colSpan={3} />
-                        </tr>
-                      )}
-                      {estimatorCost > 0 && (
-                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Estimator</td>
-                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(estimatorCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((estimatorCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
-                          <td colSpan={3} />
-                        </tr>
-                      )}
-                      {teamLaborCost > 0 && (
-                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Team Labor (clocked)</td>
-                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(teamLaborCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((teamLaborCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
-                          <td colSpan={3} />
-                        </tr>
-                      )}
-                      {travelCost > 0 && (
-                        <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
-                          <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>Travel <span style={{ color: '#6b7280' }}>(meals + hotels)</span></td>
-                          <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(travelCost)} {totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((travelCost / totalCost) * 100).toFixed(1)}%`}</span> : ''}</td>
-                          <td colSpan={3} />
-                        </tr>
-                      )}
+                      {(() => {
+                        const directCostsSubtotal = equipmentRentalCost + permitCost + subcontractorCost + wasteCost + otherCost
+                        const pct = (v: number) => (totalCost > 0 ? <span style={{ color: '#6b7280' }}>{`| ${((v / totalCost) * 100).toFixed(1)}%`}</span> : '')
+                        const lineRow = (label: React.ReactNode, value: number) => (
+                          <tr style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                            <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1.5rem' }}>{label}</td>
+                            <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(value)} {pct(value)}</td>
+                            <td colSpan={3} />
+                          </tr>
+                        )
+                        return (
+                          <>
+                            {lineRow(<>Equipment &amp; Tool Rental</>, equipmentRentalCost)}
+                            {lineRow(<>Permits, Inspections &amp; Fees</>, permitCost)}
+                            {lineRow(<>Subcontractor Fees</>, subcontractorCost)}
+                            {lineRow(<>Waste Disposal &amp; Site Cleanup</>, wasteCost)}
+                            {lineRow(<>Other</>, otherCost)}
+                            <tr style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', background: '#f9fafb' }}>
+                              <td colSpan={3} style={{ padding: '0.4rem 0.75rem 0.4rem 1rem' }}>Direct Costs subtotal</td>
+                              <td style={{ padding: '0.4rem 0.75rem', textAlign: 'right' }}>${formatCurrency(directCostsSubtotal)} {pct(directCostsSubtotal)}</td>
+                              <td colSpan={3} />
+                            </tr>
+                          </>
+                        )
+                      })()}
                       <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
                         <td style={{ padding: '0.75rem' }}>Total</td>
                         <td style={{ padding: '0.75rem', textAlign: 'center' }} />

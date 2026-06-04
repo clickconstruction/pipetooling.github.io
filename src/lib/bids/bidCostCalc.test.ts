@@ -4,6 +4,7 @@ import {
   costEstimateDrivingRate,
   costEstimateHoursPerTrip,
   costEstimateEstimatorCost,
+  sumEquipmentRows,
 } from './bidCostCalc'
 
 describe('computeTravelCost', () => {
@@ -87,5 +88,32 @@ describe('costEstimateEstimatorCost', () => {
 
   it('coerces a string flat amount', () => {
     expect(costEstimateEstimatorCost({ estimator_cost_flat_amount: '1200' }, 5)).toBe(1200)
+  })
+})
+
+describe('sumEquipmentRows', () => {
+  it('sums per-stage amounts across all rows', () => {
+    expect(
+      sumEquipmentRows([
+        { rough_in: 100, top_out: 50, trim_set: 25 },
+        { rough_in: 10, top_out: 0, trim_set: 5 },
+      ]),
+    ).toBe(190)
+  })
+
+  it('returns 0 for empty / null / undefined', () => {
+    expect(sumEquipmentRows([])).toBe(0)
+    expect(sumEquipmentRows(null)).toBe(0)
+    expect(sumEquipmentRows(undefined)).toBe(0)
+  })
+
+  it('treats null/blank/negative/NaN stage values as 0', () => {
+    expect(
+      sumEquipmentRows([{ rough_in: 200, top_out: null, trim_set: -10 }, { rough_in: 'abc' }]),
+    ).toBe(200)
+  })
+
+  it('coerces numeric strings', () => {
+    expect(sumEquipmentRows([{ top_out: '300', trim_set: '0' }])).toBe(300)
   })
 })

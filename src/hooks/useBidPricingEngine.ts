@@ -10,6 +10,11 @@ import type {
   MaterialTemplateWithAssemblyType,
   CostEstimate,
   CostEstimateLaborRow,
+  CostEstimateEquipmentRow,
+  CostEstimatePermitRow,
+  CostEstimateSubcontractorRow,
+  CostEstimateWasteRow,
+  CostEstimateOtherRow,
   CostEstimatePO,
   DraftPO,
   FixtureLaborDefault,
@@ -110,6 +115,22 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [travelNights, setTravelNights] = useState('1')
   const [travelMealsRate, setTravelMealsRate] = useState('')
   const [travelHotelRate, setTravelHotelRate] = useState('')
+  // Equipment & Tool Rental direct cost rows (note + per-stage amounts), edited on
+  // the Labor tab; a separate copy is loaded for the Pricing cost breakdown.
+  const [costEstimateEquipmentRows, setCostEstimateEquipmentRows] = useState<CostEstimateEquipmentRow[]>([])
+  const [pricingEquipmentRows, setPricingEquipmentRows] = useState<CostEstimateEquipmentRow[]>([])
+  // Permits, Inspections & Regulatory Fees direct cost rows (same shape as equipment).
+  const [costEstimatePermitRows, setCostEstimatePermitRows] = useState<CostEstimatePermitRow[]>([])
+  const [pricingPermitRows, setPricingPermitRows] = useState<CostEstimatePermitRow[]>([])
+  // Subcontractor Fees direct cost rows (same shape as equipment).
+  const [costEstimateSubcontractorRows, setCostEstimateSubcontractorRows] = useState<CostEstimateSubcontractorRow[]>([])
+  const [pricingSubcontractorRows, setPricingSubcontractorRows] = useState<CostEstimateSubcontractorRow[]>([])
+  // Waste Disposal & Site Cleanup direct cost rows (same shape as equipment).
+  const [costEstimateWasteRows, setCostEstimateWasteRows] = useState<CostEstimateWasteRow[]>([])
+  const [pricingWasteRows, setPricingWasteRows] = useState<CostEstimateWasteRow[]>([])
+  // "Other" direct cost rows (same shape as equipment).
+  const [costEstimateOtherRows, setCostEstimateOtherRows] = useState<CostEstimateOtherRow[]>([])
+  const [pricingOtherRows, setPricingOtherRows] = useState<CostEstimateOtherRow[]>([])
 
   // --- Team labor (clocked) used in Pricing cost breakdown ---
   const [teamLaborDataForBids, setTeamLaborDataForBids] = useState<TeamLaborBidRow[]>([])
@@ -418,6 +439,20 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setTravelNights((est as any).travel_nights != null ? String((est as any).travel_nights) : '1')
       setTravelMealsRate((est as any).travel_meals_rate != null ? String((est as any).travel_meals_rate) : '')
       setTravelHotelRate((est as any).travel_hotel_rate != null ? String((est as any).travel_hotel_rate) : '')
+      {
+        const [{ data: equipRows }, { data: permitRows }, { data: subRows }, { data: wasteRows }, { data: otherRows }] = await Promise.all([
+          supabase.from('cost_estimate_equipment_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+          supabase.from('cost_estimate_permit_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+          supabase.from('cost_estimate_subcontractor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+          supabase.from('cost_estimate_waste_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+          supabase.from('cost_estimate_other_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+        ])
+        setCostEstimateEquipmentRows((equipRows as CostEstimateEquipmentRow[]) ?? [])
+        setCostEstimatePermitRows((permitRows as CostEstimatePermitRow[]) ?? [])
+        setCostEstimateSubcontractorRows((subRows as CostEstimateSubcontractorRow[]) ?? [])
+        setCostEstimateWasteRows((wasteRows as CostEstimateWasteRow[]) ?? [])
+        setCostEstimateOtherRows((otherRows as CostEstimateOtherRow[]) ?? [])
+      }
       if (mm === 'rough') {
         const [{ data: roughLines }, { data: crsForCount }] = await Promise.all([
           supabase
@@ -451,6 +486,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setEstimatorCostPerCount('10')
       setEstimatorCostFlatAmount('')
       setEstimatorCostUseFlat(false)
+      setCostEstimateEquipmentRows([])
+      setCostEstimatePermitRows([])
+      setCostEstimateSubcontractorRows([])
+      setCostEstimateWasteRows([])
+      setCostEstimateOtherRows([])
       setCostEstimateMaterialTotalRoughIn(null)
       setCostEstimateMaterialTotalTopOut(null)
       setCostEstimateMaterialTotalTrimSet(null)
@@ -762,6 +802,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setPricingCountRows([])
       setPricingCostEstimate(null)
       setPricingLaborRows([])
+      setPricingEquipmentRows([])
+      setPricingPermitRows([])
+      setPricingSubcontractorRows([])
+      setPricingWasteRows([])
+      setPricingOtherRows([])
       setPricingMaterialTotalRoughIn(null)
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
@@ -815,6 +860,21 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     const est = estRes.data as CostEstimate
     setPricingCostEstimate(est)
     setPricingLaborRate(est.labor_rate != null ? Number(est.labor_rate) : null)
+
+    {
+      const [{ data: equipRows }, { data: permitRows }, { data: subRows }, { data: wasteRows }, { data: otherRows }] = await Promise.all([
+        supabase.from('cost_estimate_equipment_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+        supabase.from('cost_estimate_permit_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+        supabase.from('cost_estimate_subcontractor_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+        supabase.from('cost_estimate_waste_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+        supabase.from('cost_estimate_other_rows').select('*').eq('cost_estimate_id', est.id).order('sequence_order', { ascending: true }),
+      ])
+      setPricingEquipmentRows((equipRows as CostEstimateEquipmentRow[]) ?? [])
+      setPricingPermitRows((permitRows as CostEstimatePermitRow[]) ?? [])
+      setPricingSubcontractorRows((subRows as CostEstimateSubcontractorRow[]) ?? [])
+      setPricingWasteRows((wasteRows as CostEstimateWasteRow[]) ?? [])
+      setPricingOtherRows((otherRows as CostEstimateOtherRow[]) ?? [])
+    }
 
     const mm = normalizeMaterialsModel((bidMetaRes.data as { materials_model?: string } | null)?.materials_model)
 
@@ -1104,6 +1164,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setPricingCountRows([])
       setPricingCostEstimate(null)
       setPricingLaborRows([])
+      setPricingEquipmentRows([])
+      setPricingPermitRows([])
+      setPricingSubcontractorRows([])
+      setPricingWasteRows([])
+      setPricingOtherRows([])
       setPricingMaterialTotalRoughIn(null)
       setPricingMaterialTotalTopOut(null)
       setPricingMaterialTotalTrimSet(null)
@@ -1233,6 +1298,21 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     setTravelMealsRate,
     travelHotelRate,
     setTravelHotelRate,
+    costEstimateEquipmentRows,
+    setCostEstimateEquipmentRows,
+    pricingEquipmentRows,
+    costEstimatePermitRows,
+    setCostEstimatePermitRows,
+    pricingPermitRows,
+    costEstimateSubcontractorRows,
+    setCostEstimateSubcontractorRows,
+    pricingSubcontractorRows,
+    costEstimateWasteRows,
+    setCostEstimateWasteRows,
+    pricingWasteRows,
+    costEstimateOtherRows,
+    setCostEstimateOtherRows,
+    pricingOtherRows,
     // team labor
     teamLaborDataForBids,
     setTeamLaborDataForBids,
