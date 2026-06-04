@@ -648,6 +648,7 @@ export default function Jobs() {
   const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
   const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
   const [stagesSectionOpen, setStagesSectionOpen] = useState({
+    waiting: false,
     working: true,
     readyToBill: true,
     billed: true,
@@ -715,7 +716,7 @@ export default function Jobs() {
   const [sendBackChecked, setSendBackChecked] = useState(false)
   const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const sendBackCollectPaymentNotice = useSendBackCollectPaymentFlowNotice(sendBackJob)
-  const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'ready_to_bill' | 'billed' } | null>(null)
+  const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'waiting' | 'ready_to_bill' | 'billed' } | null>(null)
   const [confirmJobStatusJob, setConfirmJobStatusJob] = useState<{ id: string; toStatus: 'billed' | 'paid'; message: string } | null>(null)
   const [stagesHamMode, setStagesHamMode] = useState(() => {
     try {
@@ -1012,7 +1013,7 @@ export default function Jobs() {
   /** RPC + loadJobs; not queued — use via `updateJobStatus` or inside `moveJobToReadyToBillWithStripePrep`’s serialized block only. */
   async function executeUpdateJobStatus(
     jobId: string,
-    toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid',
+    toStatus: 'waiting' | 'working' | 'ready_to_bill' | 'billed' | 'paid',
   ): Promise<boolean> {
     setStagesStatusUpdatingId(jobId)
     setError(null)
@@ -1039,7 +1040,7 @@ export default function Jobs() {
     }
   }
 
-  async function updateJobStatus(jobId: string, toStatus: 'working' | 'ready_to_bill' | 'billed' | 'paid'): Promise<boolean> {
+  async function updateJobStatus(jobId: string, toStatus: 'waiting' | 'working' | 'ready_to_bill' | 'billed' | 'paid'): Promise<boolean> {
     return runJobsStagesSerializedPipeline(() => executeUpdateJobStatus(jobId, toStatus))
   }
 
@@ -5003,7 +5004,7 @@ ${totalsHtml}
             </div>
           )}
           {(() => {
-            const { working, paid, readyToBillRows, billedRows } = stagesBoardLists
+            const { waiting, working, paid, readyToBillRows, billedRows } = stagesBoardLists
 
             /** Shared metrics so Job HCP badge and service-type pill match box height. */
             const stagesJobSublinePillBoxBase: CSSProperties = {
@@ -7127,6 +7128,7 @@ ${totalsHtml}
             }
 
             const workingTotal = working.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
+            const waitingTotal = waiting.reduce((s, j) => s + (Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)), 0)
             const capableToBillTotal = working.reduce((s, j) => {
               const totalBill = Number(j.revenue ?? 0)
               const valueCreated = j.pct_complete != null ? (totalBill * j.pct_complete) / 100 : 0
@@ -7138,6 +7140,24 @@ ${totalsHtml}
             const billedTotal = billedRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
             return (
               <>
+                <div id="stages-waiting" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleStages('waiting')}
+                    aria-expanded={stagesSectionOpen.waiting}
+                    style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                  >
+                    <span aria-hidden>{stagesSectionOpen.waiting ? '▼' : '▶'}</span>
+                    Waiting ({waiting.length}) - ${formatCurrency(waitingTotal)}
+                  </button>
+                </div>
+                {stagesSectionOpen.waiting && renderStagesTable(
+                  waiting,
+                  'Move to Working',
+                  (j) => void updateJobStatus(j.id, 'working'),
+                  true, undefined, undefined, true, undefined, true
+                )}
+
                 <div id="stages-working" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"
@@ -7163,7 +7183,12 @@ ${totalsHtml}
                     stagesHamMode
                       ? void moveJobToReadyToBillWithStripePrep(j.id)
                       : (setReadyForBillingChecked1(false), setReadyForBillingChecked2(false), setReadyForBillingJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—' })),
-                  true, undefined, undefined, true, undefined, true
+                  true,
+                  undefined,
+                  stagesHamMode
+                    ? (j) => void updateJobStatus(j.id, 'waiting')
+                    : (j) => setSendBackConfirmJob({ id: j.id, toStatus: 'waiting' }),
+                  true, undefined, true
                 )}
 
                 <div id="stages-ready-to-bill" style={{ margin: '1.5rem 0 0.5rem' }}>
@@ -9814,7 +9839,11 @@ ${totalsHtml}
           <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-              {sendBackConfirmJob.toStatus === 'ready_to_bill' ? 'This will move the job back to Ready to Bill.' : 'This will move the job back to Billed Awaiting Payment.'}
+              {sendBackConfirmJob.toStatus === 'waiting'
+                ? 'This will move the job back to Waiting.'
+                : sendBackConfirmJob.toStatus === 'ready_to_bill'
+                  ? 'This will move the job back to Ready to Bill.'
+                  : 'This will move the job back to Billed Awaiting Payment.'}
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button

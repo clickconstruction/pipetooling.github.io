@@ -1,8 +1,9 @@
-export const JOBS_LEDGER_STATUS_PIPELINE = ['working', 'ready_to_bill', 'billed', 'paid'] as const
+export const JOBS_LEDGER_STATUS_PIPELINE = ['waiting', 'working', 'ready_to_bill', 'billed', 'paid'] as const
 
 export type JobsLedgerPipelineStatus = (typeof JOBS_LEDGER_STATUS_PIPELINE)[number]
 
 const LABELS: Record<JobsLedgerPipelineStatus, string> = {
+  waiting: 'Waiting',
   working: 'Working',
   ready_to_bill: 'Ready to bill',
   billed: 'Billed',
@@ -24,6 +25,7 @@ export function labelJobsLedgerStatus(key: JobsLedgerPipelineStatus): string {
 
 /** Dashboard (subcontractor cards): Stages board–aligned copy for `jobs_ledger.status`. */
 const DASHBOARD_STATUS_LABELS: Record<JobsLedgerPipelineStatus, string> = {
+  waiting: 'Waiting',
   working: 'Working',
   ready_to_bill: 'Ready to Bill',
   billed: 'Billed Awaiting Payment',

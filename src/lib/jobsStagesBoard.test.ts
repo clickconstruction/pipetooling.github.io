@@ -354,6 +354,22 @@ describe('buildJobsStagesBoardLists', () => {
     const { readyToBillRows } = buildJobsStagesBoardLists([job], '')
     expect(readyToBillRows).toHaveLength(0)
   })
+
+  it('waiting job lands in the waiting list and no other bucket', () => {
+    const job = jobStub({
+      id: 'job-1',
+      status: 'waiting',
+      invoices: [],
+    })
+    const lists = buildJobsStagesBoardLists([job], '')
+    expect(lists.waiting).toEqual([job])
+    expect(lists.working).toHaveLength(0)
+    expect(lists.readyToBillJobs).toHaveLength(0)
+    expect(lists.billedJobs).toHaveLength(0)
+    expect(lists.paid).toHaveLength(0)
+    expect(lists.readyToBillRows).toHaveLength(0)
+    expect(lists.billedRows).toHaveLength(0)
+  })
 })
 
 describe('readyToBillRowsExposureTotal', () => {
