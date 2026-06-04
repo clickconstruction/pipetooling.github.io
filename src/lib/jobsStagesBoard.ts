@@ -300,6 +300,7 @@ export function filterJobsByStagesSearch(
 
 export type JobsStagesBoardLists = {
   filtered: JobWithDetails[]
+  waiting: JobWithDetails[]
   working: JobWithDetails[]
   paid: JobWithDetails[]
   readyToBillJobs: JobWithDetails[]
@@ -321,6 +322,7 @@ export function buildJobsStagesBoardLists(
 ): JobsStagesBoardLists {
   const filtered = filterJobsByStagesSearch(jobs, stagesSearchQuery, extraJobIds)
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
+  const waiting = filtered.filter((j) => status(j) === 'waiting')
   const working = filtered.filter((j) => status(j) === 'working')
   const paid = filtered.filter((j) => status(j) === 'paid')
   const readyToBillJobs = filtered.filter(
@@ -337,6 +339,7 @@ export function buildJobsStagesBoardLists(
   const billedRows = buildBilledStageRows(billedJobs, billedInvoices)
   return {
     filtered,
+    waiting,
     working,
     paid,
     readyToBillJobs,
