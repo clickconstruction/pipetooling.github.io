@@ -23,12 +23,22 @@ export type BankingMercurySearchNicknames = {
   nicknameByDebitCard: Record<string, string>
 }
 
-/** Single lowercased string with searchable fields joined (whitespace-separated). */
+/**
+ * Single lowercased string with searchable fields joined (whitespace-separated).
+ *
+ * `bankDescription` is optional because it lives in the `raw` jsonb, which the
+ * Banking list loads omit; callers that have hydrated it (e.g. the User Review
+ * ledger modal) can pass it in so it becomes searchable.
+ */
 export function buildMercuryTxSearchHaystack(
   row: MercuryTxRow,
   ctx: BankingMercurySearchNicknames,
+  bankDescription?: string | null,
 ): string {
   const parts: string[] = []
+
+  const bankDesc = bankDescription?.trim() ?? ''
+  if (bankDesc !== '') parts.push(bankDesc)
 
   const cp = row.counterparty_name?.trim() ?? ''
   if (cp !== '') parts.push(cp)
