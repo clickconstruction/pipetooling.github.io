@@ -15,6 +15,7 @@ import {
   HoursBreakdownBody,
   NetPerHourBody,
   NetRevenueBody,
+  OverheadBurdenBody,
   OverheadHoursBody,
   OverheadLaborBody,
   OverheadRateBody,
@@ -161,11 +162,15 @@ export function TeamSummaryInline(props: {
 
   const totals = useMemo(() => computeFooterTotals(visibleRows), [visibleRows])
 
+  const overheadPartsRate =
+    overheadDecomp.fieldHours90d > 0
+      ? overheadDecomp.officeParts90d / overheadDecomp.fieldHours90d
+      : null
   const overheadMetaText = overheadRateLoading
-    ? 'Overhead Method A: loading…'
-    : overheadRate == null
-      ? 'Overhead Method A: unavailable'
-      : `Overhead Method A: $${overheadRate.toFixed(2)} per field hour (rolling 90-day rate)`
+    ? 'Overhead (split): loading…'
+    : overheadRate == null || overheadPartsRate == null
+      ? 'Overhead (split): unavailable'
+      : `Overhead (split): own office/bid labor + $${overheadPartsRate.toFixed(2)}/field-hr office parts (90-day)`
   const overheadMetaClickable = !overheadRateLoading && overheadRate != null
 
   const handleHeaderSort = useCallback(
@@ -312,6 +317,12 @@ export function TeamSummaryInline(props: {
         <table className="team-summary-table">
           <thead>
             <tr>
+              <th
+                aria-label="Rank"
+                style={{ textAlign: 'center', verticalAlign: 'middle', color: '#6b7280', width: '1%' }}
+              >
+                #
+              </th>
               <SortableTh sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort}>
                 Name
               </SortableTh>
@@ -319,10 +330,13 @@ export function TeamSummaryInline(props: {
                 Hours
               </SortableTh>
               <SortableTh sortKey="overheadHours" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
-                Overhead<br />hrs
+                Overhead<br />Hours
               </SortableTh>
               <SortableTh sortKey="overheadLaborCost" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
-                Overhead<br />labor
+                Overhead<br />Labor
+              </SortableTh>
+              <SortableTh sortKey="overheadBurden" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
+                Overhead<br />Burden
               </SortableTh>
               <SortableTh sortKey="fieldHours" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
                 Field<br />hrs
@@ -334,7 +348,7 @@ export function TeamSummaryInline(props: {
                 Net<br />Revenue
               </SortableTh>
               <SortableTh sortKey="profitAfterOverhead" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
-                Profit<br />(after overhead)
+                Profit
               </SortableTh>
               <SortableTh sortKey="revPerHour" currentKey={sortKey} currentDir={sortDir} onSort={handleHeaderSort} num>
                 Gross<br />Revenue/hr
@@ -350,15 +364,16 @@ export function TeamSummaryInline(props: {
           <tbody className={visibleRows.length === 0 ? 'empty-state' : undefined}>
             {visibleRows.length === 0 ? (
               <tr>
-                <td colSpan={11}>
+                <td colSpan={13}>
                   No matches
                   {searchQuery.trim() ? ` for \u201C${searchQuery.trim()}\u201D` : ''}.
                 </td>
               </tr>
             ) : (
-              visibleRows.map((r) => (
+              visibleRows.map((r, i) => (
                 <Row
                   key={r.name}
+                  rank={i + 1}
                   r={r}
                   isSelected={selectedPersonName != null && r.name === selectedPersonName}
                   onTogglePerson={onTogglePerson}
@@ -455,12 +470,13 @@ function SortableTh(props: {
 }
 
 function Row(props: {
+  rank: number
   r: TeamSummaryBreakdown
   isSelected: boolean
   onTogglePerson: (personName: string) => void
   onOpenDrilldown: (type: TeamSummaryDrilldownType, triggerEl: HTMLElement) => void
 }) {
-  const { r, isSelected, onTogglePerson, onOpenDrilldown } = props
+  const { rank, r, isSelected, onTogglePerson, onOpenDrilldown } = props
   const hasHours = r.totalHours > 0
   // Salaried people earn 8 hrs/weekday regardless of clock — showing
   // "40.0" in the Hours column reads like a measurement when it's
@@ -477,6 +493,7 @@ function Row(props: {
     : 'Click for breakdown'
   return (
     <tr className={isSelected ? 'selected-person' : undefined}>
+      <td style={{ textAlign: 'center', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{rank}</td>
       <td>
         <NameCell name={r.name} isSelected={isSelected} onToggle={onTogglePerson} />
       </td>
@@ -505,6 +522,18 @@ function Row(props: {
           ariaLabel={`Overhead labor breakdown for ${r.name}: ${fmtMoney(r.overheadLaborCost)}`}
           title="Click for overhead-labor breakdown"
           content={fmtMoney(r.overheadLaborCost)}
+          colored={false}
+          extraStyle={{ color: '#b91c1c' }}
+          onOpen={onOpenDrilldown}
+        />
+      )}
+      {r.overheadBurden == null || r.overheadBurden >= 0 ? <DashTd /> : (
+        <ClickCell
+          type="overhead_burden"
+          idx={r.idx}
+          ariaLabel={`Overhead burden breakdown for ${r.name}: ${fmtMoney(r.overheadBurden)}`}
+          title="Click for overhead-burden breakdown"
+          content={fmtMoney(r.overheadBurden)}
           colored={false}
           extraStyle={{ color: '#b91c1c' }}
           onOpen={onOpenDrilldown}
@@ -679,12 +708,16 @@ function FooterRow(props: {
   const baseNum: CSSProperties = { padding: '0.4rem 0.75rem', textAlign: 'center', fontVariantNumeric: 'tabular-nums' }
   return (
     <tr style={{ fontWeight: 600, background: '#f9fafb' }}>
+      <td />
       <td style={tdStyle}>{label}</td>
       <td style={baseNum}>{fmtH(totals.hours)}</td>
       <td style={baseNum}>{fmtH(totals.overheadHours)}</td>
       <td style={{ ...baseNum, ...(totals.overheadLaborCost < 0 ? { color: '#b91c1c' } : {}) }}>
         {fmtMoney(totals.overheadLaborCost)}
       </td>
+      {totals.overheadBurden == null ? <DashTd /> : (
+        <td style={{ ...baseNum, ...(totals.overheadBurden < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(totals.overheadBurden)}</td>
+      )}
       <td style={baseNum}>{fmtH(totals.fieldHours)}</td>
       <td style={{ ...baseNum, ...(totals.gross < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(totals.gross)}</td>
       <td style={{ ...baseNum, ...(totals.net < 0 ? { color: '#b91c1c' } : {}) }}>{fmtMoney(totals.net)}</td>
@@ -710,6 +743,7 @@ function computeFooterTotals(visibleRows: TeamSummaryBreakdown[]) {
     overheadHours: 0,
     fieldHours: 0,
     overheadLaborCost: 0,
+    overheadBurden: null as number | null,
     gross: 0,
     net: 0,
     profit: null as number | null,
@@ -719,6 +753,9 @@ function computeFooterTotals(visibleRows: TeamSummaryBreakdown[]) {
     totals.overheadHours += r.overheadHours
     totals.fieldHours += r.fieldHours
     totals.overheadLaborCost += r.overheadLaborCost
+    if (r.overheadBurden != null) {
+      totals.overheadBurden = (totals.overheadBurden || 0) + r.overheadBurden
+    }
     totals.gross += r.gross
     totals.net += r.net
     if (r.profitAfterOverhead != null) {
@@ -769,6 +806,8 @@ function drilldownTitleFor(
     }
     case 'field_hours':
       return `Field hours breakdown — ${entry.name} · ${fmtH(entry.fieldHours || 0)} hrs`
+    case 'overhead_burden':
+      return `Overhead burden breakdown — ${entry.name} · ${fmtMoney(entry.overheadBurden ?? 0)}`
     case 'overhead_labor': {
       // Surface the hourly_wage in the title so reviewers don't have
       // to open the modal to see what rate drives the cost column.
@@ -823,18 +862,20 @@ function renderDrilldownBody(
       return <OverheadLaborBody entry={entry} />
     case 'field_hours':
       return <FieldHoursBody entry={entry} overheadRate={overheadRate} />
+    case 'overhead_burden':
+      return <OverheadBurdenBody entry={entry} overheadDecomp={overheadDecomp} />
     case 'gross':
       return <GrossRevenueBody gb={entry.gb} />
     case 'net':
       return <NetRevenueBody nb={entry.nb} />
     case 'profit':
-      return <ProfitBody pb={entry.pb} overheadRate={overheadRate} />
+      return <ProfitBody entry={entry} overheadDecomp={overheadDecomp} />
     case 'rev_per_hr':
       return <GrossPerHourBody entry={entry} />
     case 'net_per_hr':
       return <NetPerHourBody entry={entry} />
     case 'profit_per_hr':
-      return <ProfitPerHourBody entry={entry} overheadRate={overheadRate} />
+      return <ProfitPerHourBody entry={entry} overheadDecomp={overheadDecomp} />
     default:
       return null
   }

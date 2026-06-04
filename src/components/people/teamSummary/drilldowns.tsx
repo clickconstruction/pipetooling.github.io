@@ -17,7 +17,6 @@ import type {
   NetRevenueBreakdown,
   OverheadRateDecomp,
   OverheadSessionLine,
-  ProfitAfterOverheadBreakdown,
   TeamSummaryBreakdown,
 } from './types'
 import type { CSSProperties } from 'react'
@@ -478,11 +477,15 @@ export function NetRevenueBody(props: { nb: NetRevenueBreakdown }) {
 }
 
 export function ProfitBody(props: {
-  pb: ProfitAfterOverheadBreakdown
-  overheadRate: number | null
+  entry: TeamSummaryBreakdown
+  overheadDecomp: OverheadRateDecomp
 }) {
-  const { pb, overheadRate } = props
-  if (overheadRate == null) {
+  const { entry, overheadDecomp } = props
+  const net = entry.pb.totalNet
+  const overheadLabor = entry.overheadLaborCost // negative: own office + bid wages
+  const burden = entry.overheadBurden // negative: share of office parts (null until rate loads)
+  const profit = entry.profitAfterOverhead
+  if (burden == null || profit == null) {
     return (
       <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
         <div style={{ marginBottom: '0.5rem', color: '#b91c1c' }}>
@@ -490,179 +493,81 @@ export function ProfitBody(props: {
           rate finish loading, then reopen Team Summary.
         </div>
         <div style={{ fontSize: '1.05rem' }}>
-          <strong>Net Revenue: {fmtMoney(pb.totalNet)}</strong>
+          <strong>Net Revenue: {fmtMoney(net)}</strong>
         </div>
       </div>
     )
   }
-  const fieldHrs = pb.fieldHours != null ? pb.fieldHours : pb.totalHours
-  const overheadHrs = pb.overheadHours != null ? pb.overheadHours : 0
-  const fieldOverhead = fieldHrs * overheadRate
-  const overheadHoursOverhead = overheadHrs * overheadRate
-  // Charge overhead on every hour the person worked in the period —
-  // office, bid, AND field. Field hours are billed and produce revenue,
-  // overhead hours are not, but both consume the same per-hour overhead
-  // burden under this convention (per the user's request that overhead
-  // hours be "included in deduction").
-  const totalOverhead = fieldOverhead + overheadHoursOverhead
-  const totalProfit = pb.totalNet - totalOverhead
-  const rows = (pb.jobs || [])
-    .map((j) => {
-      const oh = j.hoursInPeriod * overheadRate
-      const profit = j.allocatedNet - oh
-      return {
-        hcp: j.hcp,
-        jobName: j.jobName,
-        allocatedNet: j.allocatedNet,
-        hoursInPeriod: j.hoursInPeriod,
-        overhead: oh,
-        profit,
-        jobId: j.jobId,
-      }
-    })
-    .sort((a, b) => b.profit - a.profit)
+  const partsRate =
+    overheadDecomp.fieldHours90d > 0
+      ? overheadDecomp.officeParts90d / overheadDecomp.fieldHours90d
+      : 0
+  const netRows = (entry.pb.jobs || [])
+    .slice()
+    .sort((a, b) => b.allocatedNet - a.allocatedNet)
   return (
     <>
       <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
         <div style={{ marginBottom: '0.25rem' }}>
-          <strong>Overhead rate (Method A):</strong> ${overheadRate.toFixed(2)} per hour
+          <strong>Net Revenue (before overhead):</strong> {fmtMoney(net)}
         </div>
         <div style={{ marginBottom: '0.25rem' }}>
-          <strong>Net Revenue:</strong> {fmtMoney(pb.totalNet)}
+          <strong>&minus; Overhead labor</strong> (your office + bid wages):{' '}
+          <span style={overheadLabor < 0 ? negStyle : undefined}>{fmtMoney(overheadLabor)}</span>
         </div>
         <div style={{ marginBottom: '0.25rem' }}>
-          <strong>Total hours:</strong> {fmtH(pb.totalHours)} (field {fmtH(fieldHrs)}
-          {overheadHrs > 0.005 ? <> + overhead {fmtH(overheadHrs)}</> : null})
+          <strong>&minus; Overhead burden</strong> (your share of office parts):{' '}
+          <span style={burden < 0 ? negStyle : undefined}>{fmtMoney(burden)}</span>
+          <span style={{ color: '#6b7280' }}>
+            {' '}
+            ({fmtH(entry.fieldHours)} field hrs &times; ${partsRate.toFixed(2)}/hr)
+          </span>
         </div>
-        <div style={{ marginBottom: '0.25rem' }}>
-          <strong>&minus; Overhead deduction:</strong>{' '}
-          {fmtH(pb.totalHours)} &times; ${overheadRate.toFixed(2)} = {fmtMoney(totalOverhead)}
-        </div>
-        {overheadHrs > 0.005 ? (
-          <div style={{ marginBottom: '0.25rem', paddingLeft: '1.5rem', color: '#6b7280' }}>
-            ({fmtMoney(fieldOverhead)} field + {fmtMoney(overheadHoursOverhead)} overhead hours)
-          </div>
-        ) : null}
         <div style={{ fontSize: '1.05rem' }}>
           <strong>
-            Profit (after overhead):{' '}
-            <span style={totalProfit < 0 ? negStyle : undefined}>{fmtMoney(totalProfit)}</span>
+            = Profit (after overhead):{' '}
+            <span style={profit < 0 ? negStyle : undefined}>{fmtMoney(profit)}</span>
           </strong>
         </div>
       </div>
-      {rows.length === 0 && overheadHrs < 0.005 && pb.unaccountedHours < 0.01 ? (
-        <p className="caption">No jobs contributed to net revenue in this period.</p>
-      ) : (
+      {netRows.length > 0 ? (
         <table>
           <thead>
             <tr>
               <th>Job</th>
               <th className="num">Net Rev<br />(allocated)</th>
               <th className="num">Your hours<br />(period)</th>
-              <th className="num">&minus; Overhead<br />(hrs &times; rate)</th>
-              <th className="num">= Profit<br />(after overhead)</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => {
-              const jobName = r.jobName || '—'
-              return (
-                <tr key={r.jobId}>
-                  <td>
-                    {r.hcp ? (
-                      <>
-                        <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
-                          {r.hcp}
-                        </span>{' '}
-                      </>
-                    ) : null}
-                    {jobName}
-                  </td>
-                  <td className="num" style={r.allocatedNet < 0 ? negStyle : undefined}>
-                    {fmtMoney(r.allocatedNet)}
-                  </td>
-                  <td className="num">{fmtH(r.hoursInPeriod)}</td>
-                  {/* Overhead is computed as a positive cost (hrs × rate)
-                      but the column header ("− Overhead (hrs × rate)")
-                      implies it's subtracted from Net Rev to reach
-                      Profit. Render negative so the row reads as literal
-                      "net + (−overhead) = profit" arithmetic — same
-                      convention as Net Revenue's Parts / Total labor and
-                      OverheadLaborBody's Cost column. */}
-                  <td className="num">{fmtMoney(-r.overhead)}</td>
-                  <td className="num" style={r.profit < 0 ? negStyle : undefined}>
-                    {fmtMoney(r.profit)}
-                  </td>
-                </tr>
-              )
-            })}
-            {/* Overhead hours (office + bid) — charged the rate but
-                produce no revenue, so the row contributes purely to
-                the deduction. Rendered as a single combined line so
-                the user can see the total drag without splitting
-                office vs bid further (the per-bucket detail lives in
-                the Overhead hours breakdown modal). */}
-            {overheadHrs > 0.005 ? (
-              <tr style={{ background: '#f9fafb' }}>
+            {netRows.map((j) => (
+              <tr key={j.jobId}>
                 <td>
-                  <em>Overhead hours</em>
+                  {j.hcp ? (
+                    <>
+                      <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{j.hcp}</span>{' '}
+                    </>
+                  ) : null}
+                  {j.jobName || '—'}
                 </td>
-                <td className="num">{fmtMoney(0)}</td>
-                <td className="num">{fmtH(overheadHrs)}</td>
-                <td className="num">{fmtMoney(-overheadHoursOverhead)}</td>
-                <td className="num" style={negStyle}>
-                  {fmtMoney(-overheadHoursOverhead)}
+                <td className="num" style={j.allocatedNet < 0 ? negStyle : undefined}>
+                  {fmtMoney(j.allocatedNet)}
                 </td>
+                <td className="num">{fmtH(j.hoursInPeriod)}</td>
               </tr>
-            ) : null}
-            {pb.unaccountedHours > 0.01 ? (
-              <tr style={{ background: '#fff7ed' }}>
-                <td>
-                  <em>Unallocated hours</em>
-                  <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    Hours worked in the period that were not tied to a job, but still incur overhead.
-                  </div>
-                </td>
-                <td className="num">{fmtMoney(0)}</td>
-                <td className="num">{fmtH(pb.unaccountedHours)}</td>
-                <td className="num">{fmtMoney(-(pb.unaccountedHours * overheadRate))}</td>
-                <td className="num" style={negStyle}>
-                  {fmtMoney(-(pb.unaccountedHours * overheadRate))}
-                </td>
-              </tr>
-            ) : null}
+            ))}
           </tbody>
-          <tfoot>
-            <tr>
-              <td style={{ textAlign: 'right', fontWeight: 600 }}>
-                Total<br />(all hours)
-              </td>
-              <td className="num" style={{ fontWeight: 600 }}>{fmtMoney(pb.totalNet)}</td>
-              <td className="num" style={{ fontWeight: 600 }}>{fmtH(pb.totalHours)}</td>
-              <td className="num" style={{ fontWeight: 600 }}>{fmtMoney(-totalOverhead)}</td>
-              <td
-                className="num"
-                style={totalProfit < 0 ? { ...negStyle, fontWeight: 600 } : { fontWeight: 600 }}
-              >
-                {fmtMoney(totalProfit)}
-              </td>
-            </tr>
-          </tfoot>
         </table>
-      )}
+      ) : null}
       <p className="caption">
-        Per-job overhead = your hours on that job &times; rate. Profit
-        (job) = Allocated Net Rev &minus; Overhead. Job rows sorted by
-        profit. Overhead hours ({fmtH(overheadHrs)}) are charged the
-        same rate as field hours but contribute no revenue, so they
-        appear as a single deduction-only row.
-      </p>
-      <p className="caption">
-        Profit (after overhead) = Net Revenue &minus; (<strong>all hours</strong>{' '}
-        &times; rate). The rate is the rolling 90-day overhead spend
-        per field hour; we apply it to every hour the person worked
-        (field + office + bid) so the deduction reflects this person&rsquo;s
-        full share of the overhead burden.
+        Split overhead model: Profit = Net Revenue &minus;{' '}
+        <strong>your own overhead labor</strong> (office + bid wages) &minus;{' '}
+        <strong>overhead burden</strong> (your field-hour share of office
+        parts). Office and bid labor are charged directly to whoever logged
+        them; only the non-labor pool (office parts) is spread across field
+        hours. The two deductions are disjoint, so the team total reconciles
+        to the overhead pool exactly once. The job rows above show how your
+        Net Revenue was allocated (before overhead).
       </p>
     </>
   )
@@ -901,14 +806,15 @@ export function NetPerHourBody(props: { entry: TeamSummaryBreakdown }) {
 
 export function ProfitPerHourBody(props: {
   entry: TeamSummaryBreakdown
-  overheadRate: number | null
+  overheadDecomp: OverheadRateDecomp
 }) {
-  const { entry, overheadRate } = props
+  const { entry } = props
   const totalHours = entry.pb.totalHours
-  const fieldHrs = entry.pb.fieldHours != null ? entry.pb.fieldHours : totalHours
-  const overheadHrs = entry.pb.overheadHours != null ? entry.pb.overheadHours : 0
   const totalNet = entry.nb.total
-  if (overheadRate == null) {
+  const netPerHr = entry.netPerHour
+  const profit = entry.profitAfterOverhead
+  const profitPerHr = entry.profitPerHourAfterOverhead
+  if (profit == null || profitPerHr == null) {
     return (
       <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
         <div style={{ marginBottom: '0.5rem', color: '#b91c1c' }}>
@@ -924,174 +830,38 @@ export function ProfitPerHourBody(props: {
       </div>
     )
   }
-  // Charge overhead on every hour (field + office + bid) so this stays
-  // consistent with the Profit (after overhead) breakdown modal and the
-  // Team Summary column. See ProfitBody above and
-  // enrichTeamSummaryRowsForInline in formatters.ts.
-  const fieldOverhead = fieldHrs * overheadRate
-  const overheadHoursOverhead = overheadHrs * overheadRate
-  const totalOverhead = fieldOverhead + overheadHoursOverhead
-  const totalProfit = totalNet - totalOverhead
-  const rate = totalHours > 0 ? totalProfit / totalHours : 0
-  const hoursByJob = new Map(entry.pb.jobs.map((j) => [j.jobId, j.hoursInPeriod]))
-  const rows = (entry.nb.jobs || [])
-    .map((j) => {
-      const h = hoursByJob.get(j.jobId) || 0
-      const netPerHr = h > 0 ? j.allocatedNet / h : null
-      const profitPerHr = netPerHr == null ? null : netPerHr - overheadRate
-      return {
-        jobId: j.jobId,
-        hcp: j.hcp,
-        jobName: j.jobName,
-        allocatedNet: j.allocatedNet,
-        hoursInPeriod: h,
-        netPerHr,
-        profitPerHr,
-      }
-    })
-    .sort(
-      (a, b) =>
-        (b.profitPerHr == null ? -Infinity : b.profitPerHr) -
-        (a.profitPerHr == null ? -Infinity : a.profitPerHr),
-    )
+  // Blend this person's own overhead labor + their field-hour share of
+  // office parts (both stored negative) over every hour worked, so this
+  // reconciles with the Profit (after overhead) column and waterfall.
+  const overheadPerHr =
+    totalHours > 0 ? (entry.overheadLaborCost + (entry.overheadBurden ?? 0)) / totalHours : 0
   return (
     <>
       <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
         <div style={{ marginBottom: '0.25rem' }}>
-          <strong>Overhead rate (Method A):</strong> ${overheadRate.toFixed(2)} per hour
+          <strong>Net Revenue/hr (before overhead):</strong> {fmtMoneyPerHr(netPerHr)}
         </div>
         <div style={{ marginBottom: '0.25rem' }}>
-          <strong>Net Revenue:</strong> {fmtMoney(totalNet)}
-        </div>
-        <div style={{ marginBottom: '0.25rem' }}>
-          <strong>Total hours:</strong> {fmtH(totalHours)} (field {fmtH(fieldHrs)}
-          {overheadHrs > 0.005 ? <> + overhead {fmtH(overheadHrs)}</> : null})
-        </div>
-        <div style={{ marginBottom: '0.25rem' }}>
-          <strong>&minus; Overhead deduction:</strong>{' '}
-          {fmtH(totalHours)} &times; ${overheadRate.toFixed(2)} = {fmtMoney(totalOverhead)}
-        </div>
-        {overheadHrs > 0.005 ? (
-          <div style={{ marginBottom: '0.25rem', paddingLeft: '1.5rem', color: '#6b7280' }}>
-            ({fmtMoney(fieldOverhead)} field + {fmtMoney(overheadHoursOverhead)} overhead hours)
-          </div>
-        ) : null}
-        <div style={{ marginBottom: '0.25rem' }}>
-          <strong>Profit (after overhead):</strong>{' '}
-          <span style={totalProfit < 0 ? negStyle : undefined}>{fmtMoney(totalProfit)}</span>
+          <strong>&minus; Overhead/hr:</strong>{' '}
+          <span style={overheadPerHr < 0 ? negStyle : undefined}>{fmtMoneyPerHr(overheadPerHr)}</span>
+          <span style={{ color: '#6b7280' }}>
+            {' '}
+            (own overhead labor + parts burden &divide; {fmtH(totalHours)} hrs)
+          </span>
         </div>
         <div style={{ fontSize: '1.05rem' }}>
           <strong>
-            Profit/hr (after overhead):{' '}
-            <span style={rate < 0 ? negStyle : undefined}>{fmtMoneyPerHr(rate)}</span>
+            = Profit/hr (after overhead):{' '}
+            <span style={profitPerHr < 0 ? negStyle : undefined}>{fmtMoneyPerHr(profitPerHr)}</span>
           </strong>
         </div>
       </div>
-      {rows.length === 0 && overheadHrs < 0.005 && entry.pb.unaccountedHours < 0.01 ? (
-        <p className="caption">No jobs contributed to net revenue in this period.</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th className="num">HCP</th>
-              <th>Job</th>
-              <th className="num">Net Rev/hr<br />(this job)</th>
-              <th className="num">&minus; Overhead<br />rate</th>
-              <th className="num">= Profit/hr<br />(this job)</th>
-              <th className="num">Your hours<br />(period)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.jobId}>
-                <td className="num">{r.hcp}</td>
-                <td>{r.jobName || '—'}</td>
-                <td
-                  className="num"
-                  style={r.netPerHr != null && r.netPerHr < 0 ? negStyle : undefined}
-                >
-                  {r.netPerHr == null ? <DashCell /> : fmtMoneyPerHr(r.netPerHr)}
-                </td>
-                <td className="num">
-                  {r.hoursInPeriod > 0 ? `$${overheadRate.toFixed(2)}/hr` : <DashCell />}
-                </td>
-                <td
-                  className="num"
-                  style={r.profitPerHr != null && r.profitPerHr < 0 ? negStyle : undefined}
-                >
-                  {r.profitPerHr == null ? <DashCell /> : fmtMoneyPerHr(r.profitPerHr)}
-                </td>
-                <td className="num">{fmtH(r.hoursInPeriod)}</td>
-              </tr>
-            ))}
-            {/* Overhead hours (office + bid) — earn no revenue but
-                still incur the per-hour overhead, so they show as
-                a flat −$rate/hr drag. Surfaces the same data the
-                Profit breakdown modal calls out so the two
-                drilldowns reconcile visually. */}
-            {overheadHrs > 0.005 ? (
-              <tr style={{ background: '#f9fafb' }}>
-                <td className="num">&mdash;</td>
-                <td>
-                  <em>Overhead hours</em>
-                  <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    Office + bid time. No revenue, but still charged
-                    the overhead rate now that overhead hours are
-                    included in the deduction.
-                  </div>
-                </td>
-                <td className="num">{fmtMoneyPerHr(0)}</td>
-                <td className="num">${overheadRate.toFixed(2)}/hr</td>
-                <td className="num" style={negStyle}>{fmtMoneyPerHr(-overheadRate)}</td>
-                <td className="num">{fmtH(overheadHrs)}</td>
-              </tr>
-            ) : null}
-            {entry.pb.unaccountedHours > 0.01 ? (
-              <tr style={{ background: '#fff7ed' }}>
-                <td className="num">&mdash;</td>
-                <td>
-                  <em>Unallocated hours</em>
-                  <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
-                    Hours worked in the period that weren&rsquo;t tied to a job &mdash; they earn no net revenue but still incur overhead.
-                  </div>
-                </td>
-                <td className="num">{fmtMoneyPerHr(0)}</td>
-                <td className="num">${overheadRate.toFixed(2)}/hr</td>
-                <td className="num" style={negStyle}>{fmtMoneyPerHr(-overheadRate)}</td>
-                <td className="num">{fmtH(entry.pb.unaccountedHours)}</td>
-              </tr>
-            ) : null}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={4} style={{ textAlign: 'right', fontWeight: 600 }}>Headline rate</td>
-              <td
-                className="num"
-                style={rate < 0 ? { ...negStyle, fontWeight: 600 } : { fontWeight: 600 }}
-              >
-                {fmtMoneyPerHr(rate)}
-              </td>
-              <td className="num" style={{ fontWeight: 600 }}>{fmtH(totalHours)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      )}
       <p className="caption">
-        Per-job: Profit/hr = (Allocated Net &divide; Your hours) &minus;
-        Overhead rate. Headline rate = (Net Revenue &minus; Total overhead)
-        &divide; Total hours, where{' '}
-        <strong>total overhead = All hours &times; rate</strong> (every
-        hour the person worked &mdash; field + office + bid &mdash; is
-        charged the rate). Sorted by per-job profit/hr.
-      </p>
-      <p className="caption">
-        Profit/hr (after overhead) divides your{' '}
-        <strong>Profit (after overhead)</strong> by your{' '}
-        <strong>total hours</strong>. The overhead deduction is{' '}
-        <strong>all hours &times; rate</strong> &mdash; office and bid
-        hours are charged the same per-hour overhead as field hours
-        even though they earn no revenue, which is why those rows show
-        a flat &minus;$&nbsp;rate per hour.
+        Profit/hr (after overhead) = Profit (after overhead) &divide; total
+        hours. Overhead/hr blends this person&rsquo;s own overhead labor
+        (office + bid wages) and their field-hour share of office parts over
+        every hour worked. See the Profit (after overhead) breakdown for the
+        dollar waterfall.
       </p>
     </>
   )
@@ -1260,6 +1030,102 @@ export function OverheadHoursBody(props: { entry: TeamSummaryBreakdown }) {
         Overhead hours are approved clock sessions on the configured Office
         job or on any bid &mdash; the same buckets that feed the rolling
         90-day overhead rate.
+      </p>
+    </>
+  )
+}
+
+export function OverheadBurdenBody(props: {
+  entry: TeamSummaryBreakdown
+  overheadDecomp: OverheadRateDecomp
+}) {
+  const { entry, overheadDecomp } = props
+  const burden = entry.overheadBurden
+  const fieldHrs = entry.fieldHours || 0
+  const officeParts90d = overheadDecomp.officeParts90d || 0
+  const fieldHours90d = overheadDecomp.fieldHours90d || 0
+  const partsRate = fieldHours90d > 0 ? officeParts90d / fieldHours90d : 0
+  if (burden == null) {
+    return (
+      <div style={{ marginBottom: '0.75rem', color: '#b91c1c' }}>
+        Overhead rate is unavailable. Open the Review tab and let the rate
+        finish loading, then reopen Team Summary.
+      </div>
+    )
+  }
+  return (
+    <>
+      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+        <div style={{ fontSize: '1.05rem', textAlign: 'center' }}>
+          <strong>
+            Overhead burden:{' '}
+            <span style={burden < 0 ? negStyle : undefined}>{fmtMoney(burden)}</span>
+          </strong>{' '}
+          ({fmtH(fieldHrs)} field hrs &times; ${partsRate.toFixed(2)}/hr)
+        </div>
+      </div>
+      <h3>How the parts rate is built (rolling 90 days)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Component</th>
+            <th className="num">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Office parts (90 days)</td>
+            <td className="num">{fmtMoney(officeParts90d)}</td>
+          </tr>
+          <tr>
+            <td>&divide; Field hours (90 days)</td>
+            <td className="num">{fmtH(fieldHours90d)}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td style={{ textAlign: 'right', fontWeight: 600 }}>= Parts rate</td>
+            <td className="num" style={{ fontWeight: 600 }}>${partsRate.toFixed(2)}/field hr</td>
+          </tr>
+        </tfoot>
+      </table>
+      <h3>This person&rsquo;s burden</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Step</th>
+            <th className="num">Value</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Field hours (this period)</td>
+            <td className="num">{fmtH(fieldHrs)}</td>
+          </tr>
+          <tr>
+            <td>&times; Parts rate</td>
+            <td className="num">${partsRate.toFixed(2)}/hr</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td style={{ textAlign: 'right', fontWeight: 600 }}>= Overhead burden</td>
+            <td
+              className="num"
+              style={burden < 0 ? { ...negStyle, fontWeight: 600 } : { fontWeight: 600 }}
+            >
+              {fmtMoney(burden)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+      <p className="caption">
+        Overhead burden is this person&rsquo;s field-hour share of the
+        company&rsquo;s <strong>non-labor</strong> overhead (office parts).
+        Office and bid <em>labor</em> is charged separately in the{' '}
+        <strong>Overhead labor</strong> column. Every field hour across the
+        team carries the same parts rate, so the office-parts pool is spread
+        over field work and recovered exactly once.
       </p>
     </>
   )
