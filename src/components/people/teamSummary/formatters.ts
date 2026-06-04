@@ -12,9 +12,12 @@ import type {
   PayConfigSource,
 } from './types'
 
-/** "1.5" — one decimal, no thousands separator. */
+/** "1,248.1" — one decimal, with en-US thousands separators. */
 export function fmtH(n: number): string {
-  return (Math.round(n * 10) / 10).toFixed(1)
+  return (Math.round(n * 10) / 10).toLocaleString('en-US', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })
 }
 
 /** Whole percent, e.g. "75%". */
@@ -67,25 +70,29 @@ export function dayHeaderLabel(dateStr: string): string {
  */
 export function enrichTeamSummaryRowsForInline(
   rows: TeamSummaryRow[],
-  overheadRate: number | null,
+  partsRate: number | null,
   payConfigSourceForName: (name: string) => PayConfigSource,
 ): TeamSummaryBreakdown[] {
   const enriched = rows.map((r) => {
-    // Profit (after overhead) charges overhead on ALL hours the person
-    // worked in the period (field + office + bid), not just field hours.
-    // Matches the Profit (after overhead) breakdown modal so the column
-    // value equals the modal's bottom-line Profit total. The rate is
-    // dollars per field hour but we apply it to every hour because the
-    // user wants to see overhead hours included in the deduction
-    // (the user wants every hour the person worked to be charged the
-    // organization's overhead burden, not just billable field time).
+    // Split overhead model:
+    //  • Overhead labor  — this person's OWN office + bid wages
+    //    (`overheadLaborCost`, already stored negative) — charged directly.
+    //  • Overhead burden — this person's field-hour share of the NON-labor
+    //    overhead pool (office parts) at `partsRate` $/field hour, stored
+    //    negative so it reads as a cost.
+    // Profit (after overhead) = Net − own overhead labor − overhead burden.
+    // Office/bid labor and office parts are disjoint, so summed across the
+    // team the two deductions reconcile to the overhead pool exactly once
+    // (no double-count). `partsRate` is null until the 90-day rate loads.
+    const overheadBurden =
+      partsRate != null ? -(r.fieldHours * partsRate) : null
     const profitAfterOverhead =
-      overheadRate != null ? r.profit - r.totalHours * overheadRate : null
+      overheadBurden != null ? r.profit + r.overheadLaborCost + overheadBurden : null
     const profitPerHourAfterOverhead =
       profitAfterOverhead != null && r.totalHours > 0
         ? profitAfterOverhead / r.totalHours
         : null
-    return { ...r, profitAfterOverhead, profitPerHourAfterOverhead }
+    return { ...r, profitAfterOverhead, profitPerHourAfterOverhead, overheadBurden }
   })
   // Default order: profit desc, name asc on tie. Matches the iframe's
   // pre-render sort (sortedRows) and the table's initial sort key.
@@ -110,6 +117,7 @@ export function enrichTeamSummaryRowsForInline(
     gross: r.gross,
     net: r.profit,
     profitAfterOverhead: r.profitAfterOverhead,
+    overheadBurden: r.overheadBurden,
     revPerHour: r.revPerHour,
     netPerHour: r.profitPerHour,
     profitPerHourAfterOverhead: r.profitPerHourAfterOverhead,

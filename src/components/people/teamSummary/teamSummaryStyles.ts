@@ -88,6 +88,10 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   position: relative;
 }
 .team-summary-table th.num { text-align: center; }
+/* The "Profit" header is a single short word; center it vertically so it
+ * sits in the middle of the header row (which is sized for the two-line
+ * labels around it) rather than bottom-aligned like the rest. */
+.team-summary-table th[data-sort="profitAfterOverhead"] { vertical-align: middle; }
 .team-summary-table th[data-sort] { cursor: pointer; user-select: none; }
 .team-summary-table th[data-sort]:hover { background: #f3f4f6; }
 .team-summary-table th[data-sort]:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }

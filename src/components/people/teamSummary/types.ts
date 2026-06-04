@@ -139,6 +139,11 @@ export type TeamSummaryBreakdown = {
   net: number
   /** Net after overhead deduction; null when overheadRate isn't loaded. */
   profitAfterOverhead: number | null
+  /** Overhead burden — this person's field-hour share of the NON-labor
+   * overhead pool (office parts), as `−(field hours × parts rate)`. Stored
+   * negative (a cost). Office/bid labor is charged separately via
+   * `overheadLaborCost`. Null when the overhead rate isn't loaded. */
+  overheadBurden: number | null
   revPerHour: number
   netPerHour: number
   profitPerHourAfterOverhead: number | null
@@ -170,6 +175,7 @@ export type TeamSummarySortKey =
   | 'overheadHours'
   | 'overheadLaborCost'
   | 'fieldHours'
+  | 'overheadBurden'
   | 'gross'
   | 'net'
   | 'profitAfterOverhead'
@@ -183,6 +189,7 @@ export type TeamSummaryDrilldownType =
   | 'overhead_hours'
   | 'overhead_labor'
   | 'field_hours'
+  | 'overhead_burden'
   | 'gross'
   | 'net'
   | 'profit'

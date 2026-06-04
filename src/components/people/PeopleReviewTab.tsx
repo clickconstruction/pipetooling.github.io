@@ -115,7 +115,7 @@ export default function PeopleReviewTab({
   // clicking a name in it toggles the per-person panel into view (v2.X).
   // Replaces the legacy "← Prev | Person ▾ | Next →" row.
   const [selectedReviewPersonIndex, setSelectedReviewPersonIndex] = useState<number>(-1)
-  const [reviewPeriod, setReviewPeriod] = useState<ReviewPeriod>('last_week')
+  const [reviewPeriod, setReviewPeriod] = useState<ReviewPeriod>('last_30_days')
   // Custom range — only consulted when reviewPeriod === 'custom'. Defaults seed
   // when the user first selects Custom from the dropdown (see UI below).
   const [reviewCustomRangeStart, setReviewCustomRangeStart] = useState<string>('')
@@ -477,16 +477,23 @@ export default function PeopleReviewTab({
   // before encoding it into the iframe `srcDoc`.
   const teamSummaryBreakdowns = useMemo<TeamSummaryBreakdown[]>(() => {
     if (!teamSummaryRows) return []
+    // Split overhead model: the Overhead Burden column + Profit (after
+    // overhead) spread only the NON-labor overhead pool (office parts)
+    // across field hours; office/bid labor is charged per-person via
+    // `overheadLaborCost`. partsRate = office parts (90d) ÷ field hrs (90d).
+    const fh = reviewOverheadRates.fieldHours90d
+    const partsRate =
+      fh != null && fh > 0 ? (reviewOverheadRates.officeParts90d ?? 0) / fh : null
     return enrichTeamSummaryRowsForInline(
       teamSummaryRows,
-      reviewOverheadRates.ratePerHour,
+      partsRate,
       (name) => {
         const cfg = payConfig[name]
         if (!cfg) return 'unknown'
         return cfg.is_salary ? 'salary' : 'hourly'
       },
     )
-  }, [teamSummaryRows, reviewOverheadRates.ratePerHour, payConfig])
+  }, [teamSummaryRows, reviewOverheadRates.fieldHours90d, reviewOverheadRates.officeParts90d, payConfig])
 
   useEffect(() => {
     if (!isDev) return
@@ -3467,11 +3474,15 @@ export default function PeopleReviewTab({
         const reviewTeamSummaryNoun = reviewTeamSummaryRowCount === 1 ? 'person' : 'people'
         const reviewOverheadRate = reviewOverheadRates.ratePerHour
         const reviewOverheadLoading = reviewOverheadRates.loading
+        const reviewPartsRate =
+          reviewOverheadRates.fieldHours90d != null && reviewOverheadRates.fieldHours90d > 0
+            ? (reviewOverheadRates.officeParts90d ?? 0) / reviewOverheadRates.fieldHours90d
+            : null
         const reviewOverheadMetaText = reviewOverheadLoading
-          ? 'Overhead Method A: loading…'
-          : reviewOverheadRate == null
-            ? 'Overhead Method A: unavailable'
-            : `Overhead Method A: $${reviewOverheadRate.toFixed(2)} per field hour (rolling 90-day rate)`
+          ? 'Overhead (split): loading…'
+          : reviewOverheadRate == null || reviewPartsRate == null
+            ? 'Overhead (split): unavailable'
+            : `Overhead (split): own office/bid labor + $${reviewPartsRate.toFixed(2)}/field-hr office parts (90-day)`
         const reviewOverheadMetaClickable = !reviewOverheadLoading && reviewOverheadRate != null
         return (
         <div>
@@ -3658,13 +3669,27 @@ export default function PeopleReviewTab({
                     ? (dayOfWeek >= 1 && dayOfWeek <= 5 ? 8 : 0)
                     : (reviewHours.find((h) => h.work_date === d)?.hours ?? 0)
                 }
-                const totalHours = reviewOnlyPaidInFull
+                // Mirror the Team Summary table's per-person row so this panel
+                // headline matches the table exactly (same allocation engine +
+                // split overhead model). Falls back to the panel's own
+                // allocation only while the table row is still loading.
+                const tsRow = personName
+                  ? teamSummaryBreakdowns.find((b) => b.name === personName)
+                  : undefined
+                const panelHours = reviewOnlyPaidInFull
                   ? [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.hours, 0)
                   : days.reduce((s, d) => s + getHoursForDay(d), 0)
-                const totalRevenue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
-                const totalProfit = reviewAllocatedProfit
-                const revPerHour = totalHours > 0 ? totalRevenue / totalHours : 0
-                const profitPerHour = totalHours > 0 ? totalProfit / totalHours : 0
+                const totalHours = tsRow ? tsRow.totalHours : panelHours
+                const totalRevenue = tsRow
+                  ? tsRow.gross
+                  : [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
+                const totalProfit = tsRow ? tsRow.net : reviewAllocatedProfit
+                const revPerHour = tsRow ? tsRow.revPerHour : (totalHours > 0 ? totalRevenue / totalHours : 0)
+                const profitPerHour = tsRow ? tsRow.netPerHour : (totalHours > 0 ? totalProfit / totalHours : 0)
+                const overheadLaborCost = tsRow ? tsRow.overheadLaborCost : 0
+                const overheadBurden = tsRow ? tsRow.overheadBurden : null
+                const profitAfterOverhead = tsRow ? tsRow.profitAfterOverhead : null
+                const profitPerHourAfterOverhead = tsRow ? tsRow.profitPerHourAfterOverhead : null
                 return (
                   <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: '1rem', display: 'inline-grid', gridTemplateColumns: 'max-content max-content', rowGap: '0.5rem', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
@@ -3698,14 +3723,22 @@ export default function PeopleReviewTab({
                       <strong>{`$${Math.round(totalProfit).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Profit (after overhead, Method A) this period:</span>
+                      <span style={{ color: '#6b7280' }}>&minus; Overhead labor (own office/bid wages):</span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong style={{ color: overheadLaborCost < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(overheadLaborCost).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>&minus; Overhead burden (field-hr share of office parts):</span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong style={{ color: '#b91c1c' }}>{overheadBurden == null ? '—' : `$${Math.round(overheadBurden).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: '#6b7280' }}>Profit (after overhead) this period:</span>
                       <span
-                        title={(() => {
-                          const r = reviewOverheadRates.ratePerHour
-                          if (r == null) return "Profit (after overhead, Method A — per labor hour) = Net Revenue (before overhead) this period − (this user's hours in the period × overhead rate $/hr). 90-day overhead rate is loading or unavailable. Method A assumes overhead scales with TIME in the field; see the per-job Profit section for methods B (per $ revenue) and C (per direct labor $)."
-                          return `Profit (after overhead, Method A — per labor hour) = Net Revenue (before overhead) this period − (this user's hours in the period × overhead rate $/hr). 90-day overhead rate: $${r.toFixed(2)}/hr. Method A assumes overhead scales with TIME in the field; see the per-job Profit section for methods B (per $ revenue) and C (per direct labor $).`
-                        })()}
-                        aria-label="Profit this period after deducting Method A overhead"
+                        title="Profit (after overhead) = Net Revenue (before overhead) − this person's own overhead labor (office + bid wages) − overhead burden (their field-hour share of office parts). Matches the Team Summary table's Profit column for this person."
+                        aria-label="Profit this period after deducting split overhead (own labor + parts burden)"
                         style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
@@ -3715,11 +3748,8 @@ export default function PeopleReviewTab({
                     </div>
                     <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{(() => {
-                        if (reviewOverheadRates.loading) return '…'
-                        const r = reviewOverheadRates.ratePerHour
-                        if (r == null) return '—'
-                        const profit = totalProfit - (totalHours * r)
-                        return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profit).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                        if (profitAfterOverhead == null) return reviewOverheadRates.loading ? '…' : '—'
+                        return <span style={{ color: profitAfterOverhead < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
                       })()}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
@@ -3753,14 +3783,10 @@ export default function PeopleReviewTab({
                       <strong>{totalHours > 0 ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Profit/hr (after overhead, Method A):</span>
+                      <span style={{ color: '#6b7280' }}>Profit/hr (after overhead):</span>
                       <span
-                        title={(() => {
-                          const r = reviewOverheadRates.ratePerHour
-                          if (r == null) return "Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr (before overhead) − overhead rate $/hr. 90-day overhead rate is loading or unavailable. Method A assumes overhead scales with TIME in the field."
-                          return `Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr (before overhead) − overhead rate. 90-day overhead rate: $${r.toFixed(2)}/hr. Method A assumes overhead scales with TIME in the field; see the per-job Profit section for methods B (per $ revenue) and C (per direct labor $).`
-                        })()}
-                        aria-label="Profit per hour after Method A overhead, period average"
+                        title="Profit/hr (after overhead) = Profit (after overhead) ÷ total hours. Matches the Team Summary table's Profit/hr column for this person."
+                        aria-label="Profit per hour after split overhead, period average"
                         style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
@@ -3770,11 +3796,8 @@ export default function PeopleReviewTab({
                     </div>
                     <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{(() => {
-                        if (reviewOverheadRates.loading) return '…'
-                        const r = reviewOverheadRates.ratePerHour
-                        if (r == null || totalHours <= 0) return '—'
-                        const v = profitPerHour - r
-                        return <span style={{ color: v < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                        if (profitPerHourAfterOverhead == null) return reviewOverheadRates.loading ? '…' : '—'
+                        return <span style={{ color: profitPerHourAfterOverhead < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitPerHourAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
                       })()}</strong>
                     </div>
                   </div>
