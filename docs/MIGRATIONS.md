@@ -70,7 +70,9 @@ when_to_read:
 
 ## Overview
 
-This document tracks all database migrations in the PipeTooling project. Migrations are located in `supabase/migrations/` and are applied automatically by Supabase.
+This document tracks all database migrations in the PipeTooling project. Migrations live in `supabase/migrations/`.
+
+> **⚠️ Migrations are NOT applied by CI.** Merging to `main` deploys only the **client** (GitHub Pages) — it never runs `supabase db push`. The database and the client deploy on **separate tracks**: apply migrations manually with `supabase db push` against the linked prod project (`yewfzhbofbbyvkvtaatw`), and **sequence them** with the client when a change is coupled (e.g. a behavior the new client must understand — usually deploy the client first, then apply the migration). If `db push` reports a local/remote history mismatch, see the [migration drift runbook](../AGENTS.md#migration-history-drift-linked-project).
 
 ### Migration Naming Convention
 
@@ -81,10 +83,15 @@ YYYYMMDDHHMMSS_descriptive_name.sql
 Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### Key Principles
-- Migrations are **append-only** (never edit existing migrations)
-- Each migration is **idempotent** when possible
-- Destructive changes require explicit confirmation
-- Schema changes documented in this file
+- **Append-only — never edit _or renumber_ an existing migration.** A version is **immutable once applied to prod**; to change behavior, add a *new* migration. Renumbering an already-applied file is the #1 cause of remote/local history drift here.
+- **One version → one file.** Two files must never share a `YYYYMMDDHHMMSS` prefix — `db push` silently skips one. Create files with `supabase migration new …` (don't hand-invent timestamps). CI enforces both rules via [`scripts/check-migrations.sh`](../scripts/check-migrations.sh).
+- **Apply manually:** `supabase db push` (or MCP `apply_migration` on the generated file). CI does **not** apply migrations.
+- **Prefer idempotent / re-runnable DDL** so a migration survives a re-apply during drift recovery:
+  - `CREATE TABLE/INDEX … IF NOT EXISTS`, `ALTER TABLE … ADD COLUMN IF NOT EXISTS`
+  - `CREATE OR REPLACE FUNCTION/VIEW …`
+  - `DROP POLICY/TRIGGER IF EXISTS … ;` **before** re-creating it (plain `CREATE POLICY/TRIGGER` is not re-runnable)
+- Destructive changes require explicit confirmation.
+- Schema changes documented in this file.
 
 ---
 
