@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-05-25
+last_updated: 2026-06-05
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -129,6 +129,17 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Purpose**: **`jobs_ledger_invoices`** — **`agreed_write_down_note`**, **`agreed_write_down_at`**, **`agreed_write_down_by`** (**`auth.users`**), **`agreed_write_down_previous_amount`**, **`agreed_write_down_stripe_credit_note_id`**. **`apply_agreed_write_down_to_billed_invoice`** (**JWT**, **`billed`** rows **without** **`stripe_invoice_id`**). **`service_apply_agreed_write_down_from_stripe`** (**`service_role`** only; Stripe Edge path after credit note). **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.524**.
 - **Impact**: **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)**, **[`AgreedWriteDownModal.tsx`](../src/components/jobs/AgreedWriteDownModal.tsx)**; **[`stripe-invoice-agreed-write-down`](../supabase/functions/stripe-invoice-agreed-write-down/index.ts)**; **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**. **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Jobs / Billing / Stripe / RPC
+
+### June 2026
+
+#### June 5, 2026
+
+**`20260605225013_make_material_parts_part_type_id_nullable.sql`**
+- **Purpose**: **Materials / Bids → Add Part** — make **part type optional**. `ALTER TABLE public.material_parts ALTER COLUMN part_type_id DROP NOT NULL`. The FK to `part_types` and the `idx_material_parts_part_type_id` index both tolerate `NULL` and are unchanged. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.591**.
+- **Impact**: [`PartFormModal.tsx`](../src/components/PartFormModal.tsx) drops the required-part-type guard (relabel **Part Type (optional)** / **No part type**, send `part_type_id || null`); types regenerated so `material_parts.part_type_id` is `string | null`; null-handling fixes in [`Materials.tsx`](../src/pages/Materials.tsx) + [`Duplicates.tsx`](../src/pages/Duplicates.tsx). Applied to prod via the Supabase MCP. **`npm run gen-types:linked`** after apply.
+- **Category**: Materials / Bids / Schema
+
+> **Repo reconciliation (not new schema):** five migrations that were applied to prod during the 2026-06-05 RLS/Realtime hardening but were missing their `.sql` files on `main` were recovered into `supabase/migrations/` so `supabase db push` is unblocked (local == remote): **`20260605202851_consolidate_rls_hot_tables_permissive_policies.sql`**, **`20260605210913_wrap_noarg_helpers_hot_tables_rls.sql`**, **`20260605212302_harden_helper_search_path.sql`**, **`20260605212913_drop_backup_tables.sql`**, **`20260605222106_drop_mercury_attribution_allocation_realtime.sql`**. No schema change. See the [migration drift runbook](../AGENTS.md#migration-history-drift-linked-project).
 
 ### May 2026
 
