@@ -186,7 +186,7 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   background: #fff;
   border-radius: 8px;
   padding: 1rem 1.5rem 1.5rem;
-  max-width: 90vw;
+  max-width: 95vw;
   max-height: 85vh;
   overflow: auto;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
@@ -294,7 +294,11 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   font-size: 0.9rem;
   line-height: 1.5;
 }
-.team-summary-modal .hours-day-alloc { padding: 0.02rem 0; }
+/* Keep each crew/bid line on a single line so the (shrink-to-fit) modal
+ * widens to fit the longest "(pct) HCP | Job - Address [$value]" line
+ * instead of wrapping it. Lines longer than the modal cap scroll
+ * horizontally rather than wrapping. */
+.team-summary-modal .hours-day-alloc { padding: 0.02rem 0; white-space: nowrap; }
 .team-summary-modal .hours-day-alloc .alloc-pct {
   display: inline-block;
   min-width: 3.4rem;

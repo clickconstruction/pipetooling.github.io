@@ -14,7 +14,7 @@ export type HoursBreakdown = {
   dailyRows: Array<{
     date: string
     hours: number
-    crewAllocations: Array<{ hcp: string; jobName: string; address: string; pct: number; hours: number }>
+    crewAllocations: Array<{ hcp: string; jobName: string; address: string; pct: number; hours: number; valueCreated: number }>
   }>
   subLaborRows: Array<{ hcp: string; date: string; hours: number }>
   totals: {
