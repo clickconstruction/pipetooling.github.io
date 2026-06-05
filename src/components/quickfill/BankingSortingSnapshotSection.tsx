@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
 import { loadBankingSortingConfig } from '../../lib/bankingSortingConfig'
@@ -183,7 +183,6 @@ export function BankingSortingSnapshotSection() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [page, setPage] = useState(0)
-  const mercurySnapshotDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const canAccessBanking = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
@@ -297,35 +296,6 @@ export function BankingSortingSnapshotSection() {
       return
     }
     void loadMercurySnapshot()
-  }, [authUser?.id, canAccessBanking, loadMercurySnapshot])
-
-  useEffect(() => {
-    if (!canAccessBanking || !authUser?.id) return
-
-    const scheduleRefetch = () => {
-      if (mercurySnapshotDebounceRef.current) clearTimeout(mercurySnapshotDebounceRef.current)
-      mercurySnapshotDebounceRef.current = setTimeout(() => {
-        mercurySnapshotDebounceRef.current = null
-        void loadMercurySnapshot({ silent: true })
-      }, 800)
-    }
-
-    const channel = supabase
-      .channel(`quickfill-banking-sorting-snapshot-${authUser.id}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'mercury_transactions' },
-        scheduleRefetch,
-      )
-      .subscribe()
-
-    return () => {
-      if (mercurySnapshotDebounceRef.current) {
-        clearTimeout(mercurySnapshotDebounceRef.current)
-        mercurySnapshotDebounceRef.current = null
-      }
-      void supabase.removeChannel(channel)
-    }
   }, [authUser?.id, canAccessBanking, loadMercurySnapshot])
 
   useEffect(() => {

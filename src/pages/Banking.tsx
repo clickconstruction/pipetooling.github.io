@@ -12,7 +12,6 @@ import {
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { useMercuryOrgNotesByTxId } from '../hooks/useMercuryOrgNotesByTxId'
 import { useToastContext } from '../contexts/ToastContext'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -1682,20 +1681,6 @@ export default function Banking() {
     if (!accountingPrefsHydrated) return
     void Promise.all([loadRowsForActiveView(), loadNicknames(), loadDebitCardNicknames()])
   }, [myRole, accountingPrefsHydrated, loadRowsForActiveView, loadNicknames, loadDebitCardNicknames])
-
-  const bankingMercuryFilters = useMemo(
-    () => [{ event: '*' as const, schema: 'public', table: 'mercury_transactions' }],
-    [],
-  )
-  useRealtimeChannel(
-    !!canAccessBanking && !!user?.id,
-    `banking-mercury-transactions-${user?.id ?? 'none'}`,
-    bankingMercuryFilters,
-    () => {
-      void loadRowsForActiveView({ silent: true })
-    },
-    { debounceMs: 800 },
-  )
 
   useEffect(() => {
     if (!canAccessBanking) return
