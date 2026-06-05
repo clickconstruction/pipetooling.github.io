@@ -92,10 +92,6 @@ export function PartFormModal({
       setError('Part name is required')
       return
     }
-    if (!partPartTypeId) {
-      setError('Part type is required')
-      return
-    }
     setSavingPart(true)
     setError(null)
 
@@ -105,7 +101,7 @@ export function PartFormModal({
         .update({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          part_type_id: partPartTypeId,
+          part_type_id: partPartTypeId || null,
           link: partLink.trim() || null,
           notes: partNotes.trim() || null,
         })
@@ -131,7 +127,7 @@ export function PartFormModal({
         .insert({
           name: partName.trim(),
           manufacturer: partManufacturer.trim() || null,
-          part_type_id: partPartTypeId,
+          part_type_id: partPartTypeId || null,
           link: partLink.trim() || null,
           notes: partNotes.trim() || null,
           service_type_id: selectedServiceTypeId,
@@ -238,13 +234,13 @@ export function PartFormModal({
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type *</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type <span style={{ fontWeight: 400, color: '#6b7280' }}>(optional)</span></label>
             <select
               value={partPartTypeId}
               onChange={(e) => setPartPartTypeId(e.target.value)}
               style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
             >
-              <option value="">Select part type...</option>
+              <option value="">No part type</option>
               {partTypes.map((ft) => (
                 <option key={ft.id} value={ft.id}>
                   {ft.name}

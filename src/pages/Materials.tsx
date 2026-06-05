@@ -1579,7 +1579,7 @@ export default function Materials() {
     setError(null)
   }
 
-  function openEditPart(part: MaterialPart & { part_type_id?: string }) {
+  function openEditPart(part: MaterialPart & { part_type_id?: string | null }) {
     setEditingPart(part)
     setPartFormOpen(true)
     setError(null)

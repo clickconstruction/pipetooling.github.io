@@ -271,7 +271,7 @@ export default function Duplicates() {
                     <tr key={part.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{part.name}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{part.manufacturer ?? '—'}</td>
-                      <td style={{ padding: '0.5rem 0.75rem' }}>{partTypeMap[part.part_type_id]?.name ?? '—'}</td>
+                      <td style={{ padding: '0.5rem 0.75rem' }}>{(part.part_type_id ? partTypeMap[part.part_type_id]?.name : null) ?? '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{serviceTypeMap[part.service_type_id]?.name ?? '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{best ? `$${formatCurrency(best.price)}` : '—'}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{best?.supplyHouseName ?? '—'}</td>
