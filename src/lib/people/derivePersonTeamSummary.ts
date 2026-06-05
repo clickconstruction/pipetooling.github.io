@@ -226,7 +226,7 @@ export function derivePersonTeamSummary(
   // the Hours-breakdown drilldown (otherwise the day shows "No crew
   // assignment"). Revenue / profit math uses `crewJobsWithLeadFiltered`,
   // which still excludes Office and bids on purpose.
-  const crewByDateForPerson = new Map<string, Array<{ hcp: string; jobName: string; address: string; pct: number; hours: number }>>()
+  const crewByDateForPerson = new Map<string, Array<{ hcp: string; jobName: string; address: string; pct: number; hours: number; valueCreated: number }>>()
   const dayHoursForPerson = (workDate: string) => {
     const dayOfWeek = new Date(workDate + 'T12:00:00').getDay()
     return cfg?.is_salary
@@ -243,8 +243,20 @@ export function derivePersonTeamSummary(
       const address = (j?.job_address ?? '').trim()
       // Convention 1 -- pct is share of the total day; hours = day * pct/100.
       const hours = dayHoursRaw * (a.pct / 100)
+      // Value Created this day for this person: their cost-share of the job's
+      // Value Created, using the same `cost / total lifetime labor` ratio as
+      // the Gross Revenue column, so the per-day values for a job sum to that
+      // person's Gross for the job. pct_complete null is treated as 100% here
+      // too (via allocationJobsMap). Office/bids aren't in allocationJobsMap
+      // (no field revenue) -> $0.
+      const dayAlloc = allocationJobsMap.get(a.job_id)
+      const dayCost = hours * (cfg?.hourly_wage ?? 0)
+      const valueCreated =
+        dayAlloc && dayAlloc.totalLaborOnJob > 0
+          ? dayAlloc.valueCreated * (dayCost / dayAlloc.totalLaborOnJob)
+          : 0
       const list = crewByDateForPerson.get(r.work_date) ?? []
-      list.push({ hcp, jobName, address, pct: a.pct, hours })
+      list.push({ hcp, jobName, address, pct: a.pct, hours, valueCreated })
       crewByDateForPerson.set(r.work_date, list)
     }
   }
@@ -264,8 +276,9 @@ export function derivePersonTeamSummary(
       const jobName = (meta?.project_name ?? '').trim()
       const address = (meta?.address ?? '').trim()
       const hours = dayHoursRaw * (a.pct / 100)
+      // Bids create no field revenue, so no Value Created.
       const list = crewByDateForPerson.get(r.work_date) ?? []
-      list.push({ hcp, jobName, address, pct: a.pct, hours })
+      list.push({ hcp, jobName, address, pct: a.pct, hours, valueCreated: 0 })
       crewByDateForPerson.set(r.work_date, list)
     }
   }

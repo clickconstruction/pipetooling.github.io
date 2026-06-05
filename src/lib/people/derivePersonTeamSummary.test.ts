@@ -159,4 +159,32 @@ describe('derivePersonTeamSummary', () => {
     expect(allJobs.hoursBreakdown.subLaborRows.map((r) => r.hcp).sort()).toEqual(['PAID', 'UNPAID'])
     expect(allJobs.hoursBreakdown.totals.subLabor).toBe(10)
   })
+
+  it('crew allocations carry per-day Value Created (cost-share, null pct → 100%), reconciling with Gross', () => {
+    const union = makeUnion({
+      periodCrewRows: [
+        { work_date: '2026-04-01', person_name: 'Dan', job_assignments: [{ job_id: 'job-C', pct: 100 }] },
+      ],
+      crewByDatePerson: {
+        '2026-04-01:Dan': { job_assignments: [{ job_id: 'job-C', pct: 100 }] },
+      },
+      hoursMap: { 'Dan:2026-04-01': 8 },
+      jobsById: new Map([
+        // pct_complete null -> treated as 100% (matches the Gross column).
+        ['job-C', makeLedgerRow({ id: 'job-C', hcp_number: 'JC', job_name: 'Job C', revenue: 1000, pct_complete: null })],
+      ]),
+      // Total lifetime labor on the job = $800. Dan's day cost = 8h × $50 = $400 (half).
+      teamLaborCostByJobId: new Map([['job-C', 800]]),
+    })
+
+    const row = derivePersonTeamSummary(union, 'Dan', hourlyPayConfig('Dan', 50), false, ['2026-04-01'])
+
+    const alloc = row.hoursBreakdown.dailyRows[0]?.crewAllocations[0]
+    expect(alloc).toBeDefined()
+    if (!alloc) throw new Error('expected one crew allocation')
+    // valueCreated (1000, null→100%) × (dayCost 400 / totalLabor 800) = 500
+    expect(alloc.valueCreated).toBeCloseTo(500, 6)
+    // Per-day Value Created reconciles with the Gross Revenue column.
+    expect(row.gross).toBeCloseTo(500, 6)
+  })
 })

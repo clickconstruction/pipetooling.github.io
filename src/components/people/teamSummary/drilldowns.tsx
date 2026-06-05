@@ -107,6 +107,16 @@ function HoursDaySection(props: {
             const compactAddr = compactAddressForHoursDisplay(a.address)
             return (
               <div className="hours-day-alloc" key={`${a.hcp}-${i}`}>
+                {Math.round(a.valueCreated) > 0 ? (
+                  <>
+                    <span
+                      style={{ color: '#15803d', fontVariantNumeric: 'tabular-nums' }}
+                      title="Value created this day — this person's cost-share of the job's Value Created (same basis as the Gross Revenue column; pct_complete null counts as 100%)."
+                    >
+                      {`[${fmtMoney(a.valueCreated)}]`}
+                    </span>{' '}
+                  </>
+                ) : null}
                 <span className="alloc-pct">{`(${fmtPct1(a.pct)})`}</span>{' '}
                 <span className="alloc-jobnum">{a.hcp}</span>
                 {' | '}
@@ -159,6 +169,14 @@ export function HoursBreakdownBody(props: {
 
   return (
     <>
+      {sortedDailyRows.some((d) => d.crewAllocations.length > 0) ? (
+        <p className="caption" style={{ marginTop: 0 }}>
+          <span style={{ color: '#15803d' }}>[$ value created]</span> (share of day) HCP | Job &mdash; Address
+          <br />
+          <span style={{ color: '#15803d' }}>[$ value]</span> is this person&rsquo;s value labor share of the
+          job&rsquo;s Value that day
+        </p>
+      ) : null}
       {hb.onlyPaidJobs ? (
         <>
           {sortedDailyRows.some((d) => d.crewAllocations.length > 0) ? (
