@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
-import { useRealtimeChannel } from './useRealtimeChannel'
 import type { UserReviewRpcRow } from '../lib/buildUserJobLabelBreakdown'
 
 export type UseUserMercuryWindowArgs = {
@@ -77,39 +76,6 @@ export function useUserMercuryWindow({
   useEffect(() => {
     void load()
   }, [load])
-
-  // Realtime: refresh when this user's attribution rows change (server-side filter), or when
-  // any job allocation row changes (table-level — narrower filter would need txId list, not
-  // worth the join). Both tables are dev/master/assistant-only via RLS so non-banking sockets
-  // receive nothing.
-  const realtimeFilters = useMemo(
-    () =>
-      userId
-        ? [
-            {
-              event: '*' as const,
-              schema: 'public',
-              table: 'mercury_transaction_attributions',
-              filter: `user_id=eq.${userId}`,
-            },
-            {
-              event: '*' as const,
-              schema: 'public',
-              table: 'mercury_transaction_job_allocations',
-            },
-          ]
-        : [],
-    [userId],
-  )
-  useRealtimeChannel(
-    !!userId && !!startYmd && !!endYmd,
-    `user-review-mercury-${userId ?? 'none'}`,
-    realtimeFilters,
-    () => {
-      void load()
-    },
-    { debounceMs: 500 },
-  )
 
   return { rows, loading, error, reload: load }
 }
