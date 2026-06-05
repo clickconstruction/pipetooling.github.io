@@ -353,6 +353,9 @@ export function BidsTakeoffTab({
   const [editTemplateNewPriceValue, setEditTemplateNewPriceValue] = useState('')
   const [editTemplatePriceSaving, setEditTemplatePriceSaving] = useState(false)
   const [editTemplatePriceEditing, setEditTemplatePriceEditing] = useState<Record<string, string>>({})
+  // Editable assembly name (material_templates.name) draft + in-flight save flag.
+  const [editTemplateNameDraft, setEditTemplateNameDraft] = useState('')
+  const [editTemplateNameSaving, setEditTemplateNameSaving] = useState(false)
 
   const [costEstimatePOModalPoId, setCostEstimatePOModalPoId] = useState<string | null>(null)
   const [costEstimatePOModalData, setCostEstimatePOModalData] = useState<{ name: string; items: Array<{ part_name: string; quantity: number; price_at_time: number; template_name: string | null }> } | 'loading' | null>(null)
@@ -653,6 +656,7 @@ export function BidsTakeoffTab({
   async function openEditTemplateModal(templateId: string, templateName: string) {
     setEditTemplateModalId(templateId)
     setEditTemplateModalName(templateName)
+    setEditTemplateNameDraft(templateName)
     setEditTemplateNewItemType('part')
     setEditTemplateNewItemPartId('')
     setEditTemplateNewItemTemplateId('')
@@ -673,6 +677,7 @@ export function BidsTakeoffTab({
     setEditTemplateModalOpen(false)
     setEditTemplateModalId(null)
     setEditTemplateModalName(null)
+    setEditTemplateNameDraft('')
     setEditTemplateItems([])
     setEditTemplateNewItemPartId('')
     setEditTemplateNewItemTemplateId('')
@@ -683,6 +688,28 @@ export function BidsTakeoffTab({
     setEditTemplateNewPriceSupplyHouseId('')
     setEditTemplateNewPriceValue('')
     setEditTemplatePriceEditing({})
+  }
+
+  async function saveEditTemplateName() {
+    if (!editTemplateModalId) return
+    const newName = editTemplateNameDraft.trim()
+    if (!newName || newName === editTemplateModalName) return
+    setEditTemplateNameSaving(true)
+    setError(null)
+    const { error: updErr } = await supabase
+      .from('material_templates')
+      .update({ name: newName })
+      .eq('id', editTemplateModalId)
+    if (updErr) {
+      setError(`Failed to rename assembly: ${updErr.message}`)
+      setEditTemplateNameSaving(false)
+      return
+    }
+    setEditTemplateModalName(newName)
+    // Refresh the templates list so the takeoff rows, pickers, and nested-item
+    // lookups all reflect the new name.
+    await loadMaterialTemplates()
+    setEditTemplateNameSaving(false)
   }
 
   async function loadEditTemplatePrices(templateId: string) {
@@ -4402,9 +4429,31 @@ export function BidsTakeoffTab({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Edit Assembly: {editTemplateModalName}</h3>
-              <button type="button" onClick={closeEditTemplateModal} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Edit Assembly</label>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={editTemplateNameDraft}
+                    onChange={(e) => setEditTemplateNameDraft(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditTemplateName() } }}
+                    placeholder="Assembly name"
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '1rem', fontWeight: 600 }}
+                  />
+                  {editTemplateNameDraft.trim() && editTemplateNameDraft.trim() !== editTemplateModalName && (
+                    <button
+                      type="button"
+                      onClick={saveEditTemplateName}
+                      disabled={editTemplateNameSaving}
+                      style={{ padding: '0.5rem 0.85rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: editTemplateNameSaving ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 500, opacity: editTemplateNameSaving ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                    >
+                      {editTemplateNameSaving ? 'Saving…' : 'Save name'}
+                    </button>
+                  )}
+                </div>
+              </div>
+              <button type="button" onClick={closeEditTemplateModal} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280', lineHeight: 1 }}>×</button>
             </div>
 
             {error && (
