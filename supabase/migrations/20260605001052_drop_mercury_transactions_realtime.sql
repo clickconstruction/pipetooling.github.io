@@ -1,0 +1,12 @@
+-- Drop mercury_transactions from Supabase Realtime.
+--
+-- It was the dominant cost in Realtime's WAL-parsing query (~85% of write volume
+-- across the supabase_realtime publication), driven by the sync-mercury-transactions
+-- cron rewriting rows every 30 min — while providing little value (the data only
+-- changes every 30 min). The Banking + Quickfill UIs now load on mount instead of
+-- holding a live subscription.
+--
+-- The squash baseline (20250101000000) still ADDs this table to the publication;
+-- this forward migration removes it, so a fresh `db reset` ends in the correct state
+-- (add -> drop). Do not edit the baseline (append-only).
+ALTER PUBLICATION supabase_realtime DROP TABLE public.mercury_transactions;
