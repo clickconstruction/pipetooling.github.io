@@ -1112,7 +1112,8 @@ uuid3           | Supply House C    | 0
   - `id` (uuid, PK)
   - `name` (text, required)
   - `manufacturer` (text, nullable)
-  - `fixture_type` (text, nullable) - Predefined options (Fitting, Pipe, Drain, Sink, etc.)
+  - `part_type_id` (uuid, FK → `part_types.id`, **nullable** as of v2.591) - Optional part category; a part may have no type
+  - `link` (text, nullable) - Product/vendor URL
   - `notes` (text, nullable) - Can include SKU numbers
   - `service_type_id` (uuid, FK → `service_types.id`, required) - Trade category
   - `created_at`, `updated_at` (timestamptz)

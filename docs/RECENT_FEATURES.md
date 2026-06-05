@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-02 (v2.590)
+last_updated: 2026-06-05 (v2.591)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.591 — **Bids / Materials / People** — three small features + migration-history reconciliation. **Bids → Takeoffs → Edit Assembly**: the assembly name (shown only in **By Stage** mode) is now an editable input with a contextual **Save name** button (Enter saves) that writes `material_templates.name` and calls `loadMaterialTemplates()` so the rename propagates to takeoff rows / assembly picker / nested-item lookups. **Materials / Bids → Add Part**: **part type is now optional** — migration `20260605225013` drops `NOT NULL` on `material_parts.part_type_id`, types → `string | null`, modal relabeled **Part Type (optional)** / **No part type**, inserts send `part_type_id || null`. **People → Review → Team Summary**: the Hours drilldown shows a per-day green `[$value]` **Value Created** per allocation (cost-share of the job's Value Created, reconciles with Gross). Plus five prod-applied RLS/Realtime migrations recovered into the repo so `db push` is unblocked](#latest-updates-v2591)
 **New:** [v2.584 — **Bids → Takeoffs → Exact** — **Assembly picker dropdown portaled to `document.body`**. The per-row Assembly search dropdown used to be an absolutely-positioned `<ul>` inside a `<div style={{ overflow: 'hidden' }}>` table wrapper (rounded-border clip), so opening the picker on a row near the bottom of the table cut the dropdown off at the table edge. Fixed via `ReactDOM.createPortal` to `document.body`, modeled after the existing rough-quantity numpad portal already in the same file. New top-level `takeoffTemplatePickerInputRefs: Map<mapping.id, HTMLInputElement>` + `takeoffTemplatePickerAnchor` state + `useEffect` that reads `getBoundingClientRect()` and re-anchors on `resize` and `scroll` (capture phase, so any scrolling ancestor fires it). The assembly `<input>` gains a callback ref; the inline `<ul>` (53 lines) is replaced by a single `createPortal(<ul style={{ position: 'fixed', top, left, width, zIndex: 1200 }}>, document.body)` rendered next to the existing rough numpad portal. `onMouseDown={(e) => e.preventDefault()}` on `<ul>` / `<li>` / fallback button prevents the input from blurring mid-scroll. No DB / migration / RPC / type-gen changes](#latest-updates-v2584)
 **New:** [v2.583 — **Materials → Supply Houses** — **Show last payment** toggle. New per-user checkbox stacked directly below the existing **Show paid invoices** toggle; when on, reveals a new **Last Paid** column on the summary table between **Updated** and the actions column showing `MAX(paid_at)` per supply house as a relative phrase ("5 days ago") via `longTimeAgoPhrase` — matches the adjacent **Updated** column verbatim, full ISO timestamp in the hover `title` tooltip. Defaults off; component-local state (not persisted). `loadSupplyHouseSummary` extends its existing `supply_house_invoices` projection to include `paid_at` and folds `lastInvoicePaidAt: MAX(paid_at) per house` into `SupplyHouseSummaryRow`; toggling does not refetch. Expanded-detail row `colSpan` flexes 5 → 6 when on. Houses with zero paid invoices show `—`. No DB / migration / RPC / type-gen changes — the `paid_at` column + auto-stamp trigger landed in v2.582](#latest-updates-v2583)
 **New:** [v2.582 — **Materials → Supply Houses** — **invoice paid-at timestamp**. New `paid_at TIMESTAMPTZ` column on **`supply_house_invoices`** with a `BEFORE INSERT OR UPDATE` trigger (**`sync_supply_house_invoice_paid_at`**) that auto-stamps `paid_at = NOW()` when `is_paid` flips false→true and clears it on true→false. Single source of truth at the DB level — none of the three UI write paths in [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (the per-row Paid checkbox, the bulk Apply Payment flow, and the edit-invoice form) need app-side stamping; editing amount/link without flipping `is_paid` deliberately leaves `paid_at` untouched. Legacy paid rows backfilled best-effort to `COALESCE(updated_at, created_at, NOW())` (149 rows). New index `idx_supply_house_invoices_paid_at`. UI shows a new **Paid On** column in the per–supply-house Invoices table (full ISO timestamp in `title` tooltip), and the **Apply Payment** modal's per-invoice line now reads `Paid {MM/DD/YYYY}` when paid. Types regenerated via `npm run gen-types:linked`. Trigger verified end-to-end via a transactional `DO` block (insert unpaid → NULL; flip paid → stamped; amount-only update → unchanged; flip unpaid → cleared; insert already-paid → auto-stamped)](#latest-updates-v2582)
@@ -1966,6 +1967,44 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.591)
+
+**Date**: 2026-06-05
+
+Three small, independent estimating/people features plus a migration-history reconciliation (one combined release).
+
+### Bids → Takeoffs → Edit Assembly — editable assembly name
+
+The **Edit Assembly** modal (Bids → Takeoffs → assembly bundle → pencil; the pencil only shows in **By Stage** / exact materials mode) previously rendered the assembly name as read-only text (`Edit Assembly: {name}`). It's now an editable input with a contextual **Save name** button that appears only when the name differs from the saved value (Enter also saves). Saving writes `material_templates.name` via `supabase.from('material_templates').update({ name })` and then calls the injected `loadMaterialTemplates()` so the rename propagates to the takeoff rows, the assembly picker, and nested-assembly item lookups. New state `editTemplateNameDraft` + `editTemplateNameSaving` in [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx). No DB / migration / type changes.
+
+### Materials / Bids → Add Part — part type is now optional
+
+Part type was mandatory in the Add/Edit Part modal ([`PartFormModal.tsx`](../src/components/PartFormModal.tsx)), reachable from **Materials → Parts Book** and from **Bids → Takeoffs → Add Part**. It's now optional across all three layers:
+- **DB**: migration **`20260605225013_make_material_parts_part_type_id_nullable.sql`** drops `NOT NULL` on `material_parts.part_type_id` (the FK to `part_types` and its index both tolerate `NULL` and are left unchanged).
+- **Types**: `material_parts.part_type_id` is now `string | null` in [`database.ts`](../src/types/database.ts).
+- **UI**: removed the `Part type is required` guard, relabeled the field to **Part Type (optional)**, defaulted the select to **No part type**, and the insert/update now send `part_type_id || null`.
+
+Downstream spots surfaced by the now-nullable column were fixed: `openEditPart`'s param in [`Materials.tsx`](../src/pages/Materials.tsx) was widened to `part_type_id?: string | null`, and the `partTypeMap[...]` lookup in [`Duplicates.tsx`](../src/pages/Duplicates.tsx) is now null-guarded. Existing display code already rendered `—` for a missing type; the Materials catalog only hides a no-type part when filtered to a specific part type (expected).
+
+### People → Review → Team Summary — per-day Value Created in the Hours drilldown
+
+Each crew allocation in the **Hours breakdown** drilldown now carries a per-day **Value Created** figure, rendered as a green `[$value]` prefix on each `(pct) HCP | Job — Address` line (with a legend caption). It's the person's cost-share — `dayCost / totalLaborOnJob` (the same `cost / lifetime labor` ratio as the **Gross Revenue** column) — of the job's Value Created, so per-day values reconcile with that person's Gross for the job; `pct_complete` null counts as 100%, and Office/bids (no field revenue) contribute $0. `crewAllocations` gained a `valueCreated: number` field ([`types.ts`](../src/components/people/teamSummary/types.ts)); the math lives in [`derivePersonTeamSummary.ts`](../src/lib/people/derivePersonTeamSummary.ts) and is covered by a reconciliation unit test. The modal also widened (90vw → 95vw) and keeps each alloc line on one line (`white-space: nowrap`).
+
+### Database / migration history
+
+- **`material_parts.part_type_id` made nullable** — migration `20260605225013` (applied to prod via the Supabase MCP).
+- **Migration-history reconciliation** — five migrations that were applied to prod during the 2026-06-05 RLS/Realtime hardening but whose `.sql` files had never landed on `main` were recovered into `supabase/migrations/`: `20260605202851` (consolidate RLS), `20260605210913` (wrap no-arg helpers), `20260605212302` (harden helper search_path), `20260605212913` (drop backup tables), `20260605222106` (drop mercury attribution/allocation realtime). `supabase migration list` now shows local == remote for all versions and `db push --dry-run` reports the remote is up to date — no schema change, repo reconciliation only. See [`MIGRATIONS.md`](./MIGRATIONS.md) and the [migration drift runbook](../AGENTS.md#migration-history-drift-linked-project).
+
+#### Verification
+
+`tsc -b` clean; `npm run lint` clean (pre-existing warnings only); full `vitest run` green (**1543 tests**, incl. the new Team Summary reconciliation test); `npm run build` clean. The `part_type_id` migration was verified on prod (`is_nullable = YES`; a `NULL` insert succeeds). The browser was driven to the Add Part modal (**Part Type (optional)** / **No part type**) and the editable assembly-name field.
+
+#### Files
+
+Modified: [`BidsTakeoffTab.tsx`](../src/components/bids/BidsTakeoffTab.tsx), [`PartFormModal.tsx`](../src/components/PartFormModal.tsx), [`Materials.tsx`](../src/pages/Materials.tsx), [`Duplicates.tsx`](../src/pages/Duplicates.tsx), [`database.ts`](../src/types/database.ts), [`teamSummary/types.ts`](../src/components/people/teamSummary/types.ts), [`teamSummary/drilldowns.tsx`](../src/components/people/teamSummary/drilldowns.tsx), [`teamSummary/teamSummaryStyles.ts`](../src/components/people/teamSummary/teamSummaryStyles.ts), [`derivePersonTeamSummary.ts`](../src/lib/people/derivePersonTeamSummary.ts) (+ test). New: `supabase/migrations/20260605225013_make_material_parts_part_type_id_nullable.sql` (plus the five recovered migration files above). PRs #90, #91.
+
 ---
 
 ## Latest Updates (v2.590)
