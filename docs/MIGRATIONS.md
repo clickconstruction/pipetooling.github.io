@@ -130,6 +130,37 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)**, **[`AgreedWriteDownModal.tsx`](../src/components/jobs/AgreedWriteDownModal.tsx)**; **[`stripe-invoice-agreed-write-down`](../supabase/functions/stripe-invoice-agreed-write-down/index.ts)**; **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**. **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Jobs / Billing / Stripe / RPC
 
+### June 2026
+
+#### June 5, 2026
+
+> Connection-pool-exhaustion remediation batch (continues the v2.590 `auth_rls_initplan` / FK-index work). PRs **#86** (RLS + hardening + drop backups), **#87** (type sync), **#88** (Realtime drop).
+
+**`20260605202851_consolidate_rls_hot_tables_permissive_policies.sql`**
+- **Purpose**: **Perf / RLS** — consolidate duplicate **PERMISSIVE** policies into **one policy per command** on the 5 hot Realtime tables (**`clock_sessions`**, **`people_crew_bids`**, **`people_crew_jobs`**, **`people_hours`**, **`reports`**), folding the `FOR ALL` policies into each command. Each new `USING` / `WITH CHECK` is the verbatim **OR** of the originals, so access is unchanged; clears ~108 `multiple_permissive_policies` advisor combos (**508 → 400**; 0 on these 5). Cuts per-row / per-CDC-change RLS cost on the hot path behind the 2026-06-05 incident.
+- **Impact**: RLS only — no app/type changes. Rollback: **`supabase/archive/rollback_20260605202851_hot_table_policies.sql`**. Verified by `IS DISTINCT FROM` equivalence probe across all role contexts on real data (**0 mismatches**) + transactional rehearsal.
+- **Category**: Perf / RLS
+
+**`20260605210913_wrap_noarg_helpers_hot_tables_rls.sql`**
+- **Purpose**: **Perf / RLS** — wrap no-arg `STABLE SECURITY DEFINER` helper calls (`is_dev()`, `is_pay_approved_master()`, `is_assistant_of_pay_approved_master()`, `is_assistant()`, `is_estimator()`, `is_cost_matrix_shared_with_current_user()`, `auth_uid_is_helpers_or_subcontractor()`, `report_sub_visibility_months()`, `report_edit_window_days()`) in `(select fn())` on the 5 hot tables so each evaluates once per query (InitPlan) instead of per row. Row-arg helpers (`is_team_lead_for_person_name`, `is_team_lead_for_member`, `can_access_project_row`) left unwrapped.
+- **Impact**: No app/type changes. Semantics-identical — proven by unwrap-and-diff against `20260605202851`.
+- **Category**: Perf / RLS
+
+**`20260605212302_harden_helper_search_path.sql`**
+- **Purpose**: **Security** — `ALTER FUNCTION … SET search_path = public` on 4 `SECURITY DEFINER` helpers that lacked it (`is_dev`, `is_pay_approved_master`, `is_assistant_of_pay_approved_master`, `is_cost_matrix_shared_with_current_user`); clears `function_search_path_mutable` for them (matches sibling helpers). Body-preserving `ALTER`. ~40 other functions remain flagged (separate sweep).
+- **Impact**: No app/type changes.
+- **Category**: Security / functions
+
+**`20260605212913_drop_backup_tables.sql`**
+- **Purpose**: **Security / cleanup** — `DROP TABLE` the 3 unused squash/freeze backup tables (**`_schema_migrations_backup_squash`**, **`_freeze_crew_lead_jobs_backup`**, **`_freeze_crew_lead_bids_backup`**); resolves 3 `rls_disabled_in_public` ERRORs + a public-schema exposure. No FKs, no app queries (only generated-type entries). Structure stays recoverable from the baseline + git.
+- **Impact**: Regenerate **`src/types/database.ts`** (`npm run gen-types:linked`, see **PR #87**). Closes the crew-lead-inheritance backups noted in **`GLOSSARY.md`** / **`RECENT_FEATURES.md`**.
+- **Category**: Security / cleanup
+
+**`20260605222106_drop_mercury_attribution_allocation_realtime.sql`**
+- **Purpose**: **Perf / Realtime** — drop **`mercury_transaction_job_allocations`** + **`mercury_transaction_attributions`** from the **`supabase_realtime`** publication (**12 → 10** tables). Continues the **`20260605001052`** (`mercury_transactions`) drop. Both are churned by the Mercury sync + field tally/allocation flows; the only live consumer (**`useUserMercuryWindow`**, User Review modal) already loads on mount and refetches after the user's own edits.
+- **Impact**: [`useUserMercuryWindow.ts`](../src/hooks/useUserMercuryWindow.ts) drops its now-dead `useRealtimeChannel` block. Only UX change: the open User Review modal no longer auto-refreshes on background changes. Guarded (re-runnable).
+- **Category**: Perf / Realtime
+
 ### May 2026
 
 #### May 25, 2026

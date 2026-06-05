@@ -1968,6 +1968,36 @@ when_to_read:
 155. [Customer and Project Management](#customer-and-project-management)
 ---
 
+## Latest Updates (v2.591)
+
+**Date**: 2026-06-05
+
+Connection-pool-exhaustion follow-up — RLS load reduction, security hardening, and Realtime trimming after the 2026-06-05 incident (continues the `auth_rls_initplan` / FK-index work in v2.590). All DB changes applied to **production**; PRs **#86** (RLS + hardening + drop backups), **#87** (generated-type sync), **#88** (Realtime drop).
+
+### Database / infra — RLS load reduction on the hot tables
+
+- **Consolidated duplicate permissive policies** into one per command on the 5 hot Realtime tables (`clock_sessions`, `people_crew_bids`, `people_crew_jobs`, `people_hours`, `reports`) — migration `20260605202851`. Clears ~108 `multiple_permissive_policies` advisor combos (**508 → 400**; 0 on these 5). Semantics-preserving (each clause is the OR of the originals); verified by an `IS DISTINCT FROM` equivalence probe across every role context on real data + a transactional rehearsal. Rollback at `supabase/archive/rollback_20260605202851_hot_table_policies.sql`.
+- **Wrapped no-arg STABLE helpers** (`is_dev()`, `is_pay_approved_master()`, …) in `(select fn())` on those tables — migration `20260605210913` — so each runs once per query (InitPlan) instead of per row. Row-arg helpers (`is_team_lead_for_person_name`, `is_team_lead_for_member`, `can_access_project_row`) left unwrapped.
+
+### Database / infra — security hardening
+
+- **`search_path` pinned** (`SET search_path = public`) on 4 `SECURITY DEFINER` helpers that lacked it (`is_dev`, `is_pay_approved_master`, `is_assistant_of_pay_approved_master`, `is_cost_matrix_shared_with_current_user`) — migration `20260605212302` (clears `function_search_path_mutable` for them).
+- **Dropped 3 junk backup tables** (`_schema_migrations_backup_squash`, `_freeze_crew_lead_jobs_backup`, `_freeze_crew_lead_bids_backup`) — migration `20260605212913` — resolving 3 `rls_disabled_in_public` ERRORs + a public-schema exposure. These were the crew-lead-inheritance freeze backups (see **Crew lead inheritance** in `GLOSSARY.md`); their structure stays recoverable from the baseline + git.
+
+### Realtime — drop the Mercury attribution/allocation pair
+
+`mercury_transaction_job_allocations` + `mercury_transaction_attributions` removed from `supabase_realtime` (**publication 12 → 10**) — migration `20260605222106` — continuing the v2.564 Tier-1 Realtime trim and the `mercury_transactions` drop. They're churned by the Mercury sync + field tally/allocation flows; the **only** live consumer is the per-user **User Review** modal ([`useUserMercuryWindow.ts`](../src/hooks/useUserMercuryWindow.ts)), which already loads on mount and refetches after the user's own edits (`onAllocSaved → reload()`), so its now-dead `useRealtimeChannel` block is removed. **Only UX change:** the open User Review modal no longer auto-refreshes on *background* changes (cron sync / another user's edit); opening it, switching person/date, and your own edits still refresh. (This supersedes the "Realtime edits … refresh all three together" note in the v2.565 entry below.)
+
+#### Verification
+
+`npm run typecheck` / `lint` (0 errors) / `build` clean; full `vitest run` green (**1543 tests**). All 5 migrations applied to **production** (`supabase db push`); publication confirmed **12 → 10**, `multiple_permissive_policies` **508 → 400**, all 4 hardened helpers carry `search_path=public`, backup tables gone.
+
+#### Files
+
+Migrations `20260605202851`, `20260605210913`, `20260605212302`, `20260605212913`, `20260605222106` (+ rollback `supabase/archive/rollback_20260605202851_hot_table_policies.sql`). Modified: [`useUserMercuryWindow.ts`](../src/hooks/useUserMercuryWindow.ts). Generated-type sync in PR #87. See `MIGRATIONS.md` → **June 5, 2026**.
+
+---
+
 ## Latest Updates (v2.590)
 
 **Date**: 2026-06-02
