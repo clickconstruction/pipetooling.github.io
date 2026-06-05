@@ -4598,7 +4598,7 @@ export type Database = {
           manufacturer: string | null
           name: string
           notes: string | null
-          part_type_id: string
+          part_type_id: string | null
           service_type_id: string
           updated_at: string | null
         }
@@ -4609,7 +4609,7 @@ export type Database = {
           manufacturer?: string | null
           name: string
           notes?: string | null
-          part_type_id: string
+          part_type_id?: string | null
           service_type_id: string
           updated_at?: string | null
         }
@@ -4620,7 +4620,7 @@ export type Database = {
           manufacturer?: string | null
           name?: string
           notes?: string | null
-          part_type_id?: string
+          part_type_id?: string | null
           service_type_id?: string
           updated_at?: string | null
         }
