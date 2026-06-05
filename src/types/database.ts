@@ -12,56 +12,33 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.1"
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
-      _freeze_crew_lead_bids_backup: {
-        Row: {
-          bid_assignments: Json | null
-          captured_at: string | null
-          crew_lead_person_name: string | null
-          person_name: string | null
-          work_date: string | null
-        }
-        Insert: {
-          bid_assignments?: Json | null
-          captured_at?: string | null
-          crew_lead_person_name?: string | null
-          person_name?: string | null
-          work_date?: string | null
-        }
-        Update: {
-          bid_assignments?: Json | null
-          captured_at?: string | null
-          crew_lead_person_name?: string | null
-          person_name?: string | null
-          work_date?: string | null
-        }
-        Relationships: []
-      }
-      _freeze_crew_lead_jobs_backup: {
-        Row: {
-          captured_at: string | null
-          crew_lead_person_name: string | null
-          job_assignments: Json | null
-          person_name: string | null
-          work_date: string | null
-        }
-        Insert: {
-          captured_at?: string | null
-          crew_lead_person_name?: string | null
-          job_assignments?: Json | null
-          person_name?: string | null
-          work_date?: string | null
-        }
-        Update: {
-          captured_at?: string | null
-          crew_lead_person_name?: string | null
-          job_assignments?: Json | null
-          person_name?: string | null
-          work_date?: string | null
-        }
-        Relationships: []
-      }
       address_geocodes: {
         Row: {
           address_normalized: string
@@ -1742,6 +1719,53 @@ export type Database = {
           },
         ]
       }
+      cost_estimate_labor_rows: {
+        Row: {
+          cost_estimate_id: string
+          count: number
+          created_at: string | null
+          fixture: string
+          id: string
+          is_fixed: boolean
+          rough_in_hrs_per_unit: number
+          sequence_order: number
+          top_out_hrs_per_unit: number
+          trim_set_hrs_per_unit: number
+        }
+        Insert: {
+          cost_estimate_id: string
+          count?: number
+          created_at?: string | null
+          fixture: string
+          id?: string
+          is_fixed?: boolean
+          rough_in_hrs_per_unit?: number
+          sequence_order?: number
+          top_out_hrs_per_unit?: number
+          trim_set_hrs_per_unit?: number
+        }
+        Update: {
+          cost_estimate_id?: string
+          count?: number
+          created_at?: string | null
+          fixture?: string
+          id?: string
+          is_fixed?: boolean
+          rough_in_hrs_per_unit?: number
+          sequence_order?: number
+          top_out_hrs_per_unit?: number
+          trim_set_hrs_per_unit?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_labor_rows_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cost_estimate_other_rows: {
         Row: {
           cost_estimate_id: string
@@ -1779,94 +1803,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "cost_estimate_other_rows_cost_estimate_id_fkey"
-            columns: ["cost_estimate_id"]
-            isOneToOne: false
-            referencedRelation: "cost_estimates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cost_estimate_waste_rows: {
-        Row: {
-          cost_estimate_id: string
-          created_at: string | null
-          id: string
-          note: string | null
-          rough_in: number
-          sequence_order: number
-          top_out: number
-          trim_set: number
-          updated_at: string | null
-        }
-        Insert: {
-          cost_estimate_id: string
-          created_at?: string | null
-          id?: string
-          note?: string | null
-          rough_in?: number
-          sequence_order?: number
-          top_out?: number
-          trim_set?: number
-          updated_at?: string | null
-        }
-        Update: {
-          cost_estimate_id?: string
-          created_at?: string | null
-          id?: string
-          note?: string | null
-          rough_in?: number
-          sequence_order?: number
-          top_out?: number
-          trim_set?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cost_estimate_waste_rows_cost_estimate_id_fkey"
-            columns: ["cost_estimate_id"]
-            isOneToOne: false
-            referencedRelation: "cost_estimates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      cost_estimate_subcontractor_rows: {
-        Row: {
-          cost_estimate_id: string
-          created_at: string | null
-          id: string
-          note: string | null
-          rough_in: number
-          sequence_order: number
-          top_out: number
-          trim_set: number
-          updated_at: string | null
-        }
-        Insert: {
-          cost_estimate_id: string
-          created_at?: string | null
-          id?: string
-          note?: string | null
-          rough_in?: number
-          sequence_order?: number
-          top_out?: number
-          trim_set?: number
-          updated_at?: string | null
-        }
-        Update: {
-          cost_estimate_id?: string
-          created_at?: string | null
-          id?: string
-          note?: string | null
-          rough_in?: number
-          sequence_order?: number
-          top_out?: number
-          trim_set?: number
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cost_estimate_subcontractor_rows_cost_estimate_id_fkey"
             columns: ["cost_estimate_id"]
             isOneToOne: false
             referencedRelation: "cost_estimates"
@@ -1918,46 +1854,87 @@ export type Database = {
           },
         ]
       }
-      cost_estimate_labor_rows: {
+      cost_estimate_subcontractor_rows: {
         Row: {
           cost_estimate_id: string
-          count: number
           created_at: string | null
-          fixture: string
           id: string
-          is_fixed: boolean
-          rough_in_hrs_per_unit: number
+          note: string | null
+          rough_in: number
           sequence_order: number
-          top_out_hrs_per_unit: number
-          trim_set_hrs_per_unit: number
+          top_out: number
+          trim_set: number
+          updated_at: string | null
         }
         Insert: {
           cost_estimate_id: string
-          count?: number
           created_at?: string | null
-          fixture: string
           id?: string
-          is_fixed?: boolean
-          rough_in_hrs_per_unit?: number
+          note?: string | null
+          rough_in?: number
           sequence_order?: number
-          top_out_hrs_per_unit?: number
-          trim_set_hrs_per_unit?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
         }
         Update: {
           cost_estimate_id?: string
-          count?: number
           created_at?: string | null
-          fixture?: string
           id?: string
-          is_fixed?: boolean
-          rough_in_hrs_per_unit?: number
+          note?: string | null
+          rough_in?: number
           sequence_order?: number
-          top_out_hrs_per_unit?: number
-          trim_set_hrs_per_unit?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "cost_estimate_labor_rows_cost_estimate_id_fkey"
+            foreignKeyName: "cost_estimate_subcontractor_rows_cost_estimate_id_fkey"
+            columns: ["cost_estimate_id"]
+            isOneToOne: false
+            referencedRelation: "cost_estimates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cost_estimate_waste_rows: {
+        Row: {
+          cost_estimate_id: string
+          created_at: string | null
+          id: string
+          note: string | null
+          rough_in: number
+          sequence_order: number
+          top_out: number
+          trim_set: number
+          updated_at: string | null
+        }
+        Insert: {
+          cost_estimate_id: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Update: {
+          cost_estimate_id?: string
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          rough_in?: number
+          sequence_order?: number
+          top_out?: number
+          trim_set?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_waste_rows_cost_estimate_id_fkey"
             columns: ["cost_estimate_id"]
             isOneToOne: false
             referencedRelation: "cost_estimates"
@@ -10933,6 +10910,7 @@ export type Database = {
           name: string
         }[]
       }
+      list_present_mercury_ids: { Args: { p_ids: string[] }; Returns: string[] }
       list_ready_to_bill_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
@@ -11870,6 +11848,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       estimate_status: [
