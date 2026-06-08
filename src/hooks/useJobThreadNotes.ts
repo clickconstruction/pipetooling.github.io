@@ -17,6 +17,17 @@ import {
   type JobDetailClockSessionRow,
 } from '../lib/fetchClockSessionsForJobLedger'
 import { clockSessionsToActivityItems } from '../lib/jobThreadClockActivity'
+import type { JobThreadEventActivityItem } from '../lib/jobActivityEvent'
+import { fetchJobStatusEventsForJobLedger } from '../lib/fetchJobStatusEventsForJobLedger'
+import { statusEventsToActivityItems } from '../lib/jobThreadStatusEventActivity'
+import { fetchJobPaymentsForJobLedger } from '../lib/fetchJobPaymentsForJobLedger'
+import { paymentsToActivityItems } from '../lib/jobThreadPaymentActivity'
+import { fetchJobInvoicesForActivity } from '../lib/fetchJobInvoicesForActivity'
+import { invoicesToActivityItems } from '../lib/jobThreadInvoiceActivity'
+import { fetchJobStripeEmailSendsForJobLedger } from '../lib/fetchJobStripeEmailSendsForJobLedger'
+import { stripeEmailSendsToActivityItems } from '../lib/jobThreadInvoiceEmailActivity'
+import { fetchJobTeamMembersForJobLedger } from '../lib/fetchJobTeamMembersForJobLedger'
+import { teamMembersToActivityItems } from '../lib/jobThreadCrewActivity'
 import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
 
 export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
@@ -104,6 +115,7 @@ function buildActivityFromServer(
   reportRows: ReportForJobLedgerRow[],
   scheduleBlockRows: JobScheduleBlockWithAssigneeName[],
   clockRows: JobDetailClockSessionRow[],
+  eventItems: JobThreadEventActivityItem[],
   prevActivity: JobThreadActivityItem[] | undefined,
   quiet: boolean,
   flight: { jobId: string; optimisticId: string } | null,
@@ -116,7 +128,13 @@ function buildActivityFromServer(
     kind: 'report' as const,
     report: reportForViewFromJobLedgerRow(r),
   }))
-  let combined = sortJobThreadActivity([...noteItems, ...reportItems, ...scheduleItems, ...clockItems])
+  let combined = sortJobThreadActivity([
+    ...noteItems,
+    ...reportItems,
+    ...scheduleItems,
+    ...clockItems,
+    ...eventItems,
+  ])
 
   if (quiet && flight?.jobId === jobId) {
     const opt = (prevActivity ?? []).find((i) => i.kind === 'note' && i.note.id === flight.optimisticId)
@@ -156,7 +174,7 @@ export function useJobThreadNotes(
       const quiet = opts?.quiet === true
       if (!quiet) setJobThreadNotesLoadingId(jobId)
       try {
-        const [notesData, reportData, blocksPack, clockPack] = await Promise.all([
+        const [notesData, reportData, blocksPack, clockPack, statusPack, paymentsPack, invoicesPack, emailPack, crewPack] = await Promise.all([
           withSupabaseRetry(
             async () =>
               supabase.from('jobs_ledger_thread_notes').select(THREAD_NOTE_SELECT).eq('job_id', jobId).order('created_at', {
@@ -170,11 +188,23 @@ export function useJobThreadNotes(
           ),
           fetchJobScheduleBlocksForJob(jobId),
           fetchClockSessionsForJobLedger(jobId),
+          fetchJobStatusEventsForJobLedger(jobId),
+          fetchJobPaymentsForJobLedger(jobId),
+          fetchJobInvoicesForActivity(jobId),
+          fetchJobStripeEmailSendsForJobLedger(jobId),
+          fetchJobTeamMembersForJobLedger(jobId),
         ])
         const rowsRaw = (notesData as JobThreadNoteRow[] | null) ?? []
         const reportRows = (reportData as ReportForJobLedgerRow[] | null) ?? []
         const scheduleBlockRows: JobScheduleBlockWithAssigneeName[] = blocksPack.error ? [] : blocksPack.data
         const clockRows: JobDetailClockSessionRow[] = clockPack.error ? [] : clockPack.data
+        const eventItems: JobThreadEventActivityItem[] = [
+          ...statusEventsToActivityItems(statusPack.error ? [] : statusPack.data),
+          ...paymentsToActivityItems(paymentsPack.error ? [] : paymentsPack.data),
+          ...invoicesToActivityItems(invoicesPack.error ? [] : invoicesPack.data),
+          ...stripeEmailSendsToActivityItems(emailPack.error ? [] : emailPack.data),
+          ...teamMembersToActivityItems(crewPack.error ? [] : crewPack.data),
+        ]
 
         setJobThreadActivityByJobId((prev) => {
           const merged = buildActivityFromServer(
@@ -182,6 +212,7 @@ export function useJobThreadNotes(
             reportRows,
             scheduleBlockRows,
             clockRows,
+            eventItems,
             prev[jobId],
             quiet,
             inFlightThreadNoteRef.current,
@@ -332,6 +363,54 @@ export function useJobThreadNotes(
           const jid =
             (payload.new as { job_ledger_id?: string | null } | null)?.job_ledger_id ??
             (payload.old as { job_ledger_id?: string | null } | null)?.job_ledger_id
+          if (jid && expandedJobThreadIdRef.current === jid) {
+            void loadJobThreadNotesForJob(jid, { quiet: true })
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'job_status_events' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_id?: string | null } | null)?.job_id ??
+            (payload.old as { job_id?: string | null } | null)?.job_id
+          if (jid && expandedJobThreadIdRef.current === jid) {
+            void loadJobThreadNotesForJob(jid, { quiet: true })
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jobs_ledger_payments' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_id?: string | null } | null)?.job_id ??
+            (payload.old as { job_id?: string | null } | null)?.job_id
+          if (jid && expandedJobThreadIdRef.current === jid) {
+            void loadJobThreadNotesForJob(jid, { quiet: true })
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jobs_ledger_invoices' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_id?: string | null } | null)?.job_id ??
+            (payload.old as { job_id?: string | null } | null)?.job_id
+          if (jid && expandedJobThreadIdRef.current === jid) {
+            void loadJobThreadNotesForJob(jid, { quiet: true })
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'jobs_ledger_team_members' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_id?: string | null } | null)?.job_id ??
+            (payload.old as { job_id?: string | null } | null)?.job_id
           if (jid && expandedJobThreadIdRef.current === jid) {
             void loadJobThreadNotesForJob(jid, { quiet: true })
           }

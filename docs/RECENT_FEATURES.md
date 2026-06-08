@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-07 (v2.593)
+last_updated: 2026-06-07 (v2.594)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.594 — **Jobs → Job activity / notes** — **activity ledger (Phase 1)**. The activity feed becomes a chronological **ledger of important job actions**: it now merges **status changes**, **payments**, **invoice milestones** (created / billed / sent / write-down), **Stripe invoice emails**, and **crew added** alongside the existing notes / reports / schedule / clock sources, on **Stages**, **Workflow**, and the **Job Detail** modal. All system actions render through ONE generic `event` item kind + a render registry (`src/lib/jobActivityEvent.ts`), so each action is a colored left-border + uppercase tag + humanized summary. A new segmented **filter** (All / Notes / Status / Billing / Crew) sits above the feed. Financial events (payments/invoices) are auto-gated by existing RLS — viewers without financial access simply see none. Phase 1 is **client-only (no schema change)**: each source = a pure kernel + fetcher (mirroring the clock-session pattern) merged into both thread hooks with realtime. Phase 2 (append-only `job_activity_events` table + triggers) follows to capture deletes/edits/transitions](#latest-updates-v2594)
 **New:** [v2.593 — **Jobs → Job activity / notes** — **clock in/out sessions in the activity feed**. Clock sessions now appear as a read-only source in the merged Job activity / notes feed (alongside thread notes, field reports, and dispatch schedule blocks), on the **Stages** board, the **Workflow** page, and the **Job Detail** modal. Each row shows person · in → out · duration (open sessions read "still on the clock"), with an amber **Pending approval** chip on unapproved time and the session note when present. Mirrors the v2.445 schedule-block pattern: new pure kernel `clockSessionsToActivityItems` (+ unit tests), merged in both thread hooks, with a `clock_sessions` Realtime subscription. Reuses the existing `fetchClockSessionsForJobLedger` — **no DB / migration / type changes**; RLS already gates visibility (roles without labor access see no clock rows). Surfaces clocked-but-unapproved time that hasn't yet rolled into man-hours](#latest-updates-v2593)
 **New:** [v2.592 — **Jobs → Stages** — **man-hours applied per job** + DB type-drift reconciliation. Each Stages-board card gains a read-only clock-icon line showing total **man-hours applied** to the job (with a per-person breakdown on hover), backed by a new `SECURITY INVOKER` RPC **`get_man_hours_by_job()`** (migration `20260607234914`) that mirrors the canonical `teamLabor.ts` allocation kernel (salaried = 8h Mon–Fri, hourly = `people_hours`, each crew day split across that day's `job_assignments` by `pct`). Loaded once per Stages visit; RLS-governed, so roles without labor access just see `—`. Plus: `src/types/database.ts` regenerated from prod to clear ~169 lines of drift — dropped backup-table types removed, `graphql_public` block + `list_present_mercury_ids` RPC added](#latest-updates-v2592)
 **New:** [v2.591 — **Bids / Materials / People** — three small features + migration-history reconciliation. **Bids → Takeoffs → Edit Assembly**: the assembly name (shown only in **By Stage** mode) is now an editable input with a contextual **Save name** button (Enter saves) that writes `material_templates.name` and calls `loadMaterialTemplates()` so the rename propagates to takeoff rows / assembly picker / nested-item lookups. **Materials / Bids → Add Part**: **part type is now optional** — migration `20260605225013` drops `NOT NULL` on `material_parts.part_type_id`, types → `string | null`, modal relabeled **Part Type (optional)** / **No part type**, inserts send `part_type_id || null`. **People → Review → Team Summary**: the Hours drilldown shows a per-day green `[$value]` **Value Created** per allocation (cost-share of the job's Value Created, reconciles with Gross). Plus five prod-applied RLS/Realtime migrations recovered into the repo so `db push` is unblocked](#latest-updates-v2591)
@@ -1969,6 +1970,42 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.594)
+
+**Date**: 2026-06-07
+
+### Jobs → Job activity / notes — activity ledger (Phase 1)
+
+The **Job activity / notes** feed (Jobs **Stages**, **Workflow**, and the **Job Detail** modal) becomes a chronological **ledger of important job actions**. On top of the existing sources (thread notes, field reports, dispatch schedule blocks, clock sessions) it now merges five more **read-only system-event sources**:
+
+- **Status changes** — from `job_status_events` (e.g. `Working → Ready to Bill`).
+- **Payments** — from `jobs_ledger_payments` (`Payment $X (type · ref)`).
+- **Invoice milestones** — from `jobs_ledger_invoices`, one row emitting up to four items: **created / billed / sent / agreed write-down**.
+- **Stripe invoice emails** — from `jobs_ledger_invoice_stripe_email_sends` (joined via invoice ids).
+- **Crew added** — from `jobs_ledger_team_members`.
+
+**Design — one generic `event` kind.** Rather than a new union member per action, all system actions use a single `{ kind: 'event' }` item ([`src/lib/jobActivityEvent.ts`](../src/lib/jobActivityEvent.ts)) with a `type` enum + a **render registry** (tag label / accent colors / `financial` flag / filter bucket). The panel ([`JobThreadNotesPanel.tsx`](../src/components/JobThreadNotesPanel.tsx)) gets exactly ONE new render branch (colored left-border + uppercase tag + humanized `summary`), and [`jobThreadActivitySort.ts`](../src/lib/jobThreadActivitySort.ts) one sort case.
+
+**Per-source pattern (mirrors clock sessions).** Each source is a pure kernel (`jobThread*Activity.ts` / `statusEventsToActivityItems`, `paymentsToActivityItems`, `invoicesToActivityItems`, `stripeEmailSendsToActivityItems`, `teamMembersToActivityItems`) + a `fetch*ForJob*.ts`, each unit-tested. Both hooks ([`useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts) for Stages/Workflow, [`useJobThreadNotesForModal.ts`](../src/hooks/useJobThreadNotesForModal.ts) for Job Detail) fetch them in parallel, merge into the sorted timeline, and subscribe to each source table via realtime.
+
+**Filter control.** A segmented **All / Notes / Status / Billing / Crew** filter ([`jobActivityFilter.ts`](../src/lib/jobActivityFilter.ts)) sits above the feed (auto-on when the panel is in merged-`activity` mode; Estimates' note-only feed is unaffected). `'other'` events (future field-edits/combine) show only under **All**.
+
+**Role gating (free in Phase 1).** Financial sources (`jobs_ledger_payments` / `jobs_ledger_invoices` / stripe email sends) are already RLS-restricted to dev/master_technician/assistant/primary, so non-privileged viewers receive zero rows and see no financial events (each hook already treats a per-source error/empty as `[]`).
+
+**Realtime note.** Of the new sources, `jobs_ledger_invoices` is in the realtime publication (billing events update live); `job_status_events` / `jobs_ledger_payments` / `jobs_ledger_team_members` are not yet published, so those refresh on the next thread expand (same as the existing `job_schedule_blocks` subscription). Phase 2 consolidates to a single published `job_activity_events` table.
+
+**Phase 2 (next).** An append-only `job_activity_events` table + DB triggers will additionally capture **deletes** (payment/crew removed), **field edits**, and **combine/separate**, collapse the ~9 per-expand queries to one indexed read behind a `list_job_activity_events` reader RPC, and use one realtime subscription.
+
+#### Verification
+
+`tsc -b` clean; `npm run lint` clean on touched files; full `vitest run` green (**1568 tests**, incl. 18 new kernel/filter/registry tests). No DB / migration / type-gen changes in Phase 1.
+
+#### Files
+
+New: [`src/lib/jobActivityEvent.ts`](../src/lib/jobActivityEvent.ts), [`src/lib/jobActivityFilter.ts`](../src/lib/jobActivityFilter.ts), and the five `fetch*` + `jobThread*Activity` kernel/test pairs (status / payment / invoice / invoice-email / crew). Modified: [`src/components/JobThreadNotesPanel.tsx`](../src/components/JobThreadNotesPanel.tsx), [`src/lib/jobThreadActivitySort.ts`](../src/lib/jobThreadActivitySort.ts), [`src/hooks/useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts), [`src/hooks/useJobThreadNotesForModal.ts`](../src/hooks/useJobThreadNotesForModal.ts), [`src/utils/dispatchNoteDisplay.ts`](../src/utils/dispatchNoteDisplay.ts).
+
 ---
 
 ## Latest Updates (v2.593)
