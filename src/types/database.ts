@@ -3431,6 +3431,54 @@ export type Database = {
           },
         ]
       }
+      job_activity_events: {
+        Row: {
+          actor_user_id: string | null
+          detail: Json
+          event_type: string
+          financial: boolean
+          id: string
+          job_id: string
+          occurred_at: string
+          summary: string
+        }
+        Insert: {
+          actor_user_id?: string | null
+          detail?: Json
+          event_type: string
+          financial?: boolean
+          id?: string
+          job_id: string
+          occurred_at?: string
+          summary?: string
+        }
+        Update: {
+          actor_user_id?: string | null
+          detail?: Json
+          event_type?: string
+          financial?: boolean
+          id?: string
+          job_id?: string
+          occurred_at?: string
+          summary?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_activity_events_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_activity_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_book_entries: {
         Row: {
           created_at: string | null
@@ -10120,6 +10168,10 @@ export type Database = {
         Args: { p_job_id: string }
         Returns: boolean
       }
+      can_read_job_activity: {
+        Args: { p_financial: boolean; p_job_id: string }
+        Returns: boolean
+      }
       can_see_sharing_master: {
         Args: { sharing_master_id: string }
         Returns: boolean
@@ -10535,6 +10587,7 @@ export type Database = {
           total_parts: number
         }[]
       }
+      humanize_job_status: { Args: { p: string }; Returns: string }
       insert_accounting_label_suggestion_service: {
         Args: { p_rows: Json }
         Returns: number
@@ -10697,6 +10750,19 @@ export type Database = {
           peer_user_id: string
           person_id: string
           shared_tag_count: number
+        }[]
+      }
+      list_job_activity_events: {
+        Args: { p_job_id: string }
+        Returns: {
+          actor_name: string
+          actor_user_id: string
+          detail: Json
+          event_type: string
+          financial: boolean
+          id: string
+          occurred_at: string
+          summary: string
         }[]
       }
       list_job_counts_by_master_for_dev_settings: {

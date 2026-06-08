@@ -11,16 +11,8 @@ import {
 } from '../lib/fetchClockSessionsForJobLedger'
 import { clockSessionsToActivityItems } from '../lib/jobThreadClockActivity'
 import type { JobThreadEventActivityItem } from '../lib/jobActivityEvent'
-import { fetchJobStatusEventsForJobLedger } from '../lib/fetchJobStatusEventsForJobLedger'
-import { statusEventsToActivityItems } from '../lib/jobThreadStatusEventActivity'
-import { fetchJobPaymentsForJobLedger } from '../lib/fetchJobPaymentsForJobLedger'
-import { paymentsToActivityItems } from '../lib/jobThreadPaymentActivity'
-import { fetchJobInvoicesForActivity } from '../lib/fetchJobInvoicesForActivity'
-import { invoicesToActivityItems } from '../lib/jobThreadInvoiceActivity'
-import { fetchJobStripeEmailSendsForJobLedger } from '../lib/fetchJobStripeEmailSendsForJobLedger'
-import { stripeEmailSendsToActivityItems } from '../lib/jobThreadInvoiceEmailActivity'
-import { fetchJobTeamMembersForJobLedger } from '../lib/fetchJobTeamMembersForJobLedger'
-import { teamMembersToActivityItems } from '../lib/jobThreadCrewActivity'
+import { fetchJobActivityEventsForJobLedger } from '../lib/fetchJobActivityEventsForJobLedger'
+import { jobActivityEventsFromRpc } from '../lib/jobActivityEventsFromRpc'
 import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
 
 export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
@@ -50,22 +42,10 @@ function mergeNotesAndScheduleIntoActivity(
   return sortJobThreadActivity([...noteItems, ...scheduleItems, ...clockItems, ...eventItems])
 }
 
-/** Fetch + map all Phase-1 ledger event sources for one job (RLS-gated; per-source errors → []). */
+/** Fetch + map the job activity ledger for one job (single role-aware RPC; errors → []). */
 async function fetchJobEventItems(jobId: string): Promise<JobThreadEventActivityItem[]> {
-  const [statusPack, paymentsPack, invoicesPack, emailPack, crewPack] = await Promise.all([
-    fetchJobStatusEventsForJobLedger(jobId),
-    fetchJobPaymentsForJobLedger(jobId),
-    fetchJobInvoicesForActivity(jobId),
-    fetchJobStripeEmailSendsForJobLedger(jobId),
-    fetchJobTeamMembersForJobLedger(jobId),
-  ])
-  return [
-    ...statusEventsToActivityItems(statusPack.error ? [] : statusPack.data),
-    ...paymentsToActivityItems(paymentsPack.error ? [] : paymentsPack.data),
-    ...invoicesToActivityItems(invoicesPack.error ? [] : invoicesPack.data),
-    ...stripeEmailSendsToActivityItems(emailPack.error ? [] : emailPack.data),
-    ...teamMembersToActivityItems(crewPack.error ? [] : crewPack.data),
-  ]
+  const pack = await fetchJobActivityEventsForJobLedger(jobId)
+  return jobActivityEventsFromRpc(pack.error ? [] : pack.data)
 }
 
 const SELECT =
@@ -207,41 +187,9 @@ export function useJobThreadNotesForModal(
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'job_status_events' },
+        { event: 'INSERT', schema: 'public', table: 'job_activity_events' },
         (payload) => {
-          const jid =
-            (payload.new as { job_id?: string | null } | null)?.job_id ??
-            (payload.old as { job_id?: string | null } | null)?.job_id
-          if (jid === jobId) void reloadActivityQuiet(jobId)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'jobs_ledger_payments' },
-        (payload) => {
-          const jid =
-            (payload.new as { job_id?: string | null } | null)?.job_id ??
-            (payload.old as { job_id?: string | null } | null)?.job_id
-          if (jid === jobId) void reloadActivityQuiet(jobId)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'jobs_ledger_invoices' },
-        (payload) => {
-          const jid =
-            (payload.new as { job_id?: string | null } | null)?.job_id ??
-            (payload.old as { job_id?: string | null } | null)?.job_id
-          if (jid === jobId) void reloadActivityQuiet(jobId)
-        },
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'jobs_ledger_team_members' },
-        (payload) => {
-          const jid =
-            (payload.new as { job_id?: string | null } | null)?.job_id ??
-            (payload.old as { job_id?: string | null } | null)?.job_id
+          const jid = (payload.new as { job_id?: string | null } | null)?.job_id
           if (jid === jobId) void reloadActivityQuiet(jobId)
         },
       )
