@@ -5,6 +5,11 @@ import { appendToastRefreshHint, formatErrorMessage, withSupabaseRetry } from '.
 import { buildJobThreadStampBody, type JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
 import { fetchJobScheduleBlocksForJob, type JobScheduleBlockWithAssigneeName } from '../lib/jobScheduleBlocks'
 import { scheduleBlocksToScheduleActivityItems } from '../lib/jobThreadScheduleActivity'
+import {
+  fetchClockSessionsForJobLedger,
+  type JobDetailClockSessionRow,
+} from '../lib/fetchClockSessionsForJobLedger'
+import { clockSessionsToActivityItems } from '../lib/jobThreadClockActivity'
 import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
 
 export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
@@ -25,10 +30,12 @@ function makeOptimisticThreadNote(body: string, authorDisplayName: string | null
 function mergeNotesAndScheduleIntoActivity(
   noteRows: JobThreadNoteRow[],
   scheduleBlockRows: JobScheduleBlockWithAssigneeName[],
+  clockRows: JobDetailClockSessionRow[],
 ): JobThreadActivityItem[] {
   const scheduleItems = scheduleBlocksToScheduleActivityItems(scheduleBlockRows)
+  const clockItems = clockSessionsToActivityItems(clockRows)
   const noteItems: JobThreadActivityItem[] = noteRows.map((n) => ({ kind: 'note' as const, note: n }))
-  return sortJobThreadActivity([...noteItems, ...scheduleItems])
+  return sortJobThreadActivity([...noteItems, ...scheduleItems, ...clockItems])
 }
 
 const SELECT =
@@ -72,12 +79,17 @@ export function useJobThreadNotesForModal(
 
   const reloadActivityQuiet = useCallback(async (id: string) => {
     try {
-      const [rows, blocksPack] = await Promise.all([queryNotesForJob(id), fetchJobScheduleBlocksForJob(id)])
+      const [rows, blocksPack, clockPack] = await Promise.all([
+        queryNotesForJob(id),
+        fetchJobScheduleBlocksForJob(id),
+        fetchClockSessionsForJobLedger(id),
+      ])
       if (openJobIdRef.current !== id) return
       const scheduleRows = blocksPack.error ? [] : blocksPack.data
+      const clockRows = clockPack.error ? [] : clockPack.data
       setActivity((prev) => {
         const flight = inFlightThreadNoteRef.current
-        let combined = mergeNotesAndScheduleIntoActivity(rows, scheduleRows)
+        let combined = mergeNotesAndScheduleIntoActivity(rows, scheduleRows, clockRows)
         if (flight) {
           const opt = prev.find((i) => i.kind === 'note' && i.note.id === flight.optimisticId)
           if (opt && opt.kind === 'note' && !rows.some((r) => r.id === opt.note.id)) {
@@ -106,10 +118,15 @@ export function useJobThreadNotesForModal(
     setLoading(true)
     ;(async () => {
       try {
-        const [rows, blocksPack] = await Promise.all([queryNotesForJob(jobId), fetchJobScheduleBlocksForJob(jobId)])
+        const [rows, blocksPack, clockPack] = await Promise.all([
+          queryNotesForJob(jobId),
+          fetchJobScheduleBlocksForJob(jobId),
+          fetchClockSessionsForJobLedger(jobId),
+        ])
         if (cancelled) return
         const scheduleRows = blocksPack.error ? [] : blocksPack.data
-        setActivity(mergeNotesAndScheduleIntoActivity(rows, scheduleRows))
+        const clockRows = clockPack.error ? [] : clockPack.data
+        setActivity(mergeNotesAndScheduleIntoActivity(rows, scheduleRows, clockRows))
       } catch (e: unknown) {
         if (!cancelled)
           showToast(appendToastRefreshHint(formatErrorMessage(e, 'Failed to load job notes')), 'error')
@@ -143,6 +160,16 @@ export function useJobThreadNotesForModal(
           const jid =
             (payload.new as { job_id?: string } | null)?.job_id ??
             (payload.old as { job_id?: string } | null)?.job_id
+          if (jid === jobId) void reloadActivityQuiet(jobId)
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clock_sessions' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_ledger_id?: string | null } | null)?.job_ledger_id ??
+            (payload.old as { job_ledger_id?: string | null } | null)?.job_ledger_id
           if (jid === jobId) void reloadActivityQuiet(jobId)
         },
       )

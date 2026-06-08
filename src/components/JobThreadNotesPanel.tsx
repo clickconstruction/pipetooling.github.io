@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
+import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import ReportViewModal, { type ReportForView } from './ReportViewModal'
 import { firstNonEmptyFieldValueSummary } from '../lib/reportForViewFromJobLedgerRow'
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
+import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
+import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
 import {
   scheduleFormatDateLongNoWeekday,
   scheduleFormatWindow,
@@ -21,6 +23,7 @@ export type JobThreadActivityItem =
   | { kind: 'note'; note: JobThreadNoteRow }
   | { kind: 'report'; report: ReportForView }
   | JobThreadScheduleActivityItem
+  | JobThreadClockActivityItem
 
 export type JobThreadStampActions = {
   onArrived: () => void
@@ -211,6 +214,7 @@ export function JobThreadNotesPanel({
     if (!last) return ''
     if (last.kind === 'note') return `n:${last.note.id}`
     if (last.kind === 'report') return `r:${last.report.id}`
+    if (last.kind === 'clock_session') return `c:${last.clock.dedupeKey}`
     return `s:${last.schedule.dedupeKey}`
   }, [activity])
 
@@ -301,6 +305,71 @@ export function JobThreadNotesPanel({
                         ) : null}
                       </div>
                       <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{s.note}</div>
+                    </li>
+                  )
+                }
+                if (item.kind === 'clock_session') {
+                  const c = item.clock
+                  const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(c.sortAt)
+                  const inLabel = c.clockedInAt ? formatDispatchNoteTimeChicago(c.clockedInAt) : '—'
+                  const outLabel = c.clockedOutAt ? formatDispatchNoteTimeChicago(c.clockedOutAt) : null
+                  const durLabel = c.durationHours != null ? formatDecimalWorkHoursToHhMm(c.durationHours) : null
+                  return (
+                    <li
+                      key={c.dedupeKey}
+                      style={{
+                        padding: '0.5rem 0',
+                        borderBottom: '1px solid #f3f4f6',
+                        fontSize: '0.8125rem',
+                        borderLeft: '3px solid #a5b4fc',
+                        paddingLeft: '0.5rem',
+                        marginLeft: 0,
+                      }}
+                    >
+                      <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: '#4f46e5',
+                            marginRight: '0.35rem',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          Clock
+                        </span>
+                        <strong style={{ color: '#111827' }}>{c.personName}</strong>
+                        <span style={{ marginLeft: '0.5rem' }}>
+                          {weekdayTimeChicago} · {daysAgoLabel}
+                        </span>
+                      </div>
+                      <div style={{ color: '#4b5563', fontSize: '0.8125rem' }}>
+                        {outLabel
+                          ? `${inLabel} → ${outLabel}${durLabel ? ` · ${durLabel}` : ''}`
+                          : `${inLabel} → still on the clock`}
+                        {c.status === 'pending' ? (
+                          <span
+                            style={{
+                              marginLeft: '0.4rem',
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              color: '#92400e',
+                              background: '#fef3c7',
+                              border: '1px solid #fde68a',
+                              borderRadius: 4,
+                              padding: '0 0.3rem',
+                              verticalAlign: 'middle',
+                            }}
+                          >
+                            Pending approval
+                          </span>
+                        ) : null}
+                      </div>
+                      {c.note ? (
+                        <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap', marginTop: 4 }}>{c.note}</div>
+                      ) : null}
                     </li>
                   )
                 }

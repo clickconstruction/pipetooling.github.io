@@ -12,6 +12,11 @@ import {
 } from '../lib/jobThreadNoteStampBody'
 import { fetchJobScheduleBlocksForJob, type JobScheduleBlockWithAssigneeName } from '../lib/jobScheduleBlocks'
 import { scheduleBlocksToScheduleActivityItems } from '../lib/jobThreadScheduleActivity'
+import {
+  fetchClockSessionsForJobLedger,
+  type JobDetailClockSessionRow,
+} from '../lib/fetchClockSessionsForJobLedger'
+import { clockSessionsToActivityItems } from '../lib/jobThreadClockActivity'
 import { sortJobThreadActivity } from '../lib/jobThreadActivitySort'
 
 export type { JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
@@ -98,18 +103,20 @@ function buildActivityFromServer(
   rowsRaw: JobThreadNoteRow[],
   reportRows: ReportForJobLedgerRow[],
   scheduleBlockRows: JobScheduleBlockWithAssigneeName[],
+  clockRows: JobDetailClockSessionRow[],
   prevActivity: JobThreadActivityItem[] | undefined,
   quiet: boolean,
   flight: { jobId: string; optimisticId: string } | null,
   jobId: string,
 ): JobThreadActivityItem[] {
   const scheduleItems = scheduleBlocksToScheduleActivityItems(scheduleBlockRows)
+  const clockItems = clockSessionsToActivityItems(clockRows)
   const noteItems: JobThreadActivityItem[] = rowsRaw.map((n) => ({ kind: 'note' as const, note: n }))
   const reportItems: JobThreadActivityItem[] = reportRows.map((r) => ({
     kind: 'report' as const,
     report: reportForViewFromJobLedgerRow(r),
   }))
-  let combined = sortJobThreadActivity([...noteItems, ...reportItems, ...scheduleItems])
+  let combined = sortJobThreadActivity([...noteItems, ...reportItems, ...scheduleItems, ...clockItems])
 
   if (quiet && flight?.jobId === jobId) {
     const opt = (prevActivity ?? []).find((i) => i.kind === 'note' && i.note.id === flight.optimisticId)
@@ -149,7 +156,7 @@ export function useJobThreadNotes(
       const quiet = opts?.quiet === true
       if (!quiet) setJobThreadNotesLoadingId(jobId)
       try {
-        const [notesData, reportData, blocksPack] = await Promise.all([
+        const [notesData, reportData, blocksPack, clockPack] = await Promise.all([
           withSupabaseRetry(
             async () =>
               supabase.from('jobs_ledger_thread_notes').select(THREAD_NOTE_SELECT).eq('job_id', jobId).order('created_at', {
@@ -162,16 +169,19 @@ export function useJobThreadNotes(
             'list_reports_for_job_ledger',
           ),
           fetchJobScheduleBlocksForJob(jobId),
+          fetchClockSessionsForJobLedger(jobId),
         ])
         const rowsRaw = (notesData as JobThreadNoteRow[] | null) ?? []
         const reportRows = (reportData as ReportForJobLedgerRow[] | null) ?? []
         const scheduleBlockRows: JobScheduleBlockWithAssigneeName[] = blocksPack.error ? [] : blocksPack.data
+        const clockRows: JobDetailClockSessionRow[] = clockPack.error ? [] : clockPack.data
 
         setJobThreadActivityByJobId((prev) => {
           const merged = buildActivityFromServer(
             rowsRaw,
             reportRows,
             scheduleBlockRows,
+            clockRows,
             prev[jobId],
             quiet,
             inFlightThreadNoteRef.current,
@@ -310,6 +320,18 @@ export function useJobThreadNotes(
           const jid =
             (payload.new as { job_id?: string } | null)?.job_id ??
             (payload.old as { job_id?: string } | null)?.job_id
+          if (jid && expandedJobThreadIdRef.current === jid) {
+            void loadJobThreadNotesForJob(jid, { quiet: true })
+          }
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'clock_sessions' },
+        (payload) => {
+          const jid =
+            (payload.new as { job_ledger_id?: string | null } | null)?.job_ledger_id ??
+            (payload.old as { job_ledger_id?: string | null } | null)?.job_ledger_id
           if (jid && expandedJobThreadIdRef.current === jid) {
             void loadJobThreadNotesForJob(jid, { quiet: true })
           }
