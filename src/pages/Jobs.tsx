@@ -525,6 +525,13 @@ export default function Jobs() {
   const [teamLaborData, setTeamLaborData] = useState<TeamLaborRow[]>([])
   const [teamLaborLoading, setTeamLaborLoading] = useState(false)
 
+  // Stages board: man-hours applied per job (lightweight get_man_hours_by_job RPC; mirrors teamLabor.ts math).
+  const [stagesManHoursRows, setStagesManHoursRows] = useState<
+    Array<{ job_id: string; person_name: string; man_hours: number }>
+  >([])
+  const [stagesManHoursLoading, setStagesManHoursLoading] = useState(false)
+  const stagesManHoursLoadedRef = useRef(false)
+
   const {
     tallyParts,
     tallyPartsLoading,
@@ -1501,6 +1508,22 @@ export default function Jobs() {
       setLaborJobNamesByHcp({})
     }
     setLaborJobsLoading(false)
+  }
+
+  /** Stages board man-hours-per-job (load-once per visit; RLS-governed RPC, empty for roles without labor access). */
+  async function loadStagesManHours() {
+    if (stagesManHoursLoadedRef.current) return
+    stagesManHoursLoadedRef.current = true
+    setStagesManHoursLoading(true)
+    const { data, error } = await supabase.rpc('get_man_hours_by_job')
+    setStagesManHoursLoading(false)
+    if (error) {
+      stagesManHoursLoadedRef.current = false // allow retry on next Stages visit
+      return
+    }
+    setStagesManHoursRows(
+      (data ?? []) as Array<{ job_id: string; person_name: string; man_hours: number }>,
+    )
   }
 
   async function loadTeamLaborData() {
@@ -3496,6 +3519,13 @@ ${totalsHtml}
   }, [activeTab, authUser?.id])
 
   useEffect(() => {
+    if (activeTab === 'stages' && authUser?.id) {
+      const t = setTimeout(() => void loadStagesManHours(), 80)
+      return () => clearTimeout(t)
+    }
+  }, [activeTab, authUser?.id])
+
+  useEffect(() => {
     if (activeTab !== 'job-summary' || !authUser?.id) return
     const expandedKeys = [...jobSummaryTeamLaborPersonExpandedKeys]
     for (const jobId of expandedJobSummaryJobIds) {
@@ -3950,6 +3980,27 @@ ${totalsHtml}
     () => new Set(teamLaborData.map((r) => r.jobId)),
     [teamLaborData]
   )
+
+  /** Stages board: total man-hours per job id. */
+  const stagesManHoursByJobId = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const r of stagesManHoursRows) {
+      m.set(r.job_id, (m.get(r.job_id) ?? 0) + Number(r.man_hours ?? 0))
+    }
+    return m
+  }, [stagesManHoursRows])
+
+  /** Stages board: per-person man-hours per job id (descending), for the man-hours hover tooltip. */
+  const stagesLaborBreakdownByJobId = useMemo(() => {
+    const m = new Map<string, Array<{ personName: string; hours: number }>>()
+    for (const r of stagesManHoursRows) {
+      const arr = m.get(r.job_id) ?? []
+      arr.push({ personName: r.person_name, hours: Number(r.man_hours ?? 0) })
+      m.set(r.job_id, arr)
+    }
+    for (const arr of m.values()) arr.sort((a, b) => b.hours - a.hours)
+    return m
+  }, [stagesManHoursRows])
 
   const filteredJobs = jobs.filter((j) => {
     const q = searchQuery.toLowerCase().trim()
@@ -5114,6 +5165,43 @@ ${totalsHtml}
                   >
                     b: {bDisplay ?? '—'}
                   </button>
+                  {(() => {
+                    const known = stagesManHoursByJobId.has(job.id)
+                    const total = stagesManHoursByJobId.get(job.id) ?? 0
+                    const display =
+                      stagesManHoursLoading && !known ? '…' : formatDecimalWorkHoursToHhMm(total)
+                    const breakdown = stagesLaborBreakdownByJobId.get(job.id) ?? []
+                    const tip = breakdown.length
+                      ? breakdown
+                          .map((p) => `${p.personName} ${formatDecimalWorkHoursToHhMm(p.hours)}`)
+                          .join(' · ')
+                      : 'Man-hours applied (crew assignments)'
+                    return (
+                      <div
+                        style={{ ...lineStyle, display: 'flex', alignItems: 'center', gap: '0.3rem' }}
+                        title={tip}
+                        aria-label={`Man-hours applied: ${display === '…' ? 'loading' : display}`}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          width={11}
+                          height={11}
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2.5}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          aria-hidden
+                          style={{ flexShrink: 0 }}
+                        >
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M12 7v5l3 2" />
+                        </svg>
+                        {display}
+                      </div>
+                    )
+                  })()}
                 </>
               )
             }
