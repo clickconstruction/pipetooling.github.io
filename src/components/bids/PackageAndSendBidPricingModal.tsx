@@ -202,6 +202,10 @@ export function PackageAndSendBidPricingModal({
     const v = (bid.plans_link ?? '').trim()
     return v.length > 0 ? v : null
   }, [bid.plans_link])
+  const countToolingPlansLink = useMemo(() => {
+    const v = (bid.count_tooling_plans_link ?? '').trim()
+    return v.length > 0 ? v : null
+  }, [bid.count_tooling_plans_link])
 
   const externalRows = useMemo(
     () => buildBidPricingPackageExternalRows(pricingRows),
@@ -218,28 +222,31 @@ export function PackageAndSendBidPricingModal({
         totalRevenue,
         bidLabel,
         plansLink,
+        countToolingPlansLink,
       }),
-    [externalRows, totalRevenue, bidLabel, plansLink],
+    [externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink],
   )
   const smsText = useMemo(
     () =>
       buildBidPricingPackageSmsText({
         bidLabel,
         plansLink,
+        countToolingPlansLink,
         externalRows,
         totalRevenue,
       }),
-    [bidLabel, plansLink, externalRows, totalRevenue],
+    [bidLabel, plansLink, countToolingPlansLink, externalRows, totalRevenue],
   )
   const emailHtml = useMemo(
     () =>
       buildBidPricingPackageEmailHtml({
         bidLabel,
         plansLink,
+        countToolingPlansLink,
         tableHtml,
         senderName: currentUserName,
       }),
-    [bidLabel, plansLink, tableHtml, currentUserName],
+    [bidLabel, plansLink, countToolingPlansLink, tableHtml, currentUserName],
   )
 
   const recipientOptions: SearchableSelectOption[] = useMemo(() => {
@@ -472,6 +479,44 @@ export function PackageAndSendBidPricingModal({
                 Edit bid
               </button>
             </div>
+          )}
+        </div>
+
+        <div style={sectionStyle}>
+          <p style={sectionLabelStyle}>CountTooling Plans</p>
+          {countToolingPlansLink ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => openInExternalBrowser(countToolingPlansLink)}
+                style={{
+                  padding: '0.4rem 0.75rem',
+                  background: 'white',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  color: '#2563eb',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                }}
+              >
+                Open takeoff
+              </button>
+              <span
+                style={{
+                  fontSize: '0.75rem',
+                  color: '#6b7280',
+                  wordBreak: 'break-all',
+                  overflowWrap: 'anywhere',
+                }}
+              >
+                {countToolingPlansLink}
+              </span>
+            </div>
+          ) : (
+            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+              No CountTooling Plans link on this bid.
+            </span>
           )}
         </div>
 

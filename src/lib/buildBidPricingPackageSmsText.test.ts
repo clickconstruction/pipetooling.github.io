@@ -127,4 +127,18 @@ describe('buildBidPricingPackageSmsText', () => {
     })
     expect(text).toContain('\u2014 \u2014 1 \u00d7 $10.00 = $10.00')
   })
+
+  it('includes the CountTooling Plans line after Job plans when set', () => {
+    const text = buildBidPricingPackageSmsText({
+      bidLabel: 'BE1',
+      plansLink: 'https://example.com/plans',
+      countToolingPlansLink: 'https://counttooling.com/?t=abc',
+      externalRows: [row()],
+      totalRevenue: 100,
+    })
+    const lines = text.split('\n')
+    expect(lines[0]).toBe('Bid: BE1')
+    expect(lines[1]).toBe('Job plans: https://example.com/plans')
+    expect(lines[2]).toBe('CountTooling Plans: https://counttooling.com/?t=abc')
+  })
 })

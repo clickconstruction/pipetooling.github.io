@@ -8,7 +8,8 @@
  * Shape (blank line separators preserved):
  *
  *   Bid: {bidLabel}
- *   Job plans: {plansLink}            ← omitted entirely (incl. the blank line) when null/blank
+ *   Job plans: {plansLink}            ← omitted when null/blank
+ *   CountTooling Plans: {ctpLink}     ← omitted when null/blank
  *
  *   {fixture} — {count} × ${unit} = ${revenue}
  *   …
@@ -27,10 +28,11 @@ import {
 export function buildBidPricingPackageSmsText(args: {
   bidLabel: string
   plansLink: string | null
+  countToolingPlansLink?: string | null
   externalRows: ReadonlyArray<PackageExternalRow>
   totalRevenue: number
 }): string {
-  const { bidLabel, plansLink, externalRows, totalRevenue } = args
+  const { bidLabel, plansLink, countToolingPlansLink, externalRows, totalRevenue } = args
 
   const lines: string[] = []
   lines.push(`Bid: ${bidLabel}`)
@@ -38,6 +40,11 @@ export function buildBidPricingPackageSmsText(args: {
   const link = (plansLink ?? '').trim()
   if (link) {
     lines.push(`Job plans: ${link}`)
+  }
+
+  const countToolingLink = (countToolingPlansLink ?? '').trim()
+  if (countToolingLink) {
+    lines.push(`CountTooling Plans: ${countToolingLink}`)
   }
 
   if (externalRows.length > 0) {

@@ -165,6 +165,31 @@ describe('buildBidPricingPackageEmailHtml', () => {
     })
     expect(html).toContain('Bid: &lt;bad&gt;')
   })
+
+  it('renders the CountTooling Plans link as an Open takeoff anchor, escaped', () => {
+    const html = buildBidPricingPackageEmailHtml({
+      bidLabel: 'BE249 Project X',
+      plansLink: null,
+      countToolingPlansLink: 'https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21',
+      tableHtml: '<table></table>',
+      senderName: null,
+    })
+    expect(html).toContain('CountTooling Plans:')
+    expect(html).toContain('Open takeoff')
+    expect(html).toContain('href="https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21"')
+  })
+
+  it('omits the CountTooling Plans block when the link is null', () => {
+    const html = buildBidPricingPackageEmailHtml({
+      bidLabel: 'BE1',
+      plansLink: null,
+      countToolingPlansLink: null,
+      tableHtml: '',
+      senderName: null,
+    })
+    expect(html).not.toContain('CountTooling Plans')
+    expect(html).not.toContain('Open takeoff')
+  })
 })
 
 describe('buildBidPricingPackagePlainText', () => {
@@ -232,6 +257,28 @@ describe('buildBidPricingPackagePlainText', () => {
     const dataLines = lines.filter((l) => l.includes('$'))
     expect(dataLines.length).toBeGreaterThanOrEqual(2)
     expect(dataLines[0]!.length).toBe(dataLines[1]!.length)
+  })
+
+  it('includes the CountTooling Plans line when set', () => {
+    const text = buildBidPricingPackagePlainText({
+      externalRows: [ext()],
+      totalRevenue: 200,
+      bidLabel: 'BE1',
+      plansLink: null,
+      countToolingPlansLink: 'https://counttooling.com/?t=abc',
+    })
+    expect(text).toContain('CountTooling Plans: https://counttooling.com/?t=abc')
+  })
+
+  it('omits the CountTooling Plans line when null', () => {
+    const text = buildBidPricingPackagePlainText({
+      externalRows: [ext()],
+      totalRevenue: 200,
+      bidLabel: 'BE1',
+      plansLink: null,
+      countToolingPlansLink: null,
+    })
+    expect(text).not.toContain('CountTooling Plans')
   })
 })
 

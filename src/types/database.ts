@@ -560,6 +560,7 @@ export type Database = {
           bid_submission_link: string | null
           bid_value: number | null
           count_tooling_link: string | null
+          count_tooling_plans_link: string | null
           created_at: string | null
           created_by: string
           customer_id: string | null
@@ -609,6 +610,7 @@ export type Database = {
           bid_submission_link?: string | null
           bid_value?: number | null
           count_tooling_link?: string | null
+          count_tooling_plans_link?: string | null
           created_at?: string | null
           created_by: string
           customer_id?: string | null
@@ -658,6 +660,7 @@ export type Database = {
           bid_submission_link?: string | null
           bid_value?: number | null
           count_tooling_link?: string | null
+          count_tooling_plans_link?: string | null
           created_at?: string | null
           created_by?: string
           customer_id?: string | null

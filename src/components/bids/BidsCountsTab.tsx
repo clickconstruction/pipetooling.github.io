@@ -36,6 +36,7 @@ type BidsCountsTabProps = {
   onlyMyBids: boolean
   setOnlyMyBids: (next: boolean) => void
   isMyBid: (bid: BidWithBuilder) => boolean
+  onCountSourceLinkSaved?: (bidId: string) => void | Promise<void>
 }
 
 export function BidsCountsTab({
@@ -54,6 +55,7 @@ export function BidsCountsTab({
   onlyMyBids,
   setOnlyMyBids,
   isMyBid,
+  onCountSourceLinkSaved,
 }: BidsCountsTabProps) {
   const { showToast } = useToastContext()
 
@@ -174,9 +176,25 @@ export function BidsCountsTab({
     return { inserted }
   }
 
+  // Persist the CountTooling source view-link captured from the import payload onto the
+  // bid. Non-fatal: the counts themselves already imported; only the link write failed.
+  // Set-if-found only — never clears an existing link when a paste has no footer.
+  async function persistCountSourceLink(bidId: string, sourceLink: string | null) {
+    if (!sourceLink) return
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('bids').update({ count_tooling_plans_link: sourceLink }).eq('id', bidId),
+        'save count source link'
+      )
+      await onCountSourceLinkSaved?.(bidId)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Imported counts, but failed to save the source link'), 'error')
+    }
+  }
+
   async function handleCountsImport() {
     setCountsImportError(null)
-    const { rows, skippedCount } = parseCountsImportText(countsImportText)
+    const { rows, skippedCount, sourceLink } = parseCountsImportText(countsImportText)
     if (rows.length === 0) {
       setCountsImportError(skippedCount > 0 ? 'No valid rows found. Check format: Fixture, Count, Plan Page' : 'Paste or enter count rows')
       return
@@ -192,6 +210,7 @@ export function BidsCountsTab({
     setCountsImportText('')
     setCountsImportOpen(false)
     refreshAfterCountsChange()
+    await persistCountSourceLink(bidId, sourceLink)
     const msg = skippedCount > 0 ? `Imported ${inserted} rows. ${skippedCount} lines skipped.` : `Imported ${inserted} rows.`
     showToast(msg, 'success')
   }
@@ -202,7 +221,7 @@ export function BidsCountsTab({
     try {
       const text = await navigator.clipboard.readText()
       const trimmed = text.trim()
-      const { rows, skippedCount } = parseCountsImportText(trimmed)
+      const { rows, skippedCount, sourceLink } = parseCountsImportText(trimmed)
       if (rows.length > 0) {
         const { inserted, error } = await insertCountRows(bidId, rows)
         if (error) {
@@ -211,6 +230,7 @@ export function BidsCountsTab({
           return
         }
         refreshAfterCountsChange()
+        await persistCountSourceLink(bidId, sourceLink)
         const msg = skippedCount > 0 ? `Imported ${inserted} rows. ${skippedCount} lines skipped.` : `Imported ${inserted} rows.`
         showToast(msg, 'success')
         return

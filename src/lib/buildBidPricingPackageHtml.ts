@@ -128,10 +128,11 @@ export function buildBidPricingPackageTableHtml(args: {
 export function buildBidPricingPackageEmailHtml(args: {
   bidLabel: string
   plansLink: string | null
+  countToolingPlansLink?: string | null
   tableHtml: string
   senderName: string | null
 }): string {
-  const { bidLabel, plansLink, tableHtml, senderName } = args
+  const { bidLabel, plansLink, countToolingPlansLink, tableHtml, senderName } = args
 
   const senderLine = senderName
     ? `<p style="margin:0 0 12px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111827">Sent by ${escapeHtml(senderName)}.</p>`
@@ -141,12 +142,17 @@ export function buildBidPricingPackageEmailHtml(args: {
     ? `<p style="margin:0 0 16px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111827"><strong>Job plans:</strong> <a href="${escapeHtml(plansLink)}" style="color:#2563eb;text-decoration:underline">Open plans</a><br><span style="font-size:12px;color:#6b7280">${escapeHtml(plansLink)}</span></p>`
     : ''
 
+  const countToolingPlansBlock = countToolingPlansLink
+    ? `<p style="margin:0 0 16px 0;font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#111827"><strong>CountTooling Plans:</strong> <a href="${escapeHtml(countToolingPlansLink)}" style="color:#2563eb;text-decoration:underline">Open takeoff</a><br><span style="font-size:12px;color:#6b7280">${escapeHtml(countToolingPlansLink)}</span></p>`
+    : ''
+
   return (
     '<!DOCTYPE html><html><head><meta charset="utf-8"></head>' +
     '<body style="margin:0;padding:24px;background:#ffffff;font-family:Helvetica,Arial,sans-serif;color:#111827">' +
     `<h1 style="margin:0 0 16px 0;font-size:18px;color:#111827">Bid: ${escapeHtml(bidLabel)}</h1>` +
     senderLine +
     plansBlock +
+    countToolingPlansBlock +
     tableHtml +
     '</body></html>'
   )
@@ -162,14 +168,19 @@ export function buildBidPricingPackagePlainText(args: {
   totalRevenue: number
   bidLabel: string
   plansLink: string | null
+  countToolingPlansLink?: string | null
 }): string {
-  const { externalRows, totalRevenue, bidLabel, plansLink } = args
+  const { externalRows, totalRevenue, bidLabel, plansLink, countToolingPlansLink } = args
 
   const lines: string[] = []
   lines.push(`Bid: ${bidLabel}`)
   lines.push('')
   if (plansLink) {
     lines.push(`Job plans: ${plansLink}`)
+    lines.push('')
+  }
+  if (countToolingPlansLink) {
+    lines.push(`CountTooling Plans: ${countToolingPlansLink}`)
     lines.push('')
   }
 

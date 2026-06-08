@@ -1260,6 +1260,8 @@ export function BidSubmissionFollowupTab({
               {submissionFollowupUrlRow('Marked Up Plans or Cover Page', selectedBid.count_tooling_link)}
               <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
               {submissionFollowupUrlRow('Bid Submission', selectedBid.bid_submission_link)}
+              <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+              {submissionFollowupUrlRow('CountTooling Plans', selectedBid.count_tooling_plans_link)}
             </div>
             <div
               style={{

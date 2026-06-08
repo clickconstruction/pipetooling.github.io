@@ -9,6 +9,7 @@ export type BidEditFormValues = {
   driveLink: string
   plansLink: string
   countToolingLink: string
+  countToolingPlansLink: string
   bidSubmissionLink: string
   projectName: string
   bidNumber: string
@@ -41,6 +42,7 @@ export type BidEditFormSetters = {
   setDriveLink: Dispatch<SetStateAction<string>>
   setPlansLink: Dispatch<SetStateAction<string>>
   setCountToolingLink: Dispatch<SetStateAction<string>>
+  setCountToolingPlansLink: Dispatch<SetStateAction<string>>
   setBidSubmissionLink: Dispatch<SetStateAction<string>>
   setProjectName: Dispatch<SetStateAction<string>>
   setBidNumber: Dispatch<SetStateAction<string>>
@@ -109,6 +111,7 @@ export function useBidEditForm(): BidEditForm {
   const [driveLink, setDriveLink] = useState('')
   const [plansLink, setPlansLink] = useState('')
   const [countToolingLink, setCountToolingLink] = useState('')
+  const [countToolingPlansLink, setCountToolingPlansLink] = useState('')
   const [bidSubmissionLink, setBidSubmissionLink] = useState('')
   const [projectName, setProjectName] = useState('')
   const [bidNumber, setBidNumber] = useState('')
@@ -140,6 +143,7 @@ export function useBidEditForm(): BidEditForm {
     setDriveLink('')
     setPlansLink('')
     setCountToolingLink('')
+    setCountToolingPlansLink('')
     setBidSubmissionLink('')
     setDesignDrawingPlanDate('')
     setPlanPages('')
@@ -172,6 +176,7 @@ export function useBidEditForm(): BidEditForm {
     setDriveLink(bid.drive_link ?? '')
     setPlansLink(bid.plans_link ?? '')
     setCountToolingLink(bid.count_tooling_link ?? '')
+    setCountToolingPlansLink(bid.count_tooling_plans_link ?? '')
     setBidSubmissionLink(bid.bid_submission_link ?? '')
     setGcCustomerId(opts.gcCustomerId)
     setGcCustomerSearch(opts.gcCustomerSearch)
@@ -212,6 +217,7 @@ export function useBidEditForm(): BidEditForm {
     driveLink,
     plansLink,
     countToolingLink,
+    countToolingPlansLink,
     bidSubmissionLink,
     projectName,
     bidNumber,
@@ -244,6 +250,7 @@ export function useBidEditForm(): BidEditForm {
     setDriveLink,
     setPlansLink,
     setCountToolingLink,
+    setCountToolingPlansLink,
     setBidSubmissionLink,
     setProjectName,
     setBidNumber,
