@@ -6,6 +6,8 @@ import ReportViewModal, { type ReportForView } from './ReportViewModal'
 import { firstNonEmptyFieldValueSummary } from '../lib/reportForViewFromJobLedgerRow'
 import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActivity'
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
+import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
+import { ACTIVITY_FILTERS, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
 import {
   scheduleFormatDateLongNoWeekday,
@@ -24,6 +26,7 @@ export type JobThreadActivityItem =
   | { kind: 'report'; report: ReportForView }
   | JobThreadScheduleActivityItem
   | JobThreadClockActivityItem
+  | JobThreadEventActivityItem
 
 export type JobThreadStampActions = {
   onArrived: () => void
@@ -60,6 +63,8 @@ type JobThreadNotesPanelProps = {
   activityListMaxHeight?: string
   /** Passed to {@link displayReportTemplateName} for report row titles and ReportViewModal. */
   viewerRole?: UserRole | null
+  /** Show the All/Notes/Status/Billing/Crew segmented filter. Defaults on when `activity` is provided. */
+  showFilter?: boolean
 }
 
 const DEFAULT_ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -182,6 +187,7 @@ export function JobThreadNotesPanel({
   jobThreadStampActions,
   activityListMaxHeight = DEFAULT_ACTIVITY_LIST_MAX_HEIGHT,
   viewerRole,
+  showFilter,
 }: JobThreadNotesPanelProps) {
   const [viewingReport, setViewingReport] = useState<ReportForView | null>(null)
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
@@ -209,14 +215,22 @@ export function JobThreadNotesPanel({
     [activityProp, notes],
   )
 
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>('all')
+  const filterEnabled = showFilter ?? activityProp != null
+  const visibleActivity = useMemo(
+    () => (filterEnabled ? filterActivity(activity, activityFilter) : activity),
+    [filterEnabled, activity, activityFilter],
+  )
+
   const activityTailKey = useMemo(() => {
-    const last = activity[activity.length - 1]
+    const last = visibleActivity[visibleActivity.length - 1]
     if (!last) return ''
     if (last.kind === 'note') return `n:${last.note.id}`
     if (last.kind === 'report') return `r:${last.report.id}`
     if (last.kind === 'clock_session') return `c:${last.clock.dedupeKey}`
+    if (last.kind === 'event') return `e:${last.event.dedupeKey}`
     return `s:${last.schedule.dedupeKey}`
-  }, [activity])
+  }, [visibleActivity])
 
   useLayoutEffect(() => {
     if (loading) return
@@ -227,7 +241,7 @@ export function JobThreadNotesPanel({
       if (!box) return
       box.scrollTop = box.scrollHeight
     })
-  }, [loading, activity.length, activityTailKey])
+  }, [loading, visibleActivity.length, activityTailKey])
 
   return (
     <div
@@ -245,6 +259,38 @@ export function JobThreadNotesPanel({
           </div>
         </div>
       ) : null}
+      {filterEnabled ? (
+        <div
+          role="tablist"
+          aria-label="Filter activity"
+          style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', marginBottom: '0.5rem' }}
+        >
+          {ACTIVITY_FILTERS.map((f) => {
+            const active = activityFilter === f.value
+            return (
+              <button
+                key={f.value}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActivityFilter(f.value)}
+                style={{
+                  padding: '0.15rem 0.5rem',
+                  fontSize: '0.6875rem',
+                  fontWeight: 600,
+                  borderRadius: 999,
+                  cursor: 'pointer',
+                  border: `1px solid ${active ? '#2563eb' : '#d1d5db'}`,
+                  background: active ? '#2563eb' : '#fff',
+                  color: active ? '#fff' : '#6b7280',
+                }}
+              >
+                {f.label}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
       {loading ? (
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading…</p>
       ) : (
@@ -258,12 +304,12 @@ export function JobThreadNotesPanel({
           }}
         >
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {activity.length === 0 ? (
+            {visibleActivity.length === 0 ? (
               showEmptyPlaceholder ? (
                 <li style={{ color: '#6b7280', fontSize: '0.875rem' }}>{emptyLabel}</li>
               ) : null
             ) : (
-              activity.map((item) => {
+              visibleActivity.map((item) => {
                 if (item.kind === 'schedule_block') {
                   const s = item.schedule
                   const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(s.sortAt)
@@ -370,6 +416,44 @@ export function JobThreadNotesPanel({
                       {c.note ? (
                         <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap', marginTop: 4 }}>{c.note}</div>
                       ) : null}
+                    </li>
+                  )
+                }
+                if (item.kind === 'event') {
+                  const ev = item.event
+                  const meta = eventRenderMeta(ev.type)
+                  const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(ev.occurredAt)
+                  return (
+                    <li
+                      key={ev.dedupeKey}
+                      style={{
+                        padding: '0.5rem 0',
+                        borderBottom: '1px solid #f3f4f6',
+                        fontSize: '0.8125rem',
+                        borderLeft: `3px solid ${meta.borderColor}`,
+                        paddingLeft: '0.5rem',
+                        marginLeft: 0,
+                      }}
+                    >
+                      <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                        <span
+                          style={{
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            color: meta.tagColor,
+                            marginRight: '0.35rem',
+                            verticalAlign: 'middle',
+                          }}
+                        >
+                          {meta.tag}
+                        </span>
+                        <strong style={{ color: '#111827' }}>{ev.actorName?.trim() || 'System'}</strong>
+                        <span style={{ marginLeft: '0.5rem' }}>
+                          {weekdayTimeChicago} · {daysAgoLabel}
+                        </span>
+                      </div>
+                      <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{ev.summary}</div>
                     </li>
                   )
                 }
