@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-07 (v2.594)
+last_updated: 2026-06-08 (v2.595)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.595 — **Jobs → Job activity / notes** — **activity ledger (Phase 2: append-only `job_activity_events`)**. Replaces Phase 1's live-merge with a durable, append-only ledger table written by DB triggers, so the feed now also captures what Phase 1 couldn't: **payment/crew removals**, **field edits** (customer / address / job total), and **combine/separate**. New `job_activity_events` table (RLS via `can_read_job_activity` — operational rows = status family incl. team members, financial rows = payments family, role-gated), a `list_job_activity_events` SECURITY DEFINER reader RPC (role-aware, resolves actor names), triggers on `job_status_events`/payments/invoices/team_members/`jobs_ledger` field edits/materials/fixtures + the split RPC, and an idempotent backfill (**3,094** historical events). Client cut over to ONE RPC fetch + ONE realtime subscription, replacing the five Phase-1 per-table fetchers/subscriptions (their kernels deleted; the generic `event` chassis + filter kept). Applied to prod via `supabase db push` + `gen-types:linked`](#latest-updates-v2595)
 **New:** [v2.594 — **Jobs → Job activity / notes** — **activity ledger (Phase 1)**. The activity feed becomes a chronological **ledger of important job actions**: it now merges **status changes**, **payments**, **invoice milestones** (created / billed / sent / write-down), **Stripe invoice emails**, and **crew added** alongside the existing notes / reports / schedule / clock sources, on **Stages**, **Workflow**, and the **Job Detail** modal. All system actions render through ONE generic `event` item kind + a render registry (`src/lib/jobActivityEvent.ts`), so each action is a colored left-border + uppercase tag + humanized summary. A new segmented **filter** (All / Notes / Status / Billing / Crew) sits above the feed. Financial events (payments/invoices) are auto-gated by existing RLS — viewers without financial access simply see none. Phase 1 is **client-only (no schema change)**: each source = a pure kernel + fetcher (mirroring the clock-session pattern) merged into both thread hooks with realtime. Phase 2 (append-only `job_activity_events` table + triggers) follows to capture deletes/edits/transitions](#latest-updates-v2594)
 **New:** [v2.593 — **Jobs → Job activity / notes** — **clock in/out sessions in the activity feed**. Clock sessions now appear as a read-only source in the merged Job activity / notes feed (alongside thread notes, field reports, and dispatch schedule blocks), on the **Stages** board, the **Workflow** page, and the **Job Detail** modal. Each row shows person · in → out · duration (open sessions read "still on the clock"), with an amber **Pending approval** chip on unapproved time and the session note when present. Mirrors the v2.445 schedule-block pattern: new pure kernel `clockSessionsToActivityItems` (+ unit tests), merged in both thread hooks, with a `clock_sessions` Realtime subscription. Reuses the existing `fetchClockSessionsForJobLedger` — **no DB / migration / type changes**; RLS already gates visibility (roles without labor access see no clock rows). Surfaces clocked-but-unapproved time that hasn't yet rolled into man-hours](#latest-updates-v2593)
 **New:** [v2.592 — **Jobs → Stages** — **man-hours applied per job** + DB type-drift reconciliation. Each Stages-board card gains a read-only clock-icon line showing total **man-hours applied** to the job (with a per-person breakdown on hover), backed by a new `SECURITY INVOKER` RPC **`get_man_hours_by_job()`** (migration `20260607234914`) that mirrors the canonical `teamLabor.ts` allocation kernel (salaried = 8h Mon–Fri, hourly = `people_hours`, each crew day split across that day's `job_assignments` by `pct`). Loaded once per Stages visit; RLS-governed, so roles without labor access just see `—`. Plus: `src/types/database.ts` regenerated from prod to clear ~169 lines of drift — dropped backup-table types removed, `graphql_public` block + `list_present_mercury_ids` RPC added](#latest-updates-v2592)
@@ -1970,6 +1971,33 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.595)
+
+**Date**: 2026-06-08
+
+### Jobs → Job activity / notes — activity ledger Phase 2 (append-only `job_activity_events`)
+
+Phase 1 (v2.594) live-merged already-rowed sources into the feed. Phase 2 introduces the **durable, append-only ledger** that captures the actions Phase 1 structurally could not — **deletions** (payment / crew removed), **field edits**, and **combine / separate** — and collapses the feed's per-expand work to a single role-aware query + one realtime subscription.
+
+**Database** (applied to prod via `supabase db push`; backfill seeded **3,094** historical events):
+- **`job_activity_events`** table — `(id, job_id, event_type, occurred_at, actor_user_id, summary, detail jsonb, financial)`; indexes on `(job_id, occurred_at desc)` and `(event_type, detail->>'source_id')` (dedup); added to the realtime publication.
+- **`can_read_job_activity(job_id, financial)`** — the single visibility predicate used by **both** the table RLS and the reader RPC (so they can't diverge): operational rows mirror `job_status_events` visibility (master / dev / primary / adopted+shared assistants / **team members**); financial rows mirror `jobs_ledger_payments` (role ∈ dev/master/assistant/primary **and** job access).
+- **`list_job_activity_events(p_job_id)`** — SECURITY DEFINER reader RPC, role-aware, resolves actor names, oldest-first, cap 200.
+- **Triggers** (AFTER, SECURITY DEFINER, `search_path`, `source_id`-deduped): status (single writer on `job_status_events` — covers both the `update_job_status` RPC and the clock-out auto-promote paths), payments (insert/**delete**), invoices (insert + NULL→set on `billed_at`/`sent_to_customer_at`/`agreed_write_down_at`), team_members (insert/**delete**), `jobs_ledger` field edits (`customer`/`job_address`/`revenue`), materials, fixtures; `split_job_ledger_fixtures_to_new_job` records `job_separated` on both jobs.
+- **Idempotent backfill** from the existing dated tables, guarded on `(event_type, detail->>'source_id')` so triggers + backfill never duplicate.
+
+**Client cutover**: both thread hooks ([`useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts), [`useJobThreadNotesForModal.ts`](../src/hooks/useJobThreadNotesForModal.ts)) now fetch the single [`list_job_activity_events`](../src/lib/fetchJobActivityEventsForJobLedger.ts) RPC (mapped by [`jobActivityEventsFromRpc.ts`](../src/lib/jobActivityEventsFromRpc.ts)) and subscribe to one `job_activity_events` realtime channel, replacing the five Phase-1 per-table fetchers + four subscriptions. The redundant Phase-1 kernels/fetchers/tests were deleted; the generic `event` chassis ([`jobActivityEvent.ts`](../src/lib/jobActivityEvent.ts)) + the segmented filter are unchanged. Validation: the migration was exercised against prod inside a rolled-back transaction (triggers fired with correct counts; split RPC compiled; backfill = 3,094) before applying.
+
+#### Verification
+
+Migration validated via transactional rollback on prod, then `supabase db push` (clean) + `npm run gen-types:linked` (table + RPC types only). `tsc -b` clean; full `vitest run` green (**1560 tests**); lint clean. RPC role gating confirmed (returns rows only with an authenticated caller).
+
+#### Files
+
+New migrations: `supabase/migrations/20260608010000_job_activity_events.sql`, `20260608010050_split_job_combine_separate_activity.sql`, `20260608010100_job_activity_events_backfill.sql`. New client: [`fetchJobActivityEventsForJobLedger.ts`](../src/lib/fetchJobActivityEventsForJobLedger.ts), [`jobActivityEventsFromRpc.ts`](../src/lib/jobActivityEventsFromRpc.ts) (+ test). Modified: both thread hooks, [`database.ts`](../src/types/database.ts). Removed: the five Phase-1 `fetch*`/`jobThread*Activity` kernel/test pairs.
+
 ---
 
 ## Latest Updates (v2.594)
