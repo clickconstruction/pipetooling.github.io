@@ -6,9 +6,11 @@ import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
 import { fieldValueForSubmit, normalizePercentFieldValueToString } from '../lib/reportTemplateFieldDisplay'
+import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
+import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -47,6 +49,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   const [error, setError] = useState<string | null>(null)
   const [searchMode, setSearchMode] = useState<'search' | 'last'>('search')
   const [copyJustClicked, setCopyJustClicked] = useState(false)
+  const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -278,18 +281,44 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
       setError(err.message)
       return
     }
-    onSaved()
-    handleClose()
+    // Best-effort report notification (fire-and-forget; report is already saved).
     if (inserted?.id) {
-      try {
-        await supabase.functions.invoke('send-report-notification', { body: { report_id: inserted.id } })
-      } catch {
-        // Non-blocking: report was created; notification is best-effort
+      void supabase.functions
+        .invoke('send-report-notification', { body: { report_id: inserted.id } })
+        .catch(() => { /* notification is best-effort */ })
+    }
+    // If this is a job report marked 100% complete and the job is still Working, offer to move it
+    // to Ready to bill before closing.
+    if (jobLedgerId && reportSaysJobComplete(fv)) {
+      const { data: jobRow } = await supabase
+        .from('jobs_ledger')
+        .select('status')
+        .eq('id', jobLedgerId)
+        .maybeSingle()
+      if ((jobRow as { status?: string | null } | null)?.status === 'working') {
+        setReadyToBillJob({
+          id: jobLedgerId,
+          hcpNumber: selectedJob.hcp_number || '—',
+          jobName: selectedJob.display_name || '—',
+        })
+        return
       }
     }
+    onSaved()
+    handleClose()
+  }
+
+  function finishReadyToBillPrompt() {
+    setReadyToBillJob(null)
+    onSaved()
+    handleClose()
   }
 
   if (!open) return null
+
+  if (readyToBillJob) {
+    return <MarkJobReadyToBillPrompt job={readyToBillJob} onClose={finishReadyToBillPrompt} />
+  }
 
   const fields = templateFields[selectedTemplateId] ?? []
   const canSubmit = selectedJob && selectedTemplateId && authUserId
