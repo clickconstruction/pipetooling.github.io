@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-05 (v2.591)
+last_updated: 2026-06-07 (v2.592)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.592 — **Jobs → Stages** — **man-hours applied per job** + DB type-drift reconciliation. Each Stages-board card gains a read-only clock-icon line showing total **man-hours applied** to the job (with a per-person breakdown on hover), backed by a new `SECURITY INVOKER` RPC **`get_man_hours_by_job()`** (migration `20260607234914`) that mirrors the canonical `teamLabor.ts` allocation kernel (salaried = 8h Mon–Fri, hourly = `people_hours`, each crew day split across that day's `job_assignments` by `pct`). Loaded once per Stages visit; RLS-governed, so roles without labor access just see `—`. Plus: `src/types/database.ts` regenerated from prod to clear ~169 lines of drift — dropped backup-table types removed, `graphql_public` block + `list_present_mercury_ids` RPC added](#latest-updates-v2592)
 **New:** [v2.591 — **Bids / Materials / People** — three small features + migration-history reconciliation. **Bids → Takeoffs → Edit Assembly**: the assembly name (shown only in **By Stage** mode) is now an editable input with a contextual **Save name** button (Enter saves) that writes `material_templates.name` and calls `loadMaterialTemplates()` so the rename propagates to takeoff rows / assembly picker / nested-item lookups. **Materials / Bids → Add Part**: **part type is now optional** — migration `20260605225013` drops `NOT NULL` on `material_parts.part_type_id`, types → `string | null`, modal relabeled **Part Type (optional)** / **No part type**, inserts send `part_type_id || null`. **People → Review → Team Summary**: the Hours drilldown shows a per-day green `[$value]` **Value Created** per allocation (cost-share of the job's Value Created, reconciles with Gross). Plus five prod-applied RLS/Realtime migrations recovered into the repo so `db push` is unblocked](#latest-updates-v2591)
 **New:** [v2.584 — **Bids → Takeoffs → Exact** — **Assembly picker dropdown portaled to `document.body`**. The per-row Assembly search dropdown used to be an absolutely-positioned `<ul>` inside a `<div style={{ overflow: 'hidden' }}>` table wrapper (rounded-border clip), so opening the picker on a row near the bottom of the table cut the dropdown off at the table edge. Fixed via `ReactDOM.createPortal` to `document.body`, modeled after the existing rough-quantity numpad portal already in the same file. New top-level `takeoffTemplatePickerInputRefs: Map<mapping.id, HTMLInputElement>` + `takeoffTemplatePickerAnchor` state + `useEffect` that reads `getBoundingClientRect()` and re-anchors on `resize` and `scroll` (capture phase, so any scrolling ancestor fires it). The assembly `<input>` gains a callback ref; the inline `<ul>` (53 lines) is replaced by a single `createPortal(<ul style={{ position: 'fixed', top, left, width, zIndex: 1200 }}>, document.body)` rendered next to the existing rough numpad portal. `onMouseDown={(e) => e.preventDefault()}` on `<ul>` / `<li>` / fallback button prevents the input from blurring mid-scroll. No DB / migration / RPC / type-gen changes](#latest-updates-v2584)
 **New:** [v2.583 — **Materials → Supply Houses** — **Show last payment** toggle. New per-user checkbox stacked directly below the existing **Show paid invoices** toggle; when on, reveals a new **Last Paid** column on the summary table between **Updated** and the actions column showing `MAX(paid_at)` per supply house as a relative phrase ("5 days ago") via `longTimeAgoPhrase` — matches the adjacent **Updated** column verbatim, full ISO timestamp in the hover `title` tooltip. Defaults off; component-local state (not persisted). `loadSupplyHouseSummary` extends its existing `supply_house_invoices` projection to include `paid_at` and folds `lastInvoicePaidAt: MAX(paid_at) per house` into `SupplyHouseSummaryRow`; toggling does not refetch. Expanded-detail row `colSpan` flexes 5 → 6 when on. Houses with zero paid invoices show `—`. No DB / migration / RPC / type-gen changes — the `paid_at` column + auto-stamp trigger landed in v2.582](#latest-updates-v2583)
@@ -1967,6 +1968,40 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.592)
+
+**Date**: 2026-06-07
+
+A new **man-hours applied** read-out on the Jobs → Stages board, plus a `src/types/database.ts` drift reconciliation (two separate PRs, #94 and #93).
+
+### Jobs → Stages — man-hours applied per job
+
+Each card on the **Jobs → Stages** board now shows a read-only **man-hours applied** line (a small clock icon + a compact `8h 15m` / `45m` figure) directly under the existing **`b:`** billing line, with a **per-person breakdown on hover** (`title` tooltip — `Name 8h 15m · Name 45m …`, descending). It answers "how much labor has actually been poured into this job so far" at a glance, without opening the Team Labor / Teams Summary tabs.
+
+- **New RPC `get_man_hours_by_job()`** — migration **`20260607234914_add_get_man_hours_by_job_rpc.sql`**. `language sql`, `stable`, **`SECURITY INVOKER`**, `set search_path = public`; returns `table (job_id text, person_name text, man_hours numeric)`, one row per `(job_id, person_name)`. It mirrors the canonical client kernel in [`teamLabor.ts`](../src/lib/teamLabor.ts) exactly: salaried people → **8h Mon–Fri** (0 on weekends, `people_hours` ignored); hourly people → `people_hours.hours` for that person/day within the last 2 years; each crew day's hours split across that day's `job_assignments` by `pct`. Because `(work_date, person_name)` is unique in `people_crew_jobs`, the aggregation matches the Combined-Labor / Teams-Summary tabs. `SECURITY INVOKER` means it runs under the caller's RLS — roles without read access to the labor tables simply get no rows and the line shows `—`, so there is no privilege escalation. `grant execute … to authenticated`.
+- **Client** ([`Jobs.tsx`](../src/pages/Jobs.tsx)) — `loadStagesManHours()` calls the RPC **once per Stages visit** (load-once `useRef` guard, cleared on error so the next visit retries), fired by a debounced `useEffect` gated on `activeTab === 'stages'`. Two `useMemo`s derive `stagesManHoursByJobId` (per-job total) and `stagesLaborBreakdownByJobId` (descending per-person list for the tooltip); hours render via the existing `formatDecimalWorkHoursToHhMm` helper, showing `…` while loading and `—` when the job has no allocated hours.
+- The TS type for the RPC (`get_man_hours_by_job: { Args: never; Returns: { job_id; man_hours; person_name }[] }`) is part of `src/types/database.ts` — it landed via the drift reconciliation below, since the migration was already applied to prod.
+
+### Database — `src/types/database.ts` drift reconciliation
+
+`src/types/database.ts` had drifted ~169 lines from the live prod schema (project `yewfzhbofbbyvkvtaatw`), unrelated to any feature work. Regenerated via **`npm run gen-types:linked`** so the committed types match prod again:
+
+- **Removed** the dropped backup-table types `_freeze_crew_lead_bids_backup` / `_freeze_crew_lead_jobs_backup` (dropped in prod by `20260605212913_drop_backup_tables`; no app code referenced them).
+- **Added** the `graphql_public` schema block + `Constants.graphql_public`.
+- **Added** the `list_present_mercury_ids` RPC type (present in prod, missing locally).
+- **Alphabetized** the `cost_estimate_*` table blocks (column shapes unchanged — the line diff only looks like column changes because it diffs across the reorder).
+- Includes the `get_man_hours_by_job` RPC type (its migration is already applied to prod, so it is part of the current prod schema).
+
+#### Verification
+
+`tsc -b` clean; full `vitest run` green (**1543 tests**); no app code referenced the removed backup tables. Both PRs passed CI (typecheck / lint / test / build) and squash-merged to `main`.
+
+#### Files
+
+**v2.592 feature (PR #94)** — modified [`Jobs.tsx`](../src/pages/Jobs.tsx); new `supabase/migrations/20260607234914_add_get_man_hours_by_job_rpc.sql`. **Type drift (PR #93)** — regenerated [`database.ts`](../src/types/database.ts).
+
 ---
 
 ## Latest Updates (v2.591)
