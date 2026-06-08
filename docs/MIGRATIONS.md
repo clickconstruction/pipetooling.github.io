@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-06-07
+last_updated: 2026-06-08
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -131,6 +131,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Jobs / Billing / Stripe / RPC
 
 ### June 2026
+
+#### June 8, 2026
+
+**Job activity ledger (Phase 2)** — three migrations:
+- **`20260608010000_job_activity_events.sql`** — new append-only **`job_activity_events`** table `(id, job_id, event_type, occurred_at, actor_user_id, summary, detail jsonb, financial)` + indexes `(job_id, occurred_at desc)` and `(event_type, detail->>'source_id')`; RLS via new **`can_read_job_activity(job_id, financial)`** helper (operational = `job_status_events` family incl. team members; financial = `jobs_ledger_payments` family, role-gated). New **`humanize_job_status(text)`** helper and **`list_job_activity_events(p_job_id)`** SECURITY DEFINER reader RPC. **Triggers** (AFTER, SECURITY DEFINER, `set search_path = public`, `source_id`-deduped) on `job_status_events` (single status writer), `jobs_ledger_payments` (ins/del), `jobs_ledger_invoices` (ins + dated-col updates), `jobs_ledger_team_members` (ins/del), `jobs_ledger` (field edits: customer/address/revenue), `jobs_ledger_materials`, `jobs_ledger_fixtures`. Table added to the `supabase_realtime` publication.
+- **`20260608010050_split_job_combine_separate_activity.sql`** — `CREATE OR REPLACE` of `split_job_ledger_fixtures_to_new_job` (verbatim) adding two `job_separated` event inserts before the success return.
+- **`20260608010100_job_activity_events_backfill.sql`** — idempotent backfill (~3,094 rows) from `job_status_events`, `jobs_ledger_payments`, `jobs_ledger_invoices` (4 milestones), `jobs_ledger_invoice_stripe_email_sends`, `jobs_ledger_team_members`; guarded on `(event_type, detail->>'source_id')` so re-runs and trigger overlap never duplicate.
+- **Validation**: the full set was run against prod inside a rolled-back transaction (triggers fired with correct counts; split RPC compiled; backfill = 3,094) before `supabase db push`. **`npm run gen-types:linked`** after apply. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.595**.
+- **Category**: Jobs / Activity ledger / Schema / RPC / Triggers
 
 #### June 7, 2026
 
