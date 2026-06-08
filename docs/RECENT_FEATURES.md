@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-07 (v2.592)
+last_updated: 2026-06-07 (v2.593)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.593 — **Jobs → Job activity / notes** — **clock in/out sessions in the activity feed**. Clock sessions now appear as a read-only source in the merged Job activity / notes feed (alongside thread notes, field reports, and dispatch schedule blocks), on the **Stages** board, the **Workflow** page, and the **Job Detail** modal. Each row shows person · in → out · duration (open sessions read "still on the clock"), with an amber **Pending approval** chip on unapproved time and the session note when present. Mirrors the v2.445 schedule-block pattern: new pure kernel `clockSessionsToActivityItems` (+ unit tests), merged in both thread hooks, with a `clock_sessions` Realtime subscription. Reuses the existing `fetchClockSessionsForJobLedger` — **no DB / migration / type changes**; RLS already gates visibility (roles without labor access see no clock rows). Surfaces clocked-but-unapproved time that hasn't yet rolled into man-hours](#latest-updates-v2593)
 **New:** [v2.592 — **Jobs → Stages** — **man-hours applied per job** + DB type-drift reconciliation. Each Stages-board card gains a read-only clock-icon line showing total **man-hours applied** to the job (with a per-person breakdown on hover), backed by a new `SECURITY INVOKER` RPC **`get_man_hours_by_job()`** (migration `20260607234914`) that mirrors the canonical `teamLabor.ts` allocation kernel (salaried = 8h Mon–Fri, hourly = `people_hours`, each crew day split across that day's `job_assignments` by `pct`). Loaded once per Stages visit; RLS-governed, so roles without labor access just see `—`. Plus: `src/types/database.ts` regenerated from prod to clear ~169 lines of drift — dropped backup-table types removed, `graphql_public` block + `list_present_mercury_ids` RPC added](#latest-updates-v2592)
 **New:** [v2.591 — **Bids / Materials / People** — three small features + migration-history reconciliation. **Bids → Takeoffs → Edit Assembly**: the assembly name (shown only in **By Stage** mode) is now an editable input with a contextual **Save name** button (Enter saves) that writes `material_templates.name` and calls `loadMaterialTemplates()` so the rename propagates to takeoff rows / assembly picker / nested-item lookups. **Materials / Bids → Add Part**: **part type is now optional** — migration `20260605225013` drops `NOT NULL` on `material_parts.part_type_id`, types → `string | null`, modal relabeled **Part Type (optional)** / **No part type**, inserts send `part_type_id || null`. **People → Review → Team Summary**: the Hours drilldown shows a per-day green `[$value]` **Value Created** per allocation (cost-share of the job's Value Created, reconciles with Gross). Plus five prod-applied RLS/Realtime migrations recovered into the repo so `db push` is unblocked](#latest-updates-v2591)
 **New:** [v2.584 — **Bids → Takeoffs → Exact** — **Assembly picker dropdown portaled to `document.body`**. The per-row Assembly search dropdown used to be an absolutely-positioned `<ul>` inside a `<div style={{ overflow: 'hidden' }}>` table wrapper (rounded-border clip), so opening the picker on a row near the bottom of the table cut the dropdown off at the table edge. Fixed via `ReactDOM.createPortal` to `document.body`, modeled after the existing rough-quantity numpad portal already in the same file. New top-level `takeoffTemplatePickerInputRefs: Map<mapping.id, HTMLInputElement>` + `takeoffTemplatePickerAnchor` state + `useEffect` that reads `getBoundingClientRect()` and re-anchors on `resize` and `scroll` (capture phase, so any scrolling ancestor fires it). The assembly `<input>` gains a callback ref; the inline `<ul>` (53 lines) is replaced by a single `createPortal(<ul style={{ position: 'fixed', top, left, width, zIndex: 1200 }}>, document.body)` rendered next to the existing rough numpad portal. `onMouseDown={(e) => e.preventDefault()}` on `<ul>` / `<li>` / fallback button prevents the input from blurring mid-scroll. No DB / migration / RPC / type-gen changes](#latest-updates-v2584)
@@ -1968,6 +1969,31 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.593)
+
+**Date**: 2026-06-07
+
+### Jobs → Job activity / notes — clock in/out sessions in the activity feed
+
+The **Job activity / notes** feed is a merged, chronological timeline of read-only and interactive sources. It already combined thread notes, field reports, and dispatch schedule blocks (v2.445); this adds **clock in/out sessions** as a fourth source, so you can see who clocked into a job and when — right next to the notes and reports — on the **Jobs → Stages** board, the **Workflow** page, and the **Job Detail** modal.
+
+Each clock row renders with an indigo left-border and a **CLOCK** tag: `person · weekday/time · N days ago`, then `clock-in → clock-out · duration` (open sessions show `clock-in → still on the clock`), an amber **Pending approval** chip when `approved_at` is null, and the session's note when present.
+
+- **Pure kernel** — new [`src/lib/jobThreadClockActivity.ts`](../src/lib/jobThreadClockActivity.ts) (`clockSessionsToActivityItems`): one timeline item per session (`dedupeKey: cs:${id}`, `sortAt` = `clocked_in_at`), computing decimal duration, `approved`/`pending` status, and trimmed note. Drops **rejected** sessions; keeps **open** and **pending** ones — which is exactly what surfaces clocked-but-unapproved time that hasn't rolled into man-hours yet. Covered by 7 unit tests ([`jobThreadClockActivity.test.ts`](../src/lib/jobThreadClockActivity.test.ts)), per the repo's pure-kernel convention.
+- **Merge + realtime** — both thread hooks ([`useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts) for Stages/Workflow, [`useJobThreadNotesForModal.ts`](../src/hooks/useJobThreadNotesForModal.ts) for Job Detail) fetch sessions via the existing [`fetchClockSessionsForJobLedger`](../src/lib/fetchClockSessionsForJobLedger.ts), merge them through `clockSessionsToActivityItems`, and add a `clock_sessions` Realtime subscription (matched on `job_ledger_id`). Sort is handled by a new `clock_session` case in [`jobThreadActivitySort.ts`](../src/lib/jobThreadActivitySort.ts).
+- **Render** — new `clock_session` branch in [`JobThreadNotesPanel.tsx`](../src/components/JobThreadNotesPanel.tsx) (added to the `JobThreadActivityItem` union + the scroll-to-newest key); times via a new `formatDispatchNoteTimeChicago` helper in [`dispatchNoteDisplay.ts`](../src/utils/dispatchNoteDisplay.ts); duration via the existing `formatDecimalWorkHoursToHhMm`.
+- **No DB / migration / type-gen changes** — reuses the existing fetcher; **RLS** already governs `clock_sessions`, so roles without labor read-access get zero clock rows (the feed simply shows none — no leak). The collapsed **Last activity** preview stays thread-stats-only (clock sessions, like schedule blocks, appear only in the **expanded** feed).
+
+#### Verification
+
+`tsc -b` clean; `npm run lint` clean on touched files; full `vitest run` green (**1550 tests**, incl. the 7 new kernel tests).
+
+#### Files
+
+New: [`src/lib/jobThreadClockActivity.ts`](../src/lib/jobThreadClockActivity.ts), [`src/lib/jobThreadClockActivity.test.ts`](../src/lib/jobThreadClockActivity.test.ts). Modified: [`src/components/JobThreadNotesPanel.tsx`](../src/components/JobThreadNotesPanel.tsx), [`src/hooks/useJobThreadNotes.ts`](../src/hooks/useJobThreadNotes.ts), [`src/hooks/useJobThreadNotesForModal.ts`](../src/hooks/useJobThreadNotesForModal.ts), [`src/lib/jobThreadActivitySort.ts`](../src/lib/jobThreadActivitySort.ts), [`src/utils/dispatchNoteDisplay.ts`](../src/utils/dispatchNoteDisplay.ts).
+
 ---
 
 ## Latest Updates (v2.592)

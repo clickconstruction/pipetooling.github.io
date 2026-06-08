@@ -50,6 +50,16 @@ export function formatDispatchNoteWeekdayTimeChicago(isoUtc: string): string {
   }).format(new Date(isoUtc))
 }
 
+/** e.g. "3:45 PM" in America/Chicago (time only). */
+export function formatDispatchNoteTimeChicago(isoUtc: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: APP_CALENDAR_TZ,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(new Date(isoUtc))
+}
+
 export type DispatchNoteDisplayMeta = {
   weekdayTimeChicago: string
   daysAgoLabel: string
