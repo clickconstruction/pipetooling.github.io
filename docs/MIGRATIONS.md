@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-06-05
+last_updated: 2026-06-07
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -131,6 +131,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Category**: Jobs / Billing / Stripe / RPC
 
 ### June 2026
+
+#### June 7, 2026
+
+**`20260607234914_add_get_man_hours_by_job_rpc.sql`**
+- **Purpose**: **Jobs → Stages** — back the new **man-hours applied** card line. New function **`get_man_hours_by_job()`** (`language sql`, `stable`, **`SECURITY INVOKER`**, `set search_path = public`) returns `table (job_id text, person_name text, man_hours numeric)`, one row per `(job_id, person_name)`. Mirrors the canonical [`teamLabor.ts`](../src/lib/teamLabor.ts) kernel: salaried = 8h Mon–Fri, hourly = `people_hours` (last 2 years), each crew day split across that day's `job_assignments` by `pct`. `grant execute … to authenticated`. **[`RECENT_FEATURES.md`](RECENT_FEATURES.md) v2.592**.
+- **Impact**: [`Jobs.tsx`](../src/pages/Jobs.tsx) Stages board (`loadStagesManHours`, per-job total + per-person hover breakdown). `SECURITY INVOKER` → runs under the caller's RLS, so roles without labor read-access get no rows (line shows `—`). Already applied to prod (the regenerated `src/types/database.ts` includes it, `Args: never`); the migration file lands on `main` to keep history complete. PR #94.
+- **Category**: Jobs / Labor / RPC
+
+> **Type-drift reconciliation (not new schema):** `src/types/database.ts` was regenerated from prod (`npm run gen-types:linked`, PR #93) to clear ~169 lines of drift unrelated to feature work — removed the already-dropped `_freeze_crew_lead_bids_backup` / `_freeze_crew_lead_jobs_backup` types (see `20260605212913` above), added the `graphql_public` schema block + the `list_present_mercury_ids` RPC type, and alphabetized the `cost_estimate_*` blocks (column shapes unchanged). No schema change.
 
 #### June 5, 2026
 
