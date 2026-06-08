@@ -45,4 +45,57 @@ describe('parseCountsImportText', () => {
     const { rows } = parseCountsImportText('Pipe,2.5, ,')
     expect(rows).toEqual([{ fixture: 'Pipe', count: 2.5, group_tag: null, page: null }])
   })
+
+  it('returns sourceLink null when there is no footer (backward compatible)', () => {
+    const { rows, skippedCount, sourceLink } = parseCountsImportText('Toilet\t5\nSink\t2')
+    expect(rows).toHaveLength(2)
+    expect(skippedCount).toBe(0)
+    expect(sourceLink).toBeNull()
+  })
+
+  it('captures the CountTooling view link and excludes the footer from rows/skipped', () => {
+    const payload =
+      'Water Closet\t12\t1, 2, 3\n\n' +
+      '[Rough-In] ft of 2in Copper\t148.50\t1, 2\n\n' +
+      'ft of 4in PVC\t60.00\t3\n\n' +
+      'View link:\thttps://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21'
+    const { rows, skippedCount, sourceLink } = parseCountsImportText(payload)
+    expect(sourceLink).toBe('https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
+    expect(skippedCount).toBe(0)
+    expect(rows).toEqual([
+      { fixture: 'Water Closet', count: 12, group_tag: null, page: '1, 2, 3' },
+      { fixture: '[Rough-In] ft of 2in Copper', count: 148.5, group_tag: null, page: '1, 2' },
+      { fixture: 'ft of 4in PVC', count: 60, group_tag: null, page: '3' },
+    ])
+  })
+
+  it('matches the link by URL shape, not the label or position', () => {
+    // No "View link:" label, link appears before the count rows.
+    const { sourceLink, rows } = parseCountsImportText(
+      'https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21\nToilet\t5'
+    )
+    expect(sourceLink).toBe('https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
+    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: null, page: null }])
+  })
+
+  it('matches the t= param in any query position and on any host (stored as-is)', () => {
+    const ampForm = parseCountsImportText(
+      'View link:\thttps://counttooling.com/?foo=bar&t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21'
+    )
+    expect(ampForm.sourceLink).toBe('https://counttooling.com/?foo=bar&t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
+
+    const otherHost = parseCountsImportText(
+      'View link:\thttps://example.com/x?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21'
+    )
+    expect(otherHost.sourceLink).toBe('https://example.com/x?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
+  })
+
+  it('does not count the footer line as a skipped row', () => {
+    const { rows, skippedCount, sourceLink } = parseCountsImportText(
+      'Toilet\t5\nView link:\thttps://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21'
+    )
+    expect(rows).toEqual([{ fixture: 'Toilet', count: 5, group_tag: null, page: null }])
+    expect(skippedCount).toBe(0)
+    expect(sourceLink).toBe('https://counttooling.com/?t=8f3c2a4e-1b9d-4c77-a0e2-6d5b1f0a9e21')
+  })
 })

@@ -288,6 +288,7 @@ export default function Bids() {
     driveLink,
     plansLink,
     countToolingLink,
+    countToolingPlansLink,
     bidSubmissionLink,
     projectName,
     bidNumber,
@@ -1890,6 +1891,7 @@ export default function Bids() {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
       count_tooling_link: countToolingLink.trim() || null,
+      count_tooling_plans_link: countToolingPlansLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       plan_pages: planPages.trim() || null,
@@ -1995,6 +1997,7 @@ export default function Bids() {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
       count_tooling_link: countToolingLink.trim() || null,
+      count_tooling_plans_link: countToolingPlansLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
       plan_pages: planPages.trim() || null,
@@ -3012,6 +3015,11 @@ export default function Bids() {
           ledgerPrefixMap={ledgerPrefixMap}
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
+          onCountSourceLinkSaved={async (bidId) => {
+            const rows = await loadBids()
+            const fresh = rows.find((b) => b.id === bidId)
+            if (fresh && selectedBidForCounts?.id === bidId) setSelectedBidForCounts(fresh)
+          }}
         />
       )}
 
