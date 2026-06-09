@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import {
@@ -667,11 +667,11 @@ export function PayStubAdditionalModal({
             <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>No clock sessions in this period.</p>
           ) : pwSessions.length > 0 ? (
             <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
+              <table className="pwSessionsTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                 <thead>
                   <tr style={{ background: '#fef3c7', borderBottom: '1px solid #fcd34d' }}>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Date & time</th>
-                    <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Job & notes</th>
+                    <th className="pwCol--jobNotes" style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Job & notes</th>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Hrs & base</th>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>At base</th>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Status</th>
@@ -720,72 +720,76 @@ export function PayStubAdditionalModal({
                       ) ?? '—'
                     const notesTrim = (s.notes ?? '').trim()
                     const notesLine = notesTrim.length > 0 ? notesTrim : '—'
+                    const jobNotesBlock = (
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
+                        {onOpenMyTimeForDay && subjectUserId?.trim() ? (
+                          <button
+                            type="button"
+                            aria-label={`Open My Time for ${s.work_date}`}
+                            title="Open My Time for this day"
+                            onClick={() =>
+                              onOpenMyTimeForDay({
+                                dateStr: s.work_date,
+                                subjectUserId: subjectUserId.trim(),
+                                subjectDisplayName: activeStub.person_name,
+                              })
+                            }
+                            style={{
+                              flexShrink: 0,
+                              marginTop: 1,
+                              padding: 2,
+                              border: 'none',
+                              background: 'none',
+                              cursor: 'pointer',
+                              color: '#d97706',
+                              borderRadius: 4,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <PrevailingWagesMyTimeIcon />
+                          </button>
+                        ) : (
+                          <span
+                            style={{
+                              flexShrink: 0,
+                              width: 22,
+                              display: 'inline-flex',
+                              justifyContent: 'center',
+                              alignItems: 'flex-start',
+                              paddingTop: 2,
+                              color: '#9ca3af',
+                              fontSize: '0.7rem',
+                            }}
+                          >
+                            —
+                          </span>
+                        )}
+                        <div
+                          style={{
+                            flex: 1,
+                            minWidth: 0,
+                            wordBreak: 'break-word',
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          <div style={{ lineHeight: 1.35 }}>{jobLine}</div>
+                          <div style={{ lineHeight: 1.35, fontSize: '0.7rem', color: '#6b7280' }}>{notesLine}</div>
+                        </div>
+                      </div>
+                    )
                     return (
-                      <tr key={s.id} style={{ borderBottom: '1px solid #fde68a' }}>
+                      <Fragment key={s.id}>
+                      <tr className="pwSessionRow">
                         <td style={{ padding: '0.35rem 0.5rem', verticalAlign: 'top' }}>
                           <div style={{ lineHeight: 1.35 }}>{dateLine}</div>
                           <div style={{ whiteSpace: 'nowrap', fontSize: '0.7rem', color: '#6b7280', lineHeight: 1.35 }}>
                             {t0}–{t1}
                           </div>
                         </td>
-                        <td style={{ padding: '0.35rem 0.5rem', verticalAlign: 'top', maxWidth: 280 }}>
-                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
-                            {onOpenMyTimeForDay && subjectUserId?.trim() ? (
-                              <button
-                                type="button"
-                                aria-label={`Open My Time for ${s.work_date}`}
-                                title="Open My Time for this day"
-                                onClick={() =>
-                                  onOpenMyTimeForDay({
-                                    dateStr: s.work_date,
-                                    subjectUserId: subjectUserId.trim(),
-                                    subjectDisplayName: activeStub.person_name,
-                                  })
-                                }
-                                style={{
-                                  flexShrink: 0,
-                                  marginTop: 1,
-                                  padding: 2,
-                                  border: 'none',
-                                  background: 'none',
-                                  cursor: 'pointer',
-                                  color: '#d97706',
-                                  borderRadius: 4,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                }}
-                              >
-                                <PrevailingWagesMyTimeIcon />
-                              </button>
-                            ) : (
-                              <span
-                                style={{
-                                  flexShrink: 0,
-                                  width: 22,
-                                  display: 'inline-flex',
-                                  justifyContent: 'center',
-                                  alignItems: 'flex-start',
-                                  paddingTop: 2,
-                                  color: '#9ca3af',
-                                  fontSize: '0.7rem',
-                                }}
-                              >
-                                —
-                              </span>
-                            )}
-                            <div
-                              style={{
-                                flex: 1,
-                                minWidth: 0,
-                                wordBreak: 'break-word',
-                                overflowWrap: 'anywhere',
-                              }}
-                            >
-                              <div style={{ lineHeight: 1.35 }}>{jobLine}</div>
-                              <div style={{ lineHeight: 1.35, fontSize: '0.7rem', color: '#6b7280' }}>{notesLine}</div>
-                            </div>
-                          </div>
+                        <td className="pwCol--jobNotes" style={{ padding: '0.35rem 0.5rem', verticalAlign: 'top', maxWidth: 280 }}>
+                          {jobNotesBlock}
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', verticalAlign: 'top' }}>
                           <div style={{ lineHeight: 1.35 }}>{closed ? hrs.toFixed(2) : '—'}</div>
@@ -830,6 +834,12 @@ export function PayStubAdditionalModal({
                           </button>
                         </td>
                       </tr>
+                      <tr className="pwSessionJobRow">
+                        <td colSpan={6} style={{ padding: '0 0.5rem 0.5rem', verticalAlign: 'top' }}>
+                          {jobNotesBlock}
+                        </td>
+                      </tr>
+                      </Fragment>
                     )
                   })}
                 </tbody>

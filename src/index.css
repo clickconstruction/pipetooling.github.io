@@ -223,6 +223,29 @@ button {
   min-width: 0;
 }
 
+/* Prevailing Wages session table — Job & notes drops below each row on mobile */
+.pwSessionsTable .pwCol--jobNotes {
+  display: none;
+}
+.pwSessionsTable .pwSessionRow > td {
+  border-bottom: none;
+}
+.pwSessionsTable .pwSessionJobRow > td {
+  border-bottom: 1px solid #fde68a;
+}
+
+@media (min-width: 640px) {
+  .pwSessionsTable .pwCol--jobNotes {
+    display: table-cell;
+  }
+  .pwSessionsTable .pwSessionJobRow {
+    display: none;
+  }
+  .pwSessionsTable .pwSessionRow > td {
+    border-bottom: 1px solid #fde68a;
+  }
+}
+
 .prospectsConvert .convertCard {
   padding: 1rem 1.25rem;
   border: 1px solid #e5e7eb;
