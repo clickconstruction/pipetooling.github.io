@@ -23,12 +23,14 @@ export interface UsePayConfigDeps {
 export interface UsePayConfigResult {
   payConfig: Record<string, PayConfigRow>
   payConfigDraft: Record<string, string>
+  payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
   salaryTemplateByPersonName: Record<string, boolean>
   loadPayConfig: () => Promise<void>
   loadPayConfigSalaryTemplateIndicators: () => Promise<void>
   upsertPayConfig: (personName: string, row: Partial<PayConfigRow>) => void
   updatePayConfigHourlyWage: (personName: string, rawValue: string) => void
+  updatePayConfigOfficeHourlyWage: (personName: string, rawValue: string) => void
 }
 
 /**
@@ -53,10 +55,13 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
   const [payConfig, setPayConfig] = useState<Record<string, PayConfigRow>>({})
   const [payConfigSaving, setPayConfigSaving] = useState(false)
   const [payConfigDraft, setPayConfigDraft] = useState<Record<string, string>>({})
+  const [payConfigOfficeWageDraft, setPayConfigOfficeWageDraft] = useState<Record<string, string>>({})
   const payConfigRef = useRef(payConfig)
   payConfigRef.current = payConfig
   const payConfigDraftRef = useRef(payConfigDraft)
   payConfigDraftRef.current = payConfigDraft
+  const payConfigOfficeWageDraftRef = useRef(payConfigOfficeWageDraft)
+  payConfigOfficeWageDraftRef.current = payConfigOfficeWageDraft
   const payConfigDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   /** Last successful DB `is_salary` per pay row; used to detect false->true after debounced save. */
   const lastPersistedPayConfigRef = useRef<Record<string, { is_salary: boolean }>>({})
@@ -67,7 +72,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     if (!canAccessPay && !canAccessHours && !canViewCostMatrixShared) return
     const { data, error } = await supabase
       .from('people_pay_config')
-      .select('person_name, person_id, hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
+      .select('person_name, person_id, hourly_wage, office_hourly_wage, is_salary, show_in_hours, show_in_cost_matrix, record_hours_but_salary')
     if (error) {
       setError(error.message)
       return
@@ -135,6 +140,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         person_name: personName,
         person_id: resolvedPid,
         hourly_wage: null,
+        office_hourly_wage: null,
         is_salary: false,
         show_in_hours: false,
         show_in_cost_matrix: false,
@@ -144,6 +150,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
       person_name: personName,
       person_id: row.person_id ?? resolvedPid ?? cur.person_id ?? null,
       hourly_wage: row.hourly_wage ?? cur.hourly_wage,
+      office_hourly_wage: row.office_hourly_wage ?? cur.office_hourly_wage ?? null,
       is_salary: row.is_salary ?? cur.is_salary,
       show_in_hours: row.show_in_hours ?? cur.show_in_hours,
       show_in_cost_matrix: row.show_in_cost_matrix ?? cur.show_in_cost_matrix,
@@ -215,6 +222,7 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
         person_name: personName,
         person_id: resolvedPid,
         hourly_wage: null,
+        office_hourly_wage: null,
         is_salary: false,
         show_in_hours: false,
         show_in_cost_matrix: false,
@@ -245,6 +253,54 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
     }, 2000)
   }
 
+  function updatePayConfigOfficeHourlyWage(personName: string, rawValue: string) {
+    if (!canAccessPay) return
+    setPayConfigOfficeWageDraft((prev) => ({ ...prev, [personName]: rawValue }))
+    const roster = peopleRosterRef.current
+    const resolvedPid = resolvePersonIdFromRosterName(roster, personName)
+    const cur =
+      payConfig[personName] ?? {
+        person_name: personName,
+        person_id: resolvedPid,
+        hourly_wage: null,
+        office_hourly_wage: null,
+        is_salary: false,
+        show_in_hours: false,
+        show_in_cost_matrix: false,
+        record_hours_but_salary: false,
+      }
+    const parsed = rawValue === '' ? null : parseFloat(rawValue) || null
+    const full = { ...cur, office_hourly_wage: parsed }
+    setPayConfig((prev) => ({ ...prev, [personName]: full }))
+    // Separate debounce key so an office-wage edit never cancels a pending hourly-wage save.
+    const key = `${personName}:office`
+    const prevTimeout = payConfigDebounceRef.current[key]
+    if (prevTimeout) clearTimeout(prevTimeout)
+    payConfigDebounceRef.current[key] = setTimeout(async () => {
+      delete payConfigDebounceRef.current[key]
+      setPayConfigSaving(true)
+      const draftVal = payConfigOfficeWageDraftRef.current[personName]
+      const finalWage =
+        draftVal !== undefined
+          ? draftVal === ''
+            ? null
+            : parseFloat(draftVal) || null
+          : payConfigRef.current[personName]?.office_hourly_wage ?? null
+      const toSave = { ...(payConfigRef.current[personName] ?? full), office_hourly_wage: finalWage }
+      const { error } = await supabase.from('people_pay_config').upsert(toSave, { onConflict: 'person_name' })
+      if (error) setError(error.message)
+      else {
+        lastPersistedPayConfigRef.current[personName] = { is_salary: !!toSave.is_salary }
+        setPayConfigOfficeWageDraft((prev) => {
+          const next = { ...prev }
+          delete next[personName]
+          return next
+        })
+      }
+      setPayConfigSaving(false)
+    }, 2000)
+  }
+
   useEffect(() => {
     return () => {
       for (const t of Object.values(payConfigDebounceRef.current)) clearTimeout(t)
@@ -255,11 +311,13 @@ export function usePayConfig(deps: UsePayConfigDeps): UsePayConfigResult {
   return {
     payConfig,
     payConfigDraft,
+    payConfigOfficeWageDraft,
     payConfigSaving,
     salaryTemplateByPersonName,
     loadPayConfig,
     loadPayConfigSalaryTemplateIndicators,
     upsertPayConfig,
     updatePayConfigHourlyWage,
+    updatePayConfigOfficeHourlyWage,
   }
 }

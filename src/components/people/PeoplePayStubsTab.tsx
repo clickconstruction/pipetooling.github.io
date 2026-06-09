@@ -19,6 +19,13 @@ import {
   type PayStubAdditionalLineRow,
   type PayStubDeductionRow,
 } from '../../lib/payStubDeductions'
+import {
+  buildDayRateSplitsForPeriod,
+  shouldUseDualRate,
+  type DayRateSplit,
+  type RateSplitSessionRow,
+} from '../../lib/officeJobRateSplit'
+import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
@@ -219,14 +226,15 @@ export default function PeoplePayStubsTab({
       supabase.from('people_hours').select('work_date, hours').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
       supabase.from('pay_stub_days').select('work_date, paid_amount').eq('person_name', personName).gte('work_date', start).lte('work_date', end),
     ])
-    setPayStubCalendarLoading(false)
     if (hoursRes.error || paidRes.error) {
+      setPayStubCalendarLoading(false)
       onError(hoursRes.error?.message ?? paidRes.error?.message ?? 'Failed to load calendar data')
       return
     }
     const cfg = payConfig[personName]
     const wage = cfg?.hourly_wage ?? 0
     const isSalary = cfg?.is_salary ?? false
+    const officeWage = cfg?.office_hourly_wage ?? null
     const hoursMap = new Map<string, number>()
     for (const r of (hoursRes.data ?? []) as { work_date: string; hours: number }[]) {
       hoursMap.set(r.work_date, r.hours)
@@ -235,16 +243,57 @@ export default function PeoplePayStubsTab({
     for (const r of (paidRes.data ?? []) as { work_date: string; paid_amount: number }[]) {
       paidMap.set(r.work_date, (paidMap.get(r.work_date) ?? 0) + r.paid_amount)
     }
+    // Ordered day keys across the year (en-CA = YYYY-MM-DD, matching work_date).
+    const dayKeys: string[] = []
+    {
+      const d0 = new Date(start + 'T12:00:00')
+      const endD0 = new Date(end + 'T12:00:00')
+      while (d0 <= endD0) {
+        dayKeys.push(d0.toLocaleDateString('en-CA'))
+        d0.setDate(d0.getDate() + 1)
+      }
+    }
+    // Dual rate (opt-in, hourly only): split each day's hours by office/field from approved
+    // clock sessions so the preview's "earned" matches the generated stub's gross.
+    let splitByDate: Map<string, DayRateSplit> | null = null
+    if (shouldUseDualRate(cfg) && officeWage != null) {
+      const matches = users.filter((u) => (u.name ?? '').trim() === personName.trim())
+      const uid = matches.length === 1 ? matches[0]!.id : null
+      if (uid) {
+        const officeJobId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+        const sessRes = await supabase
+          .from('clock_sessions')
+          .select('work_date, job_ledger_id, bid_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at')
+          .eq('user_id', uid)
+          .gte('work_date', start)
+          .lte('work_date', end)
+          .is('rejected_at', null)
+          .is('revoked_at', null)
+          .not('approved_at', 'is', null)
+        const sessions = (sessRes.data ?? []) as RateSplitSessionRow[]
+        splitByDate = buildDayRateSplitsForPeriod({
+          daysInRange: dayKeys,
+          hoursByDate: hoursMap,
+          sessions,
+          officeJobLedgerId: officeJobId,
+          officeWage,
+          jobWage: wage,
+        })
+      }
+    }
+    setPayStubCalendarLoading(false)
     const earnedByDate: Record<string, number> = {}
     const paidByDate: Record<string, number> = {}
-    const d = new Date(start + 'T12:00:00')
-    const endD = new Date(end + 'T12:00:00')
-    while (d <= endD) {
-      const key = d.toLocaleDateString('en-CA')
-      const hrs = isSalary ? (d.getDay() >= 1 && d.getDay() <= 5 ? 8 : 0) : hoursMap.get(key) ?? 0
-      earnedByDate[key] = hrs * wage
+    for (const key of dayKeys) {
+      if (isSalary) {
+        const dow = new Date(key + 'T12:00:00').getDay()
+        earnedByDate[key] = (dow >= 1 && dow <= 5 ? 8 : 0) * wage
+      } else if (splitByDate) {
+        earnedByDate[key] = splitByDate.get(key)?.paidAmount ?? 0
+      } else {
+        earnedByDate[key] = (hoursMap.get(key) ?? 0) * wage
+      }
       paidByDate[key] = paidMap.get(key) ?? 0
-      d.setDate(d.getDate() + 1)
     }
     setPayStubCalendarData({ earnedByDate, paidByDate })
   }

@@ -5729,6 +5729,10 @@ export type Database = {
           created_at: string | null
           hours_at_time: number
           id: string
+          job_hours: number | null
+          job_rate: number | null
+          office_hours: number | null
+          office_rate: number | null
           paid_amount: number
           pay_stub_id: string
           person_id: string | null
@@ -5740,6 +5744,10 @@ export type Database = {
           created_at?: string | null
           hours_at_time: number
           id?: string
+          job_hours?: number | null
+          job_rate?: number | null
+          office_hours?: number | null
+          office_rate?: number | null
           paid_amount: number
           pay_stub_id: string
           person_id?: string | null
@@ -5751,6 +5759,10 @@ export type Database = {
           created_at?: string | null
           hours_at_time?: number
           id?: string
+          job_hours?: number | null
+          job_rate?: number | null
+          office_hours?: number | null
+          office_rate?: number | null
           paid_amount?: number
           pay_stub_id?: string
           person_id?: string | null
@@ -6326,6 +6338,7 @@ export type Database = {
         Row: {
           hourly_wage: number | null
           is_salary: boolean
+          office_hourly_wage: number | null
           person_id: string | null
           person_name: string
           record_hours_but_salary: boolean
@@ -6335,6 +6348,7 @@ export type Database = {
         Insert: {
           hourly_wage?: number | null
           is_salary?: boolean
+          office_hourly_wage?: number | null
           person_id?: string | null
           person_name: string
           record_hours_but_salary?: boolean
@@ -6344,6 +6358,7 @@ export type Database = {
         Update: {
           hourly_wage?: number | null
           is_salary?: boolean
+          office_hourly_wage?: number | null
           person_id?: string | null
           person_name?: string
           record_hours_but_salary?: boolean
