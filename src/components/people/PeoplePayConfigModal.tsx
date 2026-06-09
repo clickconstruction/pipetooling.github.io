@@ -9,36 +9,43 @@ export type PeoplePayConfigModalProps = {
   rosterSections: PeoplePayConfigRosterSection[]
   payConfig: Record<string, PayConfigRow>
   payConfigDraft: Record<string, string>
+  payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
   isDev: boolean
   /** Roster name → user still has salary_work_schedule_templates (materialized schedule). */
   salaryTemplateByPersonName: Record<string, boolean>
   onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
   onHourlyWageChange: (personName: string, rawValue: string) => void
+  onOfficeHourlyWageChange: (personName: string, rawValue: string) => void
 }
 
 function PayConfigRowTr({
   n,
   payConfig,
   payConfigDraft,
+  payConfigOfficeWageDraft,
   payConfigSaving,
   isDev,
   salaryTemplateActive,
   onUpsertPayConfig,
   onHourlyWageChange,
+  onOfficeHourlyWageChange,
 }: {
   n: string
   payConfig: Record<string, PayConfigRow>
   payConfigDraft: Record<string, string>
+  payConfigOfficeWageDraft: Record<string, string>
   payConfigSaving: boolean
   isDev: boolean
   salaryTemplateActive: boolean
   onUpsertPayConfig: (personName: string, patch: Partial<PayConfigRow>) => void
   onHourlyWageChange: (personName: string, rawValue: string) => void
+  onOfficeHourlyWageChange: (personName: string, rawValue: string) => void
 }) {
   const c = payConfig[n] ?? {
     person_name: n,
     hourly_wage: null,
+    office_hourly_wage: null,
     is_salary: false,
     show_in_hours: false,
     show_in_cost_matrix: false,
@@ -56,6 +63,19 @@ function PayConfigRowTr({
           onChange={(e) => onHourlyWageChange(n, e.target.value)}
           disabled={payConfigSaving}
           style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+        />
+      </td>
+      <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={payConfigOfficeWageDraft[n] !== undefined ? payConfigOfficeWageDraft[n] : (c.office_hourly_wage ?? '')}
+          onChange={(e) => onOfficeHourlyWageChange(n, e.target.value)}
+          disabled={payConfigSaving || c.is_salary}
+          placeholder={c.is_salary ? '—' : 'same'}
+          title={c.is_salary ? 'Office rate does not apply to salaried people' : 'Optional: rate for office/bid/unassigned time. Blank = same as hourly wage.'}
+          style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: c.is_salary ? '#f3f4f6' : 'white' }}
         />
       </td>
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -123,11 +143,13 @@ export function PeoplePayConfigModal({
   rosterSections,
   payConfig,
   payConfigDraft,
+  payConfigOfficeWageDraft,
   payConfigSaving,
   isDev,
   salaryTemplateByPersonName,
   onUpsertPayConfig,
   onHourlyWageChange,
+  onOfficeHourlyWageChange,
 }: PeoplePayConfigModalProps) {
   const [nameSearch, setNameSearch] = useState('')
 
@@ -258,6 +280,7 @@ export function PeoplePayConfigModal({
               <tr>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hourly wage ($)</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }} title="Optional second rate for office/bid/unassigned time. Blank = same as hourly wage.">Office wage ($)</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Salary</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Hours</th>
@@ -276,7 +299,7 @@ export function PeoplePayConfigModal({
                   <Fragment key={section.label}>
                     <tr style={{ background: '#f3f4f6' }}>
                       <td
-                        colSpan={6}
+                        colSpan={7}
                         style={{
                           padding: '0.5rem 0.75rem',
                           fontWeight: 600,
@@ -294,11 +317,13 @@ export function PeoplePayConfigModal({
                         n={n}
                         payConfig={payConfig}
                         payConfigDraft={payConfigDraft}
+                        payConfigOfficeWageDraft={payConfigOfficeWageDraft}
                         payConfigSaving={payConfigSaving}
                         isDev={isDev}
                         salaryTemplateActive={salaryTemplateByPersonName[n] === true}
                         onUpsertPayConfig={onUpsertPayConfig}
                         onHourlyWageChange={onHourlyWageChange}
+                        onOfficeHourlyWageChange={onOfficeHourlyWageChange}
                       />
                     ))}
                   </Fragment>

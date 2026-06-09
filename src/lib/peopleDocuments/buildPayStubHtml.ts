@@ -23,6 +23,7 @@ import { formatCurrency } from '../format'
 import { buildPayReportDocumentTitle } from '../payReportDocumentTitle'
 import { stubNetPay } from '../payStubDeductions'
 import { stripPrevailingWageTag } from '../payStubPrevailingWageLine'
+import type { RateSplitSummary } from '../officeJobRateSplit'
 
 export type PayStubHtmlVehicle = {
   year: number
@@ -57,6 +58,8 @@ export type PayStubHtmlContext = {
   pendingOffsets?: Array<{ type: string; amount: number; description: string | null }>
   physicalPayments?: Array<{ paid_at: string; amount: number; memo: string | null }>
   housingRows?: PayStubHtmlHousing[]
+  /** Present only for dual-rate (office vs. field) stubs; itemizes the two earnings lines. */
+  rateSplit?: RateSplitSummary
 }
 
 export function buildPayStubHtml(ctx: PayStubHtmlContext): string {
@@ -76,6 +79,7 @@ export function buildPayStubHtml(ctx: PayStubHtmlContext): string {
     pendingOffsets,
     physicalPayments,
     housingRows,
+    rateSplit,
   } = ctx
   const escapeHtml = (s: string) => (s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const dateWithDay = (dateStr: string) => {
@@ -86,6 +90,10 @@ export function buildPayStubHtml(ctx: PayStubHtmlContext): string {
   const { email, phone } = contact
   const periodLabel = `Pay Period: ${new Date(periodStart + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} – ${new Date(periodEnd + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
   const wageDisplay = hourlyWage > 0 ? `$${formatCurrency(hourlyWage)}/hr` : '—'
+  const wageSection = rateSplit
+    ? `<div class="meta">Office: ${rateSplit.officeHours.toFixed(2)} h @ $${formatCurrency(rateSplit.officeRate)}/hr = $${formatCurrency(rateSplit.officePaid)}</div>` +
+      `<div class="meta">Field: ${rateSplit.jobHours.toFixed(2)} h @ $${formatCurrency(rateSplit.jobRate)}/hr = $${formatCurrency(rateSplit.jobPaid)}</div>`
+    : `<div class="meta">Hourly wage: ${wageDisplay}</div>`
   const hasJobs = rowsWithJobs && rowsWithJobs.length > 0
   const tableRows = hasJobs
     ? rowsWithJobs!.map((r) => `<tr><td>${escapeHtml(dateWithDay(r.date))}</td><td style="text-align:right">${r.hours.toFixed(2)}</td><td>${escapeHtml(r.jobsText)}</td></tr>`).join('')
@@ -118,7 +126,7 @@ export function buildPayStubHtml(ctx: PayStubHtmlContext): string {
       ${email ? `<div class="meta">${escapeHtml(email)}</div>` : ''}
       ${phone ? `<div class="meta">${escapeHtml(phone)}</div>` : ''}
       <div class="meta">${periodLabel}</div>
-      <div class="meta">Hourly wage: ${wageDisplay}</div>
+      ${wageSection}
       <table>
         ${tableHeader}
         <tbody>${tableRows}</tbody>

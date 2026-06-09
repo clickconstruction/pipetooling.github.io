@@ -71,6 +71,16 @@ import {
   sumPayStubDeductionAmounts,
 } from '../lib/payStubDeductions'
 import { computePayReportAssignmentsBreakdown } from '../lib/payReportAssignmentsBreakdown'
+import {
+  buildDayRateSplitsForPeriod,
+  shouldUseDualRate,
+  summarizeRateSplits,
+  summarizeStubDayBreakdown,
+  type DayRateSplit,
+  type RateSplitSessionRow,
+  type RateSplitSummary,
+} from '../lib/officeJobRateSplit'
+import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../lib/overheadOfficeJobSettings'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import {
   type ContractSigningTrafficLight,
@@ -303,12 +313,14 @@ export default function People() {
   const {
     payConfig,
     payConfigDraft,
+    payConfigOfficeWageDraft,
     payConfigSaving,
     salaryTemplateByPersonName,
     loadPayConfig,
     loadPayConfigSalaryTemplateIndicators,
     upsertPayConfig,
     updatePayConfigHourlyWage,
+    updatePayConfigOfficeHourlyWage,
   } = usePayConfig({
     canAccessPay,
     canAccessHours,
@@ -1452,8 +1464,53 @@ export default function People() {
     const cfg = payConfig[personName]
     const wage = cfg?.hourly_wage ?? 0
     const isSalary = cfg?.is_salary ?? false
+    const officeWage = cfg?.office_hourly_wage ?? null
     const daysInRange = getDaysInRange(start, end)
-    const dayRows: Array<{ work_date: string; hours: number; paid_amount: number }> = []
+
+    // Dual rate (opt-in, hourly only): split each day's hours into office vs. field-job buckets
+    // from approved clock sessions, then price each bucket. Single-rate path is unchanged.
+    let splitByDate: Map<string, DayRateSplit> | null = null
+    let rateSplitSummary: RateSplitSummary | null = null
+    if (shouldUseDualRate(cfg) && officeWage != null) {
+      const matches = users.filter((u) => (u.name ?? '').trim() === personName)
+      const uid = matches.length === 1 ? matches[0]!.id : null
+      if (uid) {
+        const officeJobId = await fetchOverheadOfficeJobLedgerIdFromAppSettings()
+        const { data: sessData } = await supabase
+          .from('clock_sessions')
+          .select('work_date, job_ledger_id, bid_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at')
+          .eq('user_id', uid)
+          .gte('work_date', start)
+          .lte('work_date', end)
+          .is('rejected_at', null)
+          .is('revoked_at', null)
+          .not('approved_at', 'is', null)
+        const sessions = (sessData ?? []) as RateSplitSessionRow[]
+        const hoursByDate = new Map(hoursRows.map((r) => [r.date, r.hours]))
+        splitByDate = buildDayRateSplitsForPeriod({
+          daysInRange,
+          hoursByDate,
+          sessions,
+          officeJobLedgerId: officeJobId,
+          officeWage,
+          jobWage: wage,
+        })
+        rateSplitSummary = summarizeRateSplits(splitByDate.values(), officeWage, wage)
+      } else {
+        showToast('Office rate is set but no unique login user matches this name — paid at base rate.', 'info')
+      }
+    }
+
+    const dayRows: Array<{
+      work_date: string
+      hours: number
+      paid_amount: number
+      rate_at_time: number
+      office_hours: number | null
+      office_rate: number | null
+      job_hours: number | null
+      job_rate: number | null
+    }> = []
     for (const d of daysInRange) {
       const hrs = isSalary
         ? (() => {
@@ -1461,8 +1518,30 @@ export default function People() {
             return day >= 1 && day <= 5 ? 8 : 0
           })()
         : hoursRows.find((r) => r.date === d)?.hours ?? 0
-      const paidAmount = hrs * wage
-      dayRows.push({ work_date: d, hours: hrs, paid_amount: paidAmount })
+      const sp = splitByDate?.get(d) ?? null
+      if (sp) {
+        dayRows.push({
+          work_date: d,
+          hours: hrs,
+          paid_amount: sp.paidAmount,
+          rate_at_time: sp.blendedRate,
+          office_hours: sp.officeHours,
+          office_rate: officeWage,
+          job_hours: sp.jobHours,
+          job_rate: wage,
+        })
+      } else {
+        dayRows.push({
+          work_date: d,
+          hours: hrs,
+          paid_amount: hrs * wage,
+          rate_at_time: wage,
+          office_hours: null,
+          office_rate: null,
+          job_hours: null,
+          job_rate: null,
+        })
+      }
     }
     const hoursTotal = dayRows.reduce((s, r) => s + r.hours, 0)
     const grossPay = dayRows.reduce((s, r) => s + r.paid_amount, 0)
@@ -1489,8 +1568,12 @@ export default function People() {
         person_name: personName,
         work_date: r.work_date,
         hours_at_time: r.hours,
-        rate_at_time: wage,
+        rate_at_time: r.rate_at_time,
         paid_amount: r.paid_amount,
+        office_hours: r.office_hours,
+        office_rate: r.office_rate,
+        job_hours: r.job_hours,
+        job_rate: r.job_rate,
       }))
     )
     if (daysErr) {
@@ -1585,6 +1668,7 @@ export default function People() {
       pendingOffsets,
       physicalPayments: [],
       housingRows: housingRowsGen,
+      rateSplit: rateSplitSummary ?? undefined,
     })
     if (openPreview) openPayStubWindow(html, false)
     return true
@@ -1636,7 +1720,7 @@ export default function People() {
     const end = stub.period_end
     const cfg = payConfig[stub.person_name]
     const isSalary = cfg?.is_salary ?? false
-    const { data: daysData } = await supabase.from('pay_stub_days').select('work_date, hours_at_time').eq('pay_stub_id', stub.id).order('work_date')
+    const { data: daysData } = await supabase.from('pay_stub_days').select('work_date, hours_at_time, office_hours, office_rate, job_hours, job_rate').eq('pay_stub_id', stub.id).order('work_date')
     let dayRows: Array<{ work_date: string; hours: number }>
     if (daysData && daysData.length > 0) {
       dayRows = (daysData as { work_date: string; hours_at_time: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours_at_time }))
@@ -1649,6 +1733,7 @@ export default function People() {
         return { work_date: d, hours: hrs }
       })
     }
+    const rateSplit = summarizeStubDayBreakdown((daysData ?? []) as Parameters<typeof summarizeStubDayBreakdown>[0]) ?? undefined
     const wage = cfg?.hourly_wage ?? 0
     const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
       supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
@@ -1740,6 +1825,7 @@ export default function People() {
       pendingOffsets,
       physicalPayments,
       housingRows: housingRowsView,
+      rateSplit,
     })
     openPayStubWindow(html, false)
   }
@@ -1749,7 +1835,7 @@ export default function People() {
     const end = stub.period_end
     const cfg = payConfig[stub.person_name]
     const isSalary = cfg?.is_salary ?? false
-    const { data: daysData } = await supabase.from('pay_stub_days').select('work_date, hours_at_time').eq('pay_stub_id', stub.id).order('work_date')
+    const { data: daysData } = await supabase.from('pay_stub_days').select('work_date, hours_at_time, office_hours, office_rate, job_hours, job_rate').eq('pay_stub_id', stub.id).order('work_date')
     let dayRows: Array<{ work_date: string; hours: number }>
     if (daysData && daysData.length > 0) {
       dayRows = (daysData as { work_date: string; hours_at_time: number }[]).map((r) => ({ work_date: r.work_date, hours: r.hours_at_time }))
@@ -1762,6 +1848,7 @@ export default function People() {
         return { work_date: d, hours: hrs }
       })
     }
+    const rateSplit = summarizeStubDayBreakdown((daysData ?? []) as Parameters<typeof summarizeStubDayBreakdown>[0]) ?? undefined
     const wage = cfg?.hourly_wage ?? 0
     const [{ data: crewData }, { data: crewBidsData }] = await Promise.all([
       supabase.from('people_crew_jobs').select('work_date, person_name, job_assignments').gte('work_date', start).lte('work_date', end),
@@ -1853,6 +1940,7 @@ export default function People() {
       pendingOffsets,
       physicalPayments,
       housingRows: housingRowsPrint,
+      rateSplit,
     })
     openPayStubWindow(html, true)
   }
@@ -3415,11 +3503,13 @@ export default function People() {
                 rosterSections={payConfigRosterSections}
                 payConfig={payConfig}
                 payConfigDraft={payConfigDraft}
+                payConfigOfficeWageDraft={payConfigOfficeWageDraft}
                 payConfigSaving={payConfigSaving}
                 isDev={isDev}
                 salaryTemplateByPersonName={salaryTemplateByPersonName}
                 onUpsertPayConfig={upsertPayConfig}
                 onHourlyWageChange={updatePayConfigHourlyWage}
+                onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
               />
               {reviewHoursModalOpen ? (
                 <ReviewHoursModal
