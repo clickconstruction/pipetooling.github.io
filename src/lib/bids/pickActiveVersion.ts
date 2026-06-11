@@ -38,3 +38,18 @@ export function deriveActivePricingId(input: {
   const unsplit = bidPricings.find((p) => p.bid_version_id == null)
   return unsplit?.id ?? legacyFallbackPricingId ?? null
 }
+
+/**
+ * Resolve the active version id from a bid-tagged ref. The takeoff loaders read the active
+ * version synchronously from a ref; tagging it with the bid it belongs to lets a reader use
+ * the version ONLY when it matches the bid being loaded. A mismatch (the ref is still set for
+ * a previously-active bid, before the async resolution effect catches up) returns null = that
+ * bid's Base — never another bid's version. For the normal path the ref always matches, so the
+ * result is identical to reading the bare version id.
+ */
+export function resolveTaggedVersion(
+  tagged: { bidId: string; versionId: string | null } | null,
+  bidId: string,
+): string | null {
+  return tagged && tagged.bidId === bidId ? tagged.versionId : null
+}

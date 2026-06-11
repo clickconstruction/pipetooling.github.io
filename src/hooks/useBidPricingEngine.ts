@@ -4,7 +4,7 @@ import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { expandTemplate } from '../lib/materialPOUtils'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
-import { pickActiveVersion, deriveActivePricingId } from '../lib/bids/pickActiveVersion'
+import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion } from '../lib/bids/pickActiveVersion'
 import type { BidCountRow } from '../types/bids'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import type {
@@ -156,11 +156,21 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // read the current version without stale closures.
   const [bidVersions, setBidVersions] = useState<BidVersion[]>([])
   const [selectedBidVersionId, setSelectedBidVersionIdState] = useState<string | null>(null)
-  const selectedBidVersionIdRef = useRef<string | null>(null)
+  // Tagged with the bid the version belongs to, so a synchronous reader only uses it when it
+  // matches the bid being loaded (else falls back to that bid's Base — never another bid's version).
+  const selectedBidVersionIdRef = useRef<{ bidId: string; versionId: string | null } | null>(null)
   const takeoffBidIdRef = useRef<string | null>(null)
-  function setSelectedBidVersionId(versionId: string | null) {
-    selectedBidVersionIdRef.current = versionId
+  function setSelectedBidVersionId(bidId: string, versionId: string | null) {
+    selectedBidVersionIdRef.current = { bidId, versionId }
     setSelectedBidVersionIdState(versionId)
+  }
+  /** The active version for `bidId` from the tagged ref (null when the ref is for another bid). */
+  function activeVersionIdForBid(bidId: string): string | null {
+    const tagged = selectedBidVersionIdRef.current
+    if (import.meta.env.DEV && tagged && tagged.bidId !== bidId) {
+      console.warn(`[bidVersion] active-version ref is for bid ${tagged.bidId} but loading ${bidId}; using Base.`)
+    }
+    return resolveTaggedVersion(tagged, bidId)
   }
   /** Add the active-version scope to a takeoff query (NULL = the unsplit Base rows). */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -225,7 +235,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       setTakeoffMappings([])
       const { data: roughData, error: roughErr } = await applyVersionFilter(
         supabase.from('bids_takeoff_rough_part_lines').select('*').eq('bid_id', bidId),
-        selectedBidVersionIdRef.current,
+        activeVersionIdForBid(bidId),
       )
         .order('count_row_id', { ascending: true })
         .order('sequence_order', { ascending: true })
@@ -264,7 +274,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
     const { data: mappingsData, error: mappingsError } = await applyVersionFilter(
       supabase.from('bids_takeoff_template_mappings').select('*').eq('bid_id', bidId),
-      selectedBidVersionIdRef.current,
+      activeVersionIdForBid(bidId),
     ).order('sequence_order', { ascending: true })
 
     if (mappingsError) {
@@ -889,7 +899,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         return q.maybeSingle()
       })(),
       (() => {
-        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId), selectedBidVersionIdRef.current)
+        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId), activeVersionIdForBid(bidId))
         if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
         return q
       })(),
@@ -897,7 +907,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase
           .from('bids_takeoff_rough_part_lines')
           .select('count_row_id, quantity, unit_price')
-          .eq('bid_id', bidId), selectedBidVersionIdRef.current)
+          .eq('bid_id', bidId), activeVersionIdForBid(bidId))
         if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
         return q
       })(),
@@ -1102,7 +1112,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
    * `priceBookVersions` state yet, so deriving from stale state would miss it.
    */
   async function switchActiveVersion(bidId: string, versionId: string | null) {
-    setSelectedBidVersionId(versionId)
+    setSelectedBidVersionId(bidId, versionId)
     const pricings = await loadBidPricings(bidId)
     setSelectedPricingVersionId(
       deriveActivePricingId({
@@ -1196,7 +1206,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         takeoffBidIdRef.current = bid.id
         const versions = await loadBidVersions(bid.id)
         if (cancelled) return
-        setSelectedBidVersionId(pickActiveVersion({ savedVersionId: bid.selected_bid_version_id, bidVersions: versions }))
+        setSelectedBidVersionId(bid.id, pickActiveVersion({ savedVersionId: bid.selected_bid_version_id, bidVersions: versions }))
       }
       await loadTakeoffCountRows(bid.id)
     })()
@@ -1298,7 +1308,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         const [versions, pricings] = await Promise.all([loadBidVersions(bidId), loadBidPricings(bidId)])
         if (signal.aborted) return
         const activeVersionId = pickActiveVersion({ savedVersionId: savedBidVersionId, bidVersions: versions })
-        setSelectedBidVersionId(activeVersionId)
+        setSelectedBidVersionId(bidId, activeVersionId)
         const activePricingId = deriveActivePricingId({
           activeVersionId,
           bidPricings: pricings,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveActivePricingId, pickActiveVersion } from './pickActiveVersion'
+import { deriveActivePricingId, pickActiveVersion, resolveTaggedVersion } from './pickActiveVersion'
 
 describe('pickActiveVersion', () => {
   const versions = [
@@ -44,5 +44,24 @@ describe('deriveActivePricingId', () => {
   it('falls back to the legacy global selection when unsplit with no bid pricing', () => {
     expect(deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: 'tmpl' })).toBe('tmpl')
     expect(deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: null })).toBeNull()
+  })
+})
+
+describe('resolveTaggedVersion', () => {
+  it('returns the version when the ref is tagged for the requested bid', () => {
+    expect(resolveTaggedVersion({ bidId: 'bidA', versionId: 'vX' }, 'bidA')).toBe('vX')
+  })
+
+  it('preserves a null version for the matching bid (unsplit bid)', () => {
+    expect(resolveTaggedVersion({ bidId: 'bidA', versionId: null }, 'bidA')).toBeNull()
+  })
+
+  it('returns null (Base) when the ref belongs to a different bid', () => {
+    // The key safety property: never filter bid B's takeoff with bid A's version.
+    expect(resolveTaggedVersion({ bidId: 'bidA', versionId: 'vX' }, 'bidB')).toBeNull()
+  })
+
+  it('returns null when the ref is unset', () => {
+    expect(resolveTaggedVersion(null, 'bidA')).toBeNull()
   })
 })
