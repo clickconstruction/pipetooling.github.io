@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'rea
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
@@ -83,6 +84,8 @@ export default function Layout() {
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess } = useAuth()
   useAppActivityHeartbeat(authUser?.id)
+  // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
+  useAssistantDispatchLanding()
   const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
   const jobModeMenuEligible = canLeaveJobFieldReport(role)
   const { gateOpen: dailyGoalsGateOpen } = useDailyGoalsGate()
