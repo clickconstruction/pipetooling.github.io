@@ -38,6 +38,8 @@ import type {
 type BidsLaborTabProps = {
   bids: BidWithBuilder[]
   selectedBidForCostEstimate: BidWithBuilder | null
+  /** Active bid Version whose takeoff materials the cost-estimate print reflects (null = Base). */
+  selectedBidVersionId: string | null
   setSelectedBidForCostEstimate: Dispatch<SetStateAction<BidWithBuilder | null>>
   narrowViewport640: boolean
   bidPreview: ReturnType<typeof useBidPreview>
@@ -113,6 +115,7 @@ type BidsLaborTabProps = {
 }
 
 export function BidsLaborTab({
+  selectedBidVersionId,
   bids,
   selectedBidForCostEstimate,
   setSelectedBidForCostEstimate,
@@ -883,6 +886,7 @@ export function BidsLaborTab({
     if (!selectedBidForCostEstimate) return null
     return {
       bid: selectedBidForCostEstimate,
+      bidVersionId: selectedBidVersionId,
       costEstimate,
       laborRows: costEstimateLaborRows,
       countRows: costEstimateCountRows,

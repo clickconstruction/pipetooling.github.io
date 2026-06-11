@@ -13,6 +13,8 @@ import type { CostEstimate, CostEstimateLaborRow, CostEstimatePO } from '../bids
 
 export type CostEstimatePrintContext = {
   bid: BidWithBuilder
+  /** Active bid Version whose takeoff materials this doc reflects (null = unsplit Base). */
+  bidVersionId: string | null
   costEstimate: CostEstimate | null
   laborRows: CostEstimateLaborRow[]
   countRows: BidCountRow[]
@@ -55,10 +57,13 @@ export async function printCostEstimatePage(ctx: CostEstimatePrintContext) {
       : null
   if (normalizeMaterialsModel(bid.materials_model) === 'rough') {
     const bidId = bid.id
-    const { data: roughLines } = await supabase
+    const roughQuery = supabase
       .from('bids_takeoff_rough_part_lines')
       .select('count_row_id, quantity, unit_price, part_id, source_template_id, sequence_order')
       .eq('bid_id', bidId)
+    const { data: roughLines } = await (ctx.bidVersionId == null
+      ? roughQuery.is('bid_version_id', null)
+      : roughQuery.eq('bid_version_id', ctx.bidVersionId))
     const lines = [...(roughLines ?? [])].sort((a, b) => {
       const ca = String(a.count_row_id).localeCompare(String(b.count_row_id))
       if (ca !== 0) return ca

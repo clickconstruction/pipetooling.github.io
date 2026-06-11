@@ -460,6 +460,51 @@ export type Database = {
           },
         ]
       }
+      bid_versions: {
+        Row: {
+          bid_id: string
+          created_at: string | null
+          id: string
+          include_in_submission: boolean
+          name: string
+          sort_order: number
+          source_bid_version_id: string | null
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string | null
+          id?: string
+          include_in_submission?: boolean
+          name: string
+          sort_order?: number
+          source_bid_version_id?: string | null
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string | null
+          id?: string
+          include_in_submission?: boolean
+          name?: string
+          sort_order?: number
+          source_bid_version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_versions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_versions_source_bid_version_id_fkey"
+            columns: ["source_bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_working_board_columns: {
         Row: {
           created_at: string
@@ -583,6 +628,7 @@ export type Database = {
           plans_link: string | null
           profit: number | null
           project_name: string | null
+          selected_bid_version_id: string | null
           selected_labor_book_version_id: string | null
           selected_price_book_version_id: string | null
           selected_takeoff_book_version_id: string | null
@@ -633,6 +679,7 @@ export type Database = {
           plans_link?: string | null
           profit?: number | null
           project_name?: string | null
+          selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
@@ -683,6 +730,7 @@ export type Database = {
           plans_link?: string | null
           profit?: number | null
           project_name?: string | null
+          selected_bid_version_id?: string | null
           selected_labor_book_version_id?: string | null
           selected_price_book_version_id?: string | null
           selected_takeoff_book_version_id?: string | null
@@ -754,6 +802,13 @@ export type Database = {
             columns: ["gc_builder_id"]
             isOneToOne: false
             referencedRelation: "bids_gc_builders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_selected_bid_version_id_fkey"
+            columns: ["selected_bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
           {
@@ -926,6 +981,7 @@ export type Database = {
       bids_takeoff_rough_part_lines: {
         Row: {
           bid_id: string
+          bid_version_id: string | null
           count_row_id: string
           created_at: string | null
           id: string
@@ -939,6 +995,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          bid_version_id?: string | null
           count_row_id: string
           created_at?: string | null
           id?: string
@@ -952,6 +1009,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          bid_version_id?: string | null
           count_row_id?: string
           created_at?: string | null
           id?: string
@@ -969,6 +1027,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_rough_part_lines_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
           {
@@ -1004,6 +1069,7 @@ export type Database = {
       bids_takeoff_template_mappings: {
         Row: {
           bid_id: string
+          bid_version_id: string | null
           count_row_id: string
           created_at: string | null
           id: string
@@ -1015,6 +1081,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          bid_version_id?: string | null
           count_row_id: string
           created_at?: string | null
           id?: string
@@ -1026,6 +1093,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          bid_version_id?: string | null
           count_row_id?: string
           created_at?: string | null
           id?: string
@@ -1041,6 +1109,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_takeoff_template_mappings_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
           {
@@ -6726,29 +6801,65 @@ export type Database = {
       }
       price_book_versions: {
         Row: {
+          bid_id: string | null
+          bid_version_id: string | null
           created_at: string | null
           id: string
+          include_in_submission: boolean
           name: string
           service_type_id: string
+          sort_order: number
+          source_version_id: string | null
         }
         Insert: {
+          bid_id?: string | null
+          bid_version_id?: string | null
           created_at?: string | null
           id?: string
+          include_in_submission?: boolean
           name: string
           service_type_id: string
+          sort_order?: number
+          source_version_id?: string | null
         }
         Update: {
+          bid_id?: string | null
+          bid_version_id?: string | null
           created_at?: string | null
           id?: string
+          include_in_submission?: boolean
           name?: string
           service_type_id?: string
+          sort_order?: number
+          source_version_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "price_book_versions_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_book_versions_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "price_book_versions_service_type_id_fkey"
             columns: ["service_type_id"]
             isOneToOne: false
             referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_book_versions_source_version_id_fkey"
+            columns: ["source_version_id"]
+            isOneToOne: false
+            referencedRelation: "price_book_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -10211,6 +10322,10 @@ export type Database = {
         Args: { p_id: string }
         Returns: undefined
       }
+      clone_price_book_version_to_bid: {
+        Args: { p_bid_id: string; p_name: string; p_source_version_id: string }
+        Returns: string
+      }
       complete_job_collect_payment_flow_for_invoice: {
         Args: { p_stripe_invoice_id: string }
         Returns: Json
@@ -10234,6 +10349,16 @@ export type Database = {
       count_unlinked_mercury_transactions_for_tally_stale: {
         Args: { min_age_days?: number }
         Returns: number
+      }
+      create_bid_version: {
+        Args: {
+          p_bid_id: string
+          p_clone_pricing: boolean
+          p_name: string
+          p_pricing_source_version_id: string
+          p_source_bid_version_id: string
+        }
+        Returns: string
       }
       create_job_from_estimate:
         | {
@@ -11308,6 +11433,10 @@ export type Database = {
         Args: { sharing_master_id: string }
         Returns: boolean
       }
+      materialize_bid_version: {
+        Args: { p_bid_id: string; p_name: string }
+        Returns: string
+      }
       mercury_debit_card_id_from_raw: { Args: { p_raw: Json }; Returns: string }
       merge_customers: {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
@@ -11591,6 +11720,16 @@ export type Database = {
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
         Returns: undefined
+      }
+      split_bid_into_versions: {
+        Args: {
+          p_bid_id: string
+          p_clone_pricing: boolean
+          p_current_name: string
+          p_new_name: string
+          p_pricing_source_version_id: string
+        }
+        Returns: string
       }
       split_job_ledger_fixtures_to_new_job: {
         Args: {

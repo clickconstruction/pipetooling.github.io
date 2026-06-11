@@ -174,3 +174,24 @@ export function buildCoverLetterText(
   ]
   return lines.join('\n')
 }
+
+/**
+ * Bundle several per-Pricing cover letters into one submission document. Each section is a full
+ * cover letter (from buildCoverLetterHtml) headed by its Pricing label and separated by a page
+ * break. A single section returns its html unchanged — identical to the un-bundled letter.
+ */
+export function buildCombinedCoverLetterDocument(sections: { label: string; html: string }[]): string {
+  if (sections.length <= 1) return sections[0]?.html ?? ''
+  return sections
+    .map((s, i) => {
+      const pageBreak = i < sections.length - 1 ? 'page-break-after: always;' : ''
+      return `<section style="${pageBreak}">\n  <h2 style="font-size:1.1rem; margin:0 0 0.75rem;">${escapeHtml(s.label)}</h2>\n  ${s.html}\n</section>`
+    })
+    .join('\n')
+}
+
+/** Plain-text analog of buildCombinedCoverLetterDocument for the clipboard fallback. */
+export function buildCombinedCoverLetterText(sections: { label: string; text: string }[]): string {
+  if (sections.length <= 1) return sections[0]?.text ?? ''
+  return sections.map((s) => `===== ${s.label} =====\n\n${s.text}`).join('\n\n\n')
+}

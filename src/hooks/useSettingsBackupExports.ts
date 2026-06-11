@@ -122,7 +122,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
     setExportBidsLoading(true)
     try {
       const [
-        r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16,
+        r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, r17,
       ] = await Promise.all([
         supabase.from('bids').select('*'),
         supabase.from('bids_gc_builders').select('*'),
@@ -140,8 +140,9 @@ export function useSettingsBackupExports(userId: string | undefined) {
         supabase.from('takeoff_book_entries').select('*'),
         supabase.from('purchase_orders').select('*'),
         supabase.from('purchase_order_items').select('*'),
+        supabase.from('bid_versions').select('*'),
       ])
-      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error
+      const err = r1.error || r2.error || r3.error || r4.error || r5.error || r6.error || r7.error || r8.error || r9.error || r10.error || r11.error || r12.error || r13.error || r14.error || r15.error || r16.error || r17.error
       if (err) {
         setExportError(err.message)
         return
@@ -165,6 +166,7 @@ export function useSettingsBackupExports(userId: string | undefined) {
           takeoff_book_entries: r14.data ?? [],
           purchase_orders: r15.data ?? [],
           purchase_order_items: r16.data ?? [],
+          bid_versions: r17.data ?? [],
         },
       }
       downloadJson(`bids-backup-${new Date().toISOString().slice(0, 10)}.json`, payload)

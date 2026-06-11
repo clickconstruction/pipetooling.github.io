@@ -12,6 +12,7 @@ export type CostEstimateWasteRow = Database['public']['Tables']['cost_estimate_w
 export type CostEstimateOtherRow = Database['public']['Tables']['cost_estimate_other_rows']['Row']
 export type FixtureLaborDefault = Database['public']['Tables']['fixture_labor_defaults']['Row']
 export type PriceBookVersion = Database['public']['Tables']['price_book_versions']['Row']
+export type BidVersion = Database['public']['Tables']['bid_versions']['Row']
 export type PriceBookEntry = Database['public']['Tables']['price_book_entries']['Row']
 export type BidPricingAssignment = Database['public']['Tables']['bid_pricing_assignments']['Row']
 export type BidCountRowCustomPrice = Database['public']['Tables']['bid_count_row_custom_prices']['Row']

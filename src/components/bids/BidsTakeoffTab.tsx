@@ -88,6 +88,8 @@ interface BidsTakeoffTabProps {
   // Data / UI
   bids: BidWithBuilder[]
   selectedBidForTakeoff: BidWithBuilder | null
+  /** Active bid Version that this takeoff belongs to (null = the unsplit Base). */
+  selectedBidVersionId: string | null
   selectedBidForCostEstimate: BidWithBuilder | null
   narrowViewport640: boolean
   bidPreview: ReturnType<typeof useBidPreview>
@@ -147,6 +149,7 @@ interface BidsTakeoffTabProps {
 export function BidsTakeoffTab({
   bids,
   selectedBidForTakeoff,
+  selectedBidVersionId,
   selectedBidForCostEstimate,
   narrowViewport640,
   bidPreview,
@@ -1336,6 +1339,7 @@ export function BidsTakeoffTab({
     
     const mappingData: any = {
       bid_id: selectedBidForTakeoff.id,
+      bid_version_id: selectedBidVersionId,
       count_row_id: mapping.countRowId,
       template_id: mapping.templateId,
       stage: mapping.stage,
@@ -1353,9 +1357,9 @@ export function BidsTakeoffTab({
     // When ID is not provided and there's a conflict on the unique constraint, it updates the conflicting record
     const { data, error } = await supabase
       .from('bids_takeoff_template_mappings')
-      .upsert(mappingData, { 
-        onConflict: 'count_row_id,template_id,stage',
-        ignoreDuplicates: false 
+      .upsert(mappingData, {
+        onConflict: 'count_row_id,template_id,stage,bid_version_id',
+        ignoreDuplicates: false
       })
       .select()
       .single()
@@ -1435,6 +1439,7 @@ export function BidsTakeoffTab({
         .from('bids_takeoff_rough_part_lines')
         .insert({
           bid_id: selectedBidForTakeoff.id,
+          bid_version_id: selectedBidVersionId,
           count_row_id: line.countRowId,
           part_id: line.partId,
           quantity: q,

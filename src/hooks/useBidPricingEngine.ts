@@ -4,6 +4,7 @@ import { withSupabaseRetry, formatErrorMessage } from '../utils/errorHandling'
 import { expandTemplate } from '../lib/materialPOUtils'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
+import { pickActiveVersion, deriveActivePricingId } from '../lib/bids/pickActiveVersion'
 import type { BidCountRow } from '../types/bids'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import type {
@@ -22,6 +23,7 @@ import type {
   LaborBookEntry,
   LaborBookEntryWithFixture,
   PriceBookVersion,
+  BidVersion,
   PriceBookEntryWithFixture,
   BidPricingAssignment,
   BidCountRowCustomPrice,
@@ -136,13 +138,35 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   const [teamLaborDataForBids, setTeamLaborDataForBids] = useState<TeamLaborBidRow[]>([])
 
   // --- Pricing ---
+  // `priceBookVersions` holds the SELECTED BID's Pricings (bid-scoped copies). The shared
+  // master catalog (bid_id IS NULL) lives in `templatePriceBookVersions` and is shown via
+  // the Price Book panel's "Templates" toggle. `templatesMode` drives that toggle.
   const [priceBookVersions, setPriceBookVersions] = useState<PriceBookVersion[]>([])
+  const [templatePriceBookVersions, setTemplatePriceBookVersions] = useState<PriceBookVersion[]>([])
+  const [templatesMode, setTemplatesMode] = useState(false)
   const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
   const [bidCountRowCustomPrices, setBidCountRowCustomPrices] = useState<BidCountRowCustomPrice[]>([])
   const [bidCountRowSubmissionHides, setBidCountRowSubmissionHides] = useState<BidCountRowSubmissionHide[]>([])
   const [selectedPricingVersionId, setSelectedPricingVersionId] = useState<string | null>(null)
   const pricingBidIdRef = useRef<string | null>(null)
+  // Bid Versions (named variants). The active Version drives BOTH the takeoff and pricing.
+  // selectedBidVersionId === null means the bid is unsplit (its takeoff/pricing rows are
+  // NULL-version-tagged). The ref mirrors the state so the many takeoff loaders/writers can
+  // read the current version without stale closures.
+  const [bidVersions, setBidVersions] = useState<BidVersion[]>([])
+  const [selectedBidVersionId, setSelectedBidVersionIdState] = useState<string | null>(null)
+  const selectedBidVersionIdRef = useRef<string | null>(null)
+  const takeoffBidIdRef = useRef<string | null>(null)
+  function setSelectedBidVersionId(versionId: string | null) {
+    selectedBidVersionIdRef.current = versionId
+    setSelectedBidVersionIdState(versionId)
+  }
+  /** Add the active-version scope to a takeoff query (NULL = the unsplit Base rows). */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function applyVersionFilter(q: any, versionId: string | null): any {
+    return versionId == null ? q.is('bid_version_id', null) : q.eq('bid_version_id', versionId)
+  }
   const [pricingCountRows, setPricingCountRows] = useState<BidCountRow[]>([])
   const [pricingCostEstimate, setPricingCostEstimate] = useState<CostEstimate | null>(null)
   const [pricingLaborRows, setPricingLaborRows] = useState<CostEstimateLaborRow[]>([])
@@ -199,10 +223,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
     if (mm === 'rough') {
       setTakeoffMappings([])
-      const { data: roughData, error: roughErr } = await supabase
-        .from('bids_takeoff_rough_part_lines')
-        .select('*')
-        .eq('bid_id', bidId)
+      const { data: roughData, error: roughErr } = await applyVersionFilter(
+        supabase.from('bids_takeoff_rough_part_lines').select('*').eq('bid_id', bidId),
+        selectedBidVersionIdRef.current,
+      )
         .order('count_row_id', { ascending: true })
         .order('sequence_order', { ascending: true })
       if (roughErr) {
@@ -238,11 +262,10 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
 
     setTakeoffRoughPartLines([])
 
-    const { data: mappingsData, error: mappingsError } = await supabase
-      .from('bids_takeoff_template_mappings')
-      .select('*')
-      .eq('bid_id', bidId)
-      .order('sequence_order', { ascending: true })
+    const { data: mappingsData, error: mappingsError } = await applyVersionFilter(
+      supabase.from('bids_takeoff_template_mappings').select('*').eq('bid_id', bidId),
+      selectedBidVersionIdRef.current,
+    ).order('sequence_order', { ascending: true })
 
     if (mappingsError) {
       console.error('Failed to load takeoff mappings:', mappingsError)
@@ -702,19 +725,53 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     await loadBids()
   }
 
-  async function loadPriceBookVersions() {
+  /** Shared master catalog (bid_id IS NULL) for the current service type — the Templates toggle + clone sources. */
+  async function loadTemplatePriceBookVersions() {
     if (!selectedServiceTypeId) return
-    
+
     const { data, error } = await supabase
       .from('price_book_versions')
       .select('*')
       .eq('service_type_id', selectedServiceTypeId)
+      .is('bid_id', null)
       .order('name', { ascending: true })
     if (error) {
-      setError(`Failed to load price book versions: ${error.message}`)
+      setError(`Failed to load price book templates: ${error.message}`)
       return
     }
-    setPriceBookVersions((data as PriceBookVersion[]) ?? [])
+    setTemplatePriceBookVersions((data as PriceBookVersion[]) ?? [])
+  }
+
+  /** A bid's own Pricings (frozen copies). Sets `priceBookVersions` and returns the list for selection. */
+  async function loadBidPricings(bidId: string): Promise<PriceBookVersion[]> {
+    const { data, error } = await supabase
+      .from('price_book_versions')
+      .select('*')
+      .eq('bid_id', bidId)
+      .order('sort_order', { ascending: true })
+    if (error) {
+      setError(`Failed to load bid pricings: ${error.message}`)
+      return []
+    }
+    const pricings = (data as PriceBookVersion[]) ?? []
+    setPriceBookVersions(pricings)
+    return pricings
+  }
+
+  /** A bid's named Versions (variants). Returns the list for active-version resolution. */
+  async function loadBidVersions(bidId: string): Promise<BidVersion[]> {
+    const { data, error } = await supabase
+      .from('bid_versions')
+      .select('*')
+      .eq('bid_id', bidId)
+      .order('sort_order', { ascending: true })
+    if (error) {
+      setError(`Failed to load bid versions: ${error.message}`)
+      return []
+    }
+    const versions = (data as BidVersion[]) ?? []
+    setBidVersions(versions)
+    return versions
   }
 
   async function loadPriceBookEntries(versionId: string | null) {
@@ -832,15 +889,15 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         return q.maybeSingle()
       })(),
       (() => {
-        let q: ReturnType<typeof supabase.from> = supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId)
+        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase.from('bids_takeoff_template_mappings').select('id, count_row_id, template_id, stage, quantity').eq('bid_id', bidId), selectedBidVersionIdRef.current)
         if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
         return q
       })(),
       (() => {
-        let q: ReturnType<typeof supabase.from> = supabase
+        let q: ReturnType<typeof supabase.from> = applyVersionFilter(supabase
           .from('bids_takeoff_rough_part_lines')
           .select('count_row_id, quantity, unit_price')
-          .eq('bid_id', bidId)
+          .eq('bid_id', bidId), selectedBidVersionIdRef.current)
         if (signal && 'abortSignal' in q) q = (q as { abortSignal: (s: AbortSignal) => typeof q }).abortSignal(signal)
         return q
       })(),
@@ -1025,6 +1082,38 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     await loadBids()
   }
 
+  /** Persist the bid's active Version (the variant the user is currently on). */
+  async function saveBidSelectedBidVersion(bidId: string, versionId: string | null) {
+    const { error: err } = await supabase
+      .from('bids')
+      .update({ selected_bid_version_id: versionId })
+      .eq('id', bidId)
+    if (err) {
+      setError(`Failed to save version: ${err.message}`)
+      return
+    }
+    await loadBids()
+  }
+
+  /**
+   * Switch the active Version: set the version (ref + state, drives takeoff reads), re-derive
+   * the active pricing facet, and persist. The pricing/takeoff effects then reload for it.
+   * Reloads bid pricings FRESH first — a just-created version's pricing facet isn't in
+   * `priceBookVersions` state yet, so deriving from stale state would miss it.
+   */
+  async function switchActiveVersion(bidId: string, versionId: string | null) {
+    setSelectedBidVersionId(versionId)
+    const pricings = await loadBidPricings(bidId)
+    setSelectedPricingVersionId(
+      deriveActivePricingId({
+        activeVersionId: versionId,
+        bidPricings: pricings,
+        legacyFallbackPricingId: selectedBidForPricing?.selected_price_book_version_id ?? null,
+      }),
+    )
+    await saveBidSelectedBidVersion(bidId, versionId)
+  }
+
   function setCostEstimatePO(stage: 'rough_in' | 'top_out' | 'trim_set', poId: string) {
     if (!costEstimate) return
     const key = stage === 'rough_in' ? 'purchase_order_id_rough_in' : stage === 'top_out' ? 'purchase_order_id_top_out' : 'purchase_order_id_trim_set'
@@ -1088,14 +1177,33 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }, [selectedBidForCounts?.id])
 
   useEffect(() => {
-    if (selectedBidForTakeoff?.id) loadTakeoffCountRows(selectedBidForTakeoff.id)
-    else {
+    const bid = selectedBidForTakeoff
+    if (!bid?.id) {
+      takeoffBidIdRef.current = null
       setTakeoffCountRows([])
       setTakeoffMappings([])
       setTakeoffRoughPartLines([])
       setTakeoffRoughCatalogLowestByPartId({})
+      return
     }
-  }, [selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, activeTab])
+    const bidChanged = takeoffBidIdRef.current !== bid.id
+    let cancelled = false
+    void (async () => {
+      // On bid change resolve the active Version + set its ref BEFORE loading takeoff rows
+      // (so landing directly on the Takeoff tab shows the right variant). On a version
+      // switch (same bid) the ref is already set by the picker — just reload.
+      if (bidChanged) {
+        takeoffBidIdRef.current = bid.id
+        const versions = await loadBidVersions(bid.id)
+        if (cancelled) return
+        setSelectedBidVersionId(pickActiveVersion({ savedVersionId: bid.selected_bid_version_id, bidVersions: versions }))
+      }
+      await loadTakeoffCountRows(bid.id)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [selectedBidForTakeoff?.id, selectedBidForTakeoff?.materials_model, selectedBidVersionId, activeTab])
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -1105,7 +1213,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         loadTakeoffBookVersions()
       }
       if (activeTab === 'pricing' || activeTab === 'cover-letter' || activeTab === 'submission-followup') {
-        loadPriceBookVersions()
+        loadTemplatePriceBookVersions()
       }
     }, 80)
     return () => clearTimeout(t)
@@ -1179,36 +1287,40 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     const signal = controller.signal
     const bidId = selectedBidForPricing.id
     const bidJustChanged = pricingBidIdRef.current !== bidId
-    let versionId: string | null
     if (bidJustChanged) {
       pricingBidIdRef.current = bidId
-      const savedVersionId = selectedBidForPricing.selected_price_book_version_id
-      if (savedVersionId) {
-        setSelectedPricingVersionId(savedVersionId)
-        versionId = savedVersionId
-      } else if (priceBookVersions.length > 0) {
-        // Auto-select "Default" if it exists, otherwise first version
-        const defaultVersion = priceBookVersions.find((v) => v.name === 'Default')
-        const versionToUse = defaultVersion ?? priceBookVersions[0]
-        setSelectedPricingVersionId(versionToUse?.id ?? null)
-        versionId = versionToUse?.id ?? null
-      } else {
-        setSelectedPricingVersionId(null)
-        versionId = null
-      }
+      const savedBidVersionId = selectedBidForPricing.selected_bid_version_id
+      const legacyPricingFallback = selectedBidForPricing.selected_price_book_version_id
+      // Resolve the active Version first (it drives both takeoff and pricing), set the
+      // version ref BEFORE the takeoff reads in loadPricingDataForBid, then derive the
+      // active pricing facet. Unsplit bids resolve to null → reads the Base (NULL) data.
+      void (async () => {
+        const [versions, pricings] = await Promise.all([loadBidVersions(bidId), loadBidPricings(bidId)])
+        if (signal.aborted) return
+        const activeVersionId = pickActiveVersion({ savedVersionId: savedBidVersionId, bidVersions: versions })
+        setSelectedBidVersionId(activeVersionId)
+        const activePricingId = deriveActivePricingId({
+          activeVersionId,
+          bidPricings: pricings,
+          legacyFallbackPricingId: legacyPricingFallback,
+        })
+        setSelectedPricingVersionId(activePricingId)
+        loadBidPricingAssignments(bidId, activePricingId, signal)
+        loadPricingDataForBid(bidId, signal)
+      })()
     } else {
-      versionId = selectedPricingVersionId
+      loadBidPricingAssignments(bidId, selectedPricingVersionId, signal)
+      loadPricingDataForBid(bidId, signal)
     }
-    loadBidPricingAssignments(bidId, versionId, signal)
-    loadPricingDataForBid(bidId, signal)
     return () => controller.abort()
   }, [
     activeTab,
     selectedBidForPricing?.id,
+    selectedBidForPricing?.selected_bid_version_id,
     selectedBidForPricing?.selected_price_book_version_id,
     selectedBidForPricing?.materials_model,
+    selectedBidVersionId,
     selectedPricingVersionId,
-    priceBookVersions,
   ])
 
   useEffect(() => {
@@ -1316,9 +1428,18 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     // team labor
     teamLaborDataForBids,
     setTeamLaborDataForBids,
+    // bid versions (named variants)
+    bidVersions,
+    setBidVersions,
+    selectedBidVersionId,
+    setSelectedBidVersionId,
     // pricing
     priceBookVersions,
     setPriceBookVersions,
+    templatePriceBookVersions,
+    setTemplatePriceBookVersions,
+    templatesMode,
+    setTemplatesMode,
     priceBookEntries,
     setPriceBookEntries,
     bidPricingAssignments,
@@ -1366,7 +1487,11 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     loadLaborBookVersions,
     loadLaborBookEntries,
     saveBidSelectedLaborBookVersion,
-    loadPriceBookVersions,
+    loadTemplatePriceBookVersions,
+    loadBidPricings,
+    loadBidVersions,
+    saveBidSelectedBidVersion,
+    switchActiveVersion,
     loadPriceBookEntries,
     loadBidPricingAssignments,
     loadPricingDataForBid,

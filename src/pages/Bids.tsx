@@ -42,6 +42,7 @@ import { BidsLaborTab } from '../components/bids/BidsLaborTab'
 import { BidsPricingTab } from '../components/bids/BidsPricingTab'
 import { BidsCoverLetterTab } from '../components/bids/BidsCoverLetterTab'
 import { BidsTakeoffTab } from '../components/bids/BidsTakeoffTab'
+import { BidVersionPicker } from '../components/bids/BidVersionPicker'
 import { downloadApprovalPdf as downloadApprovalPdfDoc } from '../lib/bidDocuments/approvalPdf'
 import { WorkingBoardArchiveConfirmDialog } from '../components/bids/WorkingBoardArchiveConfirmDialog'
 import { BidsBuilderReviewTab } from '../components/bids/BidsBuilderReviewTab'
@@ -553,10 +554,12 @@ export default function Bids() {
     pricingOtherRows,
     teamLaborDataForBids,
     priceBookVersions,
+    templatePriceBookVersions, templatesMode, setTemplatesMode,
     priceBookEntries, setPriceBookEntries,
     bidPricingAssignments,
     bidCountRowCustomPrices,
     bidCountRowSubmissionHides,
+    bidVersions, selectedBidVersionId, switchActiveVersion,
     selectedPricingVersionId, setSelectedPricingVersionId,
     pricingCountRows,
     pricingCostEstimate,
@@ -571,7 +574,7 @@ export default function Bids() {
     loadPurchaseOrdersForCostEstimate, loadCostEstimate,
     ensureCostEstimateForBid, loadCostEstimateData,
     loadLaborBookVersions, loadLaborBookEntries, saveBidSelectedLaborBookVersion,
-    loadPriceBookVersions, loadPriceBookEntries, loadBidPricingAssignments, loadPricingDataForBid,
+    loadTemplatePriceBookVersions, loadBidPricings, loadBidVersions, loadPriceBookEntries, loadBidPricingAssignments, loadPricingDataForBid,
     saveBidSelectedPriceBookVersion, setCostEstimatePO, openMaterialsModelSwitch, confirmMaterialsModelSwitch,
   } = useBidPricingEngine({
     selectedBidForCounts,
@@ -1378,7 +1381,7 @@ export default function Bids() {
   useEffect(() => {
     if (selectedServiceTypeId && activeTab !== 'builder-review' && (myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant' || myRole === 'estimator' || myRole === 'primary' || myRole === 'superintendent')) {
       const t = setTimeout(async () => {
-        await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadPriceBookVersions(), loadMaterialTemplates()])
+        await Promise.all([loadCustomers(), loadBids(selectedServiceTypeId), loadCustomerContacts(), loadCustomerContactPersons(), loadEstimatorUsers(), loadFixtureTypes(), loadTakeoffBookVersions(), loadLaborBookVersions(), loadTemplatePriceBookVersions(), loadMaterialTemplates()])
       }, 80)
       return () => clearTimeout(t)
     }
@@ -1397,7 +1400,7 @@ export default function Bids() {
           loadFixtureTypes(),
           loadTakeoffBookVersions(),
           loadLaborBookVersions(),
-          loadPriceBookVersions(),
+          loadTemplatePriceBookVersions(),
           loadMaterialTemplates()
         ])
       }, 80)
@@ -3025,9 +3028,23 @@ export default function Bids() {
 
       {/* Takeoffs Tab */}
       {activeTab === 'takeoffs' && (
+        <>
+        {selectedBidForTakeoff && (
+          <BidVersionPicker
+            bidId={selectedBidForTakeoff.id}
+            bidVersions={bidVersions}
+            selectedBidVersionId={selectedBidVersionId}
+            currentPricingId={selectedPricingVersionId}
+            fallbackPricingSourceId={templatePriceBookVersions.find((v) => v.name === 'Default')?.id ?? templatePriceBookVersions[0]?.id ?? null}
+            isExactMaterials={selectedBidForTakeoff.materials_model === 'exact'}
+            onSwitch={(versionId) => switchActiveVersion(selectedBidForTakeoff.id, versionId)}
+            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForTakeoff.id), loadBidPricings(selectedBidForTakeoff.id)]).then(() => {})}
+          />
+        )}
         <BidsTakeoffTab
           bids={bidsTyped}
           selectedBidForTakeoff={selectedBidForTakeoff}
+          selectedBidVersionId={selectedBidVersionId}
           selectedBidForCostEstimate={selectedBidForCostEstimate}
           narrowViewport640={narrowViewport640}
           bidPreview={bidPreview}
@@ -3080,12 +3097,14 @@ export default function Bids() {
           onClose={closeSharedBidAndClearUrl}
           onEditBid={openEditBid}
         />
+        </>
       )}
 
       {/* Labor Tab */}
       {activeTab === 'labor' && (
         <BidsLaborTab
           bids={bidsTyped}
+          selectedBidVersionId={selectedBidVersionId}
           selectedBidForCostEstimate={selectedBidForCostEstimate}
           setSelectedBidForCostEstimate={setSelectedBidForCostEstimate}
           narrowViewport640={narrowViewport640}
@@ -3161,6 +3180,19 @@ export default function Bids() {
 
       {/* Pricing Tab */}
       {activeTab === 'pricing' && (
+        <>
+        {selectedBidForPricing && (
+          <BidVersionPicker
+            bidId={selectedBidForPricing.id}
+            bidVersions={bidVersions}
+            selectedBidVersionId={selectedBidVersionId}
+            currentPricingId={selectedPricingVersionId}
+            fallbackPricingSourceId={templatePriceBookVersions.find((v) => v.name === 'Default')?.id ?? templatePriceBookVersions[0]?.id ?? null}
+            isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
+            onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
+            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
+          />
+        )}
         <BidsPricingTab
           bids={bidsTyped}
           selectedBidForPricing={selectedBidForPricing}
@@ -3183,6 +3215,7 @@ export default function Bids() {
           bidPricingAssignments={bidPricingAssignments}
           bidCountRowCustomPrices={bidCountRowCustomPrices}
           bidCountRowSubmissionHides={bidCountRowSubmissionHides}
+          selectedBidVersionId={selectedBidVersionId}
           selectedPricingVersionId={selectedPricingVersionId}
           setSelectedPricingVersionId={setSelectedPricingVersionId}
           pricingCountRows={pricingCountRows}
@@ -3194,7 +3227,11 @@ export default function Bids() {
           pricingLaborRate={pricingLaborRate}
           pricingFixtureMaterialsFromTakeoff={pricingFixtureMaterialsFromTakeoff}
           teamLaborDataForBids={teamLaborDataForBids}
-          loadPriceBookVersions={loadPriceBookVersions}
+          templatePriceBookVersions={templatePriceBookVersions}
+          templatesMode={templatesMode}
+          setTemplatesMode={setTemplatesMode}
+          loadTemplatePriceBookVersions={loadTemplatePriceBookVersions}
+          loadBidPricings={loadBidPricings}
           loadPriceBookEntries={loadPriceBookEntries}
           loadBidPricingAssignments={loadBidPricingAssignments}
           reloadPricingForBid={loadPricingDataForBid}
@@ -3217,10 +3254,24 @@ export default function Bids() {
           onNavigateToLabor={() => setActiveTab('labor')}
           onNavigateBidToTab={(bid, tab) => selectBidAndSyncUrl(bid, tab)}
         />
+        </>
       )}
 
       {/* Cover Letter Tab */}
       {activeTab === 'cover-letter' && (
+        <>
+        {selectedBidForPricing && (
+          <BidVersionPicker
+            bidId={selectedBidForPricing.id}
+            bidVersions={bidVersions}
+            selectedBidVersionId={selectedBidVersionId}
+            currentPricingId={selectedPricingVersionId}
+            fallbackPricingSourceId={templatePriceBookVersions.find((v) => v.name === 'Default')?.id ?? templatePriceBookVersions[0]?.id ?? null}
+            isExactMaterials={selectedBidForPricing.materials_model === 'exact'}
+            onSwitch={(versionId) => switchActiveVersion(selectedBidForPricing.id, versionId)}
+            reloadVersions={() => Promise.all([loadBidVersions(selectedBidForPricing.id), loadBidPricings(selectedBidForPricing.id)]).then(() => {})}
+          />
+        )}
         <BidsCoverLetterTab
           bids={bidsTyped}
           selectedBidForPricing={selectedBidForPricing}
@@ -3229,6 +3280,8 @@ export default function Bids() {
           serviceTypes={serviceTypes}
           pricingCountRows={pricingCountRows}
           coverLetterPricingRows={coverLetterPricingRows}
+          activePricingName={priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? null}
+          bidPricings={priceBookVersions}
           loadBids={loadBids}
           coverLetterInclusionsByBid={coverLetterInclusionsByBid}
           setCoverLetterInclusionsByBid={setCoverLetterInclusionsByBid}
@@ -3255,6 +3308,7 @@ export default function Bids() {
           onEditBid={openEditBid}
           onSaveBidSubmissionQuickAdd={saveBidSubmissionQuickAdd}
         />
+        </>
       )}
 
       {/* Submission & Followup Tab */}

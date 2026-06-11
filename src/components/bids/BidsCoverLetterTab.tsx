@@ -10,10 +10,21 @@ import { addressLines, printHtmlInNewWindow } from '../../lib/bidDocuments/htmlD
 import {
   buildCoverLetterHtml,
   buildCoverLetterText,
+  buildCombinedCoverLetterDocument,
+  buildCombinedCoverLetterText,
   numberToWords,
   DEFAULT_TERMS_AND_WARRANTY,
   DEFAULT_EXCLUSIONS,
 } from '../../lib/bidDocuments/coverLetter'
+import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
+import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
+import type {
+  PriceBookVersion,
+  PriceBookEntryWithFixture,
+  BidPricingAssignment,
+  BidCountRowCustomPrice,
+  BidCountRowSubmissionHide,
+} from '../../lib/bids/bidPricingEngineTypes'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { BidWorkflowTabTitleWithPreview } from './BidWorkflowTabTitleWithPreview'
@@ -31,6 +42,10 @@ type BidsCoverLetterTabProps = {
   serviceTypes: Array<{ id: string; name: string }>
   pricingCountRows: BidCountRow[]
   coverLetterPricingRows: { revenueSum: number; fixtureRows: { fixture: string; count: number }[] } | null
+  /** Name of the active Pricing driving the amount above, shown so the user knows which pricing this letter reflects. */
+  activePricingName: string | null
+  /** The selected bid's Pricings — used to build the bundled (one-letter-per-Pricing) submission document. */
+  bidPricings: PriceBookVersion[]
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
   // Parent-owned *ByBid maps (also read by downloadApprovalPdf)
   coverLetterInclusionsByBid: Record<string, string>
@@ -68,6 +83,8 @@ export function BidsCoverLetterTab({
   serviceTypes,
   pricingCountRows,
   coverLetterPricingRows,
+  activePricingName,
+  bidPricings,
   loadBids,
   coverLetterInclusionsByBid,
   setCoverLetterInclusionsByBid,
@@ -110,6 +127,60 @@ export function BidsCoverLetterTab({
       setCoverLetterBidSubmissionQuickAddValue('')
     }
   }, [selectedBidForPricing?.id, coverLetterBidSubmissionQuickAddBidId])
+
+  // Per-Pricing revenue + fixtures for the bundled submission document. Only the active Pricing's
+  // data is loaded by the engine, so for the bundle we fetch each INCLUDED Pricing's entries +
+  // overlays here and compute revenue (cost inputs are irrelevant to the cover letter, so they're
+  // passed as zeros). Precomputed into state so Print / Copy stay synchronous (clipboard gesture).
+  const [bundlePricings, setBundlePricings] = useState<{ name: string; revenueSum: number; fixtureRows: { fixture: string; count: number }[] }[]>([])
+  useEffect(() => {
+    const bid = selectedBidForPricing
+    const included = bidPricings
+      .filter((p) => p.include_in_submission)
+      .sort((a, b) => a.sort_order - b.sort_order)
+    if (!bid || included.length <= 1 || pricingCountRows.length === 0) {
+      setBundlePricings([])
+      return
+    }
+    let cancelled = false
+    const versionIds = included.map((p) => p.id)
+    void (async () => {
+      const [entriesRes, assignRes, customRes, hidesRes] = await Promise.all([
+        supabase.from('price_book_entries').select('*, fixture_types(name)').in('version_id', versionIds),
+        supabase.from('bid_pricing_assignments').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+        supabase.from('bid_count_row_custom_prices').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+        supabase.from('bid_count_row_submission_hides').select('*').eq('bid_id', bid.id).in('price_book_version_id', versionIds),
+      ])
+      if (cancelled) return
+      const allEntries = (entriesRes.data as PriceBookEntryWithFixture[]) ?? []
+      const allAssign = (assignRes.data as BidPricingAssignment[]) ?? []
+      const allCustom = (customRes.data as BidCountRowCustomPrice[]) ?? []
+      const allHides = (hidesRes.data as BidCountRowSubmissionHide[]) ?? []
+      const sections = included.map((p) => {
+        const entries = allEntries.filter((e) => e.version_id === p.id)
+        const customMap = new Map<string, number>()
+        for (const c of allCustom) if (c.price_book_version_id === p.id) customMap.set(c.count_row_id, Number(c.unit_price))
+        const result = computeBidPricingRows({
+          countRows: pricingCountRows,
+          assignments: allAssign
+            .filter((a) => a.price_book_version_id === p.id)
+            .map((a) => ({ count_row_id: a.count_row_id, price_book_entry_id: a.price_book_entry_id, is_fixed_price: a.is_fixed_price ?? false, unit_price_override: a.unit_price_override })),
+          entries,
+          customUnitPriceByCountRowId: customMap,
+          laborRows: [],
+          totalMaterials: 0,
+          laborRate: 0,
+          taxPercent: 0,
+          materialsFromTakeoffByCountRowId: {},
+          hiddenSubmissionCountRowIds: submissionHiddenIdsForVersion(allHides, p.id),
+        })
+        const totals = coverLetterTotalsFromPricingRows(result.rows)
+        return { name: p.name, revenueSum: totals.revenueSum, fixtureRows: totals.fixtureRows }
+      })
+      setBundlePricings(sections)
+    })()
+    return () => { cancelled = true }
+  }, [selectedBidForPricing?.id, bidPricings, pricingCountRows])
 
   function printCoverLetterDocument(combinedHtml: string) {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cover Letter</title><style>
@@ -239,8 +310,24 @@ export function BidsCoverLetterTab({
         const effectiveIncludeFixtures = coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false
         const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
         const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
-        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] === true, effectiveIncludeFixtures)
-        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, coverLetterIncludeSignatureByBid[bid.id] === true, effectiveIncludeFixtures)
+        const includeSignature = coverLetterIncludeSignatureByBid[bid.id] === true
+        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures)
+        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures)
+        // When 2+ Pricings are included in submission, the deliverable is one cover letter per
+        // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
+        // included Pricings this stays the single letter above (no behavior change).
+        const finalCoverLetterHtml = bundlePricings.length > 1
+          ? buildCombinedCoverLetterDocument(bundlePricings.map((s) => ({
+              label: `Pricing: ${s.name}`,
+              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures),
+            })))
+          : combinedHtml
+        const finalCoverLetterText = bundlePricings.length > 1
+          ? buildCombinedCoverLetterText(bundlePricings.map((s) => ({
+              label: `Pricing: ${s.name}`,
+              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures),
+            })))
+          : combinedText
         const now = new Date()
         const yy = now.getFullYear() % 100
         const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -258,7 +345,7 @@ export function BidsCoverLetterTab({
         
         const googleDocsCopyUrl = `https://docs.google.com/document/d/${googleDocsTemplateId}/copy?title=` + encodeURIComponent(templateCopyTarget)
         const copyToClipboard = () => {
-          void copyRichHtmlToClipboard(combinedHtml, combinedText)
+          void copyRichHtmlToClipboard(finalCoverLetterHtml, finalCoverLetterText)
         }
         return (
           <div
@@ -315,7 +402,7 @@ export function BidsCoverLetterTab({
                 </button>
                 <button
                   type="button"
-                  onClick={() => printCoverLetterDocument(combinedHtml)}
+                  onClick={() => printCoverLetterDocument(finalCoverLetterHtml)}
                   title="Print combined document"
                   style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
@@ -350,7 +437,26 @@ export function BidsCoverLetterTab({
             </div>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Proposed amount (from Pricing)</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Proposed amount (from Pricing)</span>
+                  {activePricingName && (
+                    <span
+                      style={{
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        color: '#1e40af',
+                        background: '#dbeafe',
+                        border: '1px solid #bfdbfe',
+                        borderRadius: 9999,
+                        padding: '0.1rem 0.5rem',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title="The Pricing this cover letter reflects"
+                    >
+                      Pricing: {activePricingName}
+                    </span>
+                  )}
+                </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                   {!isBidValueSynced && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -512,12 +618,19 @@ export function BidsCoverLetterTab({
               </label>
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Combined document (copy to send)</label>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
+                Combined document (copy to send)
+                {bundlePricings.length > 1 && (
+                  <span style={{ marginLeft: '0.5rem', fontWeight: 400, fontSize: '0.8125rem', color: '#1e40af' }}>
+                    · bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')}
+                  </span>
+                )}
+              </label>
               <div
                 key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}`}
                 style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                 // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested coverLetter builder
-                dangerouslySetInnerHTML={{ __html: combinedHtml }}
+                dangerouslySetInnerHTML={{ __html: finalCoverLetterHtml }}
               />
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.5rem' }}>
                 <button

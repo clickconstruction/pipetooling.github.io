@@ -10,6 +10,8 @@ type TemplateOption = { id: string; name: string; assembly_types?: { name?: stri
 
 type AssignTakeoffPartModalProps = {
   bidId: string
+  /** Active bid Version this takeoff belongs to (null = the unsplit Base). */
+  bidVersionId: string | null
   serviceTypeId: string
   countRowId: string
   fixture: string
@@ -29,6 +31,7 @@ type AssignTakeoffPartModalProps = {
  */
 export function AssignTakeoffPartModal({
   bidId,
+  bidVersionId,
   serviceTypeId,
   countRowId,
   fixture,
@@ -125,13 +128,16 @@ export function AssignTakeoffPartModal({
     setSaving(true)
     try {
       if (isRough) {
-        const { count } = await supabase
+        let cq: any = supabase
           .from('bids_takeoff_rough_part_lines')
           .select('id', { count: 'exact', head: true })
           .eq('bid_id', bidId)
           .eq('count_row_id', countRowId)
+        cq = bidVersionId == null ? cq.is('bid_version_id', null) : cq.eq('bid_version_id', bidVersionId)
+        const { count } = await cq
         const { error } = await supabase.from('bids_takeoff_rough_part_lines').insert({
           bid_id: bidId,
+          bid_version_id: bidVersionId,
           count_row_id: countRowId,
           part_id: selectedId,
           quantity: Math.max(0.0001, qtyNum),
@@ -146,21 +152,24 @@ export function AssignTakeoffPartModal({
           return
         }
       } else {
-        const { count } = await supabase
+        let cq: any = supabase
           .from('bids_takeoff_template_mappings')
           .select('id', { count: 'exact', head: true })
           .eq('bid_id', bidId)
           .eq('count_row_id', countRowId)
+        cq = bidVersionId == null ? cq.is('bid_version_id', null) : cq.eq('bid_version_id', bidVersionId)
+        const { count } = await cq
         const { error } = await supabase.from('bids_takeoff_template_mappings').upsert(
           {
             bid_id: bidId,
+            bid_version_id: bidVersionId,
             count_row_id: countRowId,
             template_id: selectedId,
             stage,
             quantity: Math.max(0.0001, qtyNum),
             sequence_order: count ?? 0,
           },
-          { onConflict: 'count_row_id,template_id,stage', ignoreDuplicates: false },
+          { onConflict: 'count_row_id,template_id,stage,bid_version_id', ignoreDuplicates: false },
         )
         if (error) {
           showToast(`Failed to assign assembly: ${error.message}`, 'error')
