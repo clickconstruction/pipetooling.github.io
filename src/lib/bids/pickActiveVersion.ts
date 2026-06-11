@@ -21,22 +21,26 @@ export function pickActiveVersion(input: {
 /**
  * The pricing facet for the active Version. A bid's pricing copies each carry the
  * `bid_version_id` of the Version they belong to.
- *  - Split bid (activeVersionId set): the pricing whose `bid_version_id` matches, else none.
+ *  - Split bid (activeVersionId set): the pricing whose `bid_version_id` matches, else none
+ *    (no template fallback — a version legitimately may have no pricing yet).
  *  - Unsplit bid (activeVersionId null): an unsplit pricing copy (bid_version_id null) if one
- *    exists, else the lazy legacy fallback (the bid's `selected_price_book_version_id`, which
- *    may point at a global template).
+ *    exists, else the bid's saved `selected_price_book_version_id`, else the service type's
+ *    "Default" template. That last fallback preserves the long-standing behavior where bids that
+ *    never explicitly picked a price book price against "Default" — without it, those bids show
+ *    no pricing at all.
  */
 export function deriveActivePricingId(input: {
   activeVersionId: string | null
   bidPricings: { id: string; bid_version_id: string | null }[]
   legacyFallbackPricingId: string | null
+  defaultTemplatePricingId?: string | null
 }): string | null {
-  const { activeVersionId, bidPricings, legacyFallbackPricingId } = input
+  const { activeVersionId, bidPricings, legacyFallbackPricingId, defaultTemplatePricingId } = input
   if (activeVersionId != null) {
     return bidPricings.find((p) => p.bid_version_id === activeVersionId)?.id ?? null
   }
   const unsplit = bidPricings.find((p) => p.bid_version_id == null)
-  return unsplit?.id ?? legacyFallbackPricingId ?? null
+  return unsplit?.id ?? legacyFallbackPricingId ?? defaultTemplatePricingId ?? null
 }
 
 /**

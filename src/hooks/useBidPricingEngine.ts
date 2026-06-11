@@ -1111,6 +1111,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
    * Reloads bid pricings FRESH first — a just-created version's pricing facet isn't in
    * `priceBookVersions` state yet, so deriving from stale state would miss it.
    */
+  // The service type's "Default" price book (else the first template) — the last-resort pricing
+  // for an unsplit bid that never explicitly picked one (long-standing auto-select behavior).
+  function pickDefaultTemplatePricingId(): string | null {
+    return templatePriceBookVersions.find((t) => t.name === 'Default')?.id ?? templatePriceBookVersions[0]?.id ?? null
+  }
+
   async function switchActiveVersion(bidId: string, versionId: string | null) {
     setSelectedBidVersionId(bidId, versionId)
     const pricings = await loadBidPricings(bidId)
@@ -1119,6 +1125,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         activeVersionId: versionId,
         bidPricings: pricings,
         legacyFallbackPricingId: selectedBidForPricing?.selected_price_book_version_id ?? null,
+        defaultTemplatePricingId: pickDefaultTemplatePricingId(),
       }),
     )
     await saveBidSelectedBidVersion(bidId, versionId)
@@ -1313,6 +1320,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
           activeVersionId,
           bidPricings: pricings,
           legacyFallbackPricingId: legacyPricingFallback,
+          defaultTemplatePricingId: pickDefaultTemplatePricingId(),
         })
         setSelectedPricingVersionId(activePricingId)
         loadBidPricingAssignments(bidId, activePricingId, signal)
@@ -1332,6 +1340,21 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     selectedBidVersionId,
     selectedPricingVersionId,
   ])
+
+  // Safety net for the resolve-before-templates-loaded race: once the service-type templates
+  // arrive, apply the "Default" pricing fallback to an unsplit bid that still has no pricing.
+  useEffect(() => {
+    if (activeTab !== 'pricing' && activeTab !== 'cover-letter') return
+    if (!selectedBidForPricing || selectedPricingVersionId != null || selectedBidVersionId != null) return
+    const fallback = deriveActivePricingId({
+      activeVersionId: null,
+      bidPricings: priceBookVersions,
+      legacyFallbackPricingId: selectedBidForPricing.selected_price_book_version_id ?? null,
+      defaultTemplatePricingId: pickDefaultTemplatePricingId(),
+    })
+    if (fallback) setSelectedPricingVersionId(fallback)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, templatePriceBookVersions, selectedPricingVersionId, selectedBidVersionId, selectedBidForPricing?.id])
 
   useEffect(() => {
     if (activeTab !== 'pricing' && activeTab !== 'labor' && activeTab !== 'bid-costs') return

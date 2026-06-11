@@ -45,6 +45,19 @@ describe('deriveActivePricingId', () => {
     expect(deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: 'tmpl' })).toBe('tmpl')
     expect(deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: null })).toBeNull()
   })
+
+  it('falls back to the Default template when unsplit with no saved selection', () => {
+    // The regression fix: bids that never picked a price book still price against "Default".
+    expect(deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: null, defaultTemplatePricingId: 'default-tmpl' })).toBe('default-tmpl')
+  })
+
+  it('prefers a saved selection over the Default template', () => {
+    expect(deriveActivePricingId({ activeVersionId: null, bidPricings: [], legacyFallbackPricingId: 'saved', defaultTemplatePricingId: 'default-tmpl' })).toBe('saved')
+  })
+
+  it('does NOT use the Default template for a split version with no pricing', () => {
+    expect(deriveActivePricingId({ activeVersionId: 'vNoPricing', bidPricings: [], legacyFallbackPricingId: 'saved', defaultTemplatePricingId: 'default-tmpl' })).toBeNull()
+  })
 })
 
 describe('resolveTaggedVersion', () => {
