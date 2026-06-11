@@ -316,6 +316,11 @@ export function BidsPricingTab({
   const panelVersions = templatesMode ? templatePriceBookVersions : priceBookVersions
   const panelVersionId = templatesMode ? editingTemplateId : selectedPricingVersionId
   const panelEntries = templatesMode ? templateEntries : priceBookEntries
+  // In pricings mode the panel edits the ACTIVE version's pricing. It's editable only when that
+  // pricing is bid-owned (not a shared template surfaced via the legacy fallback, and not absent).
+  const activeBidPricing = priceBookVersions.find((p) => p.id === selectedPricingVersionId) ?? null
+  const isBidOwnedPricing = activeBidPricing != null
+  const canEditPanelEntries = templatesMode ? !!editingTemplateId : isBidOwnedPricing
 
   async function loadTemplateEntries(versionId: string | null) {
     if (!versionId) {
@@ -366,28 +371,6 @@ export function BidsPricingTab({
     } else if (selectedBidForPricing) {
       void handlePricingVersionChange(selectedBidForPricing.id, id)
     }
-  }
-
-  // Whether a Pricing is included in the bundled submission document.
-  async function togglePricingInclude(v: PriceBookVersion) {
-    const { error: err } = await supabase
-      .from('price_book_versions')
-      .update({ include_in_submission: !v.include_in_submission })
-      .eq('id', v.id)
-    if (err) { setError(err.message); return }
-    if (selectedBidForPricing) await loadBidPricings(selectedBidForPricing.id)
-  }
-
-  // Move a Pricing earlier/later in the submission bundle by swapping sort_order with its neighbor.
-  async function reorderPricing(v: PriceBookVersion, dir: -1 | 1) {
-    const sorted = [...priceBookVersions].sort((a, b) => a.sort_order - b.sort_order)
-    const idx = sorted.findIndex((p) => p.id === v.id)
-    const other = sorted[idx + dir]
-    if (!other) return
-    const { error: e1 } = await supabase.from('price_book_versions').update({ sort_order: other.sort_order }).eq('id', v.id)
-    const { error: e2 } = await supabase.from('price_book_versions').update({ sort_order: v.sort_order }).eq('id', other.id)
-    if (e1 || e2) { setError((e1 ?? e2)!.message); return }
-    if (selectedBidForPricing) await loadBidPricings(selectedBidForPricing.id)
   }
 
   // Version-form openers (the modal's Save branches on `pricingFormMode`).
@@ -668,6 +651,11 @@ export function BidsPricingTab({
         .single()
       if (err) { setError(err.message); setSavingPricingVersion(false); return }
       newId = (data as { id: string } | null)?.id ?? null
+    }
+    // Attach the new pricing to the active Version (null for an unsplit bid = the bid's own
+    // unsplit pricing). This is what prevents version-less "orphan" pricings.
+    if (newId && selectedBidVersionId) {
+      await supabase.from('price_book_versions').update({ bid_version_id: selectedBidVersionId }).eq('id', newId)
     }
     await loadBidPricings(bid.id)
     if (newId) {
@@ -1075,58 +1063,8 @@ export function BidsPricingTab({
             </div>
             {/* Price book selector (left) + partial-fill (right), styled like the Labor/Takeoffs tabs. */}
             <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', position: 'relative' }} data-add-pricing-menu>
-                <label style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>Pricing</label>
-                <select
-                  value={selectedPricingVersionId ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (v) handlePricingVersionChange(selectedBidForPricing.id, v)
-                  }}
-                  style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
-                >
-                  <option value="">{priceBookVersions.length === 0 ? '— No pricings yet —' : '— Select pricing —'}</option>
-                  {priceBookVersions.map((v) => (
-                    <option key={v.id} value={v.id}>{v.name}</option>
-                  ))}
-                </select>
-                <button
-                  type="button"
-                  onClick={() => setAddPricingMenuOpen((o) => !o)}
-                  style={{ padding: '0.5rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}
-                  title="Add a pricing copy for this bid"
-                >
-                  + Add pricing ▾
-                </button>
-                {addPricingMenuOpen && (
-                  <div
-                    style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid #d1d5db', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 30, minWidth: '14rem', padding: '0.25rem', maxHeight: '60vh', overflowY: 'auto' }}
-                  >
-                    {selectedPricingVersionId && (
-                      <button
-                        type="button"
-                        onClick={() => openClonePricing(selectedPricingVersionId, `${priceBookVersions.find((v) => v.id === selectedPricingVersionId)?.name ?? 'Pricing'} (copy)`)}
-                        style={addPricingMenuItemStyle}
-                      >
-                        Duplicate current pricing
-                      </button>
-                    )}
-                    <button type="button" onClick={openAddBlankPricing} style={addPricingMenuItemStyle}>
-                      Blank pricing
-                    </button>
-                    {templatePriceBookVersions.length > 0 && (
-                      <div style={{ borderTop: '1px solid #f1f5f9', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', padding: '0.15rem 0.5rem' }}>From template</div>
-                        {templatePriceBookVersions.map((t) => (
-                          <button key={t.id} type="button" onClick={() => openClonePricing(t.id, t.name)} style={addPricingMenuItemStyle}>
-                            {t.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              {/* Version selection + creation now live in the bid-level Version picker (top of tab). */}
+              <div />
               {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (
                 <button
                   type="button"
@@ -2109,7 +2047,7 @@ export function BidsPricingTab({
             <>
             {/* Toggle: edit this bid's Pricings vs the shared template catalog. */}
             <div style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden', marginBottom: '0.75rem' }}>
-              {([['pricings', "This bid's Pricings"], ['templates', 'Template library']] as const).map(([key, label]) => {
+              {([['pricings', "This version's prices"], ['templates', 'Template library']] as const).map(([key, label]) => {
                 const active = (key === 'templates') === templatesMode
                 return (
                   <button
@@ -2131,66 +2069,89 @@ export function BidsPricingTab({
                 )
               })}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-              {panelVersions.map((v) => (
-                <span
-                  key={v.id}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    padding: '0.35rem 0.5rem',
-                    background: panelVersionId === v.id ? '#dbeafe' : '#f3f4f6',
-                    border: panelVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
-                    borderRadius: 4,
-                  }}
+            {templatesMode ? (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {panelVersions.map((v) => (
+                  <span
+                    key={v.id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      padding: '0.35rem 0.5rem',
+                      background: panelVersionId === v.id ? '#dbeafe' : '#f3f4f6',
+                      border: panelVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                      borderRadius: 4,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => selectPanelVersion(v.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: panelVersionId === v.id ? 600 : 400, padding: 0 }}
+                    >
+                      {v.name}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditPricingVersion(v)}
+                      style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                      title="Edit template name"
+                    >
+                      ✎
+                    </button>
+                  </span>
+                ))}
+                {panelVersions.length === 0 && (
+                  <span style={{ color: '#9ca3af', fontSize: '0.8125rem', alignSelf: 'center' }}>
+                    No templates for this service type yet.
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={openAddTemplate}
+                  style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
-                  {!templatesMode && (
-                    <input
-                      type="checkbox"
-                      checked={v.include_in_submission}
-                      onChange={() => void togglePricingInclude(v)}
-                      title="Include this pricing in the submission bundle"
-                      style={{ cursor: 'pointer', margin: 0 }}
-                    />
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => selectPanelVersion(v.id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: panelVersionId === v.id ? 600 : 400, padding: 0 }}
-                  >
-                    {v.name}
-                  </button>
-                  {!templatesMode && panelVersions.length > 1 && (
-                    <>
-                      <button type="button" onClick={() => void reorderPricing(v, -1)} title="Move earlier in bundle" style={{ padding: '0 0.1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: '#6b7280' }}>▲</button>
-                      <button type="button" onClick={() => void reorderPricing(v, 1)} title="Move later in bundle" style={{ padding: '0 0.1rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.7rem', color: '#6b7280' }}>▼</button>
-                    </>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => openEditPricingVersion(v)}
-                    style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
-                    title={templatesMode ? 'Edit template name' : 'Edit pricing name'}
-                  >
-                    ✎
-                  </button>
-                </span>
-              ))}
-              {panelVersions.length === 0 && (
-                <span style={{ color: '#9ca3af', fontSize: '0.8125rem', alignSelf: 'center' }}>
-                  {templatesMode ? 'No templates for this service type yet.' : 'No pricings yet — add one to start.'}
-                </span>
-              )}
-              <button
-                type="button"
-                onClick={templatesMode ? openAddTemplate : openAddBlankPricing}
-                style={{ marginLeft: 'auto', padding: '0.35rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                {templatesMode ? 'Add template' : 'Add blank pricing'}
-              </button>
-            </div>
-            {panelVersionId && (
+                  Add template
+                </button>
+              </div>
+            ) : isBidOwnedPricing ? (
+              <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+                Editing prices for the active version.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', position: 'relative' }} data-add-pricing-menu>
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>This version has no pricing yet.</span>
+                <button
+                  type="button"
+                  onClick={() => setAddPricingMenuOpen((o) => !o)}
+                  style={{ padding: '0.35rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                >
+                  Set up pricing ▾
+                </button>
+                {addPricingMenuOpen && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: 'white', border: '1px solid #d1d5db', borderRadius: 6, boxShadow: '0 4px 12px rgba(0,0,0,0.12)', zIndex: 30, minWidth: '14rem', padding: '0.25rem', maxHeight: '60vh', overflowY: 'auto' }}>
+                    <button type="button" onClick={openAddBlankPricing} style={addPricingMenuItemStyle}>Blank pricing</button>
+                    {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).length > 0 && (
+                      <div style={{ borderTop: '1px solid #f1f5f9', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', padding: '0.15rem 0.5rem' }}>Duplicate another version's pricing</div>
+                        {priceBookVersions.filter((p) => p.id !== selectedPricingVersionId).map((p) => (
+                          <button key={p.id} type="button" onClick={() => openClonePricing(p.id, p.name)} style={addPricingMenuItemStyle}>{p.name}</button>
+                        ))}
+                      </div>
+                    )}
+                    {templatePriceBookVersions.length > 0 && (
+                      <div style={{ borderTop: '1px solid #f1f5f9', margin: '0.25rem 0', paddingTop: '0.25rem' }}>
+                        <div style={{ fontSize: '0.7rem', color: '#9ca3af', padding: '0.15rem 0.5rem' }}>From template</div>
+                        {templatePriceBookVersions.map((t) => (
+                          <button key={t.id} type="button" onClick={() => openClonePricing(t.id, t.name)} style={addPricingMenuItemStyle}>{t.name}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+            {canEditPanelEntries && panelVersionId && (
               <>
                 <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries</h4>
                 <input

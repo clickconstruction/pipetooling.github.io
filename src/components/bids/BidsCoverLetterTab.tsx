@@ -46,6 +46,8 @@ type BidsCoverLetterTabProps = {
   activePricingName: string | null
   /** The selected bid's Pricings — used to build the bundled (one-letter-per-Pricing) submission document. */
   bidPricings: PriceBookVersion[]
+  /** Reload the bid's Pricings after an include/reorder change so the bundle recomputes. */
+  reloadBidPricings: () => Promise<void>
   loadBids: (serviceTypeId?: string | null) => Promise<BidWithBuilder[]>
   // Parent-owned *ByBid maps (also read by downloadApprovalPdf)
   coverLetterInclusionsByBid: Record<string, string>
@@ -85,6 +87,7 @@ export function BidsCoverLetterTab({
   coverLetterPricingRows,
   activePricingName,
   bidPricings,
+  reloadBidPricings,
   loadBids,
   coverLetterInclusionsByBid,
   setCoverLetterInclusionsByBid,
@@ -181,6 +184,26 @@ export function BidsCoverLetterTab({
     })()
     return () => { cancelled = true }
   }, [selectedBidForPricing?.id, bidPricings, pricingCountRows])
+
+  // Which versions are in the bundled submission, and in what order. Writes the pricing facet's
+  // flags (what the bundle reads) and mirrors onto the parent bid_versions row for consistency.
+  async function toggleSubmissionInclude(p: PriceBookVersion) {
+    const next = !p.include_in_submission
+    await supabase.from('price_book_versions').update({ include_in_submission: next }).eq('id', p.id)
+    if (p.bid_version_id) await supabase.from('bid_versions').update({ include_in_submission: next }).eq('id', p.bid_version_id)
+    await reloadBidPricings()
+  }
+  async function reorderSubmission(p: PriceBookVersion, dir: -1 | 1) {
+    const sorted = [...bidPricings].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex((x) => x.id === p.id)
+    const other = sorted[idx + dir]
+    if (!other) return
+    await supabase.from('price_book_versions').update({ sort_order: other.sort_order }).eq('id', p.id)
+    await supabase.from('price_book_versions').update({ sort_order: p.sort_order }).eq('id', other.id)
+    if (p.bid_version_id) await supabase.from('bid_versions').update({ sort_order: other.sort_order }).eq('id', p.bid_version_id)
+    if (other.bid_version_id) await supabase.from('bid_versions').update({ sort_order: p.sort_order }).eq('id', other.bid_version_id)
+    await reloadBidPricings()
+  }
 
   function printCoverLetterDocument(combinedHtml: string) {
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Cover Letter</title><style>
@@ -435,6 +458,20 @@ export function BidsCoverLetterTab({
                 <div key={i} style={{ color: '#6b7280' }}>{line}</div>
               ))}
             </div>
+            {bidPricings.length > 1 && (
+              <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.75rem' }}>
+                <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Versions in this submission</div>
+                {[...bidPricings].sort((a, b) => a.sort_order - b.sort_order).map((p, i, arr) => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0' }}>
+                    <input type="checkbox" checked={p.include_in_submission} onChange={() => void toggleSubmissionInclude(p)} style={{ cursor: 'pointer', margin: 0 }} />
+                    <span style={{ flex: 1, color: p.include_in_submission ? '#111827' : '#9ca3af' }}>{p.name}</span>
+                    <button type="button" onClick={() => void reorderSubmission(p, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#d1d5db' : '#6b7280' }}>▲</button>
+                    <button type="button" onClick={() => void reorderSubmission(p, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? '#d1d5db' : '#6b7280' }}>▼</button>
+                  </div>
+                ))}
+                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>Checked versions are bundled into the submission — one cover letter each, in this order.</div>
+              </div>
+            )}
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -451,9 +488,9 @@ export function BidsCoverLetterTab({
                         padding: '0.1rem 0.5rem',
                         whiteSpace: 'nowrap',
                       }}
-                      title="The Pricing this cover letter reflects"
+                      title="The version this cover letter reflects"
                     >
-                      Pricing: {activePricingName}
+                      Version: {activePricingName}
                     </span>
                   )}
                 </div>
