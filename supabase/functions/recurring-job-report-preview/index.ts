@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 import type {
   ActivityScopeMode,
@@ -114,7 +115,7 @@ serve(async (req) => {
     }
 
     const recipientUserId = body.recipient_user_id?.trim() || user.id
-    const tz = (body.timezone ?? 'America/Chicago').trim() || 'America/Chicago'
+    const tz = (body.timezone ?? APP_CALENDAR_TZ).trim() || APP_CALENDAR_TZ
     const anchor = (body.anchor_date ?? '').trim()
 
     let window: ReportingWindowUtc | null = null

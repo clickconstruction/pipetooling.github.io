@@ -20,7 +20,7 @@ function chicagoYmdCalendarDaysBetween(earlierYmd: string, laterYmd: string): nu
 
 /**
  * Matches `list_stale_unlinked_mercury_transactions_for_tally_staff` when `include_all_unlinked` is false:
- * `(now() AT TIME ZONE 'America/Chicago')::date - (posted_at AT TIME ZONE 'America/Chicago')::date > age_int`.
+ * `(now() AT TIME ZONE APP_CALENDAR_TZ)::date - (posted_at AT TIME ZONE APP_CALENDAR_TZ)::date > age_int`.
  */
 export function isUnlinkedMercuryRowStaleForTallyStaffFollowUp(
   postedAt: string | null,

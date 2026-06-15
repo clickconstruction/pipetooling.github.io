@@ -10,6 +10,7 @@ import {
 } from './recurringJobReportFieldEmail.ts'
 
 import { addDaysToYmd } from './recurringJobReportTimezone.ts'
+import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 
 export type ActivityScopeMode =
   | 'calendar_yesterday'
@@ -150,7 +151,7 @@ export async function getReportingWindowForActivityScope(
     anchorDateLocal: string | null
   },
 ): Promise<ReportingWindowUtc | null> {
-  const tz = params.timezone.trim() || 'America/Chicago'
+  const tz = params.timezone.trim() || APP_CALENDAR_TZ
   const anchor = params.anchorDateLocal?.trim() || null
 
   if (params.activityScope === 'calendar_last_week') {

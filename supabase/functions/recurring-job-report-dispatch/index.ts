@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 
 import type { ActivityScopeMode, CrewFilterMode } from '../_shared/recurringJobReportCore.ts'
 import {
@@ -107,7 +108,7 @@ serve(async (req) => {
     const errors: string[] = []
 
     for (const raw of (schedules ?? []) as ScheduleRow[]) {
-      const zone = (raw.timezone ?? 'America/Chicago').trim() || 'America/Chicago'
+      const zone = (raw.timezone ?? APP_CALENDAR_TZ).trim() || APP_CALENDAR_TZ
       const wd = weekdayIndexSun0InZone(zone, now)
       const dows = Array.isArray(raw.days_of_week) ? raw.days_of_week : []
       if (!dows.includes(wd)) continue
