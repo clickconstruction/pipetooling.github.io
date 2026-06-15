@@ -20,9 +20,12 @@ import {
   PINNABLE_PATHS,
   pathToLabel,
   getTabFromPath,
-  isPinned,
+  isPinnedIn,
   togglePinned,
   addPinForUser,
+  getPinnedForUserFromSupabase,
+  migrateLocalPinsToSupabase,
+  type PinnedItem,
 } from '../lib/pinnedTabs'
 import { isEstimatorPathAllowed } from '../lib/layoutRouteAccess'
 import DailyGoalsGateOverlay from './DailyGoalsGateOverlay'
@@ -96,7 +99,9 @@ export default function Layout() {
   const gearRef = useRef<HTMLDivElement>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
-  const [, setPinsVersion] = useState(0)
+  // The current user's pins (unfiltered) — drives the pin button's pinned state. Loaded from
+  // Supabase so pins sync across devices; refreshed on the pins-changed event + window focus.
+  const [pins, setPins] = useState<PinnedItem[]>([])
   const [isMobile, setIsMobile] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(max-width: 640px)').matches
   )
@@ -172,10 +177,28 @@ export default function Layout() {
   }, [role, location.pathname, navigate, estimatorProspectsAccess])
 
   useEffect(() => {
-    const handler = () => setPinsVersion((v) => v + 1)
+    if (!authUser?.id) {
+      setPins([])
+      return
+    }
+    const uid = authUser.id
+    let cancelled = false
+    const load = async () => {
+      const list = await getPinnedForUserFromSupabase(uid)
+      if (!cancelled) setPins(list)
+    }
+    // One-time per device: lift any legacy localStorage pins into Supabase, then load.
+    // Always load, even if the migration fails — never let it block first paint of the pins.
+    void migrateLocalPinsToSupabase(uid).then(load, load)
+    const handler = () => void load()
     window.addEventListener('pipetooling-pins-changed', handler)
-    return () => window.removeEventListener('pipetooling-pins-changed', handler)
-  }, [])
+    window.addEventListener('focus', handler)
+    return () => {
+      cancelled = true
+      window.removeEventListener('pipetooling-pins-changed', handler)
+      window.removeEventListener('focus', handler)
+    }
+  }, [authUser?.id])
 
   // Reload on bfcache restore during impersonation to avoid stale auth state
   useEffect(() => {
@@ -1145,19 +1168,29 @@ export default function Layout() {
                 const path = location.pathname
                 const label = pathToLabel(path)
                 const tab = getTabFromPath(path, location.search)
-                togglePinned(authUser.id, path, label, tab ?? undefined)
+                const tabVal = tab ?? null
+                // Optimistic flip so the button responds instantly; the event refresh reconciles.
+                setPins((prev) =>
+                  isPinnedIn(prev, path, tabVal)
+                    ? prev.filter((p) => !(p.path === path && (p.tab ?? null) === tabVal))
+                    : [...prev, { path, label, ...(tab ? { tab } : {}) }],
+                )
+                // On failure, force a reload so the optimistic flip reconciles with DB truth.
+                void togglePinned(authUser.id, path, label, tab ?? undefined).catch(() =>
+                  window.dispatchEvent(new CustomEvent('pipetooling-pins-changed')),
+                )
               }}
-              title={isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search)) ? 'Unpin from dashboard' : 'Pin to dashboard'}
+              title={isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search)) ? 'Unpin from dashboard' : 'Pin to dashboard'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.35rem',
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search))
+                background: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
                   ? '#e0e7ff'
                   : 'transparent',
-                color: isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search))
+                color: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
                   ? '#3730a3'
                   : '#6b7280',
                 border: '1px solid #d1d5db',
@@ -1165,7 +1198,7 @@ export default function Layout() {
                 cursor: 'pointer',
               }}
             >
-              {isPinned(authUser.id, location.pathname, getTabFromPath(location.pathname, location.search)) ? (
+              {isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search)) ? (
                 <>
                   <PinIcon filled />
                   Unpin
@@ -1257,9 +1290,8 @@ export default function Layout() {
                           setPinForMessage({ type: 'success', text: `Pinned for ${name}.` })
                           setTimeout(() => setPinForMessage(null), 3000)
                           setPinForOpen(false)
-                          if (pinForUserId === authUser.id) {
-                            togglePinned(authUser.id, path, label, tab ?? undefined)
-                          }
+                          // addPinForUser already wrote this user's pin to the (now unified)
+                          // user_pinned_tabs table and fired the refresh event — no extra toggle.
                         }
                       }}
                       style={{

@@ -9426,6 +9426,7 @@ export type Database = {
           id: string
           label: string
           path: string
+          sort_order: number
           tab: string | null
           user_id: string
         }
@@ -9433,6 +9434,7 @@ export type Database = {
           id?: string
           label: string
           path: string
+          sort_order?: number
           tab?: string | null
           user_id: string
         }
@@ -9440,6 +9442,7 @@ export type Database = {
           id?: string
           label?: string
           path?: string
+          sort_order?: number
           tab?: string | null
           user_id?: string
         }

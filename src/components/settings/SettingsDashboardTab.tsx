@@ -2,8 +2,11 @@
  * financial pins, report notifications, my reports, notification history, muted/ignored tasks.
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
  * Inner role gates are preserved verbatim (myRole etc. arrive as props). */
-import React, { type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import React, { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { Link } from 'react-router-dom'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { Database } from '../../types/database'
 import { useToastContext } from '../../contexts/ToastContext'
 import { supabase } from '../../lib/supabase'
@@ -16,6 +19,7 @@ import {
   clearPinnedInSupabase,
   deletePinForPathAndTab,
   removePin,
+  reorderPins,
   type PinnedItem,
 } from '../../lib/pinnedTabs'
 import { displayLabelForGoalPickerUser, type GoalPickerUserRow } from '../../lib/goalPickerUserLabel'
@@ -167,6 +171,66 @@ type SettingsDashboardTabProps = {
   users: UserRow[]
 }
 
+function pinKeyOf(item: PinnedItem): string {
+  return `${item.path}:${item.tab ?? ''}`
+}
+function pinLabel(item: PinnedItem): string {
+  return item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label
+}
+
+/** A draggable, removable pin row (drag handle activates only past an 8px threshold). */
+function SortablePinRow({ item, removing, onRemove }: { item: PinnedItem; removing: boolean; onRemove: () => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: pinKeyOf(item) })
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: '0.5rem',
+        padding: '0.5rem 0.75rem',
+        background: '#f9fafb',
+        borderRadius: 6,
+        border: '1px solid #e5e7eb',
+      }}
+    >
+      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          title="Drag to reorder"
+          aria-label="Drag to reorder"
+          style={{ cursor: 'grab', background: 'none', border: 'none', color: '#9ca3af', padding: 0, fontSize: '1rem', touchAction: 'none' }}
+        >
+          ⠿
+        </button>
+        <span style={{ fontSize: '0.875rem' }}>{pinLabel(item)}</span>
+      </span>
+      <button
+        type="button"
+        disabled={removing}
+        onClick={onRemove}
+        style={{
+          padding: '0.25rem 0.5rem',
+          fontSize: '0.75rem',
+          background: removing ? '#e5e7eb' : '#fef2f2',
+          color: removing ? '#9ca3af' : '#b91c1c',
+          border: '1px solid #e5e7eb',
+          borderRadius: 4,
+          cursor: removing ? 'not-allowed' : 'pointer',
+        }}
+      >
+        {removing ? 'Removing…' : 'Remove'}
+      </button>
+    </li>
+  )
+}
+
 export default function SettingsDashboardTab({
   apTotal,
   authUser,
@@ -301,6 +365,23 @@ export default function SettingsDashboardTab({
   users,
 }: SettingsDashboardTabProps) {
   const { showToast } = useToastContext()
+  // Local copy of the pin order for instant drag feedback; reconciled from `myPins` (which the
+  // parent reloads on the pins-changed event after reorderPins persists).
+  const [orderedPins, setOrderedPins] = useState<PinnedItem[]>(myPins)
+  useEffect(() => {
+    setOrderedPins(myPins)
+  }, [myPins])
+  const pinDragSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  async function handlePinDragEnd(e: DragEndEvent) {
+    const { active, over } = e
+    if (!over || active.id === over.id) return
+    const oldIndex = orderedPins.findIndex((p) => pinKeyOf(p) === active.id)
+    const newIndex = orderedPins.findIndex((p) => pinKeyOf(p) === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const reordered = arrayMove(orderedPins, oldIndex, newIndex)
+    setOrderedPins(reordered)
+    await reorderPins(authUser?.id, reordered)
+  }
   return (
     <>
 
@@ -469,53 +550,31 @@ export default function SettingsDashboardTab({
                 >
                   Clear all page pins
                 </button>
-                {!pinsLoading && myPins.length > 0 && (
-                  <ul style={{ margin: '1rem 0 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {myPins.map((item) => {
-                      const pinKey = `${item.path}:${item.tab ?? ''}`
-                      const label = item.tab
-                        ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}`
-                        : item.label
-                      const removing = pinRemovingId === pinKey
-                      return (
-                        <li
-                          key={pinKey}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            gap: '0.5rem',
-                            padding: '0.5rem 0.75rem',
-                            background: '#f9fafb',
-                            borderRadius: 6,
-                            border: '1px solid #e5e7eb',
-                          }}
-                        >
-                          <span style={{ fontSize: '0.875rem' }}>{label}</span>
-                          <button
-                            type="button"
-                            disabled={removing}
-                            onClick={async () => {
-                              setPinRemovingId(pinKey)
-                              await removePin(authUser?.id, item)
-                              setPinRemovingId(null)
-                            }}
-                            style={{
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.75rem',
-                              background: removing ? '#e5e7eb' : '#fef2f2',
-                              color: removing ? '#9ca3af' : '#b91c1c',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: 4,
-                              cursor: removing ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {removing ? 'Removing…' : 'Remove'}
-                          </button>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                {!pinsLoading && orderedPins.length > 0 && (
+                  <>
+                    <p style={{ margin: '0.75rem 0 0.25rem', fontSize: '0.75rem', color: '#6b7280' }}>Drag ⠿ to reorder how they appear on the dashboard.</p>
+                    <DndContext sensors={pinDragSensors} collisionDetection={closestCenter} onDragEnd={handlePinDragEnd}>
+                      <SortableContext items={orderedPins.map(pinKeyOf)} strategy={verticalListSortingStrategy}>
+                        <ul style={{ margin: '0.25rem 0 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {orderedPins.map((item) => {
+                            const pinKey = pinKeyOf(item)
+                            return (
+                              <SortablePinRow
+                                key={pinKey}
+                                item={item}
+                                removing={pinRemovingId === pinKey}
+                                onRemove={async () => {
+                                  setPinRemovingId(pinKey)
+                                  await removePin(authUser?.id, item)
+                                  setPinRemovingId(null)
+                                }}
+                              />
+                            )
+                          })}
+                        </ul>
+                      </SortableContext>
+                    </DndContext>
+                  </>
                 )}
               </div>
 
