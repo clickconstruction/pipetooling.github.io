@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import { useRealtimeChannel } from '../hooks/useRealtimeChannel'
 import { upsertBidNotesReadWatermark } from '../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
@@ -52,7 +53,6 @@ import DashboardFieldCollectPaymentQueue from '../components/dashboard/Dashboard
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import {
-  getPinned,
   getPinnedForUserFromSupabase,
   type PinnedItem,
 } from '../lib/pinnedTabs'
@@ -155,13 +155,6 @@ const DashboardMyTeamSection = lazy(() => import('../components/DashboardMyTeamS
 import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
 
-function toDatetimeLocal(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
 function formatTimeSince(iso: string | null): string {
   if (!iso) return '—'
   const now = new Date()
@@ -202,12 +195,6 @@ function formatRelativeCompactAgo(iso: string | null): string {
   } catch {
     return '—'
   }
-}
-
-function fromDatetimeLocal(value: string): string | null {
-  const v = value.trim()
-  if (!v) return null
-  return new Date(v).toISOString()
 }
 
 const HIDE_ON_REFRESH_STORAGE_KEY = 'pipetooling_dashboard_hide_on_refresh_ids'
@@ -1791,17 +1778,9 @@ export default function Dashboard() {
       setPinnedRoutes([])
       return
     }
-    const local = getPinned(authUser.id)
+    // Single source now (self + dev pins live in user_pinned_tabs), already ordered by sort_order.
     const fromDb = await getPinnedForUserFromSupabase(authUser.id)
-    const seen = new Set<string>()
-    const merged: PinnedItem[] = []
-    for (const p of [...local, ...fromDb]) {
-      const key = p.path + '|' + (p.tab ?? '')
-      if (seen.has(key)) continue
-      seen.add(key)
-      merged.push(p)
-    }
-    setPinnedRoutes(merged)
+    setPinnedRoutes(fromDb)
   }
 
   useEffect(() => {

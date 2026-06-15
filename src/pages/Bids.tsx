@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { fromDatetimeLocal } from '../utils/datetimeLocal'
 import {
   buildOutcomeChangeBidNoteBody,
   normalizedOutcomePayload,
@@ -1918,7 +1919,7 @@ export default function Bids() {
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
       distance_from_office: distanceFromOffice.trim() || null,
-      last_contact: lastContact ? new Date(lastContact).toISOString() : null,
+      last_contact: fromDatetimeLocal(lastContact),
       notes: notes.trim() || null,
       service_type_id: formServiceTypeId,
     }
@@ -2023,7 +2024,7 @@ export default function Bids() {
       agreed_value: agreedValue !== '' && !isNaN(Number(agreedValue)) ? Number(agreedValue) : null,
       profit: profit !== '' && !isNaN(Number(profit)) ? Number(profit) : null,
       distance_from_office: distanceFromOffice.trim() || null,
-      last_contact: lastContact ? new Date(lastContact).toISOString() : null,
+      last_contact: fromDatetimeLocal(lastContact),
       notes: notes.trim() || null,
       service_type_id: formServiceTypeId,
     }

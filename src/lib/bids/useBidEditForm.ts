@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
+import { toDatetimeLocal } from '../../utils/datetimeLocal'
 
 export type BidEditOutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 
@@ -199,7 +200,7 @@ export function useBidEditForm(): BidEditForm {
     setAgreedValue(bid.agreed_value != null ? String(bid.agreed_value) : '')
     setProfit(bid.profit != null ? String(bid.profit) : '')
     setDistanceFromOffice(bid.distance_from_office ?? '')
-    setLastContact(bid.last_contact ? bid.last_contact.slice(0, 16) : '')
+    setLastContact(toDatetimeLocal(bid.last_contact))
     setNotes(bid.notes ?? '')
     setFormServiceTypeId((bid as { service_type_id?: string | null }).service_type_id ?? opts.fallbackServiceTypeId)
     setProjectContactExpanded(true)

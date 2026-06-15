@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { defaultClockOutLocal } from '../../lib/forceClockOutDefaultOut'
 import { fromDatetimeLocal } from '../../utils/datetimeLocal'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export type ForceClockOutSession = {
   id: string
@@ -81,13 +82,14 @@ export function ForceClockOutModal({
     }
   }
 
-  const clockInLabel = new Date(session.clocked_in_at).toLocaleString(undefined, {
+  const clockInLabel = new Date(session.clocked_in_at).toLocaleString('en-US', {
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    timeZone: APP_CALENDAR_TZ,
   })
 
   return (

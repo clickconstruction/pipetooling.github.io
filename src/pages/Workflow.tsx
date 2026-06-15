@@ -10,6 +10,8 @@ import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { JobThreadNotesPanel } from '../components/JobThreadNotesPanel'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { formatProjectNumberLabel } from '../lib/projectNumberLabel'
+import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
+import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import type { Database } from '../types/database'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
@@ -24,30 +26,17 @@ type PurchaseOrderItem = Database['public']['Tables']['purchase_order_items']['R
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
-function toDatetimeLocal(iso: string | null): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-}
-
-function fromDatetimeLocal(value: string): string | null {
-  const v = value.trim()
-  if (!v) return null
-  return new Date(v).toISOString()
-}
-
 function formatDatetime(iso: string | null): string {
   if (!iso) return 'unknown'
   const date = new Date(iso)
-  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' })
-  const dateTime = date.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })
+  const weekday = date.toLocaleDateString('en-US', { weekday: 'short', timeZone: APP_CALENDAR_TZ })
+  const dateTime = date.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short', timeZone: APP_CALENDAR_TZ })
   return `${weekday}, ${dateTime}`
 }
 
 function formatDateShort(iso: string | null): string {
   if (!iso) return '\u2014'
-  return new Date(iso).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric', year: '2-digit' })
+  return new Date(iso).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit', timeZone: APP_CALENDAR_TZ })
 }
 
 function daysOpen(startedAt: string | null, endedAt: string | null): number | null {
