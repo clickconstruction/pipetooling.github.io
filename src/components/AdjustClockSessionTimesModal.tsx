@@ -45,6 +45,22 @@ export function AdjustClockSessionTimesModal({
     setError(null)
   }, [session.id, session.clocked_in_at, session.clocked_out_at])
 
+  /**
+   * Best-effort resync of people_hours for this session's day(s) after an in-place time edit.
+   * Approved hours are maintained incrementally (approve adds the duration), so changing an
+   * approved session's times must recompute the day's total or the Hours grid stays stale.
+   */
+  async function resyncPeopleHoursForDay() {
+    try {
+      await supabase.rpc('recompute_people_hours_after_session_edit', {
+        p_session_id: session.id,
+        p_old_work_date: session.work_date,
+      })
+    } catch {
+      // The time edit already saved; a failed resync just leaves the grid on the prior total.
+    }
+  }
+
   async function handleSubmit() {
     setError(null)
     const inVal = fromDatetimeLocal(clockIn)
@@ -84,6 +100,7 @@ export function AdjustClockSessionTimesModal({
               .eq('id', session.id),
           'adjust clock session times',
         )
+        await resyncPeopleHoursForDay()
         showToast?.('Times saved.', 'success')
         onSaved?.()
         onClose()
@@ -116,7 +133,7 @@ export function AdjustClockSessionTimesModal({
 
     if (session.approved_at) {
       const ok = window.confirm(
-        'This session was already approved. Saving will remove those hours from payroll until the session is approved again. Continue?',
+        'This session is approved. Saving updates the recorded payroll hours for this day to match the new times. Continue?',
       )
       if (!ok) return
     }
@@ -138,6 +155,7 @@ export function AdjustClockSessionTimesModal({
             .eq('id', session.id),
         'adjust clock session times',
       )
+      await resyncPeopleHoursForDay()
       showToast?.('Times saved.', 'success')
       onSaved?.()
       onClose()

@@ -11496,6 +11496,10 @@ export type Database = {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json
       }
+      recompute_people_hours_after_session_edit: {
+        Args: { p_old_work_date?: string; p_session_id: string }
+        Returns: undefined
+      }
       record_estimate_public_link_view: {
         Args: {
           p_client_ip?: string
