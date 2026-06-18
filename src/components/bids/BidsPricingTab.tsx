@@ -6,6 +6,7 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { normalizeMaterialsModel, type MaterialsModel } from '../../lib/bids/bidTakeoffHelpers'
 import { laborRowHours } from '../../lib/bids/laborRowHours'
 import { nextSortOrder, pickActivePricing } from '../../lib/bids/pickActivePricing'
+import { resolveCurrentPriceBookTemplateId } from '../../lib/bids/resolveCurrentPriceBookTemplateId'
 import {
   computeTravelCost,
   costEstimateDrivingRate,
@@ -95,6 +96,8 @@ type BidsPricingTabProps = {
   templatesMode: boolean
   setTemplatesMode: Dispatch<SetStateAction<boolean>>
   loadTemplatePriceBookVersions: () => Promise<void>
+  /** Record `templateId` as this user's last-selected price book (their per-service-type default). */
+  rememberLastPriceBookTemplate: (templateId: string) => void
   loadBidPricings: (bidId: string) => Promise<PriceBookVersion[]>
   loadPriceBookEntries: (versionId: string | null) => Promise<void>
   loadBidPricingAssignments: (bidId: string, versionId: string | null, signal?: AbortSignal) => Promise<void>
@@ -195,6 +198,7 @@ export function BidsPricingTab({
   templatesMode,
   setTemplatesMode,
   loadTemplatePriceBookVersions,
+  rememberLastPriceBookTemplate,
   loadBidPricings,
   loadPriceBookEntries,
   loadBidPricingAssignments,
@@ -249,6 +253,8 @@ export function BidsPricingTab({
   const [pricingBreakdownRow, setPricingBreakdownRow] = useState<PricingBreakdownRow | null>(null)
   const [assignTakeoffRow, setAssignTakeoffRow] = useState<{ countRowId: string; fixture: string } | null>(null)
   const [pricingViewModel, setPricingViewModel] = useState<'cost' | 'price'>('price')
+  // Disables the toolbar price-book dropdown while a clone/switch is in flight (avoids double-submit).
+  const [pricebookSwitchBusy, setPricebookSwitchBusy] = useState(false)
   const [unitPriceEditValues, setUnitPriceEditValues] = useState<Record<string, string>>({})
   const [generateUnitCostModalParams, setGenerateUnitCostModalParams] = useState<{
     countRowId: string
@@ -321,6 +327,12 @@ export function BidsPricingTab({
   const activeBidPricing = priceBookVersions.find((p) => p.id === selectedPricingVersionId) ?? null
   const isBidOwnedPricing = activeBidPricing != null
   const canEditPanelEntries = templatesMode ? !!editingTemplateId : isBidOwnedPricing
+  // Which shared template the toolbar price-book dropdown shows as "current" for this bid.
+  const currentPriceBookTemplateId = resolveCurrentPriceBookTemplateId({
+    selectedPricingVersionId,
+    bidPricings: priceBookVersions,
+    templateIds: templatePriceBookVersions.map((t) => t.id),
+  })
 
   async function loadTemplateEntries(versionId: string | null) {
     if (!versionId) {
@@ -643,6 +655,11 @@ export function BidsPricingTab({
       })
       if (err) { setError(err.message); setSavingPricingVersion(false); return }
       newId = (data as string) ?? null
+      // "From template" updates the user's default; "Duplicate another version" (a bid-owned
+      // source, not in the template list) does not.
+      if (templatePriceBookVersions.some((t) => t.id === pricingCloneSourceId)) {
+        rememberLastPriceBookTemplate(pricingCloneSourceId)
+      }
     } else {
       const { data, error: err } = await supabase
         .from('price_book_versions')
@@ -652,17 +669,7 @@ export function BidsPricingTab({
       if (err) { setError(err.message); setSavingPricingVersion(false); return }
       newId = (data as { id: string } | null)?.id ?? null
     }
-    // Attach the new pricing to the active Version (null for an unsplit bid = the bid's own
-    // unsplit pricing). This is what prevents version-less "orphan" pricings.
-    if (newId && selectedBidVersionId) {
-      await supabase.from('price_book_versions').update({ bid_version_id: selectedBidVersionId }).eq('id', newId)
-    }
-    await loadBidPricings(bid.id)
-    if (newId) {
-      setSelectedPricingVersionId(newId)
-      await saveBidSelectedPriceBookVersion(bid.id, newId)
-      await loadPriceBookEntries(newId)
-    }
+    await attachAndActivateNewBidPricing(bid.id, newId)
     closePricingVersionForm()
     setSavingPricingVersion(false)
   }
@@ -814,6 +821,66 @@ export function BidsPricingTab({
     setSelectedPricingVersionId(versionId)
     await loadPriceBookEntries(versionId)
     await saveBidSelectedPriceBookVersion(bidId, versionId)
+  }
+
+  /**
+   * Wire a freshly-created bid pricing into the active Version and make it the live pricing:
+   * stamp `bid_version_id` (so it isn't a version-less orphan), reload the bid's pricings, then
+   * activate + persist + load its entries. Shared by the "Set up pricing" modal and the toolbar
+   * price-book dropdown.
+   */
+  async function attachAndActivateNewBidPricing(bidId: string, newId: string | null) {
+    if (newId && selectedBidVersionId) {
+      await supabase.from('price_book_versions').update({ bid_version_id: selectedBidVersionId }).eq('id', newId)
+    }
+    await loadBidPricings(bidId)
+    if (newId) {
+      setSelectedPricingVersionId(newId)
+      await saveBidSelectedPriceBookVersion(bidId, newId)
+      await loadPriceBookEntries(newId)
+    }
+  }
+
+  /** Clone a price-book version (template or other pricing) into the active bid and activate it. */
+  async function cloneTemplateIntoBidAndActivate(sourceVersionId: string, name: string): Promise<string | null> {
+    const bid = selectedBidForPricing
+    if (!bid) { setError('Select a bid first'); return null }
+    const { data, error: err } = await supabase.rpc('clone_price_book_version_to_bid', {
+      p_source_version_id: sourceVersionId,
+      p_bid_id: bid.id,
+      p_name: name,
+    })
+    if (err) { setError(err.message); return null }
+    const newId = (data as string) ?? null
+    await attachAndActivateNewBidPricing(bid.id, newId)
+    return newId
+  }
+
+  /**
+   * Toolbar dropdown: price the bid against a shared template by cloning it in as an editable
+   * copy. If the active Version already owns a copy from this template, just switch to it (no
+   * duplicate). Matches on `bid_version_id` so split-bid versions stay independent.
+   */
+  async function onSelectPriceBookTemplate(templateId: string) {
+    const bid = selectedBidForPricing
+    if (!bid || pricebookSwitchBusy) return
+    setPricebookSwitchBusy(true)
+    rememberLastPriceBookTemplate(templateId)
+    try {
+      const existing = priceBookVersions.find(
+        (p) =>
+          p.source_version_id === templateId &&
+          (selectedBidVersionId ? p.bid_version_id === selectedBidVersionId : p.bid_version_id == null),
+      )
+      if (existing) {
+        await handlePricingVersionChange(bid.id, existing.id)
+        return
+      }
+      const tmpl = templatePriceBookVersions.find((t) => t.id === templateId)
+      await cloneTemplateIntoBidAndActivate(templateId, tmpl?.name ?? 'Pricing')
+    } finally {
+      setPricebookSwitchBusy(false)
+    }
   }
 
   function buildPricingPrintContext(): PricingPrintContext | null {
@@ -1063,8 +1130,30 @@ export function BidsPricingTab({
             </div>
             {/* Price book selector (left) + partial-fill (right), styled like the Labor/Takeoffs tabs. */}
             <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {/* Version selection + creation now live in the bid-level Version picker (top of tab). */}
-              <div />
+              {/* Price-book picker: clone the chosen template into this bid as an editable copy. */}
+              {selectedBidForPricing ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <label htmlFor="pricing-pricebook-select" style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                    Price book:
+                  </label>
+                  <select
+                    id="pricing-pricebook-select"
+                    value={currentPriceBookTemplateId ?? ''}
+                    disabled={pricebookSwitchBusy || templatePriceBookVersions.length === 0}
+                    onChange={(e) => {
+                      if (e.target.value) void onSelectPriceBookTemplate(e.target.value)
+                    }}
+                    style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', background: 'white', cursor: 'pointer' }}
+                  >
+                    {currentPriceBookTemplateId == null ? <option value="">Select a price book…</option> : null}
+                    {templatePriceBookVersions.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div />
+              )}
               {selectedPricingVersionId && pricingCountRows.length > 0 && pricingCostEstimate && (
                 <button
                   type="button"
