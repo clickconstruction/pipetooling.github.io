@@ -5,6 +5,8 @@ import { expandTemplate } from '../lib/materialPOUtils'
 import { normalizeMaterialsModel, sumRoughLinesPreTaxWithCount, roughCountMultiplier, type MaterialsModel, type TakeoffStage } from '../lib/bids/bidTakeoffHelpers'
 import { loadTeamLaborDataForBids, type TeamLaborBidRow } from '../utils/teamLabor'
 import { pickActiveVersion, deriveActivePricingId, resolveTaggedVersion } from '../lib/bids/pickActiveVersion'
+import { pickDefaultPriceBookTemplateId } from '../lib/bids/pickDefaultPriceBookTemplateId'
+import { fetchLastPriceBookTemplateId, saveLastPriceBookTemplateId } from '../lib/bids/pricingUserPrefs'
 import type { BidCountRow } from '../types/bids'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import type {
@@ -143,6 +145,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // the Price Book panel's "Templates" toggle. `templatesMode` drives that toggle.
   const [priceBookVersions, setPriceBookVersions] = useState<PriceBookVersion[]>([])
   const [templatePriceBookVersions, setTemplatePriceBookVersions] = useState<PriceBookVersion[]>([])
+  // Per-user "last selected" price-book template for the current service type (cross-device pref).
+  const [userLastPriceBookTemplateId, setUserLastPriceBookTemplateId] = useState<string | null>(null)
   const [templatesMode, setTemplatesMode] = useState(false)
   const [priceBookEntries, setPriceBookEntries] = useState<PriceBookEntryWithFixture[]>([])
   const [bidPricingAssignments, setBidPricingAssignments] = useState<BidPricingAssignment[]>([])
@@ -750,6 +754,12 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
       return
     }
     setTemplatePriceBookVersions((data as PriceBookVersion[]) ?? [])
+    // Load this user's remembered default template for the same service type, kept in sync with
+    // the template list so the fallback resolver (pickDefaultTemplatePricingId) sees both together.
+    if (authUser?.id) {
+      const prefId = await fetchLastPriceBookTemplateId(authUser.id, selectedServiceTypeId)
+      setUserLastPriceBookTemplateId(prefId)
+    }
   }
 
   /** A bid's own Pricings (frozen copies). Sets `priceBookVersions` and returns the list for selection. */
@@ -1114,7 +1124,21 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   // The service type's "Default" price book (else the first template) — the last-resort pricing
   // for an unsplit bid that never explicitly picked one (long-standing auto-select behavior).
   function pickDefaultTemplatePricingId(): string | null {
-    return templatePriceBookVersions.find((t) => t.name === 'Default')?.id ?? templatePriceBookVersions[0]?.id ?? null
+    return pickDefaultPriceBookTemplateId({
+      userLastTemplateId: userLastPriceBookTemplateId,
+      templates: templatePriceBookVersions,
+    })
+  }
+
+  // The default template id (user's last pick → "Default" → first), exposed so the page can feed
+  // it to BidVersionPicker's `fallbackPricingSourceId` instead of re-deriving it inline.
+  const defaultPriceBookTemplateId = pickDefaultTemplatePricingId()
+
+  /** Remember the template the user just chose as their per-service-type default (optimistic + persisted). */
+  function rememberLastPriceBookTemplate(templateId: string) {
+    if (!authUser?.id || !selectedServiceTypeId) return
+    setUserLastPriceBookTemplateId(templateId)
+    void saveLastPriceBookTemplateId(authUser.id, selectedServiceTypeId, templateId)
   }
 
   async function switchActiveVersion(bidId: string, versionId: string | null) {
@@ -1354,7 +1378,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     })
     if (fallback) setSelectedPricingVersionId(fallback)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, templatePriceBookVersions, selectedPricingVersionId, selectedBidVersionId, selectedBidForPricing?.id])
+  }, [activeTab, templatePriceBookVersions, userLastPriceBookTemplateId, selectedPricingVersionId, selectedBidVersionId, selectedBidForPricing?.id])
 
   useEffect(() => {
     if (activeTab !== 'pricing' && activeTab !== 'labor' && activeTab !== 'bid-costs') return
@@ -1521,6 +1545,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     loadLaborBookEntries,
     saveBidSelectedLaborBookVersion,
     loadTemplatePriceBookVersions,
+    defaultPriceBookTemplateId,
+    rememberLastPriceBookTemplate,
     loadBidPricings,
     loadBidVersions,
     saveBidSelectedBidVersion,

@@ -460,6 +460,49 @@ export type Database = {
           },
         ]
       }
+      bid_pricing_user_prefs: {
+        Row: {
+          last_price_book_version_id: string | null
+          service_type_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          last_price_book_version_id?: string | null
+          service_type_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          last_price_book_version_id?: string | null
+          service_type_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_pricing_user_prefs_last_price_book_version_id_fkey"
+            columns: ["last_price_book_version_id"]
+            isOneToOne: false
+            referencedRelation: "price_book_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_pricing_user_prefs_service_type_id_fkey"
+            columns: ["service_type_id"]
+            isOneToOne: false
+            referencedRelation: "service_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_pricing_user_prefs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_versions: {
         Row: {
           bid_id: string
