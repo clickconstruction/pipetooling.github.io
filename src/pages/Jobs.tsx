@@ -835,10 +835,16 @@ export default function Jobs() {
     }
   }, [stagesWorkingJobsWithoutPictures.length])
 
-  const focusStagesSection = useCallback((key: 'working' | 'readyToBill' | 'billed') => {
+  const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed') => {
     setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
     const elId =
-      key === 'working' ? 'stages-working' : key === 'readyToBill' ? 'stages-ready-to-bill' : 'stages-billed'
+      key === 'waiting'
+        ? 'stages-waiting'
+        : key === 'working'
+          ? 'stages-working'
+          : key === 'readyToBill'
+            ? 'stages-ready-to-bill'
+            : 'stages-billed'
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -4892,6 +4898,29 @@ ${totalsHtml}
                 minWidth: 0,
               }}
             >
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
+                <button
+                  type="button"
+                  onClick={() => focusStagesSection('waiting')}
+                  aria-label={`Jump to Waiting, ${stagesBoardLists.waiting.length} jobs`}
+                  style={{
+                    padding: 0,
+                    border: 'none',
+                    background: 'none',
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    color: '#1d4ed8',
+                    textDecoration: 'underline',
+                    textUnderlineOffset: '2px',
+                  }}
+                >
+                  Waiting
+                </button>
+                <span>({stagesBoardLists.waiting.length})</span>
+              </span>
+              <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+                →
+              </span>
               <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
                 <button
                   type="button"
