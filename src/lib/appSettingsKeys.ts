@@ -1,6 +1,9 @@
 /** `app_settings.key` — org-wide Job Parts Tally floor on Mercury `posted_at` (YYYY-MM-DD, Chicago day). Empty = no filter. */
 export const APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD = 'job_tally_min_posted_ymd' as const
 
+/** `app_settings.key` — 'true' in `value_text` hides dev-role staff transactions in the Stale tally follow-up (list + banner count) for everyone. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_HIDE_DEV_TALLY_TRANSACTIONS = 'hide_dev_tally_transactions' as const
+
 /** JSON map in `value_text`: Mercury kind → `{ nickname, color }` for Jobs → Bank Payments. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_badges_v1' as const
 
@@ -66,4 +69,9 @@ export function normalizeJobTallyMinPostedYmd(value: string | null | undefined):
   if (t === '') return null
   if (!isValidYmd(t)) return null
   return t
+}
+
+/** Parse the hide-dev-tally `app_settings.value_text`: only the literal 'true' (trimmed) enables hiding. */
+export function parseHideDevTallyFlag(valueText: string | null | undefined): boolean {
+  return (valueText ?? '').trim() === 'true'
 }

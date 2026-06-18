@@ -10,6 +10,7 @@ import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFrom
 import { useToastContext } from '../contexts/ToastContext'
 import { fetchOffsetPersonNameOptions } from '../lib/offsetPersonNameOptions'
 import { useAuth } from '../hooks/useAuth'
+import { fetchHideDevTallyTransactions, setHideDevTallyTransactions } from '../lib/hideDevTallyTransactions'
 import { useMercuryLedgerNicknames } from '../hooks/useMercuryLedgerNicknames'
 import { APP_CALENDAR_TZ, denverCalendarDayKey } from '../utils/dateUtils'
 
@@ -110,7 +111,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
   onDataChanged,
 }: DashboardStaleTallyStaffFollowUpModalProps) {
   const { showToast } = useToastContext()
-  const { user: authUser } = useAuth()
+  const { user: authUser, role } = useAuth()
   const { nicknameByAccount, nicknameByDebitCard } = useMercuryLedgerNicknames({ enabled: open })
   const [loading, setLoading] = useState(false)
   const [rows, setRows] = useState<StaleStaffRow[]>([])
@@ -120,19 +121,27 @@ export function DashboardStaleTallyStaffFollowUpModal({
   const [personOffsetCreateDraft, setPersonOffsetCreateDraft] = useState<PersonOffsetInitialDraft | null>(null)
   const [backchargeBusyTxId, setBackchargeBusyTxId] = useState<string | null>(null)
   const [showAllUnlinked, setShowAllUnlinked] = useState(true)
+  // Org-wide "hide dev-role transactions" flag (app_settings). The RPC reads the same flag, so
+  // this just mirrors the stored value for the dev-only toggle button.
+  const [hideDevTransactions, setHideDevTransactions] = useState(false)
+  const [hideDevBusy, setHideDevBusy] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await withSupabaseRetry(
-        async () =>
-          supabase.rpc('list_stale_unlinked_mercury_transactions_for_tally_staff', {
-            min_age_days: minAgeDays,
-            include_all_unlinked: showAllUnlinked,
-          }),
-        'list stale unlinked mercury transactions for tally staff',
-      )
+      const [data, hideDev] = await Promise.all([
+        withSupabaseRetry(
+          async () =>
+            supabase.rpc('list_stale_unlinked_mercury_transactions_for_tally_staff', {
+              min_age_days: minAgeDays,
+              include_all_unlinked: showAllUnlinked,
+            }),
+          'list stale unlinked mercury transactions for tally staff',
+        ),
+        fetchHideDevTallyTransactions(),
+      ])
       setRows(Array.isArray(data) ? (data as StaleStaffRow[]) : [])
+      setHideDevTransactions(hideDev)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not load follow-up list', 'error')
       setRows([])
@@ -140,6 +149,21 @@ export function DashboardStaleTallyStaffFollowUpModal({
       setLoading(false)
     }
   }, [minAgeDays, showAllUnlinked, showToast])
+
+  const toggleHideDevTransactions = useCallback(async () => {
+    if (hideDevBusy) return
+    const next = !hideDevTransactions
+    setHideDevBusy(true)
+    try {
+      await setHideDevTallyTransactions(next)
+      setHideDevTransactions(next)
+      await load()
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : 'Could not update setting', 'error')
+    } finally {
+      setHideDevBusy(false)
+    }
+  }, [hideDevBusy, hideDevTransactions, load, showToast])
 
   useEffect(() => {
     if (!open) {
@@ -303,7 +327,29 @@ export function DashboardStaleTallyStaffFollowUpModal({
               Close
             </button>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+            {role === 'dev' ? (
+              <button
+                type="button"
+                onClick={() => void toggleHideDevTransactions()}
+                disabled={hideDevBusy}
+                title="Org-wide: hides dev-role staff transactions in the Stale tally follow-up (list and banner count) for everyone"
+                style={{
+                  padding: '0.4rem 0.9rem',
+                  border: '1px solid #94a3b8',
+                  background: hideDevTransactions ? '#f1f5f9' : 'white',
+                  borderRadius: 6,
+                  cursor: hideDevBusy ? 'wait' : 'pointer',
+                  fontSize: '0.8125rem',
+                  fontWeight: 600,
+                  color: '#334155',
+                  fontFamily: 'inherit',
+                  opacity: hideDevBusy ? 0.6 : 1,
+                }}
+              >
+                {hideDevTransactions ? 'Show dev transactions' : 'Hide dev transactions'}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => setShowAllUnlinked((v) => !v)}
