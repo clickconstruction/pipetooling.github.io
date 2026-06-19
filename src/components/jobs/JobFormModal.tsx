@@ -876,7 +876,6 @@ export default function JobFormModal({
     teamHours: number
   } | null>(null)
   const [migratingJob, setMigratingJob] = useState(false)
-  const [collectPaymentFlowBlocksMigrate, setCollectPaymentFlowBlocksMigrate] = useState(false)
   const [unlinkingMercuryPaymentId, setUnlinkingMercuryPaymentId] = useState<string | null>(null)
   const [paymentRemoveRpcBusy, setPaymentRemoveRpcBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -965,17 +964,6 @@ export default function JobFormModal({
     ],
   )
 
-  const billingBlockedForMigrate = useMemo(() => {
-    if (!editing) return true
-    const st = normalizeJobsLedgerStatus(editing.status)
-    if (st !== 'working' && st !== 'ready_to_bill') return true
-    if ((editing.invoices ?? []).length > 0) return true
-    if ((editing.payments ?? []).length > 0) return true
-    if (Number(editing.payments_made ?? 0) > 0) return true
-    if (collectPaymentFlowBlocksMigrate) return true
-    return false
-  }, [editing, collectPaymentFlowBlocksMigrate])
-
   const materialsBilledTotalForMigrate = useMemo(
     () => materials.reduce((s, m) => s + (Number(m.amount) || 0), 0),
     [materials],
@@ -1007,14 +995,6 @@ export default function JobFormModal({
     editJobTeamLaborRow,
     editJobSubLaborData,
   ])
-
-  const showMigrateAndDeleteButton =
-    !!editing &&
-    !billingBlockedForMigrate &&
-    hasMigrateableCosts &&
-    !costSnapshotStillLoading &&
-    !editJobTeamLaborError &&
-    !editJobSubLaborError
 
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
@@ -1730,31 +1710,6 @@ export default function JobFormModal({
       cancelled = true
     }
   }, [editing?.id, editing?.hcp_number, hcpNumber])
-
-  useEffect(() => {
-    const jobId = editing?.id ?? null
-    if (!jobId) {
-      setCollectPaymentFlowBlocksMigrate(false)
-      return
-    }
-    let cancelled = false
-    void (async () => {
-      try {
-        const row = await withSupabaseRetry(
-          async () =>
-            supabase.from('job_collect_payment_flows').select('id').eq('job_id', jobId).maybeSingle(),
-          'job form collect payment flow migrate guard',
-        )
-        const flowRow = row as { id: string } | null
-        if (!cancelled) setCollectPaymentFlowBlocksMigrate(!!flowRow?.id)
-      } catch {
-        if (!cancelled) setCollectPaymentFlowBlocksMigrate(false)
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [editing?.id])
 
   useEffect(() => {
     if (!migrateJobModalOpen || !editing?.id) {
@@ -2973,12 +2928,17 @@ export default function JobFormModal({
     return true
   }
 
-  async function migrateJobLedgerCostsAndDelete(fromId: string, toId: string): Promise<boolean> {
+  async function migrateJobLedgerCostsAndDelete(
+    fromId: string,
+    toId: string,
+    allowBilled = true,
+  ): Promise<boolean> {
     setMigratingJob(true)
     try {
       const { data, error: rpcErr } = await supabase.rpc('migrate_job_ledger_costs_and_delete', {
         p_from: fromId,
         p_to: toId,
+        p_allow_billed: allowBilled,
       })
       if (rpcErr) {
         console.error('migrate_job_ledger_costs_and_delete', rpcErr)
@@ -5986,29 +5946,6 @@ export default function JobFormModal({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             {editing && authRole !== 'primary' && (
               <>
-                {showMigrateAndDeleteButton ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMigrateTargetSearch('')
-                      setMigrateTargetJobId(null)
-                      setMigrateTargetCandidates([])
-                      setMigrateJobModalOpen(true)
-                    }}
-                    disabled={deletingId === editing.id || migratingJob}
-                    style={{
-                      padding: '0.5rem 1rem',
-                      background:
-                        deletingId === editing.id || migratingJob ? '#f3f4f6' : '#fee2e2',
-                      color: deletingId === editing.id || migratingJob ? '#9ca3af' : '#b91c1c',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: deletingId === editing.id || migratingJob ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    Migrate and Delete
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   onClick={() => setDeleteJobConfirmOpen(true)}
@@ -6406,8 +6343,40 @@ export default function JobFormModal({
               <p style={{ margin: 0, color: '#6b7280' }}>
                 This permanently removes the job from Billing. This cannot be undone.
               </p>
+              {hasMigrateableCosts && !costSnapshotStillLoading ? (
+                <div
+                  style={{
+                    marginTop: '0.85rem',
+                    padding: '0.65rem 0.75rem',
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    borderRadius: 6,
+                  }}
+                >
+                  <p style={{ margin: '0 0 0.4rem', fontWeight: 600, color: '#92400e' }}>
+                    This job has costs attached
+                  </p>
+                  <ul style={{ margin: '0 0 0.5rem', paddingLeft: '1.1rem' }}>
+                    <li>
+                      Parts, card charges &amp; supply invoices: ${formatCurrency(partsCostStyleTotal)}
+                    </li>
+                    <li>Billed materials: ${formatCurrency(materialsBilledTotalForMigrate)}</li>
+                    {editJobTeamLaborRow &&
+                    (editJobTeamLaborRow.jobCost > 0 || editJobTeamLaborRow.manHours > 0) ? (
+                      <li>
+                        Team labor (est.): ${formatCurrency(editJobTeamLaborRow.jobCost)} ·{' '}
+                        {editJobTeamLaborRow.manHours} hrs
+                      </li>
+                    ) : null}
+                  </ul>
+                  <p style={{ margin: 0, color: '#6b7280' }}>
+                    Deleting unlinks card charges &amp; supply-invoice splits and permanently removes
+                    tally parts and materials. Reassign them to another job to keep them.
+                  </p>
+                </div>
+              ) : null}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -6426,6 +6395,32 @@ export default function JobFormModal({
               >
                 Cancel
               </button>
+              {hasMigrateableCosts && !costSnapshotStillLoading ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (deletingId === editing.id) return
+                    setMigrateTargetSearch('')
+                    setMigrateTargetJobId(null)
+                    setMigrateTargetCandidates([])
+                    setDeleteJobConfirmOpen(false)
+                    setMigrateJobModalOpen(true)
+                  }}
+                  disabled={deletingId === editing.id}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: deletingId === editing.id ? '#9ca3af' : '#1d4ed8',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  Reassign to another job…
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={() => void confirmDeleteJob()}
@@ -6441,7 +6436,11 @@ export default function JobFormModal({
                   fontWeight: 500,
                 }}
               >
-                {deletingId === editing.id ? 'Deleting…' : 'Delete'}
+                {deletingId === editing.id
+                  ? 'Deleting…'
+                  : hasMigrateableCosts
+                    ? 'Delete without reassigning'
+                    : 'Delete'}
               </button>
             </div>
           </div>
@@ -6491,6 +6490,10 @@ export default function JobFormModal({
               <strong>Job total (revenue)</strong> to the target’s total, then remove{' '}
               <strong>HCP {(editing.hcp_number ?? '').trim() || '—'}</strong> —{' '}
               <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. This cannot be undone.
+            </p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.45 }}>
+              This job’s own invoices and recorded payments are permanently deleted with it — only costs,
+              labor, and revenue move to the target.
             </p>
             {editJobSubLaborData != null && editJobSubLaborData.count > 0 ? (
               <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.45 }}>
