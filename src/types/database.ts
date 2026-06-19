@@ -11489,7 +11489,7 @@ export type Database = {
         Returns: Json
       }
       migrate_job_ledger_costs_and_delete: {
-        Args: { p_from: string; p_to: string }
+        Args: { p_from: string; p_to: string; p_allow_billed?: boolean }
         Returns: Json
       }
       move_job_schedule_block_group: {
