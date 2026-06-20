@@ -27,6 +27,7 @@ type JobSearchRow = {
   job_name: string
   job_address: string
   service_type_id: string | null
+  click_number: string
 }
 
 /** Runtime RPC args (`replace_mercury_transaction_splits` allows null for XOR/clear; `gen types` does not). */
@@ -120,6 +121,7 @@ function dispatchScheduledJobToSearchRow(d: DispatchScheduledJobForAssign): JobS
     job_name: d.job_name,
     job_address: d.job_address,
     service_type_id: d.service_type_id,
+    click_number: d.click_number ?? '',
   }
 }
 
@@ -584,7 +586,7 @@ export function MercuryTransactionAllocationsModal({
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, job_name, job_address, service_type_id')
+                .select('id, hcp_number, job_name, job_address, service_type_id, click_number')
                 .in('id', jobOrder),
             'MercuryTransactionAllocationsModal staff day jobs_ledger',
           )
@@ -596,6 +598,7 @@ export function MercuryTransactionAllocationsModal({
               job_name: string | null
               job_address: string | null
               service_type_id: string | null
+              click_number: string | null
             }[]).map(
               (j) => [j.id, j],
             ),
@@ -611,6 +614,7 @@ export function MercuryTransactionAllocationsModal({
               job_name: jn || '—',
               job_address: ja,
               service_type_id: row?.service_type_id ?? null,
+              click_number: row?.click_number ?? '',
             })
           }
         }
@@ -715,6 +719,7 @@ export function MercuryTransactionAllocationsModal({
           row.service_type_id,
           row.hcp_number,
           row.job_name,
+          row.click_number,
         ).trim()
         const appended = [
           ...prev,
@@ -1110,7 +1115,7 @@ export function MercuryTransactionAllocationsModal({
                 }}
               >
                 <span style={{ fontWeight: 600 }}>
-                  {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id ?? null, r.hcp_number, r.job_name)}
+                  {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id ?? null, r.hcp_number, r.job_name, r.click_number)}
                 </span>
                 <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
               </button>
@@ -1259,7 +1264,7 @@ export function MercuryTransactionAllocationsModal({
                             {d.windowsLabel}
                             <span style={{ fontWeight: 400, color: '#64748b' }}> | </span>
                             <span style={{ fontWeight: 600 }}>
-                              {formatJobLedgerShortLine(ledgerPrefixMap, d.service_type_id, d.hcp_number, d.job_name)}
+                              {formatJobLedgerShortLine(ledgerPrefixMap, d.service_type_id, d.hcp_number, d.job_name, d.click_number)}
                             </span>
                           </div>
                           {addr !== '' ? (
@@ -1308,7 +1313,7 @@ export function MercuryTransactionAllocationsModal({
                       }}
                     >
                       <span style={{ fontWeight: 600 }}>
-                        {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name)}
+                        {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name, r.click_number)}
                       </span>
                       <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
                     </button>

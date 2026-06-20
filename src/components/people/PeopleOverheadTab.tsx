@@ -8,6 +8,7 @@ import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, referenceDateForWorkDateYmd
 import { useToastContext } from '../../contexts/ToastContext'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { PayConfigRow } from '../../types/peoplePayConfig'
 import {
   bucketOverheadPartsLinesByAccountingLabel,
@@ -113,7 +114,7 @@ export default function PeopleOverheadTab({
   const [overheadOfficeJobModalOpen, setOverheadOfficeJobModalOpen] = useState(false)
   const [overheadJobSearch, setOverheadJobSearch] = useState('')
   const [overheadJobResults, setOverheadJobResults] = useState<
-    Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+    Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>
   >([])
   const [overheadJobSaving, setOverheadJobSaving] = useState(false)
   const [overheadOfficePartsUsdByDay, setOverheadOfficePartsUsdByDay] = useState<Map<string, number>>(() => new Map())
@@ -559,7 +560,7 @@ export default function PeopleOverheadTab({
       }
       void supabase.rpc('search_jobs_ledger', { search_text: q }).then(({ data }) => {
         setOverheadJobResults(
-          (data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>,
+          (data ?? []) as Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>,
         )
       })
     }, 300)
@@ -2012,7 +2013,7 @@ export default function PeopleOverheadTab({
                           fontSize: '0.875rem',
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{j.hcp_number ?? '—'}</span>
+                        <span style={{ fontWeight: 600 }}>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</span>
                         <span style={{ color: '#6b7280' }}> — {j.job_name}</span>
                       </button>
                     </li>

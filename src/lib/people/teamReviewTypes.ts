@@ -13,7 +13,7 @@ import type {
   CrewJobRow,
 } from '../../utils/teamLabor'
 
-export type TeamLedgerRow = { id: string; hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }
+export type TeamLedgerRow = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }
 export type TeamLaborItem = { count: number; hrs_per_unit: number; is_fixed: boolean }
 export type TeamPeriodLaborRow = { id: string; job_date: string | null; address: string; job_number: string | null; labor_rate: number | null; distance_miles: number | null; assigned_to_name: string | null }
 export type TeamReviewUnion = {

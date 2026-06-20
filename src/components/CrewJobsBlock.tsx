@@ -119,7 +119,7 @@ export function CrewJobsBlock({
   const [crewJobSearchText, setCrewJobSearchText] = useState('')
   const [crewJobSearchResults, setCrewJobSearchResults] = useState<
     Array<
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null }
+      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null; click_number?: string | null }
       | {
           type: 'bid'
           id: string
@@ -531,12 +531,14 @@ export function CrewJobsBlock({
           job_name: string
           job_address: string
           service_type_id: string | null
+          click_number: string
         }>) {
           map[r.id] = {
             hcp_number: r.hcp_number ?? '',
             job_name: r.job_name ?? '',
             job_address: r.job_address ?? '',
             service_type_id: r.service_type_id,
+            click_number: r.click_number,
           }
         }
         setCrewJobDetailsMap((prev) => ({ ...prev, ...map }))
@@ -578,6 +580,7 @@ export function CrewJobsBlock({
             job_name: string
             job_address: string
             service_type_id: string | null
+            click_number: string
           }>
           const bidsRaw = (bidsRes.data ?? []) as Array<{
             id: string
@@ -1103,7 +1106,7 @@ export function CrewJobsBlock({
                       ) : null
                     })()}
                     {item.type === 'job'
-                      ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name)
+                      ? formatJobLedgerShortLine(prefixMap, item.service_type_id ?? null, item.hcp_number, item.job_name, item.click_number)
                       : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
                   </div>
                   {(item.type === 'job' ? item.job_address : item.address) && (

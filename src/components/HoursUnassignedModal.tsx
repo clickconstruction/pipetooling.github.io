@@ -98,6 +98,7 @@ type RecentQuickPick =
       job_name: string
       job_address: string
       service_type_id?: string | null
+      click_number?: string | null
     }
   | {
       type: 'bid'
@@ -134,7 +135,7 @@ export function HoursUnassignedModal({
   const [jobSearchText, setJobSearchText] = useState('')
   const [jobSearchResults, setJobSearchResults] = useState<
     Array<
-      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null }
+      | { type: 'job'; id: string; hcp_number: string; job_name: string; job_address: string; service_type_id?: string | null; click_number?: string | null }
       | {
           type: 'bid'
           id: string
@@ -154,6 +155,7 @@ export function HoursUnassignedModal({
       job_name: string
       job_address: string
       service_type_id?: string | null
+      click_number?: string | null
     }>
   >([])
   const [commonJobsError, setCommonJobsError] = useState<string | null>(null)
@@ -161,7 +163,7 @@ export function HoursUnassignedModal({
   const [commonJobsSearchOpen, setCommonJobsSearchOpen] = useState(false)
   const [commonJobsSearchText, setCommonJobsSearchText] = useState('')
   const [commonJobsSearchResults, setCommonJobsSearchResults] = useState<
-    Array<{ id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null }>
+    Array<{ id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null; click_number: string | null }>
   >([])
   const [crewJobDetailsMap, setCrewJobDetailsMap] = useState<Record<string, JobDetails>>({})
   const [crewBidDetailsMap, setCrewBidDetailsMap] = useState<Record<string, BidDetails>>({})
@@ -283,12 +285,14 @@ export function HoursUnassignedModal({
           job_name: string
           job_address: string
           service_type_id: string | null
+          click_number: string
         }>) {
           jobMap[j.id] = {
             hcp_number: j.hcp_number ?? '',
             job_name: j.job_name ?? '',
             job_address: j.job_address ?? '',
             service_type_id: j.service_type_id,
+            click_number: j.click_number,
           }
         }
         setCrewJobDetailsMap((prev) => ({ ...prev, ...jobMap }))
@@ -331,6 +335,7 @@ export function HoursUnassignedModal({
                 job_name: string
                 job_address: string
                 service_type_id: string | null
+                click_number: string
               }> | null
               error: { message: string } | null
             }
@@ -345,6 +350,7 @@ export function HoursUnassignedModal({
               job_name: string
               job_address: string
               service_type_id: string | null
+              click_number: string
             }) => [j.id, j],
           ),
         )
@@ -359,6 +365,7 @@ export function HoursUnassignedModal({
               job_name: j.job_name ?? '',
               job_address: j.job_address ?? '',
               service_type_id: j.service_type_id,
+              click_number: j.click_number ?? '',
             }
           })
 
@@ -453,6 +460,7 @@ export function HoursUnassignedModal({
                     job_name: string
                     job_address: string
                     service_type_id: string | null
+                    click_number: string
                   }> | null
                   error: { message: string } | null
                 }
@@ -470,6 +478,7 @@ export function HoursUnassignedModal({
                     job_name: j.job_name ?? '',
                     job_address: j.job_address ?? '',
                     service_type_id: j.service_type_id,
+                    click_number: j.click_number,
                   }
                 }
                 return next
@@ -616,7 +625,7 @@ export function HoursUnassignedModal({
 
         const jobMap = new Map<
           string,
-          { id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null }
+          { id: string; hcp_number: string; job_name: string; job_address: string; service_type_id: string | null; click_number: string }
         >()
         const bidMap = new Map<
           string,
@@ -635,6 +644,7 @@ export function HoursUnassignedModal({
                     job_name: string
                     job_address: string
                     service_type_id: string | null
+                    click_number: string
                   }> | null
                   error: { message: string } | null
                 }
@@ -689,6 +699,7 @@ export function HoursUnassignedModal({
                 job_name: j.job_name ?? '',
                 job_address: j.job_address ?? '',
                 service_type_id: j.service_type_id,
+                click_number: j.click_number ?? '',
               })
             }
           } else {
@@ -733,6 +744,7 @@ export function HoursUnassignedModal({
             job_name: string
             job_address: string
             service_type_id: string | null
+            click_number: string
           }>
           const bidsRaw = (bidsRes.data ?? []) as Array<{
             id: string
@@ -765,6 +777,7 @@ export function HoursUnassignedModal({
               job_name: string
               job_address: string
               service_type_id: string | null
+              click_number: string | null
             }>,
           )
         })
@@ -959,7 +972,7 @@ export function HoursUnassignedModal({
                       let linkLabel: string | null = null
                       if (s.job_ledger_id) {
                         linkLabel = job
-                          ? formatJobLedgerShortLine(prefixMap, job.service_type_id ?? null, job.hcp_number, job.job_name)
+                          ? formatJobLedgerShortLine(prefixMap, job.service_type_id ?? null, job.hcp_number, job.job_name, job.click_number)
                           : 'Job'
                       } else if (s.bid_id) {
                         linkLabel = bid
@@ -1041,7 +1054,7 @@ export function HoursUnassignedModal({
                                   }
                                   style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: disabled ? '#f9fafb' : '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
                                 >
-                                  {formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name)}
+                                  {formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)}
                                 </button>
                               )
                             })
@@ -1055,7 +1068,7 @@ export function HoursUnassignedModal({
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', marginBottom: '0.5rem' }}>
                               {commonJobs.map((j) => (
                                 <span key={j.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
-                                  <span>{formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name)}</span>
+                                  <span>{formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)}</span>
                                   <button
                                     type="button"
                                     onClick={async () => {
@@ -1128,6 +1141,7 @@ export function HoursUnassignedModal({
                                             job_name: j.job_name ?? '',
                                             job_address: j.job_address ?? '',
                                             service_type_id: j.service_type_id ?? null,
+                                            click_number: j.click_number ?? '',
                                           },
                                         ])
                                         setCommonJobsError(null)
@@ -1139,7 +1153,7 @@ export function HoursUnassignedModal({
                                     style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                                   >
                                     <div style={{ fontWeight: 500 }}>
-                                      {formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name)}
+                                      {formatJobLedgerShortLine(prefixMap, j.service_type_id ?? null, j.hcp_number, j.job_name, j.click_number)}
                                     </div>
                                     {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
                                   </button>
@@ -1207,6 +1221,7 @@ export function HoursUnassignedModal({
                                         item.service_type_id ?? null,
                                         item.hcp_number,
                                         item.job_name,
+                                        item.click_number,
                                       )
                                     : formatBidLedgerShortLine(
                                         prefixMap,
@@ -1345,6 +1360,7 @@ export function HoursUnassignedModal({
                                           item.service_type_id ?? null,
                                           item.hcp_number,
                                           item.job_name,
+                                          item.click_number,
                                         )
                                       : formatBidLedgerShortLine(
                                           prefixMap,
