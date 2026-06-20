@@ -95,6 +95,7 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import { fetchJobsLedgerWithDetailsForStages } from '../lib/fetchJobsLedgerWithDetailsForStages'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { getBidServiceTypeTag } from '../utils/unifiedJobBidSearch'
 import {
   applyMinHcpFilter,
@@ -5105,7 +5106,7 @@ ${totalsHtml}
             }
 
             function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSProperties) {
-              const t = (job.hcp_number ?? '').trim()
+              const t = effectiveJobLedgerNumber(job.hcp_number, job.click_number)
               if (t) {
                 const stName = job.serviceType?.name?.trim()
                 const tagInfo = stName ? getBidServiceTypeTag(stName) : null

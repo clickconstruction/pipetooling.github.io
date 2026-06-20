@@ -688,6 +688,7 @@ export default function JobFormModal({
   const [sourceEstimateLoading, setSourceEstimateLoading] = useState(false)
   const [contractModalEstimateId, setContractModalEstimateId] = useState<string | null>(null)
   const [hcpNumber, setHcpNumber] = useState('')
+  const [clickNumber, setClickNumber] = useState('')
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -1097,6 +1098,7 @@ export default function JobFormModal({
     setJobPicturesLinkHighlight(picturesGate)
     setEditing(job)
     setHcpNumber(job.hcp_number ?? '')
+    setClickNumber(job.click_number ?? '')
     setJobName(job.job_name ?? '')
     setJobAddress(job.job_address ?? '')
     setCustomerName(job.customer_name ?? '')
@@ -1153,6 +1155,7 @@ export default function JobFormModal({
     setBillViewInvoice(null)
     setEditing(null)
     setHcpNumber('')
+    setClickNumber('')
     setJobName('')
     setJobAddress('')
     setCustomerName('')
@@ -2720,6 +2723,7 @@ export default function JobFormModal({
             : await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId)
         const updatePayload = {
           hcp_number: hcpNumber.trim(),
+          click_number: clickNumber.trim(),
           job_name: jobName.trim(),
           job_address: jobAddress.trim(),
           customer_id: resolvedCustomerId,
@@ -2850,6 +2854,7 @@ export default function JobFormModal({
           .insert({
             master_user_id: effectiveMasterId,
             hcp_number: hcpNumber.trim(),
+            click_number: clickNumber.trim(),
             job_name: jobName.trim(),
             job_address: jobAddress.trim(),
             customer_id: resolvedCustomerIdNew,
@@ -3227,6 +3232,16 @@ export default function JobFormModal({
                 value={hcpNumber}
                 onChange={(e) => setHcpNumber(e.target.value)}
                 placeholder="HCP number"
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+              />
+            </div>
+            <div style={{ flex: '0 0 110px', minWidth: 110 }}>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>C#</label>
+              <input
+                type="text"
+                value={clickNumber}
+                onChange={(e) => setClickNumber(e.target.value)}
+                placeholder="Click number"
                 style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </div>
@@ -6406,7 +6421,7 @@ export default function JobFormModal({
                 </div>
               ) : null}
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => {

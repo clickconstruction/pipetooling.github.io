@@ -3,7 +3,9 @@ import {
   buildLedgerPrefixMap,
   DEFAULT_BID_LEDGER_PREFIX,
   DEFAULT_JOB_LEDGER_PREFIX,
+  effectiveJobLedgerNumber,
   formatBidLedgerNumberLabel,
+  formatJobLedgerShortLine,
   formatJobLedgerSummaryLine,
   formatJobLedgerNumberLabel,
   resolveBidLedgerPrefix,
@@ -38,5 +40,36 @@ describe('ledgerDisplayPrefixes', () => {
     const map = buildLedgerPrefixMap([{ id: 'st1', ledger_job_prefix: 'JP', ledger_bid_prefix: 'BP' }])
     expect(formatJobLedgerSummaryLine(map, 'st1', '9', 'A', 'Addr')).toBe('JP9 · A - Addr')
     expect(formatJobLedgerSummaryLine(map, null, '9', 'A', 'Addr')).toBe('J9 · A - Addr')
+  })
+
+  describe('effectiveJobLedgerNumber (HCP wins, Click falls back)', () => {
+    it('uses HCP when present', () => {
+      expect(effectiveJobLedgerNumber('861', '123')).toBe('861')
+      expect(effectiveJobLedgerNumber('861', null)).toBe('861')
+      expect(effectiveJobLedgerNumber('  861 ', '123')).toBe('861')
+    })
+    it('falls back to Click when HCP empty/blank', () => {
+      expect(effectiveJobLedgerNumber('', '123')).toBe('123')
+      expect(effectiveJobLedgerNumber('   ', '123')).toBe('123')
+      expect(effectiveJobLedgerNumber(null, ' 123 ')).toBe('123')
+      expect(effectiveJobLedgerNumber(undefined, '123')).toBe('123')
+    })
+    it('returns empty when both blank', () => {
+      expect(effectiveJobLedgerNumber('', '')).toBe('')
+      expect(effectiveJobLedgerNumber(null, null)).toBe('')
+      expect(effectiveJobLedgerNumber(undefined, undefined)).toBe('')
+    })
+  })
+
+  it('formatters use the Click number as a fallback when HCP empty', () => {
+    const map = buildLedgerPrefixMap([{ id: 'st1', ledger_job_prefix: 'JP', ledger_bid_prefix: 'BP' }])
+    // HCP wins
+    expect(formatJobLedgerNumberLabel('JP', '861', '123')).toBe('JP861')
+    // Click fallback
+    expect(formatJobLedgerNumberLabel('JP', '', '123')).toBe('JP123')
+    expect(formatJobLedgerShortLine(map, 'st1', '', 'A', '123')).toBe('JP123 · A')
+    expect(formatJobLedgerSummaryLine(map, 'st1', '', 'A', 'Addr', '123')).toBe('JP123 · A - Addr')
+    // both blank → dash
+    expect(formatJobLedgerNumberLabel('JP', '', '')).toBe('JP—')
   })
 })
