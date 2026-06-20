@@ -996,6 +996,19 @@ export default function JobFormModal({
     editJobSubLaborData,
   ])
 
+  // We couldn't confirm this job's costs if any cost source failed to load. Treated
+  // like "has costs" so a delete can't slip through unverified (force-reassign).
+  const costCheckErrored =
+    editJobTeamLaborError ||
+    editJobSubLaborError ||
+    supplyInvoiceRpcFailed ||
+    mercuryFetchFailed ||
+    tallyFetchFailed
+
+  // A job with costs (or whose costs we couldn't verify) must be reassigned to
+  // another job before it can be deleted — there is no plain-delete escape hatch.
+  const reassignRequired = hasMigrateableCosts || costCheckErrored
+
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
   const jobFormProjectSectionRef = useRef<HTMLDivElement | null>(null)
@@ -6370,8 +6383,25 @@ export default function JobFormModal({
                     ) : null}
                   </ul>
                   <p style={{ margin: 0, color: '#6b7280' }}>
-                    Deleting unlinks card charges &amp; supply-invoice splits and permanently removes
-                    tally parts and materials. Reassign them to another job to keep them.
+                    To delete this job you must first reassign these to another job — otherwise card
+                    charges &amp; supply-invoice splits would be unlinked and tally parts &amp; materials
+                    permanently lost.
+                  </p>
+                </div>
+              ) : null}
+              {costCheckErrored && !hasMigrateableCosts && !costSnapshotStillLoading ? (
+                <div
+                  style={{
+                    marginTop: '0.85rem',
+                    padding: '0.65rem 0.75rem',
+                    background: '#fffbeb',
+                    border: '1px solid #fde68a',
+                    borderRadius: 6,
+                  }}
+                >
+                  <p style={{ margin: 0, color: '#92400e' }}>
+                    Couldn’t verify this job’s costs. To avoid losing any, reassign it to another job
+                    instead of deleting.
                   </p>
                 </div>
               ) : null}
@@ -6395,7 +6425,24 @@ export default function JobFormModal({
               >
                 Cancel
               </button>
-              {hasMigrateableCosts && !costSnapshotStillLoading ? (
+              {costSnapshotStillLoading ? (
+                <button
+                  type="button"
+                  disabled
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: '#9ca3af',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'not-allowed',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  Checking costs…
+                </button>
+              ) : reassignRequired ? (
                 <button
                   type="button"
                   onClick={() => {
@@ -6420,28 +6467,25 @@ export default function JobFormModal({
                 >
                   Reassign to another job…
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => void confirmDeleteJob()}
-                disabled={deletingId === editing.id}
-                style={{
-                  padding: '0.5rem 1rem',
-                  background: deletingId === editing.id ? '#9ca3af' : '#b91c1c',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 6,
-                  cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
-                  fontSize: '0.875rem',
-                  fontWeight: 500,
-                }}
-              >
-                {deletingId === editing.id
-                  ? 'Deleting…'
-                  : hasMigrateableCosts
-                    ? 'Delete without reassigning'
-                    : 'Delete'}
-              </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => void confirmDeleteJob()}
+                  disabled={deletingId === editing.id}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: deletingId === editing.id ? '#9ca3af' : '#b91c1c',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                  }}
+                >
+                  {deletingId === editing.id ? 'Deleting…' : 'Delete'}
+                </button>
+              )}
             </div>
           </div>
         </div>
