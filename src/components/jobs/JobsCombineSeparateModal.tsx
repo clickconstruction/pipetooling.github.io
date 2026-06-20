@@ -10,11 +10,12 @@ import { withSupabaseRetry, formatPostgrestOrUnknownError } from '../../utils/er
 import { loadTeamLaborData, type TeamLaborRow } from '../../utils/teamLabor'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { Database } from '../../types/database'
 
 const JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX = 1050
 
-type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string }
+type JobSearchRow = { id: string; hcp_number: string; job_name: string; job_address: string; click_number?: string }
 
 type FixtureRow = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 
@@ -724,7 +725,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           fontSize: '0.8125rem',
                         }}
                       >
-                        <strong>{(j.hcp_number ?? '').trim() || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
+                        <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
                         <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                       </button>
                     </li>
@@ -733,7 +734,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
                 {cSourceRow ? (
                   <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#374151' }}>
-                    <strong>Source selected:</strong> {(cSourceRow.hcp_number ?? '').trim() || '—'} —{' '}
+                    <strong>Source selected:</strong> {effectiveJobLedgerNumber(cSourceRow.hcp_number, cSourceRow.click_number) || '—'} —{' '}
                     {(cSourceRow.job_name ?? '').trim() || '—'}
                   </p>
                 ) : null}
@@ -790,7 +791,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           fontSize: '0.8125rem',
                         }}
                       >
-                        <strong>{(j.hcp_number ?? '').trim() || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
+                        <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
                         <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                       </button>
                     </li>
@@ -981,7 +982,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           fontSize: '0.8125rem',
                         }}
                       >
-                        <strong>{(j.hcp_number ?? '').trim() || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
+                        <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
                         <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                       </button>
                     </li>
@@ -990,7 +991,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
                 {sSourceRow ? (
                   <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#374151' }}>
-                    <strong>Selected:</strong> {(sSourceRow.hcp_number ?? '').trim() || '—'} — {(sSourceRow.job_name ?? '').trim() || '—'}
+                    <strong>Selected:</strong> {effectiveJobLedgerNumber(sSourceRow.hcp_number, sSourceRow.click_number) || '—'} — {(sSourceRow.job_name ?? '').trim() || '—'}
                   </p>
                 ) : null}
 

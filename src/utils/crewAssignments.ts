@@ -13,6 +13,7 @@ export type JobDetails = {
   job_name: string
   job_address: string
   service_type_id?: string | null
+  click_number?: string | null
 }
 export type BidDetails = {
   bid_number: string
@@ -107,7 +108,7 @@ export function formatAssignmentLabel(
   if (!details) return '—'
   if (type === 'job') {
     const d = details as JobDetails
-    return formatJobLedgerShortLine(prefixMap, d.service_type_id ?? null, d.hcp_number, d.job_name)
+    return formatJobLedgerShortLine(prefixMap, d.service_type_id ?? null, d.hcp_number, d.job_name, d.click_number)
   }
   const d = details as BidDetails
   return formatBidLedgerShortLine(prefixMap, d.service_type_id ?? null, d.bid_number, d.project_name)

@@ -7,7 +7,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { ymdAddDays } from '../../utils/dateUtils'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
-import { formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
+import { effectiveJobLedgerNumber, formatJobLedgerNumberLabel, resolveJobLedgerPrefix } from '../../lib/ledgerDisplayPrefixes'
 import { useAuth } from '../../hooks/useAuth'
 import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
@@ -157,6 +157,7 @@ export default function PeopleReviewTab({
     job_id: string
     work_date: string
     hcp_number: string
+    click_number: string
     job_name: string
     job_address: string
     service_type_id: string | null
@@ -831,6 +832,7 @@ export default function PeopleReviewTab({
     const crewJobsLedger = (crewJobsRes.data ?? []) as Array<{
       id: string
       hcp_number: string
+      click_number?: string
       job_name: string
       job_address: string
       revenue: number | null
@@ -840,6 +842,7 @@ export default function PeopleReviewTab({
     const laborJobsLedger = (laborJobsRes.data ?? []) as Array<{
       id: string
       hcp_number: string
+      click_number?: string
       job_name: string
       job_address: string
       revenue: number | null
@@ -1026,9 +1029,9 @@ export default function PeopleReviewTab({
       }
     })
 
-    const jobsMap: Record<string, { hcp_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }> = {}
+    const jobsMap: Record<string, { hcp_number: string; click_number: string; job_name: string; job_address: string; revenue: number | null; pct_complete: number | null; service_type_id: string | null }> = {}
     for (const j of crewJobsLedger) {
-      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue, pct_complete: j.pct_complete, service_type_id: j.service_type_id ?? null }
+      jobsMap[j.id] = { hcp_number: j.hcp_number ?? '', click_number: j.click_number ?? '', job_name: j.job_name ?? '', job_address: j.job_address ?? '', revenue: j.revenue, pct_complete: j.pct_complete, service_type_id: j.service_type_id ?? null }
     }
     const crewJobsWithLeadFiltered = usePaidOnly
       ? crewJobsWithLead.filter((c) => jobsById.has(c.job_id))
@@ -1052,6 +1055,7 @@ export default function PeopleReviewTab({
         job_id: c.job_id,
         work_date: c.work_date,
         hcp_number: j?.hcp_number ?? '—',
+        click_number: j?.click_number ?? '',
         job_name: j?.job_name ?? '—',
         job_address: j?.job_address ?? '—',
         service_type_id: j?.service_type_id ?? null,
@@ -4308,7 +4312,7 @@ export default function PeopleReviewTab({
                                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
                                         <span style={{ fontSize: '0.75em', color: '#6b7280', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
                                         <div>
-                                          <div style={{ fontWeight: 600 }}>{(j.hcp_number ?? '').trim() && j.hcp_number !== '—' ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number) : '—'}</div>
+                                          <div style={{ fontWeight: 600 }}>{effectiveJobLedgerNumber(j.hcp_number === '—' ? '' : j.hcp_number, j.click_number) ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number === '—' ? '' : j.hcp_number, j.click_number) : '—'}</div>
                                           <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{formatDateWithDay(j.work_date)}</div>
                                         </div>
                                       </div>
@@ -4323,8 +4327,8 @@ export default function PeopleReviewTab({
                                         if (j.totalLaborOnJob <= 0) return
                                         e.stopPropagation()
                                         const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
-                                        const numberLabel = (j.hcp_number ?? '').trim() && j.hcp_number !== '—'
-                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number)
+                                        const numberLabel = effectiveJobLedgerNumber(j.hcp_number === '—' ? '' : j.hcp_number, j.click_number)
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number === '—' ? '' : j.hcp_number, j.click_number)
                                           : ''
                                         setReviewLaborBreakdownContext({
                                           mode: 'labor',
@@ -4357,8 +4361,8 @@ export default function PeopleReviewTab({
                                         if (j.revenueBeforeOverhead === 0 || j.totalLaborOnJob <= 0) return
                                         e.stopPropagation()
                                         const personName = showPeopleForReview[selectedReviewPersonIndex] ?? ''
-                                        const numberLabel = (j.hcp_number ?? '').trim() && j.hcp_number !== '—'
-                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number)
+                                        const numberLabel = effectiveJobLedgerNumber(j.hcp_number === '—' ? '' : j.hcp_number, j.click_number)
+                                          ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number === '—' ? '' : j.hcp_number, j.click_number)
                                           : ''
                                         setReviewLaborBreakdownContext({
                                           mode: 'profit',

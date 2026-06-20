@@ -19,7 +19,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useMercuryLedgerNicknames } from '../../hooks/useMercuryLedgerNicknames'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
-import { formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { effectiveJobLedgerNumber, formatBidLedgerDocTitle, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
 import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../../utils/errorHandling'
@@ -864,7 +864,7 @@ export default function JobFormModal({
   const [migrateJobModalOpen, setMigrateJobModalOpen] = useState(false)
   const [migrateTargetSearch, setMigrateTargetSearch] = useState('')
   const [migrateTargetCandidates, setMigrateTargetCandidates] = useState<
-    Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+    Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>
   >([])
   const [migrateTargetSearchLoading, setMigrateTargetSearchLoading] = useState(false)
   const [migrateTargetJobId, setMigrateTargetJobId] = useState<string | null>(null)
@@ -1749,7 +1749,7 @@ export default function JobFormModal({
             async () => supabase.rpc('search_jobs_ledger', { search_text: q }),
             'migrate job target search',
           )
-          const rows = (raw ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>
+          const rows = (raw ?? []) as Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>
           if (cancelledOuter) return
           setMigrateTargetCandidates(rows.filter((r) => r.id !== sourceJobId).slice(0, 30))
         } catch {
@@ -6615,7 +6615,7 @@ export default function JobFormModal({
                       fontSize: '0.8125rem',
                     }}
                   >
-                    <strong>{(j.hcp_number ?? '').trim() || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
+                    <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
                     <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                   </button>
                 </li>

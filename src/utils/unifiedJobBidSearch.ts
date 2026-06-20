@@ -11,6 +11,7 @@ import {
 export type JobSearchResult = {
   id: string
   hcp_number: string
+  click_number?: string | null
   job_name: string
   job_address: string
   service_type_id?: string | null
@@ -38,6 +39,7 @@ export type UnifiedSearchResult =
       source: 'job'
       id: string
       hcp_number: string
+      click_number?: string | null
       job_name: string
       job_address: string
       service_type_id?: string | null
@@ -82,7 +84,7 @@ export function serviceTypeTagForUnifiedRow(r: UnifiedSearchResult): { tag: stri
 export function formatUnifiedResult(r: UnifiedSearchResult, prefixMap: LedgerPrefixMap): string {
   if (r.source === 'job') {
     const pref = resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
-    const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number)
+    const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number, r.click_number)
     return `${prefix} · ${r.job_name || '—'} - ${r.job_address || '—'}`
   }
   if (r.source === 'bid') {
@@ -102,7 +104,7 @@ export function formatUnifiedJobSchedulePrimaryLine(
   prefixMap: LedgerPrefixMap,
 ): { title: string; address: string } {
   const pref = resolveJobLedgerPrefix(r.service_type_id ?? null, prefixMap)
-  const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number)
+  const prefix = formatJobLedgerNumberLabel(pref, r.hcp_number, r.click_number)
   return {
     title: `${prefix} · ${r.job_name || '—'}`,
     address: (r.job_address || '').trim(),

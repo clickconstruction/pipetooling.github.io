@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 
-export type HoursGridJobHighlightPick = { id: string; hcp_number: string; job_name: string }
+export type HoursGridJobHighlightPick = { id: string; hcp_number: string; click_number?: string; job_name: string }
 
-type JobSearchResult = { id: string; hcp_number: string; job_name: string; job_address: string }
+type JobSearchResult = { id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }
 
 export interface PeopleHoursGridJobHighlightProps {
   selectedJobHighlight: HoursGridJobHighlightPick | null
@@ -87,7 +88,7 @@ export function PeopleHoursGridJobHighlight({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
-                  setSelectedJobHighlight({ id: j.id, hcp_number: j.hcp_number ?? '', job_name: j.job_name ?? '' })
+                  setSelectedJobHighlight({ id: j.id, hcp_number: j.hcp_number ?? '', click_number: j.click_number ?? '', job_name: j.job_name ?? '' })
                   setSearch('')
                   setResults([])
                   setListOpen(false)
@@ -105,7 +106,7 @@ export function PeopleHoursGridJobHighlight({
                 }}
               >
                 <div style={{ fontWeight: 500 }}>
-                  J{(j.hcp_number || '').trim() || '—'} · {j.job_name || '—'}
+                  J{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}
                 </div>
                 {j.job_address ? (
                   <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>
@@ -130,7 +131,7 @@ export function PeopleHoursGridJobHighlight({
           }}
         >
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            J{(selectedJobHighlight.hcp_number || '').trim() || '—'} · {selectedJobHighlight.job_name || '—'}
+            J{effectiveJobLedgerNumber(selectedJobHighlight.hcp_number, selectedJobHighlight.click_number) || '—'} · {selectedJobHighlight.job_name || '—'}
           </span>
           <button
             type="button"
