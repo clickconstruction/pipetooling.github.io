@@ -3837,6 +3837,7 @@ export type Database = {
           customer_email: string | null
           customer_id: string | null
           customer_name: string | null
+          click_number: string
           customer_phone: string | null
           google_drive_link: string | null
           hcp_number: string
@@ -3862,6 +3863,7 @@ export type Database = {
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
+          click_number?: string
           customer_phone?: string | null
           google_drive_link?: string | null
           hcp_number?: string
@@ -3887,6 +3889,7 @@ export type Database = {
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
+          click_number?: string
           customer_phone?: string | null
           google_drive_link?: string | null
           hcp_number?: string
@@ -10655,6 +10658,7 @@ export type Database = {
       get_jobs_ledger_by_hcp_numbers: {
         Args: { p_hcp_numbers: string[] }
         Returns: {
+          click_number: string
           hcp_number: string
           id: string
           job_address: string
@@ -10679,6 +10683,7 @@ export type Database = {
       get_jobs_ledger_by_ids: {
         Args: { p_job_ids: string[] }
         Returns: {
+          click_number: string
           hcp_number: string
           id: string
           job_address: string
@@ -11745,6 +11750,7 @@ export type Database = {
       search_jobs_ledger: {
         Args: { search_text?: string }
         Returns: {
+          click_number: string
           hcp_number: string
           id: string
           job_address: string

@@ -52,9 +52,24 @@ export function bidNumberMatchesQuery(
   return label.includes(q)
 }
 
-export function formatJobLedgerNumberLabel(prefix: string, hcpNumber: string | null | undefined): string {
+/**
+ * Effective displayed job number: the HCP number when present, otherwise the
+ * Click number ("C#"). HCP always wins. Returns '' when both are empty.
+ */
+export function effectiveJobLedgerNumber(
+  hcpNumber: string | null | undefined,
+  clickNumber?: string | null | undefined,
+): string {
+  return (hcpNumber ?? '').trim() || (clickNumber ?? '').trim() || ''
+}
+
+export function formatJobLedgerNumberLabel(
+  prefix: string,
+  hcpNumber: string | null | undefined,
+  clickNumber?: string | null | undefined,
+): string {
   const pref = (prefix ?? '').trim() || DEFAULT_JOB_LEDGER_PREFIX
-  const n = (hcpNumber ?? '').trim() || '—'
+  const n = effectiveJobLedgerNumber(hcpNumber, clickNumber) || '—'
   return `${pref}${n}`
 }
 
@@ -71,8 +86,9 @@ export function formatJobLedgerSummaryLine(
   hcpNumber: string | null | undefined,
   jobName: string | null | undefined,
   jobAddress: string | null | undefined,
+  clickNumber?: string | null | undefined,
 ): string {
-  const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber)
+  const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber, clickNumber)
   const name = (jobName ?? '').trim() || '—'
   const addr = (jobAddress ?? '').trim() || '—'
   return `${num} · ${name} - ${addr}`
@@ -98,8 +114,9 @@ export function formatJobLedgerShortLine(
   serviceTypeId: string | null | undefined,
   hcpNumber: string | null | undefined,
   jobName: string | null | undefined,
+  clickNumber?: string | null | undefined,
 ): string {
-  const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber)
+  const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber, clickNumber)
   const name = (jobName ?? '').trim() || '—'
   return `${num} · ${name}`
 }
@@ -122,8 +139,9 @@ export function formatJobLedgerDocTitle(
   serviceTypeId: string | null | undefined,
   hcpNumber: string | null | undefined,
   jobName: string | null | undefined,
+  clickNumber?: string | null | undefined,
 ): string {
-  const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber)
+  const num = formatJobLedgerNumberLabel(resolveJobLedgerPrefix(serviceTypeId, map), hcpNumber, clickNumber)
   const jn = (jobName ?? '').trim() || '—'
   return `${num} | ${jn}`
 }
