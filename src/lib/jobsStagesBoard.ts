@@ -1,6 +1,7 @@
 import type { Database } from '../types/database'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { jobLedgerHasCustomerForBilling } from './jobLedgerCustomerForBilling'
+import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -292,6 +293,7 @@ export function filterJobsByStagesSearch(
   return jobs.filter(
     (j) =>
       (j.hcp_number ?? '').toLowerCase().includes(q) ||
+      (j.click_number ?? '').toLowerCase().includes(q) ||
       (j.job_name ?? '').toLowerCase().includes(q) ||
       (j.job_address ?? '').toLowerCase().includes(q) ||
       (extra?.has(j.id) ?? false),
@@ -353,8 +355,8 @@ export function buildJobsStagesBoardLists(
 
 /** HCP numeric then job name; shared by Stages list modals. */
 export function sortStagesJobsByHcpThenName(a: JobWithDetails, b: JobWithDetails): number {
-  const ha = (a.hcp_number ?? '').trim()
-  const hb = (b.hcp_number ?? '').trim()
+  const ha = effectiveJobLedgerNumber(a.hcp_number, a.click_number)
+  const hb = effectiveJobLedgerNumber(b.hcp_number, b.click_number)
   const cmpHcp = ha.localeCompare(hb, undefined, { numeric: true })
   if (cmpHcp !== 0) return cmpHcp
   return (a.job_name ?? '').localeCompare(b.job_name ?? '', undefined, { sensitivity: 'base' })
