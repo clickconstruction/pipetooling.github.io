@@ -318,6 +318,28 @@ describe('filterJobsByStagesSearch', () => {
     expect(filtered).toHaveLength(1)
   })
 
+  it('matches a job by its Click number when HCP is empty', () => {
+    const clickOnly = jobStub({
+      id: 'job-click',
+      hcp_number: '',
+      click_number: 'C-777',
+      job_name: 'Heron',
+      job_address: '9 Pine',
+      invoices: [],
+    })
+    expect(filterJobsByStagesSearch([clickOnly], 'c-777', null).map((j) => j.id)).toEqual(['job-click'])
+    // an HCP number still matches as before
+    const hcpJob = jobStub({
+      id: 'job-hcp',
+      hcp_number: '861',
+      click_number: '',
+      job_name: 'NexGen',
+      job_address: '1 A',
+      invoices: [],
+    })
+    expect(filterJobsByStagesSearch([hcpJob], '861', null).map((j) => j.id)).toEqual(['job-hcp'])
+  })
+
   it('empty query returns full jobs list', () => {
     const a = jobStub({ id: 'job-a', invoices: [] })
     const b = jobStub({ id: 'job-b', invoices: [] })
