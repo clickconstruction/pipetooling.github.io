@@ -10671,6 +10671,7 @@ export type Database = {
       get_jobs_ledger_by_hcp_numbers_paid_only: {
         Args: { p_hcp_numbers: string[] }
         Returns: {
+          click_number: string
           hcp_number: string
           id: string
           job_address: string
@@ -10696,6 +10697,7 @@ export type Database = {
       get_jobs_ledger_by_ids_paid_only: {
         Args: { p_job_ids: string[] }
         Returns: {
+          click_number: string
           hcp_number: string
           id: string
           job_address: string
@@ -10708,6 +10710,7 @@ export type Database = {
       get_jobs_ledger_by_status: {
         Args: { p_status: string }
         Returns: {
+          click_number: string
           created_at: string
           customer_id: string
           google_drive_link: string
