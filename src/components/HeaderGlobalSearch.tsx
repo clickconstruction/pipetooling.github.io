@@ -27,6 +27,7 @@ import {
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
 
 const HEADER_ROW_MIN_HEIGHT = 'calc(1rem + 1.25em)'
@@ -171,7 +172,7 @@ export function HeaderGlobalSearchProvider({
   const selectResult = useCallback(
     (r: UnifiedSearchResult) => {
       if (r.source === 'job') {
-        const h = (r.hcp_number ?? '').trim() || '—'
+        const h = effectiveJobLedgerNumber(r.hcp_number, r.click_number) || '—'
         const n = (r.job_name ?? '').trim() || 'Job'
         jobDetailModal?.openJobDetail({
           jobId: r.id,

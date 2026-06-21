@@ -9,6 +9,7 @@ import {
   mercuryTxRowFromTallyRpc,
 } from '../../lib/mercuryTxRowFromTally'
 import { parseTallyJobSplitsJson } from '../../lib/tallyJobSplits'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { RecentClockJobPick } from '../../lib/fetchRecentClockJobPicksForUser'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
@@ -38,7 +39,7 @@ function buildJobLabelById(
 ): Record<string, string> {
   const m: Record<string, string> = {}
   for (const j of recentJobs) {
-    m[j.id] = `${j.hcp_number} · ${j.job_name}`.trim() || j.id
+    m[j.id] = `${effectiveJobLedgerNumber(j.hcp_number, j.click_number)} · ${j.job_name}`.trim() || j.id
   }
   for (const row of unlinkedRows) {
     const splits = row.job_splits
@@ -181,7 +182,7 @@ export function TallyPreClockOutModal({
                 {recentJobs.map((j) => (
                   <li
                     key={j.id}
-                    title={`${j.hcp_number} · ${j.job_name} — ${j.job_address || ''}`.trim()}
+                    title={`${effectiveJobLedgerNumber(j.hcp_number, j.click_number)} · ${j.job_name} — ${j.job_address || ''}`.trim()}
                     style={{
                       fontSize: '0.8125rem',
                       padding: '0.4rem 0.5rem',
@@ -192,7 +193,7 @@ export function TallyPreClockOutModal({
                     }}
                   >
                     <div style={{ fontWeight: 600, color: '#111827' }}>
-                      {j.hcp_number?.trim() || '—'} · {j.job_name?.trim() || '—'}
+                      {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name?.trim() || '—'}
                     </div>
                     {j.job_address?.trim() ? (
                       <div style={{ color: '#6b7280', marginTop: 2 }}>{j.job_address.trim()}</div>

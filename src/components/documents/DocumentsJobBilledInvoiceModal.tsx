@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 import type { Database } from '../../types/database'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from '../jobs/HostedStripeBillPanel'
 import { PhysicalInvoicePreview } from '../jobs/PhysicalInvoicePreview'
@@ -97,7 +98,7 @@ export default function DocumentsJobBilledInvoiceModal({
 
   if (!open || !invoice) return null
 
-  const subtitle = job ? `${job.hcp_number ?? '—'} · ${job.job_name ?? '—'}` : '—'
+  const subtitle = job ? `${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · ${job.job_name ?? '—'}` : '—'
   const stripeId = (invoice.stripe_invoice_id ?? '').trim()
   const isStripeHosted = Boolean(stripeId && (invoice.hosted_invoice_url ?? '').trim())
 

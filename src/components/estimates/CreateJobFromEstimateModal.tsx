@@ -15,6 +15,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobSearchResult } from '../../utils/unifiedJobBidSearch'
 
 function formatCurrency(n: number): string {
@@ -562,7 +563,7 @@ export default function CreateJobFromEstimateModal({
                   ) : (
                     jobLinkResults.map((row, index) => {
                       const isSelected = row.id === linkJobLedgerId.trim()
-                      const hcp = (row.hcp_number ?? '').trim()
+                      const hcp = effectiveJobLedgerNumber(row.hcp_number, row.click_number)
                       return (
                         <button
                           key={row.id}
@@ -603,7 +604,7 @@ export default function CreateJobFromEstimateModal({
             })()}
             {selectedJobPick ? (
               <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#15803d' }}>
-                Selected: J{(selectedJobPick.hcp_number ?? '').trim() || '—'} ·{' '}
+                Selected: J{effectiveJobLedgerNumber(selectedJobPick.hcp_number, selectedJobPick.click_number) || '—'} ·{' '}
                 {selectedJobPick.job_name?.trim() || '—'}
               </p>
             ) : null}

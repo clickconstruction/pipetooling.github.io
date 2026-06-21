@@ -322,7 +322,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const hubJobTitleById = useMemo(() => {
     const m = new Map<string, string>()
     for (const j of hubJobs) {
-      m.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name))
+      m.set(j.id, formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number))
     }
     return m
   }, [hubJobs])
@@ -421,7 +421,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
       const s = agg.get(j.id) ?? { total: 0, byDay: {} }
       return {
         ...j,
-        displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name),
+        displayTitle: formatScheduleDispatchHubJobTitle(j.hcp_number, j.job_name, j.click_number),
         totalBlocks: s.total,
         byDay: { ...s.byDay },
       }

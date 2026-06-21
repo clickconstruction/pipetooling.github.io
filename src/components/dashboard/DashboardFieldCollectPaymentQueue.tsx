@@ -19,12 +19,13 @@ import {
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 
 type FlowRow = Database['public']['Tables']['job_collect_payment_flows']['Row'] & {
   jobs_ledger: Pick<
     Database['public']['Tables']['jobs_ledger']['Row'],
-    'hcp_number' | 'job_name' | 'job_address' | 'revenue'
+    'hcp_number' | 'click_number' | 'job_name' | 'job_address' | 'revenue'
   > | null
   initiated_by_user?: { name: string | null } | null
 }
@@ -424,7 +425,7 @@ export default function DashboardFieldCollectPaymentQueue({
           supabase
             .from('job_collect_payment_flows')
             .select(
-              `*, jobs_ledger ( hcp_number, job_name, job_address, revenue ), initiated_by_user:users!job_collect_payment_flows_initiated_by_user_id_fkey ( name )`,
+              `*, jobs_ledger ( hcp_number, click_number, job_name, job_address, revenue ), initiated_by_user:users!job_collect_payment_flows_initiated_by_user_id_fkey ( name )`,
             )
             .eq('status', 'pending_dispatch')
             .order('certified_at', { ascending: false }),
@@ -630,7 +631,7 @@ export default function DashboardFieldCollectPaymentQueue({
             <div>
               {rows.map((r) => {
                 const jl = r.jobs_ledger
-                const hcp = jl?.hcp_number?.trim() || '—'
+                const hcp = effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'
                 const name = jl?.job_name?.trim() || '—'
                 const opts = invoicesByJob[r.job_id] ?? []
                 const chosenId = selectedInvoiceId[r.job_id] ?? opts[0]?.id

@@ -4,6 +4,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 export type RecentClockJobPick = {
   id: string
   hcp_number: string
+  click_number?: string
   job_name: string
   job_address: string
 }
@@ -42,7 +43,7 @@ export async function fetchRecentClockJobPicksForUser(
 
   const jlRows = await withSupabaseRetry(
     async () =>
-      supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address').in('id', orderedIds),
+      supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address').in('id', orderedIds),
     'jobs_ledger recent clock picks',
   )
   const list = (jlRows ?? []) as RecentClockJobPick[]

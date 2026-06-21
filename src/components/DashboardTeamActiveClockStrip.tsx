@@ -48,7 +48,7 @@ import {
   isSyntheticSalaryStripSession,
   shouldShowSalaryStripNameSuffix,
 } from '../types/clockSessions'
-import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
+import { effectiveJobLedgerNumber, type LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { CopyDayJobMixModal, CopyDayJobMixIcon } from './day-job-mix/CopyDayJobMixModal'
 import { ScheduleDayEmailModal } from './ScheduleDayEmailModal'
@@ -770,7 +770,7 @@ export function DashboardTeamActiveClockStrip({
   const openJobDetailFromSessionEmbeds = useCallback(
     (jobLedgerId: string, jl: ClockSessionRow['jobs_ledger'] | null) => {
       if (!jobDetailModal) return
-      const h = (jl?.hcp_number ?? '').trim() || '—'
+      const h = effectiveJobLedgerNumber(jl?.hcp_number, jl?.click_number) || '—'
       const n = (jl?.job_name ?? '').trim() || 'Job'
       jobDetailModal.openJobDetail({
         jobId: jobLedgerId,
