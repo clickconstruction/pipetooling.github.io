@@ -689,6 +689,23 @@ export default function JobFormModal({
   const [contractModalEstimateId, setContractModalEstimateId] = useState<string | null>(null)
   const [hcpNumber, setHcpNumber] = useState('')
   const [clickNumber, setClickNumber] = useState('')
+  const [hcpHelpOpen, setHcpHelpOpen] = useState(false)
+  const hcpHelpRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!hcpHelpOpen) return
+    function onDocMouseDown(e: globalThis.MouseEvent) {
+      if (hcpHelpRef.current && !hcpHelpRef.current.contains(e.target as Node)) setHcpHelpOpen(false)
+    }
+    function onKeyDown(e: globalThis.KeyboardEvent) {
+      if (e.key === 'Escape') setHcpHelpOpen(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    document.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown)
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }, [hcpHelpOpen])
   const [jobName, setJobName] = useState('')
   const [jobAddress, setJobAddress] = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -3046,6 +3063,94 @@ export default function JobFormModal({
       >
         <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0, fontSize: '1.25rem', flexShrink: 0 }}>{editing ? 'Edit Job' : 'New Job'}</h2>
+          <div ref={hcpHelpRef} style={{ position: 'relative', flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setHcpHelpOpen((v) => !v)}
+              aria-label="How the HCP # and C# work"
+              aria-expanded={hcpHelpOpen}
+              title="How the HCP # and C# work"
+              style={{
+                width: 20,
+                height: 20,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '50%',
+                border: '1px solid #bfdbfe',
+                background: hcpHelpOpen ? '#dbeafe' : '#eff6ff',
+                color: '#1d4ed8',
+                fontSize: '0.8125rem',
+                fontWeight: 700,
+                fontStyle: 'italic',
+                fontFamily: 'Georgia, "Times New Roman", serif',
+                lineHeight: 1,
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              i
+            </button>
+            {hcpHelpOpen ? (
+              <div
+                role="dialog"
+                aria-label="HCP # vs C# (Click Number)"
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 0,
+                  marginTop: 6,
+                  width: 'max-content',
+                  maxWidth: 340,
+                  zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 8,
+                  padding: '0.6rem 0.75rem',
+                  fontSize: '0.8125rem',
+                  lineHeight: 1.5,
+                  color: '#1e3a8a',
+                  boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setHcpHelpOpen(false)}
+                  aria-label="Close"
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    right: 6,
+                    border: 'none',
+                    background: 'none',
+                    color: '#64748b',
+                    fontSize: '1rem',
+                    lineHeight: 1,
+                    cursor: 'pointer',
+                    padding: 2,
+                  }}
+                >
+                  ×
+                </button>
+                <div style={{ fontWeight: 700, marginBottom: '0.35rem', paddingRight: '1rem' }}>
+                  HCP # vs C# (Click Number)
+                </div>
+                <ul style={{ margin: '0 0 0.4rem', paddingLeft: '1.1rem' }}>
+                  <li>
+                    <strong>HCP #</strong> — the HouseCall Pro job number, for jobs imported from HouseCall Pro.
+                  </li>
+                  <li>
+                    <strong>C# (Click Number)</strong> — for jobs created here in Click that have no HCP #.
+                  </li>
+                </ul>
+                <div>
+                  Wherever this job&rsquo;s number appears, it shows the <strong>HCP #</strong> if it has one; otherwise
+                  the <strong>C#</strong>. An HCP # always takes precedence. Both use the same prefix (e.g. &ldquo;J&rdquo;),
+                  so they look identical.
+                </div>
+              </div>
+            ) : null}
+          </div>
           {mode === 'new' && !editing && !newJobImportBlockedByContent ? (
             <div
               style={{
