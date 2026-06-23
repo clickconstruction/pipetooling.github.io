@@ -708,6 +708,8 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayReportKeys = EMPTY_JOBS_WORKED_TODAY_REPORT_KEYS,
   jobsWorkedTodayReportIdByKey = EMPTY_JOBS_WORKED_TODAY_REPORT_ID_BY_KEY,
   jobsWorkedTodayJobLedgerIdsWithReport,
+  showAddClockSession = false,
+  onAddClockSession,
 }: {
   sessions: DashboardStripSession[]
   hoursTodayByUserId: Readonly<Record<string, number>>
@@ -750,6 +752,10 @@ export function DashboardTeamActiveClockStrip({
   jobsWorkedTodayReportIdByKey?: ReadonlyMap<string, string>
   /** `jobLedgerId` when any report exists for that job on the strip calendar day; `null` while loading. */
   jobsWorkedTodayJobLedgerIdsWithReport?: ReadonlySet<string> | null
+  /** Show the "+" (add a clock session for a person) button in the header chrome cluster. */
+  showAddClockSession?: boolean
+  /** Open the parent-owned add-clock-session modal (with person picker). */
+  onAddClockSession?: () => void
 }) {
   const { role: viewerRole } = useAuth()
   const prefixMap = useLedgerPrefixMap()
@@ -1139,7 +1145,8 @@ export function DashboardTeamActiveClockStrip({
   const showCurrentlyInTable = !hideCurrentlyInTable && sessions.length > 0
   const copyJobMixChrome = enableCopyDayJobMix === true && clockedInTodayRows.length > 0
   const scheduleEmailChrome = enableScheduleDayEmail === true
-  const showClockedInHeaderChrome = showClockedInTodayToggle || copyJobMixChrome || scheduleEmailChrome
+  const showClockedInHeaderChrome =
+    showClockedInTodayToggle || copyJobMixChrome || scheduleEmailChrome || showAddClockSession === true
   const showStripTopRightBar = scopeShowsOverlay || showClockedInHeaderChrome
   const stripTableHostWithTopBar: CSSProperties = {
     ...stripTableHost,
@@ -1229,6 +1236,17 @@ export function DashboardTeamActiveClockStrip({
           }
         >
           {clockedInTodayTableMode === 'all' ? 'Needs attention' : 'Show all'}
+        </button>
+      ) : null}
+      {showAddClockSession ? (
+        <button
+          type="button"
+          onClick={() => onAddClockSession?.()}
+          title="Add a clock session for a person on this day"
+          aria-label="Add a clock session for a person on this day"
+          style={{ ...scopeBtn(false), ...stripClockedInChromeBtnLayout }}
+        >
+          + Add session
         </button>
       ) : null}
     </div>

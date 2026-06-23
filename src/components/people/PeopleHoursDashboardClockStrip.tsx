@@ -6,6 +6,7 @@ import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSe
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { DashboardTeamActiveClockStrip } from '../DashboardTeamActiveClockStrip'
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
+import { ClockSessionEditSplitModal } from '../ClockSessionEditSplitModal'
 import { syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
 import { recordNotComingInForUserAsStaff } from '../../lib/notComingInTimeOff'
 import { fetchSalariedUserIdSetFromUserIds } from '../../lib/salaryPayConfigGate'
@@ -51,9 +52,11 @@ const navMobileSepStyle: CSSProperties = {
 
 type Props = {
   onSessionsChanged?: () => void
+  /** People → Hours roster as `{ value: user_id, label: name }` for the add-session person picker. */
+  addSessionPeople?: { value: string; label: string }[]
 }
 
-export function PeopleHoursDashboardClockStrip({ onSessionsChanged }: Props) {
+export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPeople }: Props) {
   const { user: authUser, role } = useAuth()
   const narrowViewport640 = useNarrowViewport640()
   const { showToast } = useToastContext()
@@ -63,6 +66,8 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged }: Props) {
     showClockStripScopeToggle || role === 'superintendent'
 
   const [selectedYmd, setSelectedYmd] = useState(() => denverCalendarDayKey(Date.now()))
+  const [addSessionOpen, setAddSessionOpen] = useState(false)
+  const canAddSession = showClockStripScopeToggle && (addSessionPeople?.length ?? 0) > 0
 
   const [clockStripScope, setClockStripScope] = useState<'team' | 'everyone'>(() =>
     readClockStripScopeFromStorage(role),
@@ -441,6 +446,8 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged }: Props) {
         }
         enableCopyDayJobMix={showClockStripScopeToggle}
         clockStripWorkDateYmd={selectedYmd}
+        showAddClockSession={canAddSession}
+        onAddClockSession={() => setAddSessionOpen(true)}
       />
 
       {stripMyTimeEditor && (
@@ -478,6 +485,19 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged }: Props) {
           }}
         />
       )}
+
+      {addSessionOpen ? (
+        <ClockSessionEditSplitModal
+          createFor={{ userId: '', workDate: selectedYmd }}
+          people={addSessionPeople}
+          onClose={() => setAddSessionOpen(false)}
+          onSaved={() => {
+            onSessionsMutated()
+            setAddSessionOpen(false)
+          }}
+          showToast={showToast}
+        />
+      ) : null}
     </section>
   )
 }

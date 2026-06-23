@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { splitOwnClockSessionSegments } from '../lib/splitOwnClockSessionSegments'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { fromDatetimeLocal, toDatetimeLocal } from '../utils/datetimeLocal'
+import { SearchableSelect } from './SearchableSelect'
 
 export type ClockSessionEditSplitSession = {
   id: string
@@ -26,6 +27,12 @@ export type ClockSessionEditSplitModalEditProps = {
 
 export type ClockSessionEditSplitModalCreateProps = {
   createFor: { userId: string; workDate: string }
+  /**
+   * When provided, the create modal shows a person picker (the user chooses who the
+   * session is for). Options are `{ value: user_id, label: name }`. When omitted, the
+   * session is created for `createFor.userId` (existing day-audit behavior).
+   */
+  people?: { value: string; label: string }[]
   onClose: () => void
   onSaved?: () => void
   showToast?: (message: string, variant?: 'success' | 'error') => void
@@ -36,6 +43,7 @@ export type ClockSessionEditSplitModalProps = ClockSessionEditSplitModalEditProp
 
 function ClockSessionCreateModal({
   createFor,
+  people,
   onClose,
   onSaved,
   showToast,
@@ -44,6 +52,7 @@ function ClockSessionCreateModal({
   const [clockIn, setClockIn] = useState(`${createFor.workDate}T08:00`)
   const [clockOut, setClockOut] = useState(`${createFor.workDate}T17:00`)
   const [notes, setNotes] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState(createFor.userId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,6 +60,7 @@ function ClockSessionCreateModal({
     setClockIn(`${createFor.workDate}T08:00`)
     setClockOut(`${createFor.workDate}T17:00`)
     setNotes('')
+    setSelectedUserId(createFor.userId)
     setError(null)
   }, [createFor.workDate, createFor.userId])
 
@@ -87,6 +97,23 @@ function ClockSessionCreateModal({
         </h3>
         {error && <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: '#dc2626' }}>{error}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {people ? (
+            <div>
+              <label htmlFor="clock-create-person" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
+                Person
+              </label>
+              <SearchableSelect
+                id="clock-create-person"
+                value={selectedUserId}
+                onChange={setSelectedUserId}
+                options={people}
+                placeholder="Pick a person…"
+                required
+                disabled={saving}
+                portalZIndex={zIndex + 1}
+              />
+            </div>
+          ) : null}
           <div>
             <label htmlFor="clock-create-in" style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>
               Clocked in
@@ -140,6 +167,10 @@ function ClockSessionCreateModal({
             type="button"
             onClick={async () => {
               setError(null)
+              if (!selectedUserId) {
+                setError('Pick a person')
+                return
+              }
               const inVal = fromDatetimeLocal(clockIn)
               const outVal = fromDatetimeLocal(clockOut)
               if (!inVal || !outVal) {
@@ -171,7 +202,7 @@ function ClockSessionCreateModal({
                 await withSupabaseRetry(
                   async () => {
                     const { error: err } = await supabase.from('clock_sessions').insert({
-                      user_id: createFor.userId,
+                      user_id: selectedUserId,
                       clocked_in_at: inVal,
                       clocked_out_at: outVal,
                       work_date: createFor.workDate,
@@ -192,7 +223,7 @@ function ClockSessionCreateModal({
                 setSaving(false)
               }
             }}
-            disabled={!notes.trim() || saving || !fromDatetimeLocal(clockIn) || !fromDatetimeLocal(clockOut)}
+            disabled={!selectedUserId || !notes.trim() || saving || !fromDatetimeLocal(clockIn) || !fromDatetimeLocal(clockOut)}
             style={{
               padding: '0.5rem 1rem',
               border: '1px solid #3b82f6',
@@ -200,7 +231,9 @@ function ClockSessionCreateModal({
               background: '#3b82f6',
               color: 'white',
               cursor:
-                notes.trim() && !saving && fromDatetimeLocal(clockIn) && fromDatetimeLocal(clockOut) ? 'pointer' : 'not-allowed',
+                selectedUserId && notes.trim() && !saving && fromDatetimeLocal(clockIn) && fromDatetimeLocal(clockOut)
+                  ? 'pointer'
+                  : 'not-allowed',
             }}
           >
             {saving ? 'Saving…' : 'Save'}
@@ -223,6 +256,11 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
 
   const editingOpen = session.clocked_out_at == null
 
+  // Re-initialize the form only when a DIFFERENT session is opened — keyed on `session.id`,
+  // not the `session` object. Call sites pass a fresh inline object literal every render, so
+  // depending on `session` would re-run this on every parent re-render (e.g. a People→Hours
+  // realtime refetch from approving sessions) and silently wipe the user's in-progress edits —
+  // forcing them to enter the change twice before a Save would persist.
   useEffect(() => {
     setClockIn(toDatetimeLocal(session.clocked_in_at))
     setClockOut(session.clocked_out_at ? toDatetimeLocal(session.clocked_out_at) : '')
@@ -231,7 +269,41 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
     setSplitAt('')
     setSplitNotesSecond('')
     setError(null)
-  }, [session])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id])
+
+  /**
+   * Recompute people_hours for each affected day after an approved session's hours change, anchored
+   * on a SURVIVING session of the same user — the edited row itself for an in-place edit, or one of
+   * the new segments when a split deletes the approved original. Each RPC call resyncs the anchor's
+   * own day plus the passed day, so {anchor's day} ∪ `days` is covered. Best-effort: the edit already
+   * persisted, so a failed resync just leaves the grid on the prior total.
+   */
+  async function recomputeApprovedPeopleHoursDays(anchorSessionId: string, days: (string | null | undefined)[]) {
+    const distinct = [...new Set(days.filter((d): d is string => !!d))]
+    try {
+      for (const d of distinct.length ? distinct : [undefined]) {
+        await supabase.rpc('recompute_people_hours_after_session_edit', {
+          p_session_id: anchorSessionId,
+          p_old_work_date: d,
+        })
+      }
+    } catch {
+      // best-effort
+    }
+  }
+
+  /**
+   * Resync people_hours after an in-place time edit of an ALREADY-APPROVED session (its row survives).
+   * people_hours is maintained incrementally (approve adds the duration, revoke/reject subtracts), so a
+   * plain UPDATE never applies the delta and the People → Hours grid stays frozen at the old total.
+   * Gated on `approved_at`: an unapproved edit can't make people_hours stale, and skipping it avoids
+   * clobbering manually-entered hours. Pass the pre-edit work_date so a cross-day move resyncs both days.
+   */
+  async function resyncApprovedPeopleHours() {
+    if (!session.approved_at) return
+    await recomputeApprovedPeopleHoursDays(session.id, [session.work_date])
+  }
 
   function handleBackdropClose() {
     if (!saving) onClose()
@@ -510,6 +582,8 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                           },
                           'split open clock session'
                         )
+                        // Original row survives (updated to a closed segment); resync its day(s).
+                        await resyncApprovedPeopleHours()
                       }
                       showToast?.('Session split into closed segment and open continuation', 'success')
                       onSaved?.()
@@ -567,17 +641,21 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                     } else {
                       const workDateA = clockIn.slice(0, 10)
                       const workDateB = splitAt.slice(0, 10)
-                      await withSupabaseRetry(
+                      const firstNewId = await withSupabaseRetry<string | null>(
                         async () => {
-                          const { error: err1 } = await supabase.from('clock_sessions').insert({
-                            user_id: session.user_id,
-                            clocked_in_at: inVal,
-                            clocked_out_at: splitVal,
-                            work_date: workDateA,
-                            notes: notes.trim(),
-                            job_ledger_id: session.job_ledger_id,
-                            bid_id: session.bid_id,
-                          })
+                          const { data: ins1, error: err1 } = await supabase
+                            .from('clock_sessions')
+                            .insert({
+                              user_id: session.user_id,
+                              clocked_in_at: inVal,
+                              clocked_out_at: splitVal,
+                              work_date: workDateA,
+                              notes: notes.trim(),
+                              job_ledger_id: session.job_ledger_id,
+                              bid_id: session.bid_id,
+                            })
+                            .select('id')
+                            .single()
                           if (err1) return { data: null, error: err1 }
                           const { error: err2 } = await supabase.from('clock_sessions').insert({
                             user_id: session.user_id,
@@ -590,10 +668,16 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                           })
                           if (err2) return { data: null, error: err2 }
                           const { error: err3 } = await supabase.from('clock_sessions').delete().eq('id', session.id)
-                          return { data: null, error: err3 }
+                          if (err3) return { data: null, error: err3 }
+                          return { data: ins1?.id ?? null, error: null }
                         },
                         'split clock session'
                       )
+                      // Approved original was deleted; the new segments are pending. Resync the
+                      // affected day(s) off a surviving new segment so its hours come off the total.
+                      if (session.approved_at && firstNewId) {
+                        await recomputeApprovedPeopleHoursDays(firstNewId, [session.work_date, workDateA, workDateB])
+                      }
                     }
                     showToast?.('Session split into 2 parts', 'success')
                     onSaved?.()
@@ -679,6 +763,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                         setError(err.message)
                         return
                       }
+                      await resyncApprovedPeopleHours()
                       onSaved?.()
                       onClose()
                     } finally {
@@ -711,6 +796,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                       setError(err.message)
                       return
                     }
+                    await resyncApprovedPeopleHours()
                     onSaved?.()
                     onClose()
                   } finally {
