@@ -74,6 +74,7 @@ export type ClockSessionRow = {
   revoked_by_user: { name: string | null } | null
   jobs_ledger: {
     hcp_number: string | null
+    click_number?: string | null
     job_name: string | null
     job_address: string | null
     service_type_id?: string | null

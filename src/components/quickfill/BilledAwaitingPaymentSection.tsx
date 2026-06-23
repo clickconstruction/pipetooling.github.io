@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { formatCurrency } from '../../lib/format'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { Database } from '../../types/database'
 
 type LedgerPaymentPick = Pick<
@@ -34,7 +35,7 @@ export function BilledAwaitingPaymentSection() {
       setError(null)
       try {
         const [jobsRes, invoicesRes] = await Promise.all([
-          supabase.from('jobs_ledger').select('id, hcp_number, job_name, revenue, payments_made').eq('status', 'billed'),
+          supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name, revenue, payments_made').eq('status', 'billed'),
           supabase.from('jobs_ledger_invoices').select('id, job_id, amount').eq('status', 'billed'),
         ])
         if (cancelled) return
@@ -172,7 +173,7 @@ export function BilledAwaitingPaymentSection() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                <td style={{ padding: '0.75rem 0.5rem' }}>{r.job.hcp_number || '—'}</td>
+                <td style={{ padding: '0.75rem 0.5rem' }}>{effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'}</td>
                 <td style={{ padding: '0.75rem 0.5rem' }}>{r.job.job_name || '—'}</td>
                 <td style={{ padding: '0.75rem 0.5rem' }}>{r.assigned.join(', ') || '—'}</td>
                 <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(r.remaining)}</td>

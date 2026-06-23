@@ -2312,6 +2312,7 @@ export default function JobFormModal({
         id: editing.id,
         master_user_id: editing.master_user_id,
         hcp_number: editing.hcp_number,
+        click_number: editing.click_number,
         job_name: editing.job_name,
         customer_id: editing.customer_id,
         customer_name: editing.customer_name,
@@ -4987,6 +4988,7 @@ export default function JobFormModal({
                                 id: editing.id,
                                 master_user_id: editing.master_user_id,
                                 hcp_number: editing.hcp_number,
+                                click_number: editing.click_number,
                                 job_name: editing.job_name,
                                 customer_id: editing.customer_id,
                                 customer_name: editing.customer_name,
@@ -6470,7 +6472,7 @@ export default function JobFormModal({
             </h2>
             <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5, marginBottom: '1rem' }}>
               <p style={{ margin: '0 0 0.5rem' }}>
-                <strong>HCP:</strong> {(editing.hcp_number ?? '').trim() || '—'}{' '}
+                <strong>HCP:</strong> {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}{' '}
                 <strong>Job:</strong> {(editing.job_name ?? '').trim() || '—'}
               </p>
               <p style={{ margin: 0, color: '#6b7280' }}>
@@ -6652,7 +6654,7 @@ export default function JobFormModal({
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
               Move labor, parts, materials, Specific Work, and related rows to another job, add this job’s{' '}
               <strong>Job total (revenue)</strong> to the target’s total, then remove{' '}
-              <strong>HCP {(editing.hcp_number ?? '').trim() || '—'}</strong> —{' '}
+              <strong>HCP {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}</strong> —{' '}
               <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. This cannot be undone.
             </p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.45 }}>

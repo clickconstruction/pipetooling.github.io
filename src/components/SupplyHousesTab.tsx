@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
+import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import { SupplyHouseForm } from './SupplyHouseForm'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
@@ -92,9 +93,9 @@ export function SupplyHousesTab({
   const [invoiceJobAllocations, setInvoiceJobAllocations] = useState<InvoiceJobAllocation[]>([])
   const [invoiceJobSearchModal, setInvoiceJobSearchModal] = useState(false)
   const [invoiceJobSearchText, setInvoiceJobSearchText] = useState('')
-  const [invoiceJobSearchResults, setInvoiceJobSearchResults] = useState<Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>>([])
-  const [invoiceJobDetailsMap, setInvoiceJobDetailsMap] = useState<Record<string, { hcp_number: string; job_name: string; job_address: string }>>({})
-  const [supplyHouseJobDetailsMap, setSupplyHouseJobDetailsMap] = useState<Record<string, { hcp_number: string; job_name: string }>>({})
+  const [invoiceJobSearchResults, setInvoiceJobSearchResults] = useState<Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>>([])
+  const [invoiceJobDetailsMap, setInvoiceJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }>>({})
+  const [supplyHouseJobDetailsMap, setSupplyHouseJobDetailsMap] = useState<Record<string, { hcp_number: string; click_number?: string; job_name: string }>>({})
   const [savingInvoice, setSavingInvoice] = useState(false)
   const [applyPaymentFormOpen, setApplyPaymentFormOpen] = useState(false)
   const [applyPaymentLink, setApplyPaymentLink] = useState('')
@@ -221,9 +222,9 @@ export function SupplyHousesTab({
     const jobIds = [...new Set(allocations.map((a) => a.job_id))]
     if (jobIds.length > 0) {
       supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
-        const map: Record<string, { hcp_number: string; job_name: string }> = {}
-        for (const r of (data ?? []) as { id: string; hcp_number: string; job_name: string }[]) {
-          map[r.id] = { hcp_number: r.hcp_number ?? '', job_name: r.job_name ?? '' }
+        const map: Record<string, { hcp_number: string; click_number?: string; job_name: string }> = {}
+        for (const r of (data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string }[]) {
+          map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '' }
         }
         setSupplyHouseJobDetailsMap(map)
       })
@@ -275,7 +276,7 @@ export function SupplyHousesTab({
     const t = setTimeout(() => {
       if (invoiceJobSearchModal && invoiceJobSearchText !== undefined) {
         supabase.rpc('search_jobs_ledger', { search_text: invoiceJobSearchText }).then(({ data }) => {
-          setInvoiceJobSearchResults((data ?? []) as Array<{ id: string; hcp_number: string; job_name: string; job_address: string }>)
+          setInvoiceJobSearchResults((data ?? []) as Array<{ id: string; hcp_number: string; click_number?: string; job_name: string; job_address: string }>)
         })
       }
     }, 300)
@@ -286,9 +287,9 @@ export function SupplyHousesTab({
     const jobIds = invoiceJobAllocations.map((a) => a.job_id).filter((id) => !invoiceJobDetailsMap[id])
     if (jobIds.length === 0) return
     supabase.rpc('get_jobs_ledger_by_ids', { p_job_ids: jobIds }).then(({ data }) => {
-      const map: Record<string, { hcp_number: string; job_name: string; job_address: string }> = {}
-      for (const r of (data ?? []) as { id: string; hcp_number: string; job_name: string; job_address: string }[]) {
-        map[r.id] = { hcp_number: r.hcp_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
+      const map: Record<string, { hcp_number: string; click_number?: string; job_name: string; job_address: string }> = {}
+      for (const r of (data ?? []) as { id: string; hcp_number: string; click_number: string; job_name: string; job_address: string }[]) {
+        map[r.id] = { hcp_number: r.hcp_number ?? '', click_number: r.click_number ?? '', job_name: r.job_name ?? '', job_address: r.job_address ?? '' }
       }
       setInvoiceJobDetailsMap((prev) => ({ ...prev, ...map }))
     })
@@ -830,7 +831,7 @@ export function SupplyHousesTab({
                                                     ? inv.job_allocations
                                                         .map((a) => {
                                                           const d = supplyHouseJobDetailsMap[a.job_id]
-                                                          return d ? `${d.hcp_number} · ${d.job_name} (${a.pct}%)` : a.job_id.slice(0, 8)
+                                                          return d ? `${effectiveJobLedgerNumber(d.hcp_number, d.click_number)} · ${d.job_name} (${a.pct}%)` : a.job_id.slice(0, 8)
                                                         })
                                                         .join(', ')
                                                     : '—'}
@@ -1006,7 +1007,7 @@ export function SupplyHousesTab({
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.35rem' }}>
                   {invoiceJobAllocations.map((a, idx) => {
                     const details = invoiceJobDetailsMap[a.job_id]
-                    const label = details ? `${details.hcp_number || '—'} · ${details.job_name || '—'}` : a.job_id.slice(0, 8)
+                    const label = details ? `${effectiveJobLedgerNumber(details.hcp_number, details.click_number) || '—'} · ${details.job_name || '—'}` : a.job_id.slice(0, 8)
                     return (
                       <span key={a.job_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
                         <span title={details?.job_address}>{label}</span>
@@ -1133,7 +1134,7 @@ export function SupplyHousesTab({
                     const pct = Math.round((100 / n) * 10) / 10
                     const newAllocations = invoiceJobAllocations.map((a) => ({ ...a, pct }))
                     newAllocations.push({ job_id: j.id, pct: 100 - newAllocations.reduce((s, x) => s + x.pct, 0) })
-                    setInvoiceJobDetailsMap((prev) => ({ ...prev, [j.id]: { hcp_number: j.hcp_number, job_name: j.job_name, job_address: j.job_address } }))
+                    setInvoiceJobDetailsMap((prev) => ({ ...prev, [j.id]: { hcp_number: j.hcp_number, click_number: j.click_number, job_name: j.job_name, job_address: j.job_address } }))
                     setInvoiceJobAllocations(newAllocations)
                     setInvoiceJobSearchModal(false)
                     setInvoiceJobSearchText('')
@@ -1141,7 +1142,7 @@ export function SupplyHousesTab({
                   }}
                   style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                 >
-                  <div style={{ fontWeight: 500 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
+                  <div style={{ fontWeight: 500 }}>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}</div>
                   {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
                 </button>
               ))}

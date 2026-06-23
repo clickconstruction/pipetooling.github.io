@@ -2,6 +2,7 @@ import { supabase } from './supabase'
 import type { JobScheduleBlockRow } from './jobScheduleBlocks'
 import type { Database } from '../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 
 type SupabaseUserRole = Database['public']['Enums']['user_role']
 
@@ -11,6 +12,7 @@ const JOBS_LEDGER_TEAM_MEMBERS_JOB_ID_CHUNK = 150
 export type ScheduleDispatchHubJobRow = {
   id: string
   hcp_number: string | null
+  click_number?: string | null
   job_name: string | null
   project_id: string | null
 }
@@ -18,8 +20,9 @@ export type ScheduleDispatchHubJobRow = {
 export function formatScheduleDispatchHubJobTitle(
   hcp: string | null | undefined,
   jobName: string | null | undefined,
+  clickNumber?: string | null | undefined,
 ): string {
-  return `${(hcp ?? '').trim() || '—'} · ${(jobName ?? '').trim() || 'Job'}`
+  return `${effectiveJobLedgerNumber(hcp, clickNumber) || '—'} · ${(jobName ?? '').trim() || 'Job'}`
 }
 
 export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
@@ -31,7 +34,7 @@ export async function fetchJobsLedgerForScheduleDispatchHub(): Promise<{
       async () =>
         await supabase
           .from('jobs_ledger')
-          .select('id, hcp_number, job_name, project_id')
+          .select('id, hcp_number, click_number, job_name, project_id')
           .order('hcp_number', { ascending: false }),
       'fetchJobsLedgerForScheduleDispatchHub',
     )

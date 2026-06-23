@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import type { JobScheduleBlockRow } from '../../lib/jobScheduleBlocks'
 import { fetchPreviewJobModalStageSummary, type PreviewJobModalStepLite } from '../../lib/previewJobModalStages'
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 
 type CalendarStepLite = PreviewJobModalStepLite
@@ -222,7 +223,7 @@ export function PreviewJobModal({
                   }}
                 >
                   <div style={{ fontWeight: 600 }}>
-                    {(j.hcp_number ?? '').trim() || '—'} · {(j.job_name ?? '').trim() || 'Job'}
+                    {effectiveJobLedgerNumber(j.hcp_number) || '—'} · {(j.job_name ?? '').trim() || 'Job'}
                   </div>
                   <div style={{ color: '#4b5563', marginTop: 2 }}>{j.job_address}</div>
                   {showJobsDeepLink ? (

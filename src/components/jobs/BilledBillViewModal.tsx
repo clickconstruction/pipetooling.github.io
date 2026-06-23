@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import { useAuth } from '../../hooks/useAuth'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { HostedStripeBillPanel, type InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 
@@ -36,7 +37,7 @@ export default function BilledBillViewModal({
 
   const inv = invoice
   const job = inv?.job
-  const subtitle = job ? `${job.hcp_number ?? '—'} · ${job.job_name ?? '—'}` : '—'
+  const subtitle = job ? `${effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · ${job.job_name ?? '—'}` : '—'
   const stripeId = (inv?.stripe_invoice_id ?? '').trim()
   const isStripeHosted = Boolean(inv && stripeId && (inv?.hosted_invoice_url ?? '').trim())
 

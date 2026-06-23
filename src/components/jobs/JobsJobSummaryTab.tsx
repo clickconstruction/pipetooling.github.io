@@ -32,6 +32,7 @@ import {
   type TallyLineForPersonRollup,
 } from '../../lib/partsPerPersonCostSummary'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   filterJobSummaryMercuryRowsForPersonName,
   filterJobSummaryMercuryRowsForPersonNames,
@@ -384,7 +385,7 @@ export default function JobsJobSummaryTab({
                               <span style={{ marginRight: '0.35rem', color: '#6b7280', userSelect: 'none' }} aria-hidden>
                                 {expanded ? '▼' : '▶'}
                               </span>
-                              {job.hcp_number ?? '—'}
+                              {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
                             </td>
                             <td style={{ padding: '0.75rem' }}>{job.job_name ?? '—'}</td>
                             <td style={{ padding: '0.75rem' }}>{job.job_address ?? '—'}</td>

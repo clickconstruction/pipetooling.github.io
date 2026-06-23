@@ -32,6 +32,7 @@ import {
 } from '../../lib/stripeInvoiceFooter'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { maybePromoteJobToBilledAfterCustomerInvoice } from '../../lib/promoteJobToBilledIfFullyInvoiced'
 import { StripeBillPreSubmitPreview } from './StripeBillPreSubmitPreview'
 import StripeBillingModeToggle from './StripeBillingModeToggle'
@@ -1162,7 +1163,7 @@ export default function SendRecordInvoiceModal({
         <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 420, maxWidth: 520, maxHeight: '90vh', overflow: 'auto' }}>
           <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-            {job.hcp_number ?? '—'} · {job.job_name ?? '—'}
+            {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}
           </p>
           <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#b91c1c' }}>
             Link this job to a customer on the Jobs page before billing.
@@ -1278,7 +1279,7 @@ export default function SendRecordInvoiceModal({
           <div style={{ minWidth: 0, flex: '1 1 auto' }}>
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Bill Customer</h2>
             <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-              {job.hcp_number ?? '—'} · {job.job_name ?? '—'}
+              {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'} · {job.job_name ?? '—'}
               {invoice
                 ? ` · RTB $${Number(invoice.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`
                 : kind === 'job' && ensuredInvoice && !ensureLoading && !ensureError

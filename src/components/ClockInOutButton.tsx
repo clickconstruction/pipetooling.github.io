@@ -15,7 +15,7 @@ import {
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
-import { formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
+import { effectiveJobLedgerNumber, formatBidLedgerNumberLabel, resolveBidLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
 import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { denverCalendarDayKey } from '../utils/dateUtils'
@@ -78,6 +78,7 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
     source: 'job',
     id: d.jobId,
     hcp_number: d.hcp_number,
+    click_number: d.click_number,
     job_name: d.job_name,
     job_address: d.job_address,
     service_type_id: d.service_type_id ?? null,
@@ -230,6 +231,7 @@ export default function ClockInOutButton({
             source: 'job',
             id,
             hcp_number: o.hcp_number,
+            click_number: typeof o.click_number === 'string' ? o.click_number : null,
             job_name: o.job_name,
             job_address: o.job_address,
             service_type_id: typeof stid === 'string' ? stid : null,
@@ -755,7 +757,7 @@ export default function ClockInOutButton({
             async () =>
               supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, job_name, job_address, service_type_id, service_types(name)')
+                .select('id, hcp_number, click_number, job_name, job_address, service_type_id, service_types(name)')
                 .eq('id', jobLedgerId)
                 .maybeSingle(),
             'hydrate clock-out job',
@@ -771,6 +773,7 @@ export default function ClockInOutButton({
             source: 'job',
             id: job.id,
             hcp_number: job.hcp_number ?? '',
+            click_number: job.click_number ?? null,
             job_name: job.job_name ?? '',
             job_address: job.job_address ?? '',
             service_type_id: job.service_type_id ?? null,
@@ -2107,7 +2110,7 @@ export default function ClockInOutButton({
                                 if (clockOutSaving) return
                                 setClockOutLeaveReportJob({
                                   id: d.jobId,
-                                  hcpNumber: d.hcp_number || '—',
+                                  hcpNumber: effectiveJobLedgerNumber(d.hcp_number, d.click_number) || '—',
                                   jobName: d.job_name,
                                   jobAddress: d.job_address || '—',
                                 })

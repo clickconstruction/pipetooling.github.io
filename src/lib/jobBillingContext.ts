@@ -4,6 +4,7 @@ export type JobBillingContext = {
   id: string
   master_user_id: string
   hcp_number: string | null
+  click_number?: string | null
   job_name: string | null
   customer_id: string | null
   customer_name: string | null
@@ -18,6 +19,7 @@ export function jobBillingContextFromJob(j: JobWithDetails): JobBillingContext {
     id: j.id,
     master_user_id: j.master_user_id,
     hcp_number: j.hcp_number,
+    click_number: j.click_number,
     job_name: j.job_name,
     customer_id: j.customer_id,
     customer_name: j.customer_name,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 export type StagesAlertJobListModalProps = {
@@ -91,7 +92,7 @@ export default function StagesAlertJobListModal({
             }}
           >
             {jobs.map((j) => {
-              const hcp = (j.hcp_number ?? '').trim() || '—'
+              const hcp = effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'
               const name = (j.job_name ?? '').trim() || '—'
               const addr = (j.job_address ?? '').trim()
               const hovered = hoverRowId === j.id

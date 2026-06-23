@@ -82,6 +82,7 @@ import {
 } from '../lib/officeJobRateSplit'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../lib/overheadOfficeJobSettings'
 import { findPersonUserDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
+import { buildAddSessionPeople } from '../lib/people/buildAddSessionPeople'
 import {
   type ContractSigningTrafficLight,
   rollupContractSigningStatusByPersonName,
@@ -2587,6 +2588,10 @@ export default function People() {
       const orderB = hoursDisplayOrder[b] ?? 999999
       return orderA !== orderB ? orderA - orderB : a.localeCompare(b)
     })
+  const addSessionPeople = useMemo(
+    () => buildAddSessionPeople(showPeopleForHours, users),
+    [showPeopleForHours, users],
+  )
   const showPeopleForMatrixBase = Object.keys(payConfig)
     .filter((n) => (payConfig[n]?.show_in_cost_matrix ?? false) && !archivedUserNames.has(n.trim()))
     .sort((a, b) => {
@@ -3598,7 +3603,7 @@ export default function People() {
                 Currently clocked in
               </button>
             </div>
-            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} /> : null}
+            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} addSessionPeople={addSessionPeople} /> : null}
           </section>
           ) : null}
           <PeopleHoursWeekRange
