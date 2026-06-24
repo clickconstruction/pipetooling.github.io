@@ -5,7 +5,6 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { useRealtimeChannel } from '../../hooks/useRealtimeChannel'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
@@ -246,34 +245,11 @@ export function QuickfillOfficeSection({ variant }: { variant: QuickfillOfficeSe
     }
   }, [loadOfficeSettings, showToast])
 
-  // app_settings is not in the supabase_realtime publication, so the previous
-  // listener on this table was always a no-op. Office layout settings are
-  // refetched via the existing focus/visibility handler below; the realtime
-  // channel here is now scoped to quickfill_office_arriving_daily_checks (the
-  // one published table this section actually receives events for).
-  const officeSyncFilters = useMemo(
-    () =>
-      isArriving
-        ? [
-            {
-              event: '*' as const,
-              schema: 'public',
-              table: 'quickfill_office_arriving_daily_checks',
-            },
-          ]
-        : [],
-    [isArriving],
-  )
-  useRealtimeChannel(
-    isArriving,
-    `quickfill-office-${variant}-sync`,
-    officeSyncFilters,
-    () => {
-      void loadOfficeSettings()
-    },
-    { debounceMs: 400 },
-  )
-
+  // quickfill_office_arriving_daily_checks was dropped from the supabase_realtime
+  // publication (migration 20260624160100) to shed an idle Realtime channel.
+  // (app_settings was never in the publication, so its listener was always a
+  // no-op.) The daily checklist is refreshed by the visibility/focus handler
+  // below instead of live — acceptable for a once-per-day office list.
   useEffect(() => {
     if (!isArriving) return
     const onVis = () => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
@@ -69,7 +69,6 @@ export function useEstimateThreadNotes(
   authUserId: string | undefined,
   authorDisplayName?: string | null,
 ) {
-  const realtimeChannelId = useId()
   const [expandedEstimateThreadId, setExpandedEstimateThreadId] = useState<string | null>(null)
   const [estimateThreadNotesByEstimateId, setEstimateThreadNotesByEstimateId] = useState<
     Record<string, JobThreadNoteRow[]>
@@ -80,7 +79,6 @@ export function useEstimateThreadNotes(
   const [estimateThreadStatsByEstimateId, setEstimateThreadStatsByEstimateId] = useState<
     Record<string, EstimateThreadNoteStats>
   >({})
-  const expandedEstimateThreadIdRef = useRef<string | null>(null)
   const inFlightThreadNoteRef = useRef<{ estimateId: string; optimisticId: string } | null>(null)
   const threadStatsRefreshGenRef = useRef(0)
 
@@ -190,37 +188,16 @@ export function useEstimateThreadNotes(
   }, [])
 
   useEffect(() => {
-    expandedEstimateThreadIdRef.current = expandedEstimateThreadId
-  }, [expandedEstimateThreadId])
-
-  useEffect(() => {
     if (!expandedEstimateThreadId) return
     setEstimateThreadDraft('')
     void loadEstimateThreadNotesForEstimate(expandedEstimateThreadId)
   }, [expandedEstimateThreadId, loadEstimateThreadNotesForEstimate])
 
-  useEffect(() => {
-    if (!authUserId) return
-    const channel = supabase
-      .channel(`estimates-thread-notes-${realtimeChannelId}`)
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'estimates_thread_notes' },
-        (payload) => {
-          const eid = (payload.new as { estimate_id?: string } | null)?.estimate_id
-          if (eid && expandedEstimateThreadIdRef.current === eid) {
-            void loadEstimateThreadNotesForEstimate(eid, { quiet: true })
-          }
-          if (eid) {
-            void mergeEstimateThreadStatsForEstimateIds([eid])
-          }
-        },
-      )
-      .subscribe()
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [authUserId, loadEstimateThreadNotesForEstimate, mergeEstimateThreadStatsForEstimateIds, realtimeChannelId])
+  // estimates_thread_notes was dropped from the supabase_realtime publication
+  // (migration 20260624160100) to shed an idle Realtime channel. Notes reload
+  // when a thread is (re)expanded via the effect above, and the poster sees an
+  // optimistic insert in submitEstimateThreadNote; the trade-off is no live
+  // refresh of another user's note while a thread sits open.
 
   const submitEstimateThreadNote = useCallback(
     async (estimateId: string) => {
