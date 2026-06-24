@@ -19,13 +19,17 @@ import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import type { UserRole } from '../hooks/useAuth'
 import { fieldRoleServiceTypeIdsForUser, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import {
+  customerTypePillForUnifiedRow,
+  escapeLike,
   formatUnifiedResult,
   serviceTypeTagForUnifiedRow,
   type JobSearchResult,
   type BidSearchResult,
+  type CustomerSearchResult,
   type EstimateNavSearchResult,
   type UnifiedSearchResult,
 } from '../utils/unifiedJobBidSearch'
+import { CustomerSnapshotModal } from './customers/CustomerSnapshotModal'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import type { LedgerPrefixMap } from '../lib/ledgerDisplayPrefixes'
@@ -88,6 +92,8 @@ export function HeaderGlobalSearchProvider({
   const [open, setOpen] = useState(false)
   const [query, setQueryState] = useState('')
   const [results, setResults] = useState<UnifiedSearchResult[]>([])
+  /** Header-owned customer snapshot; opened on selecting a customer result. Kept out of the context value. */
+  const [snapshotCustomerId, setSnapshotCustomerId] = useState<string | null>(null)
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
   const [enabledBidServiceTypeIds, setEnabledBidServiceTypeIds] = useState<string[]>([])
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
@@ -181,6 +187,8 @@ export function HeaderGlobalSearchProvider({
         })
       } else if (r.source === 'bid') {
         bidPreview?.openBidPreview(r.id)
+      } else if (r.source === 'customer') {
+        setSnapshotCustomerId(r.id)
       } else navigate(`/estimates/${r.estimate_number}`)
       closeSearch()
     },
@@ -229,11 +237,24 @@ export function HeaderGlobalSearchProvider({
         enabledBidServiceTypeIds,
         subcontractorServiceTypeIds,
       })
+      // Client-side, RLS-scoped customer lookup. Name-only `ilike` (no `.or()`) + escapeLike so
+      // punctuation can't break the filter; failures degrade to [] so they never wipe other results.
+      const customersPromise: Promise<CustomerSearchResult[]> = Promise.resolve(
+        supabase
+          .from('customers')
+          .select('id,name,address,customer_type')
+          .ilike('name', `%${escapeLike(q)}%`)
+          .order('name', { ascending: true })
+          .limit(8),
+      )
+        .then((r) => (r.data ?? []) as CustomerSearchResult[])
+        .catch((): CustomerSearchResult[] => [])
       void Promise.all([
         supabase.rpc('search_jobs_ledger', { search_text: q }),
         supabase.rpc('search_bids_for_clock', bidsParams),
         supabase.rpc('search_estimates_for_nav', { search_text: q }),
-      ]).then(([jobsRes, bidsRes, estRes]) => {
+        customersPromise,
+      ]).then(([jobsRes, bidsRes, estRes, customers]) => {
         const jobs = (jobsRes.data ?? []) as JobSearchResult[]
         const bids = (bidsRes.data ?? []) as BidSearchResult[]
         const estimates = (estRes.data ?? []) as EstimateNavSearchResult[]
@@ -247,6 +268,13 @@ export function HeaderGlobalSearchProvider({
             title: e.title,
             customer_name: e.customer_name,
             subtitle: e.subtitle,
+          })),
+          ...customers.map((c) => ({
+            source: 'customer' as const,
+            id: c.id,
+            name: c.name,
+            address: c.address,
+            customer_type: c.customer_type,
           })),
         ]
         setResults(merged)
@@ -274,7 +302,17 @@ export function HeaderGlobalSearchProvider({
     [open, openSearch, closeSearch, query, setQuery, results, selectResult, navOverlayBackground, prefixMap],
   )
 
-  return <HeaderGlobalSearchContext.Provider value={value}>{children}</HeaderGlobalSearchContext.Provider>
+  return (
+    <HeaderGlobalSearchContext.Provider value={value}>
+      {children}
+      <CustomerSnapshotModal
+        open={snapshotCustomerId !== null}
+        customerId={snapshotCustomerId}
+        gcBuilder={null}
+        onClose={() => setSnapshotCustomerId(null)}
+      />
+    </HeaderGlobalSearchContext.Provider>
+  )
 }
 
 export function HeaderGlobalSearchOpenButton({
@@ -306,8 +344,8 @@ export function HeaderGlobalSearchOpenButton({
     <button
       ref={ref as LegacyRef<HTMLButtonElement>}
       type="button"
-      title="Search jobs, bids, estimates — ⌘K / Ctrl+K toggles"
-      aria-label="Search jobs, bids, estimates"
+      title="Search jobs, bids, estimates, customers — ⌘K / Ctrl+K toggles"
+      aria-label="Search jobs, bids, estimates, customers"
       aria-expanded={ctx.open}
       aria-haspopup="dialog"
       onClick={() => ctx.openSearch(placement)}
@@ -345,7 +383,7 @@ export function HeaderGlobalSearchNavLayer() {
     <>
       <div
         role="dialog"
-        aria-label="Search jobs, bids, estimates"
+        aria-label="Search jobs, bids, estimates, customers"
         style={{
           position: 'absolute',
           inset: 0,
@@ -365,7 +403,7 @@ export function HeaderGlobalSearchNavLayer() {
           type="search"
           value={ctx.query}
           onChange={(e) => ctx.setQuery(e.target.value)}
-          placeholder="Search jobs, bids, estimates…"
+          placeholder="Search jobs, bids, estimates, customers…"
           autoComplete="off"
           aria-label="Search query"
           style={{
@@ -408,7 +446,7 @@ export function HeaderGlobalSearchNavLayer() {
             }}
           >
             {ctx.results.map((r) => {
-              const tradeTag = serviceTypeTagForUnifiedRow(r)
+              const pill = serviceTypeTagForUnifiedRow(r) ?? customerTypePillForUnifiedRow(r)
               return (
                 <li key={`${r.source}-${r.id}`} role="option">
                   <button
@@ -428,19 +466,19 @@ export function HeaderGlobalSearchNavLayer() {
                     }}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-                      {tradeTag ? (
+                      {pill ? (
                         <span
                           style={{
                             fontSize: '0.65rem',
                             fontWeight: 700,
                             padding: '0.1rem 0.28rem',
                             borderRadius: 3,
-                            background: tradeTag.color,
+                            background: pill.color,
                             color: '#111827',
                             lineHeight: 1.2,
                           }}
                         >
-                          {tradeTag.tag}
+                          {pill.tag}
                         </span>
                       ) : null}
                       <span>{formatUnifiedResult(r, ctx.prefixMap)}</span>

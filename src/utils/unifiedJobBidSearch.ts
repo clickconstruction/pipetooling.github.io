@@ -34,6 +34,13 @@ export type EstimateNavSearchResult = {
   customer_name: string
   subtitle: string | null
 }
+/** Row from the header search's client-side `customers` query. */
+export type CustomerSearchResult = {
+  id: string
+  name: string | null
+  address: string | null
+  customer_type: string | null
+}
 export type UnifiedSearchResult =
   | {
       source: 'job'
@@ -63,6 +70,13 @@ export type UnifiedSearchResult =
       customer_name: string
       subtitle: string | null
     }
+  | {
+      source: 'customer'
+      id: string
+      name: string | null
+      address: string | null
+      customer_type: string | null
+    }
 
 export const BID_SERVICE_TYPE_TAGS: Record<string, { tag: string; color: string }> = {
   Plumbing: { tag: 'plum', color: '#e17235' },
@@ -75,10 +89,28 @@ export function getBidServiceTypeTag(serviceTypeName: string | null | undefined)
   return BID_SERVICE_TYPE_TAGS[serviceTypeName.trim()] ?? null
 }
 
-/** Trade pill for unified job/bid rows (estimates have no service type here). */
+/** Trade pill for unified job/bid rows (estimates and customers have no service type here). */
 export function serviceTypeTagForUnifiedRow(r: UnifiedSearchResult): { tag: string; color: string } | null {
-  if (r.source === 'estimate') return null
+  if (r.source === 'estimate' || r.source === 'customer') return null
   return getBidServiceTypeTag(r.service_type_name)
+}
+
+/** Customer-type pill (distinct palette from the trade pills); null for non-customer / unknown type. */
+export function customerTypePillForUnifiedRow(r: UnifiedSearchResult): { tag: string; color: string } | null {
+  if (r.source !== 'customer') return null
+  const t = (r.customer_type ?? '').toLowerCase()
+  if (t.startsWith('commercial')) return { tag: 'com', color: '#c7d2fe' }
+  if (t.startsWith('residential')) return { tag: 'res', color: '#bbf7d0' }
+  return null
+}
+
+/**
+ * Escape a user query before interpolating into a PostgREST `ilike` pattern: neutralizes LIKE
+ * wildcards (`% _`) and the `.or()` / filter delimiters (`, ( )`) so punctuation in a name can
+ * neither over-match nor 400 the request.
+ */
+export function escapeLike(s: string): string {
+  return s.replace(/[%_,()\\]/g, (m) => '\\' + m)
 }
 
 export function formatUnifiedResult(r: UnifiedSearchResult, prefixMap: LedgerPrefixMap): string {
@@ -91,6 +123,11 @@ export function formatUnifiedResult(r: UnifiedSearchResult, prefixMap: LedgerPre
     const pref = resolveBidLedgerPrefix(r.service_type_id ?? null, prefixMap)
     const prefix = formatBidLedgerNumberLabel(pref, r.bid_number)
     return `${prefix} · ${r.project_name || '—'} - ${r.address || r.customer_name || '—'}`
+  }
+  if (r.source === 'customer') {
+    const name = (r.name ?? '').trim() || '—'
+    const addr = (r.address ?? '').trim()
+    return addr ? `C · ${name} - ${addr}` : `C · ${name}`
   }
   const en = r.estimate_number
   const prefix = `E${Number.isFinite(en) ? String(en) : '—'}`
