@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react'
-import { sanitizeContractSigningHtml } from '../../lib/sanitizeContractSigningHtml'
-import { markdownSourceToSafeHtml, parseContractBodyFormat } from '../../lib/contractBodyFormat'
+import { renderContractBodyToSafeHtml } from '../../lib/renderContractBodyToSafeHtml'
 
 type ContractBodyDisplayProps = {
   format: string | null | undefined
@@ -10,37 +9,13 @@ type ContractBodyDisplayProps = {
 }
 
 export function ContractBodyDisplay({ format, bodyHtml, scrollStyles }: ContractBodyDisplayProps) {
-  const f = parseContractBodyFormat(format)
-  const raw = bodyHtml?.trim() ?? ''
-  if (!raw) return null
-
-  if (f === 'plain') {
-    return (
-      <div style={{ fontSize: '0.875rem', lineHeight: 1.5, whiteSpace: 'pre-wrap', wordBreak: 'break-word', ...scrollStyles }}>
-        {raw}
-      </div>
-    )
-  }
-
-  if (f === 'markdown') {
-    const safe = markdownSourceToSafeHtml(raw)
-    if (!safe.trim()) return null
-    return (
-      <div
-        style={{ fontSize: '0.875rem', lineHeight: 1.5, ...scrollStyles }}
-        // eslint-disable-next-line react/no-danger -- sanitized after marked + sanitizeContractSigningHtml
-        dangerouslySetInnerHTML={{ __html: safe }}
-      />
-    )
-  }
-
-  const safe = sanitizeContractSigningHtml(raw)
+  const safe = renderContractBodyToSafeHtml(bodyHtml, format)
   if (!safe.trim()) return null
 
   return (
     <div
       style={{ fontSize: '0.875rem', lineHeight: 1.5, ...scrollStyles }}
-      // eslint-disable-next-line react/no-danger -- sanitized in sanitizeContractSigningHtml (DOMParser allowlist)
+      // eslint-disable-next-line react/no-danger -- output of renderContractBodyToSafeHtml (escaped plain text / allowlist-sanitized html)
       dangerouslySetInnerHTML={{ __html: safe }}
     />
   )
