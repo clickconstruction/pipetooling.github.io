@@ -74,6 +74,7 @@ export default function ChecklistAddModal({
   const [advancedSectionOpen, setAdvancedSectionOpen] = useState(false)
   const [linksSectionOpen, setLinksSectionOpen] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const titleInputRef = useRef<HTMLTextAreaElement | null>(null)
   const [form, setForm] = useState({
     title: '',
@@ -268,7 +269,13 @@ export default function ChecklistAddModal({
 
   async function saveItem() {
     if (!authUser?.id || !modalContext) return
+    if (submitting) return
     setFormError(null)
+    const trimmedTitle = form.title.trim()
+    if (!trimmedTitle) {
+      setFormError('Enter a title.')
+      return
+    }
     if (form.assigned_to_user_ids.length === 0) {
       setFormError('Select at least one assignee.')
       return
@@ -277,44 +284,49 @@ export default function ChecklistAddModal({
       setFormError('Select at least one day of the week.')
       return
     }
-    const { data, error } = await supabase
-      .from('checklist_items')
-      .insert({
-        title: form.title,
-        links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
-        created_by_user_id: authUser.id,
-        repeat_type: form.repeat_type,
-        repeat_days_of_week: form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
-        repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
-        repeat_end_date: form.repeat_end_date || null,
-        start_date: form.start_date,
-        show_until_completed: form.show_until_completed,
-        notify_on_complete_user_id: form.notify_on_complete_user_id || null,
-        notify_creator_on_complete: form.notify_creator_on_complete,
-        reminder_time: form.reminder_time || null,
-        reminder_scope: form.reminder_time && form.reminder_scope ? form.reminder_scope : null,
-      })
-      .select('id')
-      .single()
-    if (error) {
-      setFormError(error.message)
-      return
+    setSubmitting(true)
+    try {
+      const { data, error } = await supabase
+        .from('checklist_items')
+        .insert({
+          title: trimmedTitle,
+          links: form.links.filter(Boolean).length ? form.links.filter(Boolean) : [],
+          created_by_user_id: authUser.id,
+          repeat_type: form.repeat_type,
+          repeat_days_of_week: form.repeat_type === 'day_of_week' && form.repeat_days_of_week.length ? form.repeat_days_of_week : null,
+          repeat_days_after: form.repeat_type === 'days_after_completion' ? form.repeat_days_after : null,
+          repeat_end_date: form.repeat_end_date || null,
+          start_date: form.start_date,
+          show_until_completed: form.show_until_completed,
+          notify_on_complete_user_id: form.notify_on_complete_user_id || null,
+          notify_creator_on_complete: form.notify_creator_on_complete,
+          reminder_time: form.reminder_time || null,
+          reminder_scope: form.reminder_time && form.reminder_scope ? form.reminder_scope : null,
+        })
+        .select('id')
+        .single()
+      if (error) {
+        setFormError(error.message)
+        return
+      }
+      const newId = (data as { id: string })?.id
+      if (newId) {
+        const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
+        await supabase.from('checklist_item_assignees').insert(
+          form.assigned_to_user_ids.map((uid) => ({
+            checklist_item_id: newId,
+            user_id: uid,
+            display_order: nextOrders.get(uid) ?? 1,
+          }))
+        )
+        await generateInstances(newId, form)
+      }
+      modalContext.onSaved?.()
+      modalContext.closeModal()
+      window.dispatchEvent(new CustomEvent('checklist-item-saved'))
+    } finally {
+      setSubmitting(false)
     }
-    const newId = (data as { id: string })?.id
-    if (newId) {
-      const nextOrders = await getNextDisplayOrders(form.assigned_to_user_ids)
-      await supabase.from('checklist_item_assignees').insert(
-        form.assigned_to_user_ids.map((uid) => ({
-          checklist_item_id: newId,
-          user_id: uid,
-          display_order: nextOrders.get(uid) ?? 1,
-        }))
-      )
-      await generateInstances(newId, form)
-    }
-    modalContext.onSaved?.()
-    modalContext.closeModal()
-    window.dispatchEvent(new CustomEvent('checklist-item-saved'))
   }
 
   if (!modalContext?.isOpen) return null
@@ -843,8 +855,8 @@ export default function ChecklistAddModal({
           <button type="button" onClick={() => modalContext.closeModal()} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button type="button" onClick={saveItem} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
-            Save
+          <button type="button" onClick={saveItem} disabled={submitting} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+            {submitting ? 'Saving…' : 'Save'}
           </button>
         </div>
       </div>

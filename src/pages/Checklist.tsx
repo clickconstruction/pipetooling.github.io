@@ -9,6 +9,7 @@ import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import { ChecklistItemEditModal } from '../components/ChecklistItemEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import { ChecklistTitleWithLinks } from '../components/ChecklistTitleWithLinks'
+import { compactTimeAgo } from '../lib/subcontractorLastActivityCompact'
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { ChecklistReviewInboxes } from '../components/checklist/ChecklistReviewInboxes'
@@ -2103,6 +2104,9 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
   const [muteModalTitle, setMuteModalTitle] = useState('')
   const [manageDeletePending, setManageDeletePending] = useState<{ id: string; title: string } | null>(null)
   const [manageDeleteSubmitting, setManageDeleteSubmitting] = useState(false)
+  // Per-item instance completion (Manage items are templates; completion lives on instances).
+  const [itemCompletion, setItemCompletion] = useState<Map<string, { total: number; hasIncomplete: boolean }>>(new Map())
+  const [completedOpen, setCompletedOpen] = useState(false)
 
   useEffect(() => {
     setLoading(true)
@@ -2138,7 +2142,26 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
       setError(error.message)
       return
     }
-    setItems((data ?? []) as ChecklistItem[])
+    const loaded = (data ?? []) as ChecklistItem[]
+    setItems(loaded)
+    // Derive per-item completion from instances so one-off tasks can be split Incomplete/Complete.
+    const ids = loaded.map((i) => i.id)
+    if (ids.length === 0) {
+      setItemCompletion(new Map())
+      return
+    }
+    const { data: instData } = await supabase
+      .from('checklist_instances')
+      .select('checklist_item_id, completed_at')
+      .in('checklist_item_id', ids)
+    const completion = new Map<string, { total: number; hasIncomplete: boolean }>()
+    for (const inst of (instData ?? []) as Array<{ checklist_item_id: string; completed_at: string | null }>) {
+      const cur = completion.get(inst.checklist_item_id) ?? { total: 0, hasIncomplete: false }
+      cur.total += 1
+      if (!inst.completed_at) cur.hasIncomplete = true
+      completion.set(inst.checklist_item_id, cur)
+    }
+    setItemCompletion(completion)
   }
 
   async function performDeleteChecklistItem(id: string) {
@@ -2179,6 +2202,92 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
     if (item.notify_creator_on_complete && item.created_by_user_id === authUserId) return true
     return false
   }
+
+  // "Until completed" and "Once" are one-off tasks; the day_of_week / days_after_completion
+  // types are repeating. (Mirrors the Repeat-column display logic.)
+  const isRepeating = (item: ChecklistItem): boolean =>
+    !item.show_until_completed &&
+    (item.repeat_type === 'day_of_week' || item.repeat_type === 'days_after_completion')
+  // A one-off item is complete when it has at least one instance and none are outstanding.
+  const isItemComplete = (item: ChecklistItem): boolean => {
+    const c = itemCompletion.get(item.id)
+    return !!c && c.total > 0 && !c.hasIncomplete
+  }
+
+  // Each section is sorted by created date, newest first.
+  const byCreatedDesc = (a: ChecklistItem, b: ChecklistItem) =>
+    (b.created_at ? Date.parse(b.created_at) : 0) - (a.created_at ? Date.parse(a.created_at) : 0)
+  const incompleteItems = filteredItems.filter((i) => !isRepeating(i) && !isItemComplete(i)).sort(byCreatedDesc)
+  const repeatingItems = filteredItems.filter((i) => isRepeating(i)).sort(byCreatedDesc)
+  const completeItems = filteredItems.filter((i) => !isRepeating(i) && isItemComplete(i)).sort(byCreatedDesc)
+
+  const colCount = 7 + (role === 'dev' ? 1 : 0)
+
+  type ManageRowEntry =
+    | { kind: 'header'; key: string; title: string; count: number; collapsible: boolean; color: string }
+    | { kind: 'none'; key: string }
+    | { kind: 'item'; item: ChecklistItem }
+
+  const orderedEntries: ManageRowEntry[] = []
+  if (filteredItems.length > 0) {
+    orderedEntries.push({ kind: 'header', key: 'sec-incomplete', title: 'Incomplete', count: incompleteItems.length, collapsible: false, color: '#b45309' })
+    if (incompleteItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-incomplete' })
+    else for (const item of incompleteItems) orderedEntries.push({ kind: 'item', item })
+
+    orderedEntries.push({ kind: 'header', key: 'sec-repeating', title: 'Repeating', count: repeatingItems.length, collapsible: false, color: '#1d4ed8' })
+    if (repeatingItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-repeating' })
+    else for (const item of repeatingItems) orderedEntries.push({ kind: 'item', item })
+
+    orderedEntries.push({ kind: 'header', key: 'sec-complete', title: 'Complete', count: completeItems.length, collapsible: true, color: '#15803d' })
+    if (completedOpen) {
+      if (completeItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-complete' })
+      else for (const item of completeItems) orderedEntries.push({ kind: 'item', item })
+    }
+  }
+
+  const renderSectionHeaderRow = (entry: { key: string; title: string; count: number; collapsible: boolean; color: string }) => {
+    const label = (
+      <>
+        {entry.collapsible && <span aria-hidden style={{ marginRight: 6 }}>{completedOpen ? '▼' : '▶'}</span>}
+        {entry.title} <span style={{ color: '#9ca3af', fontWeight: 400 }}>({entry.count})</span>
+      </>
+    )
+    const cellStyle = {
+      padding: '0.5rem 0.75rem',
+      background: '#f9fafb',
+      borderTop: '1px solid #e5e7eb',
+      borderBottom: '1px solid #e5e7eb',
+      fontWeight: 700,
+      fontSize: '0.8125rem',
+      color: entry.color,
+      textTransform: 'uppercase' as const,
+      letterSpacing: '0.03em',
+    }
+    return (
+      <tr key={entry.key}>
+        <td colSpan={colCount} style={cellStyle}>
+          {entry.collapsible ? (
+            <button
+              type="button"
+              onClick={() => setCompletedOpen((o) => !o)}
+              aria-expanded={completedOpen}
+              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', textTransform: 'inherit', letterSpacing: 'inherit' }}
+            >
+              {label}
+            </button>
+          ) : (
+            label
+          )}
+        </td>
+      </tr>
+    )
+  }
+
+  const renderNoneRow = (key: string) => (
+    <tr key={key}>
+      <td colSpan={colCount} style={{ padding: '0.5rem 0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>None</td>
+    </tr>
+  )
 
   if (loading) return <p>Loading…</p>
 
@@ -2224,57 +2333,29 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+            <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', width: '1%' }}></th>
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Title</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Assigned to</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Repeat</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Start</th>
+            <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Created</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Notify</th>
             {role === 'dev' && <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Remind</th>}
-            <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}></th>
           </tr>
         </thead>
         <tbody>
-          {filteredItems.map((item) => (
+          {orderedEntries.map((entry) => {
+            if (entry.kind === 'header') return renderSectionHeaderRow(entry)
+            if (entry.kind === 'none') return renderNoneRow(entry.key)
+            const item = entry.item
+            return (
             <tr key={item.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-              <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={item.title} links={item.links} /></td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
-                {(item.checklist_item_assignees ?? []).map((a) => a.users?.name || a.users?.email || 'Unknown').filter(Boolean).join(', ') || '—'}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
-                {item.show_until_completed
-                  ? 'Until completed'
-                  : item.repeat_type === 'day_of_week'
-                    ? `Weekly: ${(item.repeat_days_of_week ?? []).length ? (item.repeat_days_of_week ?? []).map((d) => DAYS[d]?.slice(0, 3) ?? '').filter(Boolean).join(', ') : '—'}`
-                    : item.repeat_type === 'days_after_completion'
-                      ? `${item.repeat_days_after} days after completion`
-                      : 'Once'}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
-                {(() => {
-                  const d = new Date(item.start_date + 'T12:00:00')
-                  const oneYearAgo = new Date()
-                  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
-                  return d >= oneYearAgo
-                    ? `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-                    : String(d.getFullYear())
-                })()}
-              </td>
-              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
-                {item.notify_creator_on_complete && 'Creator '}
-                {item.notify_on_complete_user_id && '+1 user'}
-              </td>
-              {role === 'dev' && (
-                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
-                  {item.reminder_time
-                    ? `${item.reminder_time.slice(0, 5)} (${item.reminder_scope === 'today_and_overdue' ? 'due date + daily until done' : 'due date'})`
-                    : '—'}
-                </td>
-              )}
               <td
                 style={{
                   padding: '0.5rem 0.75rem',
                   verticalAlign: 'middle',
                   whiteSpace: 'nowrap',
+                  width: '1%',
                 }}
               >
                 <div
@@ -2282,7 +2363,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                     display: 'flex',
                     flexDirection: 'row',
                     alignItems: 'center',
-                    justifyContent: 'flex-end',
+                    justifyContent: 'flex-start',
                     gap: '0.25rem',
                     flexWrap: 'nowrap',
                   }}
@@ -2320,8 +2401,46 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                   </button>
                 </div>
               </td>
+              <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={item.title} links={item.links} /></td>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                {(item.checklist_item_assignees ?? []).map((a) => a.users?.name || a.users?.email || 'Unknown').filter(Boolean).join(', ') || '—'}
+              </td>
+              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
+                {item.show_until_completed
+                  ? 'Until completed'
+                  : item.repeat_type === 'day_of_week'
+                    ? `Weekly: ${(item.repeat_days_of_week ?? []).length ? (item.repeat_days_of_week ?? []).map((d) => DAYS[d]?.slice(0, 3) ?? '').filter(Boolean).join(', ') : '—'}`
+                    : item.repeat_type === 'days_after_completion'
+                      ? `${item.repeat_days_after} days after completion`
+                      : 'Once'}
+              </td>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                {(() => {
+                  const d = new Date(item.start_date + 'T12:00:00')
+                  const oneYearAgo = new Date()
+                  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+                  return d >= oneYearAgo
+                    ? `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                    : String(d.getFullYear())
+                })()}
+              </td>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#6b7280' }}>
+                {item.created_at ? compactTimeAgo(item.created_at) : '—'}
+              </td>
+              <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
+                {item.notify_creator_on_complete && 'Creator '}
+                {item.notify_on_complete_user_id && '+1 user'}
+              </td>
+              {role === 'dev' && (
+                <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
+                  {item.reminder_time
+                    ? `${item.reminder_time.slice(0, 5)} (${item.reminder_scope === 'today_and_overdue' ? 'due date + daily until done' : 'due date'})`
+                    : '—'}
+                </td>
+              )}
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
       {items.length === 0 && <p style={{ color: '#6b7280' }}>No checklist items yet.</p>}
