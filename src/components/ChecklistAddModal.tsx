@@ -210,9 +210,20 @@ export default function ChecklistAddModal({
   }, [modalContext?.isOpen, form.title])
 
   useLayoutEffect(() => {
-    if (!modalContext?.isOpen) return
-    if (!canManage) return
-    titleInputRef.current?.focus({ preventScroll: true })
+    if (!modalContext?.isOpen || !canManage) return
+    // Focus immediately, then retry across the next two frames so it still lands when the
+    // field mounts/paints late — e.g. the slower async standalone-PWA open (auth → role → users).
+    const focusTitle = () => titleInputRef.current?.focus({ preventScroll: true })
+    focusTitle()
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      focusTitle()
+      raf2 = requestAnimationFrame(focusTitle)
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
+    }
   }, [modalContext?.isOpen, canManage])
 
   async function generateInstances(itemId: string, item: typeof form) {
@@ -355,6 +366,7 @@ export default function ChecklistAddModal({
             <div>
               <textarea
                 ref={titleInputRef}
+                autoFocus
                 value={form.title}
                 onChange={(e) => {
                   const t = e.target.value.replace(/\n/g, ' ')
