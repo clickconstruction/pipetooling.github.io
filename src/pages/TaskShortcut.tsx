@@ -10,6 +10,8 @@ import { isStandalonePwa, markTaskShortcutInstalled, POST_LOGIN_REDIRECT_KEY } f
 
 const ADD_TASK_ICON_HREF = '/icons/add-task-180.png'
 const INSTALL_PAGE_HREF = '/task-install.html'
+// Same photo backdrop as the sign-in page (see authPublicLanding.css).
+const AUTH_BG_HREF = '/auth/pipetexas-bg.jpg'
 
 function CheckGlyph() {
   return (
@@ -55,9 +57,23 @@ function StandaloneCreateInner() {
 
   return (
     <>
+      {/* Sign-in photo backdrop (matches the sign-in page), behind both the launcher and modal. */}
+      <div
+        aria-hidden
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 0,
+          background: `url('${AUTH_BG_HREF}') center center / cover no-repeat`,
+        }}
+      >
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)' }} />
+      </div>
       {!isOpen && (
         <div
           style={{
+            position: 'relative',
+            zIndex: 1,
             minHeight: '100vh',
             display: 'flex',
             flexDirection: 'column',
@@ -65,7 +81,6 @@ function StandaloneCreateInner() {
             justifyContent: 'center',
             padding: '2rem 1.25rem',
             textAlign: 'center',
-            background: '#fff7ed',
           }}
         >
           <img
@@ -73,22 +88,43 @@ function StandaloneCreateInner() {
             alt=""
             width={72}
             height={72}
-            style={{ borderRadius: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.15)' }}
+            style={{ borderRadius: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.25)' }}
           />
           {justSaved ? (
             <>
               <div style={{ marginTop: '1rem' }}>
                 <CheckGlyph />
               </div>
-              <h1 style={{ fontSize: '1.3rem', margin: '0.5rem 0 0.25rem', color: '#7c2d12' }}>
+              <h1
+                style={{
+                  fontSize: '1.3rem',
+                  margin: '0.5rem 0 0.25rem',
+                  color: '#fff',
+                  textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+                }}
+              >
                 Task added
               </h1>
-              <p style={{ color: '#9a3412', fontSize: '0.95rem', margin: '0 0 1.25rem' }}>
+              <p
+                style={{
+                  color: 'rgba(255,255,255,0.9)',
+                  fontSize: '0.95rem',
+                  margin: '0 0 1.25rem',
+                  textShadow: '0 1px 8px rgba(0,0,0,0.5)',
+                }}
+              >
                 Your task was created.
               </p>
             </>
           ) : (
-            <h1 style={{ fontSize: '1.3rem', margin: '1rem 0 1.25rem', color: '#7c2d12' }}>
+            <h1
+              style={{
+                fontSize: '1.3rem',
+                margin: '1rem 0 1.25rem',
+                color: '#fff',
+                textShadow: '0 2px 12px rgba(0,0,0,0.5)',
+              }}
+            >
               Add a Task
             </h1>
           )}
@@ -110,7 +146,7 @@ function StandaloneCreateInner() {
           </button>
         </div>
       )}
-      <ChecklistAddModal />
+      <ChecklistAddModal overlayBackground="transparent" />
     </>
   )
 }

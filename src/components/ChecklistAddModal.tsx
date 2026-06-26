@@ -61,7 +61,9 @@ type UserRole =
   | 'estimator'
   | 'primary'
 
-export default function ChecklistAddModal() {
+export default function ChecklistAddModal({
+  overlayBackground = 'rgba(0,0,0,0.5)',
+}: { overlayBackground?: string } = {}) {
   const { user: authUser } = useAuth()
   const navigate = useNavigate()
   const modalContext = useChecklistAddModal()
@@ -313,7 +315,7 @@ export default function ChecklistAddModal() {
       role="dialog"
       aria-modal="true"
       aria-labelledby="checklist-add-modal-title"
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+      style={{ position: 'fixed', inset: 0, background: overlayBackground, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
       onClick={() => modalContext.closeModal()}
     >
       <div
