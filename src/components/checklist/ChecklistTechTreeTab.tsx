@@ -1116,7 +1116,10 @@ export function ChecklistTechTreeTab({
   const layoutCacheRef = useRef<{ key: string; nodes: Node[]; edges: Edge[] } | null>(null)
   const rfInstanceRef = useRef<ReactFlowInstance | null>(null)
   const canvasShellRef = useRef<HTMLDivElement | null>(null)
-  const [isCanvasFullscreen, setIsCanvasFullscreen] = useState(false)
+  // Native (DOM Fullscreen API) state vs. a CSS fallback for platforms without it (e.g. iPhone Safari).
+  const [isDomCanvasFullscreen, setIsDomCanvasFullscreen] = useState(false)
+  const [cssFullscreen, setCssFullscreen] = useState(false)
+  const isCanvasFullscreen = isDomCanvasFullscreen || cssFullscreen
   /** Fullscreen modals must portal into the roadmap shell; set after ref is attached (see useLayoutEffect). */
   const [roadmapModalPortalHost, setRoadmapModalPortalHost] = useState<HTMLElement | null>(null)
   const canUseDomFullscreen = useMemo(() => isDomFullscreenEnabled(), [])
@@ -1718,33 +1721,47 @@ export function ChecklistTechTreeTab({
     [reorderMode, canEditStructure, tasks, groups, load, setError],
   )
 
-  const exitCanvasFullscreen = useCallback(() => {
-    void exitDomFullscreen()
+  const triggerCanvasResize = useCallback(() => {
+    // React Flow v12 has no instance.resize(); a host resize makes the flow re-measure the pane.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+    })
   }, [])
+
+  const exitCanvasFullscreen = useCallback(() => {
+    setCssFullscreen(false)
+    void exitDomFullscreen()
+    triggerCanvasResize()
+  }, [triggerCanvasResize])
 
   const enterCanvasFullscreen = useCallback(() => {
     const el = canvasShellRef.current
     if (!el) return
     setError(null)
-    void (async () => {
-      try {
-        await requestElementFullscreen(el)
-      } catch (e) {
-        setError(e instanceof Error ? e.message : 'Full screen is not available in this browser')
-      }
-    })()
-  }, [setError])
+    if (canUseDomFullscreen) {
+      void (async () => {
+        try {
+          await requestElementFullscreen(el)
+        } catch {
+          // Native fullscreen failed — fall back to the CSS overlay.
+          setCssFullscreen(true)
+          triggerCanvasResize()
+        }
+      })()
+    } else {
+      // No DOM Fullscreen API (e.g. iPhone Safari): use the CSS fullscreen overlay.
+      setCssFullscreen(true)
+      triggerCanvasResize()
+    }
+  }, [setError, canUseDomFullscreen, triggerCanvasResize])
 
   useEffect(() => {
     const sync = () => {
       const shell = canvasShellRef.current
-      setIsCanvasFullscreen(!!(shell && getCurrentFullscreenElement() === shell))
-      // React Flow v12: no instance.resize(); trigger host resize so the flow re-measures the pane.
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.dispatchEvent(new Event('resize'))
-        })
-      })
+      setIsDomCanvasFullscreen(!!(shell && getCurrentFullscreenElement() === shell))
+      triggerCanvasResize()
     }
     document.addEventListener('fullscreenchange', sync)
     document.addEventListener('webkitfullscreenchange', sync)
@@ -1752,7 +1769,7 @@ export function ChecklistTechTreeTab({
       document.removeEventListener('fullscreenchange', sync)
       document.removeEventListener('webkitfullscreenchange', sync)
     }
-  }, [])
+  }, [triggerCanvasResize])
 
   useLayoutEffect(() => {
     if (isCanvasFullscreen) {
@@ -1761,6 +1778,24 @@ export function ChecklistTechTreeTab({
       setRoadmapModalPortalHost(null)
     }
   }, [isCanvasFullscreen])
+
+  // CSS fullscreen fallback: lock body scroll and allow Esc to exit (no native handling).
+  useEffect(() => {
+    if (!cssFullscreen) return
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCssFullscreen(false)
+        triggerCanvasResize()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = prevOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [cssFullscreen, triggerCanvasResize])
 
   const removeEdge = async (id: string) => {
     if (!canEditStructure) return
@@ -1919,7 +1954,7 @@ export function ChecklistTechTreeTab({
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
+        gap: 8,
         flex: 1,
         minHeight: 0,
       }}
@@ -1975,7 +2010,20 @@ export function ChecklistTechTreeTab({
             width: '100%',
             boxSizing: 'border-box',
             ...(isCanvasFullscreen
-              ? { height: '100dvh', minHeight: '100dvh', flex: 'none' as const }
+              ? {
+                  height: '100dvh',
+                  minHeight: '100dvh',
+                  flex: 'none' as const,
+                  // CSS fallback (no DOM Fullscreen API): cover the viewport ourselves.
+                  ...(cssFullscreen
+                    ? {
+                        position: 'fixed' as const,
+                        inset: 0,
+                        width: '100vw',
+                        zIndex: 99999,
+                      }
+                    : null),
+                }
               : { flex: 1, minHeight: 280 }),
             border: isCanvasFullscreen ? 'none' : '1px solid #e2e8f0',
             borderRadius: isCanvasFullscreen ? 0 : 8,
@@ -2025,7 +2073,7 @@ export function ChecklistTechTreeTab({
               <ChecklistTechTreeMapActionIconButtons
                 layout="corner"
                 mapCanvasFloatButtonStyle={mapCanvasFloatButtonStyle}
-                canUseDomFullscreen={canUseDomFullscreen}
+                canEnterFullscreen={true}
                 isCanvasFullscreen={isCanvasFullscreen}
                 onEnterCanvasFullscreen={enterCanvasFullscreen}
                 onOrganize={handleOrganize}
@@ -2136,7 +2184,7 @@ export function ChecklistTechTreeTab({
                           <ChecklistTechTreeMapActionIconButtons
                             layout="header"
                             mapCanvasFloatButtonStyle={mapCanvasFloatButtonStyle}
-                            canUseDomFullscreen={canUseDomFullscreen}
+                            canEnterFullscreen={true}
                             isCanvasFullscreen={isCanvasFullscreen}
                             onEnterCanvasFullscreen={enterCanvasFullscreen}
                             onOrganize={handleOrganize}

@@ -1352,6 +1352,13 @@ body.my-time-boundary-dragging {
   outline-offset: 2px;
 }
 
+/* Checklist · Roadmap: React Flow v12 doesn't lock the pane's touch-action, so on touch
+   devices a one-finger drag is consumed by the browser as a page gesture and the canvas
+   never pans/zooms. Locking it to none hands the gesture to React Flow (pan + pinch-zoom). */
+.checklistTechTreeFlowClip .react-flow__pane {
+  touch-action: none;
+}
+
 /* Checklist · Roadmap: tech tree graph full screen (Fill Display API) */
 .checklistTechTreeCanvasShell:fullscreen {
   width: 100%;
