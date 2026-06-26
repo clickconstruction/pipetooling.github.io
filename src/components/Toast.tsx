@@ -19,6 +19,8 @@ interface ToastProps {
 
 const MARGIN = 8
 const MAX_WIDTH_PX = 400
+/** Fallback corner-toast top when there is no app header (login / public pages): 1rem. */
+const CORNER_TOP_FALLBACK_PX = 16
 const Z_CORNER = 9999
 const Z_CENTER_BACKDROP = 10000
 const Z_CENTER_CARD = 10001
@@ -85,6 +87,26 @@ export function Toast({
   )
 
   const anchorKey = anchor ? `${anchor.clientX},${anchor.clientY}` : ''
+
+  // Corner toasts sit top-right at z-index 9999 — above the app header (z-50).
+  // Offset them below the header so a toast can never cover header nav controls
+  // (Map / Calendar / Settings). Measured from the real header (.appNavChrome)
+  // so it adapts to mobile safe-area / impersonation-banner heights; falls back
+  // to 1rem on pages without a header. When scrolled (header not at top), the
+  // clamp keeps the toast near the top edge, which the header no longer occupies.
+  const isCorner = !anchor && placement === 'corner'
+  const [cornerTopPx, setCornerTopPx] = useState<number>(CORNER_TOP_FALLBACK_PX)
+  useLayoutEffect(() => {
+    if (!isCorner || typeof document === 'undefined') return
+    const measure = () => {
+      const navEl = document.querySelector('.appNavChrome')
+      const bottom = navEl ? navEl.getBoundingClientRect().bottom : 0
+      setCornerTopPx(Math.max(Math.round(bottom) + MARGIN, CORNER_TOP_FALLBACK_PX))
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [isCorner])
 
   useLayoutEffect(() => {
     if (!anchor) {
@@ -234,7 +256,7 @@ export function Toast({
 
   const cornerStyle = {
     position: 'fixed' as const,
-    top: '1rem',
+    top: cornerTopPx,
     right: '1rem',
     zIndex: Z_CORNER,
     animation: 'slideIn 0.3s ease-out',
