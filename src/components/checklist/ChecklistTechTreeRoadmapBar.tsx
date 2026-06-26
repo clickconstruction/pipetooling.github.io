@@ -28,7 +28,6 @@ export function ChecklistTechTreeRoadmapBar({
         flexWrap: 'wrap',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 12,
         width: '100%',
       }}
     >

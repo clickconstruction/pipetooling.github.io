@@ -5,7 +5,8 @@ export type ChecklistTechTreeMapActionIconLayout = 'corner' | 'header'
 type Props = {
   layout: ChecklistTechTreeMapActionIconLayout
   mapCanvasFloatButtonStyle: CSSProperties
-  canUseDomFullscreen: boolean
+  /** Whether the canvas can go full screen (DOM Fullscreen API or the CSS fallback). */
+  canEnterFullscreen: boolean
   isCanvasFullscreen: boolean
   onEnterCanvasFullscreen: () => void
   onOrganize: () => void
@@ -46,7 +47,7 @@ const mapCanvasEnterFullscreenBareButtonStyle: CSSProperties = {
 }
 
 export function ChecklistTechTreeMapActionIconButtons(p: Props) {
-  const showEnterFullscreen = p.layout === 'corner' && p.canUseDomFullscreen && !p.isCanvasFullscreen
+  const showEnterFullscreen = p.layout === 'corner' && p.canEnterFullscreen && !p.isCanvasFullscreen
   const showLinksButton =
     p.onOpenLinksModal != null && (p.linksEdgeCount ?? 0) > 0
 
