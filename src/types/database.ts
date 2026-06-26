@@ -11508,6 +11508,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      next_job_number_suggestion: {
+        Args: never
+        Returns: string
+      }
       next_numeric_hcp_suggestion_for_master: {
         Args: { p_master_user_id: string }
         Returns: string
