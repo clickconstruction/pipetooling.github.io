@@ -5,6 +5,7 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { isIOSDevice } from '../../lib/iosPwa'
 import PasswordInput from '../PasswordInput'
 
 /** Structural shape of usePushNotifications() result (only the fields this tab reads). */
@@ -149,6 +150,20 @@ export default function SettingsAccountTab({
           </button>
         </form>
       </div>
+
+      {isIOSDevice() && (
+        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Quick-Add Task icon</h2>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            Add a one-tap <strong>Add Task</strong> icon to your iPhone or iPad Home Screen that
+            jumps straight to creating a checklist item. Open{' '}
+            <a href="/task" style={{ color: '#2563eb', fontWeight: 500 }}>
+              Install Quick-Add Task icon
+            </a>{' '}
+            and follow the steps in Safari.
+          </p>
+        </div>
+      )}
 
       <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Push Notifications</h2>

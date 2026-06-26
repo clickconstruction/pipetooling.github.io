@@ -37,6 +37,7 @@ import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import ContractAccept from './pages/ContractAccept'
 import ContractBookPreview from './pages/ContractBookPreview'
+import TaskShortcut from './pages/TaskShortcut'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
@@ -153,6 +154,7 @@ function AppContent() {
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
+        <Route path="/task" element={<TaskShortcut />} />
         <Route path="/estimate/accept" element={<EstimateAccept />} />
         <Route path="/contract/accept" element={<ContractAccept />} />
         <Route path="/estimate/terms" element={<EstimatePublicTerms />} />
