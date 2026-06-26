@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useForceReload } from '../contexts/ForceReloadContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
+import AddTaskShortcutBanner from './AddTaskShortcutBanner'
+import { consumePendingOpenAddTask } from '../lib/iosPwa'
 import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { useEstimatorTaskModal } from '../contexts/EstimatorTaskModalContext'
 import ChecklistAddModal from './ChecklistAddModal'
@@ -116,6 +118,24 @@ export default function Layout() {
   const dispatchTaskModal = useDispatchTaskModal()
   const estimatorTaskModal = useEstimatorTaskModal()
   const dashboardPrefetchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Open the Add Task modal when launched via the /task home-screen shortcut (intent persisted
+  // in localStorage so it survives the sign-in hard reload) or a ?addTask=1 deep link.
+  const addTaskOpenHandledRef = useRef(false)
+  useEffect(() => {
+    if (addTaskOpenHandledRef.current) return
+    if (!checklistAddModal) return
+    const params = new URLSearchParams(location.search)
+    const fromParam = params.get('addTask') === '1'
+    const fromFlag = consumePendingOpenAddTask()
+    if (!fromParam && !fromFlag) return
+    addTaskOpenHandledRef.current = true
+    checklistAddModal.openAddModal()
+    if (fromParam) {
+      params.delete('addTask')
+      const qs = params.toString()
+      navigate({ pathname: location.pathname, search: qs ? `?${qs}` : '' }, { replace: true })
+    }
+  }, [checklistAddModal, location.search, location.pathname, navigate])
   const headerSearchEligible =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
   const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : '#ffffff'
@@ -516,6 +536,7 @@ export default function Layout() {
         style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
+      <AddTaskShortcutBanner role={role} />
       <div className="appNavChrome">
       <nav
         className="appNav"
