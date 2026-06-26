@@ -157,20 +157,6 @@ export default function Checklist() {
         >
           History
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('roadmap')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'roadmap')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'roadmap')}
-        >
-          Roadmap
-        </button>
         {canManageChecklists && (
           <>
             <button
@@ -203,6 +189,20 @@ export default function Checklist() {
             </button>
           </>
         )}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('roadmap')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'roadmap')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'roadmap')}
+        >
+          Roadmap
+        </button>
         <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Checklist</h1>
       </div>
 
