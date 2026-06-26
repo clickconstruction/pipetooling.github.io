@@ -85,15 +85,29 @@ export function buildContractBookPreviewHtml(entry: ContractBookExportEntry): st
 /**
  * Open a Contract Book entry as a full-page preview in a new browser tab.
  *
- * The generated document is fully self-contained: its embedded inline script
- * wires the Download button to save the entry as a rich-text (.doc) document,
- * so nothing here depends on the opener after the tab is written. Mirrors the
- * `openPayStubWindow` side-effect pattern. No-op if the popup is blocked.
+ * Navigates the new tab to a `blob:` URL of the self-contained preview document
+ * rather than `window.open('') + document.write`. The latter leaves the tab on
+ * the special `about:blank` "initial empty document", and Chromium-based
+ * browsers (Chrome, Brave) restrict downloads — and sometimes inline-script
+ * execution — initiated from it, which broke the Download button for some
+ * users. A `blob:` document loads as a real, same-origin navigation, so the
+ * address bar shows a real URL, the embedded inline script runs, and the
+ * Download button works. The document is self-contained (it carries the
+ * rich-text payload inline), so nothing depends on the opener afterward.
+ *
+ * No-op if the popup is blocked. Mirrors the `openPayStubWindow` pattern.
  */
 export function openContractBookEntryPreview(entry: ContractBookExportEntry): void {
-  const win = window.open('', '_blank')
-  if (!win) return
-  win.document.write(buildContractBookPreviewHtml(entry))
-  win.document.close()
+  const html = buildContractBookPreviewHtml(entry)
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }))
+  const win = window.open(url, '_blank')
+  if (!win) {
+    // Popup blocked — free the object URL we won't use.
+    URL.revokeObjectURL(url)
+    return
+  }
   win.focus()
+  // The tab has the document loaded well before this fires; revoke then so a
+  // reload still works in the meantime and we don't leak the object URL.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
 }
