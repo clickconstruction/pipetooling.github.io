@@ -36,6 +36,7 @@ const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaf
 import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import ContractAccept from './pages/ContractAccept'
+import ContractBookPreview from './pages/ContractBookPreview'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
@@ -160,6 +161,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <EstimateAcceptStaffPreview />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/contract/book-preview"
+          element={
+            <ProtectedRoute>
+              <ContractBookPreview />
             </ProtectedRoute>
           }
         />
