@@ -1474,6 +1474,21 @@ export default function JobFormModal({
 
         if (mode === 'new') {
           resetNewForm(newJobProjectId)
+          // Offer the next global job number (highest numeric HCP-or-C# + 1) as the
+          // default C#, editable. Runs async; only fills if still mounted.
+          void (async () => {
+            try {
+              const suggestion = await withSupabaseRetry(
+                async () => await supabase.rpc('next_job_number_suggestion'),
+                'next job number suggestion',
+              )
+              if (!cancelled && typeof suggestion === 'string' && suggestion.length > 0) {
+                setClickNumber(suggestion)
+              }
+            } catch {
+              /* leave C# blank if the suggestion can't be fetched */
+            }
+          })()
           const meSt = (meRow as MeServiceTypeColumns | null) ?? null
           const vis = visibleServiceTypesForJobForm(allServiceTypes, meSt)
           const defId = pickDefaultServiceTypeId(vis) ?? ''
