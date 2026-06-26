@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../hooks/useAuth'
 import { showHeaderTaskChecklistButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { shouldShowAddTaskBanner, markAddTaskBannerDismissed } from '../lib/iosPwa'
+
+const INSTALL_PAGE_HREF = '/task-install.html'
 
 /**
  * Slim, dismissible offer shown only to task-capable users browsing in iOS Safari (not in the
@@ -10,7 +11,6 @@ import { shouldShowAddTaskBanner, markAddTaskBannerDismissed } from '../lib/iosP
  * routes to the /task install helper. Dismissal is remembered in localStorage.
  */
 export default function AddTaskShortcutBanner({ role }: { role: UserRole | null }) {
-  const navigate = useNavigate()
   const [visible, setVisible] = useState(
     () => showHeaderTaskChecklistButton(role) && shouldShowAddTaskBanner()
   )
@@ -51,7 +51,9 @@ export default function AddTaskShortcutBanner({ role }: { role: UserRole | null 
       </span>
       <button
         type="button"
-        onClick={() => navigate('/task')}
+        onClick={() => {
+          window.location.href = INSTALL_PAGE_HREF
+        }}
         style={{
           padding: '0.3rem 0.75rem',
           background: '#f97316',

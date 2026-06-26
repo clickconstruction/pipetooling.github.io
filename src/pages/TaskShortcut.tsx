@@ -6,102 +6,10 @@ import {
   useChecklistAddModal,
 } from '../contexts/ChecklistAddModalContext'
 import ChecklistAddModal from '../components/ChecklistAddModal'
-import {
-  isStandalonePwa,
-  isIOSSafariBrowser,
-  markTaskShortcutInstalled,
-  setPendingOpenAddTask,
-} from '../lib/iosPwa'
+import { isStandalonePwa, markTaskShortcutInstalled, POST_LOGIN_REDIRECT_KEY } from '../lib/iosPwa'
 
 const ADD_TASK_ICON_HREF = '/icons/add-task-180.png'
-const ADD_TASK_MANIFEST_HREF = '/add-task.webmanifest'
-
-/**
- * Present the distinct icon / title / manifest that iOS captures at "Add to Home Screen" time,
- * so the new webclip launches at /task (its own start_url) with the orange "Add Task" identity
- * rather than the main app. Returns a restore function that puts the original <head> back on
- * unmount (so adding the main app icon later is unaffected).
- */
-function applyAddTaskInstallMeta(): () => void {
-  const head = document.head
-  const prevTitle = document.title
-
-  // Temporarily remove existing apple-touch-icon links so iOS uses ours.
-  const existingIcons = Array.from(
-    head.querySelectorAll<HTMLLinkElement>('link[rel="apple-touch-icon"]')
-  )
-  existingIcons.forEach((el) => el.remove())
-
-  // Point the manifest at the Add Task manifest (start_url:/task). On modern iOS the home-screen
-  // app uses the manifest's start_url, so without this it would launch at "/" instead of /task.
-  let manifestLink = head.querySelector<HTMLLinkElement>('link[rel="manifest"]')
-  let createdManifest = false
-  let prevManifestHref: string | null = null
-  if (!manifestLink) {
-    manifestLink = document.createElement('link')
-    manifestLink.setAttribute('rel', 'manifest')
-    head.appendChild(manifestLink)
-    createdManifest = true
-  } else {
-    prevManifestHref = manifestLink.getAttribute('href')
-  }
-  manifestLink.setAttribute('href', ADD_TASK_MANIFEST_HREF)
-
-  const created: Element[] = []
-  const addLink = (rel: string, href: string, sizes: string) => {
-    const el = document.createElement('link')
-    el.setAttribute('rel', rel)
-    el.setAttribute('href', href)
-    el.setAttribute('sizes', sizes)
-    head.appendChild(el)
-    created.push(el)
-  }
-  const addMeta = (name: string, content: string) => {
-    const el = document.createElement('meta')
-    el.setAttribute('name', name)
-    el.setAttribute('content', content)
-    head.appendChild(el)
-    created.push(el)
-  }
-
-  addLink('apple-touch-icon', ADD_TASK_ICON_HREF, '180x180')
-  addMeta('apple-mobile-web-app-title', 'Add Task')
-  addMeta('apple-mobile-web-app-capable', 'yes')
-  document.title = 'Add Task'
-
-  return () => {
-    document.title = prevTitle
-    created.forEach((el) => el.remove())
-    existingIcons.forEach((el) => head.appendChild(el))
-    if (createdManifest) {
-      manifestLink?.remove()
-    } else if (manifestLink && prevManifestHref != null) {
-      manifestLink.setAttribute('href', prevManifestHref)
-    }
-  }
-}
-
-function ShareGlyph() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 24 24"
-      width="1em"
-      height="1em"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-      style={{ verticalAlign: '-0.15em' }}
-    >
-      <path d="M12 16V3" />
-      <path d="M8 7l4-4 4 4" />
-      <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
-    </svg>
-  )
-}
+const INSTALL_PAGE_HREF = '/task-install.html'
 
 function CheckGlyph() {
   return (
@@ -216,120 +124,41 @@ function StandaloneCreateTask() {
 }
 
 /**
- * Public landing for the "Add Task" home-screen shortcut.
+ * The Add Task icon's start_url (`/task`).
  * - Launched from the icon (standalone) + signed in: render the dedicated task-only create page.
- * - Launched standalone but signed out: fall back to a one-time sign-in, then open the modal
- *   over the app (the persisted intent flag drives Layout).
- * - Viewed in iOS Safari: present the distinct icon/title/manifest + Add-to-Home-Screen steps.
- * - Anywhere else: explain that the shortcut is for iPhone/iPad Safari.
+ * - Launched standalone but signed out (the webclip has its own session): send to sign-in, then
+ *   return here (POST_LOGIN_REDIRECT_KEY) so they land on the dedicated page, not the dashboard.
+ * - Opened in a browser instead of the icon: this URL is the launch target, not the installer —
+ *   redirect to the static install page (/task-install.html) which carries the Add Task manifest.
  */
 export default function TaskShortcut() {
   const navigate = useNavigate()
   const { user, loading } = useAuth()
-  const [surface, setSurface] = useState<'pending' | 'standalone' | 'ios-install' | 'other'>(
-    'pending'
-  )
+  const [surface, setSurface] = useState<'pending' | 'standalone'>('pending')
 
-  // Decide the surface once (independent of auth so the install meta isn't re-applied on changes).
   useEffect(() => {
     if (isStandalonePwa()) {
       markTaskShortcutInstalled()
       setSurface('standalone')
       return
     }
-    if (isIOSSafariBrowser()) {
-      setSurface('ios-install')
-      return applyAddTaskInstallMeta()
-    }
-    setSurface('other')
+    // Visited in a browser tab: this is the launch target, not the installer.
+    window.location.replace(INSTALL_PAGE_HREF)
   }, [])
 
-  // Standalone launch with no session in this webclip: fall back to sign-in + modal over the app.
+  // Standalone launch with no session in this webclip: sign in, then come back to /task.
   useEffect(() => {
-    if (surface !== 'standalone' || loading) return
-    if (!user) {
-      setPendingOpenAddTask()
-      navigate('/dashboard', { replace: true })
+    if (surface !== 'standalone' || loading || user) return
+    try {
+      localStorage.setItem(POST_LOGIN_REDIRECT_KEY, '/task')
+    } catch {
+      /* ignore */
     }
+    navigate('/sign-in', { replace: true })
   }, [surface, user, loading, navigate])
 
-  if (surface === 'standalone') {
-    if (loading || !user) {
-      return <div style={{ padding: '2rem', textAlign: 'center' }}>Opening…</div>
-    }
+  if (surface === 'standalone' && user && !loading) {
     return <StandaloneCreateTask />
   }
-
-  if (surface === 'pending') {
-    return <div style={{ padding: '2rem', textAlign: 'center' }}>Opening…</div>
-  }
-
-  return (
-    <div style={{ maxWidth: 420, margin: '0 auto', padding: '2rem 1.25rem', textAlign: 'center' }}>
-      <img
-        src={ADD_TASK_ICON_HREF}
-        alt="Add Task icon"
-        width={88}
-        height={88}
-        style={{ borderRadius: 20, boxShadow: '0 2px 10px rgba(0,0,0,0.15)' }}
-      />
-      <h1 style={{ fontSize: '1.35rem', margin: '1rem 0 0.5rem' }}>Add Task to your Home Screen</h1>
-
-      {surface === 'ios-install' ? (
-        <>
-          <p style={{ color: '#4b5563', fontSize: '0.95rem', lineHeight: 1.5 }}>
-            Get a one-tap icon that jumps straight to <strong>Add Checklist Item</strong>.
-          </p>
-          <ol
-            style={{
-              textAlign: 'left',
-              color: '#374151',
-              fontSize: '0.95rem',
-              lineHeight: 1.7,
-              margin: '1rem auto',
-              maxWidth: 320,
-            }}
-          >
-            <li>
-              Tap the <strong>Share</strong> button <ShareGlyph /> in Safari.
-            </li>
-            <li>
-              Choose <strong>Add to Home Screen</strong>.
-            </li>
-            <li>
-              Tap <strong>Add</strong> — the orange <strong>Add Task</strong> icon appears on your
-              Home Screen.
-            </li>
-          </ol>
-          <p style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
-            Tip: the new icon may ask you to sign in once the first time you open it.
-          </p>
-        </>
-      ) : (
-        <>
-          <p style={{ color: '#4b5563', fontSize: '0.95rem', lineHeight: 1.5 }}>
-            This one-tap shortcut is for iPhone and iPad. On your device, open{' '}
-            <strong>this page in Safari</strong> and use{' '}
-            <strong>Share &rarr; Add to Home Screen</strong>.
-          </p>
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard')}
-            style={{
-              marginTop: '1rem',
-              padding: '0.5rem 1rem',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontWeight: 500,
-            }}
-          >
-            Go to the app
-          </button>
-        </>
-      )}
-    </div>
-  )
+  return <div style={{ padding: '2rem', textAlign: 'center' }}>Opening…</div>
 }
