@@ -3,9 +3,11 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry } from '@/utils/errorHandling'
 import {
   type ContractBodyFormat,
+  contractBodyHasRenderableDisplay,
   normalizeContractBodyForSave,
   parseContractBodyFormat,
 } from '../../lib/contractBodyFormat'
+import { openContractBookEntryPreview } from '../../lib/contractBookPreview'
 import { ContractBodyDisplay } from './ContractBodyDisplay'
 
 export type ContractBookTemplate = { id: string; name: string; sequence_order: number }
@@ -636,6 +638,7 @@ export function ContractBookModal({
               const hasLibraryBody = Boolean(row.book_body_html?.trim())
               const hasCanonicalUrl = Boolean(row.canonical_document_url?.trim())
               const hasLoadableContent = hasLibraryBody || hasCanonicalUrl
+              const canPreview = contractBodyHasRenderableDisplay(row.book_body_html, row.book_body_format)
               return (
                 <li
                   key={row.id}
@@ -694,6 +697,28 @@ export function ContractBookModal({
                             Load into form
                           </button>
                         ) : null}
+                        <button
+                          type="button"
+                          disabled={!canPreview}
+                          title={
+                            canPreview
+                              ? 'Open a full-page preview in a new tab'
+                              : 'Add a library body to enable preview'
+                          }
+                          onClick={() => openContractBookEntryPreview(row)}
+                          style={{
+                            padding: '0.25rem 0.55rem',
+                            fontSize: '0.8125rem',
+                            fontWeight: 600,
+                            border: '1px solid #d1d5db',
+                            borderRadius: 6,
+                            background: '#fff',
+                            color: canPreview ? '#374151' : '#9ca3af',
+                            cursor: canPreview ? 'pointer' : 'not-allowed',
+                          }}
+                        >
+                          Preview
+                        </button>
                         <button
                           type="button"
                           id={`contract-book-view-trigger-${row.id}`}
