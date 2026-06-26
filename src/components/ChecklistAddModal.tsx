@@ -297,6 +297,7 @@ export default function ChecklistAddModal() {
       )
       await generateInstances(newId, form)
     }
+    modalContext.onSaved?.()
     modalContext.closeModal()
     window.dispatchEvent(new CustomEvent('checklist-item-saved'))
   }
