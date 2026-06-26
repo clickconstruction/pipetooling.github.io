@@ -10,10 +10,12 @@ declare let self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// SPA: deep links (e.g. /dashboard) are not files on GitHub Pages — serve precached index.html for navigations
+// SPA: deep links (e.g. /dashboard) are not files on GitHub Pages — serve precached index.html for navigations.
+// Denylist real static documents (e.g. /task-install.html, the Add Task install page) so they are served
+// as themselves and iOS reads their baked-in manifest at "Add to Home Screen" time.
 try {
   const navigationHandler = createHandlerBoundToURL('/index.html')
-  registerRoute(new NavigationRoute(navigationHandler))
+  registerRoute(new NavigationRoute(navigationHandler, { denylist: [/^\/task-install\.html$/] }))
 } catch {
   // Precache may not include index yet during unusual warmups; 404.html fallback still applies
 }

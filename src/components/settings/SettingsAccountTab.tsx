@@ -163,7 +163,7 @@ export default function SettingsAccountTab({
                 Adding it must be done in Safari, so{' '}
                 <button
                   type="button"
-                  onClick={() => openInExternalBrowser(`${window.location.origin}/task`)}
+                  onClick={() => openInExternalBrowser(`${window.location.origin}/task-install.html`)}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -182,7 +182,7 @@ export default function SettingsAccountTab({
             ) : (
               <>
                 Open{' '}
-                <a href="/task" style={{ color: '#2563eb', fontWeight: 500 }}>
+                <a href="/task-install.html" style={{ color: '#2563eb', fontWeight: 500 }}>
                   Install Quick-Add Task icon
                 </a>{' '}
                 and follow the steps in Safari.
