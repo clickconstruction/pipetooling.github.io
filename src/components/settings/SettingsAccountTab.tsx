@@ -5,7 +5,8 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import type { UserRole } from '../../hooks/useAuth'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
-import { isIOSDevice } from '../../lib/iosPwa'
+import { isIOSDevice, isStandalonePwa } from '../../lib/iosPwa'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import PasswordInput from '../PasswordInput'
 
 /** Structural shape of usePushNotifications() result (only the fields this tab reads). */
@@ -156,11 +157,37 @@ export default function SettingsAccountTab({
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Quick-Add Task icon</h2>
           <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
             Add a one-tap <strong>Add Task</strong> icon to your iPhone or iPad Home Screen that
-            jumps straight to creating a checklist item. Open{' '}
-            <a href="/task" style={{ color: '#2563eb', fontWeight: 500 }}>
-              Install Quick-Add Task icon
-            </a>{' '}
-            and follow the steps in Safari.
+            jumps straight to creating a checklist item.{' '}
+            {isStandalonePwa() ? (
+              <>
+                Adding it must be done in Safari, so{' '}
+                <button
+                  type="button"
+                  onClick={() => openInExternalBrowser(`${window.location.origin}/task`)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    padding: 0,
+                    font: 'inherit',
+                    color: '#2563eb',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  open setup in Safari
+                </button>{' '}
+                and follow the steps to Add to Home Screen.
+              </>
+            ) : (
+              <>
+                Open{' '}
+                <a href="/task" style={{ color: '#2563eb', fontWeight: 500 }}>
+                  Install Quick-Add Task icon
+                </a>{' '}
+                and follow the steps in Safari.
+              </>
+            )}
           </p>
         </div>
       )}
