@@ -7,13 +7,27 @@ export type { ContractBookExportEntry }
 export const CONTRACT_BOOK_DOWNLOAD_BUTTON_ID = 'contract-book-download'
 
 /**
+ * Serialize a value for safe embedding inside an inline `<script>`: JSON, with
+ * every `<` escaped to its `<` form so a `</script>` (or any tag) inside
+ * the data can never break out of the script element.
+ */
+function embedJsonForScript(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, '\\u003c')
+}
+
+/**
  * Build the standalone full-page preview HTML document for a Contract Book entry.
  *
  * Pure (returns a string). Renders the entry's document name as a heading plus
  * its safe body (shared with `ContractBodyDisplay` via
- * `renderContractBodyToSafeHtml`), and a fixed top-right Download button. The
- * button is wired up by `openContractBookEntryPreview` after the document is
- * written into the new tab (no inline script → no CSP concerns).
+ * `renderContractBodyToSafeHtml`), and a fixed top-right Download button.
+ *
+ * The Download button is wired by a small **inline script** embedded in the
+ * document itself (carrying the prebuilt rich-text `.doc` payload), so the
+ * download works entirely inside the new tab — no dependency on the opener
+ * window staying alive or on a cross-window event listener (which is unreliable
+ * across browsers, notably Safari). The app ships no CSP, so the inline script
+ * runs; the embedded payload is `<`-escaped so it cannot break out of the tag.
  */
 export function buildContractBookPreviewHtml(entry: ContractBookExportEntry): string {
   const title = entry.document_name.trim() || 'Contract'
@@ -21,6 +35,23 @@ export function buildContractBookPreviewHtml(entry: ContractBookExportEntry): st
   const bodySection = bodyHtml.trim()
     ? bodyHtml
     : '<p style="color:#9ca3af;font-style:italic">No library body yet.</p>'
+  const doc = buildContractRichTextDocument(entry)
+  const downloadScript =
+    `<script>(function(){` +
+    `var DOC=${embedJsonForScript({ content: doc.content, mime: doc.mime, filename: doc.filename })};` +
+    `var btn=document.getElementById(${embedJsonForScript(CONTRACT_BOOK_DOWNLOAD_BUTTON_ID)});` +
+    `if(!btn)return;` +
+    `btn.addEventListener('click',function(){` +
+    `try{` +
+    `var blob=new Blob([DOC.content],{type:DOC.mime});` +
+    `var url=URL.createObjectURL(blob);` +
+    `var a=document.createElement('a');` +
+    `a.href=url;a.download=DOC.filename;` +
+    `document.body.appendChild(a);a.click();a.remove();` +
+    `setTimeout(function(){URL.revokeObjectURL(url);},1000);` +
+    `}catch(e){alert('Download failed: '+(e&&e.message?e.message:e));}` +
+    `});` +
+    `})();</script>`
   return (
     `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">` +
     `<meta name="viewport" content="width=device-width, initial-scale=1">` +
@@ -46,16 +77,17 @@ export function buildContractBookPreviewHtml(entry: ContractBookExportEntry): st
     `<div class="cb-toolbar"><button type="button" id="${CONTRACT_BOOK_DOWNLOAD_BUTTON_ID}" class="cb-download">Download</button></div>` +
     `<main class="cb-page"><h1 class="cb-title">${escapeHtmlText(title)}</h1>` +
     `<div class="cb-body">${bodySection}</div></main>` +
+    downloadScript +
     `</body></html>`
   )
 }
 
 /**
- * Open a Contract Book entry as a full-page preview in a new browser tab and
- * wire its Download button to save the entry as a rich-text (.doc) document.
+ * Open a Contract Book entry as a full-page preview in a new browser tab.
  *
- * The new tab is same-origin (`about:blank`), so the opener attaches the click
- * handler directly — no inline script in the generated document. Mirrors the
+ * The generated document is fully self-contained: its embedded inline script
+ * wires the Download button to save the entry as a rich-text (.doc) document,
+ * so nothing here depends on the opener after the tab is written. Mirrors the
  * `openPayStubWindow` side-effect pattern. No-op if the popup is blocked.
  */
 export function openContractBookEntryPreview(entry: ContractBookExportEntry): void {
@@ -64,18 +96,4 @@ export function openContractBookEntryPreview(entry: ContractBookExportEntry): vo
   win.document.write(buildContractBookPreviewHtml(entry))
   win.document.close()
   win.focus()
-  const btn = win.document.getElementById(CONTRACT_BOOK_DOWNLOAD_BUTTON_ID)
-  if (!btn) return
-  btn.addEventListener('click', () => {
-    const { content, mime, filename } = buildContractRichTextDocument(entry)
-    const blob = new Blob([content], { type: mime })
-    const url = URL.createObjectURL(blob)
-    const a = win.document.createElement('a')
-    a.href = url
-    a.download = filename
-    win.document.body.appendChild(a)
-    a.click()
-    a.remove()
-    setTimeout(() => URL.revokeObjectURL(url), 0)
-  })
 }

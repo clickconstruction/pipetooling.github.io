@@ -50,4 +50,23 @@ describe('buildContractBookPreviewHtml', () => {
     expect(html).toContain('@media print')
     expect(html).toContain('.cb-toolbar{display:none;}')
   })
+
+  it('embeds a self-contained inline download script (no opener dependency)', () => {
+    const html = buildContractBookPreviewHtml(entry())
+    expect(html).toContain("addEventListener('click'")
+    expect(html).toContain('URL.createObjectURL')
+    expect(html).toContain('application/msword')
+    // The .doc filename is carried in the embedded payload.
+    expect(html).toContain('Non-disclosure agreement.doc')
+  })
+
+  it('escapes < in the embedded payload so it cannot break out of the script', () => {
+    // The rich-text payload always contains an Office HTML envelope (<html>, <h1>…);
+    // every < must be escaped to \\u003c inside the inline <script>.
+    const html = buildContractBookPreviewHtml(entry())
+    expect(html).toContain('\\u003c')
+    // No stray closing script tag from the embedded data.
+    const scriptCloseCount = (html.match(/<\/script>/g) ?? []).length
+    expect(scriptCloseCount).toBe(1)
+  })
 })
