@@ -141,7 +141,7 @@ export default function Checklist() {
           }}
           style={tabStyle(activeTab === 'today')}
         >
-          My Today
+          Today
         </button>
         <button
           type="button"
@@ -592,7 +592,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
   return (
     <div>
       <section style={{ marginBottom: '2rem' }}>
-        <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>My Today</h2>
+        <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Today</h2>
         {todayInstances.length === 0 ? (
           <p style={{ color: '#6b7280' }}>No checklist items due today.</p>
         ) : (
