@@ -34,19 +34,6 @@ const pageBgStyle: CSSProperties = {
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 }
 
-function downloadEntryDoc(entry: ContractBookExportEntry): void {
-  const doc = buildContractRichTextDocument(entry)
-  const blob = new Blob([doc.content], { type: doc.mime })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = doc.filename
-  document.body.appendChild(a)
-  a.click()
-  a.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
-}
-
 export default function ContractBookPreview() {
   const [params] = useSearchParams()
   const key = params.get('k')
@@ -67,6 +54,22 @@ export default function ContractBookPreview() {
   useEffect(() => {
     if (entry) document.title = title
   }, [entry, title])
+
+  // Build the .doc once and expose it as a real anchor href. A genuine user
+  // click on an actual download link is the most browser-permissive trigger:
+  // Brave/Chromium can suppress programmatic `a.click()` downloads (a synthetic,
+  // untrusted click), but honor a trusted click on a real `<a download>`.
+  const download = useMemo(() => {
+    if (!entry) return null
+    const doc = buildContractRichTextDocument(entry)
+    const url = URL.createObjectURL(new Blob([doc.content], { type: doc.mime }))
+    return { url, filename: doc.filename }
+  }, [entry])
+
+  useEffect(() => {
+    if (!download) return
+    return () => URL.revokeObjectURL(download.url)
+  }, [download])
 
   if (!entry) {
     return (
@@ -113,22 +116,26 @@ export default function ContractBookPreview() {
           zIndex: 10,
         }}
       >
-        <button
-          type="button"
-          onClick={() => downloadEntryDoc(entry)}
-          style={{
-            padding: '0.5rem 1rem',
-            fontSize: '0.9rem',
-            fontWeight: 600,
-            border: 'none',
-            borderRadius: 6,
-            background: '#2563eb',
-            color: '#fff',
-            cursor: 'pointer',
-          }}
-        >
-          Download
-        </button>
+        {download ? (
+          <a
+            href={download.url}
+            download={download.filename}
+            style={{
+              display: 'inline-block',
+              padding: '0.5rem 1rem',
+              fontSize: '0.9rem',
+              fontWeight: 600,
+              border: 'none',
+              borderRadius: 6,
+              background: '#2563eb',
+              color: '#fff',
+              cursor: 'pointer',
+              textDecoration: 'none',
+            }}
+          >
+            Download
+          </a>
+        ) : null}
       </div>
       <main
         className="cbp-page"
