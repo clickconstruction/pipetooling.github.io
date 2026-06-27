@@ -16,6 +16,8 @@ export type SearchableMultiSelectProps = {
   onChange: (selectedIds: string[]) => void
   disabled?: boolean
   listAriaLabel?: string
+  /** Placeholder for the search input (default "Search…"). */
+  searchPlaceholder?: string
   /**
    * When true, move selected options to the top of the list (in `value` order) for flat option lists.
    * Skipped when the filtered list contains separator rows.
@@ -39,6 +41,7 @@ export function SearchableMultiSelect({
   onChange,
   disabled = false,
   listAriaLabel = 'Options',
+  searchPlaceholder = 'Search…',
   pinSelectedToTop = false,
 }: SearchableMultiSelectProps) {
   const reactId = useId()
@@ -77,12 +80,12 @@ export function SearchableMultiSelect({
   }, [filtered, value, pinSelectedToTop])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
       <input
         id={searchId}
         type="search"
         autoComplete="off"
-        placeholder="Search…"
+        placeholder={searchPlaceholder}
         value={query}
         disabled={disabled}
         onChange={(e) => setQuery(e.target.value)}
@@ -93,7 +96,7 @@ export function SearchableMultiSelect({
           padding: '0.5rem 0.65rem',
           fontSize: '0.875rem',
           border: '1px solid #d1d5db',
-          borderRadius: 4,
+          borderRadius: '6px 6px 0 0',
           background: disabled ? '#f3f4f6' : 'white',
         }}
       />
@@ -106,8 +109,9 @@ export function SearchableMultiSelect({
           padding: 0,
           maxHeight: LIST_MAX_HEIGHT_PX,
           overflow: 'auto',
-          border: '1px solid #e5e7eb',
-          borderRadius: 6,
+          border: '1px solid #d1d5db',
+          borderTop: 'none',
+          borderRadius: '0 0 6px 6px',
           background: 'white',
         }}
       >

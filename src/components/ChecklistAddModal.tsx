@@ -346,7 +346,7 @@ export default function ChecklistAddModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
-          <h3 id="checklist-add-modal-title" style={{ margin: 0 }}>Add checklist item</h3>
+          <h3 id="checklist-add-modal-title" style={{ margin: 0 }}>Add checklist item:</h3>
           <button
             type="button"
             onClick={() => {
@@ -379,6 +379,7 @@ export default function ChecklistAddModal({
               <textarea
                 ref={titleInputRef}
                 autoFocus
+                aria-label="Checklist item title"
                 value={form.title}
                 onChange={(e) => {
                   const t = e.target.value.replace(/\n/g, ' ')
@@ -388,7 +389,7 @@ export default function ChecklistAddModal({
                   if (e.key === 'Enter') e.preventDefault()
                 }}
                 rows={1}
-                aria-label="Checklist item title"
+                placeholder="What needs to be done?"
                 style={{
                   width: '100%',
                   minHeight: '2.75rem',
@@ -399,6 +400,8 @@ export default function ChecklistAddModal({
                   overflowWrap: 'break-word',
                   wordBreak: 'break-word',
                   resize: 'none',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 6,
                 }}
               />
             </div>
@@ -499,6 +502,7 @@ export default function ChecklistAddModal({
               <div style={{ marginTop: '0.25rem' }}>
                 <SearchableMultiSelect
                   id="checklist-add-assign"
+                  searchPlaceholder="Search people…"
                   options={assignToSelectOptions}
                   value={form.assigned_to_user_ids}
                   onChange={(ids) =>
