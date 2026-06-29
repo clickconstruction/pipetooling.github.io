@@ -348,10 +348,6 @@ export function BidPreviewModal({
                   <ExternalLink href={bid.plans_link ?? ''}>{bid.plans_link?.trim() ? 'Open plans' : '—'}</ExternalLink>
                 </div>
                 <div style={{ fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: '#6b7280' }}>Marked up / cover page:</span>{' '}
-                  <ExternalLink href={bid.count_tooling_link ?? ''}>{bid.count_tooling_link?.trim() ? 'Open link' : '—'}</ExternalLink>
-                </div>
-                <div style={{ fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}>
                   <span style={{ fontWeight: 600, color: '#6b7280' }}>Bid submission:</span>{' '}
                   <ExternalLink href={bid.bid_submission_link ?? ''}>{bid.bid_submission_link?.trim() ? 'Open submission' : '—'}</ExternalLink>
                 </div>

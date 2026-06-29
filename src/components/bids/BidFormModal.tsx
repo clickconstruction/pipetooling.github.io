@@ -134,7 +134,6 @@ export function BidFormModal(props: BidFormModalProps) {
   const {
     driveLink,
     plansLink,
-    countToolingLink,
     countToolingPlansLink,
     bidSubmissionLink,
     projectName,
@@ -166,7 +165,6 @@ export function BidFormModal(props: BidFormModalProps) {
   const {
     setDriveLink,
     setPlansLink,
-    setCountToolingLink,
     setCountToolingPlansLink,
     setBidSubmissionLink,
     setProjectName,
@@ -577,25 +575,7 @@ export function BidFormModal(props: BidFormModalProps) {
               </div>
               <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Marked Up Plans or Cover Page</label>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={countToolingLink} onChange={(e) => setCountToolingLink(e.target.value)} placeholder="https://... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        try {
-                          const text = await navigator.clipboard.readText()
-                          setCountToolingLink(text)
-                        } catch (err) {
-                          console.error('Failed to read clipboard:', err)
-                        }
-                      }}
-                      style={{ padding: '0.5rem 0.75rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Paste from clipboard"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 20, height: 20 }}><path d="M360 160L280 160C266.7 160 256 149.3 256 136C256 122.7 266.7 112 280 112L360 112C373.3 112 384 122.7 384 136C384 149.3 373.3 160 360 160zM360 208C397.1 208 427.6 180 431.6 144L448 144C456.8 144 464 151.2 464 160L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 160C176 151.2 183.2 144 192 144L208.4 144C212.4 180 242.9 208 280 208L360 208zM419.9 96C407 76.7 385 64 360 64L280 64C255 64 233 76.7 220.1 96L192 96C156.7 96 128 124.7 128 160L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 160C512 124.7 483.3 96 448 96L419.9 96z"/></svg>
-                    </button>
-                  </div>
-                  <label style={{ display: 'block', margin: '0.75rem 0 0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     <input type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
                     <button

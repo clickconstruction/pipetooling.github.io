@@ -9,7 +9,6 @@ export type BidEditOutcomeOption = 'won' | 'lost' | 'started_or_complete' | ''
 export type BidEditFormValues = {
   driveLink: string
   plansLink: string
-  countToolingLink: string
   countToolingPlansLink: string
   bidSubmissionLink: string
   projectName: string
@@ -42,7 +41,6 @@ export type BidEditFormValues = {
 export type BidEditFormSetters = {
   setDriveLink: Dispatch<SetStateAction<string>>
   setPlansLink: Dispatch<SetStateAction<string>>
-  setCountToolingLink: Dispatch<SetStateAction<string>>
   setCountToolingPlansLink: Dispatch<SetStateAction<string>>
   setBidSubmissionLink: Dispatch<SetStateAction<string>>
   setProjectName: Dispatch<SetStateAction<string>>
@@ -111,7 +109,6 @@ export type BidEditForm = {
 export function useBidEditForm(): BidEditForm {
   const [driveLink, setDriveLink] = useState('')
   const [plansLink, setPlansLink] = useState('')
-  const [countToolingLink, setCountToolingLink] = useState('')
   const [countToolingPlansLink, setCountToolingPlansLink] = useState('')
   const [bidSubmissionLink, setBidSubmissionLink] = useState('')
   const [projectName, setProjectName] = useState('')
@@ -143,7 +140,6 @@ export function useBidEditForm(): BidEditForm {
   const reset = useCallback((opts: BidEditFormResetOptions) => {
     setDriveLink('')
     setPlansLink('')
-    setCountToolingLink('')
     setCountToolingPlansLink('')
     setBidSubmissionLink('')
     setDesignDrawingPlanDate('')
@@ -176,7 +172,6 @@ export function useBidEditForm(): BidEditForm {
   const loadFromBid = useCallback((bid: BidWithBuilder, opts: BidEditFormLoadOptions) => {
     setDriveLink(bid.drive_link ?? '')
     setPlansLink(bid.plans_link ?? '')
-    setCountToolingLink(bid.count_tooling_link ?? '')
     setCountToolingPlansLink(bid.count_tooling_plans_link ?? '')
     setBidSubmissionLink(bid.bid_submission_link ?? '')
     setGcCustomerId(opts.gcCustomerId)
@@ -217,7 +212,6 @@ export function useBidEditForm(): BidEditForm {
   const values: BidEditFormValues = {
     driveLink,
     plansLink,
-    countToolingLink,
     countToolingPlansLink,
     bidSubmissionLink,
     projectName,
@@ -250,7 +244,6 @@ export function useBidEditForm(): BidEditForm {
   const setters: BidEditFormSetters = {
     setDriveLink,
     setPlansLink,
-    setCountToolingLink,
     setCountToolingPlansLink,
     setBidSubmissionLink,
     setProjectName,
