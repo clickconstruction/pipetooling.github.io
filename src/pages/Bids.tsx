@@ -289,7 +289,6 @@ export default function Bids() {
   const {
     driveLink,
     plansLink,
-    countToolingLink,
     countToolingPlansLink,
     bidSubmissionLink,
     projectName,
@@ -1895,7 +1894,6 @@ export default function Bids() {
     const payload = {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
-      count_tooling_link: countToolingLink.trim() || null,
       count_tooling_plans_link: countToolingPlansLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,
@@ -2001,7 +1999,6 @@ export default function Bids() {
     const payload = {
       drive_link: driveLink.trim() || null,
       plans_link: plansLink.trim() || null,
-      count_tooling_link: countToolingLink.trim() || null,
       count_tooling_plans_link: countToolingPlansLink.trim() || null,
       bid_submission_link: bidSubmissionLink.trim() || null,
       design_drawing_plan_date: designDrawingPlanDate.trim() ? designDrawingPlanDate : null,

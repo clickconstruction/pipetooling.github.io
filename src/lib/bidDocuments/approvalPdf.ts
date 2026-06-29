@@ -266,7 +266,7 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   y += lineHeight
   pushLink('Job Plans:', b.plans_link?.trim() || null)
   y += lineHeight
-  pushLink('Marked Up Plans or Cover Page:', b.count_tooling_link?.trim() || null)
+  pushLink('CountTooling Plans:', b.count_tooling_plans_link?.trim() || null)
   y += lineHeight
   pushLink('Bid Submission:', b.bid_submission_link?.trim() || null)
 
