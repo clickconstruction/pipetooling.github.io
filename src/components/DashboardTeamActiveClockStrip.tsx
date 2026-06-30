@@ -28,6 +28,7 @@ import {
   AssignSessionJobPopover,
   type AssignSessionJobSavedPatch,
 } from './clock-sessions/AssignSessionJobPopover'
+import type { DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import { StripClockTimeMapButton } from './clock-sessions/StripClockTimeMapButton'
 import {
   ClockSessionStripActionsModal,
@@ -678,6 +679,16 @@ function stripRowHasUnassignedSession(row: ClockedInTodayStripRow): boolean {
   return row.todaySessions.some((s) => !s.job_ledger_id && !s.bid_id)
 }
 
+/**
+ * "Apply Schedule %" eligibility for a Clocked-in-today person: exactly one session that day, which
+ * is closed and has no job/bid (parity with the day-editor single-session v1 scope).
+ */
+function stripRowEligibleForApplyScheduleProportions(row: ClockedInTodayStripRow): boolean {
+  if (row.todaySessions.length !== 1) return false
+  const only = row.todaySessions[0]!
+  return !!only.clocked_out_at && !only.job_ledger_id && !only.bid_id
+}
+
 const stripTableHost: CSSProperties = {
   position: 'relative',
 }
@@ -696,6 +707,7 @@ export function DashboardTeamActiveClockStrip({
   showJobBidColumn = false,
   onJobBidSaved,
   onJobBidAssignError,
+  onApplyScheduleProportionsForSession,
   onOpenStripMyTimeEditor,
   authUserId,
   canApproveClockSessions,
@@ -725,6 +737,14 @@ export function DashboardTeamActiveClockStrip({
   showJobBidColumn?: boolean
   onJobBidSaved?: (patch: AssignSessionJobSavedPatch) => void
   onJobBidAssignError?: (msg: string) => void
+  /**
+   * People → Hours only: split this person's single closed unassigned session across their Dispatch
+   * schedule. When set, the "Clocked in today" Assign popover shows an "Apply Schedule %" action.
+   */
+  onApplyScheduleProportionsForSession?: (
+    session: TodaySessionStripRow,
+    picks: DispatchScheduledJobForAssign[],
+  ) => void
   /** Dev / master / assistant: open My Time day editor for this person's hours today (company calendar). */
   onOpenStripMyTimeEditor?: (p: { subjectUserId: string; displayName: string }) => void
   /** For `rejected_by` when rejecting from the today strip. */
@@ -1742,6 +1762,9 @@ export function DashboardTeamActiveClockStrip({
                   const expanded = hasDetail && !collapsedClockedInTodayUserIds.has(row.userId)
                   const detailId = `clocked-in-today-detail-${row.userId}`
                   const rowLabel = stripClockedInTodayDisplayLabel(row, authUserId)
+                  const showApplyScheduleProportionsForRow =
+                    Boolean(onApplyScheduleProportionsForSession) &&
+                    stripRowEligibleForApplyScheduleProportions(row)
                   return (
                     <Fragment key={row.userId}>
                       <tr>
@@ -2051,6 +2074,10 @@ export function DashboardTeamActiveClockStrip({
                                                           showChangeWhenAssigned={onOpenStripMyTimeEditor == null}
                                                           dispatchScheduleAssigneeUserId={s.user_id}
                                                           dispatchScheduleWorkDateYmd={clockStripWorkDateResolved}
+                                                          showApplyScheduleProportions={showApplyScheduleProportionsForRow}
+                                                          onApplyScheduleProportions={(picks) =>
+                                                            onApplyScheduleProportionsForSession?.(s, picks)
+                                                          }
                                                         />
                                                       </span>
                                                     ) : null}

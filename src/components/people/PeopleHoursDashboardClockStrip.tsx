@@ -3,6 +3,8 @@ import type { ClockSessionRow, DashboardStripSession } from '../../types/clockSe
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSectionState'
+import { useApplyScheduleProportions } from '../../hooks/useApplyScheduleProportions'
+import { ApplyScheduleApprovedConfirmModal } from '../clock-sessions/ApplyScheduleApprovedConfirmModal'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { DashboardTeamActiveClockStrip } from '../DashboardTeamActiveClockStrip'
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
@@ -307,6 +309,11 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
     [myTeam.applyOptimisticClockSessionAssign, myTeam.loadPending, bumpParentClockTables],
   )
 
+  const applySchedule = useApplyScheduleProportions({
+    authUserId: authUser?.id,
+    onApplied: onSessionsMutated,
+  })
+
   const dateLabel = formatDenverCalendarDayWithWeekdayAndYear(referenceDateForWorkDateYmd(selectedYmd).getTime())
 
   if (!authUser?.id) {
@@ -437,6 +444,7 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
         showJobBidColumn={showClockStripScopeToggle}
         onJobBidSaved={onStripJobBidSaved}
         onJobBidAssignError={(msg) => showToast(msg, 'error')}
+        onApplyScheduleProportionsForSession={applySchedule.requestApply}
         onOpenStripMyTimeEditor={showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined}
         authUserId={authUser.id}
         canApproveClockSessions={showClockStripScopeToggle}
@@ -449,6 +457,8 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
         showAddClockSession={canAddSession}
         onAddClockSession={() => setAddSessionOpen(true)}
       />
+
+      <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 
       {stripMyTimeEditor && (
         <DashboardMyTimeDayEditorModal

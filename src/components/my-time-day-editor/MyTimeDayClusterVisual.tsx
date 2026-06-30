@@ -5,6 +5,7 @@ import {
   type AssignSessionJobSavedPatch,
 } from '../clock-sessions/AssignSessionJobPopover'
 import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
+import type { DispatchScheduledJobForAssign } from '../../lib/jobScheduleBlocks'
 import {
   clockSessionRowForSegmentAssign,
   clusterHasMultipleAllocations,
@@ -76,6 +77,9 @@ export type MyTimeDayClusterVisualProps = {
     target: AssignSessionJobPopoverSession,
     selection: UnifiedSearchResult | null,
   ) => void
+  /** Day editor: show "Apply Schedule %" on the unassigned popover (day has no job-linked sessions). */
+  showApplyScheduleProportions?: boolean
+  onApplyScheduleProportions?: (picks: DispatchScheduledJobForAssign[]) => void
   /** False for the last cluster in the day timeline: no bottom separator under the final block. */
   showClusterBottomDivider?: boolean
 }
@@ -112,6 +116,8 @@ export function MyTimeDayClusterVisual({
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
+  showApplyScheduleProportions = false,
+  onApplyScheduleProportions,
   showClusterBottomDivider = true,
 }: MyTimeDayClusterVisualProps) {
   const openLastCluster = !lastS.clocked_out_at
@@ -606,6 +612,8 @@ export function MyTimeDayClusterVisual({
                             dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
                             dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
                             draftLocalJobBidAssign={draftLocalJobBidAssign}
+                            showApplyScheduleProportions={showApplyScheduleProportions}
+                            onApplyScheduleProportions={onApplyScheduleProportions}
                           />
                         ) : null
                       ) : showSingleUnassignedAssign && unassignedIds.length > 1 ? (
