@@ -106,3 +106,17 @@ export function scheduleFormatTimeHm(pgTime: string): string {
 export function scheduleFormatWindow(timeStart: string, timeEnd: string): string {
   return `${scheduleFormatTimeHm(timeStart)}–${scheduleFormatTimeHm(timeEnd)}`
 }
+
+/** Parse a Postgres `time` string ("09:30:00" / "9:30" / "09:30:00.5") to minutes past midnight. */
+export function pgTimeToMinutes(pgTime: string): number {
+  const parts = pgTime.trim().split(':')
+  const h = Number(parts[0] ?? '0')
+  const min = Number(parts[1] ?? '0')
+  let sec = 0
+  if (parts[2] != null) {
+    const n = Number(String(parts[2]))
+    sec = Number.isFinite(n) ? n : 0
+  }
+  if (!Number.isFinite(h) || !Number.isFinite(min)) return 0
+  return h * 60 + min + sec / 60
+}

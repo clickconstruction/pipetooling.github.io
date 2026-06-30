@@ -1,6 +1,6 @@
 import { supabase } from './supabase'
 import type { Database } from '../types/database'
-import { scheduleFormatTimeHm } from './jobScheduleChicago'
+import { scheduleFormatTimeHm, pgTimeToMinutes } from './jobScheduleChicago'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 
 export type JobScheduleBlockRow = Database['public']['Tables']['job_schedule_blocks']['Row']
@@ -168,6 +168,10 @@ export type DispatchScheduledJobForAssign = {
   windowSpans: DispatchScheduledWindowSpan[]
   /** Joined time windows for tooltip (e.g. "9:00 AM–12:00 PM; 1:00 PM–4:00 PM"), en-dash between times. */
   windowsLabel: string
+  /** Total scheduled minutes for this job across all windows (drives "Apply Schedule %" proportions). */
+  scheduledMinutes: number
+  /** Earliest window start (minutes past midnight) — schedule-order key for proportional splits. */
+  earliestStartMinutes: number
 }
 
 const DISPATCH_ASSIGN_SELECT = `${SELECT_FIELDS}, jobs_ledger(hcp_number, job_name, job_address, service_type_id, click_number)`
@@ -207,7 +211,12 @@ export async function fetchDispatchScheduledJobsForAssigneeDay(
     const rows = (raw ?? []) as JobScheduleBlockWithJobEmbed[]
     const byJob = new Map<
       string,
-      { jl: NonNullable<JobScheduleBlockWithJobEmbed['jobs_ledger']>; windowSpans: DispatchScheduledWindowSpan[] }
+      {
+        jl: NonNullable<JobScheduleBlockWithJobEmbed['jobs_ledger']>
+        windowSpans: DispatchScheduledWindowSpan[]
+        scheduledMinutes: number
+        earliestStartMinutes: number
+      }
     >()
     const enDash = '\u2013'
     for (const r of rows) {
@@ -217,15 +226,25 @@ export async function fetchDispatchScheduledJobsForAssigneeDay(
         startLabel: scheduleFormatTimeHm(r.time_start),
         endLabel: scheduleFormatTimeHm(r.time_end),
       }
+      const startMin = pgTimeToMinutes(r.time_start)
+      const endMin = pgTimeToMinutes(r.time_end)
+      const durMin = Math.max(0, endMin - startMin)
       const existing = byJob.get(r.job_id)
       if (existing) {
         existing.windowSpans.push(span)
+        existing.scheduledMinutes += durMin
+        existing.earliestStartMinutes = Math.min(existing.earliestStartMinutes, startMin)
       } else {
-        byJob.set(r.job_id, { jl, windowSpans: [span] })
+        byJob.set(r.job_id, {
+          jl,
+          windowSpans: [span],
+          scheduledMinutes: durMin,
+          earliestStartMinutes: startMin,
+        })
       }
     }
     const data: DispatchScheduledJobForAssign[] = []
-    for (const [jobId, { jl, windowSpans }] of byJob) {
+    for (const [jobId, { jl, windowSpans, scheduledMinutes, earliestStartMinutes }] of byJob) {
       data.push({
         jobId,
         hcp_number: (jl.hcp_number ?? '').trim(),
@@ -235,6 +254,8 @@ export async function fetchDispatchScheduledJobsForAssigneeDay(
         click_number: jl.click_number ?? null,
         windowSpans,
         windowsLabel: windowSpans.map((s) => `${s.startLabel}${enDash}${s.endLabel}`).join('; '),
+        scheduledMinutes,
+        earliestStartMinutes,
       })
     }
     data.sort((a, b) => {

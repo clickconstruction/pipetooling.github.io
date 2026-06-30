@@ -90,6 +90,8 @@ import { useStaleTallyStaffFollowUp } from '../hooks/useStaleTallyStaffFollowUp'
 import { TALLY_STALE_MIN_AGE_DAYS } from '../lib/tallyStaleMinAgeDays'
 import { DashboardTeamActiveClockStrip } from '../components/DashboardTeamActiveClockStrip'
 import { useDashboardMyTeamSectionState } from '../hooks/useDashboardMyTeamSectionState'
+import { useApplyScheduleProportions } from '../hooks/useApplyScheduleProportions'
+import { ApplyScheduleApprovedConfirmModal } from '../components/clock-sessions/ApplyScheduleApprovedConfirmModal'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
@@ -879,6 +881,13 @@ export default function Dashboard() {
   }, [role])
   const orgWideStripEnabled = showClockStripScopeToggle && clockStripScope === 'everyone'
   const myTeam = useDashboardMyTeamSectionState(authUser?.id, { orgWideStripEnabled })
+  const reloadMyTeamPendingSilent = useCallback(() => {
+    void myTeam.loadPending({ silent: true })
+  }, [myTeam.loadPending])
+  const applySchedule = useApplyScheduleProportions({
+    authUserId: authUser?.id,
+    onApplied: reloadMyTeamPendingSilent,
+  })
   const goToPendingSessionsInMyTeam = useCallback(() => {
     myTeam.setMyTeamExpanded(true)
     requestAnimationFrame(() => {
@@ -4683,6 +4692,7 @@ export default function Dashboard() {
             void myTeam.loadPending({ silent: true })
           }}
           onJobBidAssignError={(msg) => showToast(msg, 'error')}
+          onApplyScheduleProportionsForSession={applySchedule.requestApply}
           onOpenStripMyTimeEditor={
             showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
           }
@@ -5112,6 +5122,7 @@ export default function Dashboard() {
             void myTeam.loadPending({ silent: true })
           }}
           onJobBidAssignError={(msg) => showToast(msg, 'error')}
+          onApplyScheduleProportionsForSession={applySchedule.requestApply}
           onOpenStripMyTimeEditor={
             showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined
           }
@@ -8404,6 +8415,8 @@ export default function Dashboard() {
           disableDayEditor={dashboardSelfIsSalary}
         />
       )}
+
+      <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
 
       <NewReportModal
         open={newReportModalOpen}

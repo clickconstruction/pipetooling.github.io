@@ -55,6 +55,14 @@ type Props = {
     target: AssignSessionJobPopoverSession,
     selection: UnifiedSearchResult | null,
   ) => void
+  /**
+   * Day editor only: show an "Apply Schedule %" action across from the Dispatch header that
+   * proportionally splits the worked session across the day's scheduled jobs. Gated by the parent
+   * to days where no session is linked to a job/bid yet.
+   */
+  showApplyScheduleProportions?: boolean
+  /** Called with the loaded Dispatch picks when "Apply Schedule %" is clicked. */
+  onApplyScheduleProportions?: (picks: DispatchScheduledJobForAssign[]) => void
 }
 
 const ASSIGN_POPOVER_ESTIMATED_HEIGHT = 360
@@ -120,6 +128,8 @@ export function AssignSessionJobPopover({
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
+  showApplyScheduleProportions = false,
+  onApplyScheduleProportions,
 }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const [open, setOpen] = useState(false)
@@ -446,13 +456,47 @@ export function AssignSessionJobPopover({
               <div style={{ marginBottom: '0.65rem' }}>
                 <div
                   style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
                     fontSize: '0.72rem',
                     fontWeight: 600,
                     color: '#374151',
                     marginBottom: '0.35rem',
                   }}
                 >
-                  Scheduled this day (Dispatch)
+                  <span>Scheduled this day (Dispatch)</span>
+                  {showApplyScheduleProportions &&
+                  onApplyScheduleProportions &&
+                  !dispatchPicksLoading &&
+                  !dispatchPicksError &&
+                  dispatchPicks.length > 0 ? (
+                    <button
+                      type="button"
+                      disabled={loading}
+                      title="Split this session across the day's scheduled jobs, proportional to their scheduled time"
+                      onClick={() => {
+                        onApplyScheduleProportions(dispatchPicks)
+                        setOpen(false)
+                      }}
+                      style={{
+                        flexShrink: 0,
+                        padding: '2px 8px',
+                        fontSize: '0.68rem',
+                        fontWeight: 600,
+                        lineHeight: 1.2,
+                        border: '1px solid #2563eb',
+                        borderRadius: 4,
+                        background: '#2563eb',
+                        color: '#fff',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        opacity: loading ? 0.7 : 1,
+                      }}
+                    >
+                      Apply Schedule %
+                    </button>
+                  ) : null}
                 </div>
                 {dispatchPicksLoading ? (
                   <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Loading schedule…</div>

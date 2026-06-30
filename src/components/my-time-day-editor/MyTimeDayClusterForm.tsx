@@ -5,6 +5,7 @@ import {
   type AssignSessionJobSavedPatch,
 } from '../clock-sessions/AssignSessionJobPopover'
 import type { UnifiedSearchResult } from '../../utils/unifiedJobBidSearch'
+import type { DispatchScheduledJobForAssign } from '../../lib/jobScheduleBlocks'
 import {
   clockSessionRowForSegmentAssign,
   mergeAllocChoiceRequired,
@@ -120,6 +121,9 @@ export type MyTimeDayClusterFormProps = {
     target: AssignSessionJobPopoverSession,
     selection: UnifiedSearchResult | null,
   ) => void
+  /** Day editor: show "Apply Schedule %" on the unassigned popover (day has no job-linked sessions). */
+  showApplyScheduleProportions?: boolean
+  onApplyScheduleProportions?: (picks: DispatchScheduledJobForAssign[]) => void
   /** Double gray rule under this card when the next timeline cluster overlaps in time (Form only). */
   overlapDividerBelow?: boolean
   /** False for the last cluster in the day timeline: no bottom separator under the final block. */
@@ -154,6 +158,8 @@ export function MyTimeDayClusterForm({
   dispatchScheduleAssigneeUserId,
   dispatchScheduleWorkDateYmd,
   draftLocalJobBidAssign,
+  showApplyScheduleProportions = false,
+  onApplyScheduleProportions,
   overlapDividerBelow = false,
   showClusterBottomDivider = true,
 }: MyTimeDayClusterFormProps) {
@@ -464,6 +470,8 @@ export function MyTimeDayClusterForm({
                             dispatchScheduleAssigneeUserId={dispatchScheduleAssigneeUserId}
                             dispatchScheduleWorkDateYmd={dispatchScheduleWorkDateYmd}
                             draftLocalJobBidAssign={draftLocalJobBidAssign}
+                            showApplyScheduleProportions={showApplyScheduleProportions}
+                            onApplyScheduleProportions={onApplyScheduleProportions}
                           />
                           </div>
                         ) : null

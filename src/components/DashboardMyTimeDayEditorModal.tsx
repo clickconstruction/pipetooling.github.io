@@ -26,6 +26,8 @@ import {
   segmentAllocationLabelsForOverlap,
 } from '../lib/myTimeDaySavePlan'
 import { persistMyTimeClusterAndGetSegmentIds } from '../lib/persistMyTimeClusterForSegmentAssign'
+import { applyScheduleProportionsToClockSession } from '../lib/applyScheduleProportionsToClockSession'
+import type { DispatchScheduledJobForAssign } from '../lib/jobScheduleBlocks'
 import {
   boundariesMatchOriginalRows,
   buildDayTimeline,
@@ -1671,6 +1673,53 @@ export function DashboardMyTimeDayEditorModal({
     [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated, showToast]
   )
 
+  /** True when no session this day is linked to a job/bid — gate for the "Apply Schedule %" action. */
+  const dayHasNoJobAssignments = useMemo(
+    () => sortedSessions.length > 0 && sortedSessions.every((s) => !s.job_ledger_id && !s.bid_id),
+    [sortedSessions],
+  )
+  const showApplyScheduleProportions =
+    dayHasNoJobAssignments && allowTimelineEdits && !priorWeekGateActive
+
+  /**
+   * "Apply Schedule %": split the worked session in `clusterId` into segments proportional to the
+   * person's Dispatch schedule (each scheduled job's share of total scheduled time) and assign each
+   * segment to its job. v1 scope: a single closed, non-draft `clock_sessions` row. Persists
+   * immediately (mirrors the per-segment assign flow) and refetches.
+   */
+  const applyScheduleProportionsToCluster = useCallback(
+    async (clusterId: string, picks: DispatchScheduledJobForAssign[]) => {
+      if (!allowTimelineEdits) return
+      const c = sessionClustersRef.current.find((x) => sessionClusterId(x) === clusterId)
+      if (!c?.length) return
+      if (c.length !== 1) {
+        showToast('Apply Schedule % needs a single continuous session for this day.', 'warning')
+        return
+      }
+      const row = c[0]!
+
+      setSaving(true)
+      setError(null)
+      try {
+        const res = await applyScheduleProportionsToClockSession(row, picks, {
+          editingSelf,
+          nowTick: nowTickRef.current,
+        })
+        if (!res.ok) {
+          showToast(res.message, res.kind)
+          return
+        }
+        setSessionsFetchNonce((n) => n + 1)
+        onLinkedSessionsUpdated?.()
+        if (sessionsProp.length > 0) onSaved()
+        showToast('Applied schedule split.', 'success')
+      } finally {
+        setSaving(false)
+      }
+    },
+    [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated, onSaved, sessionsProp.length, showToast],
+  )
+
   const endBoundaryDragListenersRef = useRef(() => {})
   /** Stable identity for window pointerup/pointercancel so add/removeEventListener always pairs; implementation via ref. */
   const stableBoundaryDragPointerUp = useCallback(() => {
@@ -2807,6 +2856,10 @@ export function DashboardMyTimeDayEditorModal({
                           draftLocalJobBidAssign={
                             onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
                           }
+                          showApplyScheduleProportions={showApplyScheduleProportions}
+                          onApplyScheduleProportions={(picks) =>
+                            void applyScheduleProportionsToCluster(clusterId, picks)
+                          }
                           salariedStripFooterLabel={showSalariedLabelUnderVisualStrip}
                           showClusterBottomDivider={showClusterBottomDivider}
                         />
@@ -2847,6 +2900,10 @@ export function DashboardMyTimeDayEditorModal({
                           showClusterBottomDivider={showClusterBottomDivider}
                           draftLocalJobBidAssign={
                             onPatchSeededSessionsJobBid ? draftLocalJobBidAssign : undefined
+                          }
+                          showApplyScheduleProportions={showApplyScheduleProportions}
+                          onApplyScheduleProportions={(picks) =>
+                            void applyScheduleProportionsToCluster(clusterId, picks)
                           }
                         />
                       )}

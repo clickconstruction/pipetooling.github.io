@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react'
 import { DashboardTeamActiveClockStrip } from '../DashboardTeamActiveClockStrip'
 import { DashboardMyTimeDayEditorModal } from '../DashboardMyTimeDayEditorModal'
+import { ApplyScheduleApprovedConfirmModal } from '../clock-sessions/ApplyScheduleApprovedConfirmModal'
 import { useAuth } from '../../hooks/useAuth'
+import { useApplyScheduleProportions } from '../../hooks/useApplyScheduleProportions'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import { useDashboardMyTeamSectionState } from '../../hooks/useDashboardMyTeamSectionState'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
@@ -122,6 +124,13 @@ export function QuickfillPeopleHoursNewSection() {
     orgWideStripEnabled,
     stripWorkDateYmd: selectedYmd,
     pendingWorkDateRange,
+  })
+  const reloadMyTeamPendingSilent = useCallback(() => {
+    void myTeam.loadPending({ silent: true })
+  }, [myTeam.loadPending])
+  const applySchedule = useApplyScheduleProportions({
+    authUserId: authUser?.id,
+    onApplied: reloadMyTeamPendingSilent,
   })
 
   const pendingUnapprovedCountByWorkDate = useMemo(() => {
@@ -512,6 +521,7 @@ export function QuickfillPeopleHoursNewSection() {
           void myTeam.loadPending({ silent: true })
         }}
         onJobBidAssignError={(msg) => showToast(msg, 'error')}
+        onApplyScheduleProportionsForSession={applySchedule.requestApply}
         onOpenStripMyTimeEditor={showStripSubjectMyTimeEditor ? openStripMyTimeEditor : undefined}
         authUserId={authUser.id}
         canApproveClockSessions={showClockStripScopeToggle}
@@ -523,6 +533,7 @@ export function QuickfillPeopleHoursNewSection() {
         }
         clockStripWorkDateYmd={selectedYmd}
       />
+      <ApplyScheduleApprovedConfirmModal {...applySchedule.approvedConfirm} />
       {stripMyTimeEditor && (
         <DashboardMyTimeDayEditorModal
           dateStr={selectedYmd}
