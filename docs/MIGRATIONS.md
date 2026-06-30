@@ -132,6 +132,25 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### June 2026
 
+#### June 30, 2026
+
+**`20260630170000_wrap_noarg_helpers_checklist_instances_rls.sql`**
+- **Purpose**: Performance/RLS — wrap the no-arg `STABLE` helpers `is_dev_or_master_or_assistant()` and `can_define_task_style_checklist_items()` in `(select …)` across all four `checklist_instances` policies (SELECT/UPDATE/INSERT/DELETE) so Postgres evaluates them **once per query (InitPlan)** instead of **once per scanned row**. Same proven, semantics-preserving transform as PR #86 on the hot Realtime tables. Row-arg `checklist_item_created_by_auth_user(checklist_item_id)` and the already-wrapped `(select auth.uid())` are left unchanged.
+- **Impact**: The "my open instances" read (PostgREST; 2nd-heaviest query on the DB after Realtime WAL CDC) dropped from **76.9 ms / 5,283 buffers → 3.2 ms / 445 buffers** for a staff user under RLS. **Row visibility unchanged** — verified on prod across every policy branch (dev 2424, estimator 1 [created-by], helpers 0, subcontractor 4 [assignee] all match original semantics). Follow-up to the 2026-06-30 connection-pool-exhaustion incident; reduces per-call buffer pressure during concurrency spikes. Applied to prod ahead of `db push` (idempotent DROP/CREATE → safe re-apply).
+- **Category**: RLS / Performance / Checklist
+
+#### June 24, 2026
+
+**`20260624160000_mercury_unlinked_count_expr_index.sql`** _(merged in PR #115; applied to prod 2026-06-24)_
+- **Purpose**: Add partial expression index `mercury_transactions_unlinked_debit_card_idx` on the IMMUTABLE helper `mercury_debit_card_id_from_raw(raw)` where `duplicate_of_transaction_id IS NULL`. The `count_unlinked_mercury_transactions_for_tally()` family joined on that computed key, forcing a Seq Scan + per-row JSON parse over ~11.4k `mercury_transactions`.
+- **Impact**: `EXPLAIN ANALYZE` 363 ms → 6.5 ms warm (~56×); seq scan → index scan. Follow-up to the 2026-06-05 / 06-24 pool-exhaustion incidents.
+- **Category**: Materials / Banking / Performance
+
+**`20260624160100_trim_realtime_low_value_publication.sql`** _(merged in PR #115; applied to prod 2026-06-30)_
+- **Purpose**: Drop `estimates_thread_notes` + `quickfill_office_arriving_daily_checks` from the `supabase_realtime` publication (11 → 9 tables). Both have a dedicated client channel (removed in the paired PR #115 client edits) with a clean non-realtime refresh path, so dropping them closes an idle CDC channel. `jobs_ledger_thread_notes` intentionally kept (rides shared multi-table channels). Idempotent DO block (drop-if-published).
+- **Impact**: Sheds idle Realtime CDC channels; modest connection-pressure reduction. The real ceiling fixes for the recurring outages remain the compute-tier bump + Auth percentage-based connections (Dashboard) — see [`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md).
+- **Category**: Realtime / Performance
+
 #### June 8, 2026
 
 **Job activity ledger (Phase 2)** — three migrations:
