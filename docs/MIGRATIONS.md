@@ -134,6 +134,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### June 30, 2026
 
+**`20260630190000_connection_monitor_health_checks.sql`**
+- **Purpose**: Observability — extend the monitor with a `monitoring.health_checks` table + `checkpoint_activity` view (folded into `sample_connections()`): per-minute checkpoint counters, `io_wait_backends`, and a `sample_duration_ms` **latency canary**. Distinguishes an **infra freeze** (checkpoint stall, sampling gap, conns under ceiling) from **true connection-pool exhaustion**.
+- **Impact**: The 2026-06-30 20:34 UTC outage **disproved** the connection-exhaustion theory — the DB froze while idle at 49/90 connections with a 130 s stalled checkpoint (storage/host I/O stall). This captures that fingerprint going forward. See [`SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) **Phase B2**.
+- **Category**: Observability / Incident response
+
 **`20260630180000_connection_usage_monitor.sql`**
 - **Purpose**: Observability — a 1-minute `pg_cron` sampler (`connection-usage-sample`) records the live `pg_stat_activity` breakdown into `monitoring.connection_samples` (private `monitoring` schema, **not** exposed by PostgREST). Views `monitoring.connection_breakdown` (per-service classification) + `monitoring.connection_totals` (total vs `max_connections`). 14-day rolling retention. Idempotent; cron scheduling guarded on the `pg_cron` extension.
 - **Impact**: Captures *who* holds DB connections at peak so the recurring connection-pool-exhaustion outages (2026-06-05 / 06-24 / 06-30) can be sized with data — `max_connections` bump vs. compute upgrade vs. demand reduction. Analysis queries + interpretation in [`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) **Phase B2**.

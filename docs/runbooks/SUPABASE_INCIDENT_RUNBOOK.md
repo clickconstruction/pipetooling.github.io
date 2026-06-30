@@ -65,9 +65,29 @@ Save stdout or the CSV folder and attach to an incident ticket or chat **with se
 
 ---
 
-## Phase B2 — Connection-usage monitor (historical peak: *who* held the pool)
+## Phase B2 — Connection-usage + health monitor (is it a *freeze* or real *exhaustion*?)
 
-The recurring outages are **connection-pool exhaustion** (`max_connections = 90`, Small compute): when the pool fills, Realtime's CDC poller is starved (`:queue_timeout`) and the platform restarts Postgres. A live `pg_stat_activity` snapshot *after* recovery is useless — the storm is over. So a 1-minute sampler records the breakdown into a private `monitoring` schema (migration `20260630180000_connection_usage_monitor.sql`; not exposed to PostgREST). Use it to answer **"how close to 90 did we get, and which service held the connections?"** — the evidence that decides *free `max_connections` bump vs. compute upgrade*.
+> **⚠️ Root-cause correction (2026-06-30).** Realtime's `:queue_timeout` / "connection pool cannot serve them fast enough" looks like connection-pool exhaustion, but **it is the generic error Realtime emits whenever it can't reach the DB — including when the DB is *frozen*, not full.** On 2026-06-30 the monitor caught a crash live: the DB was at **49/90 connections, 1–2 active queries, fully cached, near-idle** yet went unresponsive ~3.5 min, with a **stalled checkpoint in the Postgres log (`total=129.9s`, `write=13.5s`)**. That is a **storage/host-level I/O freeze**, *not* pool/CPU/memory pressure — and raising `max_connections` or compute would **not** fix it. **Always confirm with the monitor before assuming "pool exhaustion."**
+
+A 1-minute sampler (migration `20260630180000` + health extension `20260630190000`) records into a private `monitoring` schema (not exposed to PostgREST): connection breakdown **and** checkpoint/IO/latency health. Two distinct diagnoses:
+- **True pool exhaustion** → `connection_totals` shows total climbing toward/at **90**, `connection_breakdown` shows which service.
+- **Infra freeze (what 06-30 was)** → connections **well under 90**, but a **sampling gap** (the cron itself couldn't run), a **checkpoint-stall** (`checkpoint_activity.write_time_delta_ms` large with ~flat `buffers_delta`), `io_wait_backends > 0`, and/or `sample_ms` (latency canary) spiking. This is a **Supabase-side** problem — escalate with this evidence; don't upgrade reflexively.
+
+```sql
+-- A) Sampling GAPS = the DB was frozen/unreachable (the cron couldn't run)
+select to_char(prev_t,'HH24:MI:SS') gap_start, to_char(sampled_at,'HH24:MI:SS') resumed,
+       round(extract(epoch from (sampled_at - prev_t)))::int gap_seconds
+from (select sampled_at, lag(sampled_at) over (order by sampled_at) prev_t
+      from (select distinct sampled_at from monitoring.connection_samples) s) z
+where sampled_at - prev_t > interval '90 seconds' order by sampled_at;
+
+-- B) Checkpoint stall + latency canary around the window (freeze fingerprint)
+select to_char(sampled_at,'HH24:MI:SS') t, write_time_delta_ms, buffers_delta, sample_ms, io_wait_backends, total_conns
+from monitoring.checkpoint_activity
+where sampled_at between '2026-06-30 20:30+00' and '2026-06-30 20:45+00' order by sampled_at;
+```
+
+Use the connection views to answer **"how close to 90, and which service?"** — the evidence that separates a real `max_connections`/compute decision from an infra escalation:
 
 ```sql
 -- 1) Daily peak total vs the 90 ceiling (is the wall actually being hit?)
@@ -131,6 +151,7 @@ When `inspect` or logs show contention on **`clock_sessions`**, **`jobs_ledger`*
 | Evidence | Direction |
 |----------|-----------|
 | 502/503/504, pooler, **too many connections** | Connection limits, pool mode, reduce duplicate Realtime tabs, client retry/backoff; **not** always a migration |
+| **DB unresponsive while idle / under the connection ceiling**: monitor sampling **gap**, **checkpoint stall** (`total ≫ write+sync`), `io_wait_backends>0` / latency canary spike, near-idle workload | **Infra freeze, not your workload** — storage/host I/O stall or noisy neighbor. **Escalate to Supabase** with the Phase B2 evidence (gap + checkpoint stall + low conns); ask them to check disk I/O / host health / move to a healthy host. `max_connections`/compute upgrades do **not** fix an idle-time freeze (2026-06-30) |
 | `statement timeout`, one query dominates `outliers` / `calls` | Index / rewrite query / batching; may be migration |
 | `deadlock detected` | Capture both statements from `postgres_logs`; fix lock order or shorten transactions (migration/RPC) |
 | Blocking chains on **same table** you recognize from Phase D | Narrow trigger/RPC scope, defer work, or advisory-lock design — **new migration only** (append-only; see [AGENTS.md](../../AGENTS.md)) |
