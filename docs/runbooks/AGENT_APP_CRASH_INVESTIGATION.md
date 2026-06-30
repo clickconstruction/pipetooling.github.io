@@ -24,6 +24,7 @@
    - `blocking` → `locks` → `long-running-queries`
    - then `outliers`, `calls`, **`inspect report`** (slower)
 5. Map blocking/slow query text to app tables using **Phase D** in [`SUPABASE_INCIDENT_RUNBOOK.md`](./SUPABASE_INCIDENT_RUNBOOK.md) (`clock_sessions`, `jobs_ledger`, `people_crew_*`, triggers).
+5b. **Pool exhaustion suspected (`:queue_timeout`, Realtime drop, restart)?** Query the **connection-usage monitor** for the peak breakdown — **Phase B2** in [`SUPABASE_INCIDENT_RUNBOOK.md`](./SUPABASE_INCIDENT_RUNBOOK.md) (`monitoring.connection_totals` / `monitoring.connection_breakdown`). It answers *how close to `max_connections=90` the spike got and which service held the connections* — the deciding evidence for `max_connections` bump vs. compute upgrade vs. demand reduction.
 6. **Postgres looks healthy** but users saw **5xx** or gateway errors: **CLI cannot pull hosted Logs Explorer** (API/Auth). Tell the user to export **Dashboard → Logs** for the same UTC window ([**Phase C**](./SUPABASE_INCIDENT_RUNBOOK.md)) or use a log drain / MCP logs if available per [`AGENTS.md`](../../AGENTS.md).
 7. **Deliverable:** Short verdict — *lock contention* vs *hot query* vs *pool/API* vs *client/SW* — and **next step** (no schema/RPC changes without evidence; migrations are append-only per [`AGENTS.md`](../../AGENTS.md)).
 

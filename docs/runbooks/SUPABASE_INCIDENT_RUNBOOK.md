@@ -65,6 +65,37 @@ Save stdout or the CSV folder and attach to an incident ticket or chat **with se
 
 ---
 
+## Phase B2 — Connection-usage monitor (historical peak: *who* held the pool)
+
+The recurring outages are **connection-pool exhaustion** (`max_connections = 90`, Small compute): when the pool fills, Realtime's CDC poller is starved (`:queue_timeout`) and the platform restarts Postgres. A live `pg_stat_activity` snapshot *after* recovery is useless — the storm is over. So a 1-minute sampler records the breakdown into a private `monitoring` schema (migration `20260630180000_connection_usage_monitor.sql`; not exposed to PostgREST). Use it to answer **"how close to 90 did we get, and which service held the connections?"** — the evidence that decides *free `max_connections` bump vs. compute upgrade*.
+
+```sql
+-- 1) Daily peak total vs the 90 ceiling (is the wall actually being hit?)
+select date_trunc('day', sampled_at) as day,
+       max(total_conns) as peak_conns, max(pct_of_max) as peak_pct
+from monitoring.connection_totals
+group by 1 order by 1 desc;
+
+-- 2) The worst few sample instants (drill into these timestamps next)
+select * from monitoring.connection_totals order by total_conns desc limit 10;
+
+-- 3) Service breakdown during an incident window (fill in the UTC range from Phase A)
+select date_trunc('minute', sampled_at) as minute, service, sum(cnt) as conns
+from monitoring.connection_breakdown
+where sampled_at between '2026-06-30 16:55+00' and '2026-06-30 17:05+00'
+group by 1, 2 order by 1, conns desc;
+
+-- 4) Composition at the single peak instant
+select service, sum(cnt) as conns
+from monitoring.connection_breakdown
+where sampled_at = (select sampled_at from monitoring.connection_totals order by total_conns desc limit 1)
+group by service order by conns desc;
+```
+
+**Reading it:** `postgrest` (the app's REST pool) is normally the largest consumer, `auth` holds up to a fixed 10, `realtime` a handful. If a peak shows ~90 with `postgrest` dominating, the lever is **more headroom** (raise `max_connections` / upgrade) and/or **less app demand**; if `auth` 10 + idle bloat dominate, the **Auth percentage-based** switch + idle-connection trimming help. Retention is 14 days (rolling). To pause sampling: `select cron.unschedule('connection-usage-sample');`
+
+---
+
 ## Phase C — Platform logs (historical API / Auth / Postgres service logs)
 
 The **hosted** log streams are in **Supabase Dashboard → Logs** (or Observability → Logs). For the **same UTC window** as Phase A:

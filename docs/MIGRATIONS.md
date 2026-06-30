@@ -134,6 +134,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 #### June 30, 2026
 
+**`20260630180000_connection_usage_monitor.sql`**
+- **Purpose**: Observability — a 1-minute `pg_cron` sampler (`connection-usage-sample`) records the live `pg_stat_activity` breakdown into `monitoring.connection_samples` (private `monitoring` schema, **not** exposed by PostgREST). Views `monitoring.connection_breakdown` (per-service classification) + `monitoring.connection_totals` (total vs `max_connections`). 14-day rolling retention. Idempotent; cron scheduling guarded on the `pg_cron` extension.
+- **Impact**: Captures *who* holds DB connections at peak so the recurring connection-pool-exhaustion outages (2026-06-05 / 06-24 / 06-30) can be sized with data — `max_connections` bump vs. compute upgrade vs. demand reduction. Analysis queries + interpretation in [`docs/runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) **Phase B2**.
+- **Category**: Observability / Incident response
+
+
+
 **`20260630170000_wrap_noarg_helpers_checklist_instances_rls.sql`**
 - **Purpose**: Performance/RLS — wrap the no-arg `STABLE` helpers `is_dev_or_master_or_assistant()` and `can_define_task_style_checklist_items()` in `(select …)` across all four `checklist_instances` policies (SELECT/UPDATE/INSERT/DELETE) so Postgres evaluates them **once per query (InitPlan)** instead of **once per scanned row**. Same proven, semantics-preserving transform as PR #86 on the hot Realtime tables. Row-arg `checklist_item_created_by_auth_user(checklist_item_id)` and the already-wrapped `(select auth.uid())` are left unchanged.
 - **Impact**: The "my open instances" read (PostgREST; 2nd-heaviest query on the DB after Realtime WAL CDC) dropped from **76.9 ms / 5,283 buffers → 3.2 ms / 445 buffers** for a staff user under RLS. **Row visibility unchanged** — verified on prod across every policy branch (dev 2424, estimator 1 [created-by], helpers 0, subcontractor 4 [assignee] all match original semantics). Follow-up to the 2026-06-30 connection-pool-exhaustion incident; reduces per-call buffer pressure during concurrency spikes. Applied to prod ahead of `db push` (idempotent DROP/CREATE → safe re-apply).
