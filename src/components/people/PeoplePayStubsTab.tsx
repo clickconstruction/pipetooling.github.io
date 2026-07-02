@@ -8,6 +8,7 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import type { UserRow } from '../../hooks/usePeopleRoster'
 import {
   isPayStubFullyPaid,
+  lastPayStubPaymentPaidAt,
   remainingPayStubBalance,
   sumPayStubPaymentAmounts,
   type PayStubPaymentRow,
@@ -435,6 +436,12 @@ export default function PeoplePayStubsTab({
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Balance</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Payment</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Created</th>
+                        <th
+                          style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}
+                          title="Date of the most recent payment recorded against this pay report."
+                        >
+                          Last Paid
+                        </th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                       </tr>
                     </thead>
@@ -450,6 +457,8 @@ export default function PeoplePayStubsTab({
                         const partial = paidSum > 0 && !fully
                         const paymentLabel = fully ? 'Paid' : partial ? 'Partial' : 'Unpaid'
                         const paymentColor = fully ? '#059669' : partial ? '#ca8a04' : '#6b7280'
+                        // Legacy stubs marked paid before per-payment rows existed only have stub.paid_at.
+                        const lastPaidAt = lastPayStubPaymentPaidAt(payRows) ?? stub.paid_at
                         const showPayDetail =
                           payRows.length > 0 || Boolean(stub.paid_note?.trim()) || Boolean(stub.paid_at)
                         return (
@@ -639,6 +648,9 @@ export default function PeoplePayStubsTab({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub.created_at ? new Date(stub.created_at).toLocaleDateString() : '—'}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                            {lastPaidAt ? new Date(lastPaidAt).toLocaleDateString() : '—'}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             <button

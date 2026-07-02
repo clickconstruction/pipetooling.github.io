@@ -24,3 +24,17 @@ export function remainingPayStubBalance(grossPay: number, paidSum: number): numb
 export function isPayStubFullyPaid(grossPay: number, paidSum: number): boolean {
   return paidSum + PAY_STUB_PAY_FULLY_TOLERANCE >= grossPay
 }
+
+/**
+ * The most recent payment date recorded against a stub, or null when no payments exist.
+ * Explicit max (not "last row") so callers don't depend on fetch order surviving client-side edits.
+ */
+export function lastPayStubPaymentPaidAt(rows: PayStubPaymentRow[] | undefined): string | null {
+  if (!rows?.length) return null
+  let latest: string | null = null
+  for (const r of rows) {
+    if (!r.paid_at) continue
+    if (latest === null || r.paid_at > latest) latest = r.paid_at
+  }
+  return latest
+}

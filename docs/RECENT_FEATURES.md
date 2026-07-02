@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.599)
+last_updated: 2026-07-02 (v2.600)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.600 — **People → Payroll ledger** — **Last Paid column**. New column between **Created** and **Actions** on the pay-reports ledger table showing the date of the most recent payment recorded against each stub — `max(paid_at)` over the stub's `pay_stub_payments` rows via new pure helper **`lastPayStubPaymentPaidAt`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts) (explicit max, not last-row, so client-side edits can't skew it), falling back to the legacy `pay_stubs.paid_at` mark-paid timestamp for stubs paid before per-payment rows existed; `—` when never paid. Zero new queries — the payments map was already bulk-loaded for every ledger row. +4 unit tests (new [`payStubPayments.test.ts`](../src/lib/payStubPayments.test.ts), incl. regression coverage of the existing payment math)](#latest-updates-v2600)
 **New:** [v2.599 — **Draft Payroll Hours breakdown** — **pending-approval hours surfaced + payroll refresh after Adjust times**. Two fixes for "I adjusted a day's hours but the breakdown didn't move": (1) the breakdown (and all payroll numbers) read **`people_hours`**, which is only written on **approval** — editing a pending session can never move payroll, so each day row (hourly people) now shows a muted amber **`+X.XX pending`** under the Hours value (and on the Period total) when closed unapproved sessions exist that day, with a tooltip explaining approval is the missing step. New pure kernel `sumPendingClockHoursByDay` in [`draftPayrollPersonBreakdown.ts`](../src/lib/draftPayrollPersonBreakdown.ts) (+5 tests); pending sessions resolved via the standard trimmed-name→user match, filtered `approved_at/rejected_at/revoked_at IS NULL`, closed only; salary rows unchanged. (2) For **approved** sessions, an **Adjust times** save followed by closing the day editor exited via `onClose` (not `onSaved`), leaving the Draft Payroll rows stale behind the fresh breakdown — the payroll-origin `onLinkedSessionsUpdated` now reloads the period's `people_hours` + days-correct + pending-approvals immediately](#latest-updates-v2599)
 **New:** [v2.598 — **Adjust times** — **approved-session confirms are now in-app modals**. The two `window.confirm` prompts in [`AdjustClockSessionTimesModal.tsx`](../src/components/AdjustClockSessionTimesModal.tsx) ("This session is approved. Saving updates the recorded payroll hours…" on closed sessions, and the clock-in-only variant on open sessions) are replaced by a nested **Approved session** confirm dialog stacked at `zIndex + 1` above the Adjust-times modal (`role="alertdialog"`, Cancel autofocused, Escape/backdrop dismiss, **Continue** runs the save). `handleSubmit` refactored: validation stays synchronous, the two save paths collapse into one `saveTimes(update)` helper, and approved sessions route through `approvedConfirm` state instead of the browser dialog. No behavior change for unapproved sessions](#latest-updates-v2598)
 **New:** [v2.597 — **People → Payroll → Draft Payroll** — **Hours breakdown day rows open the My Time day editor**. In the per-person **Hours breakdown** modal, each **Date** cell (hourly people only — salaried rows are synthetic 8h/weekday and stay plain text) is now a dotted-underline link that opens **`DashboardMyTimeDayEditorModal`** for that person+day in place: the breakdown hides (the editor's overlay z 1200 sits below the breakdown's 1215), the editor opens above the Draft Payroll modal, and on close/save the breakdown re-mounts with fresh rows while the payroll totals reload explicitly. **Relaxed save fence for payroll origin**: new `saveableRangeOverride?: { start; end }` prop on the day editor replaces the default this+last-week (America/Chicago) fence with the snapshotted pay period; non-current-week days keep the acknowledgment screen with payroll-specific copy; overridden saves always route through the **leader_*** split/replace RPCs (the `own_*` variants stay week-fenced). **Server side** (migration `20260702150000`): new helper **`pay_access_clock_week_fence_bypass()`** (pay-approved master / their assistants / dev, `search_path=public`) added to the week fence of `leader_split_clock_session_segments` / `leader_split_clock_session_cluster` / `leader_replace_clock_session_cluster_mixed` — bodies re-created verbatim from prod (md5-verified) apart from the one-line fence change; grants no new capability class (pay-access users already write `clock_sessions` on any date via role-only RLS). Name→user bridge + toast reuse the Review→Hours drilldown pattern in `People.tsx`](#latest-updates-v2597)
@@ -1975,6 +1976,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.600)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — Last Paid column
+
+The pay-reports ledger table ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)) gains a **Last Paid** column between **Created** and **Actions**: the date the most recent payment went out against that stub. Header tooltip: *"Date of the most recent payment recorded against this pay report."*
+
+- Value = `max(paid_at)` over the stub's `pay_stub_payments` rows via new pure helper **`lastPayStubPaymentPaidAt`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts) — explicit max rather than "last fetched row" so client-side payment edits can't skew it. Falls back to the legacy `pay_stubs.paid_at` mark-paid timestamp (stubs paid before per-payment rows existed); `—` when never paid.
+- Rendered with the same `toLocaleDateString()` idiom as the adjacent Created column (`paid_at` values are noon-anchored ISO timestamps, so no timezone day-shift).
+- **Zero new queries** — `payStubPaymentsByStubId` was already bulk-loaded for every ledger row (it drives Paid to date / Balance / Payment).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1758/1758** — 4 new tests in [`payStubPayments.test.ts`](../src/lib/payStubPayments.test.ts) (max regardless of order, single payment, blank `paid_at` skipped, null/empty rows, plus regression coverage of `sumPayStubPaymentAmounts` / `remainingPayStubBalance` / `isPayStubFullyPaid`); lint clean.
+
+#### Files
+
+Modified: [`src/lib/payStubPayments.ts`](../src/lib/payStubPayments.ts) (+ new test file), [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.599)
