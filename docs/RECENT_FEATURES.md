@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.611)
+last_updated: 2026-07-02 (v2.612)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.612 — **People → Payroll ledger** — **upcoming segment opens a detail modal**. The v2.611 amber `15 upcoming: $12,408.74` becomes a dotted-underline button opening an **Upcoming payroll — not yet reported** modal: **Person | Period | Hours | Est. Gross** rows (Period as `6/28–7/4 (w27)` via `ledgerPayPeriodShortLabel`) + totals footer. `buildUpcomingPayrollSummary` now also returns the `lines` it walks (person-asc, week-asc) with the totals **derived from them**, so the modal can never disagree with the header number; the modal reads the same search-filtered summary. 10 kernel tests](#latest-updates-v2612)
 **New:** [v2.611 — **People → Payroll ledger** — **"upcoming" segment on the summary line**. The header line extends to `7 open · $4,949.48 remaining | 12 upcoming: $10,000` — **person-weeks** with clocked time (approved **and** pending approval; rejected/revoked excluded) but **no pay report overlapping the week**, from each person's **last stub period end** forward (stub-less people capped at 8 weeks back; gaps before the last stub deliberately out of window), estimated as clocked hours × `people_pay_config.hourly_wage` (salaried people flow through their materialized schedule sessions). Amber segment with explanatory tooltip; hidden at 0; the person search box filters it like the open segment. New pure kernel [`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (`payWeekStartYmd` local Sun–Sat weeks matching the tab's period init, `upcomingPayrollFetchStartYmd` bounds the single `clock_sessions` query, `buildUpcomingPayrollSummary` with open-session now-clipping + stub-overlap suppression + 104-week loop guard) — **9 unit tests**; semantics cross-checked against prod SQL aggregates](#latest-updates-v2611)
 **New:** [v2.610 — **People → Payroll ledger** — **Less | Additional column centered** (header + body cells `textAlign: 'right'` → `'center'`). Display-only](#latest-updates-v2610)
 **New:** [v2.609 — **People → Payroll ledger** — **week label abbreviated**: `6/21–27 (week 26)` → `6/21–27 (w26)` in `ledgerPayPeriodShortLabel`. Display-only](#latest-updates-v2609)
@@ -1987,6 +1988,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.612)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — upcoming segment opens a detail modal
+
+Follow-up to v2.611: the amber **`15 upcoming: $12,408.74`** header segment ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)) is now a dotted-underline button that opens an **Upcoming payroll — not yet reported** modal listing every not-yet-reported person-week:
+
+- Table **Person | Period | Hours | Est. Gross** — Period rendered as `6/28–7/4 (w27)` via the existing `ledgerPayPeriodShortLabel`; totals footer (hours + estimated gross); subtitle repeats the counts and explains the estimate (includes pending-approval time; hours × wage; "Use Draft Payroll to generate these reports"). Escape / backdrop / × close; overlay at `Z_PEOPLE_PAY_MODAL`.
+- Kernel: `buildUpcomingPayrollSummary` ([`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts)) now also returns the **`lines`** it walks (`{ personName, weekStartYmd, weekEndYmd, hours, estimatedGrossDollars }`, sorted person-asc then week-asc) — `personWeekCount` / `estimatedGrossDollars` are **derived from the lines**, so the modal and header can never disagree.
+- The modal reads the same search-filtered summary as the header, so searching a person then clicking shows just their weeks.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1772/1772** (10 kernel tests, incl. a new sort/derivation case + line-content assertions); eslint clean on touched files.
+
+#### Files
+
+Modified: [`src/lib/upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (+ test), [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.611)

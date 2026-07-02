@@ -65,6 +65,11 @@ describe('buildUpcomingPayrollSummary', () => {
     })
     expect(out.personWeekCount).toBe(2)
     expect(out.estimatedGrossDollars).toBeCloseTo(15 * 20)
+    expect(out.lines).toHaveLength(2)
+    expect(out.lines[0]).toMatchObject({ personName: 'Alice', weekStartYmd: '2026-06-21', weekEndYmd: '2026-06-27' })
+    expect(out.lines[0]?.hours).toBeCloseTo(10)
+    expect(out.lines[0]?.estimatedGrossDollars).toBeCloseTo(200)
+    expect(out.lines[1]).toMatchObject({ personName: 'Alice', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04' })
   })
 
   it('suppresses weeks any stub overlaps, even partially', () => {
@@ -119,6 +124,29 @@ describe('buildUpcomingPayrollSummary', () => {
     expect(out.estimatedGrossDollars).toBeCloseTo(8 * 20 + 4 * 30)
   })
 
+  it('sorts lines by person then week and totals derive from them', () => {
+    const out = buildUpcomingPayrollSummary({
+      ...base,
+      personNames: ['Zed', 'Alice'],
+      userIdByPersonName: { Alice: 'u1', Zed: 'u2' },
+      hourlyWageByPersonName: { Alice: 20, Zed: 10 },
+      stubsByPerson: {},
+      capWeeksForStubless: 2,
+      sessions: [
+        session('u2', '2026-06-16', 2),
+        session('u1', '2026-06-30', 3),
+        session('u1', '2026-06-16', 1),
+      ],
+    })
+    expect(out.lines.map((l) => `${l.personName}:${l.weekStartYmd}`)).toEqual([
+      'Alice:2026-06-14',
+      'Alice:2026-06-28',
+      'Zed:2026-06-14',
+    ])
+    expect(out.personWeekCount).toBe(out.lines.length)
+    expect(out.estimatedGrossDollars).toBeCloseTo(out.lines.reduce((s, l) => s + l.estimatedGrossDollars, 0))
+  })
+
   it('returns zeros for empty inputs', () => {
     const out = buildUpcomingPayrollSummary({
       ...base,
@@ -126,6 +154,6 @@ describe('buildUpcomingPayrollSummary', () => {
       stubsByPerson: {},
       sessions: [],
     })
-    expect(out).toEqual({ personWeekCount: 0, estimatedGrossDollars: 0 })
+    expect(out).toEqual({ personWeekCount: 0, estimatedGrossDollars: 0, lines: [] })
   })
 })

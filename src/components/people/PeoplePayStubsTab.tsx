@@ -180,6 +180,7 @@ export default function PeoplePayStubsTab({
   // "Upcoming payroll": clock sessions (approved + pending; rejected/revoked excluded) since the
   // earliest week any person could still owe a pay report for. null = not loaded yet.
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingClockSessionRow[] | null>(null)
+  const [upcomingModalOpen, setUpcomingModalOpen] = useState(false)
 
   // Roster mapping + per-person stub inputs for the upcoming summary (payroll is person_name-keyed,
   // clock_sessions is user_id-keyed — same trimmed-name match used elsewhere).
@@ -437,12 +438,24 @@ export default function PeoplePayStubsTab({
                         {upcomingSummary && upcomingSummary.personWeekCount > 0 ? (
                           <>
                             <span style={{ color: '#9ca3af' }}>{' | '}</span>
-                            <span
-                              title="Weeks with clocked time (including pending approval) but no pay report yet — estimated hours × wage. Use Draft Payroll to generate them."
-                              style={{ color: '#b45309' }}
+                            <button
+                              type="button"
+                              onClick={() => setUpcomingModalOpen(true)}
+                              title="Weeks with clocked time (including pending approval) but no pay report yet — estimated hours × wage. Click for the full list."
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                margin: 0,
+                                font: 'inherit',
+                                color: '#b45309',
+                                textDecoration: 'underline dotted',
+                                textUnderlineOffset: '2px',
+                                cursor: 'pointer',
+                              }}
                             >
                               {upcomingSummary.personWeekCount} upcoming: ${formatCurrency(upcomingSummary.estimatedGrossDollars)}
-                            </span>
+                            </button>
                           </>
                         ) : null}
                       </p>
@@ -843,6 +856,109 @@ export default function PeoplePayStubsTab({
           </>
         )}
       </div>
+
+      {upcomingModalOpen && upcomingSummary ? (
+        <div
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setUpcomingModalOpen(false)
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: Z_PEOPLE_PAY_MODAL,
+            padding: '1rem',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upcoming-payroll-modal-title"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') setUpcomingModalOpen(false)
+            }}
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              maxWidth: 640,
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 id="upcoming-payroll-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
+                  Upcoming payroll — not yet reported
+                </h2>
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  {upcomingSummary.personWeekCount} person-week{upcomingSummary.personWeekCount === 1 ? '' : 's'} ·{' '}
+                  ${formatCurrency(upcomingSummary.estimatedGrossDollars)} estimated. Clocked time (including pending
+                  approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to
+                  generate these reports.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUpcomingModalOpen(false)}
+                title="Close"
+                aria-label="Close"
+                style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: '1rem 1.25rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                <thead>
+                  <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Person</th>
+                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Period</th>
+                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Hours</th>
+                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right', whiteSpace: 'nowrap' }}>Est. Gross</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {upcomingSummary.lines.map((l) => (
+                    <tr key={`${l.personName}:${l.weekStartYmd}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '0.45rem 0.65rem' }}>{l.personName}</td>
+                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
+                        {ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {l.hours.toFixed(2)}
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        ${formatCurrency(l.estimatedGrossDollars)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                    <td style={{ padding: '0.5rem 0.65rem' }} colSpan={2}>
+                      Total
+                    </td>
+                    <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      {upcomingSummary.lines.reduce((s, l) => s + l.hours, 0).toFixed(2)}
+                    </td>
+                    <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      ${formatCurrency(upcomingSummary.estimatedGrossDollars)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {payStubLessModalStub ? (
         <PayStubLessModal
