@@ -35,6 +35,8 @@ export function AdjustClockSessionTimesModal({
   const [clockOut, setClockOut] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Approved-session confirm (replaces window.confirm): message + the save to run on Continue.
+  const [approvedConfirm, setApprovedConfirm] = useState<{ message: string; proceed: () => void } | null>(null)
 
   const isOpenSession = session.clocked_out_at == null
   const notesTrimmed = (session.notes ?? '').trim()
@@ -43,6 +45,7 @@ export function AdjustClockSessionTimesModal({
     setClockIn(toDatetimeLocal(session.clocked_in_at))
     setClockOut(session.clocked_out_at ? toDatetimeLocal(session.clocked_out_at) : '')
     setError(null)
+    setApprovedConfirm(null)
   }, [session.id, session.clocked_in_at, session.clocked_out_at])
 
   /**
@@ -61,7 +64,34 @@ export function AdjustClockSessionTimesModal({
     }
   }
 
-  async function handleSubmit() {
+  async function saveTimes(update: { clocked_in_at: string; clocked_out_at?: string; work_date: string }) {
+    setSaving(true)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('clock_sessions')
+            .update({
+              ...update,
+              notes: notesTrimmed,
+              job_ledger_id: session.job_ledger_id,
+              bid_id: session.bid_id,
+            })
+            .eq('id', session.id),
+        'adjust clock session times',
+      )
+      await resyncPeopleHoursForDay()
+      showToast?.('Times saved.', 'success')
+      onSaved?.()
+      onClose()
+    } catch (e: unknown) {
+      setError(formatErrorMessage(e, 'Failed to save times'))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleSubmit() {
     setError(null)
     const inVal = fromDatetimeLocal(clockIn)
     if (!inVal) {
@@ -78,37 +108,16 @@ export function AdjustClockSessionTimesModal({
     const workDate = clockIn.slice(0, 10)
 
     if (isOpenSession && !clockOut.trim()) {
+      const run = () => void saveTimes({ clocked_in_at: inVal, work_date: workDate })
       if (session.approved_at) {
-        const ok = window.confirm(
-          'This session was already approved. Changing clock-in will change recorded hours and may require re-approval. Continue?',
-        )
-        if (!ok) return
+        setApprovedConfirm({
+          message:
+            'This session was already approved. Changing clock-in will change recorded hours and may require re-approval. Continue?',
+          proceed: run,
+        })
+        return
       }
-      setSaving(true)
-      try {
-        await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .update({
-                clocked_in_at: inVal,
-                work_date: workDate,
-                notes: notesTrimmed,
-                job_ledger_id: session.job_ledger_id,
-                bid_id: session.bid_id,
-              })
-              .eq('id', session.id),
-          'adjust clock session times',
-        )
-        await resyncPeopleHoursForDay()
-        showToast?.('Times saved.', 'success')
-        onSaved?.()
-        onClose()
-      } catch (e: unknown) {
-        setError(formatErrorMessage(e, 'Failed to save times'))
-      } finally {
-        setSaving(false)
-      }
+      run()
       return
     }
 
@@ -131,39 +140,16 @@ export function AdjustClockSessionTimesModal({
       return
     }
 
+    const run = () => void saveTimes({ clocked_in_at: inVal, clocked_out_at: outVal, work_date: workDate })
     if (session.approved_at) {
-      const ok = window.confirm(
-        'This session is approved. Saving updates the recorded payroll hours for this day to match the new times. Continue?',
-      )
-      if (!ok) return
+      setApprovedConfirm({
+        message:
+          'This session is approved. Saving updates the recorded payroll hours for this day to match the new times. Continue?',
+        proceed: run,
+      })
+      return
     }
-
-    setSaving(true)
-    try {
-      await withSupabaseRetry(
-        async () =>
-          supabase
-            .from('clock_sessions')
-            .update({
-              clocked_in_at: inVal,
-              clocked_out_at: outVal,
-              work_date: workDate,
-              notes: notesTrimmed,
-              job_ledger_id: session.job_ledger_id,
-              bid_id: session.bid_id,
-            })
-            .eq('id', session.id),
-        'adjust clock session times',
-      )
-      await resyncPeopleHoursForDay()
-      showToast?.('Times saved.', 'success')
-      onSaved?.()
-      onClose()
-    } catch (e: unknown) {
-      setError(formatErrorMessage(e, 'Failed to save times'))
-    } finally {
-      setSaving(false)
-    }
+    run()
   }
 
   return (
@@ -256,7 +242,7 @@ export function AdjustClockSessionTimesModal({
           </button>
           <button
             type="button"
-            onClick={() => void handleSubmit()}
+            onClick={handleSubmit}
             disabled={saving}
             style={{
               padding: '0.45rem 0.85rem',
@@ -273,6 +259,91 @@ export function AdjustClockSessionTimesModal({
           </button>
         </div>
       </div>
+      {approvedConfirm ? (
+        <div
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setApprovedConfirm(null)
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: zIndex + 1,
+            padding: '1rem',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="adjust-clock-times-approved-confirm-title"
+            aria-describedby="adjust-clock-times-approved-confirm-desc"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                setApprovedConfirm(null)
+              }
+            }}
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              padding: '1.25rem',
+              maxWidth: 380,
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            <h3 id="adjust-clock-times-approved-confirm-title" style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
+              Approved session
+            </h3>
+            <p id="adjust-clock-times-approved-confirm-desc" style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              {approvedConfirm.message}
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setApprovedConfirm(null)}
+                autoFocus
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  border: '1px solid #d1d5db',
+                  borderRadius: 4,
+                  background: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const proceed = approvedConfirm.proceed
+                  setApprovedConfirm(null)
+                  proceed()
+                }}
+                style={{
+                  padding: '0.45rem 0.85rem',
+                  border: 'none',
+                  borderRadius: 4,
+                  background: '#3b82f6',
+                  color: 'white',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                }}
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
