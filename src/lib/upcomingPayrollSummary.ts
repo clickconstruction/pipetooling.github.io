@@ -14,7 +14,20 @@ export type UpcomingClockSessionRow = {
   clocked_out_at: string | null
 }
 
-export type UpcomingPayrollSummary = { personWeekCount: number; estimatedGrossDollars: number }
+export type UpcomingPayrollLine = {
+  personName: string
+  weekStartYmd: string
+  weekEndYmd: string
+  hours: number
+  estimatedGrossDollars: number
+}
+
+export type UpcomingPayrollSummary = {
+  personWeekCount: number
+  estimatedGrossDollars: number
+  /** One row per counted person-week, sorted by person asc then week asc — totals above derive from these. */
+  lines: UpcomingPayrollLine[]
+}
 
 export const DEFAULT_UPCOMING_CAP_WEEKS = 8
 
@@ -78,9 +91,8 @@ export function buildUpcomingPayrollSummary(args: {
     hoursByUserWeek.set(key, (hoursByUserWeek.get(key) ?? 0) + (outMs - inMs) / 3_600_000)
   }
 
-  let personWeekCount = 0
-  let estimatedGrossDollars = 0
-  for (const name of args.personNames) {
+  const lines: UpcomingPayrollLine[] = []
+  for (const name of [...args.personNames].sort((a, b) => a.localeCompare(b))) {
     const uid = args.userIdByPersonName[name]
     if (!uid) continue
     const stubs = args.stubsByPerson[name] ?? []
@@ -98,12 +110,21 @@ export function buildUpcomingPayrollSummary(args: {
       if (!covered) {
         const hours = hoursByUserWeek.get(`${uid}:${week}`) ?? 0
         if (hours > 0.01) {
-          personWeekCount++
-          estimatedGrossDollars += hours * (Number.isFinite(wage) ? wage : 0)
+          lines.push({
+            personName: name,
+            weekStartYmd: week,
+            weekEndYmd: weekEnd,
+            hours,
+            estimatedGrossDollars: hours * (Number.isFinite(wage) ? wage : 0),
+          })
         }
       }
       week = ymdAddDays(week, 7)
     }
   }
-  return { personWeekCount, estimatedGrossDollars }
+  return {
+    personWeekCount: lines.length,
+    estimatedGrossDollars: lines.reduce((s, l) => s + l.estimatedGrossDollars, 0),
+    lines,
+  }
 }
