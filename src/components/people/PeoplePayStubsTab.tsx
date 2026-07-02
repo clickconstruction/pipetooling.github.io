@@ -446,7 +446,8 @@ export default function PeoplePayStubsTab({
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Net Pay</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Paid to date</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Balance</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Payment</th>
+                        {/* width 1% + nowrap = shrink-to-fit; leftover table width flows to the text columns instead */}
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: '1%', whiteSpace: 'nowrap' }}>Payment</th>
                         <th
                           style={{ padding: '0.5rem 0.4rem', textAlign: 'left', whiteSpace: 'nowrap' }}
                           title="Created date - date of the most recent payment - days between period end and the last payment (amber = no payment yet; days outstanding so far)."
@@ -624,8 +625,8 @@ export default function PeoplePayStubsTab({
                               </button>
                             </span>
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          <td style={{ padding: '0.5rem 0.75rem', width: '1%', whiteSpace: 'nowrap' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                               <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: paymentColor }}>{paymentLabel}</span>
                               {showPayDetail ? (
                                 <button

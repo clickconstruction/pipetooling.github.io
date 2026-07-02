@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.604)
+last_updated: 2026-07-02 (v2.605)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.605 — **People → Payroll ledger** — **Payment column shrink-to-fit**. The Payment column (status label + detail icon + Record payment button) absorbed the table's leftover width, leaving dead white space after its contents. Header + body cells now use the `width: '1%'` + `white-space: nowrap` shrink-to-fit idiom (and the cell's inline-flex drops `flexWrap`), so the column hugs its content and the slack flows to the text columns (Person/Period). Display-only](#latest-updates-v2605)
 **New:** [v2.604 — **People → Payroll ledger** — **Created / Paid / Delay merged into one column**. The three v2.600–v2.603 columns collapse into a single **`Created | Paid | Delay`** column rendering `7/2 - 7/2 - 5d` (muted gray dashes; missing parts show `—`; unpaid-aging delay keeps its amber `Nd…`). Per-part hover tooltips: `Created {full date}`, `Last paid {full date}`, and the delay explanation. Display-only](#latest-updates-v2604)
 **New:** [v2.603 — **People → Payroll ledger** — **tighter Created / Last Paid / Delay columns**. Header **Payment Delay** → **Delay** (tooltip unchanged) and the three columns' cell padding narrows `0.75rem` → `0.4rem` horizontal (headers + body cells); `Last Paid` header gains `nowrap`. Display-only](#latest-updates-v2603)
 **New:** [v2.602 — **People → Payroll ledger** — **compact Created / Last Paid dates**. Both cells drop the year (`7/2/2026` → `7/2`) via a local `shortMonthDay` helper (explicit local date parts, `—` on unparseable input); the full locale date moves to a hover `title` tooltip so cross-year rows stay unambiguous](#latest-updates-v2602)
@@ -1980,6 +1981,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.605)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — Payment column shrink-to-fit
+
+The pay-reports ledger table is `width: 100%` with automatic layout, so the browser distributed leftover viewport width into the flexible **Payment** column (status label + payment-detail icon + **Record payment** button), leaving dead white space after its contents. The column's header and body cells now use the classic shrink-to-fit idiom — `width: '1%'` + `white-space: nowrap` — and the cell's inline-flex wrapper drops `flexWrap`, so the column hugs its content on one line and the freed width flows to the text columns (Person / Period) where it's useful. Display-only ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1762/1762**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.604)
