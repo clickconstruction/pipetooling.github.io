@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.615)
+last_updated: 2026-07-02 (v2.616)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.616 — **People → Payroll ledger** — **upcoming week drilldown → My Time day editor**. In the Upcoming payroll modal, each row's **Period** is now a link opening a nested per-week modal (z `Z_PEOPLE_PAY_MODAL + 10`) listing the **contributing days** (`Wed 7/1 · 8.25` rows via new kernel helper `upcomingWeekDayBreakdown` — per-day sums from the already-fetched sessions, open sessions clip at now) with a week-total footer; clicking a day opens **`DashboardMyTimeDayEditorModal`** for that person+day (editor z 1200 stacks above both modals — no hide choreography needed). `onOpenMyTimeForDay` gains an optional `saveableRange` arg → new plain `saveableRange` field on the shared `hoursMyTimeEditor` state feeds `saveableRangeOverride`, so days in weeks older than the standard two-week fence stay saveable (scoped to that pay week; the v2.597 server-side leader-RPC bypass applies). After a save, new `ledgerUpcomingRefreshTick` prop refetches the upcoming sessions so the modals + header segment update in place](#latest-updates-v2616)
 **New:** [v2.615 — **People → Payroll ledger** — **Upcoming payroll modal caption hidden**: the subtitle trims to `15 person-weeks · $12,408.74 estimated`; the explanatory sentence (pending-approval basis, hours × wage, Draft Payroll hint) moves to the line's hover `title` tooltip. Display-only](#latest-updates-v2615)
 **New:** [v2.614 — **People → Payroll ledger** — **current week shown in the Upcoming payroll modal** header (`Current week: 6/28–7/4 (w27)` via `payWeekStartYmd` + `ledgerPayPeriodShortLabel`, between the title and the totals subtitle). Display-only](#latest-updates-v2614)
 **New:** [v2.613 — **People → Payroll ledger** — **body scroll locked while the Upcoming payroll modal is open** (`document.body.style.overflow = 'hidden'` effect keyed on the modal state, previous value restored on close — same idiom as `UserReviewModal`). Display-only](#latest-updates-v2613)
@@ -1991,6 +1992,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.616)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — upcoming week drilldown → My Time day editor
+
+Follow-up to v2.612: in the **Upcoming payroll** modal, each row's **Period** is now a dotted-underline link that opens a nested per-week modal listing the **contributing days** for that person-week, and each day opens the shared **My Time day editor** — investigate and fix time without leaving the payroll flow.
+
+- **Week-detail modal** (z `Z_PEOPLE_PAY_MODAL + 10`, above the Upcoming modal): title `{person} — {period (wN)}`, one row per clocked day (`Wed 7/1 · 8.25`), week-total footer. Day hours come from the **already-fetched** upcoming sessions via new kernel helper **`upcomingWeekDayBreakdown`** ([`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts)) — per-day sums, other users/weeks excluded, open sessions clip at now; **11** kernel tests.
+- **Day click** → the existing `onOpenMyTimeForDay` bridge (now with an optional **`saveableRange`** arg) opens `DashboardMyTimeDayEditorModal` for that person+day. The editor's hardcoded z 1200 stacks **above** both modals, so no hide/reopen choreography. A new plain **`saveableRange`** field on the shared `hoursMyTimeEditor` state feeds `saveableRangeOverride` — days in weeks older than the standard two-week fence stay saveable, scoped to exactly that pay week (the v2.597 server-side leader-RPC bypass covers the split paths; no reopen side effects, unlike `payrollOrigin`).
+- **Refresh**: the editor's `onSaved` bumps a new **`ledgerUpcomingRefreshTick`** (People.tsx → tab prop) that refetches the upcoming sessions, so the day list, week line, and header segment all update in place after an edit.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1773/1773** (11 kernel tests incl. the new per-day breakdown case); eslint clean on touched files (the 10 People.tsx warnings pre-exist).
+
+#### Files
+
+Modified: [`src/lib/upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (+ test), [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx), [`src/pages/People.tsx`](../src/pages/People.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.615)

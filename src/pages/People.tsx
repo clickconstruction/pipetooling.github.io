@@ -383,7 +383,11 @@ export default function People() {
      * person on close/save.
      */
     payrollOrigin?: { personName: string; periodStart: string; periodEnd: string }
+    /** Plain fence widening (e.g. Payroll ledger upcoming-week drilldown) with no reopen choreography. */
+    saveableRange?: { start: string; end: string }
   } | null>(null)
+  // Bumped after a My-Time save so the Payroll ledger's upcoming-payroll data refetches.
+  const [ledgerUpcomingRefreshTick, setLedgerUpcomingRefreshTick] = useState(0)
   const [hoursManualDraftEditor, setHoursManualDraftEditor] = useState<{
     subjectUserId: string
     subjectDisplayName: string
@@ -3247,9 +3251,10 @@ export default function People() {
           markingPayStubId={markingPayStubId}
           onRequestDeleteStub={(stub) => setPayStubDeleteConfirm(stub)}
           deletingPayStubId={deletingPayStubId}
-          onOpenMyTimeForDay={({ dateStr, subjectUserId, subjectDisplayName }) =>
-            setHoursMyTimeEditor({ dateStr, subjectUserId, subjectDisplayName })
+          onOpenMyTimeForDay={({ dateStr, subjectUserId, subjectDisplayName, saveableRange }) =>
+            setHoursMyTimeEditor({ dateStr, subjectUserId, subjectDisplayName, saveableRange })
           }
+          upcomingRefreshTick={ledgerUpcomingRefreshTick}
           onOpenForecast={() => setForecastModalOpen(true)}
           forecastDisabled={forecastUnpaidRows.length === 0}
           onOpenDraftPayroll={() => {
@@ -4318,7 +4323,7 @@ export default function People() {
                   start: hoursMyTimeEditor.payrollOrigin.periodStart,
                   end: hoursMyTimeEditor.payrollOrigin.periodEnd,
                 }
-              : undefined
+              : hoursMyTimeEditor.saveableRange
           }
           onClose={() => {
             // Cancelling without saving: nothing changed, no Team Summary
@@ -4339,6 +4344,8 @@ export default function People() {
             setHoursMyTimeEditor(null)
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()
+            // Ledger upcoming-payroll data derives from clock sessions — refetch after any save.
+            setLedgerUpcomingRefreshTick((n) => n + 1)
             if (payrollOrigin) {
               // Draft Payroll origin: explicit refresh — the hours-tab refreshers above are
               // gated to activeTab === 'hours' and the realtime clock-sessions handler only

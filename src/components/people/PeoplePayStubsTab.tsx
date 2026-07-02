@@ -34,7 +34,9 @@ import {
   buildUpcomingPayrollSummary,
   payWeekStartYmd,
   upcomingPayrollFetchStartYmd,
+  upcomingWeekDayBreakdown,
   type UpcomingClockSessionRow,
+  type UpcomingPayrollLine,
 } from '../../lib/upcomingPayrollSummary'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
@@ -111,7 +113,15 @@ export type PeoplePayStubsTabProps = {
   onRequestDeleteStub: (stub: PayStubRow) => void
   deletingPayStubId: string | null
   /** Open the shared My-Time day editor (parent-owned, shared with Hours). */
-  onOpenMyTimeForDay: (args: { dateStr: string; subjectUserId: string; subjectDisplayName: string }) => void
+  onOpenMyTimeForDay: (args: {
+    dateStr: string
+    subjectUserId: string
+    subjectDisplayName: string
+    /** Upcoming-payroll drilldown: widen the editor's save fence to this pay week (older weeks stay saveable). */
+    saveableRange?: { start: string; end: string }
+  }) => void
+  /** Bumped by the parent after a My-Time save so the upcoming-payroll data refetches. */
+  upcomingRefreshTick: number
   /** Open the parent-owned Payroll Forecast modal. */
   onOpenForecast: () => void
   forecastDisabled: boolean
@@ -140,6 +150,7 @@ export default function PeoplePayStubsTab({
   onRequestDeleteStub,
   deletingPayStubId,
   onOpenMyTimeForDay,
+  upcomingRefreshTick,
   onOpenForecast,
   forecastDisabled,
   onOpenDraftPayroll,
@@ -182,6 +193,8 @@ export default function PeoplePayStubsTab({
   // earliest week any person could still owe a pay report for. null = not loaded yet.
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingClockSessionRow[] | null>(null)
   const [upcomingModalOpen, setUpcomingModalOpen] = useState(false)
+  /** Person-week whose per-day drilldown modal is open (nested above the Upcoming payroll modal). */
+  const [upcomingWeekDetail, setUpcomingWeekDetail] = useState<UpcomingPayrollLine | null>(null)
 
   // Lock body scroll while the Upcoming payroll modal is open (same idiom as UserReviewModal).
   useEffect(() => {
@@ -252,7 +265,7 @@ export default function PeoplePayStubsTab({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- todayYmd is a render-derived day string
-  }, [upcomingInputs])
+  }, [upcomingInputs, upcomingRefreshTick])
 
   const upcomingSummary = useMemo(() => {
     if (!upcomingSessions) return null
@@ -949,7 +962,25 @@ export default function PeoplePayStubsTab({
                     <tr key={`${l.personName}:${l.weekStartYmd}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td style={{ padding: '0.45rem 0.65rem' }}>{l.personName}</td>
                       <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
-                        {ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}
+                        <button
+                          type="button"
+                          onClick={() => setUpcomingWeekDetail(l)}
+                          title="Show this week's contributing days"
+                          aria-label={`Show contributing days for ${l.personName}, ${ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}`}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            margin: 0,
+                            font: 'inherit',
+                            color: '#2563eb',
+                            textDecoration: 'underline dotted',
+                            textUnderlineOffset: '2px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}
+                        </button>
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {l.hours.toFixed(2)}
@@ -970,6 +1001,151 @@ export default function PeoplePayStubsTab({
                     </td>
                     <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       ${formatCurrency(upcomingSummary.estimatedGrossDollars)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {upcomingWeekDetail ? (
+        <div
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setUpcomingWeekDetail(null)
+          }}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: Z_PEOPLE_PAY_MODAL + 10,
+            padding: '1rem',
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="upcoming-week-detail-title"
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                e.stopPropagation()
+                setUpcomingWeekDetail(null)
+              }
+            }}
+            style={{
+              background: 'white',
+              borderRadius: 8,
+              maxWidth: 420,
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 id="upcoming-week-detail-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
+                  {upcomingWeekDetail.personName} — {ledgerPayPeriodShortLabel(upcomingWeekDetail.weekStartYmd, upcomingWeekDetail.weekEndYmd)}
+                </h3>
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  Contributing days — click a day to open My Time.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setUpcomingWeekDetail(null)}
+                title="Close"
+                aria-label="Close"
+                style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              >
+                ×
+              </button>
+            </div>
+            <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                <thead>
+                  <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Day</th>
+                    <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Hours</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(() => {
+                    const uid = upcomingInputs.userIdByPersonName[upcomingWeekDetail.personName]
+                    const days = uid && upcomingSessions
+                      ? upcomingWeekDayBreakdown({
+                          sessions: upcomingSessions,
+                          userId: uid,
+                          weekStartYmd: upcomingWeekDetail.weekStartYmd,
+                          nowMs: Date.now(),
+                        })
+                      : []
+                    if (days.length === 0) {
+                      return (
+                        <tr>
+                          <td colSpan={2} style={{ padding: '0.75rem 0.65rem', color: '#6b7280' }}>
+                            No clocked days this week.
+                          </td>
+                        </tr>
+                      )
+                    }
+                    return days.map((d) => (
+                      <tr key={d.workDate} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
+                          {uid ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onOpenMyTimeForDay({
+                                  dateStr: d.workDate,
+                                  subjectUserId: uid,
+                                  subjectDisplayName: upcomingWeekDetail.personName,
+                                  saveableRange: {
+                                    start: upcomingWeekDetail.weekStartYmd,
+                                    end: upcomingWeekDetail.weekEndYmd,
+                                  },
+                                })
+                              }
+                              title="Open My Time for this day"
+                              aria-label={`Open My Time for ${upcomingWeekDetail.personName} on ${d.workDate}`}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                margin: 0,
+                                font: 'inherit',
+                                color: '#2563eb',
+                                textDecoration: 'underline dotted',
+                                textUnderlineOffset: '2px',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {new Date(d.workDate + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' })}{' '}
+                              {shortMonthDay(d.workDate + 'T12:00:00')}
+                            </button>
+                          ) : (
+                            <>{d.workDate}</>
+                          )}
+                        </td>
+                        <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                          {d.hours.toFixed(2)}
+                        </td>
+                      </tr>
+                    ))
+                  })()}
+                </tbody>
+                <tfoot>
+                  <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                    <td style={{ padding: '0.5rem 0.65rem' }}>Week total</td>
+                    <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      {upcomingWeekDetail.hours.toFixed(2)}
                     </td>
                   </tr>
                 </tfoot>
