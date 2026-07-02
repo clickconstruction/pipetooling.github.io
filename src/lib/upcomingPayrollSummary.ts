@@ -63,6 +63,31 @@ export function upcomingPayrollFetchStartYmd(args: {
 }
 
 /**
+ * Per-day hours for one user's pay week — the drilldown under an upcoming person-week line.
+ * Returns only days with > 0 hours, sorted by date; open sessions clip at nowMs.
+ */
+export function upcomingWeekDayBreakdown(args: {
+  sessions: UpcomingClockSessionRow[]
+  userId: string
+  weekStartYmd: string
+  nowMs: number
+}): Array<{ workDate: string; hours: number }> {
+  const weekEnd = ymdAddDays(args.weekStartYmd, 6)
+  const byDay = new Map<string, number>()
+  for (const s of args.sessions) {
+    if (s.user_id !== args.userId) continue
+    if (s.work_date < args.weekStartYmd || s.work_date > weekEnd) continue
+    const inMs = new Date(s.clocked_in_at).getTime()
+    const outMs = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : args.nowMs
+    if (!Number.isFinite(inMs) || !Number.isFinite(outMs) || outMs <= inMs) continue
+    byDay.set(s.work_date, (byDay.get(s.work_date) ?? 0) + (outMs - inMs) / 3_600_000)
+  }
+  return [...byDay.entries()]
+    .map(([workDate, hours]) => ({ workDate, hours }))
+    .sort((a, b) => a.workDate.localeCompare(b.workDate))
+}
+
+/**
  * A person-week counts when it has > 0.01 summed clock hours (open sessions clip at nowMs) and no
  * existing stub overlaps the week (overlap test — odd-length stubs still suppress). Contribution
  * is weekHours × hourlyWage; salaried people flow through their materialized schedule sessions.

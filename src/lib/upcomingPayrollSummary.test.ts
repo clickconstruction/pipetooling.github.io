@@ -3,6 +3,7 @@ import {
   buildUpcomingPayrollSummary,
   payWeekStartYmd,
   upcomingPayrollFetchStartYmd,
+  upcomingWeekDayBreakdown,
   type UpcomingClockSessionRow,
 } from './upcomingPayrollSummary'
 
@@ -145,6 +146,27 @@ describe('buildUpcomingPayrollSummary', () => {
     ])
     expect(out.personWeekCount).toBe(out.lines.length)
     expect(out.estimatedGrossDollars).toBeCloseTo(out.lines.reduce((s, l) => s + l.estimatedGrossDollars, 0))
+  })
+
+  it('breaks a user week down into per-day hours (upcomingWeekDayBreakdown)', () => {
+    const days = upcomingWeekDayBreakdown({
+      sessions: [
+        session('u1', '2026-06-30', 3),
+        session('u1', '2026-06-30', 2), // same day, second session -> summed
+        session('u1', '2026-06-29', 4),
+        session('u1', '2026-06-27', 8), // previous week -> excluded
+        session('u2', '2026-06-30', 6), // other user -> excluded
+        { user_id: 'u1', work_date: '2026-07-02', clocked_in_at: '2026-07-02T16:00:00Z', clocked_out_at: null }, // open -> clips at nowMs (2h)
+      ],
+      userId: 'u1',
+      weekStartYmd: '2026-06-28',
+      nowMs: NOW_MS,
+    })
+    expect(days).toEqual([
+      { workDate: '2026-06-29', hours: expect.closeTo(4, 5) },
+      { workDate: '2026-06-30', hours: expect.closeTo(5, 5) },
+      { workDate: '2026-07-02', hours: expect.closeTo(2, 5) },
+    ])
   })
 
   it('returns zeros for empty inputs', () => {
