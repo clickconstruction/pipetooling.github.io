@@ -66,7 +66,7 @@ const Z_PEOPLE_PAY_MODAL = 1100
 /**
  * Pay History Ledger period label: M/D range without year, end month elided when it matches the
  * start (e.g. `6/21–27`, cross-month `6/28–7/4`), plus the ISO week number — anchored at
- * periodStart+4 (midweek) like the Draft Payroll print header — e.g. `6/21–27 (week 26)`.
+ * periodStart+4 (midweek) like the Draft Payroll print header — e.g. `6/21–27 (w26)`.
  */
 function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string): string {
   const start = new Date(periodStartYmd + 'T12:00:00')
@@ -76,7 +76,7 @@ function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string)
     ? `${end.getDate()}`
     : `${end.getMonth() + 1}/${end.getDate()}`
   const weekNum = isoWeekNumberFromGregorianYmd(ymdAddDays(periodStartYmd, 4))
-  return `${startLabel}–${endLabel}${weekNum === null ? '' : ` (week ${weekNum})`}`
+  return `${startLabel}–${endLabel}${weekNum === null ? '' : ` (w${weekNum})`}`
 }
 
 export type PeoplePayStubsTabProps = {
