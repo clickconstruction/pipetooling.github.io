@@ -33,6 +33,7 @@ import { resolveCustomerIdForJobPayload } from '../../lib/jobLedgerCustomer'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
 import { resolveEffectiveJobMasterUserId } from '../../lib/resolveEffectiveJobMasterUserId'
+import { resolveEditJobMasterUserId } from '../../lib/resolveEditJobMasterUserId'
 import { getBillingStripeModePref, stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { getAccessTokenForEdgeFunctions } from '../../lib/supabaseAccessTokenForEdge'
 import { prepareBilledInvoicesBeforeJobRevertToReadyToBill } from '../../lib/voidStripeInvoiceForRevert'
@@ -2743,17 +2744,21 @@ export default function JobFormModal({
     try {
       if (editing) {
         const proj = projectId ? projects.find((p) => p.id === projectId) : null
-        const jobMasterForCustomer = projectId && proj ? proj.master_user_id : editing.master_user_id
+        // Editing preserves the job's owner (or follows the linked project's owner). Never
+        // re-derive from job_owner_override here — that steers NEW jobs only; on edit it would
+        // silently re-own the job and break the customer↔master invariant. Deriving the written
+        // master and the customer-validation master from one value keeps them from diverging.
+        const masterUserIdForUpdate = resolveEditJobMasterUserId({
+          projectId,
+          projectMasterUserId: proj?.master_user_id ?? null,
+          existingJobMasterUserId: editing.master_user_id,
+        })
         const resolvedCustomerId = resolveCustomerIdForJobPayload(
           customerId,
-          jobMasterForCustomer,
+          masterUserIdForUpdate,
           customerName.trim(),
           customers,
         )
-        const masterUserIdForUpdate =
-          projectId && proj
-            ? proj.master_user_id
-            : await resolveEffectiveJobMasterUserId(supabase, authUser.id, projectId)
         const updatePayload = {
           hcp_number: hcpNumber.trim(),
           click_number: clickNumber.trim(),
