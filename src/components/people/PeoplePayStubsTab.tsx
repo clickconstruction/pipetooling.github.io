@@ -30,6 +30,11 @@ import {
 } from '../../lib/officeJobRateSplit'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
+import {
+  buildUpcomingPayrollSummary,
+  upcomingPayrollFetchStartYmd,
+  type UpcomingClockSessionRow,
+} from '../../lib/upcomingPayrollSummary'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
@@ -171,6 +176,87 @@ export default function PeoplePayStubsTab({
 
   // Local calendar day for the Payment Delay column's days-outstanding math.
   const todayYmd = localYmdFromDate(new Date())
+
+  // "Upcoming payroll": clock sessions (approved + pending; rejected/revoked excluded) since the
+  // earliest week any person could still owe a pay report for. null = not loaded yet.
+  const [upcomingSessions, setUpcomingSessions] = useState<UpcomingClockSessionRow[] | null>(null)
+
+  // Roster mapping + per-person stub inputs for the upcoming summary (payroll is person_name-keyed,
+  // clock_sessions is user_id-keyed — same trimmed-name match used elsewhere).
+  const upcomingInputs = useMemo(() => {
+    const userIdByPersonName: Record<string, string> = {}
+    for (const u of users) {
+      const n = (u.name ?? '').trim()
+      if (n && !userIdByPersonName[n]) userIdByPersonName[n] = u.id
+    }
+    const personNames = Object.keys(payConfig).filter((n) => userIdByPersonName[n])
+    const hourlyWageByPersonName: Record<string, number> = {}
+    for (const n of personNames) hourlyWageByPersonName[n] = Number(payConfig[n]?.hourly_wage ?? 0)
+    const stubsByPerson: Record<string, Array<{ period_start: string; period_end: string }>> = {}
+    const lastStubEndByPerson: Record<string, string> = {}
+    for (const s of payStubs) {
+      const n = s.person_name.trim()
+      ;(stubsByPerson[n] ??= []).push({ period_start: s.period_start, period_end: s.period_end })
+      const prev = lastStubEndByPerson[n]
+      if (!prev || s.period_end > prev) lastStubEndByPerson[n] = s.period_end
+    }
+    return { userIdByPersonName, personNames, hourlyWageByPersonName, stubsByPerson, lastStubEndByPerson }
+  }, [users, payConfig, payStubs])
+
+  useEffect(() => {
+    const { personNames, userIdByPersonName, lastStubEndByPerson } = upcomingInputs
+    if (personNames.length === 0) {
+      setUpcomingSessions([])
+      return
+    }
+    const fetchStart = upcomingPayrollFetchStartYmd({
+      personNames,
+      lastStubEndByPerson,
+      todayYmd,
+    })
+    const rosterIds = personNames.map((n) => userIdByPersonName[n]).filter((id): id is string => Boolean(id))
+    let cancelled = false
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () =>
+            await supabase
+              .from('clock_sessions')
+              .select('user_id, work_date, clocked_in_at, clocked_out_at')
+              .in('user_id', rosterIds)
+              .gte('work_date', fetchStart)
+              .is('rejected_at', null)
+              .is('revoked_at', null),
+          'load upcoming payroll clock sessions',
+        )
+        if (!cancelled) setUpcomingSessions((data ?? []) as UpcomingClockSessionRow[])
+      } catch {
+        // Header stays on the open-balance segment only; the table itself is unaffected.
+        if (!cancelled) setUpcomingSessions([])
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- todayYmd is a render-derived day string
+  }, [upcomingInputs])
+
+  const upcomingSummary = useMemo(() => {
+    if (!upcomingSessions) return null
+    const q = ledgerPersonSearch.trim().toLowerCase()
+    const personNames = q
+      ? upcomingInputs.personNames.filter((n) => n.toLowerCase().includes(q))
+      : upcomingInputs.personNames
+    return buildUpcomingPayrollSummary({
+      personNames,
+      userIdByPersonName: upcomingInputs.userIdByPersonName,
+      hourlyWageByPersonName: upcomingInputs.hourlyWageByPersonName,
+      stubsByPerson: upcomingInputs.stubsByPerson,
+      sessions: upcomingSessions,
+      todayYmd,
+      nowMs: Date.now(),
+    })
+  }, [upcomingSessions, upcomingInputs, ledgerPersonSearch, todayYmd])
 
   const ledgerOpenBalanceSummary = useMemo(() => {
     let openCount = 0
@@ -348,6 +434,17 @@ export default function PeoplePayStubsTab({
                         {ledgerOpenBalanceSummary.openCount > 0
                           ? `${ledgerOpenBalanceSummary.openCount} open · $${formatCurrency(ledgerOpenBalanceSummary.totalRemaining)} remaining`
                           : 'All paid'}
+                        {upcomingSummary && upcomingSummary.personWeekCount > 0 ? (
+                          <>
+                            <span style={{ color: '#9ca3af' }}>{' | '}</span>
+                            <span
+                              title="Weeks with clocked time (including pending approval) but no pay report yet — estimated hours × wage. Use Draft Payroll to generate them."
+                              style={{ color: '#b45309' }}
+                            >
+                              {upcomingSummary.personWeekCount} upcoming: ${formatCurrency(upcomingSummary.estimatedGrossDollars)}
+                            </span>
+                          </>
+                        ) : null}
                       </p>
                     ) : null}
                   </div>

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.610)
+last_updated: 2026-07-02 (v2.611)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.611 — **People → Payroll ledger** — **"upcoming" segment on the summary line**. The header line extends to `7 open · $4,949.48 remaining | 12 upcoming: $10,000` — **person-weeks** with clocked time (approved **and** pending approval; rejected/revoked excluded) but **no pay report overlapping the week**, from each person's **last stub period end** forward (stub-less people capped at 8 weeks back; gaps before the last stub deliberately out of window), estimated as clocked hours × `people_pay_config.hourly_wage` (salaried people flow through their materialized schedule sessions). Amber segment with explanatory tooltip; hidden at 0; the person search box filters it like the open segment. New pure kernel [`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (`payWeekStartYmd` local Sun–Sat weeks matching the tab's period init, `upcomingPayrollFetchStartYmd` bounds the single `clock_sessions` query, `buildUpcomingPayrollSummary` with open-session now-clipping + stub-overlap suppression + 104-week loop guard) — **9 unit tests**; semantics cross-checked against prod SQL aggregates](#latest-updates-v2611)
 **New:** [v2.610 — **People → Payroll ledger** — **Less | Additional column centered** (header + body cells `textAlign: 'right'` → `'center'`). Display-only](#latest-updates-v2610)
 **New:** [v2.609 — **People → Payroll ledger** — **week label abbreviated**: `6/21–27 (week 26)` → `6/21–27 (w26)` in `ledgerPayPeriodShortLabel`. Display-only](#latest-updates-v2609)
 **New:** [v2.608 — **People → Payroll ledger** — **Period label with week number**. `ledgerPayPeriodShortLabel` now renders `6/21–27 (week 26)` instead of `6/21–6/27`: the end month is elided when it matches the start (cross-month stays `6/28–7/4`), and the ISO week number — anchored at periodStart+4 (midweek), same convention as the Draft Payroll print header (`isoWeekNumberFromGregorianYmd` + `ymdAddDays`) — is appended in parens. Flows to every use of the label (Period column, Less/Additional aria-labels). Display-only](#latest-updates-v2608)
@@ -1986,6 +1987,36 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.611)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — "upcoming" segment on the summary line
+
+The ledger header line ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)) extends from `7 open · $4,949.48 remaining` to:
+
+```
+7 open · $4,949.48 remaining | 12 upcoming: $10,000
+```
+
+**Semantics** (amber segment, hidden when 0, tooltip: *"Weeks with clocked time (including pending approval) but no pay report yet — estimated hours × wage. Use Draft Payroll to generate them."*):
+- **Unit = person-weeks**: one would-be pay report per person per uncovered local Sun–Sat week (same week convention as the tab's period init).
+- **Hours basis = all clock time**: approved + pending-approval sessions; rejected/revoked excluded at fetch; open sessions clip at *now*. Salaried people flow through their materialized `salary_schedule` sessions — no special branch.
+- **Window = since each person's last stub `period_end`** forward through the current week; people with no stubs ever are capped at the last **8 weeks**. Gaps *before* a person's latest stub are deliberately out of window. A week is suppressed when **any** stub overlaps it (overlap test, not exact match).
+- Estimate = week hours × `people_pay_config.hourly_wage`. The person search box filters the segment the same way it filters the open count.
+
+**Implementation**: new pure kernel [`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) — `payWeekStartYmd`, `upcomingPayrollFetchStartYmd` (bounds the fetch to the earliest week anyone could still owe), `buildUpcomingPayrollSummary` (one pass builds per-user-week hour sums; per-person week walk with stub-overlap suppression and a 104-week loop guard) — **9 unit tests** in [`upcomingPayrollSummary.test.ts`](../src/lib/upcomingPayrollSummary.test.ts). The tab adds one bounded `clock_sessions` query (`user_id in roster, work_date >= fetchStart, rejected/revoked null`, 4 columns) keyed on stubs/roster/pay-config; fetch failure quietly leaves the header on the open segment.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1771/1771** (9 new); eslint clean on touched files. Semantics cross-checked against prod via SQL weekly aggregates (last-stub ends, per-week hours, stub-overlap coverage) — e.g. a person whose last stub ended 6/20 correctly contributes two uncovered weeks, zero-hour middle weeks skip, and covered weeks suppress.
+
+#### Files
+
+New: [`src/lib/upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (+ test). Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.610)
