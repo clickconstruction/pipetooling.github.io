@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.597)
+last_updated: 2026-07-02 (v2.598)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.598 — **Adjust times** — **approved-session confirms are now in-app modals**. The two `window.confirm` prompts in [`AdjustClockSessionTimesModal.tsx`](../src/components/AdjustClockSessionTimesModal.tsx) ("This session is approved. Saving updates the recorded payroll hours…" on closed sessions, and the clock-in-only variant on open sessions) are replaced by a nested **Approved session** confirm dialog stacked at `zIndex + 1` above the Adjust-times modal (`role="alertdialog"`, Cancel autofocused, Escape/backdrop dismiss, **Continue** runs the save). `handleSubmit` refactored: validation stays synchronous, the two save paths collapse into one `saveTimes(update)` helper, and approved sessions route through `approvedConfirm` state instead of the browser dialog. No behavior change for unapproved sessions](#latest-updates-v2598)
 **New:** [v2.597 — **People → Payroll → Draft Payroll** — **Hours breakdown day rows open the My Time day editor**. In the per-person **Hours breakdown** modal, each **Date** cell (hourly people only — salaried rows are synthetic 8h/weekday and stay plain text) is now a dotted-underline link that opens **`DashboardMyTimeDayEditorModal`** for that person+day in place: the breakdown hides (the editor's overlay z 1200 sits below the breakdown's 1215), the editor opens above the Draft Payroll modal, and on close/save the breakdown re-mounts with fresh rows while the payroll totals reload explicitly. **Relaxed save fence for payroll origin**: new `saveableRangeOverride?: { start; end }` prop on the day editor replaces the default this+last-week (America/Chicago) fence with the snapshotted pay period; non-current-week days keep the acknowledgment screen with payroll-specific copy; overridden saves always route through the **leader_*** split/replace RPCs (the `own_*` variants stay week-fenced). **Server side** (migration `20260702150000`): new helper **`pay_access_clock_week_fence_bypass()`** (pay-approved master / their assistants / dev, `search_path=public`) added to the week fence of `leader_split_clock_session_segments` / `leader_split_clock_session_cluster` / `leader_replace_clock_session_cluster_mixed` — bodies re-created verbatim from prod (md5-verified) apart from the one-line fence change; grants no new capability class (pay-access users already write `clock_sessions` on any date via role-only RLS). Name→user bridge + toast reuse the Review→Hours drilldown pattern in `People.tsx`](#latest-updates-v2597)
 **New:** [v2.596 — **Bids → Cover Letter** — **Schedule of Values (payment schedule)**. New opt-in per-bid section in the cover letter: rows of **payment timing + percent of the contract amount** (timing ∈ Before start / Before–After Rough In / Top Out / Trim Set), rendered after **Terms and Warranty** and before the "No work shall commence…" closing as `Due before Rough In: 30% — $45,000.00` lines. First enable seeds the company-standard **30/30/30/10** preset (30% before each phase + 10% retainage after Trim Set). Persisted per bid — new **`bid_payment_schedule_rows`** table + **`bids.include_payment_schedule`** flag (migration `20260702120000`, applied to prod via MCP ahead of client). Editor in the Cover Letter tab (add/remove/reorder rows, timing dropdown, blur-commit percent input, live `= $` per row from the effective amount, amber ≠100% warning). **Bundled pricings**: each per-Pricing letter computes dollars from **that pricing's** revenue, same percentages. Approval PDF page 4 fetches flag+rows fresh and renders the section with a bold heading. Pure kernel [`paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts) + 10 unit tests; builders take an optional trailing `paymentSchedule` param (default `null` — zero churn at other call sites)](#latest-updates-v2596)
 **New:** [v2.595 — **Jobs → Job activity / notes** — **activity ledger (Phase 2: append-only `job_activity_events`)**. Replaces Phase 1's live-merge with a durable, append-only ledger table written by DB triggers, so the feed now also captures what Phase 1 couldn't: **payment/crew removals**, **field edits** (customer / address / job total), and **combine/separate**. New `job_activity_events` table (RLS via `can_read_job_activity` — operational rows = status family incl. team members, financial rows = payments family, role-gated), a `list_job_activity_events` SECURITY DEFINER reader RPC (role-aware, resolves actor names), triggers on `job_status_events`/payments/invoices/team_members/`jobs_ledger` field edits/materials/fixtures + the split RPC, and an idempotent backfill (**3,094** historical events). Client cut over to ONE RPC fetch + ONE realtime subscription, replacing the five Phase-1 per-table fetchers/subscriptions (their kernels deleted; the generic `event` chassis + filter kept). Applied to prod via `supabase db push` + `gen-types:linked`](#latest-updates-v2595)
@@ -1973,6 +1974,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.598)
+
+**Date**: 2026-07-02
+
+### Adjust times — approved-session confirms are now in-app modals
+
+The **Adjust times** dialog ([`AdjustClockSessionTimesModal.tsx`](../src/components/AdjustClockSessionTimesModal.tsx)) previously used browser `window.confirm` prompts when saving an **approved** session — jarring inside the payroll/My Time flow and unstyleable. Both prompts (closed session: *"This session is approved. Saving updates the recorded payroll hours for this day to match the new times. Continue?"*; open session clock-in-only: *"This session was already approved. Changing clock-in will change recorded hours and may require re-approval. Continue?"*) now open a nested **Approved session** confirm modal stacked at `zIndex + 1` above the Adjust-times dialog.
+
+- `role="alertdialog"` with title/description ids; **Cancel** autofocused; Escape (with `stopPropagation` so the parent dialog stays open) and backdrop click dismiss; **Continue** closes the confirm and runs the save (the parent Save button shows *Saving…* as before).
+- Refactor: `handleSubmit` is now synchronous validation only; the two duplicated save blocks collapsed into one `saveTimes(update)` helper (same `people_hours` resync via `recompute_people_hours_after_session_edit`, same toast/close behavior); approved sessions set `approvedConfirm { message, proceed }` state instead of calling `window.confirm`. Unapproved sessions save immediately — no behavior change.
+- The confirm state resets when the session prop changes (same effect that reseeds the time inputs).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1749/1749**; `eslint` clean on the touched file. UI flow is the same two-step it was — only the confirm surface changed.
+
+#### Files
+
+Modified: [`src/components/AdjustClockSessionTimesModal.tsx`](../src/components/AdjustClockSessionTimesModal.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.597)
