@@ -4340,6 +4340,15 @@ export default function People() {
           onLinkedSessionsUpdated={() => {
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()
+            // Draft Payroll origin: Adjust times saves fire this path (closing the editor with no
+            // dirty timeline changes then exits via onClose, not onSaved), so refresh the
+            // payroll-period data here or the Draft Payroll rows stay stale behind the breakdown.
+            const payrollOrigin = hoursMyTimeEditor.payrollOrigin
+            if (payrollOrigin) {
+              loadPeopleHours(payrollOrigin.periodStart, payrollOrigin.periodEnd)
+              void loadHoursDaysCorrect(payrollOrigin.periodStart, payrollOrigin.periodEnd)
+              void loadDraftPayrollPendingApprovals(payrollOrigin.periodStart, payrollOrigin.periodEnd)
+            }
           }}
         />
       )}

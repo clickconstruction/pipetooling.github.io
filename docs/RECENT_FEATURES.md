@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.598)
+last_updated: 2026-07-02 (v2.599)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.599 — **Draft Payroll Hours breakdown** — **pending-approval hours surfaced + payroll refresh after Adjust times**. Two fixes for "I adjusted a day's hours but the breakdown didn't move": (1) the breakdown (and all payroll numbers) read **`people_hours`**, which is only written on **approval** — editing a pending session can never move payroll, so each day row (hourly people) now shows a muted amber **`+X.XX pending`** under the Hours value (and on the Period total) when closed unapproved sessions exist that day, with a tooltip explaining approval is the missing step. New pure kernel `sumPendingClockHoursByDay` in [`draftPayrollPersonBreakdown.ts`](../src/lib/draftPayrollPersonBreakdown.ts) (+5 tests); pending sessions resolved via the standard trimmed-name→user match, filtered `approved_at/rejected_at/revoked_at IS NULL`, closed only; salary rows unchanged. (2) For **approved** sessions, an **Adjust times** save followed by closing the day editor exited via `onClose` (not `onSaved`), leaving the Draft Payroll rows stale behind the fresh breakdown — the payroll-origin `onLinkedSessionsUpdated` now reloads the period's `people_hours` + days-correct + pending-approvals immediately](#latest-updates-v2599)
 **New:** [v2.598 — **Adjust times** — **approved-session confirms are now in-app modals**. The two `window.confirm` prompts in [`AdjustClockSessionTimesModal.tsx`](../src/components/AdjustClockSessionTimesModal.tsx) ("This session is approved. Saving updates the recorded payroll hours…" on closed sessions, and the clock-in-only variant on open sessions) are replaced by a nested **Approved session** confirm dialog stacked at `zIndex + 1` above the Adjust-times modal (`role="alertdialog"`, Cancel autofocused, Escape/backdrop dismiss, **Continue** runs the save). `handleSubmit` refactored: validation stays synchronous, the two save paths collapse into one `saveTimes(update)` helper, and approved sessions route through `approvedConfirm` state instead of the browser dialog. No behavior change for unapproved sessions](#latest-updates-v2598)
 **New:** [v2.597 — **People → Payroll → Draft Payroll** — **Hours breakdown day rows open the My Time day editor**. In the per-person **Hours breakdown** modal, each **Date** cell (hourly people only — salaried rows are synthetic 8h/weekday and stay plain text) is now a dotted-underline link that opens **`DashboardMyTimeDayEditorModal`** for that person+day in place: the breakdown hides (the editor's overlay z 1200 sits below the breakdown's 1215), the editor opens above the Draft Payroll modal, and on close/save the breakdown re-mounts with fresh rows while the payroll totals reload explicitly. **Relaxed save fence for payroll origin**: new `saveableRangeOverride?: { start; end }` prop on the day editor replaces the default this+last-week (America/Chicago) fence with the snapshotted pay period; non-current-week days keep the acknowledgment screen with payroll-specific copy; overridden saves always route through the **leader_*** split/replace RPCs (the `own_*` variants stay week-fenced). **Server side** (migration `20260702150000`): new helper **`pay_access_clock_week_fence_bypass()`** (pay-approved master / their assistants / dev, `search_path=public`) added to the week fence of `leader_split_clock_session_segments` / `leader_split_clock_session_cluster` / `leader_replace_clock_session_cluster_mixed` — bodies re-created verbatim from prod (md5-verified) apart from the one-line fence change; grants no new capability class (pay-access users already write `clock_sessions` on any date via role-only RLS). Name→user bridge + toast reuse the Review→Hours drilldown pattern in `People.tsx`](#latest-updates-v2597)
 **New:** [v2.596 — **Bids → Cover Letter** — **Schedule of Values (payment schedule)**. New opt-in per-bid section in the cover letter: rows of **payment timing + percent of the contract amount** (timing ∈ Before start / Before–After Rough In / Top Out / Trim Set), rendered after **Terms and Warranty** and before the "No work shall commence…" closing as `Due before Rough In: 30% — $45,000.00` lines. First enable seeds the company-standard **30/30/30/10** preset (30% before each phase + 10% retainage after Trim Set). Persisted per bid — new **`bid_payment_schedule_rows`** table + **`bids.include_payment_schedule`** flag (migration `20260702120000`, applied to prod via MCP ahead of client). Editor in the Cover Letter tab (add/remove/reorder rows, timing dropdown, blur-commit percent input, live `= $` per row from the effective amount, amber ≠100% warning). **Bundled pricings**: each per-Pricing letter computes dollars from **that pricing's** revenue, same percentages. Approval PDF page 4 fetches flag+rows fresh and renders the section with a bold heading. Pure kernel [`paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts) + 10 unit tests; builders take an optional trailing `paymentSchedule` param (default `null` — zero churn at other call sites)](#latest-updates-v2596)
@@ -1974,6 +1975,31 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.599)
+
+**Date**: 2026-07-02
+
+### Draft Payroll Hours breakdown — pending-approval hours surfaced + payroll refresh after Adjust times
+
+Follow-up to v2.597 after field testing ("I adjusted a day's hours but the Hours breakdown didn't update"). Root cause was **approval semantics**, plus one real refresh gap:
+
+**1. Pending hours are now visible.** All payroll numbers — the Hours breakdown, Draft Payroll rows, pay stubs — read **`people_hours`**, which is only written when a lead **approves** sessions. Editing a *pending* session therefore never moves payroll, by design; previously nothing said so. Each breakdown day row (hourly people) now shows a muted amber **`+X.XX pending`** under the Hours value when that day has closed, unapproved (not rejected/revoked) clock sessions, and the **Period total** shows the summed pending line — both with a tooltip: *"Clocked hours awaiting approval — not included in payroll hours or Cash Due until a lead approves the sessions."* Cash Due stays approved-hours-only. Salary rows unchanged (synthetic 8h/weekday; pending fetch skipped).
+
+- Data: [`fetchDraftPayrollPersonBreakdown`](../src/lib/draftPayrollPersonBreakdown.ts) resolves the payroll `person_name` → `users.id` via the standard trimmed-name match, fetches the period's pending closed sessions, and folds per-day sums into a new `pendingHours` field on `DraftPayrollBreakdownAssignmentRow` (every period day has a row, so pending-only days display too).
+- New pure kernel `sumPendingClockHoursByDay(sessions)` — skips open sessions and zero/negative/unparseable durations; keys strictly by `work_date` (midnight-crossing sessions stay on their assigned day). **5** unit tests in [`draftPayrollPersonBreakdown.test.ts`](../src/lib/draftPayrollPersonBreakdown.test.ts).
+
+**2. Payroll rows refresh after Adjust times.** For **approved** sessions, an Adjust-times save inside the day editor followed by closing the editor exits via `onClose` (the editor's `requestSave` with zero dirty timeline clusters never calls `onSaved`) — the breakdown re-mount was fresh, but the Draft Payroll rows behind it stayed stale. The payroll-origin `onLinkedSessionsUpdated` handler in [`People.tsx`](../src/pages/People.tsx) (which Adjust-times saves fire) now reloads the period's `people_hours`, days-correct data, and pending-approvals count immediately.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1754/1754** (5 new kernel tests); lint clean on touched files (the 10 People.tsx warnings pre-exist). Diagnosis confirmed against prod data: the tested person's edited sessions were all unapproved with zero `people_hours` rows — exactly the state the new pending line surfaces.
+
+#### Files
+
+Modified: [`src/lib/draftPayrollPersonBreakdown.ts`](../src/lib/draftPayrollPersonBreakdown.ts) (+ new test file), [`src/components/pay/DraftPayrollPersonHoursBreakdownModal.tsx`](../src/components/pay/DraftPayrollPersonHoursBreakdownModal.tsx), [`src/pages/People.tsx`](../src/pages/People.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.598)

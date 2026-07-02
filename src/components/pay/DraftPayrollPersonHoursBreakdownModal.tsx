@@ -92,6 +92,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
 
   const totalHours = rows.reduce((s, r) => s + r.hours, 0)
   const totalGross = totalHours * hourlyWage
+  const totalPendingHours = rows.reduce((s, r) => s + r.pendingHours, 0)
 
   return (
     <div
@@ -172,6 +173,14 @@ export function DraftPayrollPersonHoursBreakdownModal({
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {r.hours.toFixed(2)}
+                        {r.pendingHours > 0 ? (
+                          <div
+                            style={{ fontSize: '0.75rem', color: '#b45309', whiteSpace: 'nowrap' }}
+                            title="Clocked hours awaiting approval — not included in payroll hours or Cash Due until a lead approves the sessions."
+                          >
+                            +{r.pendingHours.toFixed(2)} pending
+                          </div>
+                        ) : null}
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         ${formatCurrency(r.hours * hourlyWage)}
@@ -194,6 +203,14 @@ export function DraftPayrollPersonHoursBreakdownModal({
                     <td style={{ padding: '0.5rem 0.65rem' }}>Period total</td>
                     <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       {totalHours.toFixed(2)}
+                      {totalPendingHours > 0 ? (
+                        <div
+                          style={{ fontSize: '0.75rem', fontWeight: 400, color: '#b45309', whiteSpace: 'nowrap' }}
+                          title="Clocked hours awaiting approval — not included in payroll hours or Cash Due until a lead approves the sessions."
+                        >
+                          +{totalPendingHours.toFixed(2)} pending
+                        </div>
+                      ) : null}
                     </td>
                     <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       ${formatCurrency(totalGross)}
