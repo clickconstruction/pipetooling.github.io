@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.600)
+last_updated: 2026-07-02 (v2.601)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.601 — **People → Payroll ledger** — **Payment Delay column**. New column after **Last Paid** showing signed days between the stub's **period end** and its **last payment** (`3d`, `0d`, `-2d` for early pay) via new pure kernel **`payStubPaymentDelay`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts), reusing the DST-safe `relativeDayOffset` day math. **Unpaid rows whose period has ended** show a live amber **`Nd…`** days-outstanding aging indicator; unpaid rows whose period hasn't ended show `—`. Also new **`localYmdFromDate`** helper (explicit date parts — `toLocaleDateString('en-CA')` is ICU-dependent: Node small-ICU yields `7/1/2026`). Zero new queries; +4 unit tests](#latest-updates-v2601)
 **New:** [v2.600 — **People → Payroll ledger** — **Last Paid column**. New column between **Created** and **Actions** on the pay-reports ledger table showing the date of the most recent payment recorded against each stub — `max(paid_at)` over the stub's `pay_stub_payments` rows via new pure helper **`lastPayStubPaymentPaidAt`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts) (explicit max, not last-row, so client-side edits can't skew it), falling back to the legacy `pay_stubs.paid_at` mark-paid timestamp for stubs paid before per-payment rows existed; `—` when never paid. Zero new queries — the payments map was already bulk-loaded for every ledger row. +4 unit tests (new [`payStubPayments.test.ts`](../src/lib/payStubPayments.test.ts), incl. regression coverage of the existing payment math)](#latest-updates-v2600)
 **New:** [v2.599 — **Draft Payroll Hours breakdown** — **pending-approval hours surfaced + payroll refresh after Adjust times**. Two fixes for "I adjusted a day's hours but the breakdown didn't move": (1) the breakdown (and all payroll numbers) read **`people_hours`**, which is only written on **approval** — editing a pending session can never move payroll, so each day row (hourly people) now shows a muted amber **`+X.XX pending`** under the Hours value (and on the Period total) when closed unapproved sessions exist that day, with a tooltip explaining approval is the missing step. New pure kernel `sumPendingClockHoursByDay` in [`draftPayrollPersonBreakdown.ts`](../src/lib/draftPayrollPersonBreakdown.ts) (+5 tests); pending sessions resolved via the standard trimmed-name→user match, filtered `approved_at/rejected_at/revoked_at IS NULL`, closed only; salary rows unchanged. (2) For **approved** sessions, an **Adjust times** save followed by closing the day editor exited via `onClose` (not `onSaved`), leaving the Draft Payroll rows stale behind the fresh breakdown — the payroll-origin `onLinkedSessionsUpdated` now reloads the period's `people_hours` + days-correct + pending-approvals immediately](#latest-updates-v2599)
 **New:** [v2.598 — **Adjust times** — **approved-session confirms are now in-app modals**. The two `window.confirm` prompts in [`AdjustClockSessionTimesModal.tsx`](../src/components/AdjustClockSessionTimesModal.tsx) ("This session is approved. Saving updates the recorded payroll hours…" on closed sessions, and the clock-in-only variant on open sessions) are replaced by a nested **Approved session** confirm dialog stacked at `zIndex + 1` above the Adjust-times modal (`role="alertdialog"`, Cancel autofocused, Escape/backdrop dismiss, **Continue** runs the save). `handleSubmit` refactored: validation stays synchronous, the two save paths collapse into one `saveTimes(update)` helper, and approved sessions route through `approvedConfirm` state instead of the browser dialog. No behavior change for unapproved sessions](#latest-updates-v2598)
@@ -1976,6 +1977,30 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.601)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — Payment Delay column
+
+Companion to v2.600's Last Paid: the pay-reports ledger ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)) gains a **Payment Delay** column after **Last Paid** — the number of days between the stub's **period end** and the **last payment** on that row. Header tooltip: *"Days between period end and the last payment. Amber = no payment yet (days outstanding so far)."*
+
+- **Paid rows**: signed day count — `3d` (paid 3 days after period end), `0d` (same day), `-2d` (paid 2 days early; deliberately unclamped).
+- **Unpaid rows whose period has ended**: live amber **`Nd…`** days-outstanding aging indicator (tooltip *"No payment yet — days since period end."*).
+- **Unpaid rows whose period hasn't ended** (or unparseable dates): `—`.
+
+Implementation: new pure kernel **`payStubPaymentDelay(periodEndYmd, lastPaidAt, todayYmd)`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts) returning a `{ kind: 'paid' | 'outstanding' | 'none' }` discriminated result — reuses **`relativeDayOffset`** ([`relativeDayPhrase.ts`](../src/lib/relativeDayPhrase.ts)) for DST-safe UTC-noon day math; the paid timestamp converts to a local calendar day via new **`localYmdFromDate`** (explicit date parts — `toLocaleDateString('en-CA')` output is ICU-dependent: browsers give `YYYY-MM-DD` but Node small-ICU gives `7/1/2026`, which broke the first test run). `todayYmd` is caller-supplied for deterministic tests. Zero new queries — derives entirely from `stub.period_end` + the v2.600 `lastPaidAt` (payments max, legacy `stub.paid_at` fallback).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1762/1762** (4 new: signed paid math incl. same-day and early-pay, outstanding aging incl. period-end day, not-yet-ended → none, unparseable dates → none); eslint clean on touched files.
+
+#### Files
+
+Modified: [`src/lib/payStubPayments.ts`](../src/lib/payStubPayments.ts) (+ test), [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.600)
