@@ -303,6 +303,14 @@ type Props = {
     job_ledger_id: string | null
     bid_id: string | null
   }) => void
+  /**
+   * Pay-access origin (Draft Payroll Hours breakdown): replaces the default this+last-week
+   * (America/Chicago) save fence with this inclusive YMD range. Caller must gate on pay access;
+   * the leader split/replace RPCs enforce the same bypass server-side
+   * (pay_access_clock_week_fence_bypass()). While set, saves route through the leader RPCs even
+   * for self-edits — the own_* RPCs stay week-fenced.
+   */
+  saveableRangeOverride?: { start: string; end: string } | null
 }
 
 export function DashboardMyTimeDayEditorModal({
@@ -324,11 +332,13 @@ export function DashboardMyTimeDayEditorModal({
   prefetchSalarySessionsWhenEmpty = false,
   peopleHoursGridProportionalSeed = false,
   onPatchSeededSessionsJobBid,
+  saveableRangeOverride = null,
 }: Props) {
   const { showToast } = useToastContext()
   const prefixMap = useLedgerPrefixMap()
   void _editableRangeProp
-  const saveableRange = getThisAndLastWeekRange()
+  const fenceOverridden = saveableRangeOverride != null
+  const saveableRange = saveableRangeOverride ?? getThisAndLastWeekRange()
   const currentWeekRange = getDefaultWeekRange()
   const inSaveableRange = dateStr >= saveableRange.start && dateStr <= saveableRange.end
   const inCurrentWeek =
@@ -1643,10 +1653,13 @@ export function DashboardMyTimeDayEditorModal({
       setSaving(true)
       setError(null)
       try {
+        // Overridden fence (Draft Payroll origin): always use the leader RPCs — the own_* variants
+        // stay week-fenced server-side, and pay-access users pass can_edit_clock_sessions_for_user
+        // even for their own sessions.
         const rpcs = {
-          runSplitSeg: editingSelf ? splitOwnClockSessionSegments : leaderSplitClockSessionSegments,
-          runSplitCluster: editingSelf ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster,
-          runReplaceMixed: editingSelf ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed,
+          runSplitSeg: editingSelf && !fenceOverridden ? splitOwnClockSessionSegments : leaderSplitClockSessionSegments,
+          runSplitCluster: editingSelf && !fenceOverridden ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster,
+          runReplaceMixed: editingSelf && !fenceOverridden ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed,
         }
         const segmentIds = await persistMyTimeClusterAndGetSegmentIds(c, split, payloads, now, rpcs)
         const newId = segmentIds[segIdx]
@@ -1670,7 +1683,7 @@ export function DashboardMyTimeDayEditorModal({
         setSaving(false)
       }
     },
-    [allowTimelineEdits, editingSelf, onLinkedSessionsUpdated, showToast]
+    [allowTimelineEdits, editingSelf, fenceOverridden, onLinkedSessionsUpdated, showToast]
   )
 
   /** True when no session this day is linked to a job/bid — gate for the "Apply Schedule %" action. */
@@ -1995,9 +2008,10 @@ export function DashboardMyTimeDayEditorModal({
 
   const persistDirtyChangesAsync = useCallback(
     async (dirty: string[]): Promise<boolean> => {
-      const runSplitSeg = editingSelf ? splitOwnClockSessionSegments : leaderSplitClockSessionSegments
-      const runSplitCluster = editingSelf ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster
-      const runReplaceMixed = editingSelf ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed
+      // Overridden fence (Draft Payroll origin): always the leader RPCs — own_* stay week-fenced.
+      const runSplitSeg = editingSelf && !fenceOverridden ? splitOwnClockSessionSegments : leaderSplitClockSessionSegments
+      const runSplitCluster = editingSelf && !fenceOverridden ? splitOwnClockSessionCluster : leaderSplitClockSessionCluster
+      const runReplaceMixed = editingSelf && !fenceOverridden ? replaceOwnClockSessionClusterMixed : leaderReplaceClockSessionClusterMixed
       try {
         let showSalarySyncAfterPartitionSave = false
         for (const clusterId of dirty) {
@@ -2278,6 +2292,7 @@ export function DashboardMyTimeDayEditorModal({
     },
     [
       editingSelf,
+      fenceOverridden,
       sessionClusters,
       splitByCluster,
       nowTick,
@@ -2621,19 +2636,33 @@ export function DashboardMyTimeDayEditorModal({
         ) : null}
         {!inSaveableRange ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-            Only this week and last week can be edited from the dashboard (America/Chicago week boundaries). For older
-            days, use People → Hours.
+            {fenceOverridden
+              ? 'This day is outside the pay period.'
+              : 'Only this week and last week can be edited from the dashboard (America/Chicago week boundaries). For older days, use People → Hours.'}
           </p>
         ) : needsPriorWeekAck && !priorWeekAck ? (
           <div
             id="dashboard-my-time-prior-week-notice-desc"
             style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxWidth: 420 }}
           >
-            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>Editing a prior week</p>
+            <p style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+              {fenceOverridden ? 'Editing a payroll-period day' : 'Editing a prior week'}
+            </p>
             <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
-              You are about to change hours for{' '}
-              <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong> (last week). Changes can affect payroll and
-              approval status; use People → Hours if you need a different audit path.
+              {fenceOverridden ? (
+                <>
+                  You are about to change hours for{' '}
+                  <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong>, which is outside the normal two-week
+                  edit window. You opened this from Draft Payroll; changes affect this pay period&rsquo;s totals and can
+                  reset approval status.
+                </>
+              ) : (
+                <>
+                  You are about to change hours for{' '}
+                  <strong>{formatWorkDateYmdWeekdayLongFriendly(dateStr)}</strong> (last week). Changes can affect payroll
+                  and approval status; use People → Hours if you need a different audit path.
+                </>
+              )}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button

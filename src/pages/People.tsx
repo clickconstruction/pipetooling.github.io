@@ -376,6 +376,12 @@ export default function People() {
     subjectUserId: string
     subjectDisplayName: string
     dateStr: string
+    /**
+     * Set when opened from the Draft Payroll Hours breakdown: widens the editor's save fence to
+     * the snapshotted pay period (saveableRangeOverride) and re-opens the breakdown for this
+     * person on close/save.
+     */
+    payrollOrigin?: { personName: string; periodStart: string; periodEnd: string }
   } | null>(null)
   const [hoursManualDraftEditor, setHoursManualDraftEditor] = useState<{
     subjectUserId: string
@@ -2273,7 +2279,11 @@ export default function People() {
   }, [draftPayrollModalOpen, activeTab, canAccessPay, payStubPeriodStart, payStubPeriodEnd])
 
   useEffect(() => {
-    if (!draftPayrollModalOpen) setDraftPayrollHoursBreakdownPerson(null)
+    if (!draftPayrollModalOpen) {
+      setDraftPayrollHoursBreakdownPerson(null)
+      // A payroll-origin day editor has no anchor once Draft Payroll closes underneath it.
+      setHoursMyTimeEditor((prev) => (prev?.payrollOrigin ? null : prev))
+    }
   }, [draftPayrollModalOpen])
 
   useEffect(() => {
@@ -2349,6 +2359,39 @@ export default function People() {
       })
     },
     [showToast],
+  )
+  // Draft Payroll → Hours breakdown → day click bridge. Hides the breakdown (the editor's
+  // overlay z-index 1200 sits below the breakdown's 1215) and opens the shared My Time editor
+  // with the pay period as the save fence (payrollOrigin → saveableRangeOverride). The breakdown
+  // re-opens on editor close/save; its re-mount refetches fresh rows.
+  const handleDraftPayrollBreakdownOpenDayEditor = useCallback(
+    (personName: string, dateYmd: string) => {
+      const trimmedName = personName.trim()
+      const trimmedDate = dateYmd.trim()
+      if (!trimmedName || !trimmedDate) return
+      const u = usersRef.current.find(
+        (x) => (x.name ?? '').trim() === trimmedName,
+      )
+      if (!u?.id) {
+        showToast(
+          `No user account is linked to "${trimmedName}". Link the roster name in People → Users to open My Time.`,
+          'error',
+        )
+        return
+      }
+      setDraftPayrollHoursBreakdownPerson(null)
+      setHoursMyTimeEditor({
+        subjectUserId: u.id,
+        subjectDisplayName: u.name?.trim() ?? trimmedName,
+        dateStr: trimmedDate,
+        payrollOrigin: {
+          personName: trimmedName,
+          periodStart: payStubPeriodStart,
+          periodEnd: payStubPeriodEnd,
+        },
+      })
+    },
+    [showToast, payStubPeriodStart, payStubPeriodEnd],
   )
   // Drilldown modal open/close — defer auto-refresh while a modal is
   // open so the user's open breakdown doesn't get re-derived under
@@ -3438,6 +3481,7 @@ export default function People() {
           isSalary={payConfig[draftPayrollHoursBreakdownPerson]?.is_salary ?? false}
           zIndex={Z_PEOPLE_DRAFT_PAYROLL_HOURS_BREAKDOWN}
           onClose={() => setDraftPayrollHoursBreakdownPerson(null)}
+          onOpenDayEditor={(d) => handleDraftPayrollBreakdownOpenDayEditor(draftPayrollHoursBreakdownPerson, d)}
         />
       ) : null}
 
@@ -4241,20 +4285,45 @@ export default function People() {
           jobLabels={{}}
           bidLabels={{}}
           allowNcnsFromMyTime={hoursAllowNcnsFromMyTime}
+          saveableRangeOverride={
+            hoursMyTimeEditor.payrollOrigin
+              ? {
+                  start: hoursMyTimeEditor.payrollOrigin.periodStart,
+                  end: hoursMyTimeEditor.payrollOrigin.periodEnd,
+                }
+              : undefined
+          }
           onClose={() => {
             // Cancelling without saving: nothing changed, no Team Summary
             // refresh needed. Just clear the review-origin marker so a
             // subsequent unrelated open doesn't accidentally trigger a
             // re-open of the Hours drilldown.
+            const payrollOrigin = hoursMyTimeEditor.payrollOrigin
             reviewHoursDayEditorPersonRef.current = null
             setHoursMyTimeEditor(null)
+            // Draft Payroll origin: bring the Hours breakdown back (it was hidden while the
+            // editor was open — its overlay z sits above the editor's).
+            if (payrollOrigin) setDraftPayrollHoursBreakdownPerson(payrollOrigin.personName)
           }}
           onSaved={() => {
+            const payrollOrigin = hoursMyTimeEditor.payrollOrigin
             const reopenPersonName = reviewHoursDayEditorPersonRef.current
             reviewHoursDayEditorPersonRef.current = null
             setHoursMyTimeEditor(null)
             loadAllClockSessionsRef.current?.()
             loadPeopleHoursRef.current?.()
+            if (payrollOrigin) {
+              // Draft Payroll origin: explicit refresh — the hours-tab refreshers above are
+              // gated to activeTab === 'hours' and the realtime clock-sessions handler only
+              // reloads pending-approval counts, so the payroll totals would go stale.
+              loadPeopleHours(payrollOrigin.periodStart, payrollOrigin.periodEnd)
+              void loadHoursDaysCorrect(payrollOrigin.periodStart, payrollOrigin.periodEnd)
+              void loadDraftPayrollPendingApprovals(payrollOrigin.periodStart, payrollOrigin.periodEnd)
+              // Re-open the breakdown; the re-mount refetches fresh rows (people_hours was
+              // resynced server-side by the save path).
+              setDraftPayrollHoursBreakdownPerson(payrollOrigin.personName)
+              return
+            }
             // Review → Hours drilldown bridge: refresh the Team Summary
             // rows so the numbers reflect the save, then re-open the
             // Hours drilldown for the same person. After the new rows
