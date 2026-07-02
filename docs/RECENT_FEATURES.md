@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.614)
+last_updated: 2026-07-02 (v2.615)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.615 — **People → Payroll ledger** — **Upcoming payroll modal caption hidden**: the subtitle trims to `15 person-weeks · $12,408.74 estimated`; the explanatory sentence (pending-approval basis, hours × wage, Draft Payroll hint) moves to the line's hover `title` tooltip. Display-only](#latest-updates-v2615)
 **New:** [v2.614 — **People → Payroll ledger** — **current week shown in the Upcoming payroll modal** header (`Current week: 6/28–7/4 (w27)` via `payWeekStartYmd` + `ledgerPayPeriodShortLabel`, between the title and the totals subtitle). Display-only](#latest-updates-v2614)
 **New:** [v2.613 — **People → Payroll ledger** — **body scroll locked while the Upcoming payroll modal is open** (`document.body.style.overflow = 'hidden'` effect keyed on the modal state, previous value restored on close — same idiom as `UserReviewModal`). Display-only](#latest-updates-v2613)
 **New:** [v2.612 — **People → Payroll ledger** — **upcoming segment opens a detail modal**. The v2.611 amber `15 upcoming: $12,408.74` becomes a dotted-underline button opening an **Upcoming payroll — not yet reported** modal: **Person | Period | Hours | Est. Gross** rows (Period as `6/28–7/4 (w27)` via `ledgerPayPeriodShortLabel`) + totals footer. `buildUpcomingPayrollSummary` now also returns the `lines` it walks (person-asc, week-asc) with the totals **derived from them**, so the modal can never disagree with the header number; the modal reads the same search-filtered summary. 10 kernel tests](#latest-updates-v2612)
@@ -1990,6 +1991,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.615)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — Upcoming payroll modal caption hidden
+
+Follow-up to v2.612/v2.614: the modal subtitle trims to just the counts — `15 person-weeks · $12,408.74 estimated` — and the explanatory sentence (*"Clocked time (including pending approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to generate these reports."*) moves to the line's hover `title` tooltip instead of rendering inline ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)). Display-only.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1772/1772**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.614)
@@ -16338,7 +16357,7 @@ Run these migrations in order:
 ## Future Enhancements
 
 ### Email Integration
-- Update `invite-user` Edge Function to use templates
+- ~~Update `invite-user` Edge Function to use templates~~ Done 2026-07-02 — invite-user rebuilt in-repo on Resend + the `invitation` template (see EDGE_FUNCTIONS.md)
 - Update `login-as-user` Edge Function to use templates
 - Implement workflow stage notification sending
 - Connect email templates to actual notification triggers
@@ -16420,7 +16439,7 @@ Before deploying, ensure all migrations are run:
 
 1. **RLS Policy for People Table**: Owners may not see all people entries due to RLS restrictions. Consider updating RLS policy to allow owners to see all entries.
 
-2. **Email Template Integration**: Templates are stored but not yet used by Edge Functions. Need to update `invite-user` and `login-as-user` functions.
+2. **Email Template Integration**: `invite-user` uses the `invitation` template as of 2026-07-02; `login-as-user` still does not use templates.
 
 3. **Workflow Notifications**: Stage notifications are tracked but not yet sent. Need to implement email sending in workflow stage transitions.
 
