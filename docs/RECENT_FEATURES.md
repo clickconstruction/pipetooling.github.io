@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.601)
+last_updated: 2026-07-02 (v2.602)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.602 — **People → Payroll ledger** — **compact Created / Last Paid dates**. Both cells drop the year (`7/2/2026` → `7/2`) via a local `shortMonthDay` helper (explicit local date parts, `—` on unparseable input); the full locale date moves to a hover `title` tooltip so cross-year rows stay unambiguous](#latest-updates-v2602)
 **New:** [v2.601 — **People → Payroll ledger** — **Payment Delay column**. New column after **Last Paid** showing signed days between the stub's **period end** and its **last payment** (`3d`, `0d`, `-2d` for early pay) via new pure kernel **`payStubPaymentDelay`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts), reusing the DST-safe `relativeDayOffset` day math. **Unpaid rows whose period has ended** show a live amber **`Nd…`** days-outstanding aging indicator; unpaid rows whose period hasn't ended show `—`. Also new **`localYmdFromDate`** helper (explicit date parts — `toLocaleDateString('en-CA')` is ICU-dependent: Node small-ICU yields `7/1/2026`). Zero new queries; +4 unit tests](#latest-updates-v2601)
 **New:** [v2.600 — **People → Payroll ledger** — **Last Paid column**. New column between **Created** and **Actions** on the pay-reports ledger table showing the date of the most recent payment recorded against each stub — `max(paid_at)` over the stub's `pay_stub_payments` rows via new pure helper **`lastPayStubPaymentPaidAt`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts) (explicit max, not last-row, so client-side edits can't skew it), falling back to the legacy `pay_stubs.paid_at` mark-paid timestamp for stubs paid before per-payment rows existed; `—` when never paid. Zero new queries — the payments map was already bulk-loaded for every ledger row. +4 unit tests (new [`payStubPayments.test.ts`](../src/lib/payStubPayments.test.ts), incl. regression coverage of the existing payment math)](#latest-updates-v2600)
 **New:** [v2.599 — **Draft Payroll Hours breakdown** — **pending-approval hours surfaced + payroll refresh after Adjust times**. Two fixes for "I adjusted a day's hours but the breakdown didn't move": (1) the breakdown (and all payroll numbers) read **`people_hours`**, which is only written on **approval** — editing a pending session can never move payroll, so each day row (hourly people) now shows a muted amber **`+X.XX pending`** under the Hours value (and on the Period total) when closed unapproved sessions exist that day, with a tooltip explaining approval is the missing step. New pure kernel `sumPendingClockHoursByDay` in [`draftPayrollPersonBreakdown.ts`](../src/lib/draftPayrollPersonBreakdown.ts) (+5 tests); pending sessions resolved via the standard trimmed-name→user match, filtered `approved_at/rejected_at/revoked_at IS NULL`, closed only; salary rows unchanged. (2) For **approved** sessions, an **Adjust times** save followed by closing the day editor exited via `onClose` (not `onSaved`), leaving the Draft Payroll rows stale behind the fresh breakdown — the payroll-origin `onLinkedSessionsUpdated` now reloads the period's `people_hours` + days-correct + pending-approvals immediately](#latest-updates-v2599)
@@ -1977,6 +1978,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.602)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — compact Created / Last Paid dates
+
+The **Created** and **Last Paid** cells on the pay-reports ledger ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)) now render as compact **`7/2`** (local month/day, no year) instead of `7/2/2026`. The full locale date stays available as a hover `title` tooltip on each cell, so rows from previous years remain unambiguous. New module-local `shortMonthDay(timestamp)` helper builds the label from explicit local date parts (`—` on unparseable input). Display-only — no data or query changes.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1762/1762**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.601)
