@@ -29,12 +29,16 @@ supabase gen types typescript --local > src/types/database.ts
 
 ### 3. Edge Functions
 
-Ensure the `create-user` Edge Function accepts the new role in its validation:
+Ensure the user-creation Edge Functions accept the new role in their validation:
 
-- **File**: `supabase/functions/create-user/index.ts`
-- **Location**: `validRoles` array (around line 89)
-- Add `'new_role'` to the array: `const validRoles = ['dev', 'master_technician', 'assistant', 'subcontractor', 'estimator', 'primary', 'superintendent', 'new_role']`
-- If the role needs service type filtering (like estimator/subcontractor), add handling for `service_type_ids` when `role === 'new_role'`
+- **Files**: `supabase/functions/create-user/index.ts` (`validRoles`, around line 89) and `supabase/functions/invite-user/index.ts` (`VALID_ROLES`)
+- Add `'new_role'` to both arrays (both use the same modern 8-role list: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent)
+- If the role needs service type filtering (like estimator/subcontractor), add handling for `service_type_ids` when `role === 'new_role'` in both functions
+- **Redeploy both functions** — CI does not deploy edge functions; a stale deployed copy will reject the new role even when the repo is correct (this exact drift broke Helper in create-user and the whole invite flow, fixed 2026-07-02)
+
+### 4. Signup trigger
+
+Add the role to the `handle_new_user` accepted `invited_role` list (new migration; see `supabase/migrations/20260702160000_modernize_handle_new_user.sql`). Users invited with a role missing from that list fall back to `helpers`.
 
 ---
 
@@ -193,8 +197,9 @@ For roles that get the Recent Reports section only when explicitly enabled (e.g.
 Use this when adding a new role:
 
 - [ ] Migration: Add role to `user_role` enum + update COMMENT
+- [ ] Migration: Add role to `handle_new_user` accepted `invited_role` list
 - [ ] Regenerate types: `supabase gen types typescript --local > src/types/database.ts`
-- [ ] Edge Function: Add role to `validRoles` in `create-user/index.ts`
+- [ ] Edge Functions: Add role to `validRoles` in `create-user/index.ts` AND `VALID_ROLES` in `invite-user/index.ts`, then redeploy both
 - [ ] Layout.tsx: Add `NEW_ROLE_PATHS` and redirect logic
 - [ ] Dashboard.tsx: Add `NEW_ROLE_PATHS` and `getPathsForRole` branch
 - [ ] Settings.tsx: Add to `ROLES`, add `PAGE_ACCESS` column
@@ -204,4 +209,4 @@ Use this when adding a new role:
 - [ ] Service type filtering: Add `new_role_service_type_ids` to users + create-user + Settings UI if needed
 - [ ] Report-enabled: Add to Settings Report-enabled section + Dashboard logic if needed
 - [ ] Page components: Update role checks in Jobs, Bids, Materials, People, Checklist, Dashboard
-- [ ] Test all 7 roles: dev, master, assistant, subcontractor, estimator, primary, superintendent (and new role)
+- [ ] Test all 8 roles: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent (and new role)

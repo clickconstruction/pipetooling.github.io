@@ -16338,7 +16338,7 @@ Run these migrations in order:
 ## Future Enhancements
 
 ### Email Integration
-- Update `invite-user` Edge Function to use templates
+- ~~Update `invite-user` Edge Function to use templates~~ Done 2026-07-02 — invite-user rebuilt in-repo on Resend + the `invitation` template (see EDGE_FUNCTIONS.md)
 - Update `login-as-user` Edge Function to use templates
 - Implement workflow stage notification sending
 - Connect email templates to actual notification triggers
@@ -16420,7 +16420,7 @@ Before deploying, ensure all migrations are run:
 
 1. **RLS Policy for People Table**: Owners may not see all people entries due to RLS restrictions. Consider updating RLS policy to allow owners to see all entries.
 
-2. **Email Template Integration**: Templates are stored but not yet used by Edge Functions. Need to update `invite-user` and `login-as-user` functions.
+2. **Email Template Integration**: `invite-user` uses the `invitation` template as of 2026-07-02; `login-as-user` still does not use templates.
 
 3. **Workflow Notifications**: Stage notifications are tracked but not yet sent. Need to implement email sending in workflow stage transitions.
 
