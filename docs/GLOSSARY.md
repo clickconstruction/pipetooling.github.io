@@ -721,6 +721,9 @@ Bids → Pricing tab → **Package and send** button (left of **Export CSV**). S
 
 **Source of truth**: shared pure helper [`buildBidPricingPackageHtml.ts`](../src/lib/buildBidPricingPackageHtml.ts) (mirrored at [`supabase/functions/_shared/bidPricingPackage.ts`](../supabase/functions/_shared/bidPricingPackage.ts)) renders the table HTML for the modal preview, the clipboard payload, and the Resend email body — so the recipient sees exactly what the sender saw.
 
+### Schedule of Values (Cover Letter payment schedule)
+Opt-in per-bid payment schedule rendered in the Cover Letter (and Approval PDF page 4) after **Terms and Warranty**: one line per row — `Due {timing}: {percent}% — ${amount}` — where **timing** ∈ before start / before–after **Rough In** / **Top Out** / **Trim Set** and the dollar amount is that percent of the letter's effective contract amount (custom-amount override respected; bundled multi-Pricing letters compute per-Pricing dollars). First enable seeds the company standard **30/30/30/10** (30% before each phase + 10% retainage after Trim Set). Flag **`bids.include_payment_schedule`**; rows in **`bid_payment_schedule_rows`** (persist even while the toggle is off); RLS via `can_access_bid_for_pricing`. Editor in the Cover Letter tab warns (amber, non-blocking) when percents don't sum to 100. Pure kernel [`paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts); migration `20260702120000`; **v2.596**.
+
 ### Followup Sheet
 Printable/downloadable report showing account manager's assigned projects with contact details and submission history. Available in Submission & Followup tab.
 

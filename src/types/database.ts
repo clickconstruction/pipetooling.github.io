@@ -324,6 +324,41 @@ export type Database = {
           },
         ]
       }
+      bid_payment_schedule_rows: {
+        Row: {
+          bid_id: string
+          created_at: string
+          id: string
+          percent: number
+          sort_order: number
+          timing: string
+        }
+        Insert: {
+          bid_id: string
+          created_at?: string
+          id?: string
+          percent: number
+          sort_order?: number
+          timing: string
+        }
+        Update: {
+          bid_id?: string
+          created_at?: string
+          id?: string
+          percent?: number
+          sort_order?: number
+          timing?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_payment_schedule_rows_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_pricing_assignments: {
         Row: {
           bid_id: string
@@ -662,6 +697,7 @@ export type Database = {
           gc_contact_name: string | null
           gc_contact_phone: string | null
           id: string
+          include_payment_schedule: boolean
           last_contact: string | null
           loss_reason: string | null
           materials_model: string
@@ -713,6 +749,7 @@ export type Database = {
           gc_contact_name?: string | null
           gc_contact_phone?: string | null
           id?: string
+          include_payment_schedule?: boolean
           last_contact?: string | null
           loss_reason?: string | null
           materials_model?: string
@@ -764,6 +801,7 @@ export type Database = {
           gc_contact_name?: string | null
           gc_contact_phone?: string | null
           id?: string
+          include_payment_schedule?: boolean
           last_contact?: string | null
           loss_reason?: string | null
           materials_model?: string
@@ -3833,11 +3871,11 @@ export type Database = {
       jobs_ledger: {
         Row: {
           bid_id: string | null
+          click_number: string
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
           customer_name: string | null
-          click_number: string
           customer_phone: string | null
           google_drive_link: string | null
           hcp_number: string
@@ -3859,11 +3897,11 @@ export type Database = {
         }
         Insert: {
           bid_id?: string | null
+          click_number?: string
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
-          click_number?: string
           customer_phone?: string | null
           google_drive_link?: string | null
           hcp_number?: string
@@ -3885,11 +3923,11 @@ export type Database = {
         }
         Update: {
           bid_id?: string | null
+          click_number?: string
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
           customer_name?: string | null
-          click_number?: string
           customer_phone?: string | null
           google_drive_link?: string | null
           hcp_number?: string
@@ -11497,7 +11535,7 @@ export type Database = {
         Returns: Json
       }
       migrate_job_ledger_costs_and_delete: {
-        Args: { p_from: string; p_to: string; p_allow_billed?: boolean }
+        Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
         Returns: Json
       }
       move_job_schedule_block_group: {
@@ -11508,10 +11546,7 @@ export type Database = {
         }
         Returns: undefined
       }
-      next_job_number_suggestion: {
-        Args: never
-        Returns: string
-      }
+      next_job_number_suggestion: { Args: never; Returns: string }
       next_numeric_hcp_suggestion_for_master: {
         Args: { p_master_user_id: string }
         Returns: string

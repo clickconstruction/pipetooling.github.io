@@ -7,6 +7,10 @@
  */
 
 import { addressLines, escapeHtml } from './htmlDoc'
+import { buildPaymentScheduleSectionLines, type PaymentScheduleRowInput } from './paymentSchedule'
+
+/** Optional Schedule of Values section: rows + the contract amount the percents apply to. */
+export type CoverLetterPaymentSchedule = { rows: PaymentScheduleRowInput[]; amountDollars: number }
 
 /** Convert amount (e.g. 31420.50) to "Thirty One Thousand Four Hundred Twenty 50/100 Dollars" */
 export function numberToWords(amount: number): string {
@@ -63,7 +67,8 @@ export function buildCoverLetterHtml(
   designDrawingPlanDateFormatted: string | null,
   serviceTypeName: string,
   includeSignature = true,
-  includeFixturesPerPlan = true
+  includeFixturesPerPlan = true,
+  paymentSchedule: CoverLetterPaymentSchedule | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -98,6 +103,10 @@ export function buildCoverLetterHtml(
   html += br2 + '<strong>Inclusions:</strong>' + br + escapeHtml(inclusionsBlock || '(none)').replace(/\n/g, br)
   html += br2 + '<strong>Exclusions and Scope:</strong>' + br + escapeHtml(exclusionsContent).replace(/\n/g, br)
   html += br2 + escapeHtml(termsContent).replace(/\n/g, br)
+  const scheduleLines = paymentSchedule ? buildPaymentScheduleSectionLines(paymentSchedule.rows, paymentSchedule.amountDollars) : []
+  if (scheduleLines.length > 0) {
+    html += br2 + '<strong>' + escapeHtml(scheduleLines[0] ?? '') + '</strong>' + br + scheduleLines.slice(1).map((l) => escapeHtml(l)).join(br)
+  }
   html += br2 + escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.')
   html += br + escapeHtml('Respectfully submitted by Click Plumbing and Electrical')
   if (includeSignature) {
@@ -125,7 +134,8 @@ export function buildCoverLetterText(
   designDrawingPlanDateFormatted: string | null,
   serviceTypeName: string,
   includeSignature = true,
-  includeFixturesPerPlan = true
+  includeFixturesPerPlan = true,
+  paymentSchedule: CoverLetterPaymentSchedule | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -156,6 +166,9 @@ export function buildCoverLetterText(
     exclusions.trim() ? exclusionLines.join('\n') : DEFAULT_EXCLUSIONS.trim().split(/\n/).filter(Boolean).map((l) => exclusionIndent + '• ' + l.trim()).join('\n'),
     '',
     terms.trim() ? termsLines.join('\n') : DEFAULT_TERMS_AND_WARRANTY,
+    ...(paymentSchedule && paymentSchedule.rows.length > 0
+      ? ['', ...buildPaymentScheduleSectionLines(paymentSchedule.rows, paymentSchedule.amountDollars)]
+      : []),
     '',
     'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.',
     'Respectfully submitted by Click Plumbing and Electrical',

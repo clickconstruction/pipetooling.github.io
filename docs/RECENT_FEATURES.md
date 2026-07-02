@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-06-08 (v2.595)
+last_updated: 2026-07-02 (v2.596)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.596 — **Bids → Cover Letter** — **Schedule of Values (payment schedule)**. New opt-in per-bid section in the cover letter: rows of **payment timing + percent of the contract amount** (timing ∈ Before start / Before–After Rough In / Top Out / Trim Set), rendered after **Terms and Warranty** and before the "No work shall commence…" closing as `Due before Rough In: 30% — $45,000.00` lines. First enable seeds the company-standard **30/30/30/10** preset (30% before each phase + 10% retainage after Trim Set). Persisted per bid — new **`bid_payment_schedule_rows`** table + **`bids.include_payment_schedule`** flag (migration `20260702120000`, applied to prod via MCP ahead of client). Editor in the Cover Letter tab (add/remove/reorder rows, timing dropdown, blur-commit percent input, live `= $` per row from the effective amount, amber ≠100% warning). **Bundled pricings**: each per-Pricing letter computes dollars from **that pricing's** revenue, same percentages. Approval PDF page 4 fetches flag+rows fresh and renders the section with a bold heading. Pure kernel [`paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts) + 10 unit tests; builders take an optional trailing `paymentSchedule` param (default `null` — zero churn at other call sites)](#latest-updates-v2596)
 **New:** [v2.595 — **Jobs → Job activity / notes** — **activity ledger (Phase 2: append-only `job_activity_events`)**. Replaces Phase 1's live-merge with a durable, append-only ledger table written by DB triggers, so the feed now also captures what Phase 1 couldn't: **payment/crew removals**, **field edits** (customer / address / job total), and **combine/separate**. New `job_activity_events` table (RLS via `can_read_job_activity` — operational rows = status family incl. team members, financial rows = payments family, role-gated), a `list_job_activity_events` SECURITY DEFINER reader RPC (role-aware, resolves actor names), triggers on `job_status_events`/payments/invoices/team_members/`jobs_ledger` field edits/materials/fixtures + the split RPC, and an idempotent backfill (**3,094** historical events). Client cut over to ONE RPC fetch + ONE realtime subscription, replacing the five Phase-1 per-table fetchers/subscriptions (their kernels deleted; the generic `event` chassis + filter kept). Applied to prod via `supabase db push` + `gen-types:linked`](#latest-updates-v2595)
 **New:** [v2.594 — **Jobs → Job activity / notes** — **activity ledger (Phase 1)**. The activity feed becomes a chronological **ledger of important job actions**: it now merges **status changes**, **payments**, **invoice milestones** (created / billed / sent / write-down), **Stripe invoice emails**, and **crew added** alongside the existing notes / reports / schedule / clock sources, on **Stages**, **Workflow**, and the **Job Detail** modal. All system actions render through ONE generic `event` item kind + a render registry (`src/lib/jobActivityEvent.ts`), so each action is a colored left-border + uppercase tag + humanized summary. A new segmented **filter** (All / Notes / Status / Billing / Crew) sits above the feed. Financial events (payments/invoices) are auto-gated by existing RLS — viewers without financial access simply see none. Phase 1 is **client-only (no schema change)**: each source = a pure kernel + fetcher (mirroring the clock-session pattern) merged into both thread hooks with realtime. Phase 2 (append-only `job_activity_events` table + triggers) follows to capture deletes/edits/transitions](#latest-updates-v2594)
 **New:** [v2.593 — **Jobs → Job activity / notes** — **clock in/out sessions in the activity feed**. Clock sessions now appear as a read-only source in the merged Job activity / notes feed (alongside thread notes, field reports, and dispatch schedule blocks), on the **Stages** board, the **Workflow** page, and the **Job Detail** modal. Each row shows person · in → out · duration (open sessions read "still on the clock"), with an amber **Pending approval** chip on unapproved time and the session note when present. Mirrors the v2.445 schedule-block pattern: new pure kernel `clockSessionsToActivityItems` (+ unit tests), merged in both thread hooks, with a `clock_sessions` Realtime subscription. Reuses the existing `fetchClockSessionsForJobLedger` — **no DB / migration / type changes**; RLS already gates visibility (roles without labor access see no clock rows). Surfaces clocked-but-unapproved time that hasn't yet rolled into man-hours](#latest-updates-v2593)
@@ -1971,6 +1972,32 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.596)
+
+**Date**: 2026-07-02
+
+### Bids → Cover Letter — Schedule of Values (payment schedule)
+
+The cover letter can now include a **Schedule of Values**: a per-bid payment schedule where each row is a **timing** (Before start, Before/After Rough In, Before/After Top Out, Before/After Trim Set) + a **percent of the contract amount**. Opt-in per bid and **off by default** — existing letters are unchanged until the new **Include Schedule of Values (payment schedule) in document** checkbox is turned on. The first enable seeds the company standard **30/30/30/10** (30% before each phase, 10% retainage after Trim Set).
+
+**Rendering** (both `buildCoverLetterHtml` and `buildCoverLetterText`): a bold **`Schedule of Values:`** heading after the **Terms and Warranty** paragraph and before the *"No work shall commence…"* closing, with one line per row — `Due before Rough In: 30% — $45,000.00`. Dollar amounts come from the letter's **effective amount** (custom-amount override respected). **Bundled pricings** (2+ Pricings included in submission): each per-Pricing letter computes its dollars from **that pricing's** revenue with the same percentages. The **Approval PDF** page 4 fetches the flag + rows fresh from the DB (no `ApprovalPdfContext` change) and bolds the heading like Inclusions/Exclusions.
+
+**Editor** (Cover Letter tab, grouped with the other include checkboxes): visible while the toggle is on; rows persist even while off. Timing `<select>` (immediate write), percent input with a per-row draft buffer (**commit on blur/Enter**, clamped 0–100, invalid reverts), live `= $X` per row, ▲▼ reorder (adjacent `sort_order` swap, same pattern as the submission-versions list), × remove, **+ Add row** (`Before start · 0%`), a `Total: N%` readout, and an amber **⚠ Percents sum to N%, not 100%** warning (warn-only, never blocks).
+
+**Database** (migration `20260702120000_bid_payment_schedule.sql`, validated via transactional rollback then applied to prod via Supabase MCP ahead of the client): `bids.include_payment_schedule boolean NOT NULL DEFAULT false` + **`bid_payment_schedule_rows`** `(id, bid_id FK cascade, timing text CHECK(7 values), percent numeric CHECK 0–100, sort_order, created_at)` with index `(bid_id, sort_order)`; RLS = the same role-list + `can_access_bid_for_pricing(bid_id)` predicate as the other bid-scoped pricing overlay tables, one policy per verb.
+
+**Pure kernel** [`src/lib/bidDocuments/paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts): `PaymentScheduleTiming` union + `PAYMENT_SCHEDULE_TIMINGS` / `PAYMENT_SCHEDULE_TIMING_LABELS`, `DEFAULT_PAYMENT_SCHEDULE_ROWS` (30/30/30/10), `paymentSchedulePercentTotal`, `formatPaymentSchedulePercent`, `computePaymentScheduleLines`, `buildPaymentScheduleSectionLines` (shared by HTML/text builders; unknown timing strings fall back to the raw value so a timing added in SQL first can't crash old clients). Builders take an optional trailing `paymentSchedule: { rows, amountDollars } | null = null` param — default `null` means zero churn at other call sites and all existing snapshots pass untouched.
+
+#### Verification
+
+Migration dry-run inside a rolled-back transaction on prod (DDL + policy + FK insert), then applied via MCP `apply_migration`; `npm run gen-types:linked` regenerated [`database.ts`](../src/types/database.ts). `tsc -b` clean; full `vitest run` green (**1749 tests**, incl. 10 new kernel tests + 4 new builder-integration tests); lint clean on touched files (one pre-existing `exhaustive-deps` warning in the tab predates this change).
+
+#### Files
+
+New: [`supabase/migrations/20260702120000_bid_payment_schedule.sql`](../supabase/migrations/20260702120000_bid_payment_schedule.sql), [`src/lib/bidDocuments/paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts) (+ test). Modified: [`src/lib/bidDocuments/coverLetter.ts`](../src/lib/bidDocuments/coverLetter.ts) (+ test), [`src/components/bids/BidsCoverLetterTab.tsx`](../src/components/bids/BidsCoverLetterTab.tsx), [`src/lib/bidDocuments/approvalPdf.ts`](../src/lib/bidDocuments/approvalPdf.ts), [`src/lib/bids/bidPricingEngineTypes.ts`](../src/lib/bids/bidPricingEngineTypes.ts), regenerated [`src/types/database.ts`](../src/types/database.ts).
+
 ---
 
 ## Latest Updates (v2.595)

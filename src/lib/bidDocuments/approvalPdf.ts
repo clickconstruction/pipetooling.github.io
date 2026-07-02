@@ -512,14 +512,25 @@ export async function downloadApprovalPdf(ctx: ApprovalPdfContext): Promise<void
   const effectiveIncludeFixtures = !designDrawingPlanDateFormatted || ctx.coverLetter.includeFixturesPerPlan
   const bidServiceType = ctx.serviceTypes.find((st) => st.id === b.service_type_id)
   const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
-  const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures)
+  // Schedule of Values: fetch fresh (flag + rows) so a toggle made moments ago in the
+  // Cover Letter tab is reflected without threading state through the Submission tab.
+  const [schedFlagRes, schedRowsRes] = await Promise.all([
+    supabase.from('bids').select('include_payment_schedule').eq('id', bidId).maybeSingle(),
+    supabase.from('bid_payment_schedule_rows').select('*').eq('bid_id', bidId).order('sort_order').order('created_at'),
+  ])
+  const paymentScheduleRowsData = (schedRowsRes.data ?? []) as { timing: string; percent: number }[]
+  const paymentSchedule = schedFlagRes.data?.include_payment_schedule === true && paymentScheduleRowsData.length > 0
+    ? { rows: paymentScheduleRowsData.map((r) => ({ timing: r.timing, percent: Number(r.percent) })), amountDollars: effectiveRevenue }
+    : null
+  const coverLetterText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, ctx.coverLetter.includeSignature, effectiveIncludeFixtures, paymentSchedule)
   const coverLines = coverLetterText.split('\n')
   for (const line of coverLines) {
     if (y > pageH - margin) { doc.addPage(); y = margin }
 
     const isInclusionsHeading = line === 'Inclusions:'
     const isExclusionsHeading = line === 'Exclusions and Scope:'
-    const makeBold = isInclusionsHeading || isExclusionsHeading
+    const isScheduleHeading = line === 'Schedule of Values:'
+    const makeBold = isInclusionsHeading || isExclusionsHeading || isScheduleHeading
 
     if (makeBold) {
       doc.setFont('helvetica', 'bold')

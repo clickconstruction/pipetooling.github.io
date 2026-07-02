@@ -130,6 +130,15 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 - **Impact**: **[`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)**, **[`AgreedWriteDownModal.tsx`](../src/components/jobs/AgreedWriteDownModal.tsx)**; **[`stripe-invoice-agreed-write-down`](../supabase/functions/stripe-invoice-agreed-write-down/index.ts)**; **[`EDGE_FUNCTIONS.md`](EDGE_FUNCTIONS.md)**. **`npm run gen-types:linked`** after **`db push`**.
 - **Category**: Jobs / Billing / Stripe / RPC
 
+### July 2026
+
+#### July 2, 2026
+
+**`20260702120000_bid_payment_schedule.sql`** _(applied to prod 2026-07-02 via Supabase MCP `apply_migration`, ahead of client)_
+- **Purpose**: **Bids → Cover Letter** — **Schedule of Values** (payment schedule). Adds **`bids.include_payment_schedule`** (boolean, NOT NULL DEFAULT false — the per-bid opt-in) and table **`bid_payment_schedule_rows`** `(id, bid_id FK → bids ON DELETE CASCADE, timing text CHECK IN (before_start, before_rough_in, after_rough_in, before_top_out, after_top_out, before_trim_set, after_trim_set), percent numeric CHECK 0–100, sort_order int, created_at)` + index `(bid_id, sort_order)`. **RLS**: one policy per verb, same predicate as the other bid-scoped pricing overlay tables — role ∈ (dev, master_technician, assistant, estimator, primary, superintendent) AND **`can_access_bid_for_pricing(bid_id)`**. Client seeds the 30/30/30/10 default rows on first enable (migration inserts no data; safe ahead of client deploy).
+- **Impact**: [`BidsCoverLetterTab.tsx`](../src/components/bids/BidsCoverLetterTab.tsx) (editor + letter wiring), [`coverLetter.ts`](../src/lib/bidDocuments/coverLetter.ts) builders (optional trailing `paymentSchedule` param), [`approvalPdf.ts`](../src/lib/bidDocuments/approvalPdf.ts) (page-4 fetch), new kernel [`paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts). **`npm run gen-types:linked`** run after apply. **`RECENT_FEATURES.md` v2.596**.
+- **Category**: Bids / Cover Letter / RLS
+
 ### June 2026
 
 #### June 30, 2026
