@@ -18,12 +18,21 @@ import {
 } from '../../lib/bidDocuments/coverLetter'
 import { computeBidPricingRows, coverLetterTotalsFromPricingRows } from '../../lib/bidPricingRowCalculations'
 import { submissionHiddenIdsForVersion } from '../../lib/bids/submissionHides'
+import {
+  DEFAULT_PAYMENT_SCHEDULE_ROWS,
+  PAYMENT_SCHEDULE_TIMINGS,
+  PAYMENT_SCHEDULE_TIMING_LABELS,
+  formatPaymentSchedulePercent,
+  paymentSchedulePercentTotal,
+  type PaymentScheduleTiming,
+} from '../../lib/bidDocuments/paymentSchedule'
 import type {
   PriceBookVersion,
   PriceBookEntryWithFixture,
   BidPricingAssignment,
   BidCountRowCustomPrice,
   BidCountRowSubmissionHide,
+  BidPaymentScheduleRow,
 } from '../../lib/bids/bidPricingEngineTypes'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -130,6 +139,109 @@ export function BidsCoverLetterTab({
       setCoverLetterBidSubmissionQuickAddValue('')
     }
   }, [selectedBidForPricing?.id, coverLetterBidSubmissionQuickAddBidId])
+
+  // Schedule of Values (payment schedule) — persisted per bid (bid_payment_schedule_rows +
+  // bids.include_payment_schedule). Rows persist even while the toggle is off.
+  const [paymentScheduleRows, setPaymentScheduleRows] = useState<BidPaymentScheduleRow[]>([])
+  const [paymentScheduleEnabled, setPaymentScheduleEnabled] = useState(false)
+  // Per-row editing buffer so percent typing doesn't write on every keystroke (commit on blur/Enter)
+  const [paymentSchedulePercentDrafts, setPaymentSchedulePercentDrafts] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    const bid = selectedBidForPricing
+    if (!bid) {
+      setPaymentScheduleRows([])
+      setPaymentScheduleEnabled(false)
+      setPaymentSchedulePercentDrafts({})
+      return
+    }
+    setPaymentScheduleEnabled(bid.include_payment_schedule === true)
+    setPaymentSchedulePercentDrafts({})
+    let cancelled = false
+    void (async () => {
+      const { data } = await supabase
+        .from('bid_payment_schedule_rows')
+        .select('*')
+        .eq('bid_id', bid.id)
+        .order('sort_order')
+        .order('created_at')
+      if (cancelled) return
+      setPaymentScheduleRows((data as BidPaymentScheduleRow[]) ?? [])
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed on bid id; hydrates from the freshly selected bid
+  }, [selectedBidForPricing?.id])
+
+  async function reloadPaymentScheduleRows(bidId: string) {
+    const { data } = await supabase
+      .from('bid_payment_schedule_rows')
+      .select('*')
+      .eq('bid_id', bidId)
+      .order('sort_order')
+      .order('created_at')
+    setPaymentScheduleRows((data as BidPaymentScheduleRow[]) ?? [])
+  }
+
+  async function togglePaymentScheduleEnabled(bid: BidWithBuilder) {
+    const next = !paymentScheduleEnabled
+    setPaymentScheduleEnabled(next)
+    const { error } = await supabase.from('bids').update({ include_payment_schedule: next }).eq('id', bid.id)
+    if (error) {
+      setPaymentScheduleEnabled(!next)
+      alert('Error updating bid: ' + error.message)
+      return
+    }
+    // Seed the company-standard 30/30/30/10 on first enable
+    if (next && paymentScheduleRows.length === 0) {
+      await supabase.from('bid_payment_schedule_rows').insert(
+        DEFAULT_PAYMENT_SCHEDULE_ROWS.map((r, i) => ({ bid_id: bid.id, timing: r.timing, percent: r.percent, sort_order: i })),
+      )
+      await reloadPaymentScheduleRows(bid.id)
+    }
+    void loadBids()
+  }
+
+  async function addPaymentScheduleRow(bidId: string) {
+    const maxSort = paymentScheduleRows.reduce((m, r) => Math.max(m, r.sort_order), -1)
+    await supabase.from('bid_payment_schedule_rows').insert({ bid_id: bidId, timing: 'before_start', percent: 0, sort_order: maxSort + 1 })
+    await reloadPaymentScheduleRows(bidId)
+  }
+
+  async function removePaymentScheduleRow(bidId: string, rowId: string) {
+    await supabase.from('bid_payment_schedule_rows').delete().eq('id', rowId)
+    await reloadPaymentScheduleRows(bidId)
+  }
+
+  async function reorderPaymentScheduleRow(bidId: string, row: BidPaymentScheduleRow, dir: -1 | 1) {
+    const sorted = [...paymentScheduleRows].sort((a, b) => a.sort_order - b.sort_order)
+    const idx = sorted.findIndex((x) => x.id === row.id)
+    const other = sorted[idx + dir]
+    if (!other) return
+    await supabase.from('bid_payment_schedule_rows').update({ sort_order: other.sort_order }).eq('id', row.id)
+    await supabase.from('bid_payment_schedule_rows').update({ sort_order: row.sort_order }).eq('id', other.id)
+    await reloadPaymentScheduleRows(bidId)
+  }
+
+  async function updatePaymentScheduleTiming(bidId: string, rowId: string, timing: string) {
+    await supabase.from('bid_payment_schedule_rows').update({ timing }).eq('id', rowId)
+    await reloadPaymentScheduleRows(bidId)
+  }
+
+  async function commitPaymentSchedulePercent(bidId: string, row: BidPaymentScheduleRow) {
+    const draft = paymentSchedulePercentDrafts[row.id]
+    if (draft == null) return
+    setPaymentSchedulePercentDrafts((prev) => {
+      const next = { ...prev }
+      delete next[row.id]
+      return next
+    })
+    const parsed = parseFloat(draft.replace(/,/g, '').trim())
+    if (!Number.isFinite(parsed)) return // invalid input reverts to the stored value
+    const clamped = Math.min(100, Math.max(0, parsed))
+    if (clamped === Number(row.percent)) return
+    await supabase.from('bid_payment_schedule_rows').update({ percent: clamped }).eq('id', row.id)
+    await reloadPaymentScheduleRows(bidId)
+  }
 
   // Per-Pricing revenue + fixtures for the bundled submission document. Only the active Pricing's
   // data is loaded by the engine, so for the bundle we fetch each INCLUDED Pricing's entries +
@@ -334,21 +446,25 @@ export function BidsCoverLetterTab({
         const bidServiceType = serviceTypes.find((st) => st.id === bid.service_type_id)
         const serviceTypeName = bidServiceType?.name ?? 'Plumbing'
         const includeSignature = coverLetterIncludeSignatureByBid[bid.id] === true
-        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures)
-        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures)
+        const paymentScheduleSorted = [...paymentScheduleRows].sort((a, b) => a.sort_order - b.sort_order)
+        const paymentScheduleInputs = paymentScheduleSorted.map((r) => ({ timing: r.timing, percent: Number(r.percent) }))
+        const paymentSchedulePercentSum = paymentSchedulePercentTotal(paymentScheduleInputs)
+        const paymentScheduleActive = paymentScheduleEnabled && paymentScheduleInputs.length > 0
+        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null)
+        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null)
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
         const finalCoverLetterHtml = bundlePricings.length > 1
           ? buildCombinedCoverLetterDocument(bundlePricings.map((s) => ({
               label: `Pricing: ${s.name}`,
-              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures),
+              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null),
             })))
           : combinedHtml
         const finalCoverLetterText = bundlePricings.length > 1
           ? buildCombinedCoverLetterText(bundlePricings.map((s) => ({
               label: `Pricing: ${s.name}`,
-              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures),
+              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null),
             })))
           : combinedText
         const now = new Date()
@@ -602,6 +718,83 @@ export function BidsCoverLetterTab({
               </div>
             )}
             <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={paymentScheduleEnabled}
+                  onChange={() => void togglePaymentScheduleEnabled(bid)}
+                />
+                Include Schedule of Values (payment schedule) in document
+              </label>
+              {paymentScheduleEnabled && (
+                <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.75rem', marginTop: '0.5rem' }}>
+                  {paymentScheduleSorted.map((row, i, arr) => {
+                    const knownTiming = (PAYMENT_SCHEDULE_TIMINGS as string[]).includes(row.timing)
+                    const rowPercent = paymentSchedulePercentDrafts[row.id] != null
+                      ? parseFloat(paymentSchedulePercentDrafts[row.id]?.replace(/,/g, '').trim() ?? '')
+                      : Number(row.percent)
+                    const rowDollars = Number.isFinite(rowPercent) ? (effectiveRevenue * rowPercent) / 100 : null
+                    return (
+                      <div key={row.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0', flexWrap: 'wrap' }}>
+                        <select
+                          value={row.timing}
+                          onChange={(e) => void updatePaymentScheduleTiming(bid.id, row.id, e.target.value)}
+                          aria-label="Payment timing"
+                          style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        >
+                          {!knownTiming && <option value={row.timing}>{row.timing}</option>}
+                          {PAYMENT_SCHEDULE_TIMINGS.map((t: PaymentScheduleTiming) => (
+                            <option key={t} value={t}>
+                              {PAYMENT_SCHEDULE_TIMING_LABELS[t].charAt(0).toUpperCase() + PAYMENT_SCHEDULE_TIMING_LABELS[t].slice(1)}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={paymentSchedulePercentDrafts[row.id] ?? String(Number(row.percent))}
+                          onChange={(e) => setPaymentSchedulePercentDrafts((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                          onBlur={() => void commitPaymentSchedulePercent(bid.id, row)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault()
+                              e.currentTarget.blur()
+                            }
+                          }}
+                          aria-label="Percent of contract amount"
+                          style={{ width: '4.5rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', boxSizing: 'border-box' }}
+                        />
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>%</span>
+                        <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: '6.5rem' }}>
+                          {rowDollars != null ? `= $${formatCurrency(rowDollars)}` : ''}
+                        </span>
+                        <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#d1d5db' : '#6b7280' }}>▲</button>
+                        <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? '#d1d5db' : '#6b7280' }}>▼</button>
+                        <button type="button" onClick={() => void removePaymentScheduleRow(bid.id, row.id)} title="Remove row" aria-label="Remove row" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '1rem' }}>×</button>
+                      </div>
+                    )
+                  })}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => void addPaymentScheduleRow(bid.id)}
+                      style={{ padding: '0.25rem 0.75rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer', fontSize: '0.875rem' }}
+                    >
+                      + Add row
+                    </button>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>
+                      Total: {formatPaymentSchedulePercent(paymentSchedulePercentSum)}
+                    </span>
+                  </div>
+                  {paymentScheduleSorted.length > 0 && Math.abs(paymentSchedulePercentSum - 100) > 0.001 && (
+                    <div style={{ marginTop: '0.5rem', padding: '0.35rem 0.5rem', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, color: '#b45309', fontSize: '0.8125rem' }}>
+                      ⚠ Percents sum to {formatPaymentSchedulePercent(paymentSchedulePercentSum)}, not 100%.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Additional Inclusions (one per line, shown as bullets)</label>
               <textarea
                 value={inclusionsDisplay}
@@ -664,7 +857,7 @@ export function BidsCoverLetterTab({
                 )}
               </label>
               <div
-                key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}`}
+                key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}-${paymentScheduleEnabled}-${paymentScheduleSorted.map((r) => `${r.timing}:${r.percent}`).join(',')}`}
                 style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                 // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested coverLetter builder
                 dangerouslySetInnerHTML={{ __html: finalCoverLetterHtml }}

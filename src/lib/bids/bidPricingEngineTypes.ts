@@ -17,6 +17,7 @@ export type PriceBookEntry = Database['public']['Tables']['price_book_entries'][
 export type BidPricingAssignment = Database['public']['Tables']['bid_pricing_assignments']['Row']
 export type BidCountRowCustomPrice = Database['public']['Tables']['bid_count_row_custom_prices']['Row']
 export type BidCountRowSubmissionHide = Database['public']['Tables']['bid_count_row_submission_hides']['Row']
+export type BidPaymentScheduleRow = Database['public']['Tables']['bid_payment_schedule_rows']['Row']
 export type LaborBookVersion = Database['public']['Tables']['labor_book_versions']['Row']
 export type LaborBookEntry = Database['public']['Tables']['labor_book_entries']['Row']
 export type TakeoffBookVersion = Database['public']['Tables']['takeoff_book_versions']['Row']

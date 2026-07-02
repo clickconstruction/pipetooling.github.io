@@ -1279,6 +1279,24 @@ Electrical, fire protection, fire alarm, drywall, framing, and architectural fin
 
 **Synced state**: When `bid.bid_value` already matches the effective amount (proposed or custom), both buttons are hidden. They reappear when the proposed or custom amount changes and no longer matches the stored bid value.
 
+### Schedule of Values (payment schedule) — v2.596
+
+**Purpose**: Optionally include a payment schedule in the letter — each row is a **timing** + a **percent of the contract amount** (e.g. the company standard **30/30/30/10**: 30% due before each of Rough In / Top Out / Trim Set, 10% retainage after Trim Set).
+
+**Opt-in per bid, off by default**: checkbox **Include Schedule of Values (payment schedule) in document** (grouped with the other include checkboxes). First enable seeds the 30/30/30/10 preset. Unchecking hides the section but **keeps the rows** for later re-enable.
+
+**Persistence** (unlike the session-only inclusions/exclusions/terms fields):
+- Flag: **`bids.include_payment_schedule`** (boolean, default false)
+- Rows: **`bid_payment_schedule_rows`** `(bid_id FK cascade, timing CHECK: before_start | before_rough_in | after_rough_in | before_top_out | after_top_out | before_trim_set | after_trim_set, percent 0–100, sort_order)`
+- RLS: same role-list + `can_access_bid_for_pricing(bid_id)` predicate as `bid_count_row_submission_hides` / `bid_count_row_custom_prices`
+- Migration: **`20260702120000_bid_payment_schedule.sql`**
+
+**Editor**: timing dropdown (writes immediately), percent input (commits on blur/Enter, clamped 0–100), live `= $X` per row from the letter's effective amount, ▲▼ reorder, × remove, **+ Add row**, `Total: N%` readout, amber **warn-only** banner when percents don't sum to 100%.
+
+**Rendering**: bold `Schedule of Values:` heading **after Terms and Warranty, before the "No work shall commence…" closing** in both the HTML and text builders — one line per row: `Due before Rough In: 30% — $45,000.00`. Respects the custom-amount override. **Bundled pricings**: each per-Pricing letter computes dollars from that pricing's revenue with the same percentages. The **Approval PDF** (page 4) fetches flag + rows fresh and renders the section with a bold heading.
+
+**Pure kernel**: [`src/lib/bidDocuments/paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts) (timings, labels, 30/30/30/10 default, percent total, line builders; unit-tested). Builders take an optional trailing `paymentSchedule` param (default `null`).
+
 ### Edit Bid Button
 
 **Location**: Cover Letter tab header, next to Close

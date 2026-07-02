@@ -141,3 +141,94 @@ describe('default constants are non-empty', () => {
     expect(DEFAULT_TERMS_AND_WARRANTY.length).toBeGreaterThan(0)
   })
 })
+
+describe('Schedule of Values section', () => {
+  const SCHEDULE = {
+    rows: [
+      { timing: 'before_rough_in', percent: 30 },
+      { timing: 'before_top_out', percent: 30 },
+      { timing: 'before_trim_set', percent: 30 },
+      { timing: 'after_trim_set', percent: 10 },
+    ],
+    amountDollars: 150000,
+  }
+
+  function htmlWithSchedule(schedule: typeof SCHEDULE | null) {
+    return buildCoverLetterHtml(
+      'John Doe',
+      '123 Main St, Austin, TX 78701',
+      'Acme Tower',
+      '456 Job Rd, Austin, TX 78702',
+      'One Hundred 00/100 Dollars',
+      '$100.00',
+      FIXTURES,
+      '',
+      '',
+      '',
+      null,
+      'Plumbing',
+      true,
+      true,
+      schedule,
+    )
+  }
+
+  function textWithSchedule(schedule: typeof SCHEDULE | null) {
+    return buildCoverLetterText(
+      'John Doe',
+      '123 Main St, Austin, TX 78701',
+      'Acme Tower',
+      '456 Job Rd, Austin, TX 78702',
+      'One Hundred 00/100 Dollars',
+      '$100.00',
+      FIXTURES,
+      '',
+      '',
+      '',
+      null,
+      'Plumbing',
+      true,
+      true,
+      schedule,
+    )
+  }
+
+  it('renders in the HTML after Terms and before the closing line', () => {
+    const out = htmlWithSchedule(SCHEDULE)
+    expect(out).toContain('<strong>Schedule of Values:</strong>')
+    expect(out).toContain('Due before Rough In: 30% — $45,000.00')
+    expect(out).toContain('Due after Trim Set: 10% — $15,000.00')
+    const termsIdx = out.indexOf('workmanlike manner')
+    const scheduleIdx = out.indexOf('Schedule of Values:')
+    const closingIdx = out.indexOf('No work shall commence')
+    expect(termsIdx).toBeGreaterThan(-1)
+    expect(scheduleIdx).toBeGreaterThan(termsIdx)
+    expect(closingIdx).toBeGreaterThan(scheduleIdx)
+  })
+
+  it('renders in the text after Terms and before the closing line', () => {
+    const out = textWithSchedule(SCHEDULE)
+    const lines = out.split('\n')
+    const termsIdx = lines.findIndex((l) => l.includes('workmanlike manner'))
+    const scheduleIdx = lines.indexOf('Schedule of Values:')
+    const closingIdx = lines.findIndex((l) => l.startsWith('No work shall commence'))
+    expect(termsIdx).toBeGreaterThan(-1)
+    expect(scheduleIdx).toBeGreaterThan(termsIdx)
+    expect(closingIdx).toBeGreaterThan(scheduleIdx)
+    expect(lines[scheduleIdx + 1]).toBe('Due before Rough In: 30% — $45,000.00')
+    expect(lines[scheduleIdx + 4]).toBe('Due after Trim Set: 10% — $15,000.00')
+  })
+
+  it('is absent when null or when rows are empty', () => {
+    expect(htmlWithSchedule(null)).not.toContain('Schedule of Values')
+    expect(textWithSchedule(null)).not.toContain('Schedule of Values')
+    expect(htmlWithSchedule({ rows: [], amountDollars: 150000 })).not.toContain('Schedule of Values')
+    expect(textWithSchedule({ rows: [], amountDollars: 150000 })).not.toContain('Schedule of Values')
+  })
+
+  it('escapes unknown timing strings in the HTML', () => {
+    const out = htmlWithSchedule({ rows: [{ timing: '<script>alert(1)</script>', percent: 10 }], amountDollars: 100 })
+    expect(out).not.toContain('<script>')
+    expect(out).toContain('&lt;script&gt;')
+  })
+})
