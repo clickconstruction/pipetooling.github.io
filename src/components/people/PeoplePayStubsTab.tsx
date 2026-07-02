@@ -435,16 +435,10 @@ export default function PeoplePayStubsTab({
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Gross Pay</th>
                         <th
-                          style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}
-                          title="Deductions and applied offsets. Click the amount to edit."
+                          style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}
+                          title="Less (deductions and applied offsets) | Additional pay (quantity × rate). Click an amount to edit."
                         >
-                          Less
-                        </th>
-                        <th
-                          style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}
-                          title="Additional pay (quantity × rate). Click the amount to edit."
-                        >
-                          Additional
+                          Less | Additional
                         </th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Net Pay</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Paid to date</th>
@@ -502,13 +496,13 @@ export default function PeoplePayStubsTab({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                             {fully ? (
                               <span
                                 title="Fully paid — change payments first to edit Less"
                                 aria-label={`Less for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(lessSum)}, not editable, fully paid`}
                               >
-                                ${formatCurrency(lessSum)}
+                                -{formatCurrency(lessSum)}
                               </span>
                             ) : (
                               <button
@@ -527,17 +521,16 @@ export default function PeoplePayStubsTab({
                                   fontFamily: 'inherit',
                                 }}
                               >
-                                ${formatCurrency(lessSum)}
+                                -{formatCurrency(lessSum)}
                               </button>
                             )}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                            <span style={{ color: '#9ca3af' }}>{' | '}</span>
                             {fully ? (
                               <span
                                 title="Fully paid — change payments first to edit Additional"
                                 aria-label={`Additional for ${stub.person_name}, ${ledgerPayPeriodShortLabel(stub.period_start, stub.period_end)}: $${formatCurrency(addSumLedger)}, not editable, fully paid`}
                               >
-                                ${formatCurrency(addSumLedger)}
+                                {formatCurrency(addSumLedger)}
                               </span>
                             ) : (
                               <button
@@ -556,7 +549,7 @@ export default function PeoplePayStubsTab({
                                   fontFamily: 'inherit',
                                 }}
                               >
-                                ${formatCurrency(addSumLedger)}
+                                {formatCurrency(addSumLedger)}
                               </button>
                             )}
                           </td>
