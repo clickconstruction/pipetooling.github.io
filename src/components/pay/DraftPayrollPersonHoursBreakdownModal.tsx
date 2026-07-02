@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
 import {
@@ -16,6 +16,26 @@ export type DraftPayrollPersonHoursBreakdownModalProps = {
   isSalary: boolean
   zIndex: number
   onClose: () => void
+  /**
+   * When provided (and the person is hourly), each Date cell becomes a link that opens the
+   * My Time day editor for that day. Salary rows stay plain text (synthetic 8h/weekday —
+   * clock-session edits would not change them).
+   */
+  onOpenDayEditor?: (dateYmd: string) => void
+}
+
+// Mirrors the dotted-underline day-link affordance from teamSummary/drilldowns.tsx (module-private there).
+const dayLinkButtonStyle: CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  margin: 0,
+  font: 'inherit',
+  color: '#2563eb',
+  textDecoration: 'underline dotted',
+  textUnderlineOffset: '2px',
+  cursor: 'pointer',
+  textAlign: 'left',
 }
 
 export function DraftPayrollPersonHoursBreakdownModal({
@@ -27,6 +47,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
   isSalary,
   zIndex,
   onClose,
+  onOpenDayEditor,
 }: DraftPayrollPersonHoursBreakdownModalProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -134,7 +155,21 @@ export function DraftPayrollPersonHoursBreakdownModal({
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.date} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
-                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{r.date}</td>
+                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
+                        {!isSalary && onOpenDayEditor ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenDayEditor(r.date)}
+                            title="Open My Time for this day"
+                            aria-label={`Open My Time for ${personName} on ${r.date}`}
+                            style={dayLinkButtonStyle}
+                          >
+                            {r.date}
+                          </button>
+                        ) : (
+                          r.date
+                        )}
+                      </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {r.hours.toFixed(2)}
                       </td>

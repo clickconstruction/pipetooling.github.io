@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.596)
+last_updated: 2026-07-02 (v2.597)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.597 — **People → Payroll → Draft Payroll** — **Hours breakdown day rows open the My Time day editor**. In the per-person **Hours breakdown** modal, each **Date** cell (hourly people only — salaried rows are synthetic 8h/weekday and stay plain text) is now a dotted-underline link that opens **`DashboardMyTimeDayEditorModal`** for that person+day in place: the breakdown hides (the editor's overlay z 1200 sits below the breakdown's 1215), the editor opens above the Draft Payroll modal, and on close/save the breakdown re-mounts with fresh rows while the payroll totals reload explicitly. **Relaxed save fence for payroll origin**: new `saveableRangeOverride?: { start; end }` prop on the day editor replaces the default this+last-week (America/Chicago) fence with the snapshotted pay period; non-current-week days keep the acknowledgment screen with payroll-specific copy; overridden saves always route through the **leader_*** split/replace RPCs (the `own_*` variants stay week-fenced). **Server side** (migration `20260702150000`): new helper **`pay_access_clock_week_fence_bypass()`** (pay-approved master / their assistants / dev, `search_path=public`) added to the week fence of `leader_split_clock_session_segments` / `leader_split_clock_session_cluster` / `leader_replace_clock_session_cluster_mixed` — bodies re-created verbatim from prod (md5-verified) apart from the one-line fence change; grants no new capability class (pay-access users already write `clock_sessions` on any date via role-only RLS). Name→user bridge + toast reuse the Review→Hours drilldown pattern in `People.tsx`](#latest-updates-v2597)
 **New:** [v2.596 — **Bids → Cover Letter** — **Schedule of Values (payment schedule)**. New opt-in per-bid section in the cover letter: rows of **payment timing + percent of the contract amount** (timing ∈ Before start / Before–After Rough In / Top Out / Trim Set), rendered after **Terms and Warranty** and before the "No work shall commence…" closing as `Due before Rough In: 30% — $45,000.00` lines. First enable seeds the company-standard **30/30/30/10** preset (30% before each phase + 10% retainage after Trim Set). Persisted per bid — new **`bid_payment_schedule_rows`** table + **`bids.include_payment_schedule`** flag (migration `20260702120000`, applied to prod via MCP ahead of client). Editor in the Cover Letter tab (add/remove/reorder rows, timing dropdown, blur-commit percent input, live `= $` per row from the effective amount, amber ≠100% warning). **Bundled pricings**: each per-Pricing letter computes dollars from **that pricing's** revenue, same percentages. Approval PDF page 4 fetches flag+rows fresh and renders the section with a bold heading. Pure kernel [`paymentSchedule.ts`](../src/lib/bidDocuments/paymentSchedule.ts) + 10 unit tests; builders take an optional trailing `paymentSchedule` param (default `null` — zero churn at other call sites)](#latest-updates-v2596)
 **New:** [v2.595 — **Jobs → Job activity / notes** — **activity ledger (Phase 2: append-only `job_activity_events`)**. Replaces Phase 1's live-merge with a durable, append-only ledger table written by DB triggers, so the feed now also captures what Phase 1 couldn't: **payment/crew removals**, **field edits** (customer / address / job total), and **combine/separate**. New `job_activity_events` table (RLS via `can_read_job_activity` — operational rows = status family incl. team members, financial rows = payments family, role-gated), a `list_job_activity_events` SECURITY DEFINER reader RPC (role-aware, resolves actor names), triggers on `job_status_events`/payments/invoices/team_members/`jobs_ledger` field edits/materials/fixtures + the split RPC, and an idempotent backfill (**3,094** historical events). Client cut over to ONE RPC fetch + ONE realtime subscription, replacing the five Phase-1 per-table fetchers/subscriptions (their kernels deleted; the generic `event` chassis + filter kept). Applied to prod via `supabase db push` + `gen-types:linked`](#latest-updates-v2595)
 **New:** [v2.594 — **Jobs → Job activity / notes** — **activity ledger (Phase 1)**. The activity feed becomes a chronological **ledger of important job actions**: it now merges **status changes**, **payments**, **invoice milestones** (created / billed / sent / write-down), **Stripe invoice emails**, and **crew added** alongside the existing notes / reports / schedule / clock sources, on **Stages**, **Workflow**, and the **Job Detail** modal. All system actions render through ONE generic `event` item kind + a render registry (`src/lib/jobActivityEvent.ts`), so each action is a colored left-border + uppercase tag + humanized summary. A new segmented **filter** (All / Notes / Status / Billing / Crew) sits above the feed. Financial events (payments/invoices) are auto-gated by existing RLS — viewers without financial access simply see none. Phase 1 is **client-only (no schema change)**: each source = a pure kernel + fetcher (mirroring the clock-session pattern) merged into both thread hooks with realtime. Phase 2 (append-only `job_activity_events` table + triggers) follows to capture deletes/edits/transitions](#latest-updates-v2594)
@@ -1972,6 +1973,38 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.597)
+
+**Date**: 2026-07-02
+
+### People → Payroll → Draft Payroll — Hours breakdown day rows open the My Time day editor
+
+In the Draft Payroll **Hours breakdown** modal ([`DraftPayrollPersonHoursBreakdownModal.tsx`](../src/components/pay/DraftPayrollPersonHoursBreakdownModal.tsx)), each **Date** cell is now a dotted-underline link (mirrors the Team Summary day-link affordance) that opens **[`DashboardMyTimeDayEditorModal`](../src/components/DashboardMyTimeDayEditorModal.tsx)** for that person+day — edit clock sessions, save, and land back on a refreshed breakdown without leaving payroll. **Hourly people only**: salaried rows are synthetic 8h/weekday (nothing a clock-session edit would change) and stay plain text.
+
+**Flow** (wired in [`People.tsx`](../src/pages/People.tsx)): day click → trimmed-name lookup against the users roster (miss → same "No user account is linked…" toast as the Review→Hours bridge; breakdown stays open) → the breakdown hides (**mandatory**: the editor's overlay z-index is hardcoded 1200, below the breakdown's 1215) → the shared `hoursMyTimeEditor` mount opens with a new `payrollOrigin` marker in the state (person + snapshotted `payStubPeriodStart/End`). On **close**: breakdown re-opens unchanged. On **save**: explicit payroll refresh — `loadPeopleHours` + `loadHoursDaysCorrect` + `loadDraftPayrollPendingApprovals` for the period (the hours-tab refreshers are gated to `activeTab === 'hours'` and the realtime clock-sessions handler only reloads pending-approval counts, so realtime does NOT suffice) — then the breakdown re-mounts and refetches fresh rows (`people_hours` was already resynced server-side by the save path). A payroll-origin editor is force-closed if Draft Payroll closes underneath it.
+
+**Relaxed save fence (payroll origin)**: new opt-in prop on the day editor —
+
+```ts
+saveableRangeOverride?: { start: string; end: string } | null
+```
+
+replaces the default this+last-week (America/Chicago) `getThisAndLastWeekRange()` fence with the pay period, preserving `inSaveableRange` semantics so all downstream gating (`effectiveEditable`, `allowTimelineEdits`, `allowPunchTimeActions`, NCNS, timeline handlers) works untouched. Non-current-week days still show the **acknowledgment screen**, with payroll-specific copy ("Editing a payroll-period day … changes affect this pay period's totals and can reset approval status"). While overridden, saves **always route through the `leader_*` RPCs** — even self-edits — because the `own_*` split RPCs stay week-fenced (pay-access users pass `can_edit_clock_sessions_for_user` for themselves).
+
+**Server side** (migration [`20260702150000_leader_split_week_fence_pay_access_bypass.sql`](../supabase/migrations/20260702150000_leader_split_week_fence_pay_access_bypass.sql), applied to prod via MCP ahead of client): the week fence lived in **two** places — the client AND the split/replace RPCs, which hard-reject `'Session is outside the editable this or last week (America/Chicago)'`. New helper **`pay_access_clock_week_fence_bypass()`** (`is_pay_approved_master() OR is_assistant_of_pay_approved_master()`; the former already includes `is_dev()`; `SET search_path = public` per the 20260605212302 hardening) is ANDed into the fence of `leader_split_clock_session_segments`, `leader_split_clock_session_cluster`, and `leader_replace_clock_session_cluster_mixed` — bodies re-created **verbatim from prod** (md5(prosrc) verified before and after) apart from the one-line fence change each. Grants no new capability class: pay-access users could already adjust/insert/delete `clock_sessions` on any date via direct table writes (role-only RLS, no date predicates), and `AdjustClockSessionTimesModal` / `recompute_people_hours_after_session_edit` / the NCNS RPC have no date checks. The `own_*` RPCs remain fenced.
+
+**Out of scope**: creating hours from scratch on a zero-session day (the editor shows "No sessions this day." with no create affordance — the Hours-grid manual-entry path remains the way to add hours), and the Dashboard/Review/Hours-grid entry points, which keep the standard two-week fence (no override passed).
+
+#### Verification
+
+Migration validated via transactional `BEGIN;…;ROLLBACK;` dry-run on prod (helper + largest patched function created, executed, rolled back), then MCP `apply_migration`; post-apply `md5(prosrc)` matches the repo file for all three functions; advisor sweep shows no new items (the helper's `function_search_path_mutable` WARN was fixed with `SET search_path = public`). `tsc -b` clean; `vitest run` **1749/1749**; zero new lints (the 10 warnings on the touched files all pre-exist on main).
+
+#### Files
+
+New migration: [`supabase/migrations/20260702150000_leader_split_week_fence_pay_access_bypass.sql`](../supabase/migrations/20260702150000_leader_split_week_fence_pay_access_bypass.sql). Modified: [`src/components/DashboardMyTimeDayEditorModal.tsx`](../src/components/DashboardMyTimeDayEditorModal.tsx) (prop, fence, ack copy, RPC routing), [`src/components/pay/DraftPayrollPersonHoursBreakdownModal.tsx`](../src/components/pay/DraftPayrollPersonHoursBreakdownModal.tsx) (`onOpenDayEditor` + clickable Date cells), [`src/pages/People.tsx`](../src/pages/People.tsx) (`payrollOrigin` state, bridge handler, mount wiring, hardening effect). No type-gen changes (RPC signatures unchanged).
+
 ---
 
 ## Latest Updates (v2.596)
