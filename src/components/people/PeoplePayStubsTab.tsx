@@ -443,7 +443,7 @@ export default function PeoplePayStubsTab({
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Gross Pay</th>
                         <th
-                          style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}
+                          style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap' }}
                           title="Less (deductions and applied offsets) | Additional pay (quantity × rate). Click an amount to edit."
                         >
                           Less | Additional
@@ -504,7 +504,7 @@ export default function PeoplePayStubsTab({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{stub.hours_total.toFixed(2)}</td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(stub.gross_pay)}</td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                             {fully ? (
                               <span
                                 title="Fully paid — change payments first to edit Less"

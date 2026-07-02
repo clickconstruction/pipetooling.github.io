@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.609)
+last_updated: 2026-07-02 (v2.610)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.610 — **People → Payroll ledger** — **Less | Additional column centered** (header + body cells `textAlign: 'right'` → `'center'`). Display-only](#latest-updates-v2610)
 **New:** [v2.609 — **People → Payroll ledger** — **week label abbreviated**: `6/21–27 (week 26)` → `6/21–27 (w26)` in `ledgerPayPeriodShortLabel`. Display-only](#latest-updates-v2609)
 **New:** [v2.608 — **People → Payroll ledger** — **Period label with week number**. `ledgerPayPeriodShortLabel` now renders `6/21–27 (week 26)` instead of `6/21–6/27`: the end month is elided when it matches the start (cross-month stays `6/28–7/4`), and the ISO week number — anchored at periodStart+4 (midweek), same convention as the Draft Payroll print header (`isoWeekNumberFromGregorianYmd` + `ymdAddDays`) — is appended in parens. Flows to every use of the label (Period column, Less/Additional aria-labels). Display-only](#latest-updates-v2608)
 **New:** [v2.607 — **People → Payroll ledger** — **Less / Additional merged into one column**. The two columns collapse into a single right-aligned **`Less | Additional`** column rendering `-0.00 | 0.00` (Less shown with a minus prefix, `$` dropped for compactness, muted gray ` | ` separator, tabular numerals). Both halves keep their click-to-edit buttons (Less / Additional modals), the fully-paid read-only gating, and their `title`/`aria-label` texts (aria still spells out the `$` amounts). Display-only](#latest-updates-v2607)
@@ -1985,6 +1986,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.610)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — Less | Additional column centered
+
+Follow-up to v2.607: the merged **`Less | Additional`** column's header and body cells switch from right-aligned to **centered** ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)). Display-only.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1762/1762**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.609)
