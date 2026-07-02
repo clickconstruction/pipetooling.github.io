@@ -34,6 +34,13 @@ import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 import { PayStubPaidNoteIcon } from '../pay/PayStubPaidNoteIcon'
 
+/** Compact "7/2" (local month/day, no year) for the ledger's Created / Last Paid cells; full date stays in the title tooltip. */
+function shortMonthDay(timestamp: string): string {
+  const d = new Date(timestamp)
+  if (Number.isNaN(d.getTime())) return '—'
+  return `${d.getMonth() + 1}/${d.getDate()}`
+}
+
 /**
  * Pay-stub row shape. Defined here (and imported by the parent `People.tsx`)
  * so the ledger tab and the still-parent-owned pay-stub data layer share one
@@ -658,11 +665,23 @@ export default function PeoplePayStubsTab({
                               </button>
                             </span>
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {stub.created_at ? new Date(stub.created_at).toLocaleDateString() : '—'}
+                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                            {stub.created_at ? (
+                              <span title={new Date(stub.created_at).toLocaleDateString()}>
+                                {shortMonthDay(stub.created_at)}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                            {lastPaidAt ? new Date(lastPaidAt).toLocaleDateString() : '—'}
+                            {lastPaidAt ? (
+                              <span title={new Date(lastPaidAt).toLocaleDateString()}>
+                                {shortMonthDay(lastPaidAt)}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                             {paymentDelay.kind === 'paid' ? (
