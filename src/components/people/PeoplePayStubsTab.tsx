@@ -29,6 +29,7 @@ import {
   type RateSplitSessionRow,
 } from '../../lib/officeJobRateSplit'
 import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
+import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
@@ -62,13 +63,20 @@ export type PayStubRow = {
 /** Pay History overlays: base layer; nested dialogs must be higher. */
 const Z_PEOPLE_PAY_MODAL = 1100
 
-/** Pay History Ledger: M/D without year (e.g. 3/1–3/7). */
+/**
+ * Pay History Ledger period label: M/D range without year, end month elided when it matches the
+ * start (e.g. `6/21–27`, cross-month `6/28–7/4`), plus the ISO week number — anchored at
+ * periodStart+4 (midweek) like the Draft Payroll print header — e.g. `6/21–27 (week 26)`.
+ */
 function ledgerPayPeriodShortLabel(periodStartYmd: string, periodEndYmd: string): string {
-  const md = (iso: string) => {
-    const d = new Date(iso + 'T12:00:00')
-    return `${d.getMonth() + 1}/${d.getDate()}`
-  }
-  return `${md(periodStartYmd)}–${md(periodEndYmd)}`
+  const start = new Date(periodStartYmd + 'T12:00:00')
+  const end = new Date(periodEndYmd + 'T12:00:00')
+  const startLabel = `${start.getMonth() + 1}/${start.getDate()}`
+  const endLabel = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()
+    ? `${end.getDate()}`
+    : `${end.getMonth() + 1}/${end.getDate()}`
+  const weekNum = isoWeekNumberFromGregorianYmd(ymdAddDays(periodStartYmd, 4))
+  return `${startLabel}–${endLabel}${weekNum === null ? '' : ` (week ${weekNum})`}`
 }
 
 export type PeoplePayStubsTabProps = {
