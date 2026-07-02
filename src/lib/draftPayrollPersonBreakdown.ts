@@ -16,7 +16,34 @@ function getDaysInRange(start: string, end: string): string[] {
 
 export type DraftPayrollBreakdownDayRow = { work_date: string; hours: number }
 
-export type DraftPayrollBreakdownAssignmentRow = { date: string; hours: number; jobsText: string }
+export type DraftPayrollBreakdownAssignmentRow = {
+  date: string
+  hours: number
+  jobsText: string
+  /**
+   * Closed, unapproved (not rejected/revoked) clock hours this day. Not part of payroll hours
+   * (`people_hours` only gets written on approval) — surfaced so "I edited a session but the
+   * breakdown didn't move" visibly reads as "those hours are pending approval". Always 0 for salary.
+   */
+  pendingHours: number
+}
+
+/**
+ * Sum closed pending-approval session durations per work_date. Pure — used to annotate the
+ * breakdown rows; the caller filters to unapproved/unrejected/unrevoked sessions.
+ */
+export function sumPendingClockHoursByDay(
+  sessions: Array<{ work_date: string; clocked_in_at: string; clocked_out_at: string | null }>,
+): Record<string, number> {
+  const byDay: Record<string, number> = {}
+  for (const s of sessions) {
+    if (!s.clocked_out_at) continue
+    const ms = new Date(s.clocked_out_at).getTime() - new Date(s.clocked_in_at).getTime()
+    if (!Number.isFinite(ms) || ms <= 0) continue
+    byDay[s.work_date] = (byDay[s.work_date] ?? 0) + ms / 3_600_000
+  }
+  return byDay
+}
 
 /**
  * Day rows and crew assignment breakdown for Draft Payroll drill-down — mirrors {@link generatePayStub} date/hours logic.
@@ -139,6 +166,43 @@ export async function fetchDraftPayrollPersonBreakdown(
     }
   }
 
-  const rows = computePayReportAssignmentsBreakdown(personName, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
+  // Pending-approval clock hours per day (hourly only — salary rows are synthetic 8h/weekday).
+  // clock_sessions is user_id-keyed while payroll is person_name-keyed: resolve via the same
+  // trimmed-name match the rest of the app uses, then sum closed unapproved sessions in range.
+  let pendingByDay: Record<string, number> = {}
+  if (!args.isSalary) {
+    const usersData = await withSupabaseRetry(
+      () => supabase.from('users').select('id, name'),
+      'draft payroll breakdown users for pending',
+    )
+    const userId = ((usersData ?? []) as { id: string; name: string | null }[]).find(
+      (u) => (u.name ?? '').trim() === personName,
+    )?.id
+    if (userId) {
+      const pendingData = await withSupabaseRetry(
+        () =>
+          supabase
+            .from('clock_sessions')
+            .select('work_date, clocked_in_at, clocked_out_at')
+            .eq('user_id', userId)
+            .gte('work_date', start)
+            .lte('work_date', end)
+            .is('approved_at', null)
+            .is('rejected_at', null)
+            .is('revoked_at', null)
+            .not('clocked_out_at', 'is', null),
+        'draft payroll breakdown pending clock sessions',
+      )
+      pendingByDay = sumPendingClockHoursByDay(
+        (pendingData ?? []) as Array<{ work_date: string; clocked_in_at: string; clocked_out_at: string | null }>,
+      )
+    }
+  }
+
+  const baseRows = computePayReportAssignmentsBreakdown(personName, dayRows, crewByDatePerson, crewBidsByDatePerson, jobsMap, bidsMap)
+  const rows: DraftPayrollBreakdownAssignmentRow[] = baseRows.map((r) => ({
+    ...r,
+    pendingHours: pendingByDay[r.date] ?? 0,
+  }))
   return { dayRows, rows }
 }
