@@ -88,6 +88,8 @@ export type PeoplePayStubsTabProps = {
   loadPayConfig: () => Promise<void>
   /** Open the parent-owned print/preview window for a stub. */
   onPrintStub: (stub: PayStubRow) => void
+  /** Ledger Actions → View: open the stub in the in-app viewer modal (with its own Print). */
+  onViewStub: (stub: PayStubRow) => void
   /** Open the parent-owned Record-payment (mark-paid) modal. */
   onRecordPayment: (stub: PayStubRow) => void
   markingPayStubId: string | null
@@ -118,6 +120,7 @@ export default function PeoplePayStubsTab({
   loadPayStubs,
   loadPayConfig,
   onPrintStub,
+  onViewStub,
   onRecordPayment,
   markingPayStubId,
   onRequestDeleteStub,
@@ -686,7 +689,15 @@ export default function PeoplePayStubsTab({
                               '—'
                             )}
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => onViewStub(stub)}
+                              title="View the pay report in a modal"
+                              style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: '0.35rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            >
+                              View
+                            </button>
                             <button
                               type="button"
                               onClick={() => onPrintStub(stub)}

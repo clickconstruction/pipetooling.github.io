@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.605)
+last_updated: 2026-07-02 (v2.606)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.606 — **People → Payroll ledger** — **View button opens the pay report in a modal**. New blue **View** button (first in Actions, before Print) opens the stub in a new **[`PayStubViewModal`](../src/components/pay/PayStubViewModal.tsx)** — the full built pay-stub HTML document renders in an `<iframe srcDoc>` (own styles intact) with a header **Print** button that calls the iframe window's `print()` so only the stub prints, not the app page. `People.tsx` refactor: the HTML assembly in `viewPayStub` extracted into shared `buildPayStubViewHtml(stub)`; the Draft Payroll window-view path (`viewPayStub` → `openPayStubWindow`) is unchanged; new `viewPayStubInModal` + `payStubViewModal` state feed the ledger's `onViewStub` prop](#latest-updates-v2606)
 **New:** [v2.605 — **People → Payroll ledger** — **Payment column shrink-to-fit**. The Payment column (status label + detail icon + Record payment button) absorbed the table's leftover width, leaving dead white space after its contents. Header + body cells now use the `width: '1%'` + `white-space: nowrap` shrink-to-fit idiom (and the cell's inline-flex drops `flexWrap`), so the column hugs its content and the slack flows to the text columns (Person/Period). Display-only](#latest-updates-v2605)
 **New:** [v2.604 — **People → Payroll ledger** — **Created / Paid / Delay merged into one column**. The three v2.600–v2.603 columns collapse into a single **`Created | Paid | Delay`** column rendering `7/2 - 7/2 - 5d` (muted gray dashes; missing parts show `—`; unpaid-aging delay keeps its amber `Nd…`). Per-part hover tooltips: `Created {full date}`, `Last paid {full date}`, and the delay explanation. Display-only](#latest-updates-v2604)
 **New:** [v2.603 — **People → Payroll ledger** — **tighter Created / Last Paid / Delay columns**. Header **Payment Delay** → **Delay** (tooltip unchanged) and the three columns' cell padding narrows `0.75rem` → `0.4rem` horizontal (headers + body cells); `Last Paid` header gains `nowrap`. Display-only](#latest-updates-v2603)
@@ -1981,6 +1982,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.606)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — View button opens the pay report in a modal
+
+The Actions column on the pay-reports ledger ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)) gains a blue **View** button (first, before Print) that opens the pay report in an in-app modal instead of a new browser window.
+
+- New **[`PayStubViewModal`](../src/components/pay/PayStubViewModal.tsx)**: title `Pay report — {person} ({period})`, header **Print** + **×** buttons, body = the full built pay-stub HTML document rendered in an `<iframe srcDoc>` (the document carries its own styles, so it displays exactly as the print/window versions do). **Print** calls the iframe window's `focus()` + `print()` — only the stub document prints, never the app page. Escape / backdrop close.
+- [`People.tsx`](../src/pages/People.tsx) refactor: the ~110-line HTML assembly inside `viewPayStub` is extracted into **`buildPayStubViewHtml(stub)`**, now shared by three paths — `viewPayStub` (Draft Payroll's window view, unchanged behavior), the new `viewPayStubInModal` (sets `payStubViewModal { title, html }` state), and print stays on its own builder. Modal mounts at `Z_PEOPLE_PAY_MODAL` (1100).
+- Actions cell gains `nowrap` so View / Print / delete stay on one line.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1762/1762**; lint clean on touched files (the 10 People.tsx warnings pre-exist).
+
+#### Files
+
+New: [`src/components/pay/PayStubViewModal.tsx`](../src/components/pay/PayStubViewModal.tsx). Modified: [`src/pages/People.tsx`](../src/pages/People.tsx), [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.605)

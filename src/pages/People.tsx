@@ -39,6 +39,7 @@ import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { formatCurrency } from '../lib/format'
 import { buildPayStubHtml, openPayStubWindow } from '../lib/peopleDocuments/buildPayStubHtml'
+import { PayStubViewModal } from '../components/pay/PayStubViewModal'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { usePeopleAccess } from '../hooks/usePeopleAccess'
 import { useCrewJobMap } from '../hooks/useCrewJobMap'
@@ -428,6 +429,8 @@ export default function People() {
   }
   const [payStubs, setPayStubs] = useState<PayStubRow[]>([])
   const [payStubPaymentsByStubId, setPayStubPaymentsByStubId] = useState<Record<string, PayStubPaymentRow[]>>({})
+  // Ledger Actions → View: in-app pay-stub viewer (full built HTML document + modal title).
+  const [payStubViewModal, setPayStubViewModal] = useState<{ title: string; html: string } | null>(null)
   const [payStubDeductionsByStubId, setPayStubDeductionsByStubId] = useState<Record<string, PayStubDeductionRow[]>>({})
   const [payStubAdditionalByStubId, setPayStubAdditionalByStubId] = useState<Record<string, PayStubAdditionalLineRow[]>>({})
   const [payStubPeriodStart, setPayStubPeriodStart] = useState(() => {
@@ -1722,7 +1725,8 @@ export default function People() {
     }
   }
 
-  async function viewPayStub(stub: PayStubRow) {
+  /** Assemble the full pay-stub HTML document for a saved stub (shared by the window-view and modal-view paths). */
+  async function buildPayStubViewHtml(stub: PayStubRow): Promise<string> {
     const start = stub.period_start
     const end = stub.period_end
     const cfg = payConfig[stub.person_name]
@@ -1834,7 +1838,20 @@ export default function People() {
       housingRows: housingRowsView,
       rateSplit,
     })
-    openPayStubWindow(html, false)
+    return html
+  }
+
+  async function viewPayStub(stub: PayStubRow) {
+    openPayStubWindow(await buildPayStubViewHtml(stub), false)
+  }
+
+  /** Ledger Actions → View: same document as viewPayStub, shown in an in-app modal with a Print button. */
+  async function viewPayStubInModal(stub: PayStubRow) {
+    const html = await buildPayStubViewHtml(stub)
+    setPayStubViewModal({
+      title: `Pay report — ${stub.person_name} (${stub.period_start} – ${stub.period_end})`,
+      html,
+    })
   }
 
   async function printPayStub(stub: PayStubRow) {
@@ -3225,6 +3242,7 @@ export default function People() {
           loadPayStubs={loadPayStubs}
           loadPayConfig={loadPayConfig}
           onPrintStub={printPayStub}
+          onViewStub={(stub) => void viewPayStubInModal(stub)}
           onRecordPayment={openPayStubMarkPaidModal}
           markingPayStubId={markingPayStubId}
           onRequestDeleteStub={(stub) => setPayStubDeleteConfirm(stub)}
@@ -4273,6 +4291,15 @@ export default function People() {
               }
             })
           }}
+        />
+      )}
+
+      {payStubViewModal && (
+        <PayStubViewModal
+          title={payStubViewModal.title}
+          html={payStubViewModal.html}
+          zIndex={Z_PEOPLE_PAY_MODAL}
+          onClose={() => setPayStubViewModal(null)}
         />
       )}
 
