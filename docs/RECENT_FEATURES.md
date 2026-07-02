@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.607)
+last_updated: 2026-07-02 (v2.608)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.608 — **People → Payroll ledger** — **Period label with week number**. `ledgerPayPeriodShortLabel` now renders `6/21–27 (week 26)` instead of `6/21–6/27`: the end month is elided when it matches the start (cross-month stays `6/28–7/4`), and the ISO week number — anchored at periodStart+4 (midweek), same convention as the Draft Payroll print header (`isoWeekNumberFromGregorianYmd` + `ymdAddDays`) — is appended in parens. Flows to every use of the label (Period column, Less/Additional aria-labels). Display-only](#latest-updates-v2608)
 **New:** [v2.607 — **People → Payroll ledger** — **Less / Additional merged into one column**. The two columns collapse into a single right-aligned **`Less | Additional`** column rendering `-0.00 | 0.00` (Less shown with a minus prefix, `$` dropped for compactness, muted gray ` | ` separator, tabular numerals). Both halves keep their click-to-edit buttons (Less / Additional modals), the fully-paid read-only gating, and their `title`/`aria-label` texts (aria still spells out the `$` amounts). Display-only](#latest-updates-v2607)
 **New:** [v2.606 — **People → Payroll ledger** — **View button opens the pay report in a modal**. New blue **View** button (first in Actions, before Print) opens the stub in a new **[`PayStubViewModal`](../src/components/pay/PayStubViewModal.tsx)** — the full built pay-stub HTML document renders in an `<iframe srcDoc>` (own styles intact) with a header **Print** button that calls the iframe window's `print()` so only the stub prints, not the app page. `People.tsx` refactor: the HTML assembly in `viewPayStub` extracted into shared `buildPayStubViewHtml(stub)`; the Draft Payroll window-view path (`viewPayStub` → `openPayStubWindow`) is unchanged; new `viewPayStubInModal` + `payStubViewModal` state feed the ledger's `onViewStub` prop](#latest-updates-v2606)
 **New:** [v2.605 — **People → Payroll ledger** — **Payment column shrink-to-fit**. The Payment column (status label + detail icon + Record payment button) absorbed the table's leftover width, leaving dead white space after its contents. Header + body cells now use the `width: '1%'` + `white-space: nowrap` shrink-to-fit idiom (and the cell's inline-flex drops `flexWrap`), so the column hugs its content and the slack flows to the text columns (Person/Period). Display-only](#latest-updates-v2605)
@@ -1983,6 +1984,32 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.608)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — Period label with week number
+
+The **Period** column label on the pay-reports ledger ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)) changes from `6/21–6/27` to:
+
+```
+6/21–27 (week 26)
+```
+
+- The **end month is elided** when it matches the start month/year; cross-month periods keep the full form (`6/28–7/4`).
+- The **ISO week number** is appended in parens, anchored at `periodStart + 4` days (midweek) — the same convention the Draft Payroll print header already uses (`isoWeekNumberFromGregorianYmd` + `ymdAddDays` from [`dateUtils.ts`](../src/utils/dateUtils.ts)); if the week number can't be computed the parens are omitted.
+- The change flows to every consumer of `ledgerPayPeriodShortLabel` (the Period column and the Less/Additional `aria-label`s). Display-only.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1762/1762**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.607)
