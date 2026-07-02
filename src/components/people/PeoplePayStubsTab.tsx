@@ -9,6 +9,8 @@ import type { UserRow } from '../../hooks/usePeopleRoster'
 import {
   isPayStubFullyPaid,
   lastPayStubPaymentPaidAt,
+  localYmdFromDate,
+  payStubPaymentDelay,
   remainingPayStubBalance,
   sumPayStubPaymentAmounts,
   type PayStubPaymentRow,
@@ -148,6 +150,9 @@ export default function PeoplePayStubsTab({
     if (!q) return payStubs
     return payStubs.filter((s) => s.person_name.toLowerCase().includes(q))
   }, [payStubs, ledgerPersonSearch])
+
+  // Local calendar day for the Payment Delay column's days-outstanding math.
+  const todayYmd = localYmdFromDate(new Date())
 
   const ledgerOpenBalanceSummary = useMemo(() => {
     let openCount = 0
@@ -442,6 +447,12 @@ export default function PeoplePayStubsTab({
                         >
                           Last Paid
                         </th>
+                        <th
+                          style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}
+                          title="Days between period end and the last payment. Amber = no payment yet (days outstanding so far)."
+                        >
+                          Payment Delay
+                        </th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                       </tr>
                     </thead>
@@ -459,6 +470,7 @@ export default function PeoplePayStubsTab({
                         const paymentColor = fully ? '#059669' : partial ? '#ca8a04' : '#6b7280'
                         // Legacy stubs marked paid before per-payment rows existed only have stub.paid_at.
                         const lastPaidAt = lastPayStubPaymentPaidAt(payRows) ?? stub.paid_at
+                        const paymentDelay = payStubPaymentDelay(stub.period_end, lastPaidAt, todayYmd)
                         const showPayDetail =
                           payRows.length > 0 || Boolean(stub.paid_note?.trim()) || Boolean(stub.paid_at)
                         return (
@@ -651,6 +663,17 @@ export default function PeoplePayStubsTab({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
                             {lastPaidAt ? new Date(lastPaidAt).toLocaleDateString() : '—'}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                            {paymentDelay.kind === 'paid' ? (
+                              `${paymentDelay.days}d`
+                            ) : paymentDelay.kind === 'outstanding' ? (
+                              <span style={{ color: '#b45309' }} title="No payment yet — days since period end.">
+                                {paymentDelay.days}d…
+                              </span>
+                            ) : (
+                              '—'
+                            )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             <button
