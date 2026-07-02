@@ -929,11 +929,12 @@ export default function PeoplePayStubsTab({
                     return `Current week: ${ledgerPayPeriodShortLabel(weekStart, ymdAddDays(weekStart, 6))}`
                   })()}
                 </p>
-                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                <p
+                  style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}
+                  title="Clocked time (including pending approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to generate these reports."
+                >
                   {upcomingSummary.personWeekCount} person-week{upcomingSummary.personWeekCount === 1 ? '' : 's'} ·{' '}
-                  ${formatCurrency(upcomingSummary.estimatedGrossDollars)} estimated. Clocked time (including pending
-                  approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to
-                  generate these reports.
+                  ${formatCurrency(upcomingSummary.estimatedGrossDollars)} estimated
                 </p>
               </div>
               <button
