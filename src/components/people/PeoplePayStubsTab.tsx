@@ -447,18 +447,18 @@ export default function PeoplePayStubsTab({
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Paid to date</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Balance</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Payment</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Created</th>
+                        <th style={{ padding: '0.5rem 0.4rem', textAlign: 'left' }}>Created</th>
                         <th
-                          style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}
+                          style={{ padding: '0.5rem 0.4rem', textAlign: 'left', whiteSpace: 'nowrap' }}
                           title="Date of the most recent payment recorded against this pay report."
                         >
                           Last Paid
                         </th>
                         <th
-                          style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}
+                          style={{ padding: '0.5rem 0.4rem', textAlign: 'right' }}
                           title="Days between period end and the last payment. Amber = no payment yet (days outstanding so far)."
                         >
-                          Payment Delay
+                          Delay
                         </th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                       </tr>
@@ -665,7 +665,7 @@ export default function PeoplePayStubsTab({
                               </button>
                             </span>
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.5rem 0.4rem', whiteSpace: 'nowrap' }}>
                             {stub.created_at ? (
                               <span title={new Date(stub.created_at).toLocaleDateString()}>
                                 {shortMonthDay(stub.created_at)}
@@ -674,7 +674,7 @@ export default function PeoplePayStubsTab({
                               '—'
                             )}
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                          <td style={{ padding: '0.5rem 0.4rem', whiteSpace: 'nowrap' }}>
                             {lastPaidAt ? (
                               <span title={new Date(lastPaidAt).toLocaleDateString()}>
                                 {shortMonthDay(lastPaidAt)}
@@ -683,7 +683,7 @@ export default function PeoplePayStubsTab({
                               '—'
                             )}
                           </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+                          <td style={{ padding: '0.5rem 0.4rem', textAlign: 'right', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                             {paymentDelay.kind === 'paid' ? (
                               `${paymentDelay.days}d`
                             ) : paymentDelay.kind === 'outstanding' ? (

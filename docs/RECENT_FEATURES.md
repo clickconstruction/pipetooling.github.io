@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.602)
+last_updated: 2026-07-02 (v2.603)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.603 — **People → Payroll ledger** — **tighter Created / Last Paid / Delay columns**. Header **Payment Delay** → **Delay** (tooltip unchanged) and the three columns' cell padding narrows `0.75rem` → `0.4rem` horizontal (headers + body cells); `Last Paid` header gains `nowrap`. Display-only](#latest-updates-v2603)
 **New:** [v2.602 — **People → Payroll ledger** — **compact Created / Last Paid dates**. Both cells drop the year (`7/2/2026` → `7/2`) via a local `shortMonthDay` helper (explicit local date parts, `—` on unparseable input); the full locale date moves to a hover `title` tooltip so cross-year rows stay unambiguous](#latest-updates-v2602)
 **New:** [v2.601 — **People → Payroll ledger** — **Payment Delay column**. New column after **Last Paid** showing signed days between the stub's **period end** and its **last payment** (`3d`, `0d`, `-2d` for early pay) via new pure kernel **`payStubPaymentDelay`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts), reusing the DST-safe `relativeDayOffset` day math. **Unpaid rows whose period has ended** show a live amber **`Nd…`** days-outstanding aging indicator; unpaid rows whose period hasn't ended show `—`. Also new **`localYmdFromDate`** helper (explicit date parts — `toLocaleDateString('en-CA')` is ICU-dependent: Node small-ICU yields `7/1/2026`). Zero new queries; +4 unit tests](#latest-updates-v2601)
 **New:** [v2.600 — **People → Payroll ledger** — **Last Paid column**. New column between **Created** and **Actions** on the pay-reports ledger table showing the date of the most recent payment recorded against each stub — `max(paid_at)` over the stub's `pay_stub_payments` rows via new pure helper **`lastPayStubPaymentPaidAt`** in [`payStubPayments.ts`](../src/lib/payStubPayments.ts) (explicit max, not last-row, so client-side edits can't skew it), falling back to the legacy `pay_stubs.paid_at` mark-paid timestamp for stubs paid before per-payment rows existed; `—` when never paid. Zero new queries — the payments map was already bulk-loaded for every ledger row. +4 unit tests (new [`payStubPayments.test.ts`](../src/lib/payStubPayments.test.ts), incl. regression coverage of the existing payment math)](#latest-updates-v2600)
@@ -1978,6 +1979,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.603)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — tighter Created / Last Paid / Delay columns
+
+Follow-up to v2.601/v2.602 on the pay-reports ledger ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)): the **Payment Delay** header shortens to **Delay** (the explanatory tooltip is unchanged), and the **Created** / **Last Paid** / **Delay** headers and body cells tighten their horizontal padding from `0.75rem` to `0.4rem`; the `Last Paid` header gains `white-space: nowrap` so it never wraps at the narrower width. Display-only — no data, kernel, or query changes.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1762/1762**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.602)
