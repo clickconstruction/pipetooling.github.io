@@ -182,6 +182,17 @@ export default function PeoplePayStubsTab({
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingClockSessionRow[] | null>(null)
   const [upcomingModalOpen, setUpcomingModalOpen] = useState(false)
 
+  // Lock body scroll while the Upcoming payroll modal is open (same idiom as UserReviewModal).
+  useEffect(() => {
+    if (upcomingModalOpen) {
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => {
+        document.body.style.overflow = prev
+      }
+    }
+  }, [upcomingModalOpen])
+
   // Roster mapping + per-person stub inputs for the upcoming summary (payroll is person_name-keyed,
   // clock_sessions is user_id-keyed — same trimmed-name match used elsewhere).
   const upcomingInputs = useMemo(() => {
