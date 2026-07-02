@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.613)
+last_updated: 2026-07-02 (v2.614)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.614 — **People → Payroll ledger** — **current week shown in the Upcoming payroll modal** header (`Current week: 6/28–7/4 (w27)` via `payWeekStartYmd` + `ledgerPayPeriodShortLabel`, between the title and the totals subtitle). Display-only](#latest-updates-v2614)
 **New:** [v2.613 — **People → Payroll ledger** — **body scroll locked while the Upcoming payroll modal is open** (`document.body.style.overflow = 'hidden'` effect keyed on the modal state, previous value restored on close — same idiom as `UserReviewModal`). Display-only](#latest-updates-v2613)
 **New:** [v2.612 — **People → Payroll ledger** — **upcoming segment opens a detail modal**. The v2.611 amber `15 upcoming: $12,408.74` becomes a dotted-underline button opening an **Upcoming payroll — not yet reported** modal: **Person | Period | Hours | Est. Gross** rows (Period as `6/28–7/4 (w27)` via `ledgerPayPeriodShortLabel`) + totals footer. `buildUpcomingPayrollSummary` now also returns the `lines` it walks (person-asc, week-asc) with the totals **derived from them**, so the modal can never disagree with the header number; the modal reads the same search-filtered summary. 10 kernel tests](#latest-updates-v2612)
 **New:** [v2.611 — **People → Payroll ledger** — **"upcoming" segment on the summary line**. The header line extends to `7 open · $4,949.48 remaining | 12 upcoming: $10,000` — **person-weeks** with clocked time (approved **and** pending approval; rejected/revoked excluded) but **no pay report overlapping the week**, from each person's **last stub period end** forward (stub-less people capped at 8 weeks back; gaps before the last stub deliberately out of window), estimated as clocked hours × `people_pay_config.hourly_wage` (salaried people flow through their materialized schedule sessions). Amber segment with explanatory tooltip; hidden at 0; the person search box filters it like the open segment. New pure kernel [`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (`payWeekStartYmd` local Sun–Sat weeks matching the tab's period init, `upcomingPayrollFetchStartYmd` bounds the single `clock_sessions` query, `buildUpcomingPayrollSummary` with open-session now-clipping + stub-overlap suppression + 104-week loop guard) — **9 unit tests**; semantics cross-checked against prod SQL aggregates](#latest-updates-v2611)
@@ -1989,6 +1990,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.614)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — current week shown in the Upcoming payroll modal
+
+Follow-up to v2.612: the **Upcoming payroll** modal header now shows the current pay week directly under the title — **`Current week: 6/28–7/4 (w27)`** — computed via the kernel's `payWeekStartYmd(todayYmd)` and formatted with the same `ledgerPayPeriodShortLabel` used by the Period column and the modal's rows, so a glance tells you which listed week is the in-progress one ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)). Display-only.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1772/1772**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.613)

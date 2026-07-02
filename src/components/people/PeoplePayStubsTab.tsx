@@ -32,6 +32,7 @@ import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overhea
 import { isoWeekNumberFromGregorianYmd, ymdAddDays } from '../../utils/dateUtils'
 import {
   buildUpcomingPayrollSummary,
+  payWeekStartYmd,
   upcomingPayrollFetchStartYmd,
   type UpcomingClockSessionRow,
 } from '../../lib/upcomingPayrollSummary'
@@ -909,6 +910,12 @@ export default function PeoplePayStubsTab({
                 <h2 id="upcoming-payroll-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
                   Upcoming payroll — not yet reported
                 </h2>
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+                  {(() => {
+                    const weekStart = payWeekStartYmd(todayYmd)
+                    return `Current week: ${ledgerPayPeriodShortLabel(weekStart, ymdAddDays(weekStart, 6))}`
+                  })()}
+                </p>
                 <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
                   {upcomingSummary.personWeekCount} person-week{upcomingSummary.personWeekCount === 1 ? '' : 's'} ·{' '}
                   ${formatCurrency(upcomingSummary.estimatedGrossDollars)} estimated. Clocked time (including pending
