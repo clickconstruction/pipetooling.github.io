@@ -35,7 +35,9 @@ import {
   payWeekStartYmd,
   upcomingPayrollFetchStartYmd,
   type UpcomingClockSessionRow,
+  type UpcomingPayrollLine,
 } from '../../lib/upcomingPayrollSummary'
+import { UpcomingWeekSessionsModal } from './UpcomingWeekSessionsModal'
 import { PayStubAdditionalModal } from '../pay/PayStubAdditionalModal'
 import { PayStubLessModal } from '../pay/PayStubLessModal'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
@@ -111,7 +113,15 @@ export type PeoplePayStubsTabProps = {
   onRequestDeleteStub: (stub: PayStubRow) => void
   deletingPayStubId: string | null
   /** Open the shared My-Time day editor (parent-owned, shared with Hours). */
-  onOpenMyTimeForDay: (args: { dateStr: string; subjectUserId: string; subjectDisplayName: string }) => void
+  onOpenMyTimeForDay: (args: {
+    dateStr: string
+    subjectUserId: string
+    subjectDisplayName: string
+    /** Upcoming-payroll drilldown: widen the editor's save fence to this pay week (older weeks stay saveable). */
+    saveableRange?: { start: string; end: string }
+  }) => void
+  /** Bumped by the parent after a My-Time save so the upcoming-payroll data refetches. */
+  upcomingRefreshTick: number
   /** Open the parent-owned Payroll Forecast modal. */
   onOpenForecast: () => void
   forecastDisabled: boolean
@@ -140,6 +150,7 @@ export default function PeoplePayStubsTab({
   onRequestDeleteStub,
   deletingPayStubId,
   onOpenMyTimeForDay,
+  upcomingRefreshTick,
   onOpenForecast,
   forecastDisabled,
   onOpenDraftPayroll,
@@ -182,6 +193,10 @@ export default function PeoplePayStubsTab({
   // earliest week any person could still owe a pay report for. null = not loaded yet.
   const [upcomingSessions, setUpcomingSessions] = useState<UpcomingClockSessionRow[] | null>(null)
   const [upcomingModalOpen, setUpcomingModalOpen] = useState(false)
+  /** Person-week whose per-day drilldown modal is open (nested above the Upcoming payroll modal). */
+  const [upcomingWeekDetail, setUpcomingWeekDetail] = useState<UpcomingPayrollLine | null>(null)
+  /** Bumped after an approve/reject inside the week drilldown so the upcoming data refetches. */
+  const [upcomingLocalTick, setUpcomingLocalTick] = useState(0)
 
   // Lock body scroll while the Upcoming payroll modal is open (same idiom as UserReviewModal).
   useEffect(() => {
@@ -252,7 +267,7 @@ export default function PeoplePayStubsTab({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- todayYmd is a render-derived day string
-  }, [upcomingInputs])
+  }, [upcomingInputs, upcomingRefreshTick, upcomingLocalTick])
 
   const upcomingSummary = useMemo(() => {
     if (!upcomingSessions) return null
@@ -916,11 +931,12 @@ export default function PeoplePayStubsTab({
                     return `Current week: ${ledgerPayPeriodShortLabel(weekStart, ymdAddDays(weekStart, 6))}`
                   })()}
                 </p>
-                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                <p
+                  style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}
+                  title="Clocked time (including pending approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to generate these reports."
+                >
                   {upcomingSummary.personWeekCount} person-week{upcomingSummary.personWeekCount === 1 ? '' : 's'} ·{' '}
-                  ${formatCurrency(upcomingSummary.estimatedGrossDollars)} estimated. Clocked time (including pending
-                  approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to
-                  generate these reports.
+                  ${formatCurrency(upcomingSummary.estimatedGrossDollars)} estimated
                 </p>
               </div>
               <button
@@ -948,7 +964,25 @@ export default function PeoplePayStubsTab({
                     <tr key={`${l.personName}:${l.weekStartYmd}`} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td style={{ padding: '0.45rem 0.65rem' }}>{l.personName}</td>
                       <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
-                        {ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}
+                        <button
+                          type="button"
+                          onClick={() => setUpcomingWeekDetail(l)}
+                          title="Show this week's contributing days"
+                          aria-label={`Show contributing days for ${l.personName}, ${ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}`}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            margin: 0,
+                            font: 'inherit',
+                            color: '#2563eb',
+                            textDecoration: 'underline dotted',
+                            textUnderlineOffset: '2px',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {ledgerPayPeriodShortLabel(l.weekStartYmd, l.weekEndYmd)}
+                        </button>
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {l.hours.toFixed(2)}
@@ -976,6 +1010,33 @@ export default function PeoplePayStubsTab({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {upcomingWeekDetail ? (
+        <UpcomingWeekSessionsModal
+          personName={upcomingWeekDetail.personName}
+          userId={upcomingInputs.userIdByPersonName[upcomingWeekDetail.personName] ?? ''}
+          weekStartYmd={upcomingWeekDetail.weekStartYmd}
+          weekEndYmd={upcomingWeekDetail.weekEndYmd}
+          weekLabel={ledgerPayPeriodShortLabel(upcomingWeekDetail.weekStartYmd, upcomingWeekDetail.weekEndYmd)}
+          authUserId={authUser?.id ?? null}
+          zIndex={Z_PEOPLE_PAY_MODAL + 10}
+          onClose={() => setUpcomingWeekDetail(null)}
+          onOpenDay={(dateStr) => {
+            const uid = upcomingInputs.userIdByPersonName[upcomingWeekDetail.personName]
+            if (!uid) return
+            onOpenMyTimeForDay({
+              dateStr,
+              subjectUserId: uid,
+              subjectDisplayName: upcomingWeekDetail.personName,
+              saveableRange: {
+                start: upcomingWeekDetail.weekStartYmd,
+                end: upcomingWeekDetail.weekEndYmd,
+              },
+            })
+          }}
+          onSessionsMutated={() => setUpcomingLocalTick((n) => n + 1)}
+        />
       ) : null}
 
       {payStubLessModalStub ? (

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildUpcomingPayrollSummary,
+  groupUpcomingWeekSessions,
   payWeekStartYmd,
   upcomingPayrollFetchStartYmd,
   type UpcomingClockSessionRow,
+  type UpcomingWeekSessionRow,
 } from './upcomingPayrollSummary'
 
 // 2026-06-28 is a Sunday; 2026-07-02 (today in these tests) is a Thursday.
@@ -155,5 +157,68 @@ describe('buildUpcomingPayrollSummary', () => {
       sessions: [],
     })
     expect(out).toEqual({ personWeekCount: 0, estimatedGrossDollars: 0, lines: [] })
+  })
+})
+
+describe('groupUpcomingWeekSessions', () => {
+  function weekSession(
+    id: string,
+    workDate: string,
+    startIso: string,
+    hours: number | null, // null = open
+    approved: boolean,
+  ): UpcomingWeekSessionRow {
+    return {
+      id,
+      work_date: workDate,
+      clocked_in_at: startIso,
+      clocked_out_at: hours === null ? null : new Date(new Date(startIso).getTime() + hours * 3_600_000).toISOString(),
+      approved_at: approved ? '2026-07-01T00:00:00Z' : null,
+      notes: null,
+      jobs_ledger: null,
+      bids: null,
+    }
+  }
+
+  it('groups by day asc with sessions ordered by clock-in, sums day and total hours', () => {
+    const grouped = groupUpcomingWeekSessions(
+      [
+        weekSession('b', '2026-06-30', '2026-06-30T18:00:00Z', 2, false),
+        weekSession('a', '2026-06-30', '2026-06-30T13:00:00Z', 4, true),
+        weekSession('c', '2026-06-29', '2026-06-29T13:00:00Z', 8, false),
+      ],
+      NOW_MS,
+    )
+    expect(grouped.days.map((d) => d.workDate)).toEqual(['2026-06-29', '2026-06-30'])
+    expect(grouped.days[1]?.sessions.map((s) => s.id)).toEqual(['a', 'b'])
+    expect(grouped.days[0]?.hours).toBeCloseTo(8)
+    expect(grouped.days[1]?.hours).toBeCloseTo(6)
+    expect(grouped.totalHours).toBeCloseTo(14)
+  })
+
+  it('collects only closed unapproved ids for bulk approve', () => {
+    const grouped = groupUpcomingWeekSessions(
+      [
+        weekSession('approved', '2026-06-29', '2026-06-29T13:00:00Z', 4, true),
+        weekSession('pending1', '2026-06-30', '2026-06-30T13:00:00Z', 3, false),
+        weekSession('open', '2026-07-02', '2026-07-02T16:00:00Z', null, false),
+        weekSession('pending2', '2026-06-29', '2026-06-29T18:00:00Z', 1, false),
+      ],
+      NOW_MS,
+    )
+    expect(grouped.pendingClosedIds.sort()).toEqual(['pending1', 'pending2'])
+  })
+
+  it('clips open sessions at nowMs in the hour sums', () => {
+    const grouped = groupUpcomingWeekSessions(
+      [weekSession('open', '2026-07-02', '2026-07-02T16:00:00Z', null, false)],
+      NOW_MS, // 18:00Z -> 2h elapsed
+    )
+    expect(grouped.days[0]?.hours).toBeCloseTo(2)
+    expect(grouped.totalHours).toBeCloseTo(2)
+  })
+
+  it('returns empty structure for no sessions', () => {
+    expect(groupUpcomingWeekSessions([], NOW_MS)).toEqual({ days: [], pendingClosedIds: [], totalHours: 0 })
   })
 })

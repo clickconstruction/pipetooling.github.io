@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.614)
+last_updated: 2026-07-02 (v2.617)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,9 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.617 — **People → Payroll ledger** — **upcoming week drilldown lists sessions with approve/reject**. The v2.616 per-day-totals drilldown is rebuilt as **[`UpcomingWeekSessionsModal`](../src/components/people/UpcomingWeekSessionsModal.tsx)** — every clock session for the person-week, grouped by day (clickable day headers still open My Time with the widened fence), each row showing time range, hours, job/bid short label (`shortJobOrBidLabelFromEmbeds` + prefix map), notes tooltip, and an **Approved / Pending / Open** badge. Closed pending sessions get per-session **Approve** + two-click **Reject** (direct `rejected_at/rejected_by` update, popover idiom); the header has **`Approve all (N)`**. Approval goes through the **`approve_clock_sessions`** RPC (`approveClockSessions` wrapper) — writes `people_hours` incrementally, so approved weeks become payable in Draft Payroll; server-side gating (pay roles / team leads) re-validates. Fresh per-open fetch with embeds; after any mutation the modal refetches and a new `upcomingLocalTick` refetches the tab's upcoming data (a reject shrinks the week's hours + header estimate). Kernel: `upcomingWeekDayBreakdown` replaced by **`groupUpcomingWeekSessions`** (+`upcomingSessionHours`) — 14 kernel tests](#latest-updates-v2617)
+**New:** [v2.616 — **People → Payroll ledger** — **upcoming week drilldown → My Time day editor**. In the Upcoming payroll modal, each row's **Period** is now a link opening a nested per-week modal (z `Z_PEOPLE_PAY_MODAL + 10`) listing the **contributing days** (`Wed 7/1 · 8.25` rows via new kernel helper `upcomingWeekDayBreakdown` — per-day sums from the already-fetched sessions, open sessions clip at now) with a week-total footer; clicking a day opens **`DashboardMyTimeDayEditorModal`** for that person+day (editor z 1200 stacks above both modals — no hide choreography needed). `onOpenMyTimeForDay` gains an optional `saveableRange` arg → new plain `saveableRange` field on the shared `hoursMyTimeEditor` state feeds `saveableRangeOverride`, so days in weeks older than the standard two-week fence stay saveable (scoped to that pay week; the v2.597 server-side leader-RPC bypass applies). After a save, new `ledgerUpcomingRefreshTick` prop refetches the upcoming sessions so the modals + header segment update in place](#latest-updates-v2616)
+**New:** [v2.615 — **People → Payroll ledger** — **Upcoming payroll modal caption hidden**: the subtitle trims to `15 person-weeks · $12,408.74 estimated`; the explanatory sentence (pending-approval basis, hours × wage, Draft Payroll hint) moves to the line's hover `title` tooltip. Display-only](#latest-updates-v2615)
 **New:** [v2.614 — **People → Payroll ledger** — **current week shown in the Upcoming payroll modal** header (`Current week: 6/28–7/4 (w27)` via `payWeekStartYmd` + `ledgerPayPeriodShortLabel`, between the title and the totals subtitle). Display-only](#latest-updates-v2614)
 **New:** [v2.613 — **People → Payroll ledger** — **body scroll locked while the Upcoming payroll modal is open** (`document.body.style.overflow = 'hidden'` effect keyed on the modal state, previous value restored on close — same idiom as `UserReviewModal`). Display-only](#latest-updates-v2613)
 **New:** [v2.612 — **People → Payroll ledger** — **upcoming segment opens a detail modal**. The v2.611 amber `15 upcoming: $12,408.74` becomes a dotted-underline button opening an **Upcoming payroll — not yet reported** modal: **Person | Period | Hours | Est. Gross** rows (Period as `6/28–7/4 (w27)` via `ledgerPayPeriodShortLabel`) + totals footer. `buildUpcomingPayrollSummary` now also returns the `lines` it walks (person-asc, week-asc) with the totals **derived from them**, so the modal can never disagree with the header number; the modal reads the same search-filtered summary. 10 kernel tests](#latest-updates-v2612)
@@ -1990,6 +1993,70 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.617)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — upcoming week drilldown lists sessions with approve/reject
+
+The v2.616 week drilldown (per-day hour totals) is rebuilt as a session-level approval surface, modeled on the Dashboard clock strip / Hours pending-popover flows and scoped to one person's week — approve time right where you can see it's holding payroll up.
+
+- **New [`UpcomingWeekSessionsModal`](../src/components/people/UpcomingWeekSessionsModal.tsx)** (extracted from the tab): fetches the user-week's `clock_sessions` fresh with `jobs_ledger` / `bids` embeds (rejected/revoked excluded); rows grouped by day — day headers stay clickable → My Time editor with the week-widened save fence (v2.616 behavior preserved). Each session row: time range, hours (open sessions clip at now), job/bid short label via `shortJobOrBidLabelFromEmbeds` + `useLedgerPrefixMap`, notes in the hover title, and an **Approved** (green) / **Pending** (amber) / **Open** (grey) badge.
+- **Approve**: per-session button on closed pending sessions + header **`Approve all (N)`** — both via the [`approveClockSessions`](../src/lib/approveClockSessions.ts) wrapper → **`approve_clock_sessions`** RPC (validates pay roles / team-lead server-side; writes `people_hours` incrementally and syncs crew jobs/bids), so approved weeks immediately become payable in Draft Payroll.
+- **Reject**: two-click confirm per session (auto-resets ~2.5s) → direct `rejected_at`/`rejected_by` update (the `PeopleHoursPendingCellPopover` idiom). Approved sessions show no actions (revoke stays in My Time / Hours flows); open sessions show neither.
+- **Refresh**: after any mutation the modal refetches its sessions and bumps a new `upcomingLocalTick` in the tab (added to the upcoming-fetch effect deps) — a reject shrinks the week's hours and the amber header estimate; approvals update badges and Draft Payroll's pending count.
+- **Kernel**: `upcomingWeekDayBreakdown` (now unused) replaced by **`groupUpcomingWeekSessions`** + **`upcomingSessionHours`** in [`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) — day-asc grouping with clock-in-asc sessions, day/total hour sums, `pendingClosedIds` bulk set; **14 kernel tests**.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1776/1776**; eslint clean on touched files. Prod sanity via read-only SQL: the sample user's current week shows 13 closed-pending sessions across 4 days / 0 approved / 0 open — matching exactly what the modal will render (4 day groups, 13 Pending badges, `Approve all (13)`).
+
+#### Files
+
+New: [`src/components/people/UpcomingWeekSessionsModal.tsx`](../src/components/people/UpcomingWeekSessionsModal.tsx). Modified: [`src/lib/upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (+ test), [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx). No DB / migration / type changes.
+
+---
+
+## Latest Updates (v2.616)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — upcoming week drilldown → My Time day editor
+
+Follow-up to v2.612: in the **Upcoming payroll** modal, each row's **Period** is now a dotted-underline link that opens a nested per-week modal listing the **contributing days** for that person-week, and each day opens the shared **My Time day editor** — investigate and fix time without leaving the payroll flow.
+
+- **Week-detail modal** (z `Z_PEOPLE_PAY_MODAL + 10`, above the Upcoming modal): title `{person} — {period (wN)}`, one row per clocked day (`Wed 7/1 · 8.25`), week-total footer. Day hours come from the **already-fetched** upcoming sessions via new kernel helper **`upcomingWeekDayBreakdown`** ([`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts)) — per-day sums, other users/weeks excluded, open sessions clip at now; **11** kernel tests.
+- **Day click** → the existing `onOpenMyTimeForDay` bridge (now with an optional **`saveableRange`** arg) opens `DashboardMyTimeDayEditorModal` for that person+day. The editor's hardcoded z 1200 stacks **above** both modals, so no hide/reopen choreography. A new plain **`saveableRange`** field on the shared `hoursMyTimeEditor` state feeds `saveableRangeOverride` — days in weeks older than the standard two-week fence stay saveable, scoped to exactly that pay week (the v2.597 server-side leader-RPC bypass covers the split paths; no reopen side effects, unlike `payrollOrigin`).
+- **Refresh**: the editor's `onSaved` bumps a new **`ledgerUpcomingRefreshTick`** (People.tsx → tab prop) that refetches the upcoming sessions, so the day list, week line, and header segment all update in place after an edit.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1773/1773** (11 kernel tests incl. the new per-day breakdown case); eslint clean on touched files (the 10 People.tsx warnings pre-exist).
+
+#### Files
+
+Modified: [`src/lib/upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) (+ test), [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx), [`src/pages/People.tsx`](../src/pages/People.tsx). No DB / migration / type changes.
+
+---
+
+## Latest Updates (v2.615)
+
+**Date**: 2026-07-02
+
+### People → Payroll ledger — Upcoming payroll modal caption hidden
+
+Follow-up to v2.612/v2.614: the modal subtitle trims to just the counts — `15 person-weeks · $12,408.74 estimated` — and the explanatory sentence (*"Clocked time (including pending approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to generate these reports."*) moves to the line's hover `title` tooltip instead of rendering inline ([`PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx)). Display-only.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1772/1772**; eslint clean on the touched file.
+
+#### Files
+
+Modified: [`src/components/people/PeoplePayStubsTab.tsx`](../src/components/people/PeoplePayStubsTab.tsx).
+
 ---
 
 ## Latest Updates (v2.614)
