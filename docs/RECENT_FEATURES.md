@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.634)
+last_updated: 2026-07-03 (v2.635)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.635 — **Dashboard → Financials** — **AP bill modal shows allocated jobs**. The v2.632 bill detail gains a **Job(s)** fact row: each `supply_house_invoice_job_allocations` entry renders as `500 · Smith House (60%)` (pct desc), clickable → **Job Detail** modal (both stacked modals close first); bills with no allocation show `—`. Hook fetches allocations per unpaid bill (chunked, best-effort) + labels for allocated jobs outside the status-filtered jobs fetch; 125 of 138 unpaid bills have job allocations in prod](#latest-updates-v2635)
 **New:** [v2.634 — **Materials → Supply Houses** — **fix: invoice/due dates displayed one day early**. Reported by Taunya ("I enter the 10th, it shows the 9th"): `invoice_date`/`due_date` are DATE-only strings and `new Date('2026-07-10')` parses as **UTC midnight** → renders as the previous day in US timezones. New `formatYmdLocal` (parses at local noon; non-YMD values fall back) replaces the three affected `toLocaleDateString()` call sites in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (detail Date + Due columns, Apply Payment list date). **Stored data was always correct** — display-only; `Paid On` (real timestamp) unaffected; the aging buckets and Financials modals already used safe parsing](#latest-updates-v2634)
 **New:** [v2.633 — **Dashboard → Financials** — **"Financials" section title removed + tighter bottom gap**: the three cards now sit directly at the top of the dashboard without the `Financials` h2 (they're self-describing), and the section's bottom margin shrank 1.5rem → 0.5rem so the quick actions / Clock In row sits closer. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2633)
 **New:** [v2.632 — **Dashboard → Financials** — **AP supply rows open a bill detail modal with attachment preview**. Supply-house rows in the Accounts Payable drill-down are now clickable (dotted-underline, like job rows) → **`ApBillModal`** (z 1110): supply house + amount header, fact rows (Invoice #, PO #, invoice date, due date with the orange/red **`Nd past due`** chip, amount), and at the bottom the **attached file previewed inline** via the Google Drive `/preview` embed (reuses `googleDrivePreviewEmbedUrl`) — collapsed to 300px with click-to-zoom / **Expand** button that widens the modal to ~1100px with a 68vh preview, plus an **Open in Drive ↗** link. Hook now fetches `due_date/link/invoice_number/purchase_order_number` and exposes an `apBills` map keyed by item key. Payroll and aggregate rows unchanged; 131/138 unpaid bills already have Drive links](#latest-updates-v2632)
@@ -2010,6 +2011,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.635)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP bill modal shows allocated jobs
+
+Follow-up to v2.632: the Accounts Payable bill detail modal now shows **which jobs the bill is assigned to**, between the Amount fact and the attachment preview.
+
+- One line per `supply_house_invoice_job_allocations` entry — `500 · Smith House (60%)`, sorted by percent desc; a bill with no allocations shows `—`. In prod, 125 of 138 unpaid bills have allocations.
+- **Each job is clickable** → opens the **Job Detail** modal (the bill modal and items modal close first — the Job Detail backdrop stacks lower), consistent with job rows elsewhere in Financials.
+- Plumbing in [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts): chunked allocations fetch per unpaid bill (best-effort — failure just leaves the row as `—`), plus a label lookup for allocated jobs outside the hook's status-filtered jobs fetch (labels via the kernel's `financialJobLabel`, HCP → Click → name). `DashboardApBill` gains `jobs: Array<{jobId, label, pct}>`.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805**; zero lint warnings on touched files.
+
+#### Files
+
+Modified: [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
 ---
 
 ## Latest Updates (v2.634)

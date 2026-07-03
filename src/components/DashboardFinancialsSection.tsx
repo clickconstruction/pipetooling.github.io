@@ -50,7 +50,16 @@ function shortDate(ymd: string | null): string {
 }
 
 /** AP bill detail — invoice facts plus an expandable Google Drive preview of the attached file. */
-function ApBillModal({ bill, onClose }: { bill: DashboardApBill; onClose: () => void }) {
+function ApBillModal({
+  bill,
+  onClose,
+  onOpenJob,
+}: {
+  bill: DashboardApBill
+  onClose: () => void
+  /** Opens the Job Detail modal for an allocated job (parent closes the stacked modals first). */
+  onOpenJob: ((jobId: string, label: string) => void) | null
+}) {
   const [expanded, setExpanded] = useState(false)
   const embedUrl = bill.link ? googleDrivePreviewEmbedUrl(bill.link) : null
   const pastDue = bill.dueDateYmd ? daysPastDue(bill.dueDateYmd, new Date().toLocaleDateString('en-CA')) : null
@@ -139,6 +148,42 @@ function ApBillModal({ bill, onClose }: { bill: DashboardApBill; onClose: () => 
             </>,
           )}
           {factRow('Amount', <strong>${formatCurrency(bill.amount)}</strong>)}
+          {factRow(
+            bill.jobs.length === 1 ? 'Job' : 'Jobs',
+            bill.jobs.length === 0 ? (
+              <span style={{ color: '#9ca3af' }}>—</span>
+            ) : (
+              <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'flex-end' }}>
+                {bill.jobs.map((j) => (
+                  <span key={j.jobId} style={{ whiteSpace: 'nowrap' }}>
+                    {onOpenJob ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenJob(j.jobId, j.label)}
+                        title="Open this job"
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          margin: 0,
+                          font: 'inherit',
+                          color: '#2563eb',
+                          textDecoration: 'underline dotted',
+                          textUnderlineOffset: '2px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {j.label}
+                      </button>
+                    ) : (
+                      j.label
+                    )}
+                    <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> ({j.pct}%)</span>
+                  </span>
+                ))}
+              </span>
+            ),
+          )}
           <div style={{ marginTop: '0.9rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
               <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Attached file</span>
@@ -682,7 +727,22 @@ export default function DashboardFinancialsSection() {
           }
         />
       ) : null}
-      {apBill ? <ApBillModal bill={apBill} onClose={() => setApBill(null)} /> : null}
+      {apBill ? (
+        <ApBillModal
+          bill={apBill}
+          onClose={() => setApBill(null)}
+          onOpenJob={
+            jobDetailModal
+              ? (jobId, label) => {
+                  // Job Detail backdrop (z 1004) sits below these modals — close both first.
+                  setApBill(null)
+                  setOpenCard(null)
+                  jobDetailModal.openJobDetail({ jobId, prefillRowLabel: label })
+                }
+              : null
+          }
+        />
+      ) : null}
       {dispatchItem ? <SendToDispatchModal item={dispatchItem} onClose={() => setDispatchItem(null)} /> : null}
     </div>
   )
