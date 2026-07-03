@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/format'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
@@ -183,6 +183,15 @@ function ItemsModal({
   onSendToDispatch: ((item: FinancialItem) => void) | null
 }) {
   const meta = CARD_META[cardKey]
+  // Not billed: two status sections — Ready to Bill on top (closest to money), Working below.
+  // Items keep their amount-desc order within each section.
+  const sections: Array<{ title: string | null; items: FinancialItem[] }> =
+    cardKey === 'unbilled'
+      ? (['Ready to Bill', 'Working'] as const)
+          .map((title) => ({ title, items: bucket.items.filter((i) => i.sublabel === title) }))
+          .filter((s) => s.items.length > 0)
+      : [{ title: null, items: bucket.items }]
+  const columnCount = onSendToDispatch ? 4 : 3
   return (
     <div
       role="presentation"
@@ -252,7 +261,20 @@ function ItemsModal({
               </tr>
             </thead>
             <tbody>
-              {bucket.items.map((item: FinancialItem) => (
+              {sections.map((section) => (
+                <Fragment key={section.title ?? 'all'}>
+                  {section.title ? (
+                    <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb' }}>
+                      <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
+                        <span style={{ fontWeight: 600 }}>{section.title}</span>
+                        <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
+                          {section.items.length} job{section.items.length === 1 ? '' : 's'} · $
+                          {formatCurrency(section.items.reduce((s, i) => s + i.amount, 0))}
+                        </span>
+                      </td>
+                    </tr>
+                  ) : null}
+                  {section.items.map((item: FinancialItem) => (
                 <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
                   <td style={{ padding: '0.45rem 0.65rem' }}>
                     {item.jobId && onOpenJob ? (
@@ -279,7 +301,7 @@ function ItemsModal({
                     ) : (
                       item.label
                     )}
-                    {item.sublabel ? (
+                    {item.sublabel && !section.title ? (
                       <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
                     ) : null}
                     {item.address ? (
@@ -315,6 +337,8 @@ function ItemsModal({
                     </td>
                   ) : null}
                 </tr>
+                  ))}
+                </Fragment>
               ))}
             </tbody>
             <tfoot>

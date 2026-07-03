@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.623)
+last_updated: 2026-07-03 (v2.624)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.624 — **Dashboard → Financials** — **Not Billed Out modal grouped by status**. The drill-down now renders two sections — **Ready to Bill** on top (closest to money), **Working** below — each with a grey header row showing the section's job count and dollar subtotal; rows keep their amount-desc order within sections and the per-row `· Ready to Bill / · Working` sublabel is dropped (the header says it). Presentational only ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)); AR / AP modals and all math unchanged](#latest-updates-v2624)
 **New:** [v2.623 — **Dashboard → Financials** — **Not Billed Out modal shows job addresses**. Each job row in the Not Billed Out drill-down now renders the job's street address as a muted second line under the label (`jobs_ledger.job_address`, blank-trimmed to hidden). New `address` field on `FinancialItem` — populated only by `buildUnbilledBucket` (AR / AP rows unchanged); hook select extended; +1 kernel test](#latest-updates-v2623)
 **New:** [v2.622 — **Dispatch inbox** — **live updates fixed (was reload-only)**. The inbox's Realtime subscriptions had been silent since the 2026-06-05 incident cleanup dropped `dispatch_requests` / `dispatch_request_notes` from the `supabase_realtime` publication — new requests and thread notes only appeared after a page reload. Migration `20260703130000` (applied to prod) re-adds both low-volume tables, restoring cross-client live refresh. Plus a **same-tab nudge**: every dispatch-request mutation site (Financials "→ Send to Dispatch", the Dispatch task composer, Dashboard link-job-pictures, Job-form auto-close) now fires a `pipetooling:dispatch-requests-changed` window event that [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts) listens for — so sending from a page that also hosts the inbox (the Dashboard) shows the new item instantly, without waiting on the Realtime round-trip](#latest-updates-v2622)
 **New:** [v2.621 — **Dashboard → Financials** — **Not Billed Out rows send to Dispatch**. Each job row in the Not Billed Out drill-down gains a **`→`** button right of Amount opening a mini-composer (z 1110): the job label + amount pre-filled as context, an optional note, and **Send to Dispatch** — creating a `dispatch_requests` inbox item (`Not billed out: 500 · Smith House — $12,345.67. <note>`) with `pending_action: 'bill_out_job'` **dedupe** (one open request per job; a second send toasts "Already open with Dispatch") and a fire-and-forget `notify-dispatch-request` push. New reusable helper [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) (`createDispatchRequest` — insert + dedupe + notify, extracted from the Dashboard link-job-pictures pattern — and pure `buildUnbilledDispatchTitle`, 3 tests). AR / AP modals unchanged](#latest-updates-v2621)
@@ -1999,6 +2000,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.624)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — Not Billed Out modal grouped by status
+
+The **Not Billed Out** drill-down is now split into two sections: **Ready to Bill** on top, **Working** below. Each section gets a grey header row with the job count and dollar subtotal (e.g. `Ready to Bill — 4 jobs · $22,150.00`), so the "could bill today" money is separated from the "still in progress" money at a glance.
+
+- Rows keep their largest-first order within each section; empty sections are hidden.
+- The per-row `· Ready to Bill` / `· Working` sublabel is dropped inside sections (the header already says it); addresses, click-to-open-job, and the → Send to Dispatch button are unchanged.
+- Presentational only in [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) — section membership comes from the kernel's existing per-item status sublabel; AR / AP modals and all totals unchanged.
+
+#### Verification
+
+`tsc -b` clean; kernel tests 8/8; zero lint warnings on the touched file.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
 ---
 
 ## Latest Updates (v2.623)
