@@ -1525,7 +1525,14 @@ body.my-time-boundary-dragging {
 .activeAccountsCard__table {
   width: 100%;
   border-collapse: collapse;
-  max-width: 680px;
+  max-width: 760px;
+}
+
+.activeAccountsCard__table .activeAccountsCard__lastLogin {
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  color: #6b7280;
 }
 
 .activeAccountsCard__table th {
