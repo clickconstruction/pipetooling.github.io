@@ -646,58 +646,22 @@ export function SupplyHousesTab({
 
   return (
     <div>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: showTitle ? '1fr auto 1fr' : '1fr',
-          alignItems: 'center',
-          marginBottom: '0.75rem',
-          gap: '0.5rem',
-        }}
-      >
-        {showTitle && <span aria-hidden="true" style={{ minWidth: 0 }} />}
-        {showTitle && (
+      {showTitle && (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
+            alignItems: 'center',
+            marginBottom: '0.75rem',
+            gap: '0.5rem',
+          }}
+        >
+          <span aria-hidden="true" style={{ minWidth: 0 }} />
           <h2 style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0, justifySelf: 'center' }}>
             Supply Houses
           </h2>
-        )}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', justifySelf: 'end' }}>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={showPaidInvoices}
-              onChange={(e) => setShowPaidInvoices(e.target.checked)}
-            />
-            Show paid invoices
-          </label>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              cursor: 'pointer',
-              fontSize: '0.875rem',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={showLastPayment}
-              onChange={(e) => setShowLastPayment(e.target.checked)}
-            />
-            Show last payment
-          </label>
         </div>
-      </div>
+      )}
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
 
       <section style={{ marginBottom: '2rem' }}>
@@ -705,10 +669,11 @@ export function SupplyHousesTab({
           <p style={{ color: '#6b7280' }}>Loading…</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ marginBottom: '0.5rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
-              Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.75rem' }}>
+            <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+              <div style={{ marginBottom: '0.5rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
+                Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem' }}>
               {(['summary', 'aging'] as const).map((v) => (
                 <button
                   key={v}
@@ -727,6 +692,25 @@ export function SupplyHousesTab({
                   {v === 'summary' ? 'Summary' : 'Aging map'}
                 </button>
               ))}
+              </div>
+              <div style={{ position: 'absolute', right: 0, top: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+                  <input
+                    type="checkbox"
+                    checked={showPaidInvoices}
+                    onChange={(e) => setShowPaidInvoices(e.target.checked)}
+                  />
+                  Show paid invoices
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+                  <input
+                    type="checkbox"
+                    checked={showLastPayment}
+                    onChange={(e) => setShowLastPayment(e.target.checked)}
+                  />
+                  Show last payment
+                </label>
+              </div>
             </div>
             {supplyHouseView === 'aging' && (
               <>
