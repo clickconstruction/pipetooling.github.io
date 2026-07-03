@@ -374,6 +374,7 @@ function ItemsModal({
   onSendToDispatch,
   upcomingSection,
   onOpenApBill,
+  apBills,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
@@ -386,6 +387,8 @@ function ItemsModal({
   upcomingSection: UpcomingPayrollApSection | null
   /** AP supply rows: opens the bill detail modal (invoice facts + attachment preview). */
   onOpenApBill: ((item: FinancialItem) => void) | null
+  /** AP only: per-bill detail (due date, job allocations) keyed by item key — enriches the rows. */
+  apBills: Record<string, DashboardApBill> | null
 }) {
   const meta = CARD_META[cardKey]
   // Grouped views (items keep their amount-desc order within each section):
@@ -486,7 +489,7 @@ function ItemsModal({
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Item</th>
-                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Date</th>
+                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>{cardKey === 'ap' ? 'Due' : 'Date'}</th>
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Amount</th>
                 {onSendToDispatch ? <th style={{ padding: '0.5rem 0.35rem', width: '1%' }} aria-label="Send to Dispatch" /> : null}
               </tr>
@@ -575,8 +578,45 @@ function ItemsModal({
                     {item.address ? (
                       <div style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
                     ) : null}
+                    {(() => {
+                      const bill = apBills?.[item.key]
+                      if (!bill || bill.jobs.length === 0) return null
+                      return (
+                        <div style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: 2 }}>
+                          {bill.jobs.map((j) => `${j.label} (${j.pct}%)`).join(', ')}
+                        </div>
+                      )
+                    })()}
                   </td>
-                  <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{shortDate(item.dateYmd)}</td>
+                  <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
+                    {(() => {
+                      const bill = apBills?.[item.key]
+                      if (!bill) return shortDate(item.dateYmd)
+                      const days = bill.dueDateYmd
+                        ? daysPastDue(bill.dueDateYmd, new Date().toLocaleDateString('en-CA'))
+                        : null
+                      return (
+                        <>
+                          {shortDate(bill.dueDateYmd)}
+                          {days !== null && days > 0 ? (
+                            <span
+                              style={{
+                                marginLeft: '0.35rem',
+                                padding: '0.05rem 0.35rem',
+                                borderRadius: 999,
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                background: days >= 60 ? '#fee2e2' : '#ffedd5',
+                                color: days >= 60 ? '#991b1b' : '#9a3412',
+                              }}
+                            >
+                              {days}d
+                            </span>
+                          ) : null}
+                        </>
+                      )
+                    })()}
+                  </td>
                   <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                     ${formatCurrency(item.amount)}
                   </td>
@@ -751,6 +791,7 @@ export default function DashboardFinancialsSection() {
                 }
               : null
           }
+          apBills={openCard === 'ap' ? data.apBills : null}
         />
       ) : null}
       {apBill ? (

@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.636)
+last_updated: 2026-07-03 (v2.637)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.637 — **Dashboard → Financials** — **AP supply rows show due date + allocated jobs inline**. The AP drill-down's date column is now headed **Due** and supply rows show the bill's `due_date` with a compact **`Nd`** past-due chip (orange <60d, red ≥60d) instead of the invoice date; each supply row also gets a muted second line listing its job allocations (`500 · Smith House (60%), …`) from the v2.635 `apBills` map. Payroll-due rows keep their period-end date under the same `Due` header; other cards keep `Date`. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2637)
 **New:** [v2.636 — **Dashboard → Financials** — **AP drill-down grouped into Supplies / Payroll due / Upcoming payroll sections**. Previously payroll-due rows interleaved with ~130 supply rows by amount and the v2.629 "Upcoming payroll (estimate)" section sat invisibly at the very bottom — payroll was effectively unfindable. The AP modal now uses the same grey section headers as Not Billed Out: **Supplies — N bills · $X** (per-row "Supply invoice" sublabel dropped as redundant), **Payroll due — N items · $Y** (period sublabels kept), then the existing **Upcoming payroll (estimate) — N person-weeks · $Z**; footer stays `Total due`. Assistant's aggregate rows land in the same sections. Section-header machinery generalized (per-section noun + sublabel-hiding flag). [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2636)
 **New:** [v2.635 — **Dashboard → Financials** — **AP bill modal shows allocated jobs**. The v2.632 bill detail gains a **Job(s)** fact row: each `supply_house_invoice_job_allocations` entry renders as `500 · Smith House (60%)` (pct desc), clickable → **Job Detail** modal (both stacked modals close first); bills with no allocation show `—`. Hook fetches allocations per unpaid bill (chunked, best-effort) + labels for allocated jobs outside the status-filtered jobs fetch; 125 of 138 unpaid bills have job allocations in prod](#latest-updates-v2635)
 **New:** [v2.634 — **Materials → Supply Houses** — **fix: invoice/due dates displayed one day early**. Reported by Taunya ("I enter the 10th, it shows the 9th"): `invoice_date`/`due_date` are DATE-only strings and `new Date('2026-07-10')` parses as **UTC midnight** → renders as the previous day in US timezones. New `formatYmdLocal` (parses at local noon; non-YMD values fall back) replaces the three affected `toLocaleDateString()` call sites in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (detail Date + Due columns, Apply Payment list date). **Stored data was always correct** — display-only; `Paid On` (real timestamp) unaffected; the aging buckets and Financials modals already used safe parsing](#latest-updates-v2634)
@@ -2012,6 +2013,23 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.637)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP rows show due date + allocated jobs
+
+Each supply row in the Accounts Payable drill-down now carries the two facts you'd otherwise open the bill for:
+
+- **Due date instead of invoice date**: the date column is headed **`Due`** (AP only; other cards keep `Date`) and supply rows show `supply_house_invoices.due_date` with a compact **`Nd`** past-due chip — orange under 60 days, red at 60+ — matching the Supply Houses tab chips. Bills without a due date show `—`. Payroll-due rows keep their period-end date under the same header.
+- **Allocated jobs as a muted second line** under the supply-house name: `500 · Smith House (60%), 402 · Jones (40%)` — same `apBills` data (v2.635) that powers the bill modal, where the jobs remain clickable.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + kernel tests + eslint clean. No DB / hook changes.
+
 ---
 
 ## Latest Updates (v2.636)
