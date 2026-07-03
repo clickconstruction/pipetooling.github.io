@@ -288,56 +288,43 @@ export default function SettingsPeopleTab({
 
   return (
     <>
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div className="activeAccountsCard">
             <button
               type="button"
               onClick={() => setActiveAccountsSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
+              className="activeAccountsCard__toggle"
             >
-              <span style={{ fontSize: '0.75rem' }}>{activeAccountsSectionOpen ? '▼' : '▶'}</span>
+              <span className="activeAccountsCard__chevron">{activeAccountsSectionOpen ? '▼' : '▶'}</span>
               Active Accounts
             </button>
             {activeAccountsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            <div className="activeAccountsCard__body">
+          <p className="activeAccountsCard__desc">
             Set user class for everyone who has signed up. Only owners can change these.
           </p>
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" onClick={openInvite} style={{ padding: '0.5rem 1rem' }}>
+          <div className="activeAccountsCard__actions">
+            <button type="button" onClick={openInvite} className="activeAccountsCard__btnPrimary">
               Invite via email
             </button>
-            <button type="button" onClick={openManualAdd} style={{ padding: '0.5rem 1rem' }}>
+            <button type="button" onClick={openManualAdd} className="activeAccountsCard__btnSecondary">
               Manually add user
             </button>
-            <button type="button" onClick={openArchive} style={{ padding: '0.5rem 1rem' }}>
+            <button type="button" onClick={openArchive} className="activeAccountsCard__btnDanger">
               Archive user
             </button>
-            <button type="button" onClick={openArchiveReassign} style={{ padding: '0.5rem 1rem' }}>
+            <button type="button" onClick={openArchiveReassign} className="activeAccountsCard__btnDanger">
               Archive User & Reassign Customers
             </button>
           </div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
+            <table className="activeAccountsCard__table">
               <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Name / Email</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Service types / Role</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Last login</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}></th>
+                <tr>
+                  <th>Name / Email</th>
+                  <th>Service types / Role</th>
+                  <th>Last login</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -409,7 +396,7 @@ export default function SettingsPeopleTab({
                           value={u.role}
                           onChange={(e) => updateRole(u.id, e.target.value as UserRole)}
                           disabled={updatingId === u.id}
-                          style={{ padding: '0.25rem 0.5rem' }}
+                          className="activeAccountsCard__select"
                         >
                           {ROLES.map((r) => (
                             <option key={r} value={r}>
@@ -428,7 +415,7 @@ export default function SettingsPeopleTab({
                               type="button"
                               onClick={saveUserEdits}
                               disabled={updatingId === u.id}
-                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                              className="activeAccountsCard__rowBtnPrimary"
                             >
                               Save
                             </button>
@@ -436,7 +423,7 @@ export default function SettingsPeopleTab({
                               type="button"
                               onClick={cancelEditUser}
                               disabled={updatingId === u.id}
-                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                              className="activeAccountsCard__rowBtn"
                             >
                               Cancel
                             </button>
@@ -445,7 +432,7 @@ export default function SettingsPeopleTab({
                           <button
                             type="button"
                             onClick={() => startEditUser(u)}
-                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                            className="activeAccountsCard__rowBtn"
                           >
                             Edit
                           </button>
@@ -454,7 +441,7 @@ export default function SettingsPeopleTab({
                           type="button"
                           onClick={() => sendSignInEmail(u)}
                           disabled={sendingSignInEmailId === u.id}
-                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                          className="activeAccountsCard__rowBtn"
                         >
                           {sendingSignInEmailId === u.id ? 'Sending…' : 'Send email to sign in'}
                         </button>
@@ -467,7 +454,7 @@ export default function SettingsPeopleTab({
                             setSetPasswordError(null)
                           }}
                           disabled={setPasswordSubmitting}
-                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
+                          className="activeAccountsCard__rowBtn"
                         >
                           Set password
                         </button>
