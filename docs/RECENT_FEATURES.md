@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.619)
+last_updated: 2026-07-03 (v2.620)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.620 — **Dashboard** — **Financials one-pager (AR / AP / Not billed)** for dev / master_technician / assistant. New **[`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx)** above Recent activity: three clickable cards — **Accounts Receivable** (open remainders on billed invoices + billed jobs without invoice rows; mirrors `useBilledTotal`), **Accounts Payable** (unpaid supply-house invoices **+** open payroll balances via `stubNetPay − payments`, with per-source subtotals on the card; mirrors Supply Houses + the Payroll ledger header exactly), **Not Billed Out** (working / ready_to_bill jobs: `(revenue − payments) − Σ billed invoice amounts`; RTB draft lines deliberately not subtracted — they aren't on a customer invoice yet). Each card shows total + item count + oldest-item date and opens a drill-down modal (Item | Date | Amount, largest first, totals footer, link to Jobs Stages / Supply Houses). Pure kernel [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**7 tests**) + one batched hook [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts); all four totals cross-checked against prod SQL (payroll AP matched the Payroll ledger's `$4,949.48 remaining` to the cent). No DB changes](#latest-updates-v2620)
 **New:** [v2.619 — **People → Activity** — **per-person drilldown with page-level time**. Names in the Activity table are now links opening **[`PersonActivityDetailModal`](../src/components/people/PersonActivityDetailModal.tsx)**: a **90-day** day-by-day list (date, active h:mm, first–last seen) with each day expandable to its **per-page split**, plus a "Where (90d)" totals strip (`Bids · Pricing 12:40 …`). Collection: new **`user_app_activity_page_daily`** table (UTC day × page key; RLS mirrors the daily table — own rows / dev / granted viewers; writes via RPC only) and **`bump_user_app_activity`** recreated with `p_page text DEFAULT NULL` (migration `20260703120000`, applied to prod via MCP after body-md5 verification — old deployed clients calling one-arg keep working). The heartbeat is now **page-aware**: [`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts) takes a `pageKey` (new pure kernel [`appActivityPage.ts`](../src/lib/appActivityPage.ts): `appActivityPageKey('/bids','?tab=pricing') → 'bids:pricing'`, first path segment + sanitized tab param, bounded cardinality) and is keyed on it — in-app navigation flushes the old page's partial segment via effect cleanup and restarts the minute clock on the new page, so mid-minute navigation attributes correctly. Zero-second "seen" pings carry no page (last-seen only). **Page data accrues from deploy day**; historical days show totals with no page rows. +6 kernel tests](#latest-updates-v2619)
 **New:** [v2.618 — **App activity heartbeat** — **short visits now register** ([`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts)). Previously the first bump only fired after **60 continuous seconds** of tab visibility and the timer reset on every hide — so a 30-second clock-in/out visit recorded *nothing*, leaving People → Activity "Last seen" up to weeks older than real clock actions (prod check: one tech 26 days stale). Now: (1) an **instant `bump(0)`** on becoming visible updates `last_seen_at` without adding hours (throttled to once/min against tab-flicker spam; the deployed `bump_user_app_activity` RPC already clamps `p_seconds ≥ 0` — no DB change); (2) on hide/**pagehide**/unmount the **partial minute flushes** (≥5s), so a 40-second visit adds ~40s of active time; (3) the 60s tick continues for sustained use, with the partial-segment clock reset on each tick. Still strictly non-retrying (2026-06-04 incident lesson)](#latest-updates-v2618)
 **New:** [v2.617 — **People → Payroll ledger** — **upcoming week drilldown lists sessions with approve/reject**. The v2.616 per-day-totals drilldown is rebuilt as **[`UpcomingWeekSessionsModal`](../src/components/people/UpcomingWeekSessionsModal.tsx)** — every clock session for the person-week, grouped by day (clickable day headers still open My Time with the widened fence), each row showing time range, hours, job/bid short label (`shortJobOrBidLabelFromEmbeds` + prefix map), notes tooltip, and an **Approved / Pending / Open** badge. Closed pending sessions get per-session **Approve** + two-click **Reject** (direct `rejected_at/rejected_by` update, popover idiom); the header has **`Approve all (N)`**. Approval goes through the **`approve_clock_sessions`** RPC (`approveClockSessions` wrapper) — writes `people_hours` incrementally, so approved weeks become payable in Draft Payroll; server-side gating (pay roles / team leads) re-validates. Fresh per-open fetch with embeds; after any mutation the modal refetches and a new `upcomingLocalTick` refetches the tab's upcoming data (a reject shrinks the week's hours + header estimate). Kernel: `upcomingWeekDayBreakdown` replaced by **`groupUpcomingWeekSessions`** (+`upcomingSessionHours`) — 14 kernel tests](#latest-updates-v2617)
@@ -1995,6 +1996,33 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.620)
+
+**Date**: 2026-07-03
+
+### Dashboard — Financials one-pager (AR / AP / Not billed)
+
+New **Financials** section on the Dashboard (dev / master_technician / assistant, placed above Recent activity): three clickable cards giving the one-glance money picture, each opening a drill-down modal of the contributing items.
+
+| Card | Formula | Mirrors |
+|---|---|---|
+| **Accounts Receivable** | per billed invoice `max(0, amount − payments applied)` (write-downs already reduce `amount`) + billed jobs with no billed invoice rows `max(0, revenue − payments_made)` | `useBilledTotal` / [`invoiceBilling.ts`](../src/lib/jobs/invoiceBilling.ts) |
+| **Accounts Payable** | unpaid `supply_house_invoices` **+** open payroll balances (`stubNetPay(gross, less, additional) − payments`); card shows the two subtotals | Supply Houses tab + the Payroll ledger header |
+| **Not Billed Out** | working / ready_to_bill jobs: `max(0, (revenue − payments_made) − Σ billed invoice amounts)` — RTB draft lines deliberately **not** subtracted (not on a customer invoice yet) | Jobs Stages gross/alloc basis ([`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts)) |
+
+- Cards show **total + item count + oldest-item date**; the drill-down modal lists **Item | Date | Amount** largest-first with a totals footer and a header link to the owning screen (Jobs Stages / Supply Houses). A job can legitimately appear in both AR and Not-billed (billed portion outstanding *and* an unbilled remainder) — dollars are never double-counted.
+- **Pure kernel** [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (`buildArBucket` / `buildApBucket` / `buildUnbilledBucket`, **7 unit tests**) + one batched hook [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) (jobs/invoices/payments + unpaid supply invoices + stubs with chunked payments/deductions/additional-lines; fetches only when the section renders for privileged roles).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1789/1789** (7 new); zero new lint warnings (Dashboard.tsx's 8 pre-exist). All four totals cross-checked against prod SQL — AR $84,784.82 / 34 items, AP $49,645.79 supplies + $4,949.48 payroll, Not billed $57,727.50 / 10 jobs — and the payroll AP figure matches the Payroll ledger's "$4,949.48 remaining" to the cent.
+
+#### Files
+
+New: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). Modified: [`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.619)

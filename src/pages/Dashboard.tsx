@@ -78,6 +78,7 @@ import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayE
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
 import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
+import DashboardFinancialsSection from '../components/DashboardFinancialsSection'
 import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
@@ -4326,6 +4327,7 @@ export default function Dashboard() {
 
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+  const showFinancials = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
   const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const quickActionLinkStyle: CSSProperties = {
@@ -7006,6 +7008,7 @@ export default function Dashboard() {
           )}
         </div>
       )}
+      {showFinancials && <DashboardFinancialsSection />}
       {showRecent && (
         <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
           <button
