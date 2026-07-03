@@ -62,29 +62,75 @@ export function upcomingPayrollFetchStartYmd(args: {
   return min
 }
 
-/**
- * Per-day hours for one user's pay week — the drilldown under an upcoming person-week line.
- * Returns only days with > 0 hours, sorted by date; open sessions clip at nowMs.
- */
-export function upcomingWeekDayBreakdown(args: {
-  sessions: UpcomingClockSessionRow[]
-  userId: string
-  weekStartYmd: string
-  nowMs: number
-}): Array<{ workDate: string; hours: number }> {
-  const weekEnd = ymdAddDays(args.weekStartYmd, 6)
-  const byDay = new Map<string, number>()
-  for (const s of args.sessions) {
-    if (s.user_id !== args.userId) continue
-    if (s.work_date < args.weekStartYmd || s.work_date > weekEnd) continue
-    const inMs = new Date(s.clocked_in_at).getTime()
-    const outMs = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : args.nowMs
-    if (!Number.isFinite(inMs) || !Number.isFinite(outMs) || outMs <= inMs) continue
-    byDay.set(s.work_date, (byDay.get(s.work_date) ?? 0) + (outMs - inMs) / 3_600_000)
+/** One clock session inside the upcoming-week drilldown (embeds power the job/bid label). */
+export type UpcomingWeekSessionRow = {
+  id: string
+  work_date: string
+  clocked_in_at: string
+  clocked_out_at: string | null
+  approved_at: string | null
+  notes: string | null
+  jobs_ledger: {
+    hcp_number: string | null
+    click_number?: string | null
+    job_name: string | null
+    job_address: string | null
+    service_type_id?: string | null
+  } | null
+  bids: {
+    bid_number: string | null
+    project_name: string | null
+    address: string | null
+    service_type_id?: string | null
+    customers: { name: string | null } | null
+  } | null
+}
+
+export type UpcomingWeekSessionsGrouped = {
+  /** Day asc; sessions by clocked_in_at asc. hours = day sum (open sessions clip at nowMs). */
+  days: Array<{ workDate: string; hours: number; sessions: UpcomingWeekSessionRow[] }>
+  /** Closed, unapproved sessions — the bulk-approve set. */
+  pendingClosedIds: string[]
+  totalHours: number
+}
+
+/** Session hours for day/total sums; open sessions clip at nowMs; 0 for unparseable/negative. */
+export function upcomingSessionHours(s: Pick<UpcomingWeekSessionRow, 'clocked_in_at' | 'clocked_out_at'>, nowMs: number): number {
+  const inMs = new Date(s.clocked_in_at).getTime()
+  const outMs = s.clocked_out_at ? new Date(s.clocked_out_at).getTime() : nowMs
+  if (!Number.isFinite(inMs) || !Number.isFinite(outMs) || outMs <= inMs) return 0
+  return (outMs - inMs) / 3_600_000
+}
+
+/** Group one user-week's sessions by day for the drilldown modal (caller filters user/week/rejected/revoked). */
+export function groupUpcomingWeekSessions(
+  sessions: UpcomingWeekSessionRow[],
+  nowMs: number,
+): UpcomingWeekSessionsGrouped {
+  const byDay = new Map<string, UpcomingWeekSessionRow[]>()
+  for (const s of sessions) {
+    const list = byDay.get(s.work_date)
+    if (list) list.push(s)
+    else byDay.set(s.work_date, [s])
   }
-  return [...byDay.entries()]
-    .map(([workDate, hours]) => ({ workDate, hours }))
-    .sort((a, b) => a.workDate.localeCompare(b.workDate))
+  const days = [...byDay.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([workDate, list]) => {
+      const sorted = [...list].sort((a, b) => a.clocked_in_at.localeCompare(b.clocked_in_at))
+      return {
+        workDate,
+        hours: sorted.reduce((sum, s) => sum + upcomingSessionHours(s, nowMs), 0),
+        sessions: sorted,
+      }
+    })
+  const pendingClosedIds = days.flatMap((d) =>
+    d.sessions.filter((s) => s.clocked_out_at !== null && s.approved_at === null).map((s) => s.id),
+  )
+  return {
+    days,
+    pendingClosedIds,
+    totalHours: days.reduce((sum, d) => sum + d.hours, 0),
+  }
 }
 
 /**
