@@ -607,7 +607,7 @@ export default function DashboardFinancialsSection() {
     : []
 
   return (
-    <div style={{ margin: '0 0 1.5rem' }}>
+    <div style={{ margin: '0 0 0.5rem' }}>
       {error ? (
         <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.875rem' }}>{error}</p>
       ) : loading || !data ? (
