@@ -103,6 +103,22 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 
 ---
 
+## Password reset emails never arrive (500 "Error sending recovery email")
+
+**Symptoms**: `/reset-password` shows success but no email arrives; the auth API returns `500 unexpected_failure` with "Error sending recovery email" (same for any email Supabase Auth itself must send).
+
+**Cause**: Supabase Auth's mailer has no working SMTP behind it. App-sent emails (invite, sign-in link, notifications, estimates) are unaffected — they go through the Resend API in Edge Functions — but **password reset** uses Supabase's built-in `/auth/v1/recover`, which needs Auth SMTP.
+
+**Solution**: Configure Resend as the Auth SMTP provider:
+1. [Supabase Dashboard](https://supabase.com/dashboard) → project → **Project Settings** → **Authentication** → **SMTP Settings** → enable **Custom SMTP**
+2. Host `smtp.resend.com`, Port `465`, Username `resend`, Password = the Resend API key
+3. Sender: `team@noreply.pipetooling.com` / "PipeTooling" (domain is verified in Resend)
+4. Raise the Auth email rate limit (default is a few per hour) and review **Email OTP expiration** (governs how long invite/magic/recovery links stay valid)
+
+**Verify**: `curl -X POST "$SUPABASE_URL/auth/v1/recover" -H "apikey: $ANON_KEY" -H "Content-Type: application/json" -d '{"email":"<existing user>"}'` → expect HTTP 200.
+
+---
+
 ## Sign-in not working
 
 **Check**:

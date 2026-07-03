@@ -21,6 +21,9 @@ key_sections:
   - name: "invite-user"
     anchor: "#invite-user"
     description: "Email an invite link via Resend (dev-only)"
+  - name: "send-sign-in-email"
+    anchor: "#send-sign-in-email"
+    description: "Email a magic sign-in link via Resend (dev-only)"
   - name: "archive-user"
     line: ~181
     anchor: "#archive-user"
@@ -90,6 +93,7 @@ when_to_read:
 3. [Functions](#functions)
    - [create-user](#create-user)
    - [invite-user](#invite-user)
+   - [send-sign-in-email](#send-sign-in-email)
    - [archive-user](#archive-user)
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
@@ -325,6 +329,47 @@ The emailed link verifies through Supabase Auth and redirects to **`/accept-invi
 **Gateway JWT**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml) (function validates the JWT itself).
 
 **Deploy**: `supabase functions deploy invite-user --no-verify-jwt`
+
+---
+
+### send-sign-in-email
+
+**Purpose**: Email an existing user a magic sign-in link (dev-only). Replaces the old client-side `signInWithOtp` call, which depended on Supabase Auth SMTP; this sends through **Resend** using the editable Settings **Sign-In** email template (`email_templates` where `template_type = 'sign_in'`, `{{name}}` / `{{email}}` / `{{link}}` placeholders; hardcoded fallback matches the Settings defaults).
+
+**Endpoint**: `POST /functions/v1/send-sign-in-email`
+
+**Required Role**: `dev`
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+
+**Called from**: Settings → People & Accounts → Active Accounts → "Send email to sign in" ([`Settings.tsx`](../src/pages/Settings.tsx) `sendSignInEmail`).
+
+#### Request Parameters
+
+```typescript
+interface SendSignInEmailRequest {
+  email: string        // Must belong to an existing public.users row (never creates users)
+  redirectTo?: string  // Where the link lands; must match https://pipetooling.com/* or
+                       // http://localhost:5173|5175/*; defaults to https://pipetooling.com/dashboard
+}
+```
+
+#### Flow
+
+1. Validates caller is `dev`; looks up the target in `public.users` → 400 `No account with this email` if missing.
+2. `auth.admin.generateLink({ type: 'magiclink' })` — returns the link without sending Supabase SMTP mail; nothing is created, so there is no cleanup path.
+3. Renders the `sign_in` template and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper. The link is never returned in the response.
+4. Clicking the link verifies through Supabase Auth and lands with a `type=magiclink` hash; `AuthHandler` ([`App.tsx`](../src/App.tsx)) sets the session and reloads.
+
+#### Success Response
+
+```json
+{ "success": true, "message": "Sign-in email sent to user@example.com" }
+```
+
+**Gateway JWT**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml) (function validates the JWT itself).
+
+**Deploy**: `supabase functions deploy send-sign-in-email --no-verify-jwt`
 
 ---
 

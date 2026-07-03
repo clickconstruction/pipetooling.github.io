@@ -16538,7 +16538,7 @@ Before deploying, ensure all migrations are run:
 
 1. **RLS Policy for People Table**: Owners may not see all people entries due to RLS restrictions. Consider updating RLS policy to allow owners to see all entries.
 
-2. **Email Template Integration**: `invite-user` uses the `invitation` template as of 2026-07-02; `login-as-user` still does not use templates.
+2. **Email Template Integration**: `invite-user` uses the `invitation` template and `send-sign-in-email` uses the `sign_in` template (2026-07-02/03); `login_as` remains unused (login-as-user hands the link to the client without emailing).
 
 3. **Workflow Notifications**: Stage notifications are tracked but not yet sent. Need to implement email sending in workflow stage transitions.
 
