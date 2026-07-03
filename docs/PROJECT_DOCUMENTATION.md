@@ -974,6 +974,11 @@ WHERE proname IN (
 - **Purpose**: Creates corresponding `public.users` record
 - **Logic**: Checks `raw_user_meta_data.invited_role` (any of the 8 modern roles) to set initial role, defaults to `'helpers'`; `ON CONFLICT (id) DO NOTHING` so edge-function upserts can race it safely (migration `20260702160000_modernize_handle_new_user.sql`)
 
+#### `public.sync_last_sign_in_at()`
+- **Trigger**: `on_auth_user_signed_in` — fires on `auth.users` UPDATE OF `last_sign_in_at`
+- **Purpose**: Copies `auth.users.last_sign_in_at` (ground truth for every login mechanism: password, magic link, invite acceptance, imitate) into `public.users.last_sign_in_at`, which the Settings "Last login" column displays (migration `20260703160000_sync_last_sign_in_from_auth.sql`)
+- **History**: Replaces the dropped `touch_last_sign_in()` client RPC — SignIn fired it un-awaited microseconds before the post-login hard reload, so the request was aborted on page unload and the column stayed NULL for everyone
+
 #### `public.is_dev()`
 - **Returns**: `boolean`
 - **Purpose**: Checks if current user has `'dev'` role
