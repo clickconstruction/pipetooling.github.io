@@ -162,7 +162,7 @@ export default function DashboardFinancialsSection() {
     : []
 
   return (
-    <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+    <div style={{ margin: '0 0 1.5rem' }}>
       <h2 style={{ fontSize: '1.125rem', margin: '0 0 0.75rem' }}>Financials</h2>
       {error ? (
         <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.875rem' }}>{error}</p>

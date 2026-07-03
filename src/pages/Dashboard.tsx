@@ -4619,6 +4619,7 @@ export default function Dashboard() {
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
   return (
     <div>
+      {showFinancials && <DashboardFinancialsSection />}
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
           {quickActionDefs.map((b) => (
@@ -7008,7 +7009,6 @@ export default function Dashboard() {
           )}
         </div>
       )}
-      {showFinancials && <DashboardFinancialsSection />}
       {showRecent && (
         <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
           <button
