@@ -14,6 +14,8 @@
  *          customer invoice yet. Mirrors the Stages gross/alloc basis (jobsStagesBoard.ts).
  */
 
+import type { UpcomingPayrollLine } from './upcomingPayrollSummary'
+
 export type FinancialItem = {
   key: string
   label: string
@@ -190,6 +192,56 @@ export function buildApBucket(
     })
   }
   return { ...finishBucket(items), supplyTotal, payrollTotal }
+}
+
+/** m/d without year, from a YYYY-MM-DD string (no Date/ICU involvement). */
+function shortMd(ymd: string): string {
+  const [, m, d] = ymd.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
+
+/** "Upcoming payroll" extra section for the AP drill-down — estimate, not part of the due total. */
+export type UpcomingPayrollApSection = { total: number; count: number; items: FinancialItem[] }
+
+/**
+ * Map the Payroll ledger's upcoming person-week lines (buildUpcomingPayrollSummary) to AP
+ * drill-down items. Keeps the ledger's order (person asc, week asc).
+ */
+export function buildUpcomingApSection(lines: UpcomingPayrollLine[]): UpcomingPayrollApSection {
+  const items: FinancialItem[] = lines.map((l) => ({
+    key: `upcoming:${l.personName}:${l.weekStartYmd}`,
+    label: l.personName,
+    sublabel: `${shortMd(l.weekStartYmd)}–${shortMd(l.weekEndYmd)} · ${l.hours.toFixed(1)}h (est.)`,
+    amount: l.estimatedGrossDollars,
+    dateYmd: l.weekEndYmd,
+    jobId: null,
+    address: null,
+  }))
+  return {
+    total: items.reduce((s, i) => s + i.amount, 0),
+    count: items.length,
+    items,
+  }
+}
+
+/** Assistant view: one aggregate upcoming-payroll line — no per-person amounts. */
+export function redactUpcomingApSection(section: UpcomingPayrollApSection): UpcomingPayrollApSection {
+  if (section.items.length === 0) return section
+  return {
+    total: section.total,
+    count: section.count,
+    items: [
+      {
+        key: 'upcoming:aggregate',
+        label: 'Payroll',
+        sublabel: `${section.count} person-week${section.count === 1 ? '' : 's'}`,
+        amount: section.total,
+        dateYmd: null,
+        jobId: null,
+        address: null,
+      },
+    ],
+  }
 }
 
 /**

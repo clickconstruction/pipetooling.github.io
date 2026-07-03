@@ -2,21 +2,31 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { stubNetPay } from '../lib/payStubDeductions'
+import { localYmdFromDate } from '../lib/payStubPayments'
+import {
+  buildUpcomingPayrollSummary,
+  upcomingPayrollFetchStartYmd,
+  type UpcomingClockSessionRow,
+} from '../lib/upcomingPayrollSummary'
 import {
   buildApBucket,
   buildArBucket,
   buildUnbilledBucket,
+  buildUpcomingApSection,
   type FinancialBucket,
   type FinancialInvoicePaymentRow,
   type FinancialInvoiceRow,
   type FinancialJobRow,
   type FinancialPayrollStubRow,
   type FinancialSupplyInvoiceRow,
+  type UpcomingPayrollApSection,
 } from '../lib/dashboardFinancials'
 
 export type DashboardFinancials = {
   ar: FinancialBucket
   ap: FinancialBucket & { supplyTotal: number; payrollTotal: number }
+  /** Estimated payroll for worked-but-unreported weeks — same kernel as the Payroll ledger header. */
+  apUpcoming: UpcomingPayrollApSection
   unbilled: FinancialBucket
 }
 
@@ -56,7 +66,9 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
     setError(null)
     void (async () => {
       try {
-        const [jobsRes, invoicesRes, supplyRes, stubsRes] = await Promise.all([
+        // Upcoming-payroll inputs are best-effort: a failure there degrades to an empty
+        // "upcoming" section (Payroll-ledger precedent) instead of failing the whole load.
+        const [jobsRes, invoicesRes, supplyRes, stubsRes, usersRes, payConfigRes] = await Promise.all([
           withSupabaseRetry(
             async () =>
               await supabase
@@ -88,6 +100,14 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
                 .select('id, person_name, period_start, period_end, gross_pay'),
             'dashboard financials pay stubs',
           ),
+          withSupabaseRetry(
+            async () => await supabase.from('users').select('id, name'),
+            'dashboard financials users',
+          ).catch(() => null),
+          withSupabaseRetry(
+            async () => await supabase.from('people_pay_config').select('person_name, hourly_wage'),
+            'dashboard financials pay config',
+          ).catch(() => null),
         ])
         if (cancelled) return
 
@@ -105,7 +125,33 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
         const billedInvoiceIds = invoices.filter((i) => i.status === 'billed').map((i) => i.id)
         const stubIds = stubs.map((s) => s.id)
 
-        const [invoicePayments, stubPayments, stubDeductions, stubAdditional] = await Promise.all([
+        // Upcoming-payroll inputs — mirrors PeoplePayStubsTab's upcomingInputs (payroll is
+        // person_name-keyed, clock_sessions is user_id-keyed; trimmed-name match).
+        const userIdByPersonName: Record<string, string> = {}
+        for (const u of (usersRes ?? []) as Array<{ id: string; name: string | null }>) {
+          const n = (u.name ?? '').trim()
+          if (n && !userIdByPersonName[n]) userIdByPersonName[n] = u.id
+        }
+        const hourlyWageByPersonName: Record<string, number> = {}
+        const personNames: string[] = []
+        for (const r of (payConfigRes ?? []) as Array<{ person_name: string; hourly_wage: number | null }>) {
+          const n = r.person_name.trim()
+          if (!n || !userIdByPersonName[n] || n in hourlyWageByPersonName) continue
+          hourlyWageByPersonName[n] = Number(r.hourly_wage ?? 0)
+          personNames.push(n)
+        }
+        const stubsByPerson: Record<string, Array<{ period_start: string; period_end: string }>> = {}
+        const lastStubEndByPerson: Record<string, string> = {}
+        for (const s of stubs) {
+          const n = s.person_name.trim()
+          ;(stubsByPerson[n] ??= []).push({ period_start: s.period_start, period_end: s.period_end })
+          if (!lastStubEndByPerson[n] || s.period_end > lastStubEndByPerson[n]!) lastStubEndByPerson[n] = s.period_end
+        }
+        const todayYmd = localYmdFromDate(new Date())
+        const upcomingFetchStart = upcomingPayrollFetchStartYmd({ personNames, lastStubEndByPerson, todayYmd })
+        const rosterIds = personNames.map((n) => userIdByPersonName[n]!)
+
+        const [invoicePayments, stubPayments, stubDeductions, stubAdditional, upcomingSessions] = await Promise.all([
           chunked(billedInvoiceIds, async (chunk) =>
             ((await withSupabaseRetry(
               async () =>
@@ -132,6 +178,21 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
               'dashboard financials stub additional lines',
             )) ?? []) as Array<{ pay_stub_id: string; line_total: number | null }>,
           ),
+          personNames.length === 0
+            ? Promise.resolve([] as UpcomingClockSessionRow[])
+            : withSupabaseRetry(
+                async () =>
+                  await supabase
+                    .from('clock_sessions')
+                    .select('user_id, work_date, clocked_in_at, clocked_out_at')
+                    .in('user_id', rosterIds)
+                    .gte('work_date', upcomingFetchStart)
+                    .is('rejected_at', null)
+                    .is('revoked_at', null),
+                'dashboard financials upcoming sessions',
+              )
+                .then((d) => (d ?? []) as UpcomingClockSessionRow[])
+                .catch(() => [] as UpcomingClockSessionRow[]),
         ])
         if (cancelled) return
 
@@ -153,9 +214,20 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
           paidSum: paidByStub.get(s.id) ?? 0,
         }))
 
+        const upcomingSummary = buildUpcomingPayrollSummary({
+          personNames,
+          userIdByPersonName,
+          hourlyWageByPersonName,
+          stubsByPerson,
+          sessions: upcomingSessions,
+          todayYmd,
+          nowMs: Date.now(),
+        })
+
         setData({
           ar: buildArBucket(jobs, invoices, invoicePayments),
           ap: buildApBucket(supplyInvoices, payrollStubs),
+          apUpcoming: buildUpcomingApSection(upcomingSummary.lines),
           unbilled: buildUnbilledBucket(jobs, invoices),
         })
       } catch (e) {

@@ -7,8 +7,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { buildUnbilledDispatchTitle, createDispatchRequest } from '../lib/dispatchRequestHelpers'
-import { redactApPayrollItems } from '../lib/dashboardFinancials'
-import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
+import { redactApPayrollItems, redactUpcomingApSection } from '../lib/dashboardFinancials'
+import type { FinancialBucket, FinancialItem, UpcomingPayrollApSection } from '../lib/dashboardFinancials'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
 
@@ -180,6 +180,7 @@ function ItemsModal({
   onClose,
   onOpenJob,
   onSendToDispatch,
+  upcomingSection,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
@@ -188,6 +189,8 @@ function ItemsModal({
   onOpenJob: ((item: FinancialItem) => void) | null
   /** Not-billed rows only: "→" opens the send-to-Dispatch composer. */
   onSendToDispatch: ((item: FinancialItem) => void) | null
+  /** AP only: estimated upcoming payroll — listed after the due items, excluded from the footer total. */
+  upcomingSection: UpcomingPayrollApSection | null
 }) {
   const meta = CARD_META[cardKey]
   // Not billed: two status sections — Ready to Bill on top (closest to money), Working below.
@@ -363,11 +366,38 @@ function ItemsModal({
                   ))}
                 </Fragment>
               ))}
+              {upcomingSection && upcomingSection.count > 0 ? (
+                <Fragment>
+                  <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb' }}>
+                    <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
+                      <span style={{ fontWeight: 600 }}>Upcoming payroll (estimate)</span>
+                      <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
+                        {upcomingSection.count} person-week{upcomingSection.count === 1 ? '' : 's'} · $
+                        {formatCurrency(upcomingSection.total)}
+                      </span>
+                    </td>
+                  </tr>
+                  {upcomingSection.items.map((item) => (
+                    <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                      <td style={{ padding: '0.45rem 0.65rem' }}>
+                        {item.label}
+                        {item.sublabel ? (
+                          <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
+                        ) : null}
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{shortDate(item.dateYmd)}</td>
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        ${formatCurrency(item.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ) : null}
             </tbody>
             <tfoot>
               <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
                 <td style={{ padding: '0.5rem 0.65rem' }} colSpan={2}>
-                  Total
+                  {upcomingSection && upcomingSection.count > 0 ? 'Total due' : 'Total'}
                 </td>
                 <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   ${formatCurrency(bucket.total)}
@@ -396,7 +426,9 @@ export default function DashboardFinancialsSection() {
         {
           key: 'ap',
           bucket: data.ap,
-          extra: `Supplies $${formatCurrency(data.ap.supplyTotal)} · Payroll $${formatCurrency(data.ap.payrollTotal)}`,
+          extra:
+            `Supplies $${formatCurrency(data.ap.supplyTotal)} · Payroll: $${formatCurrency(data.ap.payrollTotal)} due` +
+            (data.apUpcoming.count > 0 ? ` / $${formatCurrency(data.apUpcoming.total)} upcoming` : ''),
         },
         { key: 'unbilled', bucket: data.unbilled },
       ]
@@ -462,6 +494,13 @@ export default function DashboardFinancialsSection() {
               : null
           }
           onSendToDispatch={openCard === 'unbilled' ? (item) => setDispatchItem(item) : null}
+          upcomingSection={
+            openCard === 'ap'
+              ? role === 'assistant'
+                ? redactUpcomingApSection(data.apUpcoming)
+                : data.apUpcoming
+              : null
+          }
         />
       ) : null}
       {dispatchItem ? <SendToDispatchModal item={dispatchItem} onClose={() => setDispatchItem(null)} /> : null}

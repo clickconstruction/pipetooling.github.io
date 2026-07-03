@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.628)
+last_updated: 2026-07-03 (v2.629)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.629 — **Dashboard → Financials** — **AP shows upcoming payroll (due / upcoming split)**. The AP card sub-line becomes **`Supplies $X · Payroll: $Y due / $Z upcoming`**, where `$Z` is the Payroll ledger header's "upcoming" figure computed by the **same kernel** (`buildUpcomingPayrollSummary` — person-weeks with clocked time incl. pending but no pay report, hours × wage). The AP drill-down gains an **`Upcoming payroll (estimate)`** section after the due items (grey header with person-week count + subtotal; per person-week rows `Name · 6/28–7/4 · 12.3h (est.)`), excluded from the footer total, which relabels to **`Total due`**. **Assistants** get a single aggregate `Payroll — $Z` line (`redactUpcomingApSection`, same rule as v2.628). Hook fetches `users` + `people_pay_config` + bounded `clock_sessions` (best-effort — failures degrade to no upcoming section); new kernel mappers `buildUpcomingApSection`/`redactUpcomingApSection` (+4 tests)](#latest-updates-v2629)
 **New:** [v2.628 — **Dashboard → Financials** — **assistants see the payroll total, not per-person lines**. For role `assistant`, the Accounts Payable drill-down collapses all per-person pay-stub rows into one aggregate **`Payroll — $Y`** line (`N open pay stubs` sublabel, oldest period-end as the date); supplies stay itemized and the card totals / `Supplies $X · Payroll $Y` subtotals are unchanged. New pure kernel helper `redactApPayrollItems` (+2 tests) applied only when opening the AP modal as an assistant — mirrors the existing `canAccessPay: false` convention that hides the People → Payroll tab from assistants. Display rule, not a data barrier (RLS intentionally grants assistants-of-pay-approved-masters the rows for their other pay duties)](#latest-updates-v2628)
 **New:** [v2.627 — **Dashboard → Financials** — **drill-down hint spans the full header width**: the explanatory subtitle no longer shares a flex cell with the `Open Jobs Stages →` link + close button (which squeezed it into a narrow wrapped column) — the header is now title-row (title | link | ×) over a full-width hint line. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2627)
 **New:** [v2.626 — **Dashboard → Financials** — **drill-down header layout**: item count moved up into the title line as a muted `(10 items)` suffix — `Not Billed Out — $57,727.50 (10 items)` — leaving the subtitle as just the explanatory hint. Applies to all three drill-downs (AR / AP / Not billed); [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2626)
@@ -2004,6 +2005,30 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.629)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP shows upcoming payroll (due / upcoming split)
+
+The Payroll ledger header has long shown two payroll numbers — open balances (`$4,949.48 remaining`) and **upcoming** (`15 upcoming: $13,441.87`: person-weeks with clocked time, including pending approval, not yet covered by a pay report; estimated hours × wage). The Financials AP card only showed the due side. Now:
+
+- **Card sub-line**: `Supplies $54,363.28 · Payroll: $4,949.48 due / $13,441.87 upcoming` (the upcoming tail is hidden when there are no upcoming person-weeks). The card's big number stays **due-only** — upcoming is an estimate, not yet payable.
+- **AP drill-down**: new **`Upcoming payroll (estimate)`** section after the due items — grey header row with `N person-weeks · $Z` subtotal, then one row per person-week (`Bryan · 6/28–7/4 · 12.3h (est.)` with the week-end date and estimated dollars). Excluded from the footer total, which relabels to **`Total due`** when the section is present.
+- **Assistant redaction** (v2.628 rule extended): role `assistant` sees a single aggregate `Payroll — $Z` line with an `N person-weeks` sublabel instead of per-person rows.
+- **Same math as the ledger, by construction**: [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) reuses `buildUpcomingPayrollSummary` / `upcomingPayrollFetchStartYmd` from [`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) verbatim, with the same input assembly as the ledger tab (wages from `people_pay_config.hourly_wage`, trimmed-name user match, stub coverage from `pay_stubs`) and the same bounded `clock_sessions` fetch. New kernel mappers `buildUpcomingApSection` / `redactUpcomingApSection` in [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**+4 tests**).
+- **Graceful degradation**: the `users` / `people_pay_config` / `clock_sessions` fetches are best-effort — any failure yields an empty upcoming section (card shows due-only, no section in the modal) without failing the whole Financials load. Non-pay-approved master techs, whose RLS already returns no stubs/wages, simply see no upcoming figures — same as their due-payroll behavior.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1799/1799** (4 new); zero lint warnings on touched files. On-screen parity check: the card's `$Z upcoming` should equal the Payroll ledger header's upcoming figure (same kernel + inputs, no person-search filter).
+
+#### Files
+
+Modified: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
 ---
 
 ## Latest Updates (v2.628)

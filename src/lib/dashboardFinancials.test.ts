@@ -3,8 +3,10 @@ import {
   buildApBucket,
   buildArBucket,
   buildUnbilledBucket,
+  buildUpcomingApSection,
   financialJobLabel,
   redactApPayrollItems,
+  redactUpcomingApSection,
   type FinancialInvoiceRow,
   type FinancialJobRow,
 } from './dashboardFinancials'
@@ -120,6 +122,60 @@ describe('redactApPayrollItems', () => {
       [],
     )
     expect(redactApPayrollItems(ap)).toBe(ap)
+  })
+})
+
+describe('buildUpcomingApSection', () => {
+  const lines = [
+    { personName: 'Bryan', weekStartYmd: '2026-06-21', weekEndYmd: '2026-06-27', hours: 12.25, estimatedGrossDollars: 306.25 },
+    { personName: 'Bryan', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04', hours: 8, estimatedGrossDollars: 200 },
+    { personName: 'Taunya', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04', hours: 10, estimatedGrossDollars: 350 },
+  ]
+
+  it('maps ledger person-week lines to items, keeping ledger order', () => {
+    const section = buildUpcomingApSection(lines)
+    expect(section.count).toBe(3)
+    expect(section.total).toBeCloseTo(856.25)
+    expect(section.items.map((i) => i.key)).toEqual([
+      'upcoming:Bryan:2026-06-21',
+      'upcoming:Bryan:2026-06-28',
+      'upcoming:Taunya:2026-06-28',
+    ])
+    expect(section.items[0]).toMatchObject({
+      label: 'Bryan',
+      sublabel: '6/21–6/27 · 12.3h (est.)',
+      amount: 306.25,
+      dateYmd: '2026-06-27',
+      jobId: null,
+    })
+  })
+
+  it('returns an empty section for no lines', () => {
+    expect(buildUpcomingApSection([])).toEqual({ total: 0, count: 0, items: [] })
+  })
+})
+
+describe('redactUpcomingApSection', () => {
+  it('collapses to one aggregate line preserving total and count', () => {
+    const section = buildUpcomingApSection([
+      { personName: 'Bryan', weekStartYmd: '2026-06-21', weekEndYmd: '2026-06-27', hours: 12, estimatedGrossDollars: 300 },
+      { personName: 'Taunya', weekStartYmd: '2026-06-28', weekEndYmd: '2026-07-04', hours: 10, estimatedGrossDollars: 350 },
+    ])
+    const redacted = redactUpcomingApSection(section)
+    expect(redacted.total).toBeCloseTo(650)
+    expect(redacted.count).toBe(2)
+    expect(redacted.items).toHaveLength(1)
+    expect(redacted.items[0]).toMatchObject({
+      key: 'upcoming:aggregate',
+      label: 'Payroll',
+      sublabel: '2 person-weeks',
+      amount: 650,
+    })
+  })
+
+  it('passes an empty section through by reference', () => {
+    const empty = buildUpcomingApSection([])
+    expect(redactUpcomingApSection(empty)).toBe(empty)
   })
 })
 
