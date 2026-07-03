@@ -62,6 +62,7 @@ import { JobsListCacheProvider } from './contexts/JobsListCacheContext'
 import { JobDetailModalProvider } from './contexts/JobDetailModalContext'
 import { UpdateFocusOpenerBridgeProvider } from './contexts/UpdateFocusOpenerBridgeContext'
 import { UserReviewModalProvider } from './contexts/UserReviewModalContext'
+import { ActiveAccountsModalProvider } from './contexts/ActiveAccountsModalContext'
 
 // Easter egg:
 // Jodi if you can see this the secret code is Swordfish
@@ -212,7 +213,9 @@ function AppContent() {
                                           <UpdateFocusOpenerBridgeProvider>
                                             <JobDetailModalProvider>
                                               <UserReviewModalProvider>
-                                                <Layout />
+                                                <ActiveAccountsModalProvider>
+                                                  <Layout />
+                                                </ActiveAccountsModalProvider>
                                               </UserReviewModalProvider>
                                             </JobDetailModalProvider>
                                           </UpdateFocusOpenerBridgeProvider>

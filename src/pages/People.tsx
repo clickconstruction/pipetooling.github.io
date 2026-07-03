@@ -93,6 +93,7 @@ import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { useHoursGridFirstColWidthPx } from '../hooks/useHoursGridFirstColWidthPx'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useToastContext } from '../contexts/ToastContext'
+import { useActiveAccountsModal } from '../contexts/ActiveAccountsModalContext'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { HoursUnassignedModal } from '../components/HoursUnassignedModal'
 import { PeopleHoursDayAuditModal } from '../components/PeopleHoursDayAuditModal'
@@ -225,6 +226,7 @@ export default function People() {
   const { user: authUser, role: authRole } = useAuth()
   const isDocVisible = useDocumentVisibility()
   const { showToast } = useToastContext()
+  const activeAccountsModal = useActiveAccountsModal()
   const prefixMap = useLedgerPrefixMap()
   const narrowViewport = useNarrowViewport640()
   const { widthPx: hoursGridFirstColWidthPx, measurer: hoursGridFirstColMeasurer } = useHoursGridFirstColWidthPx()
@@ -3178,6 +3180,7 @@ export default function People() {
 
       {activeTab === 'users' && (
         <PeopleUsersTab
+          onOpenActiveAccounts={isDev ? () => activeAccountsModal?.openActiveAccounts({ onDataChanged: () => { void loadPeople() } }) : undefined}
           isDev={isDev}
           narrowViewport={narrowViewport}
           users={users}
