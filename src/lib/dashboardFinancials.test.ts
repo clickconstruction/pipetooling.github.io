@@ -4,6 +4,7 @@ import {
   buildArBucket,
   buildUnbilledBucket,
   financialJobLabel,
+  redactApPayrollItems,
   type FinancialInvoiceRow,
   type FinancialJobRow,
 } from './dashboardFinancials'
@@ -87,6 +88,38 @@ describe('buildApBucket', () => {
     expect(bucket.total).toBeCloseTo(750)
     expect(bucket.count).toBe(2)
     expect(bucket.oldestDateYmd).toBe('2026-06-15')
+  })
+})
+
+describe('redactApPayrollItems', () => {
+  it('collapses per-person stub rows into one aggregate line, totals unchanged', () => {
+    const ap = buildApBucket(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      [
+        { id: 'p1', person_name: 'Taunya', period_start: '2026-06-21', period_end: '2026-06-27', netPay: 900, paidSum: 400 },
+        { id: 'p2', person_name: 'Bryan', period_start: '2026-06-14', period_end: '2026-06-20', netPay: 700, paidSum: 0 },
+      ],
+    )
+    const redacted = redactApPayrollItems(ap)
+    expect(redacted.items.some((i) => i.key.startsWith('stub:'))).toBe(false)
+    const aggregate = redacted.items.find((i) => i.key === 'payroll:aggregate')
+    expect(aggregate?.amount).toBeCloseTo(1200)
+    expect(aggregate?.label).toBe('Payroll')
+    expect(aggregate?.sublabel).toBe('2 open pay stubs')
+    expect(aggregate?.dateYmd).toBe('2026-06-20') // oldest replaced stub period_end
+    expect(redacted.items.find((i) => i.key === 'supply:s1')?.amount).toBeCloseTo(250)
+    expect(redacted.total).toBeCloseTo(ap.total)
+    expect(redacted.supplyTotal).toBeCloseTo(ap.supplyTotal)
+    expect(redacted.payrollTotal).toBeCloseTo(ap.payrollTotal)
+    expect(redacted.count).toBe(2) // supply line + aggregate
+  })
+
+  it('passes a payroll-free bucket through unchanged', () => {
+    const ap = buildApBucket(
+      [{ id: 's1', amount: 250, invoice_date: '2026-06-15', supply_houses: { name: 'Ferguson' } }],
+      [],
+    )
+    expect(redactApPayrollItems(ap)).toBe(ap)
   })
 })
 

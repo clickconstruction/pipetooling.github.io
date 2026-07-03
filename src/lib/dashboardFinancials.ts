@@ -192,6 +192,33 @@ export function buildApBucket(
   return { ...finishBucket(items), supplyTotal, payrollTotal }
 }
 
+/**
+ * Assistant view of the AP drill-down: collapse per-person payroll rows into one aggregate
+ * "Payroll" line (individual pay amounts are private; the outstanding total is not).
+ * Totals and subtotals are unchanged by construction.
+ */
+export function redactApPayrollItems(
+  ap: FinancialBucket & { supplyTotal: number; payrollTotal: number },
+): FinancialBucket & { supplyTotal: number; payrollTotal: number } {
+  const stubItems = ap.items.filter((i) => i.key.startsWith('stub:'))
+  if (stubItems.length === 0) return ap
+  let oldest: string | null = null
+  for (const i of stubItems) {
+    if (i.dateYmd && (oldest === null || i.dateYmd < oldest)) oldest = i.dateYmd
+  }
+  const aggregate: FinancialItem = {
+    key: 'payroll:aggregate',
+    label: 'Payroll',
+    sublabel: `${stubItems.length} open pay stub${stubItems.length === 1 ? '' : 's'}`,
+    amount: ap.payrollTotal,
+    dateYmd: oldest,
+    jobId: null,
+    address: null,
+  }
+  const rest = ap.items.filter((i) => !i.key.startsWith('stub:'))
+  return { ...finishBucket([...rest, aggregate]), supplyTotal: ap.supplyTotal, payrollTotal: ap.payrollTotal }
+}
+
 /** Not billed out: working / ready_to_bill jobs' revenue not yet on a billed customer invoice. */
 export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: FinancialInvoiceRow[]): FinancialBucket {
   const billedAmountByJob = new Map<string, number>()

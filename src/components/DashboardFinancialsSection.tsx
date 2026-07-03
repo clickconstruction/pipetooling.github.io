@@ -7,6 +7,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { buildUnbilledDispatchTitle, createDispatchRequest } from '../lib/dispatchRequestHelpers'
+import { redactApPayrollItems } from '../lib/dashboardFinancials'
 import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
@@ -384,6 +385,7 @@ function ItemsModal({
 /** Dashboard "Financials" one-pager: AR / AP / Not billed cards with drill-down modals. */
 export default function DashboardFinancialsSection() {
   const { data, loading, error } = useDashboardFinancials(true)
+  const { role } = useAuth()
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
   const [dispatchItem, setDispatchItem] = useState<FinancialItem | null>(null)
   const jobDetailModal = useJobDetailModal()
@@ -443,7 +445,9 @@ export default function DashboardFinancialsSection() {
       {openCard && data ? (
         <ItemsModal
           cardKey={openCard}
-          bucket={data[openCard]}
+          // Assistants see the payroll total but not per-person amounts (matches the
+          // canAccessPay gate that hides the People → Payroll tab from them).
+          bucket={openCard === 'ap' && role === 'assistant' ? redactApPayrollItems(data.ap) : data[openCard]}
           onClose={() => setOpenCard(null)}
           onOpenJob={
             jobDetailModal

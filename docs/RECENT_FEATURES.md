@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.627)
+last_updated: 2026-07-03 (v2.628)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.628 — **Dashboard → Financials** — **assistants see the payroll total, not per-person lines**. For role `assistant`, the Accounts Payable drill-down collapses all per-person pay-stub rows into one aggregate **`Payroll — $Y`** line (`N open pay stubs` sublabel, oldest period-end as the date); supplies stay itemized and the card totals / `Supplies $X · Payroll $Y` subtotals are unchanged. New pure kernel helper `redactApPayrollItems` (+2 tests) applied only when opening the AP modal as an assistant — mirrors the existing `canAccessPay: false` convention that hides the People → Payroll tab from assistants. Display rule, not a data barrier (RLS intentionally grants assistants-of-pay-approved-masters the rows for their other pay duties)](#latest-updates-v2628)
 **New:** [v2.627 — **Dashboard → Financials** — **drill-down hint spans the full header width**: the explanatory subtitle no longer shares a flex cell with the `Open Jobs Stages →` link + close button (which squeezed it into a narrow wrapped column) — the header is now title-row (title | link | ×) over a full-width hint line. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2627)
 **New:** [v2.626 — **Dashboard → Financials** — **drill-down header layout**: item count moved up into the title line as a muted `(10 items)` suffix — `Not Billed Out — $57,727.50 (10 items)` — leaving the subtitle as just the explanatory hint. Applies to all three drill-downs (AR / AP / Not billed); [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2626)
 **New:** [v2.625 — **Dashboard → Financials + Jobs Stages** — **section headers deep-link to Jobs Stages**. The **Ready to Bill** / **Working** headers in the Not Billed Out drill-down are now blue links to `/jobs?tab=stages&stagesSection=readyToBill|working`. New generic **`?stagesSection=waiting|working|readyToBill|billed`** param on [`Jobs.tsx`](../src/pages/Jobs.tsx) (mirrors the `stagesInvoice` idiom): once the Stages tab has data it calls the existing `focusStagesSection` (opens the collapsed section + smooth-scrolls to its anchor) and strips itself from the URL — reusable for any future "jump to a Stages section" link](#latest-updates-v2625)
@@ -2003,6 +2004,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.628)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — assistants see the payroll total, not per-person lines
+
+Assistants should know the total payroll outstanding but not what individuals get paid. For role `assistant`, the **Accounts Payable** drill-down now collapses all per-person pay-stub rows into a single aggregate line — **`Payroll — $4,949.48`** with an `N open pay stubs` sublabel and the oldest period-end as its date. Supplies stay itemized per invoice, and everything total-shaped is unchanged: the AP card, its `Supplies $X · Payroll $Y` subtotal line, and the modal's grand-total footer.
+
+- New pure kernel helper `redactApPayrollItems` in [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**+2 tests**: collapse preserves totals/subtotals + oldest date; payroll-free bucket passes through by reference). Applied in [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only when the AP modal opens with `role === 'assistant'` (via the already-imported `useAuth`).
+- Consistent with the app's existing convention: `usePeopleAccess` gives assistants `canAccessPay: false`, hiding the whole People → Payroll tab — the Financials AP modal was the only remaining UI surface showing them per-person pay.
+- **Display rule, not a data barrier**: RLS intentionally grants assistants-of-pay-approved-masters SELECT on the pay-stub tables (their other pay-access duties depend on it), so the rows still reach the browser; this matches the Payroll-tab precedent.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1795/1795** (2 new); zero lint warnings on touched files.
+
+#### Files
+
+Modified: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
 ---
 
 ## Latest Updates (v2.627)
