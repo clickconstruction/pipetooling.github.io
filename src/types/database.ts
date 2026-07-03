@@ -9270,6 +9270,27 @@ export type Database = {
           },
         ]
       }
+      user_app_activity_page_daily: {
+        Row: {
+          active_seconds: number
+          activity_date: string
+          page: string
+          user_id: string
+        }
+        Insert: {
+          active_seconds?: number
+          activity_date: string
+          page: string
+          user_id: string
+        }
+        Update: {
+          active_seconds?: number
+          activity_date?: string
+          page?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_app_activity_viewers: {
         Row: {
           created_at: string
@@ -10327,7 +10348,7 @@ export type Database = {
         Returns: number
       }
       bump_user_app_activity: {
-        Args: { p_seconds?: number }
+        Args: { p_page?: string; p_seconds?: number }
         Returns: undefined
       }
       can_access_bid_for_pricing: {
@@ -11555,6 +11576,7 @@ export type Database = {
         Args: { p_license_id: string; p_link: string }
         Returns: string
       }
+      pay_access_clock_week_fence_bypass: { Args: never; Returns: boolean }
       pay_staff_bulk_insert_user_time_off: {
         Args: {
           p_end_date: string

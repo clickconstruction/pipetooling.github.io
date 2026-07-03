@@ -4,6 +4,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling
 import { formatActiveSeconds } from '../../utils/formatActiveSeconds'
 import { formatNotificationDatetime } from '../../utils/formatNotificationDatetime'
 import { useToastContext } from '../../contexts/ToastContext'
+import { PersonActivityDetailModal } from './PersonActivityDetailModal'
 
 type ActivityGrantUserRow = {
   id: string
@@ -115,6 +116,8 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
   const [activityGrantListLoading, setActivityGrantListLoading] = useState(false)
   const [activityGrantBusyId, setActivityGrantBusyId] = useState<string | null>(null)
   const [activityGrantsSectionOpen, setActivityGrantsSectionOpen] = useState(true)
+  /** Person whose 90-day day-by-day / per-page drilldown modal is open. */
+  const [activityDetailPerson, setActivityDetailPerson] = useState<{ userId: string; name: string } | null>(null)
 
   useEffect(() => {
     if (!isDev) return
@@ -329,7 +332,27 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
             <tbody>
               {rows.map((r) => (
                 <tr key={r.userId} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <td style={{ padding: '0.5rem 0.75rem' }}>{r.name || '—'}</td>
+                  <td style={{ padding: '0.5rem 0.75rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => setActivityDetailPerson({ userId: r.userId, name: r.name || r.email || '—' })}
+                      title="Day-by-day activity for this person"
+                      aria-label={`Day-by-day activity for ${r.name || r.email || 'user'}`}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: 0,
+                        margin: 0,
+                        font: 'inherit',
+                        color: '#2563eb',
+                        textDecoration: 'underline dotted',
+                        textUnderlineOffset: '2px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {r.name || '—'}
+                    </button>
+                  </td>
                   <td style={{ padding: '0.5rem 0.75rem' }}>{r.email || '—'}</td>
                   <td style={{ padding: '0.5rem 0.75rem' }}>
                     {r.lastSeen ? formatNotificationDatetime(r.lastSeen) : '—'}
@@ -346,6 +369,14 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
         </div>
       )}
       </div>
+      {activityDetailPerson ? (
+        <PersonActivityDetailModal
+          userId={activityDetailPerson.userId}
+          personName={activityDetailPerson.name}
+          zIndex={1100}
+          onClose={() => setActivityDetailPerson(null)}
+        />
+      ) : null}
     </>
   )
 }

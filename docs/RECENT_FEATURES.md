@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.618)
+last_updated: 2026-07-03 (v2.619)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.619 — **People → Activity** — **per-person drilldown with page-level time**. Names in the Activity table are now links opening **[`PersonActivityDetailModal`](../src/components/people/PersonActivityDetailModal.tsx)**: a **90-day** day-by-day list (date, active h:mm, first–last seen) with each day expandable to its **per-page split**, plus a "Where (90d)" totals strip (`Bids · Pricing 12:40 …`). Collection: new **`user_app_activity_page_daily`** table (UTC day × page key; RLS mirrors the daily table — own rows / dev / granted viewers; writes via RPC only) and **`bump_user_app_activity`** recreated with `p_page text DEFAULT NULL` (migration `20260703120000`, applied to prod via MCP after body-md5 verification — old deployed clients calling one-arg keep working). The heartbeat is now **page-aware**: [`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts) takes a `pageKey` (new pure kernel [`appActivityPage.ts`](../src/lib/appActivityPage.ts): `appActivityPageKey('/bids','?tab=pricing') → 'bids:pricing'`, first path segment + sanitized tab param, bounded cardinality) and is keyed on it — in-app navigation flushes the old page's partial segment via effect cleanup and restarts the minute clock on the new page, so mid-minute navigation attributes correctly. Zero-second "seen" pings carry no page (last-seen only). **Page data accrues from deploy day**; historical days show totals with no page rows. +6 kernel tests](#latest-updates-v2619)
 **New:** [v2.618 — **App activity heartbeat** — **short visits now register** ([`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts)). Previously the first bump only fired after **60 continuous seconds** of tab visibility and the timer reset on every hide — so a 30-second clock-in/out visit recorded *nothing*, leaving People → Activity "Last seen" up to weeks older than real clock actions (prod check: one tech 26 days stale). Now: (1) an **instant `bump(0)`** on becoming visible updates `last_seen_at` without adding hours (throttled to once/min against tab-flicker spam; the deployed `bump_user_app_activity` RPC already clamps `p_seconds ≥ 0` — no DB change); (2) on hide/**pagehide**/unmount the **partial minute flushes** (≥5s), so a 40-second visit adds ~40s of active time; (3) the 60s tick continues for sustained use, with the partial-segment clock reset on each tick. Still strictly non-retrying (2026-06-04 incident lesson)](#latest-updates-v2618)
 **New:** [v2.617 — **People → Payroll ledger** — **upcoming week drilldown lists sessions with approve/reject**. The v2.616 per-day-totals drilldown is rebuilt as **[`UpcomingWeekSessionsModal`](../src/components/people/UpcomingWeekSessionsModal.tsx)** — every clock session for the person-week, grouped by day (clickable day headers still open My Time with the widened fence), each row showing time range, hours, job/bid short label (`shortJobOrBidLabelFromEmbeds` + prefix map), notes tooltip, and an **Approved / Pending / Open** badge. Closed pending sessions get per-session **Approve** + two-click **Reject** (direct `rejected_at/rejected_by` update, popover idiom); the header has **`Approve all (N)`**. Approval goes through the **`approve_clock_sessions`** RPC (`approveClockSessions` wrapper) — writes `people_hours` incrementally, so approved weeks become payable in Draft Payroll; server-side gating (pay roles / team leads) re-validates. Fresh per-open fetch with embeds; after any mutation the modal refetches and a new `upcomingLocalTick` refetches the tab's upcoming data (a reject shrinks the week's hours + header estimate). Kernel: `upcomingWeekDayBreakdown` replaced by **`groupUpcomingWeekSessions`** (+`upcomingSessionHours`) — 14 kernel tests](#latest-updates-v2617)
 **New:** [v2.616 — **People → Payroll ledger** — **upcoming week drilldown → My Time day editor**. In the Upcoming payroll modal, each row's **Period** is now a link opening a nested per-week modal (z `Z_PEOPLE_PAY_MODAL + 10`) listing the **contributing days** (`Wed 7/1 · 8.25` rows via new kernel helper `upcomingWeekDayBreakdown` — per-day sums from the already-fetched sessions, open sessions clip at now) with a week-total footer; clicking a day opens **`DashboardMyTimeDayEditorModal`** for that person+day (editor z 1200 stacks above both modals — no hide choreography needed). `onOpenMyTimeForDay` gains an optional `saveableRange` arg → new plain `saveableRange` field on the shared `hoursMyTimeEditor` state feeds `saveableRangeOverride`, so days in weeks older than the standard two-week fence stay saveable (scoped to that pay week; the v2.597 server-side leader-RPC bypass applies). After a save, new `ledgerUpcomingRefreshTick` prop refetches the upcoming sessions so the modals + header segment update in place](#latest-updates-v2616)
@@ -1994,6 +1995,29 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.619)
+
+**Date**: 2026-07-03
+
+### People → Activity — per-person drilldown with page-level time
+
+Building on v2.618's heartbeat accuracy fixes: the Activity table's **names are now links** opening a per-person drilldown, and the heartbeat starts recording **which page** time is spent on.
+
+- **[`PersonActivityDetailModal`](../src/components/people/PersonActivityDetailModal.tsx)**: last **90 days**, newest first — each day shows active h:mm and first–last seen (local times), expandable (`<details>`) to that day's **per-page split**; a **"Where (90d)"** pill strip totals time per page across the window (`Bids · Pricing 12:40`, `Dashboard 8:15`, …). Header notes the UTC day bucketing and that page data collects from deploy day (historical days show totals with no page rows).
+- **Collection** (migration [`20260703120000_user_app_activity_page_daily.sql`](../supabase/migrations/20260703120000_user_app_activity_page_daily.sql), validated via transactional dry-run then applied to prod via MCP): new **`user_app_activity_page_daily`** `(user_id, activity_date, page, active_seconds)` with RLS mirroring the daily table (own rows / `is_dev()` / `user_app_activity_viewers` grantees; writes only via the RPC). **`bump_user_app_activity`** recreated (body md5-verified against prod first) with **`p_page text DEFAULT NULL`** — one-arg calls from already-deployed clients keep working, so the migration is client-deploy-safe; zero-second "seen" pings skip the page write.
+- **Page-aware heartbeat**: [`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts) now takes a `pageKey` from Layout and the effect is **keyed on it** — in-app navigation flushes the old page's partial segment (≥5s) through effect cleanup and restarts the minute clock on the new page, so mid-minute navigation attributes time to each page correctly. Still non-retrying.
+- **Page keys**: new pure kernel [`appActivityPage.ts`](../src/lib/appActivityPage.ts) — `appActivityPageKey(pathname, search)` = first path segment + sanitized `?tab=` (`bids:pricing`, `people:pay_stubs`, `jobs`, `home`; bounded cardinality, RPC clips to 80 chars), `formatAppActivityPageLabel` (`bids:pricing → Bids · Pricing`), and `buildPersonActivityDetail` (merges daily totals with sparse page rows). **+6 unit tests**.
+
+#### Verification
+
+Migration dry-run on prod inside a rolled-back transaction (table + policy + all three RPC call shapes), then MCP `apply_migration`; `npm run gen-types:linked`. `tsc -b` clean; `vitest run` **1782/1782**; zero new lint warnings (the two on touched files pre-exist).
+
+#### Files
+
+New: [`supabase/migrations/20260703120000_user_app_activity_page_daily.sql`](../supabase/migrations/20260703120000_user_app_activity_page_daily.sql), [`src/lib/appActivityPage.ts`](../src/lib/appActivityPage.ts) (+ test), [`src/components/people/PersonActivityDetailModal.tsx`](../src/components/people/PersonActivityDetailModal.tsx). Modified: [`src/hooks/useAppActivityHeartbeat.ts`](../src/hooks/useAppActivityHeartbeat.ts), [`src/components/Layout.tsx`](../src/components/Layout.tsx), [`src/components/people/PeopleAppActivityPanel.tsx`](../src/components/people/PeopleAppActivityPanel.tsx), regenerated [`src/types/database.ts`](../src/types/database.ts).
+
 ---
 
 ## Latest Updates (v2.618)

@@ -132,6 +132,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 3, 2026
+
+**`20260703120000_user_app_activity_page_daily.sql`** _(applied to prod 2026-07-03 via Supabase MCP `apply_migration`, ahead of client)_
+- **Purpose**: **People → Activity** — per-page time dimension. New **`user_app_activity_page_daily`** `(user_id, activity_date, page, active_seconds; PK user+date+page; seconds CHECK 0–86400)`; RLS SELECT mirrors `user_app_activity_daily` (own rows / `is_dev()` / `user_app_activity_viewers` grantees), writes only via the RPC. **`bump_user_app_activity`** dropped + recreated with added **`p_page text DEFAULT NULL`** (body md5-verified against prod before patching; grants re-applied) — one-arg calls from deployed clients keep working; `p_page` trimmed/clipped to 80 chars; zero-second pings skip the page write.
+- **Impact**: [`useAppActivityHeartbeat.ts`](../src/hooks/useAppActivityHeartbeat.ts) page-aware bumps; [`appActivityPage.ts`](../src/lib/appActivityPage.ts) page keys; [`PersonActivityDetailModal.tsx`](../src/components/people/PersonActivityDetailModal.tsx) drilldown. `npm run gen-types:linked` run after apply. **`RECENT_FEATURES.md` v2.619**.
+- **Category**: People / Activity / Telemetry / RLS
+
 #### July 2, 2026
 
 **`20260702150000_leader_split_week_fence_pay_access_bypass.sql`** _(applied to prod 2026-07-02 via Supabase MCP `apply_migration`, ahead of client)_

@@ -38,6 +38,7 @@ import {
 } from './HeaderGlobalSearch'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
 import { useAppActivityHeartbeat } from '../hooks/useAppActivityHeartbeat'
+import { appActivityPageKey } from '../lib/appActivityPage'
 import { hardReloadFromRoot } from '../lib/hardReload'
 import { prefetchDashboardPhase1 } from '../lib/dashboardPrefetch'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
@@ -88,7 +89,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess } = useAuth()
-  useAppActivityHeartbeat(authUser?.id)
+  useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
   useAssistantDispatchLanding()
   const [jobModeEnabled, setJobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
