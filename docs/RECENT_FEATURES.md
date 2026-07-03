@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.637)
+last_updated: 2026-07-03 (v2.638)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.638 — **Materials → Supply Houses** — **view toggles inline with the heading**: the `Show paid invoices` / `Show last payment` checkboxes moved from the standalone header row down into the same band as the `Supply Houses: $X` heading and `Summary | Aging map` pills (absolutely positioned right of the centered block). [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) only](#latest-updates-v2638)
 **New:** [v2.637 — **Dashboard → Financials** — **AP supply rows show due date + allocated jobs inline**. The AP drill-down's date column is now headed **Due** and supply rows show the bill's `due_date` with a compact **`Nd`** past-due chip (orange <60d, red ≥60d) instead of the invoice date; each supply row also gets a muted second line listing its job allocations (`500 · Smith House (60%), …`) from the v2.635 `apBills` map. Payroll-due rows keep their period-end date under the same `Due` header; other cards keep `Date`. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2637)
 **New:** [v2.636 — **Dashboard → Financials** — **AP drill-down grouped into Supplies / Payroll due / Upcoming payroll sections**. Previously payroll-due rows interleaved with ~130 supply rows by amount and the v2.629 "Upcoming payroll (estimate)" section sat invisibly at the very bottom — payroll was effectively unfindable. The AP modal now uses the same grey section headers as Not Billed Out: **Supplies — N bills · $X** (per-row "Supply invoice" sublabel dropped as redundant), **Payroll due — N items · $Y** (period sublabels kept), then the existing **Upcoming payroll (estimate) — N person-weeks · $Z**; footer stays `Total due`. Assistant's aggregate rows land in the same sections. Section-header machinery generalized (per-section noun + sublabel-hiding flag). [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2636)
 **New:** [v2.635 — **Dashboard → Financials** — **AP bill modal shows allocated jobs**. The v2.632 bill detail gains a **Job(s)** fact row: each `supply_house_invoice_job_allocations` entry renders as `500 · Smith House (60%)` (pct desc), clickable → **Job Detail** modal (both stacked modals close first); bills with no allocation show `—`. Hook fetches allocations per unpaid bill (chunked, best-effort) + labels for allocated jobs outside the status-filtered jobs fetch; 125 of 138 unpaid bills have job allocations in prod](#latest-updates-v2635)
@@ -2013,6 +2014,20 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.638)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — view toggles inline with the heading
+
+The `Show paid invoices` and `Show last payment` checkboxes no longer sit in their own header row above the section — they're now right-aligned within the same band as the centered `Supply Houses: $X` heading and the `Summary | Aging map` pills. The standalone header row remains only when the tab renders its `Supply Houses` page title (`showTitle`).
+
+#### Files
+
+Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). `tsc -b` clean; no new lint warnings.
+
 ---
 
 ## Latest Updates (v2.637)
