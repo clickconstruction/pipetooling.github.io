@@ -1023,7 +1023,7 @@ export default function People() {
     setError(null)
     const role = KIND_TO_USER_ROLE[p.kind as PersonKind]
     const { data, error: eFn } = await supabase.functions.invoke('invite-user', {
-      body: { email: p.email.trim(), role, name: p.name || undefined },
+      body: { email: p.email.trim(), role, name: p.name || undefined, redirectTo: `${window.location.origin}/accept-invite` },
     })
     setInvitingId(null)
     if (eFn) {

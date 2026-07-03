@@ -18,6 +18,9 @@ key_sections:
     line: ~55
     anchor: "#create-user"
     description: "Create users with roles (dev-only)"
+  - name: "invite-user"
+    anchor: "#invite-user"
+    description: "Email an invite link via Resend (dev-only)"
   - name: "archive-user"
     line: ~181
     anchor: "#archive-user"
@@ -86,6 +89,7 @@ when_to_read:
 2. [Authentication](#authentication)
 3. [Functions](#functions)
    - [create-user](#create-user)
+   - [invite-user](#invite-user)
    - [archive-user](#archive-user)
    - [restore-user](#restore-user)
    - [login-as-user](#login-as-user)
@@ -195,7 +199,10 @@ interface CreateUserRequest {
 - `'master_technician'`
 - `'assistant'`
 - `'subcontractor'`
+- `'helpers'`
 - `'estimator'`
+- `'primary'`
+- `'superintendent'`
 
 #### Example Request
 
@@ -268,6 +275,56 @@ const response = await supabase.functions.invoke('create-user', {
 7. Returns user details
 
 **Deployment**: See [`supabase/functions/create-user/DEPLOY.md`](../supabase/functions/create-user/DEPLOY.md)
+
+---
+
+### invite-user
+
+**Purpose**: Create a user and email them an invite link to set their own password (dev-only). The email is sent through **Resend** using the editable Settings **invitation** email template (`email_templates` where `template_type = 'invitation'`, `{{name}}` / `{{role}}` / `{{link}}` placeholders); if the template row was never saved, the function falls back to the same defaults Settings seeds.
+
+**Endpoint**: `POST /functions/v1/invite-user`
+
+**Required Role**: `dev`
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`
+
+**Called from**: Settings → People & Accounts → "Invite via email" ([`Settings.tsx`](../src/pages/Settings.tsx) `handleInvite`) and People → Users → invite roster entry ([`People.tsx`](../src/pages/People.tsx) `inviteAsUser`).
+
+#### Request Parameters
+
+```typescript
+interface InviteUserRequest {
+  email: string             // Invitee's email address
+  role: string              // One of the 8 modern roles (same list as create-user)
+  name?: string             // Optional display name
+  redirectTo?: string       // Where the invite link lands; must match https://pipetooling.com/*
+                            // or http://localhost:5173|5175/*; defaults to
+                            // https://pipetooling.com/accept-invite
+  service_type_ids?: string[] // Optional restriction for estimator/subcontractor/helpers/superintendent
+}
+```
+
+#### Flow
+
+1. Validates caller is `dev`; validates role and any `service_type_ids`.
+2. Duplicate check on `public.users.email`. A **pending invite** (auth user with `email_confirmed_at` and `last_sign_in_at` both null) is deleted and replaced — re-inviting the same address issues a fresh link ("resend invite"). Anyone else → 400 `User with this email already exists`.
+3. `auth.admin.generateLink({ type: 'invite' })` creates the auth user and returns the action link **without** sending Supabase SMTP mail. The `handle_new_user` trigger reads `invited_role` from user metadata; the function also upserts `public.users` explicitly with role, name, and service-type restriction.
+4. Renders the invitation template and sends via the shared [`sendEmailViaResend`](../supabase/functions/_shared/resendSendEmail.ts) helper (from `PipeTooling <team@noreply.pipetooling.com>`).
+5. **If the Resend send fails, the auth user is deleted** (FK cascade removes `public.users`) and a 500 is returned — a failed invite leaves nothing behind, so retrying is always safe. The action link is never returned in the response.
+
+#### Accepting the invite
+
+The emailed link verifies through Supabase Auth and redirects to **`/accept-invite`** ([`AcceptInvite.tsx`](../src/pages/AcceptInvite.tsx)), where the invitee sets a password (`supabase.auth.updateUser`) and lands in the app already signed in. Expired/used links surface "invalid or expired — ask a dev to resend the invite"; re-inviting from Settings issues a fresh link. The redirect target must be covered by the Supabase Auth redirect allowlist (`https://pipetooling.com/**` — already configured).
+
+#### Success Response
+
+```json
+{ "success": true, "message": "Invite sent to newuser@example.com" }
+```
+
+**Gateway JWT**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml) (function validates the JWT itself).
+
+**Deploy**: `supabase functions deploy invite-user --no-verify-jwt`
 
 ---
 

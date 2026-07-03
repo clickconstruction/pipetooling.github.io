@@ -288,6 +288,7 @@ export default function Settings() {
   const [inviteName, setInviteName] = useState('')
   const [inviteError, setInviteError] = useState<string | null>(null)
   const [inviteSubmitting, setInviteSubmitting] = useState(false)
+  const [inviteServiceTypeIds, setInviteServiceTypeIds] = useState<string[]>([])
   const [manualAddOpen, setManualAddOpen] = useState(false)
   const [manualAddEmail, setManualAddEmail] = useState('')
   const [manualAddName, setManualAddName] = useState('')
@@ -4078,6 +4079,7 @@ export default function Settings() {
     setInviteEmail('')
     setInviteRole('master_technician')
     setInviteName('')
+    setInviteServiceTypeIds([])
     setInviteError(null)
   }
 
@@ -4576,8 +4578,17 @@ export default function Settings() {
       }
     }
     
+    const body: Record<string, unknown> = {
+      email: inviteEmail.trim(),
+      role: inviteRole,
+      name: trimmedName || undefined,
+      redirectTo: `${window.location.origin}/accept-invite`,
+    }
+    if ((inviteRole === 'estimator' || inviteRole === 'subcontractor' || inviteRole === 'helpers') && inviteServiceTypeIds.length > 0) {
+      body.service_type_ids = inviteServiceTypeIds
+    }
     const { data, error: eFn } = await supabase.functions.invoke('invite-user', {
-      body: { email: inviteEmail.trim(), role: inviteRole, name: trimmedName || undefined },
+      body,
     })
     setInviteSubmitting(false)
     if (eFn) {
@@ -4596,7 +4607,9 @@ export default function Settings() {
       setInviteError(err)
       return
     }
+    showToast(`Invite sent to ${inviteEmail.trim()}`, 'success')
     closeInvite()
+    await loadData()
   }
 
   const sortedTeamLeaderAssignments = useMemo(() => {
@@ -5599,6 +5612,31 @@ export default function Settings() {
                   ))}
                 </select>
               </div>
+              {(inviteRole === 'estimator' || inviteRole === 'subcontractor' || inviteRole === 'helpers') && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
+                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>{inviteRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                    {serviceTypes.map((st) => (
+                      <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={inviteServiceTypeIds.includes(st.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setInviteServiceTypeIds((prev) => [...prev, st.id])
+                            } else {
+                              setInviteServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
+                            }
+                          }}
+                          disabled={inviteSubmitting}
+                        />
+                        {st.name}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="invite-name" style={{ display: 'block', marginBottom: 4 }}>Name (optional)</label>
                 <input

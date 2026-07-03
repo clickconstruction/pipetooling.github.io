@@ -8,6 +8,7 @@ import DevLogin from './pages/DevLogin'
 import SignUp from './pages/SignUp'
 import ResetPassword from './pages/ResetPassword'
 import ResetPasswordConfirm from './pages/ResetPasswordConfirm'
+import AcceptInvite from './pages/AcceptInvite'
 const Customers = lazy(() => import('./pages/Customers'))
 const Projects = lazy(() => import('./pages/Projects'))
 const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
@@ -169,6 +170,7 @@ function AppContent() {
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/reset-password-confirm" element={<ResetPasswordConfirm />} />
+        <Route path="/accept-invite" element={<AcceptInvite />} />
         <Route path="/task" element={<TaskShortcut />} />
         <Route path="/estimate/accept" element={<EstimateAccept />} />
         <Route path="/contract/accept" element={<ContractAccept />} />

@@ -972,7 +972,7 @@ WHERE proname IN (
 #### `public.handle_new_user()`
 - **Trigger**: Fires on `auth.users` INSERT
 - **Purpose**: Creates corresponding `public.users` record
-- **Logic**: Checks `raw_user_meta_data.invited_role` to set initial role, defaults to `'assistant'`
+- **Logic**: Checks `raw_user_meta_data.invited_role` (any of the 8 modern roles) to set initial role, defaults to `'helpers'`; `ON CONFLICT (id) DO NOTHING` so edge-function upserts can race it safely (migration `20260702160000_modernize_handle_new_user.sql`)
 
 #### `public.is_dev()`
 - **Returns**: `boolean`
