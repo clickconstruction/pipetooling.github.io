@@ -1,13 +1,9 @@
 import { useEffect, useState } from 'react'
+import type { PayConfigRow as PayConfigRowFull } from '../types/peoplePayConfig'
 import { supabase } from '../lib/supabase'
 
-type PayConfigRow = {
-  person_name: string
-  hourly_wage: number | null
-  is_salary: boolean
-  show_in_cost_matrix: boolean
-  record_hours_but_salary: boolean
-}
+/** Narrow view of the canonical pay-config row (single source of truth for field types). */
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
 
 type HoursRow = { person_name: string; work_date: string; hours: number }
 

@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PayConfigRow as PayConfigRowFull } from '../types/peoplePayConfig'
+import { effectiveHoursForDisplay } from '../lib/salariedEffectiveHours'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -15,7 +17,8 @@ import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../lib/ledge
 
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 type HoursRow = { person_name: string; work_date: string; hours: number }
-type PayConfigRow = { person_name: string; is_salary: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
+/** Narrow view of the canonical pay-config row (single source of truth for field types). */
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'is_salary' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
 
 type ClockSessionRow = {
   id: string
@@ -189,18 +192,8 @@ export function HoursUnassignedModal({
   const hoursDays = useMemo(() => getDaysInRange(hoursDateStart, hoursDateEnd), [hoursDateStart, hoursDateEnd])
 
   function getEffectiveHours(pName: string, workDate: string): number {
-    const cfg = payConfig[pName]
-    if (cfg?.is_salary && (cfg?.record_hours_but_salary ?? false)) {
-      const row = peopleHours.find((h) => h.person_name === pName && h.work_date === workDate)
-      return row?.hours ?? 0
-    }
-    if (cfg?.is_salary) {
-      const day = new Date(workDate + 'T12:00:00').getDay()
-      if (day === 0 || day === 6) return 0
-      return 8
-    }
-    const row = peopleHours.find((h) => h.person_name === pName && h.work_date === workDate)
-    return row?.hours ?? 0
+    const recorded = peopleHours.find((h) => h.person_name === pName && h.work_date === workDate)?.hours ?? 0
+    return effectiveHoursForDisplay(payConfig[pName], workDate, recorded)
   }
 
   function hasAssignmentsForDate(pName: string, workDate: string): boolean {

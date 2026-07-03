@@ -1,4 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { PayConfigRow as PayConfigRowFull } from '../types/peoplePayConfig'
+import { effectiveHoursForCost } from '../lib/salariedEffectiveHours'
 import { supabase } from '../lib/supabase'
 import { formatCurrency, formatDateWithRelativeLabel } from '../lib/format'
 import { useAuth } from '../hooks/useAuth'
@@ -59,13 +61,8 @@ function formatTeamLaborWorkDate(ymd: string | null): string {
   }
 }
 
-type PayConfigRow = {
-  person_name: string
-  hourly_wage: number | null
-  is_salary: boolean
-  show_in_hours: boolean
-  show_in_cost_matrix: boolean
-}
+/** Narrow view of the canonical pay-config row (single source of truth for field types). */
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix'>
 
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
@@ -173,12 +170,10 @@ export function CrewJobsBlock({
   }, [crewHoursByPersonProp, crewDateHours])
 
   const visiblePeopleForCrew = useMemo(() => {
-    const day = new Date(crewJobsDate + 'T12:00:00').getDay()
-    function getEffectiveHours(personName: string): number {
-      const cfg = payConfig[personName]
-      return cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (effectiveCrewHours[personName] ?? 0)
-    }
-    return showPeopleForMatrix.filter((p) => !hideZeroHours || getEffectiveHours(p) > 0)
+    // Cost semantics on purpose: salaried people count as 8/0 here even with record_hours_but_salary.
+    return showPeopleForMatrix.filter(
+      (p) => !hideZeroHours || effectiveHoursForCost(payConfig[p], crewJobsDate, effectiveCrewHours[p] ?? 0) > 0,
+    )
   }, [showPeopleForMatrix, hideZeroHours, crewJobsDate, effectiveCrewHours, payConfig])
 
   const filteredTeamLaborData = useMemo(() => {
@@ -699,9 +694,7 @@ export function CrewJobsBlock({
             <tbody>
               {visiblePeopleForCrew.map((personName) => {
                 const row = crewJobsData[personName] ?? { unifiedAssignments: [] }
-                const day = new Date(crewJobsDate + 'T12:00:00').getDay()
-                const cfg = payConfig[personName]
-                const effectiveHours = cfg?.is_salary ? (day >= 1 && day <= 5 ? 8 : 0) : (effectiveCrewHours[personName] ?? 0)
+                const effectiveHours = effectiveHoursForCost(payConfig[personName], crewJobsDate, effectiveCrewHours[personName] ?? 0)
                 return (
                   <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '0.75rem' }}>{personName}</td>

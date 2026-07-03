@@ -1639,7 +1639,6 @@ export type Database = {
           revoked_at: string | null
           revoked_by: string | null
           salary_segment_index: number | null
-          salary_split_derived: boolean
           user_id: string
           work_date: string
         }
@@ -1665,7 +1664,6 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
-          salary_split_derived?: boolean
           user_id: string
           work_date: string
         }
@@ -1691,7 +1689,6 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
-          salary_split_derived?: boolean
           user_id?: string
           work_date?: string
         }
@@ -11744,10 +11741,6 @@ export type Database = {
           error_message: string
           revoked_count: number
         }[]
-      }
-      salary_force_close_open_sessions_after_shift: {
-        Args: { p_now: string; p_user_id: string; p_work_date: string }
-        Returns: undefined
       }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }

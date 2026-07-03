@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { effectiveHoursForCost, effectiveHoursForDisplay, canEditRecordedHours } from '../lib/salariedEffectiveHours'
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
@@ -2577,25 +2578,18 @@ export default function People() {
     return row?.hours ?? 0
   }
 
+  /** Payroll/costing hours (salaried → flat 8/0; see salariedEffectiveHours kernel). */
   function getEffectiveHours(personName: string, workDate: string): number {
-    const cfg = payConfig[personName]
-    if (cfg?.is_salary) {
-      const day = new Date(workDate + 'T12:00:00').getDay()
-      if (day === 0 || day === 6) return 0
-      return 8
-    }
-    return getHoursForPersonDate(personName, workDate)
+    return effectiveHoursForCost(payConfig[personName], workDate, getHoursForPersonDate(personName, workDate))
   }
 
   function canEditHours(personName: string): boolean {
-    const cfg = payConfig[personName]
-    return !(cfg?.is_salary ?? false) || (cfg?.record_hours_but_salary ?? false)
+    return canEditRecordedHours(payConfig[personName])
   }
 
+  /** Hours-surface display (record_hours_but_salary people show their logged hours). */
   function getDisplayHours(personName: string, workDate: string): number {
-    const cfg = payConfig[personName]
-    if (cfg?.is_salary && !(cfg?.record_hours_but_salary ?? false)) return getEffectiveHours(personName, workDate)
-    return getHoursForPersonDate(personName, workDate)
+    return effectiveHoursForDisplay(payConfig[personName], workDate, getHoursForPersonDate(personName, workDate))
   }
 
   /**
@@ -2611,9 +2605,11 @@ export default function People() {
 
   /** Hours matrix: max(people_hours, pending clock) so manual-offer → session path stays visible; salary-only rows unchanged. */
   function getHoursGridDisplayHours(personName: string, workDate: string): number {
-    const cfg = payConfig[personName]
-    if (cfg?.is_salary && !(cfg?.record_hours_but_salary ?? false)) return getEffectiveHours(personName, workDate)
-    return Math.max(getHoursForPersonDate(personName, workDate), sumClosedPendingClockHoursForPersonDate(personName, workDate))
+    return effectiveHoursForDisplay(
+      payConfig[personName],
+      workDate,
+      Math.max(getHoursForPersonDate(personName, workDate), sumClosedPendingClockHoursForPersonDate(personName, workDate)),
+    )
   }
 
   function getCostForPersonDate(personName: string, workDate: string): number {

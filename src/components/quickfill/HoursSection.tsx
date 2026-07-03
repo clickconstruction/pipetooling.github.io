@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PayConfigRow as PayConfigRowFull } from '../../types/peoplePayConfig'
+import { effectiveHoursForDisplay, canEditRecordedHours } from '../../lib/salariedEffectiveHours'
 import { Link } from 'react-router-dom'
 import { CLOCK_SESSION_LIST_SELECT } from '../../lib/clockSessionSelect'
 import { approveClockSessions } from '../../lib/approveClockSessions'
@@ -20,7 +22,8 @@ import type { ClockSessionRow } from '../../types/clockSessions'
 import { mergeToUnified, type UnifiedAssignment } from '../../utils/crewAssignments'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 
-type PayConfigRow = { person_name: string; hourly_wage: number | null; is_salary: boolean; show_in_hours: boolean; show_in_cost_matrix: boolean; record_hours_but_salary: boolean }
+/** Narrow view of the canonical pay-config row (single source of truth for field types). */
+type PayConfigRow = Pick<PayConfigRowFull, 'person_name' | 'hourly_wage' | 'is_salary' | 'show_in_hours' | 'show_in_cost_matrix' | 'record_hours_but_salary'>
 type HoursRow = { person_name: string; work_date: string; hours: number }
 type CrewRow = { unifiedAssignments: UnifiedAssignment[] }
 
@@ -312,25 +315,13 @@ export function HoursSection() {
     return row?.hours ?? 0
   }
 
-  function getEffectiveHours(personName: string, workDate: string): number {
-    const cfg = payConfig[personName]
-    if (cfg?.is_salary) {
-      const day = new Date(workDate + 'T12:00:00').getDay()
-      if (day === 0 || day === 6) return 0
-      return 8
-    }
-    return getHoursForPersonDate(personName, workDate)
-  }
-
   function canEditHours(personName: string): boolean {
-    const cfg = payConfig[personName]
-    return !(cfg?.is_salary ?? false) || (cfg?.record_hours_but_salary ?? false)
+    return canEditRecordedHours(payConfig[personName])
   }
 
+  /** Hours-surface display (record_hours_but_salary people show their logged hours). */
   function getDisplayHours(personName: string, workDate: string): number {
-    const cfg = payConfig[personName]
-    if (cfg?.is_salary && !(cfg?.record_hours_but_salary ?? false)) return getEffectiveHours(personName, workDate)
-    return getHoursForPersonDate(personName, workDate)
+    return effectiveHoursForDisplay(payConfig[personName], workDate, getHoursForPersonDate(personName, workDate))
   }
 
   function shiftHoursWeek(delta: number) {
