@@ -115,4 +115,16 @@ describe('buildUnbilledBucket', () => {
     )
     expect(bucket.count).toBe(0)
   })
+
+  it('carries the job address through, trimming blanks to null', () => {
+    const bucket = buildUnbilledBucket(
+      [
+        job({ id: 'j1', status: 'working', job_address: ' 123 Main St, Tulsa ' }),
+        job({ id: 'j2', status: 'working', job_address: '   ' }),
+      ],
+      [],
+    )
+    expect(bucket.items.find((i) => i.key === 'job:j1')?.address).toBe('123 Main St, Tulsa')
+    expect(bucket.items.find((i) => i.key === 'job:j2')?.address).toBeNull()
+  })
 })

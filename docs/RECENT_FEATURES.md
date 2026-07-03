@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.622)
+last_updated: 2026-07-03 (v2.623)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.623 — **Dashboard → Financials** — **Not Billed Out modal shows job addresses**. Each job row in the Not Billed Out drill-down now renders the job's street address as a muted second line under the label (`jobs_ledger.job_address`, blank-trimmed to hidden). New `address` field on `FinancialItem` — populated only by `buildUnbilledBucket` (AR / AP rows unchanged); hook select extended; +1 kernel test](#latest-updates-v2623)
 **New:** [v2.622 — **Dispatch inbox** — **live updates fixed (was reload-only)**. The inbox's Realtime subscriptions had been silent since the 2026-06-05 incident cleanup dropped `dispatch_requests` / `dispatch_request_notes` from the `supabase_realtime` publication — new requests and thread notes only appeared after a page reload. Migration `20260703130000` (applied to prod) re-adds both low-volume tables, restoring cross-client live refresh. Plus a **same-tab nudge**: every dispatch-request mutation site (Financials "→ Send to Dispatch", the Dispatch task composer, Dashboard link-job-pictures, Job-form auto-close) now fires a `pipetooling:dispatch-requests-changed` window event that [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts) listens for — so sending from a page that also hosts the inbox (the Dashboard) shows the new item instantly, without waiting on the Realtime round-trip](#latest-updates-v2622)
 **New:** [v2.621 — **Dashboard → Financials** — **Not Billed Out rows send to Dispatch**. Each job row in the Not Billed Out drill-down gains a **`→`** button right of Amount opening a mini-composer (z 1110): the job label + amount pre-filled as context, an optional note, and **Send to Dispatch** — creating a `dispatch_requests` inbox item (`Not billed out: 500 · Smith House — $12,345.67. <note>`) with `pending_action: 'bill_out_job'` **dedupe** (one open request per job; a second send toasts "Already open with Dispatch") and a fire-and-forget `notify-dispatch-request` push. New reusable helper [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) (`createDispatchRequest` — insert + dedupe + notify, extracted from the Dashboard link-job-pictures pattern — and pure `buildUnbilledDispatchTitle`, 3 tests). AR / AP modals unchanged](#latest-updates-v2621)
 **New:** [v2.620 — **Dashboard** — **Financials one-pager (AR / AP / Not billed)** for dev / master_technician / assistant. New **[`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx)** above Recent activity: three clickable cards — **Accounts Receivable** (open remainders on billed invoices + billed jobs without invoice rows; mirrors `useBilledTotal`), **Accounts Payable** (unpaid supply-house invoices **+** open payroll balances via `stubNetPay − payments`, with per-source subtotals on the card; mirrors Supply Houses + the Payroll ledger header exactly), **Not Billed Out** (working / ready_to_bill jobs: `(revenue − payments) − Σ billed invoice amounts`; RTB draft lines deliberately not subtracted — they aren't on a customer invoice yet). Each card shows total + item count + oldest-item date and opens a drill-down modal (Item | Date | Amount, largest first, totals footer, link to Jobs Stages / Supply Houses). Pure kernel [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**7 tests**) + one batched hook [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts); all four totals cross-checked against prod SQL (payroll AP matched the Payroll ledger's `$4,949.48 remaining` to the cent). No DB changes](#latest-updates-v2620)
@@ -1998,6 +1999,27 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.623)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — Not Billed Out modal shows job addresses
+
+Job rows in the **Not Billed Out** drill-down now show the job's street address as a muted line under the `HCP · name` label, so you can tell similar jobs apart without opening each one.
+
+- Kernel: `FinancialItem` gains `address: string | null` — set only by `buildUnbilledBucket` from `jobs_ledger.job_address` (trimmed; blank → null → line hidden). AR and AP rows keep `address: null`, so their modals are unchanged.
+- [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) adds `job_address` to the jobs select; [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) renders the line in the items table.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1793/1793** (1 new: address pass-through + blank-trim); zero lint warnings on touched files.
+
+#### Files
+
+Modified: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
 ---
 
 ## Latest Updates (v2.622)

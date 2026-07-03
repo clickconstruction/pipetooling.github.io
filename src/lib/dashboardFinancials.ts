@@ -23,6 +23,8 @@ export type FinancialItem = {
   dateYmd: string | null
   /** jobs_ledger id for AR / Not-billed rows — powers click-to-open-job; null for AP rows. */
   jobId: string | null
+  /** Job street address — shown on Not-billed rows; null elsewhere. */
+  address: string | null
 }
 
 export type FinancialBucket = {
@@ -38,6 +40,7 @@ export type FinancialJobRow = {
   hcp_number: string | null
   click_number?: string | null
   job_name: string | null
+  job_address?: string | null
   status: string | null
   revenue: number | null
   payments_made: number | null
@@ -129,6 +132,7 @@ export function buildArBucket(
       amount: remaining,
       dateYmd: isoToYmd(inv.billed_at),
       jobId: inv.job_id,
+      address: null,
     })
   }
   for (const job of jobs) {
@@ -143,6 +147,7 @@ export function buildArBucket(
       amount: remaining,
       dateYmd: job.last_bill_date,
       jobId: job.id,
+      address: null,
     })
   }
   return finishBucket(items)
@@ -166,6 +171,7 @@ export function buildApBucket(
       amount,
       dateYmd: inv.invoice_date,
       jobId: null,
+      address: null,
     })
   }
   let payrollTotal = 0
@@ -180,6 +186,7 @@ export function buildApBucket(
       amount: remaining,
       dateYmd: stub.period_end,
       jobId: null,
+      address: null,
     })
   }
   return { ...finishBucket(items), supplyTotal, payrollTotal }
@@ -206,6 +213,7 @@ export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: Financial
       amount: unbilled,
       dateYmd: job.last_work_date,
       jobId: job.id,
+      address: (job.job_address ?? '').trim() || null,
     })
   }
   return finishBucket(items)

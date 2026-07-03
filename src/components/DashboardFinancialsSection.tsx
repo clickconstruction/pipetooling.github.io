@@ -282,6 +282,9 @@ function ItemsModal({
                     {item.sublabel ? (
                       <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
                     ) : null}
+                    {item.address ? (
+                      <div style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
+                    ) : null}
                   </td>
                   <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{shortDate(item.dateYmd)}</td>
                   <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
