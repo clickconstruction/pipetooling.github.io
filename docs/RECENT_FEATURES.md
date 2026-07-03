@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.633)
+last_updated: 2026-07-03 (v2.634)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.634 — **Materials → Supply Houses** — **fix: invoice/due dates displayed one day early**. Reported by Taunya ("I enter the 10th, it shows the 9th"): `invoice_date`/`due_date` are DATE-only strings and `new Date('2026-07-10')` parses as **UTC midnight** → renders as the previous day in US timezones. New `formatYmdLocal` (parses at local noon; non-YMD values fall back) replaces the three affected `toLocaleDateString()` call sites in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (detail Date + Due columns, Apply Payment list date). **Stored data was always correct** — display-only; `Paid On` (real timestamp) unaffected; the aging buckets and Financials modals already used safe parsing](#latest-updates-v2634)
 **New:** [v2.633 — **Dashboard → Financials** — **"Financials" section title removed + tighter bottom gap**: the three cards now sit directly at the top of the dashboard without the `Financials` h2 (they're self-describing), and the section's bottom margin shrank 1.5rem → 0.5rem so the quick actions / Clock In row sits closer. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2633)
 **New:** [v2.632 — **Dashboard → Financials** — **AP supply rows open a bill detail modal with attachment preview**. Supply-house rows in the Accounts Payable drill-down are now clickable (dotted-underline, like job rows) → **`ApBillModal`** (z 1110): supply house + amount header, fact rows (Invoice #, PO #, invoice date, due date with the orange/red **`Nd past due`** chip, amount), and at the bottom the **attached file previewed inline** via the Google Drive `/preview` embed (reuses `googleDrivePreviewEmbedUrl`) — collapsed to 300px with click-to-zoom / **Expand** button that widens the modal to ~1100px with a 68vh preview, plus an **Open in Drive ↗** link. Hook now fetches `due_date/link/invoice_number/purchase_order_number` and exposes an `apBills` map keyed by item key. Payroll and aggregate rows unchanged; 131/138 unpaid bills already have Drive links](#latest-updates-v2632)
 **New:** [v2.631 — **Materials → Supply Houses** — **AP aging map (`Summary | Aging map` toggle)**. New matrix view of unpaid dollars by days past due, computed from the already-recorded `supply_house_invoices.due_date`: rows = houses (total desc, click to open the house), columns **Current | 1–30 | 30–60 | 60–90 | 90+ | No due date | Total** with green→red heat cells and a column-totals footer — the hand-drawn AP aging sheet, live. Caption nudges when unpaid invoices lack a due date. Companions: unpaid invoice rows in the house detail get a red **`Nd past due`** chip, and Add Invoice **prefills the due date** from the house's `monthly_payment_day` (next occurrence, clamped to month length; editable). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (**6 tests**); no DB changes — 131 of 138 unpaid invoices already had due dates](#latest-updates-v2631)
@@ -2009,6 +2010,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.634)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — fix: dates displayed one day early
+
+Taunya reported entering a due date of the 10th and seeing the 9th. **Bug, not user error**: `invoice_date` and `due_date` are DATE-only columns (`YYYY-MM-DD`), and `new Date('2026-07-10')` parses as **UTC midnight** — 6–7pm the *previous* evening in America/Chicago — so `toLocaleDateString()` rendered every date one day early.
+
+- New local `formatYmdLocal(ymd)` in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx): parses `YYYY-MM-DD` at **local noon** (the same idiom the Financials modals already use); non-YMD values fall back to normal parsing.
+- Replaced the three affected call sites: the invoice detail table's **Date** and **Due** columns, and the Apply Payment list's invoice date. `Paid On` uses a real timestamp and was always correct.
+- **Stored data was always right** — the `<input type="date">` writes the exact YMD string; only the display was off. Nothing needs re-entering. The aging map buckets compare YMD strings directly and were never affected.
+
+#### Files
+
+Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). `tsc -b` clean; no new lint warnings.
+
 ---
 
 ## Latest Updates (v2.633)

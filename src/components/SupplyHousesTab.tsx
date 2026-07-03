@@ -43,6 +43,15 @@ type SupplyHouseSummaryRow = {
   lastInvoicePaidAt: string | null
 }
 
+/**
+ * Format a DATE-only column (YYYY-MM-DD) in the user's locale. `new Date('2026-07-10')` parses
+ * as UTC midnight, which renders as the PREVIOUS day in US timezones — parse at local noon.
+ */
+function formatYmdLocal(ymd: string): string {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? new Date(ymd + 'T12:00:00') : new Date(ymd)
+  return Number.isNaN(d.getTime()) ? ymd : d.toLocaleDateString()
+}
+
 /** Heat colors for the aging map — green (not due) through deepening reds. */
 const AGING_CELL_STYLES: Record<AgingBucketKey, { background: string; color: string }> = {
   current: { background: '#ecfdf5', color: '#065f46' },
@@ -972,9 +981,9 @@ export function SupplyHousesTab({
                                                     ) : null}
                                                   </div>
                                                 </td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(inv.invoice_date).toLocaleDateString()}</td>
+                                                <td style={{ padding: '0.5rem 0.75rem' }}>{formatYmdLocal(inv.invoice_date)}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
-                                                  {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}
+                                                  {inv.due_date ? formatYmdLocal(inv.due_date) : '—'}
                                                   {(() => {
                                                     if (inv.is_paid || !inv.due_date) return null
                                                     const days = daysPastDue(inv.due_date, new Date().toLocaleDateString('en-CA'))
@@ -1370,7 +1379,7 @@ export function SupplyHousesTab({
                           }}
                         />
                         <span>{inv.invoice_number}</span>
-                        <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>{new Date(inv.invoice_date).toLocaleDateString()}</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>{formatYmdLocal(inv.invoice_date)}</span>
                         <span style={{ marginLeft: 'auto' }}>${formatCurrency(inv.amount)}</span>
                         {inv.is_paid && (
                           <span style={{ fontSize: '0.75rem', color: '#059669' }} title={inv.paid_at ?? undefined}>
