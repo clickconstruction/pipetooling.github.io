@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/format'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
-import { useJobFormModal } from '../contexts/JobFormModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
@@ -44,8 +44,8 @@ function ItemsModal({
   cardKey: CardKey
   bucket: FinancialBucket
   onClose: () => void
-  /** Job rows (AR / Not billed) open the job editor; closes this modal first (job modal stacks lower). */
-  onOpenJob: ((jobId: string) => void) | null
+  /** Job rows (AR / Not billed) open the Job Detail modal; closes this modal first (it stacks lower). */
+  onOpenJob: ((item: FinancialItem) => void) | null
 }) {
   const meta = CARD_META[cardKey]
   return (
@@ -122,7 +122,7 @@ function ItemsModal({
                     {item.jobId && onOpenJob ? (
                       <button
                         type="button"
-                        onClick={() => onOpenJob(item.jobId as string)}
+                        onClick={() => onOpenJob(item)}
                         title="Open this job"
                         aria-label={`Open job ${item.label}`}
                         style={{
@@ -175,7 +175,7 @@ function ItemsModal({
 export default function DashboardFinancialsSection() {
   const { data, loading, error } = useDashboardFinancials(true)
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
-  const jobModal = useJobFormModal()
+  const jobDetailModal = useJobDetailModal()
 
   const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string }> = data
     ? [
@@ -235,11 +235,14 @@ export default function DashboardFinancialsSection() {
           bucket={data[openCard]}
           onClose={() => setOpenCard(null)}
           onOpenJob={
-            jobModal
-              ? (jobId) => {
-                  // The job editor overlay (z 1010) sits below this modal (z 1100) — close first.
+            jobDetailModal
+              ? (item) => {
+                  // The Job Detail backdrop (z 1004) sits below this modal (z 1100) — close first.
                   setOpenCard(null)
-                  jobModal.openEditJob(jobId)
+                  jobDetailModal.openJobDetail({
+                    jobId: item.jobId as string,
+                    prefillRowLabel: item.label,
+                  })
                 }
               : null
           }
