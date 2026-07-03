@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-02 (v2.617)
+last_updated: 2026-07-02 (v2.618)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.618 — **App activity heartbeat** — **short visits now register** ([`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts)). Previously the first bump only fired after **60 continuous seconds** of tab visibility and the timer reset on every hide — so a 30-second clock-in/out visit recorded *nothing*, leaving People → Activity "Last seen" up to weeks older than real clock actions (prod check: one tech 26 days stale). Now: (1) an **instant `bump(0)`** on becoming visible updates `last_seen_at` without adding hours (throttled to once/min against tab-flicker spam; the deployed `bump_user_app_activity` RPC already clamps `p_seconds ≥ 0` — no DB change); (2) on hide/**pagehide**/unmount the **partial minute flushes** (≥5s), so a 40-second visit adds ~40s of active time; (3) the 60s tick continues for sustained use, with the partial-segment clock reset on each tick. Still strictly non-retrying (2026-06-04 incident lesson)](#latest-updates-v2618)
 **New:** [v2.617 — **People → Payroll ledger** — **upcoming week drilldown lists sessions with approve/reject**. The v2.616 per-day-totals drilldown is rebuilt as **[`UpcomingWeekSessionsModal`](../src/components/people/UpcomingWeekSessionsModal.tsx)** — every clock session for the person-week, grouped by day (clickable day headers still open My Time with the widened fence), each row showing time range, hours, job/bid short label (`shortJobOrBidLabelFromEmbeds` + prefix map), notes tooltip, and an **Approved / Pending / Open** badge. Closed pending sessions get per-session **Approve** + two-click **Reject** (direct `rejected_at/rejected_by` update, popover idiom); the header has **`Approve all (N)`**. Approval goes through the **`approve_clock_sessions`** RPC (`approveClockSessions` wrapper) — writes `people_hours` incrementally, so approved weeks become payable in Draft Payroll; server-side gating (pay roles / team leads) re-validates. Fresh per-open fetch with embeds; after any mutation the modal refetches and a new `upcomingLocalTick` refetches the tab's upcoming data (a reject shrinks the week's hours + header estimate). Kernel: `upcomingWeekDayBreakdown` replaced by **`groupUpcomingWeekSessions`** (+`upcomingSessionHours`) — 14 kernel tests](#latest-updates-v2617)
 **New:** [v2.616 — **People → Payroll ledger** — **upcoming week drilldown → My Time day editor**. In the Upcoming payroll modal, each row's **Period** is now a link opening a nested per-week modal (z `Z_PEOPLE_PAY_MODAL + 10`) listing the **contributing days** (`Wed 7/1 · 8.25` rows via new kernel helper `upcomingWeekDayBreakdown` — per-day sums from the already-fetched sessions, open sessions clip at now) with a week-total footer; clicking a day opens **`DashboardMyTimeDayEditorModal`** for that person+day (editor z 1200 stacks above both modals — no hide choreography needed). `onOpenMyTimeForDay` gains an optional `saveableRange` arg → new plain `saveableRange` field on the shared `hoursMyTimeEditor` state feeds `saveableRangeOverride`, so days in weeks older than the standard two-week fence stay saveable (scoped to that pay week; the v2.597 server-side leader-RPC bypass applies). After a save, new `ledgerUpcomingRefreshTick` prop refetches the upcoming sessions so the modals + header segment update in place](#latest-updates-v2616)
 **New:** [v2.615 — **People → Payroll ledger** — **Upcoming payroll modal caption hidden**: the subtitle trims to `15 person-weeks · $12,408.74 estimated`; the explanatory sentence (pending-approval basis, hours × wage, Draft Payroll hint) moves to the line's hover `title` tooltip. Display-only](#latest-updates-v2615)
@@ -1993,6 +1994,32 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.618)
+
+**Date**: 2026-07-02
+
+### App activity heartbeat — short visits now register
+
+The People → Activity data (`user_app_activity_daily`, v2.155/156) had a structural blind spot: [`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts) fired its first bump only after **60 continuous seconds** of tab visibility, and the timer reset to zero on every hide/re-show. A field tech's typical interaction — open the app, clock in/out in 20–40 seconds, background it — recorded **nothing**: no `last_seen_at`, no active time. Prod comparison of last clock action vs Activity "Last seen" showed staleness up to **26 days** for field-heavy users, while desk users tracked accurately.
+
+Fixes (hook only — the deployed `bump_user_app_activity` RPC already clamps `p_seconds` to `[0, 300]`, so no DB change):
+
+1. **Instant "seen" bump**: on the tab becoming visible, `bump(0)` updates `last_seen_at` without adding hours — throttled to once per minute so rapid tab flicker can't spam the RPC.
+2. **Partial-minute flush**: the hook tracks the current visible segment's start; on `visibilitychange → hidden`, **`pagehide`** (mobile Safari / tab close), or unmount, it flushes the elapsed seconds (ignoring spans under 5s). A 40-second clock-out visit now adds ~40s of active time instead of zero.
+3. The 60s tick continues for sustained use, resetting the partial-segment clock each time it fires so time is never double-counted.
+
+Still strictly **non-retrying** (the 2026-06-04 522 burst was dominated by this heartbeat retrying; that property is preserved). Remaining known caveats: UTC day bucketing, and time only accrues while the tab is visible.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1776/1776**; eslint clean on the touched file. RPC zero-second behavior verified against the deployed definition (`LEAST(GREATEST(COALESCE(p_seconds,0),0),300)`; conflict path adds 0 and sets `last_seen_at = now()`).
+
+#### Files
+
+Modified: [`src/hooks/useAppActivityHeartbeat.ts`](../src/hooks/useAppActivityHeartbeat.ts). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.617)
