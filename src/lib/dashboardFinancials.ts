@@ -21,6 +21,8 @@ export type FinancialItem = {
   amount: number
   /** YYYY-MM-DD used for the "oldest" hint; null when the source has no meaningful date. */
   dateYmd: string | null
+  /** jobs_ledger id for AR / Not-billed rows — powers click-to-open-job; null for AP rows. */
+  jobId: string | null
 }
 
 export type FinancialBucket = {
@@ -126,6 +128,7 @@ export function buildArBucket(
       sublabel: 'Billed invoice',
       amount: remaining,
       dateYmd: isoToYmd(inv.billed_at),
+      jobId: inv.job_id,
     })
   }
   for (const job of jobs) {
@@ -139,6 +142,7 @@ export function buildArBucket(
       sublabel: 'Billed job (no invoice rows)',
       amount: remaining,
       dateYmd: job.last_bill_date,
+      jobId: job.id,
     })
   }
   return finishBucket(items)
@@ -161,6 +165,7 @@ export function buildApBucket(
       sublabel: 'Supply invoice',
       amount,
       dateYmd: inv.invoice_date,
+      jobId: null,
     })
   }
   let payrollTotal = 0
@@ -174,6 +179,7 @@ export function buildApBucket(
       sublabel: `Payroll ${stub.period_start} – ${stub.period_end}`,
       amount: remaining,
       dateYmd: stub.period_end,
+      jobId: null,
     })
   }
   return { ...finishBucket(items), supplyTotal, payrollTotal }
@@ -199,6 +205,7 @@ export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: Financial
       sublabel: status === 'ready_to_bill' ? 'Ready to Bill' : 'Working',
       amount: unbilled,
       dateYmd: job.last_work_date,
+      jobId: job.id,
     })
   }
   return finishBucket(items)

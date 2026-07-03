@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/format'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
+import { useJobFormModal } from '../contexts/JobFormModalContext'
 import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
@@ -38,10 +39,13 @@ function ItemsModal({
   cardKey,
   bucket,
   onClose,
+  onOpenJob,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
   onClose: () => void
+  /** Job rows (AR / Not billed) open the job editor; closes this modal first (job modal stacks lower). */
+  onOpenJob: ((jobId: string) => void) | null
 }) {
   const meta = CARD_META[cardKey]
   return (
@@ -115,7 +119,30 @@ function ItemsModal({
               {bucket.items.map((item: FinancialItem) => (
                 <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
                   <td style={{ padding: '0.45rem 0.65rem' }}>
-                    {item.label}
+                    {item.jobId && onOpenJob ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenJob(item.jobId as string)}
+                        title="Open this job"
+                        aria-label={`Open job ${item.label}`}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          margin: 0,
+                          font: 'inherit',
+                          color: '#2563eb',
+                          textDecoration: 'underline dotted',
+                          textUnderlineOffset: '2px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {item.label}
+                      </button>
+                    ) : (
+                      item.label
+                    )}
                     {item.sublabel ? (
                       <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
                     ) : null}
@@ -148,6 +175,7 @@ function ItemsModal({
 export default function DashboardFinancialsSection() {
   const { data, loading, error } = useDashboardFinancials(true)
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
+  const jobModal = useJobFormModal()
 
   const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string }> = data
     ? [
@@ -202,7 +230,20 @@ export default function DashboardFinancialsSection() {
         </div>
       )}
       {openCard && data ? (
-        <ItemsModal cardKey={openCard} bucket={data[openCard]} onClose={() => setOpenCard(null)} />
+        <ItemsModal
+          cardKey={openCard}
+          bucket={data[openCard]}
+          onClose={() => setOpenCard(null)}
+          onOpenJob={
+            jobModal
+              ? (jobId) => {
+                  // The job editor overlay (z 1010) sits below this modal (z 1100) — close first.
+                  setOpenCard(null)
+                  jobModal.openEditJob(jobId)
+                }
+              : null
+          }
+        />
       ) : null}
     </div>
   )
