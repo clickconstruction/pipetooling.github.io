@@ -234,28 +234,28 @@ function ItemsModal({
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <h3 id="dashboard-financials-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <h3 id="dashboard-financials-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1, minWidth: 200 }}>
               {meta.title} — ${formatCurrency(bucket.total)}{' '}
               <span style={{ fontWeight: 400, color: '#6b7280' }}>
                 ({bucket.count} item{bucket.count === 1 ? '' : 's'})
               </span>
             </h3>
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>{meta.hint}</p>
+            <Link to={meta.linkTo} style={{ fontSize: '0.8125rem', color: '#2563eb', whiteSpace: 'nowrap' }}>
+              {meta.linkLabel} →
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close"
+              aria-label="Close"
+              style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+            >
+              ×
+            </button>
           </div>
-          <Link to={meta.linkTo} style={{ fontSize: '0.8125rem', color: '#2563eb', whiteSpace: 'nowrap' }}>
-            {meta.linkLabel} →
-          </Link>
-          <button
-            type="button"
-            onClick={onClose}
-            title="Close"
-            aria-label="Close"
-            style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-          >
-            ×
-          </button>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>{meta.hint}</p>
         </div>
         <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>

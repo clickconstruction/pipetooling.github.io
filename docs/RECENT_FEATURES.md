@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.626)
+last_updated: 2026-07-03 (v2.627)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.627 — **Dashboard → Financials** — **drill-down hint spans the full header width**: the explanatory subtitle no longer shares a flex cell with the `Open Jobs Stages →` link + close button (which squeezed it into a narrow wrapped column) — the header is now title-row (title | link | ×) over a full-width hint line. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2627)
 **New:** [v2.626 — **Dashboard → Financials** — **drill-down header layout**: item count moved up into the title line as a muted `(10 items)` suffix — `Not Billed Out — $57,727.50 (10 items)` — leaving the subtitle as just the explanatory hint. Applies to all three drill-downs (AR / AP / Not billed); [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2626)
 **New:** [v2.625 — **Dashboard → Financials + Jobs Stages** — **section headers deep-link to Jobs Stages**. The **Ready to Bill** / **Working** headers in the Not Billed Out drill-down are now blue links to `/jobs?tab=stages&stagesSection=readyToBill|working`. New generic **`?stagesSection=waiting|working|readyToBill|billed`** param on [`Jobs.tsx`](../src/pages/Jobs.tsx) (mirrors the `stagesInvoice` idiom): once the Stages tab has data it calls the existing `focusStagesSection` (opens the collapsed section + smooth-scrolls to its anchor) and strips itself from the URL — reusable for any future "jump to a Stages section" link](#latest-updates-v2625)
 **New:** [v2.624 — **Dashboard → Financials** — **Not Billed Out modal grouped by status**. The drill-down now renders two sections — **Ready to Bill** on top (closest to money), **Working** below — each with a grey header row showing the section's job count and dollar subtotal; rows keep their amount-desc order within sections and the per-row `· Ready to Bill / · Working` sublabel is dropped (the header says it). Presentational only ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)); AR / AP modals and all math unchanged](#latest-updates-v2624)
@@ -2002,6 +2003,24 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.627)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — drill-down hint spans the full header width
+
+Follow-up to v2.626: the explanatory hint (`Working and Ready-to-Bill jobs whose revenue is not yet on a billed customer invoice.`) was inside the same flex cell as the title, next to the `Open Jobs Stages →` link and × button — so it wrapped in a narrow column instead of running across the modal. The header is restructured into a title row (`title (count) | link | ×`) with the hint on its own full-width line beneath. All three drill-downs (AR / AP / Not billed).
+
+#### Verification
+
+`tsc -b` clean; zero lint warnings on the touched file.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
 ---
 
 ## Latest Updates (v2.626)
