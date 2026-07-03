@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.629)
+last_updated: 2026-07-03 (v2.630)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.630 — **Ops** — **edge-function drift check (CI + local) after the Apply Discount incident**. Apply discount on a **Stripe-hosted** invoice failed for everyone ("Failed to send a request to the Edge Function") because `stripe-invoice-agreed-write-down` (v2.524) was never deployed — third stale-function incident (create-user, invite-user). Function **deployed to prod** (CORS preflight verified 200; the in-handler role gate already includes `assistant`, both write-down RPCs already existed). Prevention: new [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (`npm run check:edge-drift`) diffs `supabase/functions/*` against `supabase functions list` — repo-but-not-deployed **fails** with the exact deploy command; deployed-but-not-in-repo warns. New workflow [`edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): main pushes touching functions + daily cron + manual dispatch. **Setup: add the `SUPABASE_ACCESS_TOKEN` repo secret**](#latest-updates-v2630)
 **New:** [v2.629 — **Dashboard → Financials** — **AP shows upcoming payroll (due / upcoming split)**. The AP card sub-line becomes **`Supplies $X · Payroll: $Y due / $Z upcoming`**, where `$Z` is the Payroll ledger header's "upcoming" figure computed by the **same kernel** (`buildUpcomingPayrollSummary` — person-weeks with clocked time incl. pending but no pay report, hours × wage). The AP drill-down gains an **`Upcoming payroll (estimate)`** section after the due items (grey header with person-week count + subtotal; per person-week rows `Name · 6/28–7/4 · 12.3h (est.)`), excluded from the footer total, which relabels to **`Total due`**. **Assistants** get a single aggregate `Payroll — $Z` line (`redactUpcomingApSection`, same rule as v2.628). Hook fetches `users` + `people_pay_config` + bounded `clock_sessions` (best-effort — failures degrade to no upcoming section); new kernel mappers `buildUpcomingApSection`/`redactUpcomingApSection` (+4 tests)](#latest-updates-v2629)
 **New:** [v2.628 — **Dashboard → Financials** — **assistants see the payroll total, not per-person lines**. For role `assistant`, the Accounts Payable drill-down collapses all per-person pay-stub rows into one aggregate **`Payroll — $Y`** line (`N open pay stubs` sublabel, oldest period-end as the date); supplies stay itemized and the card totals / `Supplies $X · Payroll $Y` subtotals are unchanged. New pure kernel helper `redactApPayrollItems` (+2 tests) applied only when opening the AP modal as an assistant — mirrors the existing `canAccessPay: false` convention that hides the People → Payroll tab from assistants. Display rule, not a data barrier (RLS intentionally grants assistants-of-pay-approved-masters the rows for their other pay duties)](#latest-updates-v2628)
 **New:** [v2.627 — **Dashboard → Financials** — **drill-down hint spans the full header width**: the explanatory subtitle no longer shares a flex cell with the `Open Jobs Stages →` link + close button (which squeezed it into a narrow wrapped column) — the header is now title-row (title | link | ×) over a full-width hint line. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2627)
@@ -2005,6 +2006,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.630)
+
+**Date**: 2026-07-03
+
+### Ops — edge-function drift check (CI + local), after the Apply Discount incident
+
+**Incident**: Apply Discount on a **Stripe-hosted** invoice failed with "Failed to send a request to the Edge Function" (reported by Taunya; would hit any role). Root cause: [`AgreedWriteDownModal`](../src/components/jobs/AgreedWriteDownModal.tsx)'s Stripe path invokes the `stripe-invoice-agreed-write-down` Edge Function, which shipped in-repo in v2.524 but **was never deployed** — the third stale-function incident (create-user, invite-user prior). Non-Stripe invoices use the `apply_agreed_write_down_to_billed_invoice` RPC and always worked, which kept this hidden.
+
+**Fix (prod, 2026-07-03)**: `npx supabase functions deploy stripe-invoice-agreed-write-down` (bundles `_shared/stripeSecrets.ts`). Verified: CORS preflight 200 from the app origin; the function's in-handler gate (`BILLING_ROLES` = dev / master_technician / assistant / primary) already authorizes assistants; both DB RPCs (`apply_agreed_write_down_to_billed_invoice`, `service_apply_agreed_write_down_from_stripe`) already existed in prod. Post-deploy audit: **all 54 repo functions now deployed** (2 deployed-only extras: legacy `delete-user`, parallel-branch `send-sign-in-email`).
+
+**Prevention**: new drift check that fails loudly before a user finds the gap.
+
+- [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (**`npm run check:edge-drift`**): diffs `supabase/functions/*` (dirs with an `index.ts`, `_shared` excluded) against `supabase functions list --output json`. Repo-but-not-deployed → **exit 1** listing the exact `npx supabase functions deploy <slug>` commands; deployed-but-not-in-repo → warning only. Auth follows the CLI (local `supabase login` session, or `SUPABASE_ACCESS_TOKEN` env in CI).
+- [`.github/workflows/edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): runs on main pushes touching `supabase/functions/**` (catches "merged but forgot to deploy"), a **daily 15:00 UTC cron** (catches dashboard-side drift), and manual dispatch.
+- **Setup required**: add a `SUPABASE_ACCESS_TOKEN` repository secret (personal access token from supabase.com/dashboard/account/tokens) — until then the workflow fails with that instruction.
+
+#### Files
+
+New: [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs), [`.github/workflows/edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml). Modified: [`package.json`](../package.json) (`check:edge-drift` script). No client / DB changes (the function deploy itself was a prod-only action).
+
 ---
 
 ## Latest Updates (v2.629)
