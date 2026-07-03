@@ -1421,3 +1421,178 @@ body.my-time-boundary-dragging {
   outline-offset: 1px;
   border-radius: 2px;
 }
+
+/* Settings → People & accounts: Active Accounts modern card (matches .prospectsConvert design language) */
+.activeAccountsCard {
+  margin-bottom: 2rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.activeAccountsCard__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  color: #111827;
+  text-align: left;
+}
+
+.activeAccountsCard__chevron {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.activeAccountsCard__body {
+  padding: 0 1.25rem 1.25rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.activeAccountsCard__desc {
+  margin: 1rem 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.activeAccountsCard__actions {
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.activeAccountsCard__btnPrimary {
+  padding: 0.5rem 1rem;
+  background: #2563eb;
+  color: white;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.activeAccountsCard__btnPrimary:hover {
+  background: #1d4ed8;
+}
+
+.activeAccountsCard__btnSecondary {
+  padding: 0.5rem 1rem;
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.activeAccountsCard__btnSecondary:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.activeAccountsCard__btnDanger {
+  padding: 0.5rem 1rem;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.activeAccountsCard__btnDanger:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.activeAccountsCard__table {
+  width: 100%;
+  border-collapse: collapse;
+  max-width: 680px;
+}
+
+.activeAccountsCard__table th {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6b7280;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.activeAccountsCard__table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.activeAccountsCard__rowBtn {
+  padding: 0.25rem 0.625rem;
+  background: white;
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.activeAccountsCard__rowBtn:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+
+.activeAccountsCard__rowBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.activeAccountsCard__rowBtnPrimary {
+  padding: 0.25rem 0.625rem;
+  background: #2563eb;
+  color: white;
+  border: 1px solid #2563eb;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.activeAccountsCard__rowBtnPrimary:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.activeAccountsCard__rowBtnPrimary:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.activeAccountsCard__select {
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  background: white;
+  font-size: 0.875rem;
+}
