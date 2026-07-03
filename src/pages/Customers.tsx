@@ -623,7 +623,10 @@ export default function Customers() {
                         </span>
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        {bid.bid_due_date ? new Date(bid.bid_due_date).toLocaleDateString() : '—'}
+                        {bid.bid_due_date
+                          ? // DATE-only string: parse at local noon so it doesn't render a day early.
+                            new Date(bid.bid_due_date + 'T12:00:00').toLocaleDateString()
+                          : '—'}
                       </td>
                       <td style={{ padding: '0.5rem', textAlign: 'right' }}>
                         {bid.bid_value != null

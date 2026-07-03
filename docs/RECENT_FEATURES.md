@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.630)
+last_updated: 2026-07-03 (v2.637)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,13 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.637 — **Dashboard → Financials** — **AP supply rows show due date + allocated jobs inline**. The AP drill-down's date column is now headed **Due** and supply rows show the bill's `due_date` with a compact **`Nd`** past-due chip (orange <60d, red ≥60d) instead of the invoice date; each supply row also gets a muted second line listing its job allocations (`500 · Smith House (60%), …`) from the v2.635 `apBills` map. Payroll-due rows keep their period-end date under the same `Due` header; other cards keep `Date`. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2637)
+**New:** [v2.636 — **Dashboard → Financials** — **AP drill-down grouped into Supplies / Payroll due / Upcoming payroll sections**. Previously payroll-due rows interleaved with ~130 supply rows by amount and the v2.629 "Upcoming payroll (estimate)" section sat invisibly at the very bottom — payroll was effectively unfindable. The AP modal now uses the same grey section headers as Not Billed Out: **Supplies — N bills · $X** (per-row "Supply invoice" sublabel dropped as redundant), **Payroll due — N items · $Y** (period sublabels kept), then the existing **Upcoming payroll (estimate) — N person-weeks · $Z**; footer stays `Total due`. Assistant's aggregate rows land in the same sections. Section-header machinery generalized (per-section noun + sublabel-hiding flag). [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2636)
+**New:** [v2.635 — **Dashboard → Financials** — **AP bill modal shows allocated jobs**. The v2.632 bill detail gains a **Job(s)** fact row: each `supply_house_invoice_job_allocations` entry renders as `500 · Smith House (60%)` (pct desc), clickable → **Job Detail** modal (both stacked modals close first); bills with no allocation show `—`. Hook fetches allocations per unpaid bill (chunked, best-effort) + labels for allocated jobs outside the status-filtered jobs fetch; 125 of 138 unpaid bills have job allocations in prod](#latest-updates-v2635)
+**New:** [v2.634 — **Materials → Supply Houses** — **fix: invoice/due dates displayed one day early**. Reported by Taunya ("I enter the 10th, it shows the 9th"): `invoice_date`/`due_date` are DATE-only strings and `new Date('2026-07-10')` parses as **UTC midnight** → renders as the previous day in US timezones. New `formatYmdLocal` (parses at local noon; non-YMD values fall back) replaces the three affected `toLocaleDateString()` call sites in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (detail Date + Due columns, Apply Payment list date). **Stored data was always correct** — display-only; `Paid On` (real timestamp) unaffected; the aging buckets and Financials modals already used safe parsing](#latest-updates-v2634)
+**New:** [v2.633 — **Dashboard → Financials** — **"Financials" section title removed + tighter bottom gap**: the three cards now sit directly at the top of the dashboard without the `Financials` h2 (they're self-describing), and the section's bottom margin shrank 1.5rem → 0.5rem so the quick actions / Clock In row sits closer. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2633)
+**New:** [v2.632 — **Dashboard → Financials** — **AP supply rows open a bill detail modal with attachment preview**. Supply-house rows in the Accounts Payable drill-down are now clickable (dotted-underline, like job rows) → **`ApBillModal`** (z 1110): supply house + amount header, fact rows (Invoice #, PO #, invoice date, due date with the orange/red **`Nd past due`** chip, amount), and at the bottom the **attached file previewed inline** via the Google Drive `/preview` embed (reuses `googleDrivePreviewEmbedUrl`) — collapsed to 300px with click-to-zoom / **Expand** button that widens the modal to ~1100px with a 68vh preview, plus an **Open in Drive ↗** link. Hook now fetches `due_date/link/invoice_number/purchase_order_number` and exposes an `apBills` map keyed by item key. Payroll and aggregate rows unchanged; 131/138 unpaid bills already have Drive links](#latest-updates-v2632)
+**New:** [v2.631 — **Materials → Supply Houses** — **AP aging map (`Summary | Aging map` toggle)**. New matrix view of unpaid dollars by days past due, computed from the already-recorded `supply_house_invoices.due_date`: rows = houses (total desc, click to open the house), columns **Current | 1–30 | 30–60 | 60–90 | 90+ | No due date | Total** with green→red heat cells and a column-totals footer — the hand-drawn AP aging sheet, live. Caption nudges when unpaid invoices lack a due date. Companions: unpaid invoice rows in the house detail get a red **`Nd past due`** chip, and Add Invoice **prefills the due date** from the house's `monthly_payment_day` (next occurrence, clamped to month length; editable). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (**6 tests**); no DB changes — 131 of 138 unpaid invoices already had due dates](#latest-updates-v2631)
 **New:** [v2.630 — **Ops** — **edge-function drift check (CI + local) after the Apply Discount incident**. Apply discount on a **Stripe-hosted** invoice failed for everyone ("Failed to send a request to the Edge Function") because `stripe-invoice-agreed-write-down` (v2.524) was never deployed — third stale-function incident (create-user, invite-user). Function **deployed to prod** (CORS preflight verified 200; the in-handler role gate already includes `assistant`, both write-down RPCs already existed). Prevention: new [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (`npm run check:edge-drift`) diffs `supabase/functions/*` against `supabase functions list` — repo-but-not-deployed **fails** with the exact deploy command; deployed-but-not-in-repo warns. New workflow [`edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): main pushes touching functions + daily cron + manual dispatch. **Setup: add the `SUPABASE_ACCESS_TOKEN` repo secret**](#latest-updates-v2630)
 **New:** [v2.629 — **Dashboard → Financials** — **AP shows upcoming payroll (due / upcoming split)**. The AP card sub-line becomes **`Supplies $X · Payroll: $Y due / $Z upcoming`**, where `$Z` is the Payroll ledger header's "upcoming" figure computed by the **same kernel** (`buildUpcomingPayrollSummary` — person-weeks with clocked time incl. pending but no pay report, hours × wage). The AP drill-down gains an **`Upcoming payroll (estimate)`** section after the due items (grey header with person-week count + subtotal; per person-week rows `Name · 6/28–7/4 · 12.3h (est.)`), excluded from the footer total, which relabels to **`Total due`**. **Assistants** get a single aggregate `Payroll — $Z` line (`redactUpcomingApSection`, same rule as v2.628). Hook fetches `users` + `people_pay_config` + bounded `clock_sessions` (best-effort — failures degrade to no upcoming section); new kernel mappers `buildUpcomingApSection`/`redactUpcomingApSection` (+4 tests)](#latest-updates-v2629)
 **New:** [v2.628 — **Dashboard → Financials** — **assistants see the payroll total, not per-person lines**. For role `assistant`, the Accounts Payable drill-down collapses all per-person pay-stub rows into one aggregate **`Payroll — $Y`** line (`N open pay stubs` sublabel, oldest period-end as the date); supplies stay itemized and the card totals / `Supplies $X · Payroll $Y` subtotals are unchanged. New pure kernel helper `redactApPayrollItems` (+2 tests) applied only when opening the AP modal as an assistant — mirrors the existing `canAccessPay: false` convention that hides the People → Payroll tab from assistants. Display rule, not a data barrier (RLS intentionally grants assistants-of-pay-approved-masters the rows for their other pay duties)](#latest-updates-v2628)
@@ -2006,6 +2013,145 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.637)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP rows show due date + allocated jobs
+
+Each supply row in the Accounts Payable drill-down now carries the two facts you'd otherwise open the bill for:
+
+- **Due date instead of invoice date**: the date column is headed **`Due`** (AP only; other cards keep `Date`) and supply rows show `supply_house_invoices.due_date` with a compact **`Nd`** past-due chip — orange under 60 days, red at 60+ — matching the Supply Houses tab chips. Bills without a due date show `—`. Payroll-due rows keep their period-end date under the same header.
+- **Allocated jobs as a muted second line** under the supply-house name: `500 · Smith House (60%), 402 · Jones (40%)` — same `apBills` data (v2.635) that powers the bill modal, where the jobs remain clickable.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + kernel tests + eslint clean. No DB / hook changes.
+
+---
+
+## Latest Updates (v2.636)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP drill-down grouped into sections
+
+Reported: "I see `Payroll: $4,949.48 due` on the card but can't find upcoming payroll in the AP ledger." The upcoming section (v2.629) *was* there — but rendered below ~130 supply rows, and the payroll-due rows were interleaved with supplies by amount, so neither read as a payroll figure. The AP drill-down now groups like Not Billed Out:
+
+- **Supplies — 131 bills · $54,363.28** (per-row `Supply invoice` sublabel dropped; the header says it)
+- **Payroll due — 7 items · $4,949.48** (per-person period sublabels kept; the assistant's single aggregate row lands here too)
+- **Upcoming payroll (estimate) — 15 person-weeks · $13,557.31** (unchanged v2.629 section, now visually consistent with the ones above)
+- Footer stays **`Total due`** (upcoming excluded, as before). Bill click-through, → dispatch, and all totals unchanged.
+
+Mechanically: the ItemsModal section machinery gained a per-section `noun` ("job"/"bill"/"item") and `hideSublabels` flag; AP partitions items by key prefix (`supply:` vs stub/aggregate).
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + kernel tests + eslint clean. No DB changes.
+
+---
+
+## Latest Updates (v2.635)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP bill modal shows allocated jobs
+
+Follow-up to v2.632: the Accounts Payable bill detail modal now shows **which jobs the bill is assigned to**, between the Amount fact and the attachment preview.
+
+- One line per `supply_house_invoice_job_allocations` entry — `500 · Smith House (60%)`, sorted by percent desc; a bill with no allocations shows `—`. In prod, 125 of 138 unpaid bills have allocations.
+- **Each job is clickable** → opens the **Job Detail** modal (the bill modal and items modal close first — the Job Detail backdrop stacks lower), consistent with job rows elsewhere in Financials.
+- Plumbing in [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts): chunked allocations fetch per unpaid bill (best-effort — failure just leaves the row as `—`), plus a label lookup for allocated jobs outside the hook's status-filtered jobs fetch (labels via the kernel's `financialJobLabel`, HCP → Click → name). `DashboardApBill` gains `jobs: Array<{jobId, label, pct}>`.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805**; zero lint warnings on touched files.
+
+#### Files
+
+Modified: [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.634)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — fix: dates displayed one day early
+
+Taunya reported entering a due date of the 10th and seeing the 9th. **Bug, not user error**: `invoice_date` and `due_date` are DATE-only columns (`YYYY-MM-DD`), and `new Date('2026-07-10')` parses as **UTC midnight** — 6–7pm the *previous* evening in America/Chicago — so `toLocaleDateString()` rendered every date one day early.
+
+- New local `formatYmdLocal(ymd)` in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx): parses `YYYY-MM-DD` at **local noon** (the same idiom the Financials modals already use); non-YMD values fall back to normal parsing.
+- Replaced the three affected call sites: the invoice detail table's **Date** and **Due** columns, and the Apply Payment list's invoice date. `Paid On` uses a real timestamp and was always correct.
+- **Stored data was always right** — the `<input type="date">` writes the exact YMD string; only the display was off. Nothing needs re-entering. The aging map buckets compare YMD strings directly and were never affected.
+
+#### Files
+
+Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). `tsc -b` clean; no new lint warnings.
+
+---
+
+## Latest Updates (v2.633)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — section title removed + tighter bottom gap
+
+The `Financials` heading above the three cards is gone — the AR / AP / Not Billed Out cards sit directly at the top of the dashboard and describe themselves. Follow-up in the same version: the section's bottom margin shrank from `1.5rem` to `0.5rem`, pulling the quick-action buttons / **Clock In** row up closer to the cards.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + eslint clean.
+
+---
+
+## Latest Updates (v2.632)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP bill detail modal with attachment preview
+
+Supply-house rows in the **Accounts Payable** drill-down are now clickable, opening a bill detail modal:
+
+- **Header**: `{Supply house} — ${amount}`; **fact rows**: Invoice #, Purchase Order #, Invoice date, Due date (with the same orange/red `Nd past due` chip as the Supply Houses tab, via `daysPastDue`), Amount.
+- **Attached file at the bottom**: the invoice's Drive link renders inline through the Google Drive `/preview` embed (reusing [`googleDrivePreviewEmbedUrl`](../src/lib/estimateCustomerAttachment.ts)) — collapsed to 300px with `pointer-events` off and a zoom-in cursor; **clicking it (or the Expand button) widens the modal to ~1100px with a 68vh preview**; Shrink restores. An **Open in Drive ↗** link is always available; non-Drive links fall back to that link, and bills without a link say so.
+- **Plumbing**: [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) extends the supply select with `due_date, link, invoice_number, purchase_order_number` and exposes `apBills: Record<itemKey, DashboardApBill>`; [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) adds the `onOpenApBill` row handler (AP modal only) + `ApBillModal` (z 1110 above the items modal at 1100). Payroll rows, the assistant's aggregate rows, and the upcoming section are unchanged (aggregates have non-`supply:` keys, so they're inherently not clickable).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805**; zero lint warnings on touched files. Prod data check: 131 of 138 unpaid supply invoices carry a Drive link (the only host present), so nearly every row previews inline.
+
+#### Files
+
+Modified: [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB / migration / type changes.
+
+---
+
+## Latest Updates (v2.631)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — AP aging map
+
+The Supply Houses tab gains a **`Summary | Aging map`** toggle (pill buttons under the outstanding-total heading). The Aging map is the classic AP aging matrix — the hand-drawn sheet, computed live:
+
+- **Rows**: supply houses with an unpaid balance, largest first; clicking a row switches back to Summary with that house's detail expanded.
+- **Columns**: **Current** (not yet due) | **1–30** | **30–60** | **60–90** | **90+** (days past due, from `supply_house_invoices.due_date`) | **No due date** | **Total**, with green→amber→red heat-colored cells, hover tooltips on the headers, and a column-totals footer.
+- A caption above the table calls out unpaid invoices missing a due date (`N unpaid invoices have no due date — open the house and add one to place them`).
+- **Past-due chips**: in the expanded house detail, unpaid invoice rows show a red/orange **`42d past due`** badge next to the due date (orange < 60 days, red ≥ 60).
+- **Due-date prefill**: Add Invoice now prefills Due date with the next occurrence of the house's `monthly_payment_day` after today (clamped to month length — the 31st in February → Feb 28/29), still fully editable. Houses without a payment day behave as before.
+- **No DB changes** — `due_date` and `monthly_payment_day` already existed and were already being recorded (131 of 138 unpaid invoices had due dates at build time). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts): `daysPastDue` / `agingBucketFor` (30/60/90 cutoffs) / `buildSupplyHouseAgingMatrix` / `nextMonthlyPaymentDueYmd` — **6 unit tests** including bucket boundaries and leap-year clamping. Matrix cross-checked against prod SQL at build time (Texas Plumbing Supply $18,477.59 across four buckets; grand total matches the tab's outstanding header).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805** (6 new); no new lint warnings (the tab's 1 pre-exists).
+
+#### Files
+
+New: [`src/lib/supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (+ test). Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.630)

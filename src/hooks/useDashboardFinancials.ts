@@ -13,6 +13,7 @@ import {
   buildArBucket,
   buildUnbilledBucket,
   buildUpcomingApSection,
+  financialJobLabel,
   type FinancialBucket,
   type FinancialInvoicePaymentRow,
   type FinancialInvoiceRow,
@@ -22,11 +23,29 @@ import {
   type UpcomingPayrollApSection,
 } from '../lib/dashboardFinancials'
 
+/** Detail for one unpaid supply-house bill — powers the AP row click-through modal. */
+export type DashboardApBill = {
+  /** Matches the AP FinancialItem key (`supply:<invoice id>`). */
+  itemKey: string
+  houseName: string
+  invoiceNumber: string
+  purchaseOrderNumber: string | null
+  invoiceDateYmd: string | null
+  dueDateYmd: string | null
+  amount: number
+  /** Attachment URL (Google Drive in practice); null when none recorded. */
+  link: string | null
+  /** Job allocations for this bill (pct desc); label via financialJobLabel. */
+  jobs: Array<{ jobId: string; label: string; pct: number }>
+}
+
 export type DashboardFinancials = {
   ar: FinancialBucket
   ap: FinancialBucket & { supplyTotal: number; payrollTotal: number }
   /** Estimated payroll for worked-but-unreported weeks — same kernel as the Payroll ledger header. */
   apUpcoming: UpcomingPayrollApSection
+  /** Keyed by AP item key. */
+  apBills: Record<string, DashboardApBill>
   unbilled: FinancialBucket
 }
 
@@ -89,7 +108,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
             async () =>
               await supabase
                 .from('supply_house_invoices')
-                .select('id, amount, invoice_date, supply_houses(name)')
+                .select('id, amount, invoice_date, due_date, link, invoice_number, purchase_order_number, supply_houses(name)')
                 .eq('is_paid', false),
             'dashboard financials supply invoices',
           ),
@@ -113,7 +132,28 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
 
         const jobs = (jobsRes ?? []) as FinancialJobRow[]
         const invoices = (invoicesRes ?? []) as FinancialInvoiceRow[]
-        const supplyInvoices = (supplyRes ?? []) as unknown as FinancialSupplyInvoiceRow[]
+        const supplyInvoices = (supplyRes ?? []) as unknown as Array<
+          FinancialSupplyInvoiceRow & {
+            due_date: string | null
+            link: string | null
+            invoice_number: string
+            purchase_order_number: string | null
+          }
+        >
+        const apBills: Record<string, DashboardApBill> = {}
+        for (const inv of supplyInvoices) {
+          apBills[`supply:${inv.id}`] = {
+            itemKey: `supply:${inv.id}`,
+            houseName: (inv.supply_houses?.name ?? '').trim() || 'Supply house',
+            invoiceNumber: inv.invoice_number,
+            purchaseOrderNumber: inv.purchase_order_number?.trim() || null,
+            invoiceDateYmd: inv.invoice_date,
+            dueDateYmd: inv.due_date,
+            amount: Number(inv.amount ?? 0),
+            link: inv.link?.trim() || null,
+            jobs: [],
+          }
+        }
         const stubs = (stubsRes ?? []) as Array<{
           id: string
           person_name: string
@@ -124,6 +164,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
 
         const billedInvoiceIds = invoices.filter((i) => i.status === 'billed').map((i) => i.id)
         const stubIds = stubs.map((s) => s.id)
+        const supplyInvoiceIds = supplyInvoices.map((i) => i.id)
 
         // Upcoming-payroll inputs — mirrors PeoplePayStubsTab's upcomingInputs (payroll is
         // person_name-keyed, clock_sessions is user_id-keyed; trimmed-name match).
@@ -151,7 +192,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
         const upcomingFetchStart = upcomingPayrollFetchStartYmd({ personNames, lastStubEndByPerson, todayYmd })
         const rosterIds = personNames.map((n) => userIdByPersonName[n]!)
 
-        const [invoicePayments, stubPayments, stubDeductions, stubAdditional, upcomingSessions] = await Promise.all([
+        const [invoicePayments, stubPayments, stubDeductions, stubAdditional, upcomingSessions, supplyAllocations] = await Promise.all([
           chunked(billedInvoiceIds, async (chunk) =>
             ((await withSupabaseRetry(
               async () =>
@@ -193,8 +234,44 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
               )
                 .then((d) => (d ?? []) as UpcomingClockSessionRow[])
                 .catch(() => [] as UpcomingClockSessionRow[]),
+          // Job allocations per unpaid supply bill — best-effort (the bill modal shows '—' without them).
+          chunked(supplyInvoiceIds, async (chunk) =>
+            ((await withSupabaseRetry(
+              async () =>
+                await supabase
+                  .from('supply_house_invoice_job_allocations')
+                  .select('invoice_id, job_id, pct')
+                  .in('invoice_id', chunk),
+              'dashboard financials supply allocations',
+            )) ?? []) as Array<{ invoice_id: string; job_id: string; pct: number | null }>,
+          ).catch(() => [] as Array<{ invoice_id: string; job_id: string; pct: number | null }>),
         ])
         if (cancelled) return
+
+        // Resolve labels for allocated jobs not already in the (status-filtered) jobs fetch.
+        const jobLabelById = new Map<string, string>(jobs.map((j) => [j.id, financialJobLabel(j)]))
+        const missingJobIds = [...new Set(supplyAllocations.map((a) => a.job_id))].filter((id) => !jobLabelById.has(id))
+        if (missingJobIds.length > 0) {
+          try {
+            const extraJobs = await chunked(missingJobIds, async (chunk) =>
+              ((await withSupabaseRetry(
+                async () =>
+                  await supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name').in('id', chunk),
+                'dashboard financials allocation job labels',
+              )) ?? []) as Array<{ id: string; hcp_number: string | null; click_number: string | null; job_name: string | null }>,
+            )
+            for (const j of extraJobs) jobLabelById.set(j.id, financialJobLabel(j))
+          } catch {
+            // labels fall back to '—' below
+          }
+        }
+        if (cancelled) return
+        for (const a of supplyAllocations) {
+          const bill = apBills[`supply:${a.invoice_id}`]
+          if (!bill) continue
+          bill.jobs.push({ jobId: a.job_id, label: jobLabelById.get(a.job_id) ?? '—', pct: Number(a.pct ?? 0) })
+        }
+        for (const bill of Object.values(apBills)) bill.jobs.sort((a, b) => b.pct - a.pct)
 
         const sumByStub = (rows: Array<{ pay_stub_id: string }>, value: (r: never) => number) => {
           const m = new Map<string, number>()
@@ -228,6 +305,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
           ar: buildArBucket(jobs, invoices, invoicePayments),
           ap: buildApBucket(supplyInvoices, payrollStubs),
           apUpcoming: buildUpcomingApSection(upcomingSummary.lines),
+          apBills,
           unbilled: buildUnbilledBucket(jobs, invoices),
         })
       } catch (e) {
