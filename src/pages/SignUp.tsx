@@ -57,7 +57,6 @@ export default function SignUp() {
       setError(err.message)
       return
     }
-    void supabase.rpc('touch_last_sign_in')
     navigate('/', { replace: true })
   }
 

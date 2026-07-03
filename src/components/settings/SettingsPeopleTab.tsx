@@ -1,14 +1,11 @@
-/** Settings → People & accounts tab (dev content): active accounts, role/access management,
- * service-type group memberships, archived accounts, non-user people, convert-master, set-password,
- * and the page-access reference table.
- * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props. */
-import React, { type Dispatch, type FormEvent, type SetStateAction } from 'react'
-import type { UserRole } from '../../hooks/useAuth'
-import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
-import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
-import { ROLES } from '../../lib/userRoles'
-import type { PersonRow, ServiceType, UserRow } from '../../types/settingsRows'
+/** Settings → People & accounts tab (dev content): active accounts (via
+ * ActiveAccountsPanel — shared with the app-level Active Accounts modal),
+ * group memberships, non-user people, and the page-access reference table.
+ * Presentational; remaining state/handlers live in the parent (Settings.tsx). */
+import { type Dispatch, type FormEvent, type SetStateAction } from 'react'
+import type { PersonRow, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
+import ActiveAccountsPanel from './ActiveAccountsPanel'
 
 type PageAccessRow = {
   page: string
@@ -36,775 +33,111 @@ const PAGE_ACCESS: PageAccessRow[] = [
   { page: 'Settings', dev: 'yes', master: 'yes limited', assistant: 'no', sub: 'no', helpers: 'no', estimator: 'yes limited', primary: 'yes limited', superintendent: 'yes limited' },
 ]
 
-function timeSinceAgo(iso: string | null): string {
-  if (!iso) return '—'
-  const d = new Date(iso).getTime()
-  const now = Date.now()
-  const sec = Math.floor((now - d) / 1000)
-  if (sec < 60) return 'Just now'
-  const min = Math.floor(sec / 60)
-  if (min < 60) return `${min} min ago`
-  const hr = Math.floor(min / 60)
-  if (hr < 24) return `${hr} hr ago`
-  const day = Math.floor(hr / 24)
-  if (day < 30) return `${day} day${day === 1 ? '' : 's'} ago`
-  const mo = Math.floor(day / 30)
-  return `${mo} mo ago`
-}
-
 type SettingsPeopleTabProps = {
-  activeAccountsSectionOpen: boolean
   additionalPeopleSectionOpen: boolean
   allPeopleCount: number
-  archivedSectionOpen: boolean
-  archivedUsers: UserRow[]
-  cancelEditUser: () => void
-  convertAutoAdopt: boolean
-  convertError: string | null
-  convertMasterId: string
-  convertMasterSectionOpen: boolean
-  convertNewMasterId: string
-  convertNewRole: 'assistant' | 'subcontractor'
-  convertSubmitting: boolean
-  convertSummary: string | null
   deleteNonUserPerson: (p: PersonRow) => void
   deletingPersonId: string | null
   dispatchGroupError: string | null
   dispatchGroupSavingUserId: string | null
   dispatchMemberIds: Set<string>
-  editEmail: string
-  editError: string | null
-  editEstimatorProspectsAccess: boolean
-  editEstimatorServiceTypeIds: string[]
-  editName: string
   editPersonEmail: string
   editPersonError: string | null
   editPersonName: string
   editPersonNotes: string
   editPersonPhone: string
   editPersonSaving: boolean
-  editPrimaryServiceTypeIds: string[]
-  editSubcontractorServiceTypeIds: string[]
-  editSuperintendentServiceTypeIds: string[]
   editingNonUserPerson: PersonRow | null
-  editingUserId: string | null
   error: string | null
   estimatorGroupError: string | null
   estimatorGroupSavingUserId: string | null
   estimatorInboxSectionOpen: boolean
   estimatorMemberIds: Set<string>
-  handleConvertMaster: (e: FormEvent) => void
-  handleRestore: (userId: string) => void
   myPeople: PersonRow[]
   nonUserPeople: PersonRow[]
-  openArchive: () => void
-  openArchiveReassign: () => void
   openFindDuplicatesModal: () => void
-  openInvite: () => void
-  openManualAdd: () => void
+  onActiveAccountsDataChanged: () => void
   payApprovedError: string | null
   payApprovedMasterIds: Set<string>
   payApprovedMasters: UserRow[]
   payApprovedMastersSectionOpen: boolean
   payApprovedSaving: boolean
-  restoreError: string | null
-  restoreSubmitting: boolean
-  restoringUserId: string | null
   roleVisibilityExpanded: boolean
   saveNonUserPersonEdit: (e: FormEvent) => void
-  saveUserEdits: () => void
-  sendSignInEmail: (u: UserRow) => void
-  sendingSignInEmailId: string | null
-  serviceTypes: ServiceType[]
-  setActiveAccountsSectionOpen: Dispatch<SetStateAction<boolean>>
   setAdditionalPeopleSectionOpen: Dispatch<SetStateAction<boolean>>
-  setArchivedSectionOpen: Dispatch<SetStateAction<boolean>>
-  setConvertAutoAdopt: Dispatch<SetStateAction<boolean>>
-  setConvertError: Dispatch<SetStateAction<string | null>>
-  setConvertMasterId: Dispatch<SetStateAction<string>>
-  setConvertMasterSectionOpen: Dispatch<SetStateAction<boolean>>
-  setConvertNewMasterId: Dispatch<SetStateAction<string>>
-  setConvertNewRole: Dispatch<SetStateAction<'assistant' | 'subcontractor'>>
-  setConvertSummary: Dispatch<SetStateAction<string | null>>
-  setEditEmail: Dispatch<SetStateAction<string>>
-  setEditEstimatorProspectsAccess: Dispatch<SetStateAction<boolean>>
-  setEditEstimatorServiceTypeIds: Dispatch<SetStateAction<string[]>>
-  setEditName: Dispatch<SetStateAction<string>>
   setEditPersonEmail: Dispatch<SetStateAction<string>>
   setEditPersonError: Dispatch<SetStateAction<string | null>>
   setEditPersonName: Dispatch<SetStateAction<string>>
   setEditPersonNotes: Dispatch<SetStateAction<string>>
   setEditPersonPhone: Dispatch<SetStateAction<string>>
-  setEditPrimaryServiceTypeIds: Dispatch<SetStateAction<string[]>>
-  setEditSubcontractorServiceTypeIds: Dispatch<SetStateAction<string[]>>
-  setEditSuperintendentServiceTypeIds: Dispatch<SetStateAction<string[]>>
   setEditingNonUserPerson: Dispatch<SetStateAction<PersonRow | null>>
   setEstimatorInboxSectionOpen: Dispatch<SetStateAction<boolean>>
-  setPasswordSubmitting: boolean
   setPayApprovedMastersSectionOpen: Dispatch<SetStateAction<boolean>>
   setRoleVisibilityExpanded: Dispatch<SetStateAction<boolean>>
-  setSetPasswordConfirm: Dispatch<SetStateAction<string>>
-  setSetPasswordError: Dispatch<SetStateAction<string | null>>
-  setSetPasswordUser: Dispatch<SetStateAction<UserRow | null>>
-  setSetPasswordValue: Dispatch<SetStateAction<string>>
   setTaskDispatchSectionOpen: Dispatch<SetStateAction<boolean>>
-  startEditUser: (u: UserRow) => void
   taskDispatchSectionOpen: boolean
   toggleDispatchGroupMember: (userId: string, currentlyMember: boolean) => void
   toggleEstimatorGroupMember: (userId: string, currentlyMember: boolean) => void
   togglePayApproved: (masterId: string, isApproved: boolean) => void
-  updateRole: (id: string, role: UserRole) => void
-  updatingId: string | null
   users: UserRow[]
 }
 
 export default function SettingsPeopleTab({
-  activeAccountsSectionOpen,
   additionalPeopleSectionOpen,
   allPeopleCount,
-  archivedSectionOpen,
-  archivedUsers,
-  cancelEditUser,
-  convertAutoAdopt,
-  convertError,
-  convertMasterId,
-  convertMasterSectionOpen,
-  convertNewMasterId,
-  convertNewRole,
-  convertSubmitting,
-  convertSummary,
   deleteNonUserPerson,
   deletingPersonId,
   dispatchGroupError,
   dispatchGroupSavingUserId,
   dispatchMemberIds,
-  editEmail,
-  editError,
-  editEstimatorProspectsAccess,
-  editEstimatorServiceTypeIds,
-  editName,
   editPersonEmail,
   editPersonError,
   editPersonName,
   editPersonNotes,
   editPersonPhone,
   editPersonSaving,
-  editPrimaryServiceTypeIds,
-  editSubcontractorServiceTypeIds,
-  editSuperintendentServiceTypeIds,
   editingNonUserPerson,
-  editingUserId,
   error,
   estimatorGroupError,
   estimatorGroupSavingUserId,
   estimatorInboxSectionOpen,
   estimatorMemberIds,
-  handleConvertMaster,
-  handleRestore,
   myPeople,
   nonUserPeople,
-  openArchive,
-  openArchiveReassign,
   openFindDuplicatesModal,
-  openInvite,
-  openManualAdd,
+  onActiveAccountsDataChanged,
   payApprovedError,
   payApprovedMasterIds,
   payApprovedMasters,
   payApprovedMastersSectionOpen,
   payApprovedSaving,
-  restoreError,
-  restoreSubmitting,
-  restoringUserId,
   roleVisibilityExpanded,
   saveNonUserPersonEdit,
-  saveUserEdits,
-  sendSignInEmail,
-  sendingSignInEmailId,
-  serviceTypes,
-  setActiveAccountsSectionOpen,
   setAdditionalPeopleSectionOpen,
-  setArchivedSectionOpen,
-  setConvertAutoAdopt,
-  setConvertError,
-  setConvertMasterId,
-  setConvertMasterSectionOpen,
-  setConvertNewMasterId,
-  setConvertNewRole,
-  setConvertSummary,
-  setEditEmail,
-  setEditEstimatorProspectsAccess,
-  setEditEstimatorServiceTypeIds,
-  setEditName,
   setEditPersonEmail,
   setEditPersonError,
   setEditPersonName,
   setEditPersonNotes,
   setEditPersonPhone,
-  setEditPrimaryServiceTypeIds,
-  setEditSubcontractorServiceTypeIds,
-  setEditSuperintendentServiceTypeIds,
   setEditingNonUserPerson,
   setEstimatorInboxSectionOpen,
-  setPasswordSubmitting,
   setPayApprovedMastersSectionOpen,
   setRoleVisibilityExpanded,
-  setSetPasswordConfirm,
-  setSetPasswordError,
-  setSetPasswordUser,
-  setSetPasswordValue,
   setTaskDispatchSectionOpen,
-  startEditUser,
   taskDispatchSectionOpen,
   toggleDispatchGroupMember,
   toggleEstimatorGroupMember,
   togglePayApproved,
-  updateRole,
-  updatingId,
   users,
 }: SettingsPeopleTabProps) {
+
   return (
     <>
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-            <button
-              type="button"
-              onClick={() => setActiveAccountsSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{activeAccountsSectionOpen ? '▼' : '▶'}</span>
-              Active Accounts
-            </button>
-            {activeAccountsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
-            Set user class for everyone who has signed up. Only owners can change these.
-          </p>
-          <div style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="button" onClick={openInvite} style={{ padding: '0.5rem 1rem' }}>
-              Invite via email
-            </button>
-            <button type="button" onClick={openManualAdd} style={{ padding: '0.5rem 1rem' }}>
-              Manually add user
-            </button>
-            <button type="button" onClick={openArchive} style={{ padding: '0.5rem 1rem' }}>
-              Archive user
-            </button>
-            <button type="button" onClick={openArchiveReassign} style={{ padding: '0.5rem 1rem' }}>
-              Archive User & Reassign Customers
-            </button>
-          </div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Service types</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Last login</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((u) => (
-                  <React.Fragment key={u.id}>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {editingUserId === u.id ? (
-                        <input
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          style={{ width: '100%', padding: '0.25rem 0.5rem' }}
-                        />
-                      ) : (
-                        u.email
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {editingUserId === u.id ? (
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          style={{ width: '100%', padding: '0.25rem 0.5rem' }}
-                        />
-                      ) : (
-                        u.name
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <select
-                        value={u.role}
-                        onChange={(e) => updateRole(u.id, e.target.value as UserRole)}
-                        disabled={updatingId === u.id}
-                        style={{ padding: '0.25rem 0.5rem' }}
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {displayLabelForUserRole(r)}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
-                      {u.role === 'estimator'
-                        ? (u.estimator_service_type_ids?.length
-                          ? (u.estimator_service_type_ids
-                              .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                              .filter(Boolean)
-                              .join(', ') || '—')
-                          : 'All')
-                        : u.role === 'primary'
-                          ? (u.primary_service_type_ids?.length
-                            ? (u.primary_service_type_ids
-                                .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                .filter(Boolean)
-                                .join(', ') || '—')
-                            : 'All')
-                          : u.role === 'superintendent'
-                            ? (u.superintendent_service_type_ids?.length
-                              ? (u.superintendent_service_type_ids
-                                  .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                  .filter(Boolean)
-                                  .join(', ') || '—')
-                              : 'All')
-                            : u.role === 'subcontractor'
-                            ? (u.subcontractor_service_type_ids?.length
-                              ? (u.subcontractor_service_type_ids
-                                  .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                  .filter(Boolean)
-                                  .join(', ') || '—')
-                              : 'All')
-                              : u.role === 'helpers'
-                                ? (u.helpers_service_type_ids?.length
-                                  ? (u.helpers_service_type_ids
-                                      .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                      .filter(Boolean)
-                                      .join(', ') || '—')
-                                  : 'All')
-                            : '—'}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '0.5rem', alignItems: 'center' }}>
-                        {editingUserId === u.id ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={saveUserEdits}
-                              disabled={updatingId === u.id}
-                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              onClick={cancelEditUser}
-                              disabled={updatingId === u.id}
-                              style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                            >
-                              Cancel
-                            </button>
-                          </>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => startEditUser(u)}
-                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                          >
-                            Edit
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => sendSignInEmail(u)}
-                          disabled={sendingSignInEmailId === u.id}
-                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                        >
-                          {sendingSignInEmailId === u.id ? 'Sending…' : 'Send email to sign in'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSetPasswordUser(u)
-                            setSetPasswordValue('')
-                            setSetPasswordConfirm('')
-                            setSetPasswordError(null)
-                          }}
-                          disabled={setPasswordSubmitting}
-                          style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                        >
-                          Set password
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {editingUserId === u.id && u.role === 'estimator' && (
-                    <tr key={`${u.id}-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                            {serviceTypes.map((st) => (
-                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={editEstimatorServiceTypeIds.includes(st.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditEstimatorServiceTypeIds((prev) => [...prev, st.id])
-                                    } else {
-                                      setEditEstimatorServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
-                                    }
-                                  }}
-                                  disabled={updatingId === u.id}
-                                />
-                                {st.name}
-                              </label>
-                            ))}
-                          </div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, cursor: 'pointer' }}>
-                            <input
-                              type="checkbox"
-                              checked={editEstimatorProspectsAccess}
-                              onChange={(e) => setEditEstimatorProspectsAccess(e.target.checked)}
-                              disabled={updatingId === u.id}
-                            />
-                            Can access Prospects
-                          </label>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {editingUserId === u.id && u.role === 'primary' && (
-                    <tr key={`${u.id}-primary-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                            {serviceTypes.map((st) => (
-                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={editPrimaryServiceTypeIds.includes(st.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditPrimaryServiceTypeIds((prev) => [...prev, st.id])
-                                    } else {
-                                      setEditPrimaryServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
-                                    }
-                                  }}
-                                  disabled={updatingId === u.id}
-                                />
-                                {st.name}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {editingUserId === u.id && u.role === 'superintendent' && (
-                    <tr key={`${u.id}-superintendent-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials, Bids)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                            {serviceTypes.map((st) => (
-                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={editSuperintendentServiceTypeIds.includes(st.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditSuperintendentServiceTypeIds((prev) => [...prev, st.id])
-                                    } else {
-                                      setEditSuperintendentServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
-                                    }
-                                  }}
-                                  disabled={updatingId === u.id}
-                                />
-                                {st.name}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  {editingUserId === u.id && isSubcontractorLikeRole(u.role) && (
-                    <tr key={`${u.id}-subcontractor-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
-                        <div style={{ fontSize: '0.875rem' }}>
-                          <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Clock In, Dispatch)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict job/bid association.</p>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                            {serviceTypes.map((st) => (
-                              <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                                <input
-                                  type="checkbox"
-                                  checked={editSubcontractorServiceTypeIds.includes(st.id)}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditSubcontractorServiceTypeIds((prev) => [...prev, st.id])
-                                    } else {
-                                      setEditSubcontractorServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
-                                    }
-                                  }}
-                                  disabled={updatingId === u.id}
-                                />
-                                {st.name}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {editError && (
-            <p style={{ color: '#b91c1c', marginTop: '0.5rem' }}>
-              {editError}
-            </p>
-          )}
-          {users.length === 0 && <p style={{ marginTop: '1rem' }}>No users yet.</p>}
-
-          {/* Archived users */}
-          <div style={{ marginTop: '2rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
-            <button
-              type="button"
-              onClick={() => setArchivedSectionOpen((prev) => !prev)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                margin: 0,
-                padding: '1rem',
-                width: '100%',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 600,
-                textAlign: 'left',
-              }}
-            >
-              <span style={{ fontSize: '0.75rem' }}>{archivedSectionOpen ? '▼' : '▶'}</span>
-              Archived users ({archivedUsers.length})
-            </button>
-            {archivedSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                {restoreError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{restoreError}</p>}
-                {archivedUsers.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No archived users.</p>
-                ) : (
-                  <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}>Archived</th>
-                          <th style={{ padding: '0.5rem 0.75rem' }}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {archivedUsers.map((u) => (
-                          <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{u.email}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{u.name}</td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>{u.role}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
-                              {u.archived_at ? new Date(u.archived_at).toLocaleDateString() : '—'}
-                            </td>
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <button
-                                type="button"
-                                onClick={() => handleRestore(u.id)}
-                                disabled={restoreSubmitting}
-                                style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap' }}
-                              >
-                                {restoringUserId === u.id ? 'Restoring…' : 'Restore'}
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Convert Master to Assistant/Subcontractor */}
-          {users.length > 0 && (
-            <div style={{ marginTop: '2rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
-              <button
-                type="button"
-                onClick={() => setConvertMasterSectionOpen((prev) => !prev)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  margin: 0,
-                  padding: '1rem',
-                  width: '100%',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  textAlign: 'left',
-                }}
-              >
-                <span style={{ fontSize: '0.75rem' }}>{convertMasterSectionOpen ? '▼' : '▶'}</span>
-                Convert Master to Assistant/Subcontractor
-              </button>
-              {convertMasterSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
-                Convert an existing master into an assistant or subcontractor. All of their customers, projects, and people
-                will be reassigned to another master.
-              </p>
-              <form onSubmit={handleConvertMaster}>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label htmlFor="convert-master" style={{ display: 'block', marginBottom: 4 }}>Master to convert *</label>
-                  <select
-                    id="convert-master"
-                    value={convertMasterId}
-                    onChange={(e) => { setConvertMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
-                    disabled={convertSubmitting}
-                    style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
-                  >
-                    <option value="">Select master…</option>
-                    {users
-                      .filter((u) => u.role === 'master_technician')
-                      .map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name || u.email} ({u.email})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <label htmlFor="convert-new-master" style={{ display: 'block', marginBottom: 4 }}>New master owner *</label>
-                  <select
-                    id="convert-new-master"
-                    value={convertNewMasterId}
-                    onChange={(e) => { setConvertNewMasterId(e.target.value); setConvertError(null); setConvertSummary(null) }}
-                    disabled={convertSubmitting}
-                    style={{ width: '100%', maxWidth: 400, padding: '0.5rem' }}
-                  >
-                    <option value="">Select new master…</option>
-                    {users
-                      .filter((u) => u.role === 'master_technician' && u.id !== convertMasterId)
-                      .map((u) => (
-                        <option key={u.id} value={u.id}>
-                          {u.name || u.email} ({u.email})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div style={{ marginBottom: '0.75rem' }}>
-                  <span style={{ display: 'block', marginBottom: 4 }}>New role *</span>
-                  <label style={{ marginRight: '1rem' }}>
-                    <input
-                      type="radio"
-                      name="convert-new-role"
-                      value="assistant"
-                      checked={convertNewRole === 'assistant'}
-                      onChange={() => { setConvertNewRole('assistant'); setConvertError(null); setConvertSummary(null) }}
-                      disabled={convertSubmitting}
-                    />{' '}
-                    Assistant
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="convert-new-role"
-                      value="subcontractor"
-                      checked={convertNewRole === 'subcontractor'}
-                      onChange={() => { setConvertNewRole('subcontractor'); setConvertError(null); setConvertSummary(null) }}
-                      disabled={convertSubmitting}
-                    />{' '}
-                    Subcontractor
-                  </label>
-                </div>
-                {convertNewRole === 'assistant' && (
-                  <div style={{ marginBottom: '0.75rem' }}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={convertAutoAdopt}
-                        onChange={(e) => { setConvertAutoAdopt(e.target.checked); setConvertError(null); setConvertSummary(null) }}
-                        disabled={convertSubmitting}
-                        style={{ marginRight: 4 }}
-                      />
-                      Auto-adopt this assistant to the new master
-                    </label>
-                  </div>
-                )}
-                <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.8125rem' }}>
-                  This operation reassigns all customers, projects, and people owned by the selected master to the new master and
-                  changes their role. It is not easily reversible.
-                </p>
-                {convertError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{convertError}</p>}
-                {convertSummary && <p style={{ color: '#059669', marginBottom: '0.75rem' }}>{convertSummary}</p>}
-                <button
-                  type="submit"
-                  disabled={
-                    convertSubmitting ||
-                    !convertMasterId ||
-                    !convertNewMasterId ||
-                    convertMasterId === convertNewMasterId
-                  }
-                >
-                  {convertSubmitting ? 'Converting…' : 'Convert master'}
-                </button>
-              </form>
-              </div>
-              )}
-            </div>
-          )}
-            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ color: '#6b7280', margin: '0 0 0.5rem 0', fontSize: '0.875rem' }}>
-                Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
-              </p>
-              <button
-                type="button"
-                onClick={openFindDuplicatesModal}
-                style={{ padding: '0.35rem 0.75rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
-              >
-                Find duplicates
-              </button>
-            </div>
-            </div>
-            )}
-          </div>
+          <ActiveAccountsPanel
+            variant="card"
+            onDataChanged={onActiveAccountsDataChanged}
+            onOpenFindDuplicates={openFindDuplicatesModal}
+          />
 
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
             <button

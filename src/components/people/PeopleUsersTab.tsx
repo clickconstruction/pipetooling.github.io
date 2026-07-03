@@ -21,6 +21,8 @@ type EditingUserNote = { id: string; name: string; notes: string; phone: string 
 
 interface PeopleUsersTabProps {
   isDev: boolean
+  /** Dev-only: opens the app-level Active Accounts management modal (button right of the search bar). */
+  onOpenActiveAccounts?: () => void
   narrowViewport: boolean
   users: UserRow[]
   people: Person[]
@@ -59,6 +61,7 @@ interface PeopleUsersTabProps {
 
 export function PeopleUsersTab({
   isDev,
+  onOpenActiveAccounts,
   narrowViewport,
   users,
   people,
@@ -466,7 +469,7 @@ export function PeopleUsersTab({
   return (
     <>
       {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
-      <div style={{ marginBottom: '1.25rem', width: '100%' }}>
+      <div style={{ marginBottom: '1.25rem', width: '100%', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
         <input
           type="search"
           value={usersTabSearch}
@@ -474,7 +477,7 @@ export function PeopleUsersTab({
           placeholder="Search by name, email, phone…"
           aria-label="Search people on Users tab"
           style={{
-            width: '100%',
+            flex: 1,
             padding: '0.3rem 0.65rem',
             fontSize: '0.875rem',
             lineHeight: 1.35,
@@ -483,6 +486,16 @@ export function PeopleUsersTab({
             boxSizing: 'border-box',
           }}
         />
+        {onOpenActiveAccounts && (
+          <button
+            type="button"
+            onClick={onOpenActiveAccounts}
+            className="activeAccountsCard__btnSecondary"
+            style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem' }}
+          >
+            Manage accounts
+          </button>
+        )}
       </div>
       {usersTabSearchShowsNoSections ? (
         <p role="status" style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 1rem 0' }}>

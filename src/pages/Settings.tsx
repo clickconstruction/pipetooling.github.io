@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
-import { cascadePersonNameInPayTables, getPersonNamesForUser } from '../lib/cascadePersonName'
+import { cascadePersonNameInPayTables, } from '../lib/cascadePersonName'
 import { findPersonUserDuplicates, findNameSimilarDuplicates, mergePersonIntoUser } from '../lib/mergePersonUserDuplicates'
 import type { PayConfigRowForMerge } from '../lib/mergePersonUserDuplicates'
 import { useAuth } from '../hooks/useAuth'
@@ -20,7 +20,6 @@ import ReportViewModal from '../components/ReportViewModal'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import MyReportsModal, { type ReportForMyReports } from '../components/MyReportsModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
-import PasswordInput from '../components/PasswordInput'
 import type { PayConfigRow } from '../types/peoplePayConfig'
 import { buildSalariedWorkdayPickerRows } from '../lib/buildSalariedWorkdayPickerRows'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
@@ -53,7 +52,6 @@ import SettingsAccountTab from '../components/settings/SettingsAccountTab'
 import SettingsAccountSchedulingTab from '../components/settings/SettingsAccountSchedulingTab'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
 import { useSettingsBackupExports } from '../hooks/useSettingsBackupExports'
-import { ROLES } from '../lib/userRoles'
 import type {
   AssemblyType,
   CountsFixtureGroup,
@@ -74,7 +72,6 @@ import { ESTIMATE_PUBLIC_TERMS_BODY_APP_KEY } from '../lib/estimatePublicTerms'
 import type { EstimateCatalogLineItem } from '../lib/estimateLineItemCatalog'
 import { catalogDbRowsToLineItems, fetchEstimateCatalogLive, replaceEstimateCatalogFromPayload } from '../lib/estimateCatalogApi'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
-import { displayLabelForUserRole } from '../lib/userRoleDisplay'
 
 type UserRole =
   | 'dev'
@@ -278,47 +275,9 @@ export default function Settings() {
   const [pinCostMatrixSaving, setPinCostMatrixSaving] = useState(false)
   const [pinCostMatrixUnpinSaving, setPinCostMatrixUnpinSaving] = useState(false)
   const [pinCostMatrixMessage, setPinCostMatrixMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
-  const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [code, setCode] = useState('')
   const [codeError, setCodeError] = useState<string | null>(null)
   const [codeSubmitting, setCodeSubmitting] = useState(false)
-  const [inviteOpen, setInviteOpen] = useState(false)
-  const [inviteEmail, setInviteEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<UserRole>('master_technician')
-  const [inviteName, setInviteName] = useState('')
-  const [inviteError, setInviteError] = useState<string | null>(null)
-  const [inviteSubmitting, setInviteSubmitting] = useState(false)
-  const [inviteServiceTypeIds, setInviteServiceTypeIds] = useState<string[]>([])
-  const [manualAddOpen, setManualAddOpen] = useState(false)
-  const [manualAddEmail, setManualAddEmail] = useState('')
-  const [manualAddName, setManualAddName] = useState('')
-  const [manualAddRole, setManualAddRole] = useState<UserRole>('master_technician')
-  const [manualAddPassword, setManualAddPassword] = useState('')
-  const [manualAddServiceTypeIds, setManualAddServiceTypeIds] = useState<string[]>([])
-  const [manualAddError, setManualAddError] = useState<string | null>(null)
-  const [manualAddSubmitting, setManualAddSubmitting] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [deleteEmail, setDeleteEmail] = useState('')
-  const [deleteName, setDeleteName] = useState('')
-  const [deleteError, setDeleteError] = useState<string | null>(null)
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
-  const [deleteReassignOpen, setDeleteReassignOpen] = useState(false)
-  const [deleteReassignUserId, setDeleteReassignUserId] = useState('')
-  const [deleteReassignNewMasterId, setDeleteReassignNewMasterId] = useState('')
-  const [deleteReassignSubmitting, setDeleteReassignSubmitting] = useState(false)
-  const [deleteReassignError, setDeleteReassignError] = useState<string | null>(null)
-  const [deleteReassignCustomerCount, setDeleteReassignCustomerCount] = useState<number>(0)
-  const [archivedUsers, setArchivedUsers] = useState<UserRow[]>([])
-  const [archivedSectionOpen, setArchivedSectionOpen] = useState(false)
-  const [restoreSubmitting, setRestoreSubmitting] = useState(false)
-  const [restoreError, setRestoreError] = useState<string | null>(null)
-  const [restoringUserId, setRestoringUserId] = useState<string | null>(null)
-  const [sendingSignInEmailId, setSendingSignInEmailId] = useState<string | null>(null)
-  const [setPasswordUser, setSetPasswordUser] = useState<UserRow | null>(null)
-  const [setPasswordValue, setSetPasswordValue] = useState('')
-  const [setPasswordConfirm, setSetPasswordConfirm] = useState('')
-  const [setPasswordSubmitting, setSetPasswordSubmitting] = useState(false)
-  const [setPasswordError, setSetPasswordError] = useState<string | null>(null)
   const [passwordChangeOpen, setPasswordChangeOpen] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -348,15 +307,6 @@ export default function Settings() {
   const [payApprovedMasters, setPayApprovedMasters] = useState<UserRow[]>([])
   const [payApprovedSaving, setPayApprovedSaving] = useState(false)
   const [payApprovedError, setPayApprovedError] = useState<string | null>(null)
-  const [editingUserId, setEditingUserId] = useState<string | null>(null)
-  const [editEmail, setEditEmail] = useState('')
-  const [editName, setEditName] = useState('')
-  const [editEstimatorServiceTypeIds, setEditEstimatorServiceTypeIds] = useState<string[]>([])
-  const [editEstimatorProspectsAccess, setEditEstimatorProspectsAccess] = useState(false)
-  const [editPrimaryServiceTypeIds, setEditPrimaryServiceTypeIds] = useState<string[]>([])
-  const [editSuperintendentServiceTypeIds, setEditSuperintendentServiceTypeIds] = useState<string[]>([])
-  const [editSubcontractorServiceTypeIds, setEditSubcontractorServiceTypeIds] = useState<string[]>([])
-  const [editError, setEditError] = useState<string | null>(null)
   const [defaultLaborRate, setDefaultLaborRate] = useState('')
   const [defaultLaborRateSaving, setDefaultLaborRateSaving] = useState(false)
   const [myProfileName, setMyProfileName] = useState('')
@@ -599,13 +549,6 @@ export default function Settings() {
     )
   }
 
-  const [convertMasterId, setConvertMasterId] = useState<string>('')
-  const [convertNewMasterId, setConvertNewMasterId] = useState<string>('')
-  const [convertNewRole, setConvertNewRole] = useState<'assistant' | 'subcontractor'>('assistant')
-  const [convertAutoAdopt, setConvertAutoAdopt] = useState<boolean>(true)
-  const [convertSubmitting, setConvertSubmitting] = useState(false)
-  const [convertError, setConvertError] = useState<string | null>(null)
-  const [convertMasterSectionOpen, setConvertMasterSectionOpen] = useState(false)
   const [jobOwnerOverridesSectionOpen, setJobOwnerOverridesSectionOpen] = useState(false)
   const [jobOwnerOverrideByUserId, setJobOwnerOverrideByUserId] = useState<Record<string, string>>({})
   const [jobOwnerOverridesSaving, setJobOwnerOverridesSaving] = useState(false)
@@ -615,7 +558,6 @@ export default function Settings() {
   const [reassignSourceUserId, setReassignSourceUserId] = useState<string | null>(null)
   const [reassignTargetUserId, setReassignTargetUserId] = useState<string | null>(null)
   const [reassignSubmitting, setReassignSubmitting] = useState(false)
-  const [activeAccountsSectionOpen, setActiveAccountsSectionOpen] = useState(false)
   const [roleSharingSectionOpen, setRoleSharingSectionOpen] = useState(false)
   const [managePartsSectionOpen, setManagePartsSectionOpen] = useState(false)
   const [additionalPeopleSectionOpen, setAdditionalPeopleSectionOpen] = useState(false)
@@ -678,7 +620,6 @@ export default function Settings() {
   const [editPersonSaving, setEditPersonSaving] = useState(false)
   const [editPersonError, setEditPersonError] = useState<string | null>(null)
   const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null)
-  const [convertSummary, setConvertSummary] = useState<string | null>(null)
   const [mergeDuplicatesModalOpen, setMergeDuplicatesModalOpen] = useState(false)
   const [mergeDuplicatesLoading, setMergeDuplicatesLoading] = useState(false)
   const [mergeDuplicates, setMergeDuplicates] = useState<Array<{ personName: string; userDisplayName: string; email: string }>>([])
@@ -1138,7 +1079,6 @@ export default function Settings() {
         ,
         jobOwnerResult,
         jobCountsResult,
-        ,
         enabledRes,
         dgmRes,
         egmRes,
@@ -1163,7 +1103,6 @@ export default function Settings() {
             return []
           }
         })(),
-        loadArchivedUsers(),
         supabase.from('report_enabled_users').select('user_id'),
         supabase.from('dispatch_group_members').select('user_id'),
         supabase.from('estimator_group_members').select('user_id'),
@@ -1191,16 +1130,6 @@ export default function Settings() {
     }
     
     setLoading(false)
-  }
-
-  async function loadArchivedUsers() {
-    if (!authUser?.id) return
-    const { data } = await supabase
-      .from('users')
-      .select('id, email, name, role, archived_at')
-      .not('archived_at', 'is', null)
-      .order('archived_at', { ascending: false })
-    setArchivedUsers((data as UserRow[]) ?? [])
   }
 
   async function toggleDispatchGroupMember(userId: string, currentlyMember: boolean) {
@@ -3725,12 +3654,6 @@ export default function Settings() {
   }, [myRole])
 
   useEffect(() => {
-    if (deleteReassignUserId) {
-      loadCustomerCount(deleteReassignUserId)
-    }
-  }, [deleteReassignUserId])
-
-  useEffect(() => {
     if (selectedServiceTypeForFixtures) {
       loadFixtureTypes()
     }
@@ -3879,392 +3802,6 @@ export default function Settings() {
     }
   }
 
-  async function updateRole(id: string, role: UserRole) {
-    setUpdatingId(id)
-    setError(null)
-    const { error: e } = await supabase.from('users').update({ role }).eq('id', id)
-    if (e) {
-      setError(e.message)
-    } else {
-      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
-    }
-    setUpdatingId(null)
-  }
-
-  function startEditUser(u: UserRow) {
-    setEditingUserId(u.id)
-    setEditEmail(u.email)
-    setEditName(u.name)
-    setEditEstimatorProspectsAccess(u.role === 'estimator' && !!u.estimator_prospects_access)
-    setEditEstimatorServiceTypeIds(u.role === 'estimator' ? (u.estimator_service_type_ids ?? []) : [])
-    setEditPrimaryServiceTypeIds(u.role === 'primary' ? (u.primary_service_type_ids ?? []) : [])
-    setEditSuperintendentServiceTypeIds(u.role === 'superintendent' ? (u.superintendent_service_type_ids ?? []) : [])
-    setEditSubcontractorServiceTypeIds(
-      u.role === 'subcontractor'
-        ? (u.subcontractor_service_type_ids ?? [])
-        : u.role === 'helpers'
-          ? (u.helpers_service_type_ids ?? [])
-          : [],
-    )
-    setEditError(null)
-  }
-
-  function cancelEditUser() {
-    setEditingUserId(null)
-    setEditEmail('')
-    setEditName('')
-    setEditEstimatorProspectsAccess(false)
-    setEditEstimatorServiceTypeIds([])
-    setEditPrimaryServiceTypeIds([])
-    setEditSuperintendentServiceTypeIds([])
-    setEditSubcontractorServiceTypeIds([])
-    setEditError(null)
-  }
-
-  async function updateUserProfile(
-    id: string,
-    updates: {
-      name: string
-      email: string
-      estimator_service_type_ids?: string[] | null
-      estimator_prospects_access?: boolean
-      primary_service_type_ids?: string[] | null
-      superintendent_service_type_ids?: string[] | null
-      subcontractor_service_type_ids?: string[] | null
-      helpers_service_type_ids?: string[] | null
-    },
-    oldName?: string,
-    userEmail?: string | null
-  ) {
-    setUpdatingId(id)
-    setError(null)
-    setEditError(null)
-    const updatePayload: Record<string, unknown> = { name: updates.name, email: updates.email }
-    if (updates.estimator_service_type_ids !== undefined) {
-      updatePayload.estimator_service_type_ids = updates.estimator_service_type_ids?.length ? updates.estimator_service_type_ids : null
-    }
-    if (updates.estimator_prospects_access !== undefined) {
-      updatePayload.estimator_prospects_access = updates.estimator_prospects_access
-    }
-    if (updates.primary_service_type_ids !== undefined) {
-      updatePayload.primary_service_type_ids = updates.primary_service_type_ids?.length ? updates.primary_service_type_ids : null
-    }
-    if (updates.superintendent_service_type_ids !== undefined) {
-      updatePayload.superintendent_service_type_ids = updates.superintendent_service_type_ids?.length ? updates.superintendent_service_type_ids : null
-    }
-    if (updates.subcontractor_service_type_ids !== undefined) {
-      updatePayload.subcontractor_service_type_ids = updates.subcontractor_service_type_ids?.length ? updates.subcontractor_service_type_ids : null
-    }
-    if (updates.helpers_service_type_ids !== undefined) {
-      updatePayload.helpers_service_type_ids = updates.helpers_service_type_ids?.length ? updates.helpers_service_type_ids : null
-    }
-    try {
-      await withSupabaseRetry(
-        async () => supabase.from('users').update(updatePayload).eq('id', id).select('id').maybeSingle(),
-        'update user profile',
-      )
-    } catch (e) {
-      setEditError(formatErrorMessage(e))
-      setUpdatingId(null)
-      return
-    }
-    if (oldName != null && oldName.trim() !== updates.name.trim()) {
-      const fromDb = await getPersonNamesForUser(id, userEmail ?? null)
-      const namesToCascade = new Set([oldName.trim(), ...fromDb.map((n) => n.trim()).filter(Boolean)])
-      const trimmedNew = updates.name.trim()
-      for (const name of namesToCascade) {
-        if (name?.trim() && name.trim() !== trimmedNew) {
-          await cascadePersonNameInPayTables(name.trim(), trimmedNew)
-        }
-      }
-    }
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === id
-          ? {
-              ...u,
-              name: updates.name,
-              email: updates.email,
-              ...(updates.estimator_service_type_ids !== undefined ? { estimator_service_type_ids: updates.estimator_service_type_ids } : {}),
-              ...(updates.estimator_prospects_access !== undefined ? { estimator_prospects_access: updates.estimator_prospects_access } : {}),
-              ...(updates.primary_service_type_ids !== undefined ? { primary_service_type_ids: updates.primary_service_type_ids } : {}),
-              ...(updates.superintendent_service_type_ids !== undefined ? { superintendent_service_type_ids: updates.superintendent_service_type_ids } : {}),
-              ...(updates.subcontractor_service_type_ids !== undefined ? { subcontractor_service_type_ids: updates.subcontractor_service_type_ids } : {}),
-              ...(updates.helpers_service_type_ids !== undefined ? { helpers_service_type_ids: updates.helpers_service_type_ids } : {}),
-            }
-          : u
-      ),
-    )
-    setUpdatingId(null)
-  }
-
-  async function saveUserEdits() {
-    if (!editingUserId) return
-    const trimmedEmail = editEmail.trim()
-    const trimmedName = editName.trim()
-    const editingUser = users.find((u) => u.id === editingUserId)
-
-    if (!trimmedEmail) {
-      setEditError('Email is required.')
-      return
-    }
-
-    if (trimmedName) {
-      const isDuplicate = await checkDuplicateName(trimmedName, editingUserId)
-      if (isDuplicate) {
-        setEditError(
-          `A person or user with the name "${trimmedName}" already exists. Names must be unique.`,
-        )
-        return
-      }
-    }
-
-    const updates: {
-      name: string
-      email: string
-      estimator_service_type_ids?: string[] | null
-      estimator_prospects_access?: boolean
-      primary_service_type_ids?: string[] | null
-      superintendent_service_type_ids?: string[] | null
-      subcontractor_service_type_ids?: string[] | null
-      helpers_service_type_ids?: string[] | null
-    } = {
-      name: trimmedName,
-      email: trimmedEmail,
-    }
-    if (editingUser?.role === 'estimator') {
-      updates.estimator_service_type_ids = editEstimatorServiceTypeIds.length > 0 ? editEstimatorServiceTypeIds : null
-      updates.estimator_prospects_access = editEstimatorProspectsAccess
-    }
-    if (editingUser?.role === 'primary') {
-      updates.primary_service_type_ids = editPrimaryServiceTypeIds.length > 0 ? editPrimaryServiceTypeIds : null
-    }
-    if (editingUser?.role === 'superintendent') {
-      updates.superintendent_service_type_ids = editSuperintendentServiceTypeIds.length > 0 ? editSuperintendentServiceTypeIds : null
-    }
-    if (editingUser?.role === 'subcontractor') {
-      updates.subcontractor_service_type_ids = editSubcontractorServiceTypeIds.length > 0 ? editSubcontractorServiceTypeIds : null
-    }
-    if (editingUser?.role === 'helpers') {
-      updates.helpers_service_type_ids = editSubcontractorServiceTypeIds.length > 0 ? editSubcontractorServiceTypeIds : null
-    }
-    await updateUserProfile(editingUserId, updates, editingUser?.name, editingUser?.email)
-    setEditingUserId(null)
-    setEditEmail('')
-    setEditName('')
-    setEditEstimatorProspectsAccess(false)
-    setEditEstimatorServiceTypeIds([])
-    setEditPrimaryServiceTypeIds([])
-    setEditSubcontractorServiceTypeIds([])
-    setEditError(null)
-  }
-
-  async function sendSignInEmail(u: UserRow) {
-    setSendingSignInEmailId(u.id)
-    setError(null)
-    const redirectTo = new URL('dashboard', window.location.href).href
-    const { error: e } = await supabase.auth.signInWithOtp({
-      email: u.email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: redirectTo,
-      },
-    })
-    if (e) setError(e.message)
-    setSendingSignInEmailId(null)
-  }
-
-  function openInvite() {
-    setInviteOpen(true)
-    setInviteEmail('')
-    setInviteRole('master_technician')
-    setInviteName('')
-    setInviteServiceTypeIds([])
-    setInviteError(null)
-  }
-
-  function closeInvite() {
-    setInviteOpen(false)
-  }
-
-  function openManualAdd() {
-    setManualAddOpen(true)
-    setManualAddEmail('')
-    setManualAddName('')
-    setManualAddRole('master_technician')
-    setManualAddPassword('')
-    setManualAddServiceTypeIds([])
-    setManualAddError(null)
-  }
-
-  function closeManualAdd() {
-    setManualAddOpen(false)
-  }
-
-  function openArchive() {
-    setDeleteOpen(true)
-    setDeleteEmail('')
-    setDeleteName('')
-    setDeleteError(null)
-  }
-
-  function closeArchive() {
-    setDeleteOpen(false)
-  }
-
-  function openArchiveReassign() {
-    setDeleteReassignOpen(true)
-    setDeleteReassignUserId('')
-    setDeleteReassignNewMasterId('')
-    setDeleteReassignCustomerCount(0)
-    setDeleteReassignError(null)
-  }
-
-  function closeArchiveReassign() {
-    setDeleteReassignOpen(false)
-  }
-
-  async function loadCustomerCount(userId: string) {
-    if (!userId) {
-      setDeleteReassignCustomerCount(0)
-      return
-    }
-    
-    const { count, error } = await supabase
-      .from('customers')
-      .select('id', { count: 'exact', head: true })
-      .eq('master_user_id', userId)
-    
-    if (!error && count !== null) {
-      setDeleteReassignCustomerCount(count)
-    }
-  }
-
-  async function handleArchiveReassign(e: React.FormEvent) {
-    e.preventDefault()
-    setDeleteReassignError(null)
-    
-    if (!deleteReassignUserId || !deleteReassignNewMasterId) {
-      setDeleteReassignError('Please select both users')
-      return
-    }
-    
-    if (deleteReassignUserId === deleteReassignNewMasterId) {
-      setDeleteReassignError('Cannot reassign to the same user')
-      return
-    }
-    
-    const userToArchive = users.find(u => u.id === deleteReassignUserId)
-    if (!userToArchive) {
-      setDeleteReassignError('User to archive not found')
-      return
-    }
-    
-    setDeleteReassignSubmitting(true)
-    
-    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
-      body: { 
-        email: userToArchive.email, 
-        name: userToArchive.name,
-        reassign_customers_to: deleteReassignNewMasterId 
-      },
-    })
-    
-    setDeleteReassignSubmitting(false)
-    
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        msg = (eFn.context.json as { error?: string }).error || msg
-      }
-      setDeleteReassignError(msg)
-      return
-    }
-    
-    if (data?.error) {
-      setDeleteReassignError(data.error)
-      return
-    }
-    
-    closeArchiveReassign()
-    await loadData()
-  }
-
-  async function handleRestore(userId: string) {
-    setRestoreError(null)
-    setRestoringUserId(userId)
-    setRestoreSubmitting(true)
-    const { data, error: eFn } = await supabase.functions.invoke('restore-user', {
-      body: { user_id: userId },
-    })
-    setRestoreSubmitting(false)
-    setRestoringUserId(null)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        msg = (eFn.context.json as { error?: string }).error || msg
-      }
-      setRestoreError(msg)
-      return
-    }
-    if (data?.error) {
-      setRestoreError(data.error)
-      return
-    }
-    await loadData()
-  }
-
-  function closeSetPassword() {
-    setSetPasswordUser(null)
-    setSetPasswordValue('')
-    setSetPasswordConfirm('')
-    setSetPasswordError(null)
-  }
-
-  async function handleSetPassword(e: React.FormEvent) {
-    e.preventDefault()
-    if (!setPasswordUser) return
-    setSetPasswordError(null)
-    if (setPasswordValue !== setPasswordConfirm) {
-      setSetPasswordError('Passwords do not match.')
-      return
-    }
-    if (setPasswordValue.length < 6) {
-      setSetPasswordError('Password must be at least 6 characters.')
-      return
-    }
-    setSetPasswordSubmitting(true)
-    const { data: sess } = await supabase.auth.getSession()
-    const token = sess.session?.access_token
-    if (!token) {
-      setSetPasswordSubmitting(false)
-      setSetPasswordError('Not signed in. Please sign in again.')
-      return
-    }
-    const { data, error: eFn } = await supabase.functions.invoke('set-user-password', {
-      body: { user_id: setPasswordUser.id, password: setPasswordValue },
-      headers: { Authorization: `Bearer ${token}` },
-    })
-    setSetPasswordSubmitting(false)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch { /* ignore */ }
-      }
-      setSetPasswordError(msg)
-      return
-    }
-    const err = (data as { error?: string } | null)?.error
-    if (err) {
-      setSetPasswordError(err)
-      return
-    }
-    closeSetPassword()
-  }
-
   function openPasswordChange() {
     setPasswordChangeOpen(true)
     setCurrentPassword('')
@@ -4333,38 +3870,6 @@ export default function Settings() {
     }, 2000)
   }
 
-  async function handleArchive(e: React.FormEvent) {
-    e.preventDefault()
-    setDeleteError(null)
-    if (!deleteEmail.trim() && !deleteName.trim()) {
-      setDeleteError('Enter an email or name.')
-      return
-    }
-    setDeleteSubmitting(true)
-    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
-      body: { email: deleteEmail.trim(), name: deleteName.trim() },
-    })
-    setDeleteSubmitting(false)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch { /* ignore */ }
-      }
-      setDeleteError(msg)
-      return
-    }
-    const err = (data as { error?: string } | null)?.error
-    if (err) {
-      setDeleteError(err)
-      return
-    }
-    closeArchive()
-    await loadData()
-  }
-
   async function openFindDuplicatesModal() {
     setMergeDuplicatesModalOpen(true)
     setMergeDuplicatesLoading(true)
@@ -4428,69 +3933,6 @@ export default function Settings() {
     }
   }
 
-  async function handleConvertMaster(e: React.FormEvent) {
-    e.preventDefault()
-    setConvertError(null)
-    setConvertSummary(null)
-
-    if (!convertMasterId || !convertNewMasterId) {
-      setConvertError('Please select both the master to convert and the new master owner.')
-      return
-    }
-    if (convertMasterId === convertNewMasterId) {
-      setConvertError('The new master owner must be different from the master being converted.')
-      return
-    }
-
-    const masterUser = users.find((u) => u.id === convertMasterId)
-    const newMasterUser = users.find((u) => u.id === convertNewMasterId)
-
-    const masterLabel = masterUser?.name || masterUser?.email || 'Selected master'
-    const newMasterLabel = newMasterUser?.name || newMasterUser?.email || 'New master'
-    const roleLabel = convertNewRole === 'assistant' ? 'assistant' : 'subcontractor'
-
-    const confirmed = window.confirm(
-      `Convert "${masterLabel}" from master to ${roleLabel} and reassign all of their customers, projects, and people to "${newMasterLabel}"? This cannot easily be undone.`
-    )
-    if (!confirmed) return
-
-    setConvertSubmitting(true)
-    try {
-      const { data, error } = await (supabase as any).rpc('convert_master_user', {
-        old_master_id: convertMasterId,
-        new_master_id: convertNewMasterId,
-        new_role: convertNewRole,
-        auto_adopt: convertAutoAdopt,
-      })
-      if (error) {
-        setConvertError(error.message)
-        return
-      }
-      const result = (data as {
-        customers_moved?: number
-        projects_moved?: number
-        people_moved?: number
-        new_role?: string
-      }) || {}
-      const c = result.customers_moved ?? 0
-      const p = result.projects_moved ?? 0
-      const pe = result.people_moved ?? 0
-      const nr = result.new_role ?? convertNewRole
-      setConvertSummary(
-        `Converted "${masterLabel}" to ${nr}. Reassigned ${c} customers, ${p} projects, and ${pe} people to "${newMasterLabel}".`
-      )
-      setConvertMasterId('')
-      setConvertNewMasterId('')
-      setConvertNewRole('assistant')
-      setConvertAutoAdopt(true)
-      await loadData()
-    } catch (err) {
-      setConvertError(err instanceof Error ? err.message : 'Unknown error converting master')
-    } finally {
-      setConvertSubmitting(false)
-    }
-  }
-
   async function checkDuplicateName(nameToCheck: string, excludeUserId?: string): Promise<boolean> {
     const trimmedName = nameToCheck.trim().toLowerCase()
     if (!trimmedName) return false
@@ -4511,105 +3953,6 @@ export default function Settings() {
     const hasDuplicateInUsers = usersData?.some(u => (u.id !== excludeUserId) && u.name?.toLowerCase() === trimmedName) ?? false
     
     return hasDuplicateInPeople || hasDuplicateInUsers
-  }
-
-  async function handleManualAdd(e: React.FormEvent) {
-    e.preventDefault()
-    setManualAddError(null)
-    setManualAddSubmitting(true)
-    
-    const trimmedName = manualAddName.trim()
-    if (trimmedName) {
-      // Check for duplicate names (case-insensitive)
-      const isDuplicate = await checkDuplicateName(trimmedName)
-      if (isDuplicate) {
-        setManualAddError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
-        setManualAddSubmitting(false)
-        return
-      }
-    }
-    
-    const body: Record<string, unknown> = {
-        email: manualAddEmail.trim(),
-        password: manualAddPassword,
-        role: manualAddRole,
-        name: trimmedName || undefined,
-    }
-    if ((manualAddRole === 'estimator' || manualAddRole === 'subcontractor' || manualAddRole === 'helpers') && manualAddServiceTypeIds.length > 0) {
-      body.service_type_ids = manualAddServiceTypeIds
-    }
-    const { data, error: eFn } = await supabase.functions.invoke('create-user', {
-      body,
-    })
-    setManualAddSubmitting(false)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch { /* ignore */ }
-      }
-      setManualAddError(msg)
-      return
-    }
-    const err = (data as { error?: string } | null)?.error
-    if (err) {
-      setManualAddError(err)
-      return
-    }
-    closeManualAdd()
-    await loadData()
-  }
-
-  async function handleInvite(e: React.FormEvent) {
-    e.preventDefault()
-    setInviteError(null)
-    setInviteSubmitting(true)
-    
-    const trimmedName = inviteName.trim()
-    if (trimmedName) {
-      // Check for duplicate names (case-insensitive)
-      const isDuplicate = await checkDuplicateName(trimmedName)
-      if (isDuplicate) {
-        setInviteError(`A person or user with the name "${trimmedName}" already exists. Names must be unique.`)
-        setInviteSubmitting(false)
-        return
-      }
-    }
-    
-    const body: Record<string, unknown> = {
-      email: inviteEmail.trim(),
-      role: inviteRole,
-      name: trimmedName || undefined,
-      redirectTo: `${window.location.origin}/accept-invite`,
-    }
-    if ((inviteRole === 'estimator' || inviteRole === 'subcontractor' || inviteRole === 'helpers') && inviteServiceTypeIds.length > 0) {
-      body.service_type_ids = inviteServiceTypeIds
-    }
-    const { data, error: eFn } = await supabase.functions.invoke('invite-user', {
-      body,
-    })
-    setInviteSubmitting(false)
-    if (eFn) {
-      let msg = eFn.message
-      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
-        try {
-          const b = (await eFn.context.json()) as { error?: string } | null
-          if (b?.error) msg = b.error
-        } catch { /* ignore */ }
-      }
-      setInviteError(msg)
-      return
-    }
-    const err = (data as { error?: string } | null)?.error
-    if (err) {
-      setInviteError(err)
-      return
-    }
-    showToast(`Invite sent to ${inviteEmail.trim()}`, 'success')
-    closeInvite()
-    await loadData()
   }
 
   const sortedTeamLeaderAssignments = useMemo(() => {
@@ -4961,109 +4304,53 @@ export default function Settings() {
       <SettingsGroup id="settings-people" hidden={activeSettingsTab !== 'settings-people'} title="People & accounts">
       {myRole === 'dev' && (
         <SettingsPeopleTab
-          activeAccountsSectionOpen={activeAccountsSectionOpen}
           additionalPeopleSectionOpen={additionalPeopleSectionOpen}
           allPeopleCount={allPeopleCount}
-          archivedSectionOpen={archivedSectionOpen}
-          archivedUsers={archivedUsers}
-          cancelEditUser={cancelEditUser}
-          convertAutoAdopt={convertAutoAdopt}
-          convertError={convertError}
-          convertMasterId={convertMasterId}
-          convertMasterSectionOpen={convertMasterSectionOpen}
-          convertNewMasterId={convertNewMasterId}
-          convertNewRole={convertNewRole}
-          convertSubmitting={convertSubmitting}
-          convertSummary={convertSummary}
           deleteNonUserPerson={deleteNonUserPerson}
           deletingPersonId={deletingPersonId}
           dispatchGroupError={dispatchGroupError}
           dispatchGroupSavingUserId={dispatchGroupSavingUserId}
           dispatchMemberIds={dispatchMemberIds}
-          editEmail={editEmail}
-          editError={editError}
-          editEstimatorProspectsAccess={editEstimatorProspectsAccess}
-          editEstimatorServiceTypeIds={editEstimatorServiceTypeIds}
-          editName={editName}
           editPersonEmail={editPersonEmail}
           editPersonError={editPersonError}
           editPersonName={editPersonName}
           editPersonNotes={editPersonNotes}
           editPersonPhone={editPersonPhone}
           editPersonSaving={editPersonSaving}
-          editPrimaryServiceTypeIds={editPrimaryServiceTypeIds}
-          editSubcontractorServiceTypeIds={editSubcontractorServiceTypeIds}
-          editSuperintendentServiceTypeIds={editSuperintendentServiceTypeIds}
           editingNonUserPerson={editingNonUserPerson}
-          editingUserId={editingUserId}
           error={error}
           estimatorGroupError={estimatorGroupError}
           estimatorGroupSavingUserId={estimatorGroupSavingUserId}
           estimatorInboxSectionOpen={estimatorInboxSectionOpen}
           estimatorMemberIds={estimatorMemberIds}
-          handleConvertMaster={handleConvertMaster}
-          handleRestore={handleRestore}
           myPeople={myPeople}
           nonUserPeople={nonUserPeople}
-          openArchive={openArchive}
-          openArchiveReassign={openArchiveReassign}
           openFindDuplicatesModal={openFindDuplicatesModal}
-          openInvite={openInvite}
-          openManualAdd={openManualAdd}
           payApprovedError={payApprovedError}
           payApprovedMasterIds={payApprovedMasterIds}
           payApprovedMasters={payApprovedMasters}
           payApprovedMastersSectionOpen={payApprovedMastersSectionOpen}
           payApprovedSaving={payApprovedSaving}
-          restoreError={restoreError}
-          restoreSubmitting={restoreSubmitting}
-          restoringUserId={restoringUserId}
           roleVisibilityExpanded={roleVisibilityExpanded}
           saveNonUserPersonEdit={saveNonUserPersonEdit}
-          saveUserEdits={saveUserEdits}
-          sendSignInEmail={sendSignInEmail}
-          sendingSignInEmailId={sendingSignInEmailId}
-          serviceTypes={serviceTypes}
-          setActiveAccountsSectionOpen={setActiveAccountsSectionOpen}
           setAdditionalPeopleSectionOpen={setAdditionalPeopleSectionOpen}
-          setArchivedSectionOpen={setArchivedSectionOpen}
-          setConvertAutoAdopt={setConvertAutoAdopt}
-          setConvertError={setConvertError}
-          setConvertMasterId={setConvertMasterId}
-          setConvertMasterSectionOpen={setConvertMasterSectionOpen}
-          setConvertNewMasterId={setConvertNewMasterId}
-          setConvertNewRole={setConvertNewRole}
-          setConvertSummary={setConvertSummary}
-          setEditEmail={setEditEmail}
-          setEditEstimatorProspectsAccess={setEditEstimatorProspectsAccess}
-          setEditEstimatorServiceTypeIds={setEditEstimatorServiceTypeIds}
-          setEditName={setEditName}
           setEditPersonEmail={setEditPersonEmail}
           setEditPersonError={setEditPersonError}
           setEditPersonName={setEditPersonName}
           setEditPersonNotes={setEditPersonNotes}
           setEditPersonPhone={setEditPersonPhone}
-          setEditPrimaryServiceTypeIds={setEditPrimaryServiceTypeIds}
-          setEditSubcontractorServiceTypeIds={setEditSubcontractorServiceTypeIds}
-          setEditSuperintendentServiceTypeIds={setEditSuperintendentServiceTypeIds}
           setEditingNonUserPerson={setEditingNonUserPerson}
           setEstimatorInboxSectionOpen={setEstimatorInboxSectionOpen}
-          setPasswordSubmitting={setPasswordSubmitting}
           setPayApprovedMastersSectionOpen={setPayApprovedMastersSectionOpen}
           setRoleVisibilityExpanded={setRoleVisibilityExpanded}
-          setSetPasswordConfirm={setSetPasswordConfirm}
-          setSetPasswordError={setSetPasswordError}
-          setSetPasswordUser={setSetPasswordUser}
-          setSetPasswordValue={setSetPasswordValue}
           setTaskDispatchSectionOpen={setTaskDispatchSectionOpen}
-          startEditUser={startEditUser}
           taskDispatchSectionOpen={taskDispatchSectionOpen}
           toggleDispatchGroupMember={toggleDispatchGroupMember}
           toggleEstimatorGroupMember={toggleEstimatorGroupMember}
           togglePayApproved={togglePayApproved}
-          updateRole={updateRole}
-          updatingId={updatingId}
           users={users}
+        
+          onActiveAccountsDataChanged={() => { void loadData() }}
         />
       )}
 
@@ -5581,386 +4868,10 @@ export default function Settings() {
         </div>
       )}
 
-      {inviteOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Invite via email</h2>
-            <form onSubmit={handleInvite}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="invite-email" style={{ display: 'block', marginBottom: 4 }}>Email *</label>
-                <input
-                  id="invite-email"
-                  type="email"
-                  value={inviteEmail}
-                  onChange={(e) => { setInviteEmail(e.target.value); setInviteError(null) }}
-                  required
-                  disabled={inviteSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="invite-role" style={{ display: 'block', marginBottom: 4 }}>Role</label>
-                <select
-                  id="invite-role"
-                  value={inviteRole}
-                  onChange={(e) => setInviteRole(e.target.value as UserRole)}
-                  disabled={inviteSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>{displayLabelForUserRole(r)}</option>
-                  ))}
-                </select>
-              </div>
-              {(inviteRole === 'estimator' || inviteRole === 'subcontractor' || inviteRole === 'helpers') && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
-                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>{inviteRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                    {serviceTypes.map((st) => (
-                      <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={inviteServiceTypeIds.includes(st.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setInviteServiceTypeIds((prev) => [...prev, st.id])
-                            } else {
-                              setInviteServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
-                            }
-                          }}
-                          disabled={inviteSubmitting}
-                        />
-                        {st.name}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="invite-name" style={{ display: 'block', marginBottom: 4 }}>Name (optional)</label>
-                <input
-                  id="invite-name"
-                  type="text"
-                  value={inviteName}
-                  onChange={(e) => setInviteName(e.target.value)}
-                  disabled={inviteSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              {inviteError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{inviteError}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={inviteSubmitting}>
-                  {inviteSubmitting ? 'Sending…' : 'Send invite'}
-                </button>
-                <button type="button" onClick={closeInvite} disabled={inviteSubmitting}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {manualAddOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Manually add user</h2>
-            <form onSubmit={handleManualAdd}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="manual-email" style={{ display: 'block', marginBottom: 4 }}>Email *</label>
-                <input
-                  id="manual-email"
-                  type="email"
-                  value={manualAddEmail}
-                  onChange={(e) => { setManualAddEmail(e.target.value); setManualAddError(null) }}
-                  required
-                  disabled={manualAddSubmitting}
-                  autoComplete="username"
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <PasswordInput
-                  id="manual-password"
-                  label="Initial password *"
-                  value={manualAddPassword}
-                  onChange={(e) => { setManualAddPassword(e.target.value); setManualAddError(null) }}
-                  required
-                  disabled={manualAddSubmitting}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="manual-role" style={{ display: 'block', marginBottom: 4 }}>Role</label>
-                <select
-                  id="manual-role"
-                  value={manualAddRole}
-                  onChange={(e) => setManualAddRole(e.target.value as UserRole)}
-                  disabled={manualAddSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>{displayLabelForUserRole(r)}</option>
-                  ))}
-                </select>
-              </div>
-              {(manualAddRole === 'estimator' || manualAddRole === 'subcontractor' || manualAddRole === 'helpers') && (
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
-                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>{manualAddRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
-                    {serviceTypes.map((st) => (
-                      <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-                        <input
-                          type="checkbox"
-                          checked={manualAddServiceTypeIds.includes(st.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setManualAddServiceTypeIds((prev) => [...prev, st.id])
-                            } else {
-                              setManualAddServiceTypeIds((prev) => prev.filter((id) => id !== st.id))
-                            }
-                          }}
-                          disabled={manualAddSubmitting}
-                        />
-                        {st.name}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="manual-name" style={{ display: 'block', marginBottom: 4 }}>Name (optional)</label>
-                <input
-                  id="manual-name"
-                  type="text"
-                  value={manualAddName}
-                  onChange={(e) => setManualAddName(e.target.value)}
-                  disabled={manualAddSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              {manualAddError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{manualAddError}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={manualAddSubmitting}>
-                  {manualAddSubmitting ? 'Creating…' : 'Create user'}
-                </button>
-                <button type="button" onClick={closeManualAdd} disabled={manualAddSubmitting}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {deleteOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Archive user</h2>
-            <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Enter the user&apos;s email and/or name as shown in Active accounts. At least one field must match;
-              the server finds the user by email first, then by name.
-            </p>
-            <form onSubmit={handleArchive}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-email" style={{ display: 'block', marginBottom: 4 }}>Email</label>
-                <input
-                  id="delete-email"
-                  type="text"
-                  value={deleteEmail}
-                  onChange={(e) => { setDeleteEmail(e.target.value); setDeleteError(null) }}
-                  disabled={deleteSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-name" style={{ display: 'block', marginBottom: 4 }}>Name</label>
-                <input
-                  id="delete-name"
-                  type="text"
-                  value={deleteName}
-                  onChange={(e) => { setDeleteName(e.target.value); setDeleteError(null) }}
-                  disabled={deleteSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                />
-              </div>
-              {deleteError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{deleteError}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={deleteSubmitting} style={{ color: '#b91c1c' }}>
-                  {deleteSubmitting ? 'Archiving…' : 'Archive user'}
-                </button>
-                <button type="button" onClick={closeArchive} disabled={deleteSubmitting}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {deleteReassignOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 500 }}>
-            <h2 style={{ marginTop: 0 }}>Archive User & Reassign Customers</h2>
-            <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
-              Select a user to archive and a master to inherit their customers. 
-              The user will be archived after all customers are reassigned.
-            </p>
-            <form onSubmit={handleArchiveReassign}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-reassign-user" style={{ display: 'block', marginBottom: 4 }}>
-                  User to archive *
-                </label>
-                <select
-                  id="delete-reassign-user"
-                  value={deleteReassignUserId}
-                  onChange={(e) => {
-                    setDeleteReassignUserId(e.target.value)
-                    setDeleteReassignError(null)
-                  }}
-                  required
-                  disabled={deleteReassignSubmitting}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  <option value="">Select user...</option>
-                  {users
-                    .filter(u => u.role === 'master_technician' || u.role === 'dev')
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.name || u.email} ({u.email})
-                      </option>
-                    ))
-                  }
-                </select>
-              </div>
-              
-              {deleteReassignCustomerCount > 0 && (
-                <p style={{ 
-                  background: '#fef3c7', 
-                  border: '1px solid #f59e0b', 
-                  padding: '0.75rem', 
-                  borderRadius: 4, 
-                  marginBottom: '1rem',
-                  fontSize: '0.875rem'
-                }}>
-                  ⚠️ This user has <strong>{deleteReassignCustomerCount}</strong> customer{deleteReassignCustomerCount !== 1 ? 's' : ''} that will be reassigned.
-                </p>
-              )}
-              
-              {deleteReassignUserId && deleteReassignCustomerCount === 0 && (
-                <p style={{ 
-                  background: '#e0e7ff', 
-                  border: '1px solid #6366f1', 
-                  padding: '0.75rem', 
-                  borderRadius: 4, 
-                  marginBottom: '1rem',
-                  fontSize: '0.875rem'
-                }}>
-                  ℹ️ This user has no customers to reassign.
-                </p>
-              )}
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="delete-reassign-new-master" style={{ display: 'block', marginBottom: 4 }}>
-                  New master for customers *
-                </label>
-                <select
-                  id="delete-reassign-new-master"
-                  value={deleteReassignNewMasterId}
-                  onChange={(e) => {
-                    setDeleteReassignNewMasterId(e.target.value)
-                    setDeleteReassignError(null)
-                  }}
-                  required
-                  disabled={deleteReassignSubmitting || !deleteReassignUserId}
-                  style={{ width: '100%', padding: '0.5rem' }}
-                >
-                  <option value="">Select new master...</option>
-                  {users
-                    .filter(u => 
-                      (u.role === 'master_technician' || u.role === 'dev') &&
-                      u.id !== deleteReassignUserId
-                    )
-                    .map(u => (
-                      <option key={u.id} value={u.id}>
-                        {u.name || u.email} ({u.email})
-                      </option>
-                    ))
-                  }
-                </select>
-              </div>
-              
-              {deleteReassignError && (
-                <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>
-                  {deleteReassignError}
-                </p>
-              )}
-              
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button 
-                  type="submit" 
-                  disabled={deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId} 
-                  style={{ 
-                    padding: '0.5rem 1rem',
-                    color: '#fff',
-                    background: deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId ? '#9ca3af' : '#dc2626',
-                    border: 'none',
-                    borderRadius: 4,
-                    cursor: deleteReassignSubmitting || !deleteReassignUserId || !deleteReassignNewMasterId ? 'not-allowed' : 'pointer'
-                  }}
-                >
-                  {deleteReassignSubmitting ? 'Processing…' : 'Delete & Reassign'}
-                </button>
-                <button 
-                  type="button" 
-                  onClick={closeArchiveReassign} 
-                  disabled={deleteReassignSubmitting}
-                  style={{ padding: '0.5rem 1rem' }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
-      {setPasswordUser && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
-            <h2 style={{ marginTop: 0 }}>Set password for {setPasswordUser.email}</h2>
-            <form onSubmit={handleSetPassword}>
-              <div style={{ marginBottom: '1rem' }}>
-                <PasswordInput
-                  id="set-password-new"
-                  label="New password *"
-                  value={setPasswordValue}
-                  onChange={(e) => { setSetPasswordValue(e.target.value); setSetPasswordError(null) }}
-                  required
-                  minLength={6}
-                  disabled={setPasswordSubmitting}
-                  autoComplete="new-password"
-                />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <PasswordInput
-                  id="set-password-confirm"
-                  label="Confirm password *"
-                  value={setPasswordConfirm}
-                  onChange={(e) => { setSetPasswordConfirm(e.target.value); setSetPasswordError(null) }}
-                  required
-                  minLength={6}
-                  disabled={setPasswordSubmitting}
-                  autoComplete="new-password"
-                />
-              </div>
-              {setPasswordError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{setPasswordError}</p>}
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={setPasswordSubmitting}>
-                  {setPasswordSubmitting ? 'Setting…' : 'Set password'}
-                </button>
-                <button type="button" onClick={closeSetPassword} disabled={setPasswordSubmitting}>Cancel</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       <SettingsGroup id="settings-catalogs" hidden={activeSettingsTab !== 'settings-catalogs'} title="Catalogs & trades">
       {(myRole === 'dev' || myRole === 'estimator') && (
