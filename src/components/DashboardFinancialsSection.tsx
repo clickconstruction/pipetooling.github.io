@@ -393,8 +393,8 @@ function ItemsModal({
   const meta = CARD_META[cardKey]
   // Grouped views (items keep their amount-desc order within each section):
   // - Not billed: Ready to Bill on top (closest to money), Working below.
-  // - AP: Supplies, then Payroll due — so payroll isn't lost among ~130 supply rows and reads
-  //   naturally against the trailing "Upcoming payroll" section.
+  // - AP: Payroll due, then Upcoming payroll (estimate), then Supplies — payroll reads first and
+  //   the ~130 supply rows sit last. All three AP sections are collapsible.
   type ModalSection = { title: string | null; items: FinancialItem[]; hideSublabels?: boolean; noun?: string }
   const sections: ModalSection[] =
     cardKey === 'unbilled'
@@ -410,21 +410,65 @@ function ItemsModal({
         ? (
             [
               {
-                title: 'Supplies',
-                items: bucket.items.filter((i) => i.key.startsWith('supply:')),
-                hideSublabels: true,
-                noun: 'bill',
-              },
-              {
                 title: 'Payroll due',
                 items: bucket.items.filter((i) => !i.key.startsWith('supply:')),
                 hideSublabels: false,
                 noun: 'item',
               },
+              {
+                title: 'Supplies',
+                items: bucket.items.filter((i) => i.key.startsWith('supply:')),
+                hideSublabels: true,
+                noun: 'bill',
+              },
             ] as ModalSection[]
           ).filter((s) => s.items.length > 0)
         : [{ title: null, items: bucket.items }]
   const columnCount = onSendToDispatch ? 4 : 3
+  // AP sections (Payroll due / Upcoming payroll / Supplies) are collapsible; expanded on open.
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
+  const collapsible = cardKey === 'ap'
+  const isCollapsed = (title: string) => collapsible && (collapsedSections[title] ?? false)
+  const toggleSection = (title: string) =>
+    setCollapsedSections((prev) => ({ ...prev, [title]: !(prev[title] ?? false) }))
+  const sectionChevron = (title: string) => (
+    <span aria-hidden style={{ display: 'inline-block', width: '1rem', fontSize: '0.7rem', color: '#6b7280' }}>
+      {isCollapsed(title) ? '▶' : '▼'}
+    </span>
+  )
+  /** AP: estimated upcoming payroll rows — rendered between Payroll due and Supplies. */
+  const upcomingPayrollRows = upcomingSection && upcomingSection.count > 0 ? (
+                <Fragment>
+                  <tr
+                    style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', cursor: collapsible ? 'pointer' : undefined }}
+                    onClick={collapsible ? () => toggleSection('Upcoming payroll (estimate)') : undefined}
+                    aria-expanded={collapsible ? !isCollapsed('Upcoming payroll (estimate)') : undefined}
+                  >
+                    <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
+                      {collapsible ? sectionChevron('Upcoming payroll (estimate)') : null}
+                      <span style={{ fontWeight: 600 }}>Upcoming payroll (estimate)</span>
+                      <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
+                        {upcomingSection.count} person-week{upcomingSection.count === 1 ? '' : 's'} · $
+                        {formatCurrency(upcomingSection.total)}
+                      </span>
+                    </td>
+                  </tr>
+                  {(isCollapsed('Upcoming payroll (estimate)') ? [] : upcomingSection.items).map((item) => (
+                    <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
+                      <td style={{ padding: '0.45rem 0.65rem' }}>
+                        {item.label}
+                        {item.sublabel ? (
+                          <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
+                        ) : null}
+                      </td>
+                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{shortDate(item.dateYmd)}</td>
+                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        ${formatCurrency(item.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ) : null
   return (
     <div
       role="presentation"
@@ -498,8 +542,13 @@ function ItemsModal({
               {sections.map((section) => (
                 <Fragment key={section.title ?? 'all'}>
                   {section.title ? (
-                    <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb' }}>
+                    <tr
+                      style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', cursor: collapsible ? 'pointer' : undefined }}
+                      onClick={collapsible ? () => toggleSection(section.title!) : undefined}
+                      aria-expanded={collapsible ? !isCollapsed(section.title) : undefined}
+                    >
                       <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
+                        {collapsible ? sectionChevron(section.title) : null}
                         {STAGES_SECTION_LINKS[section.title] ? (
                           <Link
                             to={STAGES_SECTION_LINKS[section.title]!}
@@ -524,7 +573,7 @@ function ItemsModal({
                       </td>
                     </tr>
                   ) : null}
-                  {section.items.map((item: FinancialItem) => (
+                  {(section.title && isCollapsed(section.title) ? [] : section.items).map((item: FinancialItem) => (
                 <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
                   <td style={{ padding: '0.45rem 0.65rem' }}>
                     {item.jobId && onOpenJob ? (
@@ -646,35 +695,10 @@ function ItemsModal({
                   ) : null}
                 </tr>
                   ))}
+                  {section.title === 'Payroll due' ? upcomingPayrollRows : null}
                 </Fragment>
               ))}
-              {upcomingSection && upcomingSection.count > 0 ? (
-                <Fragment>
-                  <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb' }}>
-                    <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
-                      <span style={{ fontWeight: 600 }}>Upcoming payroll (estimate)</span>
-                      <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
-                        {upcomingSection.count} person-week{upcomingSection.count === 1 ? '' : 's'} · $
-                        {formatCurrency(upcomingSection.total)}
-                      </span>
-                    </td>
-                  </tr>
-                  {upcomingSection.items.map((item) => (
-                    <tr key={item.key} style={{ borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
-                      <td style={{ padding: '0.45rem 0.65rem' }}>
-                        {item.label}
-                        {item.sublabel ? (
-                          <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
-                        ) : null}
-                      </td>
-                      <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{shortDate(item.dateYmd)}</td>
-                      <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                        ${formatCurrency(item.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </Fragment>
-              ) : null}
+              {sections.some((sec) => sec.title === 'Payroll due') ? null : upcomingPayrollRows}
             </tbody>
             <tfoot>
               <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
