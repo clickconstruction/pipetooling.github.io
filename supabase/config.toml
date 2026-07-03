@@ -502,6 +502,9 @@ verify_jwt = false
 [functions.invite-user]
 verify_jwt = false
 
+[functions.send-sign-in-email]
+verify_jwt = false
+
 [functions.claim-dev]
 verify_jwt = false
 

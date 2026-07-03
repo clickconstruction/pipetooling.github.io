@@ -4063,15 +4063,27 @@ export default function Settings() {
     setSendingSignInEmailId(u.id)
     setError(null)
     const redirectTo = new URL('dashboard', window.location.href).href
-    const { error: e } = await supabase.auth.signInWithOtp({
-      email: u.email,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: redirectTo,
-      },
+    const { data, error: eFn } = await supabase.functions.invoke('send-sign-in-email', {
+      body: { email: u.email, redirectTo },
     })
-    if (e) setError(e.message)
     setSendingSignInEmailId(null)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch { /* ignore */ }
+      }
+      setError(msg)
+      return
+    }
+    const err = (data as { error?: string } | null)?.error
+    if (err) {
+      setError(err)
+      return
+    }
+    showToast(`Sign-in email sent to ${u.email}`, 'success')
   }
 
   function openInvite() {

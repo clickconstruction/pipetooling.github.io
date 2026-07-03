@@ -54,7 +54,9 @@ export type NotificationTemplate = {
 }
 
 /** Email template types that the workflow-email Edge Function test can target
- * (the transactional `invitation` / `sign_in` / `login_as` types are excluded). */
+ * (the transactional types are excluded: `invitation` is consumed by the invite-user
+ * Edge Function, `sign_in` by send-sign-in-email; `login_as` is currently unused —
+ * login-as-user hands the link to the client without emailing). */
 export type WorkflowFnEmailTemplateType =
   | 'stage_assigned_started'
   | 'stage_assigned_complete'
