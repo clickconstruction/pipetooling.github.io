@@ -190,7 +190,9 @@ serve(async (req) => {
       creditNote = await stripe.creditNotes.create({
         invoice: stripeInvId,
         amount: creditCents,
-        reason: 'customer_request',
+        // Stripe credit-note reason enum: duplicate | fraudulent | order_change | product_unsatisfactory.
+        // 'order_change' = negotiated price change, i.e. an agreed discount.
+        reason: 'order_change',
         metadata: { pipetooling_write_down: '1' },
       })
     } catch (e) {
