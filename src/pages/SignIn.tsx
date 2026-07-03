@@ -39,7 +39,6 @@ export default function SignIn() {
       setError(err.message)
       return
     }
-    void supabase.rpc('touch_last_sign_in')
     localStorage.setItem('signin_email', email)
     localStorage.setItem('signin_password', password)
     // Hard reload to clear cache (avoids stale data, service worker cache)

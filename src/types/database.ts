@@ -11935,7 +11935,6 @@ export type Database = {
           submission_count: number
         }[]
       }
-      touch_last_sign_in: { Args: never; Returns: undefined }
       update_bids_count_rows_order:
         | {
             Args: { p_bid_id: string; p_ordered_ids: string[] }
