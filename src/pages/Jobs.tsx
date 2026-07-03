@@ -3424,6 +3424,24 @@ ${totalsHtml}
     }, { replace: true })
   }, [stagesInvoiceParam, jobsListLoading, activeTab, applyStagesInvoiceFocus, setSearchParams])
 
+  // ?stagesSection=waiting|working|readyToBill|billed — deep link that opens + scrolls to a
+  // Stages section (e.g. from the Dashboard Financials drill-downs), then strips itself.
+  const stagesSectionParam = searchParams.get('stagesSection')
+  useEffect(() => {
+    const raw = stagesSectionParam?.trim()
+    if (!raw || jobsListLoading || activeTab !== 'stages') return
+
+    if (raw === 'waiting' || raw === 'working' || raw === 'readyToBill' || raw === 'billed') {
+      focusStagesSection(raw)
+    }
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('stagesSection')
+      if (!next.get('tab')) next.set('tab', 'stages')
+      return next
+    }, { replace: true })
+  }, [stagesSectionParam, jobsListLoading, activeTab, focusStagesSection, setSearchParams])
+
   useEffect(() => {
     if (activeTab !== 'stages') {
       setReturnEditBannerJobId(null)

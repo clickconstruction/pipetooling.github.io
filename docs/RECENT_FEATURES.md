@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.624)
+last_updated: 2026-07-03 (v2.625)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.625 — **Dashboard → Financials + Jobs Stages** — **section headers deep-link to Jobs Stages**. The **Ready to Bill** / **Working** headers in the Not Billed Out drill-down are now blue links to `/jobs?tab=stages&stagesSection=readyToBill|working`. New generic **`?stagesSection=waiting|working|readyToBill|billed`** param on [`Jobs.tsx`](../src/pages/Jobs.tsx) (mirrors the `stagesInvoice` idiom): once the Stages tab has data it calls the existing `focusStagesSection` (opens the collapsed section + smooth-scrolls to its anchor) and strips itself from the URL — reusable for any future "jump to a Stages section" link](#latest-updates-v2625)
 **New:** [v2.624 — **Dashboard → Financials** — **Not Billed Out modal grouped by status**. The drill-down now renders two sections — **Ready to Bill** on top (closest to money), **Working** below — each with a grey header row showing the section's job count and dollar subtotal; rows keep their amount-desc order within sections and the per-row `· Ready to Bill / · Working` sublabel is dropped (the header says it). Presentational only ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)); AR / AP modals and all math unchanged](#latest-updates-v2624)
 **New:** [v2.623 — **Dashboard → Financials** — **Not Billed Out modal shows job addresses**. Each job row in the Not Billed Out drill-down now renders the job's street address as a muted second line under the label (`jobs_ledger.job_address`, blank-trimmed to hidden). New `address` field on `FinancialItem` — populated only by `buildUnbilledBucket` (AR / AP rows unchanged); hook select extended; +1 kernel test](#latest-updates-v2623)
 **New:** [v2.622 — **Dispatch inbox** — **live updates fixed (was reload-only)**. The inbox's Realtime subscriptions had been silent since the 2026-06-05 incident cleanup dropped `dispatch_requests` / `dispatch_request_notes` from the `supabase_realtime` publication — new requests and thread notes only appeared after a page reload. Migration `20260703130000` (applied to prod) re-adds both low-volume tables, restoring cross-client live refresh. Plus a **same-tab nudge**: every dispatch-request mutation site (Financials "→ Send to Dispatch", the Dispatch task composer, Dashboard link-job-pictures, Job-form auto-close) now fires a `pipetooling:dispatch-requests-changed` window event that [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts) listens for — so sending from a page that also hosts the inbox (the Dashboard) shows the new item instantly, without waiting on the Realtime round-trip](#latest-updates-v2622)
@@ -2000,6 +2001,27 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.625)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — section headers link into Jobs Stages
+
+The **Ready to Bill** and **Working** section headers in the Not Billed Out drill-down are now links that land you on the matching section of the **Jobs Stages** board.
+
+- **New `?stagesSection=` deep link** on [`Jobs.tsx`](../src/pages/Jobs.tsx): `/jobs?tab=stages&stagesSection=waiting|working|readyToBill|billed`. Mirrors the existing `stagesInvoice` param idiom — waits for the jobs list to load on the Stages tab, calls the existing `focusStagesSection` (opens the collapsed section and smooth-scrolls to its `stages-*` anchor), then strips the param from the URL (replace-nav). Unknown values just strip silently. Reusable for any future "jump to a Stages section" link.
+- **Modal side** ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)): the grey section-header rows render their title as a blue underlined `Link` (`STAGES_SECTION_LINKS` map); count + subtotal on the right unchanged. Navigating away unmounts the Dashboard, so the modal closes itself.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1793/1793**; zero new lint warnings (Jobs.tsx's 12 pre-exist — verified identical against the pre-change tree).
+
+#### Files
+
+Modified: [`src/pages/Jobs.tsx`](../src/pages/Jobs.tsx), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
 ---
 
 ## Latest Updates (v2.624)

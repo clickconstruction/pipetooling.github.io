@@ -32,6 +32,12 @@ const CARD_META: Record<CardKey, { title: string; hint: string; linkTo: string; 
   },
 }
 
+/** Deep links consumed by Jobs.tsx's ?stagesSection= handler (opens + scrolls to the section). */
+const STAGES_SECTION_LINKS: Record<string, string> = {
+  'Ready to Bill': '/jobs?tab=stages&stagesSection=readyToBill',
+  Working: '/jobs?tab=stages&stagesSection=working',
+}
+
 function shortDate(ymd: string | null): string {
   if (!ymd) return '—'
   const d = new Date(ymd + 'T12:00:00')
@@ -266,7 +272,22 @@ function ItemsModal({
                   {section.title ? (
                     <tr style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb' }}>
                       <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
-                        <span style={{ fontWeight: 600 }}>{section.title}</span>
+                        {STAGES_SECTION_LINKS[section.title] ? (
+                          <Link
+                            to={STAGES_SECTION_LINKS[section.title]!}
+                            title={`Open Jobs Stages at ${section.title}`}
+                            style={{
+                              fontWeight: 600,
+                              color: '#1d4ed8',
+                              textDecoration: 'underline',
+                              textUnderlineOffset: '2px',
+                            }}
+                          >
+                            {section.title}
+                          </Link>
+                        ) : (
+                          <span style={{ fontWeight: 600 }}>{section.title}</span>
+                        )}
                         <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
                           {section.items.length} job{section.items.length === 1 ? '' : 's'} · $
                           {formatCurrency(section.items.reduce((s, i) => s + i.amount, 0))}
