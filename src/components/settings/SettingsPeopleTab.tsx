@@ -9,6 +9,7 @@ import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
 import { ROLES } from '../../lib/userRoles'
 import type { PersonRow, ServiceType, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
+import { useToastContext } from '../../contexts/ToastContext'
 
 type PageAccessRow = {
   page: string
@@ -263,6 +264,17 @@ export default function SettingsPeopleTab({
   updatingId,
   users,
 }: SettingsPeopleTabProps) {
+  const { showToast } = useToastContext()
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text)
+      showToast(`Copied ${text}`, 'success')
+    } catch {
+      showToast('Could not copy to clipboard', 'error')
+    }
+  }
+
   return (
     <>
           <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
@@ -311,8 +323,7 @@ export default function SettingsPeopleTab({
             <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Email / Name</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Service types</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Last login</th>
@@ -325,26 +336,45 @@ export default function SettingsPeopleTab({
                   <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       {editingUserId === u.id ? (
-                        <input
-                          type="email"
-                          value={editEmail}
-                          onChange={(e) => setEditEmail(e.target.value)}
-                          style={{ width: '100%', padding: '0.25rem 0.5rem' }}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <input
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            placeholder="Email"
+                            style={{ width: '100%', padding: '0.25rem 0.5rem' }}
+                          />
+                          <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            placeholder="Name"
+                            style={{ width: '100%', padding: '0.25rem 0.5rem' }}
+                          />
+                        </div>
                       ) : (
-                        u.email
-                      )}
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>
-                      {editingUserId === u.id ? (
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          style={{ width: '100%', padding: '0.25rem 0.5rem' }}
-                        />
-                      ) : (
-                        u.name
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(u.email)}
+                            title="Click to copy email"
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
+                          >
+                            {u.email}
+                          </button>
+                          {u.name ? (
+                            <button
+                              type="button"
+                              onClick={() => copyToClipboard(u.name ?? '')}
+                              title="Click to copy name"
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left', color: '#6b7280' }}
+                            >
+                              {u.name}
+                            </button>
+                          ) : (
+                            <span style={{ color: '#9ca3af' }}>—</span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -456,7 +486,7 @@ export default function SettingsPeopleTab({
                   </tr>
                   {editingUserId === u.id && u.role === 'estimator' && (
                     <tr key={`${u.id}-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
@@ -494,7 +524,7 @@ export default function SettingsPeopleTab({
                   )}
                   {editingUserId === u.id && u.role === 'primary' && (
                     <tr key={`${u.id}-primary-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
@@ -523,7 +553,7 @@ export default function SettingsPeopleTab({
                   )}
                   {editingUserId === u.id && u.role === 'superintendent' && (
                     <tr key={`${u.id}-superintendent-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials, Bids)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
@@ -552,7 +582,7 @@ export default function SettingsPeopleTab({
                   )}
                   {editingUserId === u.id && isSubcontractorLikeRole(u.role) && (
                     <tr key={`${u.id}-subcontractor-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Clock In, Dispatch)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict job/bid association.</p>
