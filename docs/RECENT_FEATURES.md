@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.619)
+last_updated: 2026-07-03 (v2.630)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,17 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.630 — **Ops** — **edge-function drift check (CI + local) after the Apply Discount incident**. Apply discount on a **Stripe-hosted** invoice failed for everyone ("Failed to send a request to the Edge Function") because `stripe-invoice-agreed-write-down` (v2.524) was never deployed — third stale-function incident (create-user, invite-user). Function **deployed to prod** (CORS preflight verified 200; the in-handler role gate already includes `assistant`, both write-down RPCs already existed). Prevention: new [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (`npm run check:edge-drift`) diffs `supabase/functions/*` against `supabase functions list` — repo-but-not-deployed **fails** with the exact deploy command; deployed-but-not-in-repo warns. New workflow [`edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): main pushes touching functions + daily cron + manual dispatch. **Setup: add the `SUPABASE_ACCESS_TOKEN` repo secret**](#latest-updates-v2630)
+**New:** [v2.629 — **Dashboard → Financials** — **AP shows upcoming payroll (due / upcoming split)**. The AP card sub-line becomes **`Supplies $X · Payroll: $Y due / $Z upcoming`**, where `$Z` is the Payroll ledger header's "upcoming" figure computed by the **same kernel** (`buildUpcomingPayrollSummary` — person-weeks with clocked time incl. pending but no pay report, hours × wage). The AP drill-down gains an **`Upcoming payroll (estimate)`** section after the due items (grey header with person-week count + subtotal; per person-week rows `Name · 6/28–7/4 · 12.3h (est.)`), excluded from the footer total, which relabels to **`Total due`**. **Assistants** get a single aggregate `Payroll — $Z` line (`redactUpcomingApSection`, same rule as v2.628). Hook fetches `users` + `people_pay_config` + bounded `clock_sessions` (best-effort — failures degrade to no upcoming section); new kernel mappers `buildUpcomingApSection`/`redactUpcomingApSection` (+4 tests)](#latest-updates-v2629)
+**New:** [v2.628 — **Dashboard → Financials** — **assistants see the payroll total, not per-person lines**. For role `assistant`, the Accounts Payable drill-down collapses all per-person pay-stub rows into one aggregate **`Payroll — $Y`** line (`N open pay stubs` sublabel, oldest period-end as the date); supplies stay itemized and the card totals / `Supplies $X · Payroll $Y` subtotals are unchanged. New pure kernel helper `redactApPayrollItems` (+2 tests) applied only when opening the AP modal as an assistant — mirrors the existing `canAccessPay: false` convention that hides the People → Payroll tab from assistants. Display rule, not a data barrier (RLS intentionally grants assistants-of-pay-approved-masters the rows for their other pay duties)](#latest-updates-v2628)
+**New:** [v2.627 — **Dashboard → Financials** — **drill-down hint spans the full header width**: the explanatory subtitle no longer shares a flex cell with the `Open Jobs Stages →` link + close button (which squeezed it into a narrow wrapped column) — the header is now title-row (title | link | ×) over a full-width hint line. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2627)
+**New:** [v2.626 — **Dashboard → Financials** — **drill-down header layout**: item count moved up into the title line as a muted `(10 items)` suffix — `Not Billed Out — $57,727.50 (10 items)` — leaving the subtitle as just the explanatory hint. Applies to all three drill-downs (AR / AP / Not billed); [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2626)
+**New:** [v2.625 — **Dashboard → Financials + Jobs Stages** — **section headers deep-link to Jobs Stages**. The **Ready to Bill** / **Working** headers in the Not Billed Out drill-down are now blue links to `/jobs?tab=stages&stagesSection=readyToBill|working`. New generic **`?stagesSection=waiting|working|readyToBill|billed`** param on [`Jobs.tsx`](../src/pages/Jobs.tsx) (mirrors the `stagesInvoice` idiom): once the Stages tab has data it calls the existing `focusStagesSection` (opens the collapsed section + smooth-scrolls to its anchor) and strips itself from the URL — reusable for any future "jump to a Stages section" link](#latest-updates-v2625)
+**New:** [v2.624 — **Dashboard → Financials** — **Not Billed Out modal grouped by status**. The drill-down now renders two sections — **Ready to Bill** on top (closest to money), **Working** below — each with a grey header row showing the section's job count and dollar subtotal; rows keep their amount-desc order within sections and the per-row `· Ready to Bill / · Working` sublabel is dropped (the header says it). Presentational only ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)); AR / AP modals and all math unchanged](#latest-updates-v2624)
+**New:** [v2.623 — **Dashboard → Financials** — **Not Billed Out modal shows job addresses**. Each job row in the Not Billed Out drill-down now renders the job's street address as a muted second line under the label (`jobs_ledger.job_address`, blank-trimmed to hidden). New `address` field on `FinancialItem` — populated only by `buildUnbilledBucket` (AR / AP rows unchanged); hook select extended; +1 kernel test](#latest-updates-v2623)
+**New:** [v2.622 — **Dispatch inbox** — **live updates fixed (was reload-only)**. The inbox's Realtime subscriptions had been silent since the 2026-06-05 incident cleanup dropped `dispatch_requests` / `dispatch_request_notes` from the `supabase_realtime` publication — new requests and thread notes only appeared after a page reload. Migration `20260703130000` (applied to prod) re-adds both low-volume tables, restoring cross-client live refresh. Plus a **same-tab nudge**: every dispatch-request mutation site (Financials "→ Send to Dispatch", the Dispatch task composer, Dashboard link-job-pictures, Job-form auto-close) now fires a `pipetooling:dispatch-requests-changed` window event that [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts) listens for — so sending from a page that also hosts the inbox (the Dashboard) shows the new item instantly, without waiting on the Realtime round-trip](#latest-updates-v2622)
+**New:** [v2.621 — **Dashboard → Financials** — **Not Billed Out rows send to Dispatch**. Each job row in the Not Billed Out drill-down gains a **`→`** button right of Amount opening a mini-composer (z 1110): the job label + amount pre-filled as context, an optional note, and **Send to Dispatch** — creating a `dispatch_requests` inbox item (`Not billed out: 500 · Smith House — $12,345.67. <note>`) with `pending_action: 'bill_out_job'` **dedupe** (one open request per job; a second send toasts "Already open with Dispatch") and a fire-and-forget `notify-dispatch-request` push. New reusable helper [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) (`createDispatchRequest` — insert + dedupe + notify, extracted from the Dashboard link-job-pictures pattern — and pure `buildUnbilledDispatchTitle`, 3 tests). AR / AP modals unchanged](#latest-updates-v2621)
+**New:** [v2.620 — **Dashboard** — **Financials one-pager (AR / AP / Not billed)** for dev / master_technician / assistant. New **[`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx)** above Recent activity: three clickable cards — **Accounts Receivable** (open remainders on billed invoices + billed jobs without invoice rows; mirrors `useBilledTotal`), **Accounts Payable** (unpaid supply-house invoices **+** open payroll balances via `stubNetPay − payments`, with per-source subtotals on the card; mirrors Supply Houses + the Payroll ledger header exactly), **Not Billed Out** (working / ready_to_bill jobs: `(revenue − payments) − Σ billed invoice amounts`; RTB draft lines deliberately not subtracted — they aren't on a customer invoice yet). Each card shows total + item count + oldest-item date and opens a drill-down modal (Item | Date | Amount, largest first, totals footer, link to Jobs Stages / Supply Houses). Pure kernel [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**7 tests**) + one batched hook [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts); all four totals cross-checked against prod SQL (payroll AP matched the Payroll ledger's `$4,949.48 remaining` to the cent). No DB changes](#latest-updates-v2620)
 **New:** [v2.619 — **People → Activity** — **per-person drilldown with page-level time**. Names in the Activity table are now links opening **[`PersonActivityDetailModal`](../src/components/people/PersonActivityDetailModal.tsx)**: a **90-day** day-by-day list (date, active h:mm, first–last seen) with each day expandable to its **per-page split**, plus a "Where (90d)" totals strip (`Bids · Pricing 12:40 …`). Collection: new **`user_app_activity_page_daily`** table (UTC day × page key; RLS mirrors the daily table — own rows / dev / granted viewers; writes via RPC only) and **`bump_user_app_activity`** recreated with `p_page text DEFAULT NULL` (migration `20260703120000`, applied to prod via MCP after body-md5 verification — old deployed clients calling one-arg keep working). The heartbeat is now **page-aware**: [`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts) takes a `pageKey` (new pure kernel [`appActivityPage.ts`](../src/lib/appActivityPage.ts): `appActivityPageKey('/bids','?tab=pricing') → 'bids:pricing'`, first path segment + sanitized tab param, bounded cardinality) and is keyed on it — in-app navigation flushes the old page's partial segment via effect cleanup and restarts the minute clock on the new page, so mid-minute navigation attributes correctly. Zero-second "seen" pings carry no page (last-seen only). **Page data accrues from deploy day**; historical days show totals with no page rows. +6 kernel tests](#latest-updates-v2619)
 **New:** [v2.618 — **App activity heartbeat** — **short visits now register** ([`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts)). Previously the first bump only fired after **60 continuous seconds** of tab visibility and the timer reset on every hide — so a 30-second clock-in/out visit recorded *nothing*, leaving People → Activity "Last seen" up to weeks older than real clock actions (prod check: one tech 26 days stale). Now: (1) an **instant `bump(0)`** on becoming visible updates `last_seen_at` without adding hours (throttled to once/min against tab-flicker spam; the deployed `bump_user_app_activity` RPC already clamps `p_seconds ≥ 0` — no DB change); (2) on hide/**pagehide**/unmount the **partial minute flushes** (≥5s), so a 40-second visit adds ~40s of active time; (3) the 60s tick continues for sustained use, with the partial-segment clock reset on each tick. Still strictly non-retrying (2026-06-04 incident lesson)](#latest-updates-v2618)
 **New:** [v2.617 — **People → Payroll ledger** — **upcoming week drilldown lists sessions with approve/reject**. The v2.616 per-day-totals drilldown is rebuilt as **[`UpcomingWeekSessionsModal`](../src/components/people/UpcomingWeekSessionsModal.tsx)** — every clock session for the person-week, grouped by day (clickable day headers still open My Time with the widened fence), each row showing time range, hours, job/bid short label (`shortJobOrBidLabelFromEmbeds` + prefix map), notes tooltip, and an **Approved / Pending / Open** badge. Closed pending sessions get per-session **Approve** + two-click **Reject** (direct `rejected_at/rejected_by` update, popover idiom); the header has **`Approve all (N)`**. Approval goes through the **`approve_clock_sessions`** RPC (`approveClockSessions` wrapper) — writes `people_hours` incrementally, so approved weeks become payable in Draft Payroll; server-side gating (pay roles / team leads) re-validates. Fresh per-open fetch with embeds; after any mutation the modal refetches and a new `upcomingLocalTick` refetches the tab's upcoming data (a reject shrinks the week's hours + header estimate). Kernel: `upcomingWeekDayBreakdown` replaced by **`groupUpcomingWeekSessions`** (+`upcomingSessionHours`) — 14 kernel tests](#latest-updates-v2617)
@@ -1995,6 +2006,246 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.630)
+
+**Date**: 2026-07-03
+
+### Ops — edge-function drift check (CI + local), after the Apply Discount incident
+
+**Incident**: Apply Discount on a **Stripe-hosted** invoice failed with "Failed to send a request to the Edge Function" (reported by Taunya; would hit any role). Root cause: [`AgreedWriteDownModal`](../src/components/jobs/AgreedWriteDownModal.tsx)'s Stripe path invokes the `stripe-invoice-agreed-write-down` Edge Function, which shipped in-repo in v2.524 but **was never deployed** — the third stale-function incident (create-user, invite-user prior). Non-Stripe invoices use the `apply_agreed_write_down_to_billed_invoice` RPC and always worked, which kept this hidden.
+
+**Fix (prod, 2026-07-03)**: `npx supabase functions deploy stripe-invoice-agreed-write-down` (bundles `_shared/stripeSecrets.ts`). Verified: CORS preflight 200 from the app origin; the function's in-handler gate (`BILLING_ROLES` = dev / master_technician / assistant / primary) already authorizes assistants; both DB RPCs (`apply_agreed_write_down_to_billed_invoice`, `service_apply_agreed_write_down_from_stripe`) already existed in prod. Post-deploy audit: **all 54 repo functions now deployed** (2 deployed-only extras: legacy `delete-user`, parallel-branch `send-sign-in-email`).
+
+**Prevention**: new drift check that fails loudly before a user finds the gap.
+
+- [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (**`npm run check:edge-drift`**): diffs `supabase/functions/*` (dirs with an `index.ts`, `_shared` excluded) against `supabase functions list --output json`. Repo-but-not-deployed → **exit 1** listing the exact `npx supabase functions deploy <slug>` commands; deployed-but-not-in-repo → warning only. Auth follows the CLI (local `supabase login` session, or `SUPABASE_ACCESS_TOKEN` env in CI).
+- [`.github/workflows/edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): runs on main pushes touching `supabase/functions/**` (catches "merged but forgot to deploy"), a **daily 15:00 UTC cron** (catches dashboard-side drift), and manual dispatch.
+- **Setup required**: add a `SUPABASE_ACCESS_TOKEN` repository secret (personal access token from supabase.com/dashboard/account/tokens) — until then the workflow fails with that instruction.
+
+#### Files
+
+New: [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs), [`.github/workflows/edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml). Modified: [`package.json`](../package.json) (`check:edge-drift` script). No client / DB changes (the function deploy itself was a prod-only action).
+
+---
+
+## Latest Updates (v2.629)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP shows upcoming payroll (due / upcoming split)
+
+The Payroll ledger header has long shown two payroll numbers — open balances (`$4,949.48 remaining`) and **upcoming** (`15 upcoming: $13,441.87`: person-weeks with clocked time, including pending approval, not yet covered by a pay report; estimated hours × wage). The Financials AP card only showed the due side. Now:
+
+- **Card sub-line**: `Supplies $54,363.28 · Payroll: $4,949.48 due / $13,441.87 upcoming` (the upcoming tail is hidden when there are no upcoming person-weeks). The card's big number stays **due-only** — upcoming is an estimate, not yet payable.
+- **AP drill-down**: new **`Upcoming payroll (estimate)`** section after the due items — grey header row with `N person-weeks · $Z` subtotal, then one row per person-week (`Bryan · 6/28–7/4 · 12.3h (est.)` with the week-end date and estimated dollars). Excluded from the footer total, which relabels to **`Total due`** when the section is present.
+- **Assistant redaction** (v2.628 rule extended): role `assistant` sees a single aggregate `Payroll — $Z` line with an `N person-weeks` sublabel instead of per-person rows.
+- **Same math as the ledger, by construction**: [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) reuses `buildUpcomingPayrollSummary` / `upcomingPayrollFetchStartYmd` from [`upcomingPayrollSummary.ts`](../src/lib/upcomingPayrollSummary.ts) verbatim, with the same input assembly as the ledger tab (wages from `people_pay_config.hourly_wage`, trimmed-name user match, stub coverage from `pay_stubs`) and the same bounded `clock_sessions` fetch. New kernel mappers `buildUpcomingApSection` / `redactUpcomingApSection` in [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**+4 tests**).
+- **Graceful degradation**: the `users` / `people_pay_config` / `clock_sessions` fetches are best-effort — any failure yields an empty upcoming section (card shows due-only, no section in the modal) without failing the whole Financials load. Non-pay-approved master techs, whose RLS already returns no stubs/wages, simply see no upcoming figures — same as their due-payroll behavior.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1799/1799** (4 new); zero lint warnings on touched files. On-screen parity check: the card's `$Z upcoming` should equal the Payroll ledger header's upcoming figure (same kernel + inputs, no person-search filter).
+
+#### Files
+
+Modified: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.628)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — assistants see the payroll total, not per-person lines
+
+Assistants should know the total payroll outstanding but not what individuals get paid. For role `assistant`, the **Accounts Payable** drill-down now collapses all per-person pay-stub rows into a single aggregate line — **`Payroll — $4,949.48`** with an `N open pay stubs` sublabel and the oldest period-end as its date. Supplies stay itemized per invoice, and everything total-shaped is unchanged: the AP card, its `Supplies $X · Payroll $Y` subtotal line, and the modal's grand-total footer.
+
+- New pure kernel helper `redactApPayrollItems` in [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**+2 tests**: collapse preserves totals/subtotals + oldest date; payroll-free bucket passes through by reference). Applied in [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only when the AP modal opens with `role === 'assistant'` (via the already-imported `useAuth`).
+- Consistent with the app's existing convention: `usePeopleAccess` gives assistants `canAccessPay: false`, hiding the whole People → Payroll tab — the Financials AP modal was the only remaining UI surface showing them per-person pay.
+- **Display rule, not a data barrier**: RLS intentionally grants assistants-of-pay-approved-masters SELECT on the pay-stub tables (their other pay-access duties depend on it), so the rows still reach the browser; this matches the Payroll-tab precedent.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1795/1795** (2 new); zero lint warnings on touched files.
+
+#### Files
+
+Modified: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.627)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — drill-down hint spans the full header width
+
+Follow-up to v2.626: the explanatory hint (`Working and Ready-to-Bill jobs whose revenue is not yet on a billed customer invoice.`) was inside the same flex cell as the title, next to the `Open Jobs Stages →` link and × button — so it wrapped in a narrow column instead of running across the modal. The header is restructured into a title row (`title (count) | link | ×`) with the hint on its own full-width line beneath. All three drill-downs (AR / AP / Not billed).
+
+#### Verification
+
+`tsc -b` clean; zero lint warnings on the touched file.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.626)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — drill-down header layout
+
+The drill-down modal header now reads **`Not Billed Out — $57,727.50 (10 items)`** — the item count moved up into the title line as a muted, non-bold suffix — and the subtitle line is just the explanatory hint (`Working and Ready-to-Bill jobs whose revenue is not yet on a billed customer invoice.`). Applies to all three drill-downs (AR / AP / Not billed).
+
+#### Verification
+
+`tsc -b` clean; zero lint warnings on the touched file.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.625)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — section headers link into Jobs Stages
+
+The **Ready to Bill** and **Working** section headers in the Not Billed Out drill-down are now links that land you on the matching section of the **Jobs Stages** board.
+
+- **New `?stagesSection=` deep link** on [`Jobs.tsx`](../src/pages/Jobs.tsx): `/jobs?tab=stages&stagesSection=waiting|working|readyToBill|billed`. Mirrors the existing `stagesInvoice` param idiom — waits for the jobs list to load on the Stages tab, calls the existing `focusStagesSection` (opens the collapsed section and smooth-scrolls to its `stages-*` anchor), then strips the param from the URL (replace-nav). Unknown values just strip silently. Reusable for any future "jump to a Stages section" link.
+- **Modal side** ([`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx)): the grey section-header rows render their title as a blue underlined `Link` (`STAGES_SECTION_LINKS` map); count + subtotal on the right unchanged. Navigating away unmounts the Dashboard, so the modal closes itself.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1793/1793**; zero new lint warnings (Jobs.tsx's 12 pre-exist — verified identical against the pre-change tree).
+
+#### Files
+
+Modified: [`src/pages/Jobs.tsx`](../src/pages/Jobs.tsx), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.624)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — Not Billed Out modal grouped by status
+
+The **Not Billed Out** drill-down is now split into two sections: **Ready to Bill** on top, **Working** below. Each section gets a grey header row with the job count and dollar subtotal (e.g. `Ready to Bill — 4 jobs · $22,150.00`), so the "could bill today" money is separated from the "still in progress" money at a glance.
+
+- Rows keep their largest-first order within each section; empty sections are hidden.
+- The per-row `· Ready to Bill` / `· Working` sublabel is dropped inside sections (the header already says it); addresses, click-to-open-job, and the → Send to Dispatch button are unchanged.
+- Presentational only in [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) — section membership comes from the kernel's existing per-item status sublabel; AR / AP modals and all totals unchanged.
+
+#### Verification
+
+`tsc -b` clean; kernel tests 8/8; zero lint warnings on the touched file.
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.623)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — Not Billed Out modal shows job addresses
+
+Job rows in the **Not Billed Out** drill-down now show the job's street address as a muted line under the `HCP · name` label, so you can tell similar jobs apart without opening each one.
+
+- Kernel: `FinancialItem` gains `address: string | null` — set only by `buildUnbilledBucket` from `jobs_ledger.job_address` (trimmed; blank → null → line hidden). AR and AP rows keep `address: null`, so their modals are unchanged.
+- [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) adds `job_address` to the jobs select; [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) renders the line in the items table.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1793/1793** (1 new: address pass-through + blank-trim); zero lint warnings on touched files.
+
+#### Files
+
+Modified: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB changes.
+
+---
+
+## Latest Updates (v2.622)
+
+**Date**: 2026-07-03
+
+### Dispatch inbox — live updates fixed (Realtime restored + same-tab nudge)
+
+Diagnosed while testing v2.621: a sent dispatch request didn't appear in the inbox. The row was created fine — the **inbox never live-refreshes**, because `dispatch_requests` and `dispatch_request_notes` were dropped from the **`supabase_realtime` publication** during the 2026-06-05 connection-incident cleanup, leaving [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts)'s `postgres_changes` subscriptions connected but permanently silent. Two-part fix:
+
+- **Realtime restored** — migration `20260703130000_dispatch_realtime_publication.sql` (idempotent `DO` block, **applied to prod ahead of client**) re-adds both tables to the publication. They're low-volume (a handful of rows/day), so the pool-exhaustion concern behind the original trim doesn't apply. Cross-client updates (e.g. Dispatch members seeing new tasks/notes without reloading) work again with no client change.
+- **Same-tab nudge** — Realtime has round-trip latency and the sender's own page shouldn't wait on it (the common case: sending from the Dashboard, which also hosts the inbox). New `notifyDispatchRequestsChanged()` + `DISPATCH_REQUESTS_CHANGED_EVENT` in [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) fires a window event; `useDispatchInbox` listens and reloads. Emitted from every dispatch-request mutation site: `createDispatchRequest` (Financials "→"), the Dispatch task composer ([`DispatchTaskModal.tsx`](../src/components/DispatchTaskModal.tsx)), the Dashboard link-job-pictures request, and the Job-form auto-close of `link_job_pictures` requests ([`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1792/1792**; zero new lint warnings (Dashboard.tsx's 8 pre-exist). Publication verified in prod post-apply (`pg_publication_tables` lists both). The missing v2.621 test request (`Not billed out: 363 · Michael Palmer…`) confirmed present/open in `dispatch_requests` — appears after reload today, live after this client deploys.
+
+#### Files
+
+New: [`supabase/migrations/20260703130000_dispatch_realtime_publication.sql`](../supabase/migrations/20260703130000_dispatch_realtime_publication.sql). Modified: [`src/lib/dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts), [`src/hooks/useDispatchInbox.ts`](../src/hooks/useDispatchInbox.ts), [`src/components/DispatchTaskModal.tsx`](../src/components/DispatchTaskModal.tsx), [`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx), [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx), [`docs/MIGRATIONS.md`](MIGRATIONS.md). No type regen (no schema change).
+
+---
+
+## Latest Updates (v2.621)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — send Not Billed Out jobs to Dispatch
+
+Follow-up to v2.620: in the **Not Billed Out** drill-down modal, every job row now has a **`→`** button to the right of Amount that opens a small composer for sending the job to the **Task Dispatch inbox**.
+
+- **Composer** (`SendToDispatchModal`, z 1110 above the items modal at 1100): shows `Not billed out: <job label> — $<amount>` as context, an optional note textarea (autofocused), Cancel / **Send to Dispatch** with a busy state; Escape/backdrop close (disabled while sending).
+- **The request**: `dispatch_requests` insert with `title = "Not billed out: 500 · Smith House — $12,345.67. <note>"` (clipped to the 2000-char title constraint), `job_ledger_id`, `reference_summary` = the job label, and `pending_action: 'bill_out_job'` — then a fire-and-forget `notify-dispatch-request` Edge-function push to Dispatch members (the task exists even if the push fails).
+- **Dedupe**: one *open* `bill_out_job` request per job — a second send finds the existing open row and toasts "Already open with Dispatch for this job." instead of inserting a duplicate.
+- **New reusable helper** [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts): `createDispatchRequest({fromUserId, title, jobId, referenceSummary, pendingAction})` — the check-existing → insert → notify pattern extracted from the Dashboard's link-job-pictures flow — plus pure `buildUnbilledDispatchTitle(label, amount, note)` (**3 unit tests** incl. the 2000-char clip).
+- The `→` column renders **only in the Not Billed Out modal** (AR / AP drill-downs unchanged); rows without a job id (none today in this bucket) simply omit the button.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1792/1792** (3 new); zero lint warnings on touched files.
+
+#### Files
+
+New: [`src/lib/dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) (+ test). Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB / migration / type changes (`dispatch_requests` RLS already allows any authenticated insert).
+
+---
+
+## Latest Updates (v2.620)
+
+**Date**: 2026-07-03
+
+### Dashboard — Financials one-pager (AR / AP / Not billed)
+
+New **Financials** section on the Dashboard (dev / master_technician / assistant, placed above Recent activity): three clickable cards giving the one-glance money picture, each opening a drill-down modal of the contributing items.
+
+| Card | Formula | Mirrors |
+|---|---|---|
+| **Accounts Receivable** | per billed invoice `max(0, amount − payments applied)` (write-downs already reduce `amount`) + billed jobs with no billed invoice rows `max(0, revenue − payments_made)` | `useBilledTotal` / [`invoiceBilling.ts`](../src/lib/jobs/invoiceBilling.ts) |
+| **Accounts Payable** | unpaid `supply_house_invoices` **+** open payroll balances (`stubNetPay(gross, less, additional) − payments`); card shows the two subtotals | Supply Houses tab + the Payroll ledger header |
+| **Not Billed Out** | working / ready_to_bill jobs: `max(0, (revenue − payments_made) − Σ billed invoice amounts)` — RTB draft lines deliberately **not** subtracted (not on a customer invoice yet) | Jobs Stages gross/alloc basis ([`jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts)) |
+
+- Cards show **total + item count + oldest-item date**; the drill-down modal lists **Item | Date | Amount** largest-first with a totals footer and a header link to the owning screen (Jobs Stages / Supply Houses). A job can legitimately appear in both AR and Not-billed (billed portion outstanding *and* an unbilled remainder) — dollars are never double-counted.
+- **Pure kernel** [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (`buildArBucket` / `buildApBucket` / `buildUnbilledBucket`, **7 unit tests**) + one batched hook [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) (jobs/invoices/payments + unpaid supply invoices + stubs with chunked payments/deductions/additional-lines; fetches only when the section renders for privileged roles).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1789/1789** (7 new); zero new lint warnings (Dashboard.tsx's 8 pre-exist). All four totals cross-checked against prod SQL — AR $84,784.82 / 34 items, AP $49,645.79 supplies + $4,949.48 payroll, Not billed $57,727.50 / 10 jobs — and the payroll AP figure matches the Payroll ledger's "$4,949.48 remaining" to the cent.
+
+#### Files
+
+New: [`src/lib/dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (+ test), [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). Modified: [`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.619)

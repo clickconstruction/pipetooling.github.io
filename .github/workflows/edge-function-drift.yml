@@ -1,0 +1,38 @@
+name: Edge function drift
+
+# CI deploys only the client; edge functions deploy manually. This job fails loudly when a
+# function exists in supabase/functions/ but is not deployed to prod (three prior incidents:
+# create-user, invite-user, stripe-invoice-agreed-write-down).
+#
+# Requires the SUPABASE_ACCESS_TOKEN repo secret (personal access token from
+# https://supabase.com/dashboard/account/tokens).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'supabase/functions/**'
+      - 'scripts/check-edge-function-drift.mjs'
+      - '.github/workflows/edge-function-drift.yml'
+  schedule:
+    # Daily at 15:00 UTC (~9-10am Chicago) — catches drift introduced outside git pushes too.
+    - cron: '0 15 * * *'
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check edge-function drift
+        run: node scripts/check-edge-function-drift.mjs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

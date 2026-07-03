@@ -23,6 +23,7 @@ import { effectiveJobLedgerNumber, formatBidLedgerDocTitle, type LedgerPrefixMap
 import { parseCustomerImport } from '../../utils/parseCustomerImport'
 import { nameSimilarity } from '../../utils/nameSimilarity'
 import { formatPostgrestOrUnknownError, withSupabaseRetry } from '../../utils/errorHandling'
+import { notifyDispatchRequestsChanged } from '../../lib/dispatchRequestHelpers'
 import { formatWorkDateYmdMonthDayShort } from '../../utils/dateUtils'
 import AutosizeTextarea from '../AutosizeTextarea'
 import CustomerAcceptanceRecordModal from '../estimates/CustomerAcceptanceRecordModal'
@@ -2803,6 +2804,7 @@ export default function JobFormModal({
                   .eq('status', 'open'),
               'auto-close link_job_pictures dispatch requests',
             )
+            notifyDispatchRequestsChanged()
           } catch (closeErr) {
             console.warn('auto-close dispatch_requests failed', closeErr)
           }

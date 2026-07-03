@@ -78,6 +78,7 @@ import { DashboardMyTimeDayEditorModal } from '../components/DashboardMyTimeDayE
 import DashboardDevRejectedNotification from '../components/DashboardDevRejectedNotification'
 import DashboardMyTeamPendingBanner from '../components/DashboardMyTeamPendingBanner'
 import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
+import DashboardFinancialsSection from '../components/DashboardFinancialsSection'
 import DashboardLostBidsMissingReasonBanner from '../components/DashboardLostBidsMissingReasonBanner'
 import DashboardTallyStaleBanner from '../components/DashboardTallyStaleBanner'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
@@ -108,6 +109,7 @@ import BilledPaymentConfirmationModal, { type InvoiceWithJobLike } from '../comp
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { denverCalendarDayKey, getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { notifyDispatchRequestsChanged } from '../lib/dispatchRequestHelpers'
 import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
 import { labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -3130,6 +3132,7 @@ export default function Dashboard() {
         void supabase.functions.invoke('notify-dispatch-request', {
           body: { dispatch_request_id: row.id },
         })
+        notifyDispatchRequestsChanged()
         showToast('Sent to Dispatch. They will add the customer pictures folder soon.', 'success')
       } catch (e) {
         showToast(formatErrorMessage(e, 'Failed to send to Dispatch'), 'error')
@@ -4326,6 +4329,7 @@ export default function Dashboard() {
 
   const showSubscribed = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const showRecent = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'primary'
+  const showFinancials = role === 'dev' || role === 'master_technician' || role === 'assistant'
 
   const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || role === 'assistant'
   const quickActionLinkStyle: CSSProperties = {
@@ -4617,6 +4621,7 @@ export default function Dashboard() {
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
   return (
     <div>
+      {showFinancials && <DashboardFinancialsSection />}
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
           {quickActionDefs.map((b) => (

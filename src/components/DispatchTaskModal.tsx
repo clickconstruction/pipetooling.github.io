@@ -4,6 +4,7 @@ import { useDispatchTaskModal } from '../contexts/DispatchTaskModalContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useAuth } from '../hooks/useAuth'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { notifyDispatchRequestsChanged } from '../lib/dispatchRequestHelpers'
 import { buildClockBidsSearchParams } from '../lib/clockBidsSearchParams'
 import { MapPin, Check } from 'lucide-react'
 import BidServiceTypeSearchToggles from './BidServiceTypeSearchToggles'
@@ -194,6 +195,7 @@ export default function DispatchTaskModal() {
         setSending(false)
         return
       }
+      notifyDispatchRequestsChanged()
 
       const { error: fnErr } = await supabase.functions.invoke('notify-dispatch-request', {
         body: { dispatch_request_id: id },

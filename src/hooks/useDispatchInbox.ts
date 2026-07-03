@@ -9,6 +9,7 @@ import type {
   DispatchThreadNoteRow,
 } from '../components/DispatchInboxSection'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { DISPATCH_REQUESTS_CHANGED_EVENT } from '../lib/dispatchRequestHelpers'
 
 const DISPATCH_REQUEST_SELECT =
   'id, title, links, created_at, from_user_id, reference_summary, location_lat, location_lng, status, closed_at, closed_by_user_id, closed_note, pending_action, job_ledger_id, sender:users!dispatch_requests_from_user_id_fkey(name, email), closed_by:users!dispatch_requests_closed_by_user_id_fkey(name)'
@@ -241,6 +242,15 @@ export function useDispatchInbox() {
   }, [authUser?.id, dispatchInboxEligible, loadDispatchRequests])
 
   const dispatchInboxEnabled = !!authUser?.id && dispatchInboxEligible
+
+  // Same-tab nudge: senders on a page that also hosts the inbox see their request immediately.
+  useEffect(() => {
+    if (!dispatchInboxEnabled) return
+    const handler = () => loadDispatchRequests()
+    window.addEventListener(DISPATCH_REQUESTS_CHANGED_EVENT, handler)
+    return () => window.removeEventListener(DISPATCH_REQUESTS_CHANGED_EVENT, handler)
+  }, [dispatchInboxEnabled, loadDispatchRequests])
+
   const dispatchRequestsFilters = useMemo(
     () => [{ event: '*' as const, schema: 'public', table: 'dispatch_requests' }],
     [],

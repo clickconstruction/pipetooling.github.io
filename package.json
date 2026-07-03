@@ -17,6 +17,7 @@
     "gen-types:linked": "supabase gen types typescript --linked > src/types/database.ts",
     "gen-debit-card-nickname-sql": "node scripts/generate-debit-card-nickname-sql.mjs",
     "check:timezone": "node scripts/check-app-calendar-tz.mjs",
+    "check:edge-drift": "node scripts/check-edge-function-drift.mjs",
     "test": "vitest run",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
