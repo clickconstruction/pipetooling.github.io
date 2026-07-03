@@ -5,7 +5,7 @@ file: MIGRATIONS.md
 type: Reference/Changelog
 purpose: Complete database migration history organized by date and category
 audience: Developers, Database Administrators, AI Agents
-last_updated: 2026-06-08
+last_updated: 2026-07-03
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate to Advanced
 
@@ -133,6 +133,11 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 ### July 2026
 
 #### July 3, 2026
+
+**`20260703130000_dispatch_realtime_publication.sql`** _(applied to prod 2026-07-03 via Supabase MCP `apply_migration`, ahead of client)_
+- **Purpose**: **Dispatch inbox live updates restored.** `dispatch_requests` and `dispatch_request_notes` were dropped from the **`supabase_realtime`** publication during the 2026-06-05 connection-incident cleanup, leaving the inbox's `postgres_changes` subscriptions connected but permanently silent — new requests/notes only appeared after a page reload. Idempotent `DO` block re-adds both tables (skips if already present). Both are low-volume (a handful of rows/day), so the connection-pool risk that motivated the trim doesn't apply.
+- **Impact**: [`useDispatchInbox.ts`](../src/hooks/useDispatchInbox.ts) realtime channels fire again (no client change needed for that); companion same-tab nudge event shipped in the same PR. No type regen (no schema change). **`RECENT_FEATURES.md` v2.622**.
+- **Category**: Dispatch / Realtime
 
 **`20260703120000_user_app_activity_page_daily.sql`** _(applied to prod 2026-07-03 via Supabase MCP `apply_migration`, ahead of client)_
 - **Purpose**: **People → Activity** — per-page time dimension. New **`user_app_activity_page_daily`** `(user_id, activity_date, page, active_seconds; PK user+date+page; seconds CHECK 0–86400)`; RLS SELECT mirrors `user_app_activity_daily` (own rows / `is_dev()` / `user_app_activity_viewers` grantees), writes only via the RPC. **`bump_user_app_activity`** dropped + recreated with added **`p_page text DEFAULT NULL`** (body md5-verified against prod before patching; grants re-applied) — one-arg calls from deployed clients keep working; `p_page` trimmed/clipped to 80 chars; zero-second pings skip the page write.

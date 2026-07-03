@@ -109,6 +109,7 @@ import BilledPaymentConfirmationModal, { type InvoiceWithJobLike } from '../comp
 import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { denverCalendarDayKey, getDefaultWeekRange, getLastWeekRange } from '../utils/dateUtils'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { notifyDispatchRequestsChanged } from '../lib/dispatchRequestHelpers'
 import { readEdgeFunctionErrorBody } from '../lib/readEdgeFunctionErrorBody'
 import { labelJobsLedgerStatusForDashboard } from '../lib/jobsLedgerStatusPipeline'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -3131,6 +3132,7 @@ export default function Dashboard() {
         void supabase.functions.invoke('notify-dispatch-request', {
           body: { dispatch_request_id: row.id },
         })
+        notifyDispatchRequestsChanged()
         showToast('Sent to Dispatch. They will add the customer pictures folder soon.', 'success')
       } catch (e) {
         showToast(formatErrorMessage(e, 'Failed to send to Dispatch'), 'error')

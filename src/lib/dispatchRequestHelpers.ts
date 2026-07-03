@@ -10,6 +10,17 @@ import { formatCurrency } from './format'
 /** dispatch_requests.title max length (DB check constraint). */
 const TITLE_MAX = 2000
 
+/**
+ * Same-tab refresh signal for the Dispatch inbox. Realtime CDC covers cross-client updates,
+ * but a sender's own already-mounted inbox (e.g. sending from the Dashboard, where the inbox
+ * also lives) refreshes instantly off this event instead of waiting for the round-trip.
+ */
+export const DISPATCH_REQUESTS_CHANGED_EVENT = 'pipetooling:dispatch-requests-changed'
+
+export function notifyDispatchRequestsChanged(): void {
+  window.dispatchEvent(new Event(DISPATCH_REQUESTS_CHANGED_EVENT))
+}
+
 /** Title for a "bill this job out" dispatch request; the title IS the inbox message. */
 export function buildUnbilledDispatchTitle(label: string, amount: number, note: string): string {
   const base = `Not billed out: ${label} — $${formatCurrency(amount)}`
@@ -76,6 +87,7 @@ export async function createDispatchRequest(args: {
   void supabase.functions.invoke('notify-dispatch-request', {
     body: { dispatch_request_id: row.id },
   })
+  notifyDispatchRequestsChanged()
 
   return { outcome: 'created', id: row.id }
 }

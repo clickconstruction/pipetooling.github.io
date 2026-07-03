@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.621)
+last_updated: 2026-07-03 (v2.622)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.622 — **Dispatch inbox** — **live updates fixed (was reload-only)**. The inbox's Realtime subscriptions had been silent since the 2026-06-05 incident cleanup dropped `dispatch_requests` / `dispatch_request_notes` from the `supabase_realtime` publication — new requests and thread notes only appeared after a page reload. Migration `20260703130000` (applied to prod) re-adds both low-volume tables, restoring cross-client live refresh. Plus a **same-tab nudge**: every dispatch-request mutation site (Financials "→ Send to Dispatch", the Dispatch task composer, Dashboard link-job-pictures, Job-form auto-close) now fires a `pipetooling:dispatch-requests-changed` window event that [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts) listens for — so sending from a page that also hosts the inbox (the Dashboard) shows the new item instantly, without waiting on the Realtime round-trip](#latest-updates-v2622)
 **New:** [v2.621 — **Dashboard → Financials** — **Not Billed Out rows send to Dispatch**. Each job row in the Not Billed Out drill-down gains a **`→`** button right of Amount opening a mini-composer (z 1110): the job label + amount pre-filled as context, an optional note, and **Send to Dispatch** — creating a `dispatch_requests` inbox item (`Not billed out: 500 · Smith House — $12,345.67. <note>`) with `pending_action: 'bill_out_job'` **dedupe** (one open request per job; a second send toasts "Already open with Dispatch") and a fire-and-forget `notify-dispatch-request` push. New reusable helper [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) (`createDispatchRequest` — insert + dedupe + notify, extracted from the Dashboard link-job-pictures pattern — and pure `buildUnbilledDispatchTitle`, 3 tests). AR / AP modals unchanged](#latest-updates-v2621)
 **New:** [v2.620 — **Dashboard** — **Financials one-pager (AR / AP / Not billed)** for dev / master_technician / assistant. New **[`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx)** above Recent activity: three clickable cards — **Accounts Receivable** (open remainders on billed invoices + billed jobs without invoice rows; mirrors `useBilledTotal`), **Accounts Payable** (unpaid supply-house invoices **+** open payroll balances via `stubNetPay − payments`, with per-source subtotals on the card; mirrors Supply Houses + the Payroll ledger header exactly), **Not Billed Out** (working / ready_to_bill jobs: `(revenue − payments) − Σ billed invoice amounts`; RTB draft lines deliberately not subtracted — they aren't on a customer invoice yet). Each card shows total + item count + oldest-item date and opens a drill-down modal (Item | Date | Amount, largest first, totals footer, link to Jobs Stages / Supply Houses). Pure kernel [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**7 tests**) + one batched hook [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts); all four totals cross-checked against prod SQL (payroll AP matched the Payroll ledger's `$4,949.48 remaining` to the cent). No DB changes](#latest-updates-v2620)
 **New:** [v2.619 — **People → Activity** — **per-person drilldown with page-level time**. Names in the Activity table are now links opening **[`PersonActivityDetailModal`](../src/components/people/PersonActivityDetailModal.tsx)**: a **90-day** day-by-day list (date, active h:mm, first–last seen) with each day expandable to its **per-page split**, plus a "Where (90d)" totals strip (`Bids · Pricing 12:40 …`). Collection: new **`user_app_activity_page_daily`** table (UTC day × page key; RLS mirrors the daily table — own rows / dev / granted viewers; writes via RPC only) and **`bump_user_app_activity`** recreated with `p_page text DEFAULT NULL` (migration `20260703120000`, applied to prod via MCP after body-md5 verification — old deployed clients calling one-arg keep working). The heartbeat is now **page-aware**: [`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts) takes a `pageKey` (new pure kernel [`appActivityPage.ts`](../src/lib/appActivityPage.ts): `appActivityPageKey('/bids','?tab=pricing') → 'bids:pricing'`, first path segment + sanitized tab param, bounded cardinality) and is keyed on it — in-app navigation flushes the old page's partial segment via effect cleanup and restarts the minute clock on the new page, so mid-minute navigation attributes correctly. Zero-second "seen" pings carry no page (last-seen only). **Page data accrues from deploy day**; historical days show totals with no page rows. +6 kernel tests](#latest-updates-v2619)
@@ -1997,6 +1998,27 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.622)
+
+**Date**: 2026-07-03
+
+### Dispatch inbox — live updates fixed (Realtime restored + same-tab nudge)
+
+Diagnosed while testing v2.621: a sent dispatch request didn't appear in the inbox. The row was created fine — the **inbox never live-refreshes**, because `dispatch_requests` and `dispatch_request_notes` were dropped from the **`supabase_realtime` publication** during the 2026-06-05 connection-incident cleanup, leaving [`useDispatchInbox`](../src/hooks/useDispatchInbox.ts)'s `postgres_changes` subscriptions connected but permanently silent. Two-part fix:
+
+- **Realtime restored** — migration `20260703130000_dispatch_realtime_publication.sql` (idempotent `DO` block, **applied to prod ahead of client**) re-adds both tables to the publication. They're low-volume (a handful of rows/day), so the pool-exhaustion concern behind the original trim doesn't apply. Cross-client updates (e.g. Dispatch members seeing new tasks/notes without reloading) work again with no client change.
+- **Same-tab nudge** — Realtime has round-trip latency and the sender's own page shouldn't wait on it (the common case: sending from the Dashboard, which also hosts the inbox). New `notifyDispatchRequestsChanged()` + `DISPATCH_REQUESTS_CHANGED_EVENT` in [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) fires a window event; `useDispatchInbox` listens and reloads. Emitted from every dispatch-request mutation site: `createDispatchRequest` (Financials "→"), the Dispatch task composer ([`DispatchTaskModal.tsx`](../src/components/DispatchTaskModal.tsx)), the Dashboard link-job-pictures request, and the Job-form auto-close of `link_job_pictures` requests ([`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx)).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1792/1792**; zero new lint warnings (Dashboard.tsx's 8 pre-exist). Publication verified in prod post-apply (`pg_publication_tables` lists both). The missing v2.621 test request (`Not billed out: 363 · Michael Palmer…`) confirmed present/open in `dispatch_requests` — appears after reload today, live after this client deploys.
+
+#### Files
+
+New: [`supabase/migrations/20260703130000_dispatch_realtime_publication.sql`](../supabase/migrations/20260703130000_dispatch_realtime_publication.sql). Modified: [`src/lib/dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts), [`src/hooks/useDispatchInbox.ts`](../src/hooks/useDispatchInbox.ts), [`src/components/DispatchTaskModal.tsx`](../src/components/DispatchTaskModal.tsx), [`src/pages/Dashboard.tsx`](../src/pages/Dashboard.tsx), [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx), [`docs/MIGRATIONS.md`](MIGRATIONS.md). No type regen (no schema change).
+
 ---
 
 ## Latest Updates (v2.621)
