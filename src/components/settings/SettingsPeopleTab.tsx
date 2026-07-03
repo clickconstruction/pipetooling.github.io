@@ -323,7 +323,7 @@ export default function SettingsPeopleTab({
             <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Email / Name</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Name / Email</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Service types</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Last login</th>
@@ -338,42 +338,42 @@ export default function SettingsPeopleTab({
                       {editingUserId === u.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                           <input
-                            type="email"
-                            value={editEmail}
-                            onChange={(e) => setEditEmail(e.target.value)}
-                            placeholder="Email"
-                            style={{ width: '100%', padding: '0.25rem 0.5rem' }}
-                          />
-                          <input
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
                             placeholder="Name"
                             style={{ width: '100%', padding: '0.25rem 0.5rem' }}
                           />
+                          <input
+                            type="email"
+                            value={editEmail}
+                            onChange={(e) => setEditEmail(e.target.value)}
+                            placeholder="Email"
+                            style={{ width: '100%', padding: '0.25rem 0.5rem' }}
+                          />
                         </div>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(u.email)}
-                            title="Click to copy email"
-                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
-                          >
-                            {u.email}
-                          </button>
                           {u.name ? (
                             <button
                               type="button"
                               onClick={() => copyToClipboard(u.name ?? '')}
                               title="Click to copy name"
-                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left', color: '#6b7280' }}
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
                             >
                               {u.name}
                             </button>
                           ) : (
                             <span style={{ color: '#9ca3af' }}>—</span>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(u.email)}
+                            title="Click to copy email"
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left', color: '#6b7280' }}
+                          >
+                            {u.email}
+                          </button>
                         </div>
                       )}
                     </td>
