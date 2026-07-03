@@ -237,11 +237,12 @@ function ItemsModal({
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <h3 id="dashboard-financials-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
-              {meta.title} — ${formatCurrency(bucket.total)}
+              {meta.title} — ${formatCurrency(bucket.total)}{' '}
+              <span style={{ fontWeight: 400, color: '#6b7280' }}>
+                ({bucket.count} item{bucket.count === 1 ? '' : 's'})
+              </span>
             </h3>
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-              {bucket.count} item{bucket.count === 1 ? '' : 's'} · {meta.hint}
-            </p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>{meta.hint}</p>
           </div>
           <Link to={meta.linkTo} style={{ fontSize: '0.8125rem', color: '#2563eb', whiteSpace: 'nowrap' }}>
             {meta.linkLabel} →
