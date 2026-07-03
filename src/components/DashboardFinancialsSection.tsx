@@ -388,14 +388,39 @@ function ItemsModal({
   onOpenApBill: ((item: FinancialItem) => void) | null
 }) {
   const meta = CARD_META[cardKey]
-  // Not billed: two status sections — Ready to Bill on top (closest to money), Working below.
-  // Items keep their amount-desc order within each section.
-  const sections: Array<{ title: string | null; items: FinancialItem[] }> =
+  // Grouped views (items keep their amount-desc order within each section):
+  // - Not billed: Ready to Bill on top (closest to money), Working below.
+  // - AP: Supplies, then Payroll due — so payroll isn't lost among ~130 supply rows and reads
+  //   naturally against the trailing "Upcoming payroll" section.
+  type ModalSection = { title: string | null; items: FinancialItem[]; hideSublabels?: boolean; noun?: string }
+  const sections: ModalSection[] =
     cardKey === 'unbilled'
       ? (['Ready to Bill', 'Working'] as const)
-          .map((title) => ({ title, items: bucket.items.filter((i) => i.sublabel === title) }))
+          .map((title) => ({
+            title,
+            items: bucket.items.filter((i) => i.sublabel === title),
+            hideSublabels: true,
+            noun: 'job',
+          }))
           .filter((s) => s.items.length > 0)
-      : [{ title: null, items: bucket.items }]
+      : cardKey === 'ap'
+        ? (
+            [
+              {
+                title: 'Supplies',
+                items: bucket.items.filter((i) => i.key.startsWith('supply:')),
+                hideSublabels: true,
+                noun: 'bill',
+              },
+              {
+                title: 'Payroll due',
+                items: bucket.items.filter((i) => !i.key.startsWith('supply:')),
+                hideSublabels: false,
+                noun: 'item',
+              },
+            ] as ModalSection[]
+          ).filter((s) => s.items.length > 0)
+        : [{ title: null, items: bucket.items }]
   const columnCount = onSendToDispatch ? 4 : 3
   return (
     <div
@@ -489,7 +514,8 @@ function ItemsModal({
                           <span style={{ fontWeight: 600 }}>{section.title}</span>
                         )}
                         <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
-                          {section.items.length} job{section.items.length === 1 ? '' : 's'} · $
+                          {section.items.length} {section.noun ?? 'item'}
+                          {section.items.length === 1 ? '' : 's'} · $
                           {formatCurrency(section.items.reduce((s, i) => s + i.amount, 0))}
                         </span>
                       </td>
@@ -543,7 +569,7 @@ function ItemsModal({
                     ) : (
                       item.label
                     )}
-                    {item.sublabel && !section.title ? (
+                    {item.sublabel && !section.hideSublabels ? (
                       <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
                     ) : null}
                     {item.address ? (

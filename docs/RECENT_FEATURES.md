@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.635)
+last_updated: 2026-07-03 (v2.636)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.636 — **Dashboard → Financials** — **AP drill-down grouped into Supplies / Payroll due / Upcoming payroll sections**. Previously payroll-due rows interleaved with ~130 supply rows by amount and the v2.629 "Upcoming payroll (estimate)" section sat invisibly at the very bottom — payroll was effectively unfindable. The AP modal now uses the same grey section headers as Not Billed Out: **Supplies — N bills · $X** (per-row "Supply invoice" sublabel dropped as redundant), **Payroll due — N items · $Y** (period sublabels kept), then the existing **Upcoming payroll (estimate) — N person-weeks · $Z**; footer stays `Total due`. Assistant's aggregate rows land in the same sections. Section-header machinery generalized (per-section noun + sublabel-hiding flag). [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2636)
 **New:** [v2.635 — **Dashboard → Financials** — **AP bill modal shows allocated jobs**. The v2.632 bill detail gains a **Job(s)** fact row: each `supply_house_invoice_job_allocations` entry renders as `500 · Smith House (60%)` (pct desc), clickable → **Job Detail** modal (both stacked modals close first); bills with no allocation show `—`. Hook fetches allocations per unpaid bill (chunked, best-effort) + labels for allocated jobs outside the status-filtered jobs fetch; 125 of 138 unpaid bills have job allocations in prod](#latest-updates-v2635)
 **New:** [v2.634 — **Materials → Supply Houses** — **fix: invoice/due dates displayed one day early**. Reported by Taunya ("I enter the 10th, it shows the 9th"): `invoice_date`/`due_date` are DATE-only strings and `new Date('2026-07-10')` parses as **UTC midnight** → renders as the previous day in US timezones. New `formatYmdLocal` (parses at local noon; non-YMD values fall back) replaces the three affected `toLocaleDateString()` call sites in [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) (detail Date + Due columns, Apply Payment list date). **Stored data was always correct** — display-only; `Paid On` (real timestamp) unaffected; the aging buckets and Financials modals already used safe parsing](#latest-updates-v2634)
 **New:** [v2.633 — **Dashboard → Financials** — **"Financials" section title removed + tighter bottom gap**: the three cards now sit directly at the top of the dashboard without the `Financials` h2 (they're self-describing), and the section's bottom margin shrank 1.5rem → 0.5rem so the quick actions / Clock In row sits closer. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2633)
@@ -2011,6 +2012,27 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.636)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP drill-down grouped into sections
+
+Reported: "I see `Payroll: $4,949.48 due` on the card but can't find upcoming payroll in the AP ledger." The upcoming section (v2.629) *was* there — but rendered below ~130 supply rows, and the payroll-due rows were interleaved with supplies by amount, so neither read as a payroll figure. The AP drill-down now groups like Not Billed Out:
+
+- **Supplies — 131 bills · $54,363.28** (per-row `Supply invoice` sublabel dropped; the header says it)
+- **Payroll due — 7 items · $4,949.48** (per-person period sublabels kept; the assistant's single aggregate row lands here too)
+- **Upcoming payroll (estimate) — 15 person-weeks · $13,557.31** (unchanged v2.629 section, now visually consistent with the ones above)
+- Footer stays **`Total due`** (upcoming excluded, as before). Bill click-through, → dispatch, and all totals unchanged.
+
+Mechanically: the ItemsModal section machinery gained a per-section `noun` ("job"/"bill"/"item") and `hideSublabels` flag; AP partitions items by key prefix (`supply:` vs stub/aggregate).
+
+#### Files
+
+Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). `tsc -b` + kernel tests + eslint clean. No DB changes.
+
 ---
 
 ## Latest Updates (v2.635)
