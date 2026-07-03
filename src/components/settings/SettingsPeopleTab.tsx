@@ -323,7 +323,7 @@ export default function SettingsPeopleTab({
                 <tr>
                   <th>Name / Email</th>
                   <th>Service types / Role</th>
-                  <th>Last login</th>
+                  <th className="activeAccountsCard__lastLogin">Last login</th>
                   <th></th>
                 </tr>
               </thead>
@@ -406,9 +406,9 @@ export default function SettingsPeopleTab({
                         </select>
                       </div>
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
+                    <td className="activeAccountsCard__lastLogin">{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
                         {editingUserId === u.id ? (
                           <>
                             <button
