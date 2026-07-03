@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.630)
+last_updated: 2026-07-03 (v2.631)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.631 — **Materials → Supply Houses** — **AP aging map (`Summary | Aging map` toggle)**. New matrix view of unpaid dollars by days past due, computed from the already-recorded `supply_house_invoices.due_date`: rows = houses (total desc, click to open the house), columns **Current | 1–30 | 30–60 | 60–90 | 90+ | No due date | Total** with green→red heat cells and a column-totals footer — the hand-drawn AP aging sheet, live. Caption nudges when unpaid invoices lack a due date. Companions: unpaid invoice rows in the house detail get a red **`Nd past due`** chip, and Add Invoice **prefills the due date** from the house's `monthly_payment_day` (next occurrence, clamped to month length; editable). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (**6 tests**); no DB changes — 131 of 138 unpaid invoices already had due dates](#latest-updates-v2631)
 **New:** [v2.630 — **Ops** — **edge-function drift check (CI + local) after the Apply Discount incident**. Apply discount on a **Stripe-hosted** invoice failed for everyone ("Failed to send a request to the Edge Function") because `stripe-invoice-agreed-write-down` (v2.524) was never deployed — third stale-function incident (create-user, invite-user). Function **deployed to prod** (CORS preflight verified 200; the in-handler role gate already includes `assistant`, both write-down RPCs already existed). Prevention: new [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (`npm run check:edge-drift`) diffs `supabase/functions/*` against `supabase functions list` — repo-but-not-deployed **fails** with the exact deploy command; deployed-but-not-in-repo warns. New workflow [`edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): main pushes touching functions + daily cron + manual dispatch. **Setup: add the `SUPABASE_ACCESS_TOKEN` repo secret**](#latest-updates-v2630)
 **New:** [v2.629 — **Dashboard → Financials** — **AP shows upcoming payroll (due / upcoming split)**. The AP card sub-line becomes **`Supplies $X · Payroll: $Y due / $Z upcoming`**, where `$Z` is the Payroll ledger header's "upcoming" figure computed by the **same kernel** (`buildUpcomingPayrollSummary` — person-weeks with clocked time incl. pending but no pay report, hours × wage). The AP drill-down gains an **`Upcoming payroll (estimate)`** section after the due items (grey header with person-week count + subtotal; per person-week rows `Name · 6/28–7/4 · 12.3h (est.)`), excluded from the footer total, which relabels to **`Total due`**. **Assistants** get a single aggregate `Payroll — $Z` line (`redactUpcomingApSection`, same rule as v2.628). Hook fetches `users` + `people_pay_config` + bounded `clock_sessions` (best-effort — failures degrade to no upcoming section); new kernel mappers `buildUpcomingApSection`/`redactUpcomingApSection` (+4 tests)](#latest-updates-v2629)
 **New:** [v2.628 — **Dashboard → Financials** — **assistants see the payroll total, not per-person lines**. For role `assistant`, the Accounts Payable drill-down collapses all per-person pay-stub rows into one aggregate **`Payroll — $Y`** line (`N open pay stubs` sublabel, oldest period-end as the date); supplies stay itemized and the card totals / `Supplies $X · Payroll $Y` subtotals are unchanged. New pure kernel helper `redactApPayrollItems` (+2 tests) applied only when opening the AP modal as an assistant — mirrors the existing `canAccessPay: false` convention that hides the People → Payroll tab from assistants. Display rule, not a data barrier (RLS intentionally grants assistants-of-pay-approved-masters the rows for their other pay duties)](#latest-updates-v2628)
@@ -2006,6 +2007,31 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.631)
+
+**Date**: 2026-07-03
+
+### Materials → Supply Houses — AP aging map
+
+The Supply Houses tab gains a **`Summary | Aging map`** toggle (pill buttons under the outstanding-total heading). The Aging map is the classic AP aging matrix — the hand-drawn sheet, computed live:
+
+- **Rows**: supply houses with an unpaid balance, largest first; clicking a row switches back to Summary with that house's detail expanded.
+- **Columns**: **Current** (not yet due) | **1–30** | **30–60** | **60–90** | **90+** (days past due, from `supply_house_invoices.due_date`) | **No due date** | **Total**, with green→amber→red heat-colored cells, hover tooltips on the headers, and a column-totals footer.
+- A caption above the table calls out unpaid invoices missing a due date (`N unpaid invoices have no due date — open the house and add one to place them`).
+- **Past-due chips**: in the expanded house detail, unpaid invoice rows show a red/orange **`42d past due`** badge next to the due date (orange < 60 days, red ≥ 60).
+- **Due-date prefill**: Add Invoice now prefills Due date with the next occurrence of the house's `monthly_payment_day` after today (clamped to month length — the 31st in February → Feb 28/29), still fully editable. Houses without a payment day behave as before.
+- **No DB changes** — `due_date` and `monthly_payment_day` already existed and were already being recorded (131 of 138 unpaid invoices had due dates at build time). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts): `daysPastDue` / `agingBucketFor` (30/60/90 cutoffs) / `buildSupplyHouseAgingMatrix` / `nextMonthlyPaymentDueYmd` — **6 unit tests** including bucket boundaries and leap-year clamping. Matrix cross-checked against prod SQL at build time (Texas Plumbing Supply $18,477.59 across four buckets; grand total matches the tab's outstanding header).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805** (6 new); no new lint warnings (the tab's 1 pre-exists).
+
+#### Files
+
+New: [`src/lib/supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (+ test). Modified: [`src/components/SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.630)

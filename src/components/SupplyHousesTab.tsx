@@ -7,6 +7,13 @@ import { formatCurrency } from '../lib/format'
 import { parsePoGeneratorCodeFromPurchaseOrderName } from '../lib/parsePoGeneratorCodeFromPurchaseOrderName'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
+import {
+  AGING_BUCKETS,
+  buildSupplyHouseAgingMatrix,
+  daysPastDue,
+  nextMonthlyPaymentDueYmd,
+  type AgingBucketKey,
+} from '../lib/supplyHouseAging'
 import { SupplyHouseForm } from './SupplyHouseForm'
 import { SupplyHouseWebsiteLink } from './SupplyHouseWebsiteLink'
 import type { Database } from '../types/database'
@@ -34,6 +41,16 @@ type SupplyHouseSummaryRow = {
   monthlyPaymentDay: number | null
   lastInvoiceUpdatedAt: string | null
   lastInvoicePaidAt: string | null
+}
+
+/** Heat colors for the aging map — green (not due) through deepening reds. */
+const AGING_CELL_STYLES: Record<AgingBucketKey, { background: string; color: string }> = {
+  current: { background: '#ecfdf5', color: '#065f46' },
+  past1_30: { background: '#fffbeb', color: '#92400e' },
+  past30_60: { background: '#ffedd5', color: '#9a3412' },
+  past60_90: { background: '#fee2e2', color: '#991b1b' },
+  past90plus: { background: '#fecaca', color: '#7f1d1d' },
+  noDueDate: { background: '#f3f4f6', color: '#4b5563' },
 }
 
 interface SupplyHousesTabProps {
@@ -75,6 +92,10 @@ export function SupplyHousesTab({
 
   const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
   const [supplyHouseSummaryLoading, setSupplyHouseSummaryLoading] = useState(false)
+  const [supplyHouseView, setSupplyHouseView] = useState<'summary' | 'aging'>('summary')
+  const [agingUnpaidInvoices, setAgingUnpaidInvoices] = useState<
+    Array<{ supply_house_id: string; amount: number; due_date: string | null }>
+  >([])
   const [selectedSupplyHouseForDetail, setSelectedSupplyHouseForDetail] = useState<SupplyHouse | null>(null)
   const [supplyHouseInvoices, setSupplyHouseInvoices] = useState<SupplyHouseInvoiceWithAllocations[]>([])
   const [supplyHousePOs, setSupplyHousePOs] = useState<PurchaseOrderWithItems[]>([])
@@ -154,8 +175,13 @@ export function SupplyHousesTab({
     }
     const { data: invoices } = await supabase
       .from('supply_house_invoices')
-      .select('supply_house_id, amount, is_paid, updated_at, paid_at')
-    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean; updated_at: string | null; paid_at: string | null }[]
+      .select('supply_house_id, amount, is_paid, updated_at, paid_at, due_date')
+    const invoicesList = (invoices ?? []) as { supply_house_id: string; amount: number; is_paid: boolean; updated_at: string | null; paid_at: string | null; due_date: string | null }[]
+    setAgingUnpaidInvoices(
+      invoicesList
+        .filter((inv) => !inv.is_paid)
+        .map((inv) => ({ supply_house_id: inv.supply_house_id, amount: inv.amount, due_date: inv.due_date })),
+    )
     const byHouse = new Map<string, number>()
     const maxUpdatedByHouse = new Map<string, string>()
     const maxPaidByHouse = new Map<string, string>()
@@ -451,8 +477,11 @@ export function SupplyHousesTab({
   function openAddInvoice() {
     setEditingInvoice(null)
     setInvoiceNumber('')
-    setInvoiceDate(new Date().toLocaleDateString('en-CA'))
-    setInvoiceDueDate('')
+    const todayYmd = new Date().toLocaleDateString('en-CA')
+    setInvoiceDate(todayYmd)
+    // Prefill from the house's monthly payment day (next occurrence) — editable, just a default.
+    const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
+    setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
     setInvoiceAmount('')
     setInvoiceLink('')
     setInvoiceIsPaid(false)
@@ -592,6 +621,20 @@ export function SupplyHousesTab({
     }
   }
 
+  const agingTodayYmd = new Date().toLocaleDateString('en-CA')
+  const agingMatrix = buildSupplyHouseAgingMatrix(
+    supplyHouseSummary.map((r) => ({ id: r.supply_house_id, name: r.name })),
+    agingUnpaidInvoices,
+    agingTodayYmd,
+  )
+
+  function openHouseFromAging(supplyHouseId: string) {
+    const sh = supplyHousesList.find((s: SupplyHouse) => s.id === supplyHouseId)
+    if (!sh) return
+    setSupplyHouseView('summary')
+    loadSupplyHouseDetail(sh)
+  }
+
   return (
     <div>
       <div
@@ -653,9 +696,115 @@ export function SupplyHousesTab({
           <p style={{ color: '#6b7280' }}>Loading…</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
+            <div style={{ marginBottom: '0.5rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
               Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
             </div>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.75rem' }}>
+              {(['summary', 'aging'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setSupplyHouseView(v)}
+                  style={{
+                    padding: '0.3rem 0.9rem',
+                    fontSize: '0.8125rem',
+                    borderRadius: 999,
+                    border: '1px solid #d1d5db',
+                    background: supplyHouseView === v ? '#2563eb' : 'white',
+                    color: supplyHouseView === v ? 'white' : '#374151',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {v === 'summary' ? 'Summary' : 'Aging map'}
+                </button>
+              ))}
+            </div>
+            {supplyHouseView === 'aging' && (
+              <>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+                  Unpaid dollars by days past due (from invoice due dates).
+                  {agingMatrix.missingDueDateCount > 0
+                    ? ` ${agingMatrix.missingDueDateCount} unpaid invoice${agingMatrix.missingDueDateCount === 1 ? ' has' : 's have'} no due date — open the house and add one to place ${agingMatrix.missingDueDateCount === 1 ? 'it' : 'them'}.`
+                    : ''}
+                </p>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left' }}>Supply House</th>
+                      {AGING_BUCKETS.map((b) => (
+                        <th
+                          key={b.key}
+                          title={b.key === 'current' ? 'Not yet due' : b.key === 'noDueDate' ? 'Unpaid, no due date recorded' : `${b.label} days past due`}
+                          style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}
+                        >
+                          {b.label}
+                        </th>
+                      ))}
+                      <th style={{ padding: '0.6rem 0.75rem', textAlign: 'right' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {agingMatrix.rows.length === 0 ? (
+                      <tr>
+                        <td colSpan={AGING_BUCKETS.length + 2} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
+                          No unpaid invoices.
+                        </td>
+                      </tr>
+                    ) : (
+                      agingMatrix.rows.map((row) => (
+                        <tr
+                          key={row.supplyHouseId}
+                          onClick={() => openHouseFromAging(row.supplyHouseId)}
+                          title="Open this supply house"
+                          style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                        >
+                          <td style={{ padding: '0.6rem 0.75rem', fontWeight: 500 }}>{row.name}</td>
+                          {AGING_BUCKETS.map((b) => {
+                            const amount = row.buckets[b.key]
+                            const has = amount > 0.005
+                            return (
+                              <td
+                                key={b.key}
+                                style={{
+                                  padding: '0.6rem 0.75rem',
+                                  textAlign: 'right',
+                                  fontVariantNumeric: 'tabular-nums',
+                                  whiteSpace: 'nowrap',
+                                  ...(has ? AGING_CELL_STYLES[b.key] : { color: '#d1d5db' }),
+                                }}
+                              >
+                                {has ? `$${formatCurrency(amount)}` : '—'}
+                              </td>
+                            )
+                          })}
+                          <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                            ${formatCurrency(row.total)}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                  <tfoot>
+                    <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                      <td style={{ padding: '0.6rem 0.75rem' }}>Total</td>
+                      {AGING_BUCKETS.map((b) => {
+                        const amount = agingMatrix.totals[b.key]
+                        const has = amount > 0.005
+                        return (
+                          <td key={b.key} style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : '#d1d5db' }}>
+                            {has ? `$${formatCurrency(amount)}` : '—'}
+                          </td>
+                        )
+                      })}
+                      <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                        ${formatCurrency(agingMatrix.grandTotal)}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </>
+            )}
+            {supplyHouseView === 'summary' && (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -824,7 +973,29 @@ export function SupplyHousesTab({
                                                   </div>
                                                 </td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(inv.invoice_date).toLocaleDateString()}</td>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>{inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}</td>
+                                                <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                                                  {inv.due_date ? new Date(inv.due_date).toLocaleDateString() : '—'}
+                                                  {(() => {
+                                                    if (inv.is_paid || !inv.due_date) return null
+                                                    const days = daysPastDue(inv.due_date, new Date().toLocaleDateString('en-CA'))
+                                                    if (days <= 0) return null
+                                                    return (
+                                                      <span
+                                                        style={{
+                                                          marginLeft: '0.4rem',
+                                                          padding: '0.1rem 0.4rem',
+                                                          borderRadius: 999,
+                                                          fontSize: '0.7rem',
+                                                          fontWeight: 600,
+                                                          background: days >= 60 ? '#fee2e2' : '#ffedd5',
+                                                          color: days >= 60 ? '#991b1b' : '#9a3412',
+                                                        }}
+                                                      >
+                                                        {days}d past due
+                                                      </span>
+                                                    )
+                                                  })()}
+                                                </td>
                                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(inv.amount)}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
                                                   {inv.job_allocations && inv.job_allocations.length > 0
@@ -940,6 +1111,7 @@ export function SupplyHousesTab({
                 })}
               </tbody>
             </table>
+            )}
           </div>
         )}
       </section>
