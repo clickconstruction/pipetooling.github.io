@@ -8,7 +8,10 @@ import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { buildUnbilledDispatchTitle, createDispatchRequest } from '../lib/dispatchRequestHelpers'
 import { redactApPayrollItems, redactUpcomingApSection } from '../lib/dashboardFinancials'
+import { daysPastDue } from '../lib/supplyHouseAging'
+import { googleDrivePreviewEmbedUrl } from '../lib/estimateCustomerAttachment'
 import type { FinancialBucket, FinancialItem, UpcomingPayrollApSection } from '../lib/dashboardFinancials'
+import type { DashboardApBill } from '../hooks/useDashboardFinancials'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
 
@@ -44,6 +47,150 @@ function shortDate(ymd: string | null): string {
   const d = new Date(ymd + 'T12:00:00')
   if (Number.isNaN(d.getTime())) return '—'
   return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
+}
+
+/** AP bill detail — invoice facts plus an expandable Google Drive preview of the attached file. */
+function ApBillModal({ bill, onClose }: { bill: DashboardApBill; onClose: () => void }) {
+  const [expanded, setExpanded] = useState(false)
+  const embedUrl = bill.link ? googleDrivePreviewEmbedUrl(bill.link) : null
+  const pastDue = bill.dueDateYmd ? daysPastDue(bill.dueDateYmd, new Date().toLocaleDateString('en-CA')) : null
+
+  const factRow = (label: string, value: React.ReactNode) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.3rem 0', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>
+      <span style={{ color: '#6b7280' }}>{label}</span>
+      <span style={{ textAlign: 'right' }}>{value}</span>
+    </div>
+  )
+
+  return (
+    <div
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.45)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1110,
+        padding: '1rem',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dashboard-financials-bill-title"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose()
+        }}
+        style={{
+          background: 'white',
+          borderRadius: 8,
+          width: expanded ? 'min(1100px, 96vw)' : 'min(520px, 96vw)',
+          maxHeight: '92vh',
+          display: 'flex',
+          flexDirection: 'column',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+          <h3 id="dashboard-financials-bill-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1 }}>
+            {bill.houseName} — ${formatCurrency(bill.amount)}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            title="Close"
+            aria-label="Close"
+            style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+          >
+            ×
+          </button>
+        </div>
+        <div style={{ padding: '0.75rem 1.25rem 1.25rem', overflow: 'auto', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          {factRow('Invoice #', bill.invoiceNumber || '—')}
+          {factRow('Purchase Order #', bill.purchaseOrderNumber ?? '—')}
+          {factRow('Invoice date', shortDate(bill.invoiceDateYmd))}
+          {factRow(
+            'Due date',
+            <>
+              {shortDate(bill.dueDateYmd)}
+              {pastDue !== null && pastDue > 0 ? (
+                <span
+                  style={{
+                    marginLeft: '0.4rem',
+                    padding: '0.1rem 0.4rem',
+                    borderRadius: 999,
+                    fontSize: '0.7rem',
+                    fontWeight: 600,
+                    background: pastDue >= 60 ? '#fee2e2' : '#ffedd5',
+                    color: pastDue >= 60 ? '#991b1b' : '#9a3412',
+                  }}
+                >
+                  {pastDue}d past due
+                </span>
+              ) : null}
+            </>,
+          )}
+          {factRow('Amount', <strong>${formatCurrency(bill.amount)}</strong>)}
+          <div style={{ marginTop: '0.9rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Attached file</span>
+              {embedUrl ? (
+                <button
+                  type="button"
+                  onClick={() => setExpanded((x) => !x)}
+                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                >
+                  {expanded ? 'Shrink' : 'Expand'}
+                </button>
+              ) : null}
+              {bill.link ? (
+                <a href={bill.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: '#2563eb', marginLeft: 'auto' }}>
+                  Open in Drive ↗
+                </a>
+              ) : null}
+            </div>
+            {embedUrl ? (
+              <div
+                role="presentation"
+                onClick={() => {
+                  if (!expanded) setExpanded(true)
+                }}
+                title={expanded ? undefined : 'Click to expand'}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 6,
+                  overflow: 'hidden',
+                  cursor: expanded ? undefined : 'zoom-in',
+                  position: 'relative',
+                }}
+              >
+                <iframe
+                  src={embedUrl}
+                  title={`Attachment for invoice ${bill.invoiceNumber}`}
+                  style={{ display: 'block', width: '100%', height: expanded ? '68vh' : 300, border: 'none', pointerEvents: expanded ? undefined : 'none' }}
+                  allow="autoplay"
+                />
+              </div>
+            ) : bill.link ? (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+                Preview not available for this link — use "Open in Drive ↗".
+              </p>
+            ) : (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>No file attached to this bill.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 /** "Send to Dispatch" composer for a Not-billed row — stacks above the items modal. */
@@ -181,6 +328,7 @@ function ItemsModal({
   onOpenJob,
   onSendToDispatch,
   upcomingSection,
+  onOpenApBill,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
@@ -191,6 +339,8 @@ function ItemsModal({
   onSendToDispatch: ((item: FinancialItem) => void) | null
   /** AP only: estimated upcoming payroll — listed after the due items, excluded from the footer total. */
   upcomingSection: UpcomingPayrollApSection | null
+  /** AP supply rows: opens the bill detail modal (invoice facts + attachment preview). */
+  onOpenApBill: ((item: FinancialItem) => void) | null
 }) {
   const meta = CARD_META[cardKey]
   // Not billed: two status sections — Ready to Bill on top (closest to money), Working below.
@@ -324,6 +474,27 @@ function ItemsModal({
                       >
                         {item.label}
                       </button>
+                    ) : onOpenApBill && item.key.startsWith('supply:') ? (
+                      <button
+                        type="button"
+                        onClick={() => onOpenApBill(item)}
+                        title="Open this bill"
+                        aria-label={`Open bill from ${item.label}`}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          margin: 0,
+                          font: 'inherit',
+                          color: '#2563eb',
+                          textDecoration: 'underline dotted',
+                          textUnderlineOffset: '2px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {item.label}
+                      </button>
                     ) : (
                       item.label
                     )}
@@ -418,6 +589,7 @@ export default function DashboardFinancialsSection() {
   const { role } = useAuth()
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
   const [dispatchItem, setDispatchItem] = useState<FinancialItem | null>(null)
+  const [apBill, setApBill] = useState<DashboardApBill | null>(null)
   const jobDetailModal = useJobDetailModal()
 
   const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string }> = data
@@ -501,8 +673,17 @@ export default function DashboardFinancialsSection() {
                 : data.apUpcoming
               : null
           }
+          onOpenApBill={
+            openCard === 'ap'
+              ? (item) => {
+                  const bill = data.apBills[item.key]
+                  if (bill) setApBill(bill)
+                }
+              : null
+          }
         />
       ) : null}
+      {apBill ? <ApBillModal bill={apBill} onClose={() => setApBill(null)} /> : null}
       {dispatchItem ? <SendToDispatchModal item={dispatchItem} onClose={() => setDispatchItem(null)} /> : null}
     </div>
   )

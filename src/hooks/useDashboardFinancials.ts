@@ -22,11 +22,27 @@ import {
   type UpcomingPayrollApSection,
 } from '../lib/dashboardFinancials'
 
+/** Detail for one unpaid supply-house bill — powers the AP row click-through modal. */
+export type DashboardApBill = {
+  /** Matches the AP FinancialItem key (`supply:<invoice id>`). */
+  itemKey: string
+  houseName: string
+  invoiceNumber: string
+  purchaseOrderNumber: string | null
+  invoiceDateYmd: string | null
+  dueDateYmd: string | null
+  amount: number
+  /** Attachment URL (Google Drive in practice); null when none recorded. */
+  link: string | null
+}
+
 export type DashboardFinancials = {
   ar: FinancialBucket
   ap: FinancialBucket & { supplyTotal: number; payrollTotal: number }
   /** Estimated payroll for worked-but-unreported weeks — same kernel as the Payroll ledger header. */
   apUpcoming: UpcomingPayrollApSection
+  /** Keyed by AP item key. */
+  apBills: Record<string, DashboardApBill>
   unbilled: FinancialBucket
 }
 
@@ -89,7 +105,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
             async () =>
               await supabase
                 .from('supply_house_invoices')
-                .select('id, amount, invoice_date, supply_houses(name)')
+                .select('id, amount, invoice_date, due_date, link, invoice_number, purchase_order_number, supply_houses(name)')
                 .eq('is_paid', false),
             'dashboard financials supply invoices',
           ),
@@ -113,7 +129,27 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
 
         const jobs = (jobsRes ?? []) as FinancialJobRow[]
         const invoices = (invoicesRes ?? []) as FinancialInvoiceRow[]
-        const supplyInvoices = (supplyRes ?? []) as unknown as FinancialSupplyInvoiceRow[]
+        const supplyInvoices = (supplyRes ?? []) as unknown as Array<
+          FinancialSupplyInvoiceRow & {
+            due_date: string | null
+            link: string | null
+            invoice_number: string
+            purchase_order_number: string | null
+          }
+        >
+        const apBills: Record<string, DashboardApBill> = {}
+        for (const inv of supplyInvoices) {
+          apBills[`supply:${inv.id}`] = {
+            itemKey: `supply:${inv.id}`,
+            houseName: (inv.supply_houses?.name ?? '').trim() || 'Supply house',
+            invoiceNumber: inv.invoice_number,
+            purchaseOrderNumber: inv.purchase_order_number?.trim() || null,
+            invoiceDateYmd: inv.invoice_date,
+            dueDateYmd: inv.due_date,
+            amount: Number(inv.amount ?? 0),
+            link: inv.link?.trim() || null,
+          }
+        }
         const stubs = (stubsRes ?? []) as Array<{
           id: string
           person_name: string
@@ -228,6 +264,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
           ar: buildArBucket(jobs, invoices, invoicePayments),
           ap: buildApBucket(supplyInvoices, payrollStubs),
           apUpcoming: buildUpcomingApSection(upcomingSummary.lines),
+          apBills,
           unbilled: buildUnbilledBucket(jobs, invoices),
         })
       } catch (e) {

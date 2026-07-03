@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.631)
+last_updated: 2026-07-03 (v2.632)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.632 — **Dashboard → Financials** — **AP supply rows open a bill detail modal with attachment preview**. Supply-house rows in the Accounts Payable drill-down are now clickable (dotted-underline, like job rows) → **`ApBillModal`** (z 1110): supply house + amount header, fact rows (Invoice #, PO #, invoice date, due date with the orange/red **`Nd past due`** chip, amount), and at the bottom the **attached file previewed inline** via the Google Drive `/preview` embed (reuses `googleDrivePreviewEmbedUrl`) — collapsed to 300px with click-to-zoom / **Expand** button that widens the modal to ~1100px with a 68vh preview, plus an **Open in Drive ↗** link. Hook now fetches `due_date/link/invoice_number/purchase_order_number` and exposes an `apBills` map keyed by item key. Payroll and aggregate rows unchanged; 131/138 unpaid bills already have Drive links](#latest-updates-v2632)
 **New:** [v2.631 — **Materials → Supply Houses** — **AP aging map (`Summary | Aging map` toggle)**. New matrix view of unpaid dollars by days past due, computed from the already-recorded `supply_house_invoices.due_date`: rows = houses (total desc, click to open the house), columns **Current | 1–30 | 30–60 | 60–90 | 90+ | No due date | Total** with green→red heat cells and a column-totals footer — the hand-drawn AP aging sheet, live. Caption nudges when unpaid invoices lack a due date. Companions: unpaid invoice rows in the house detail get a red **`Nd past due`** chip, and Add Invoice **prefills the due date** from the house's `monthly_payment_day` (next occurrence, clamped to month length; editable). Pure kernel [`supplyHouseAging.ts`](../src/lib/supplyHouseAging.ts) (**6 tests**); no DB changes — 131 of 138 unpaid invoices already had due dates](#latest-updates-v2631)
 **New:** [v2.630 — **Ops** — **edge-function drift check (CI + local) after the Apply Discount incident**. Apply discount on a **Stripe-hosted** invoice failed for everyone ("Failed to send a request to the Edge Function") because `stripe-invoice-agreed-write-down` (v2.524) was never deployed — third stale-function incident (create-user, invite-user). Function **deployed to prod** (CORS preflight verified 200; the in-handler role gate already includes `assistant`, both write-down RPCs already existed). Prevention: new [`scripts/check-edge-function-drift.mjs`](../scripts/check-edge-function-drift.mjs) (`npm run check:edge-drift`) diffs `supabase/functions/*` against `supabase functions list` — repo-but-not-deployed **fails** with the exact deploy command; deployed-but-not-in-repo warns. New workflow [`edge-function-drift.yml`](../.github/workflows/edge-function-drift.yml): main pushes touching functions + daily cron + manual dispatch. **Setup: add the `SUPABASE_ACCESS_TOKEN` repo secret**](#latest-updates-v2630)
 **New:** [v2.629 — **Dashboard → Financials** — **AP shows upcoming payroll (due / upcoming split)**. The AP card sub-line becomes **`Supplies $X · Payroll: $Y due / $Z upcoming`**, where `$Z` is the Payroll ledger header's "upcoming" figure computed by the **same kernel** (`buildUpcomingPayrollSummary` — person-weeks with clocked time incl. pending but no pay report, hours × wage). The AP drill-down gains an **`Upcoming payroll (estimate)`** section after the due items (grey header with person-week count + subtotal; per person-week rows `Name · 6/28–7/4 · 12.3h (est.)`), excluded from the footer total, which relabels to **`Total due`**. **Assistants** get a single aggregate `Payroll — $Z` line (`redactUpcomingApSection`, same rule as v2.628). Hook fetches `users` + `people_pay_config` + bounded `clock_sessions` (best-effort — failures degrade to no upcoming section); new kernel mappers `buildUpcomingApSection`/`redactUpcomingApSection` (+4 tests)](#latest-updates-v2629)
@@ -2007,6 +2008,28 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.632)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — AP bill detail modal with attachment preview
+
+Supply-house rows in the **Accounts Payable** drill-down are now clickable, opening a bill detail modal:
+
+- **Header**: `{Supply house} — ${amount}`; **fact rows**: Invoice #, Purchase Order #, Invoice date, Due date (with the same orange/red `Nd past due` chip as the Supply Houses tab, via `daysPastDue`), Amount.
+- **Attached file at the bottom**: the invoice's Drive link renders inline through the Google Drive `/preview` embed (reusing [`googleDrivePreviewEmbedUrl`](../src/lib/estimateCustomerAttachment.ts)) — collapsed to 300px with `pointer-events` off and a zoom-in cursor; **clicking it (or the Expand button) widens the modal to ~1100px with a 68vh preview**; Shrink restores. An **Open in Drive ↗** link is always available; non-Drive links fall back to that link, and bills without a link say so.
+- **Plumbing**: [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts) extends the supply select with `due_date, link, invoice_number, purchase_order_number` and exposes `apBills: Record<itemKey, DashboardApBill>`; [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) adds the `onOpenApBill` row handler (AP modal only) + `ApBillModal` (z 1110 above the items modal at 1100). Payroll rows, the assistant's aggregate rows, and the upcoming section are unchanged (aggregates have non-`supply:` keys, so they're inherently not clickable).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1805/1805**; zero lint warnings on touched files. Prod data check: 131 of 138 unpaid supply invoices carry a Drive link (the only host present), so nearly every row previews inline.
+
+#### Files
+
+Modified: [`src/hooks/useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts), [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB / migration / type changes.
+
 ---
 
 ## Latest Updates (v2.631)
