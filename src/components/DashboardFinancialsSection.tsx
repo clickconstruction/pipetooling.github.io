@@ -3,6 +3,10 @@ import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/format'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import { useAuth } from '../hooks/useAuth'
+import { useToastContext } from '../contexts/ToastContext'
+import { formatErrorMessage } from '../utils/errorHandling'
+import { buildUnbilledDispatchTitle, createDispatchRequest } from '../lib/dispatchRequestHelpers'
 import type { FinancialBucket, FinancialItem } from '../lib/dashboardFinancials'
 
 type CardKey = 'ar' | 'ap' | 'unbilled'
@@ -35,17 +39,148 @@ function shortDate(ymd: string | null): string {
   return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
 }
 
+/** "Send to Dispatch" composer for a Not-billed row — stacks above the items modal. */
+function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: () => void }) {
+  const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const send = async () => {
+    if (!authUser?.id) {
+      showToast('Sign in to send to Dispatch.', 'error')
+      return
+    }
+    setBusy(true)
+    try {
+      const result = await createDispatchRequest({
+        fromUserId: authUser.id,
+        title: buildUnbilledDispatchTitle(item.label, item.amount, note),
+        jobId: item.jobId,
+        referenceSummary: item.label,
+        pendingAction: 'bill_out_job',
+      })
+      if (result.outcome === 'duplicate') {
+        showToast('Already open with Dispatch for this job.', 'info')
+      } else {
+        showToast('Sent to Dispatch.', 'success')
+      }
+      onClose()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to send to Dispatch'), 'error')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !busy) onClose()
+      }}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(0,0,0,0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1110,
+        padding: '1rem',
+        boxSizing: 'border-box',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dashboard-financials-dispatch-title"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && !busy) onClose()
+        }}
+        style={{
+          background: 'white',
+          borderRadius: 8,
+          maxWidth: 440,
+          width: '100%',
+          boxShadow: '0 10px 40px rgba(0,0,0,0.2)',
+          padding: '1rem 1.25rem 1.25rem',
+        }}
+      >
+        <h3 id="dashboard-financials-dispatch-title" style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>
+          Send to Dispatch
+        </h3>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Not billed out: <strong>{item.label}</strong> — ${formatCurrency(item.amount)}
+        </p>
+        <label htmlFor="dashboard-financials-dispatch-note" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+          Note (optional)
+        </label>
+        <textarea
+          id="dashboard-financials-dispatch-note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          autoFocus
+          disabled={busy}
+          placeholder="Anything Dispatch should know…"
+          style={{
+            width: '100%',
+            boxSizing: 'border-box',
+            border: '1px solid #d1d5db',
+            borderRadius: 6,
+            padding: '0.5rem 0.65rem',
+            font: 'inherit',
+            fontSize: '0.875rem',
+            resize: 'vertical',
+          }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.85rem' }}>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={busy}
+            style={{ padding: '0.45rem 0.85rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 6, cursor: busy ? 'default' : 'pointer', fontSize: '0.875rem' }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void send()}
+            disabled={busy}
+            style={{
+              padding: '0.45rem 0.85rem',
+              background: busy ? '#93c5fd' : '#2563eb',
+              color: 'white',
+              border: 'none',
+              borderRadius: 6,
+              cursor: busy ? 'default' : 'pointer',
+              fontSize: '0.875rem',
+              fontWeight: 600,
+            }}
+          >
+            {busy ? 'Sending…' : 'Send to Dispatch'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ItemsModal({
   cardKey,
   bucket,
   onClose,
   onOpenJob,
+  onSendToDispatch,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
   onClose: () => void
   /** Job rows (AR / Not billed) open the Job Detail modal; closes this modal first (it stacks lower). */
   onOpenJob: ((item: FinancialItem) => void) | null
+  /** Not-billed rows only: "→" opens the send-to-Dispatch composer. */
+  onSendToDispatch: ((item: FinancialItem) => void) | null
 }) {
   const meta = CARD_META[cardKey]
   return (
@@ -113,6 +248,7 @@ function ItemsModal({
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Item</th>
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Date</th>
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Amount</th>
+                {onSendToDispatch ? <th style={{ padding: '0.5rem 0.35rem', width: '1%' }} aria-label="Send to Dispatch" /> : null}
               </tr>
             </thead>
             <tbody>
@@ -151,6 +287,30 @@ function ItemsModal({
                   <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                     ${formatCurrency(item.amount)}
                   </td>
+                  {onSendToDispatch ? (
+                    <td style={{ padding: '0.45rem 0.35rem', whiteSpace: 'nowrap' }}>
+                      {item.jobId ? (
+                        <button
+                          type="button"
+                          onClick={() => onSendToDispatch(item)}
+                          title="Send a note about billing this job to the Task Dispatch inbox"
+                          aria-label={`Send ${item.label} to Dispatch`}
+                          style={{
+                            padding: '0.15rem 0.5rem',
+                            background: 'white',
+                            border: '1px solid #d1d5db',
+                            borderRadius: 4,
+                            cursor: 'pointer',
+                            fontSize: '0.875rem',
+                            color: '#2563eb',
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          →
+                        </button>
+                      ) : null}
+                    </td>
+                  ) : null}
                 </tr>
               ))}
             </tbody>
@@ -162,6 +322,7 @@ function ItemsModal({
                 <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   ${formatCurrency(bucket.total)}
                 </td>
+                {onSendToDispatch ? <td /> : null}
               </tr>
             </tfoot>
           </table>
@@ -175,6 +336,7 @@ function ItemsModal({
 export default function DashboardFinancialsSection() {
   const { data, loading, error } = useDashboardFinancials(true)
   const [openCard, setOpenCard] = useState<CardKey | null>(null)
+  const [dispatchItem, setDispatchItem] = useState<FinancialItem | null>(null)
   const jobDetailModal = useJobDetailModal()
 
   const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string }> = data
@@ -246,8 +408,10 @@ export default function DashboardFinancialsSection() {
                 }
               : null
           }
+          onSendToDispatch={openCard === 'unbilled' ? (item) => setDispatchItem(item) : null}
         />
       ) : null}
+      {dispatchItem ? <SendToDispatchModal item={dispatchItem} onClose={() => setDispatchItem(null)} /> : null}
     </div>
   )
 }

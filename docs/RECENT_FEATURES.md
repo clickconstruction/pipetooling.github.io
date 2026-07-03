@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.620)
+last_updated: 2026-07-03 (v2.621)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.621 — **Dashboard → Financials** — **Not Billed Out rows send to Dispatch**. Each job row in the Not Billed Out drill-down gains a **`→`** button right of Amount opening a mini-composer (z 1110): the job label + amount pre-filled as context, an optional note, and **Send to Dispatch** — creating a `dispatch_requests` inbox item (`Not billed out: 500 · Smith House — $12,345.67. <note>`) with `pending_action: 'bill_out_job'` **dedupe** (one open request per job; a second send toasts "Already open with Dispatch") and a fire-and-forget `notify-dispatch-request` push. New reusable helper [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) (`createDispatchRequest` — insert + dedupe + notify, extracted from the Dashboard link-job-pictures pattern — and pure `buildUnbilledDispatchTitle`, 3 tests). AR / AP modals unchanged](#latest-updates-v2621)
 **New:** [v2.620 — **Dashboard** — **Financials one-pager (AR / AP / Not billed)** for dev / master_technician / assistant. New **[`DashboardFinancialsSection`](../src/components/DashboardFinancialsSection.tsx)** above Recent activity: three clickable cards — **Accounts Receivable** (open remainders on billed invoices + billed jobs without invoice rows; mirrors `useBilledTotal`), **Accounts Payable** (unpaid supply-house invoices **+** open payroll balances via `stubNetPay − payments`, with per-source subtotals on the card; mirrors Supply Houses + the Payroll ledger header exactly), **Not Billed Out** (working / ready_to_bill jobs: `(revenue − payments) − Σ billed invoice amounts`; RTB draft lines deliberately not subtracted — they aren't on a customer invoice yet). Each card shows total + item count + oldest-item date and opens a drill-down modal (Item | Date | Amount, largest first, totals footer, link to Jobs Stages / Supply Houses). Pure kernel [`dashboardFinancials.ts`](../src/lib/dashboardFinancials.ts) (**7 tests**) + one batched hook [`useDashboardFinancials.ts`](../src/hooks/useDashboardFinancials.ts); all four totals cross-checked against prod SQL (payroll AP matched the Payroll ledger's `$4,949.48 remaining` to the cent). No DB changes](#latest-updates-v2620)
 **New:** [v2.619 — **People → Activity** — **per-person drilldown with page-level time**. Names in the Activity table are now links opening **[`PersonActivityDetailModal`](../src/components/people/PersonActivityDetailModal.tsx)**: a **90-day** day-by-day list (date, active h:mm, first–last seen) with each day expandable to its **per-page split**, plus a "Where (90d)" totals strip (`Bids · Pricing 12:40 …`). Collection: new **`user_app_activity_page_daily`** table (UTC day × page key; RLS mirrors the daily table — own rows / dev / granted viewers; writes via RPC only) and **`bump_user_app_activity`** recreated with `p_page text DEFAULT NULL` (migration `20260703120000`, applied to prod via MCP after body-md5 verification — old deployed clients calling one-arg keep working). The heartbeat is now **page-aware**: [`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts) takes a `pageKey` (new pure kernel [`appActivityPage.ts`](../src/lib/appActivityPage.ts): `appActivityPageKey('/bids','?tab=pricing') → 'bids:pricing'`, first path segment + sanitized tab param, bounded cardinality) and is keyed on it — in-app navigation flushes the old page's partial segment via effect cleanup and restarts the minute clock on the new page, so mid-minute navigation attributes correctly. Zero-second "seen" pings carry no page (last-seen only). **Page data accrues from deploy day**; historical days show totals with no page rows. +6 kernel tests](#latest-updates-v2619)
 **New:** [v2.618 — **App activity heartbeat** — **short visits now register** ([`useAppActivityHeartbeat`](../src/hooks/useAppActivityHeartbeat.ts)). Previously the first bump only fired after **60 continuous seconds** of tab visibility and the timer reset on every hide — so a 30-second clock-in/out visit recorded *nothing*, leaving People → Activity "Last seen" up to weeks older than real clock actions (prod check: one tech 26 days stale). Now: (1) an **instant `bump(0)`** on becoming visible updates `last_seen_at` without adding hours (throttled to once/min against tab-flicker spam; the deployed `bump_user_app_activity` RPC already clamps `p_seconds ≥ 0` — no DB change); (2) on hide/**pagehide**/unmount the **partial minute flushes** (≥5s), so a 40-second visit adds ~40s of active time; (3) the 60s tick continues for sustained use, with the partial-segment clock reset on each tick. Still strictly non-retrying (2026-06-04 incident lesson)](#latest-updates-v2618)
@@ -1996,6 +1997,30 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.621)
+
+**Date**: 2026-07-03
+
+### Dashboard → Financials — send Not Billed Out jobs to Dispatch
+
+Follow-up to v2.620: in the **Not Billed Out** drill-down modal, every job row now has a **`→`** button to the right of Amount that opens a small composer for sending the job to the **Task Dispatch inbox**.
+
+- **Composer** (`SendToDispatchModal`, z 1110 above the items modal at 1100): shows `Not billed out: <job label> — $<amount>` as context, an optional note textarea (autofocused), Cancel / **Send to Dispatch** with a busy state; Escape/backdrop close (disabled while sending).
+- **The request**: `dispatch_requests` insert with `title = "Not billed out: 500 · Smith House — $12,345.67. <note>"` (clipped to the 2000-char title constraint), `job_ledger_id`, `reference_summary` = the job label, and `pending_action: 'bill_out_job'` — then a fire-and-forget `notify-dispatch-request` Edge-function push to Dispatch members (the task exists even if the push fails).
+- **Dedupe**: one *open* `bill_out_job` request per job — a second send finds the existing open row and toasts "Already open with Dispatch for this job." instead of inserting a duplicate.
+- **New reusable helper** [`dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts): `createDispatchRequest({fromUserId, title, jobId, referenceSummary, pendingAction})` — the check-existing → insert → notify pattern extracted from the Dashboard's link-job-pictures flow — plus pure `buildUnbilledDispatchTitle(label, amount, note)` (**3 unit tests** incl. the 2000-char clip).
+- The `→` column renders **only in the Not Billed Out modal** (AR / AP drill-downs unchanged); rows without a job id (none today in this bucket) simply omit the button.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1792/1792** (3 new); zero lint warnings on touched files.
+
+#### Files
+
+New: [`src/lib/dispatchRequestHelpers.ts`](../src/lib/dispatchRequestHelpers.ts) (+ test). Modified: [`src/components/DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx). No DB / migration / type changes (`dispatch_requests` RLS already allows any authenticated insert).
+
 ---
 
 ## Latest Updates (v2.620)
