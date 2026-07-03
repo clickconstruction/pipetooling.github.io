@@ -301,35 +301,50 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     </td>
                     <td className="activeAccountsCard__lastLogin">{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
-                        {editingUserId === u.id ? (
-                          <>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
+                          {editingUserId === u.id ? (
+                            <>
+                              <button
+                                type="button"
+                                onClick={saveUserEdits}
+                                disabled={updatingId === u.id}
+                                className="activeAccountsCard__rowBtnPrimary"
+                              >
+                                Save
+                              </button>
+                              <button
+                                type="button"
+                                onClick={cancelEditUser}
+                                disabled={updatingId === u.id}
+                                className="activeAccountsCard__rowBtn"
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
                             <button
                               type="button"
-                              onClick={saveUserEdits}
-                              disabled={updatingId === u.id}
-                              className="activeAccountsCard__rowBtnPrimary"
-                            >
-                              Save
-                            </button>
-                            <button
-                              type="button"
-                              onClick={cancelEditUser}
-                              disabled={updatingId === u.id}
+                              onClick={() => startEditUser(u)}
                               className="activeAccountsCard__rowBtn"
                             >
-                              Cancel
+                              Edit
                             </button>
-                          </>
-                        ) : (
+                          )}
                           <button
                             type="button"
-                            onClick={() => startEditUser(u)}
+                            onClick={() => {
+                              setSetPasswordUser(u)
+                              setSetPasswordValue('')
+                              setSetPasswordConfirm('')
+                              setSetPasswordError(null)
+                            }}
+                            disabled={setPasswordSubmitting}
                             className="activeAccountsCard__rowBtn"
                           >
-                            Edit
+                            Set password
                           </button>
-                        )}
+                        </div>
                         <button
                           type="button"
                           onClick={() => sendSignInEmail(u)}
@@ -337,19 +352,6 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                           className="activeAccountsCard__rowBtn"
                         >
                           {sendingSignInEmailId === u.id ? 'Sending…' : 'Send email to sign in'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSetPasswordUser(u)
-                            setSetPasswordValue('')
-                            setSetPasswordConfirm('')
-                            setSetPasswordError(null)
-                          }}
-                          disabled={setPasswordSubmitting}
-                          className="activeAccountsCard__rowBtn"
-                        >
-                          Set password
                         </button>
                       </div>
                     </td>
