@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.638)
+last_updated: 2026-07-03 (v2.639)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.639 — **Jobs** — **fix: "Create customer from job" minted assistant-mastered customers** (Taunya's P0001 "Job linked customer must belong to the job master" on job 886). [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) set the new customer's `master_user_id` to the **creator** (an assistant), not the job's master — the v2.612 invariant trigger then rejected the link and every retry left an orphan duplicate (5× "Richard Visiko"). Client now resolves the JOB's master (`resolveEditJobMasterUserId`; new-job path maps assistants via `master_assistants`). **Prod healed** (migration `20260703150000` + surgery): 95 mis-mastered customers repointed to their master (cascade moved their **104 linked jobs** off Taunya to Malachi), 4 orphan duplicates deleted, job 886 linked; new backstop trigger `customers_master_role_check` requires `customers.master_user_id` to be a dev/master. All verified: 0 mis-mastered rows, 0 invariant violations](#latest-updates-v2639)
 **New:** [v2.638 — **Materials → Supply Houses** — **view toggles inline with the heading**: the `Show paid invoices` / `Show last payment` checkboxes moved from the standalone header row down into the same band as the `Supply Houses: $X` heading and `Summary | Aging map` pills (absolutely positioned right of the centered block). [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) only](#latest-updates-v2638)
 **New:** [v2.637 — **Dashboard → Financials** — **AP supply rows show due date + allocated jobs inline**. The AP drill-down's date column is now headed **Due** and supply rows show the bill's `due_date` with a compact **`Nd`** past-due chip (orange <60d, red ≥60d) instead of the invoice date; each supply row also gets a muted second line listing its job allocations (`500 · Smith House (60%), …`) from the v2.635 `apBills` map. Payroll-due rows keep their period-end date under the same `Due` header; other cards keep `Date`. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2637)
 **New:** [v2.636 — **Dashboard → Financials** — **AP drill-down grouped into Supplies / Payroll due / Upcoming payroll sections**. Previously payroll-due rows interleaved with ~130 supply rows by amount and the v2.629 "Upcoming payroll (estimate)" section sat invisibly at the very bottom — payroll was effectively unfindable. The AP modal now uses the same grey section headers as Not Billed Out: **Supplies — N bills · $X** (per-row "Supply invoice" sublabel dropped as redundant), **Payroll due — N items · $Y** (period sublabels kept), then the existing **Upcoming payroll (estimate) — N person-weeks · $Z**; footer stays `Total due`. Assistant's aggregate rows land in the same sections. Section-header machinery generalized (per-section noun + sublabel-hiding flag). [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2636)
@@ -2014,6 +2015,27 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.639)
+
+**Date**: 2026-07-03
+
+### Jobs — fix: "Create customer from job" minted assistant-mastered customers
+
+Taunya hit `Job linked customer must belong to the job master … Code: P0001` creating a customer from job 886, with duplicate "possible matches" she also couldn't link.
+
+**Root cause**: `handleCreateCustomerFromJob` in [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) inserted the customer with `master_user_id: authUser.id` — the person clicking. For an assistant editing a master's job, that minted a customer mastered to the *assistant*; the job↔customer invariant backstop (migration `20260630200000`) then correctly rejected the link, and each retry left another orphan duplicate (five "Richard Visiko" rows by the time it was reported). Pre-invariant creations sailed through silently: **95 customers and their 104 consistently-linked jobs were "mastered" to assistants** (back to April 3).
+
+- **Client fix**: the created customer now takes the **job's** master — `resolveEditJobMasterUserId` (project's master else the job's) when editing; for a not-yet-saved job, the assistant's master via `master_assistants`, falling back to the creator only when they're the master themselves. Mirrors what `NewCustomerForm` already did correctly.
+- **Prod healed** (migration [`20260703150000_customers_master_role_heal_and_guard.sql`](../supabase/migrations/20260703150000_customers_master_role_heal_and_guard.sql), applied via MCP after a full `BEGIN…ROLLBACK` dry-run): all mis-mastered customers repointed (assistant's master via `master_assistants`, else the org's single master) — the #141 cascade triggers moved their **104 linked jobs** from Taunya to Malachi automatically; plus one-off surgery deleting the 4 reference-free Visiko orphans and linking job 886 to the healed keeper.
+- **New backstop**: `customers_master_role_check` trigger — `customers.master_user_id` must reference a `dev`/`master_technician`, so no path can mint assistant-mastered customers again (`NewCustomerForm`/Prospects flows already comply).
+- **Post-heal verification**: 0 customers mastered to non-masters, 0 assistant-mastered jobs, 0 job↔customer invariant violations, exactly 1 Richard Visiko, job 886's customer master = Malachi.
+
+#### Files
+
+Modified: [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx). New: [`supabase/migrations/20260703150000_customers_master_role_heal_and_guard.sql`](../supabase/migrations/20260703150000_customers_master_role_heal_and_guard.sql). `tsc -b` clean; `vitest run` 1805/1805; no new lints. See also [`MIGRATIONS.md`](MIGRATIONS.md).
+
 ---
 
 ## Latest Updates (v2.638)

@@ -2639,6 +2639,27 @@ export default function JobFormModal({
     setCreatingCustomerFromJob(true)
     setError(null)
     try {
+      // The customer must belong to the JOB's master (customer↔master invariant) — not the
+      // person clicking. An assistant creating from another master's job with authUser.id here
+      // used to mint a customer mastered to the assistant, which the jobs_ledger backstop
+      // trigger then rejected at link time (and left an orphan duplicate behind).
+      let customerMasterId: string | null = editing
+        ? resolveEditJobMasterUserId({
+            projectId,
+            projectMasterUserId: projectId ? (projects.find((p) => p.id === projectId)?.master_user_id ?? null) : null,
+            existingJobMasterUserId: editing.master_user_id,
+          })
+        : null
+      if (!customerMasterId) {
+        // New job: assistants act for their master; masters/devs own their own customers.
+        const { data: adoption } = await supabase
+          .from('master_assistants')
+          .select('master_id')
+          .eq('assistant_id', authUser.id)
+          .limit(1)
+          .maybeSingle()
+        customerMasterId = (adoption as { master_id: string } | null)?.master_id ?? authUser.id
+      }
       const contactInfo = (customerEmail.trim() || customerPhone.trim())
         ? { phone: customerPhone.trim() || null, email: customerEmail.trim() || null }
         : null
@@ -2650,7 +2671,7 @@ export default function JobFormModal({
           contact_info: contactInfo,
           customer_type: customerType,
           date_met: dateMet.trim() || null,
-          master_user_id: authUser.id,
+          master_user_id: customerMasterId,
         })
         .select('id')
         .single()
