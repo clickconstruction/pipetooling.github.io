@@ -10,6 +10,7 @@ import { ROLES } from '../../lib/userRoles'
 import type { PersonRow, ServiceType, UserRow } from '../../types/settingsRows'
 import TeamFeedbackDevSettingsBlock from '../team-feedback/TeamFeedbackDevSettingsBlock'
 import { useToastContext } from '../../contexts/ToastContext'
+import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 
 type PageAccessRow = {
   page: string
@@ -51,6 +52,16 @@ function timeSinceAgo(iso: string | null): string {
   if (day < 30) return `${day} day${day === 1 ? '' : 's'} ago`
   const mo = Math.floor(day / 30)
   return `${mo} mo ago`
+}
+
+/** Role-appropriate service-type restriction ids: [] = access to all types, null = role has no service-type concept. */
+function serviceTypeIdsForUser(u: UserRow): string[] | null {
+  if (u.role === 'estimator') return u.estimator_service_type_ids ?? []
+  if (u.role === 'primary') return u.primary_service_type_ids ?? []
+  if (u.role === 'superintendent') return u.superintendent_service_type_ids ?? []
+  if (u.role === 'subcontractor') return u.subcontractor_service_type_ids ?? []
+  if (u.role === 'helpers') return u.helpers_service_type_ids ?? []
+  return null
 }
 
 type SettingsPeopleTabProps = {
@@ -324,8 +335,7 @@ export default function SettingsPeopleTab({
               <thead>
                 <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Name / Email</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
-                  <th style={{ padding: '0.5rem 0.75rem' }}>Service types</th>
+                  <th style={{ padding: '0.5rem 0.75rem' }}>Service types / Role</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}>Last login</th>
                   <th style={{ padding: '0.5rem 0.75rem' }}></th>
                 </tr>
@@ -378,56 +388,36 @@ export default function SettingsPeopleTab({
                       )}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
-                      <select
-                        value={u.role}
-                        onChange={(e) => updateRole(u.id, e.target.value as UserRole)}
-                        disabled={updatingId === u.id}
-                        style={{ padding: '0.25rem 0.5rem' }}
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>
-                            {displayLabelForUserRole(r)}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem' }}>
-                      {u.role === 'estimator'
-                        ? (u.estimator_service_type_ids?.length
-                          ? (u.estimator_service_type_ids
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.25rem' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', fontSize: '0.875rem' }}>
+                          {(() => {
+                            const ids = serviceTypeIdsForUser(u)
+                            if (ids === null) return <span style={{ color: '#9ca3af' }}>—</span>
+                            if (ids.length === 0) return <span>All</span>
+                            const pills = ids
                               .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                              .filter(Boolean)
-                              .join(', ') || '—')
-                          : 'All')
-                        : u.role === 'primary'
-                          ? (u.primary_service_type_ids?.length
-                            ? (u.primary_service_type_ids
-                                .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                .filter(Boolean)
-                                .join(', ') || '—')
-                            : 'All')
-                          : u.role === 'superintendent'
-                            ? (u.superintendent_service_type_ids?.length
-                              ? (u.superintendent_service_type_ids
-                                  .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                  .filter(Boolean)
-                                  .join(', ') || '—')
-                              : 'All')
-                            : u.role === 'subcontractor'
-                            ? (u.subcontractor_service_type_ids?.length
-                              ? (u.subcontractor_service_type_ids
-                                  .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                  .filter(Boolean)
-                                  .join(', ') || '—')
-                              : 'All')
-                              : u.role === 'helpers'
-                                ? (u.helpers_service_type_ids?.length
-                                  ? (u.helpers_service_type_ids
-                                      .map((id) => serviceTypes.find((st) => st.id === id)?.name)
-                                      .filter(Boolean)
-                                      .join(', ') || '—')
-                                  : 'All')
-                            : '—'}
+                              .filter((n): n is string => Boolean(n))
+                              .map((name) => buildServiceTypeTradePill(name))
+                              .filter((pill): pill is NonNullable<typeof pill> => pill !== null)
+                            if (pills.length === 0) return <span style={{ color: '#9ca3af' }}>—</span>
+                            return pills.map((pill) => (
+                              <span key={pill.label} style={pill.style}>{pill.label}</span>
+                            ))
+                          })()}
+                        </div>
+                        <select
+                          value={u.role}
+                          onChange={(e) => updateRole(u.id, e.target.value as UserRole)}
+                          disabled={updatingId === u.id}
+                          style={{ padding: '0.25rem 0.5rem' }}
+                        >
+                          {ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {displayLabelForUserRole(r)}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -486,7 +476,7 @@ export default function SettingsPeopleTab({
                   </tr>
                   {editingUserId === u.id && u.role === 'estimator' && (
                     <tr key={`${u.id}-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
@@ -524,7 +514,7 @@ export default function SettingsPeopleTab({
                   )}
                   {editingUserId === u.id && u.role === 'primary' && (
                     <tr key={`${u.id}-primary-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
@@ -553,7 +543,7 @@ export default function SettingsPeopleTab({
                   )}
                   {editingUserId === u.id && u.role === 'superintendent' && (
                     <tr key={`${u.id}-superintendent-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials, Bids)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
@@ -582,7 +572,7 @@ export default function SettingsPeopleTab({
                   )}
                   {editingUserId === u.id && isSubcontractorLikeRole(u.role) && (
                     <tr key={`${u.id}-subcontractor-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-                      <td colSpan={5} style={{ padding: '0.5rem 0.75rem' }}>
+                      <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Clock In, Dispatch)</div>
                           <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict job/bid association.</p>
