@@ -455,7 +455,9 @@ function ItemsModal({
     setArSort((prev) => ({ key, dir: prev?.key === key && prev.dir === 'desc' ? 'asc' : 'desc' }))
   const arSortIndicator = (key: 'date' | 'amount') =>
     arSort?.key === key ? (arSort.dir === 'desc' ? ' ▼' : ' ▲') : ''
-  const columnCount = onSendToDispatch ? 4 : 3
+  // Unbilled rows carry the Stages % complete (jobs_ledger.pct_complete) — its own column.
+  const showPctComplete = cardKey === 'unbilled'
+  const columnCount = 3 + (showPctComplete ? 1 : 0) + (onSendToDispatch ? 1 : 0)
   // AP sections (Payroll due / Upcoming payroll / Supplies) and the AR Collections section are
   // collapsible; expanded on open.
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
@@ -565,6 +567,14 @@ function ItemsModal({
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Item</th>
+                {showPctComplete ? (
+                  <th
+                    title="% complete from Jobs → Stages"
+                    style={{ padding: '0.5rem 0.65rem', textAlign: 'center', whiteSpace: 'nowrap' }}
+                  >
+                    % Complete
+                  </th>
+                ) : null}
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>
                   {cardKey === 'ar' ? (
                     <button
@@ -697,6 +707,19 @@ function ItemsModal({
                       )
                     })()}
                   </td>
+                  {showPctComplete ? (
+                    <td
+                      style={{
+                        padding: '0.45rem 0.65rem',
+                        textAlign: 'center',
+                        fontVariantNumeric: 'tabular-nums',
+                        whiteSpace: 'nowrap',
+                        color: item.pctComplete != null ? undefined : '#9ca3af',
+                      }}
+                    >
+                      {item.pctComplete != null ? `${item.pctComplete}%` : '—'}
+                    </td>
+                  ) : null}
                   <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
                     {(() => {
                       const bill = apBills?.[item.key]
@@ -776,7 +799,7 @@ function ItemsModal({
             </tbody>
             <tfoot>
               <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
-                <td style={{ padding: '0.5rem 0.65rem' }} colSpan={2}>
+                <td style={{ padding: '0.5rem 0.65rem' }} colSpan={showPctComplete ? 3 : 2}>
                   {upcomingSection && upcomingSection.count > 0
                     ? 'Total due'
                     : sections.some((s) => s.title === 'Collections')
