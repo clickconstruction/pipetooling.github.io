@@ -306,11 +306,24 @@ export type JobsStagesBoardLists = {
   working: JobWithDetails[]
   paid: JobWithDetails[]
   readyToBillJobs: JobWithDetails[]
+  /** ALL billed jobs, including Collections — Bank Payments/AR consumers rely on this. */
   billedJobs: JobWithDetails[]
   readyToBillInvoices: InvoiceWithJob[]
   billedInvoices: InvoiceWithJob[]
   readyToBillRows: StageRow[]
+  /** Rows for ALL billed jobs, including Collections — Bank Payments/AR consumers rely on this. */
   billedRows: StageRow[]
+  /** Billed jobs NOT flagged into Collections (the "Billed Awaiting Payment" section). */
+  billedActiveJobs: JobWithDetails[]
+  /** Billed jobs flagged difficult-to-collect (the "Collections" section). */
+  collectionsJobs: JobWithDetails[]
+  billedActiveRows: StageRow[]
+  collectionsRows: StageRow[]
+}
+
+/** In Collections = billed AND flagged; the flag alone is ignored on non-billed jobs (sticky flag semantics). */
+export function jobInCollections(j: Pick<JobWithDetails, 'status' | 'collections_at'>): boolean {
+  return ((j.status ?? 'working') as string) === 'billed' && j.collections_at != null
 }
 
 function jobHasReadyToBillInvoice(j: JobWithDetails): boolean {
@@ -339,6 +352,17 @@ export function buildJobsStagesBoardLists(
   )
   const readyToBillRows = buildReadyToBillStageRows(readyToBillJobs)
   const billedRows = buildBilledStageRows(billedJobs, billedInvoices)
+  const billedActiveJobs = billedJobs.filter((j) => !jobInCollections(j))
+  const collectionsJobs = billedJobs.filter((j) => jobInCollections(j))
+  const collectionsJobIds = new Set(collectionsJobs.map((j) => j.id))
+  const billedActiveRows = buildBilledStageRows(
+    billedActiveJobs,
+    billedInvoices.filter((iw) => !collectionsJobIds.has(iw.job.id)),
+  )
+  const collectionsRows = buildBilledStageRows(
+    collectionsJobs,
+    billedInvoices.filter((iw) => collectionsJobIds.has(iw.job.id)),
+  )
   return {
     filtered,
     waiting,
@@ -350,6 +374,10 @@ export function buildJobsStagesBoardLists(
     billedInvoices,
     readyToBillRows,
     billedRows,
+    billedActiveJobs,
+    collectionsJobs,
+    billedActiveRows,
+    collectionsRows,
   }
 }
 

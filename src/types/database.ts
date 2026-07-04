@@ -3869,6 +3869,9 @@ export type Database = {
         Row: {
           bid_id: string | null
           click_number: string
+          collections_at: string | null
+          collections_by: string | null
+          collections_note: string | null
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
@@ -3895,6 +3898,9 @@ export type Database = {
         Insert: {
           bid_id?: string | null
           click_number?: string
+          collections_at?: string | null
+          collections_by?: string | null
+          collections_note?: string | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
@@ -3921,6 +3927,9 @@ export type Database = {
         Update: {
           bid_id?: string | null
           click_number?: string
+          collections_at?: string | null
+          collections_by?: string | null
+          collections_note?: string | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
@@ -11931,6 +11940,10 @@ export type Database = {
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
         Returns: undefined
+      }
+      set_job_collections_flag: {
+        Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
+        Returns: Json
       }
       set_tally_payroll_flag: {
         Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
