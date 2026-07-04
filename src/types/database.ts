@@ -1639,7 +1639,6 @@ export type Database = {
           revoked_at: string | null
           revoked_by: string | null
           salary_segment_index: number | null
-          salary_split_derived: boolean
           user_id: string
           work_date: string
         }
@@ -1665,7 +1664,6 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
-          salary_split_derived?: boolean
           user_id: string
           work_date: string
         }
@@ -1691,7 +1689,6 @@ export type Database = {
           revoked_at?: string | null
           revoked_by?: string | null
           salary_segment_index?: number | null
-          salary_split_derived?: boolean
           user_id?: string
           work_date?: string
         }
@@ -5277,6 +5274,99 @@ export type Database = {
           sort_order?: number
         }
         Relationships: []
+      }
+      mercury_tally_payroll_flags: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          is_payroll: boolean
+          mercury_transaction_id: string
+          rule_id: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          is_payroll: boolean
+          mercury_transaction_id: string
+          rule_id?: string | null
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          is_payroll?: boolean
+          mercury_transaction_id?: string
+          rule_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_tally_payroll_flags_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_tally_payroll_flags_mercury_transaction_id_fkey"
+            columns: ["mercury_transaction_id"]
+            isOneToOne: true
+            referencedRelation: "mercury_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_tally_payroll_flags_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "mercury_tally_payroll_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mercury_tally_payroll_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          criteria: Json
+          enabled: boolean
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          criteria?: Json
+          enabled?: boolean
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mercury_tally_payroll_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       mercury_tally_transaction_notes: {
         Row: {
@@ -10339,6 +10429,10 @@ export type Database = {
         Args: { p_mercury_debit_card_id: string }
         Returns: number
       }
+      bulk_apply_tally_payroll_rule_flags: {
+        Args: { p_rows: Json }
+        Returns: number
+      }
       bulk_approve_accounting_label_suggestions: {
         Args: { p_items: Json }
         Returns: number
@@ -10902,6 +10996,7 @@ export type Database = {
         Args: { p_person_name: string }
         Returns: boolean
       }
+      is_user_notes_editor: { Args: never; Returns: boolean }
       jobs_ledger_row_visible_for_tally_assign: {
         Args: { p_job_id: string; p_user_id: string }
         Returns: boolean
@@ -11745,10 +11840,6 @@ export type Database = {
           revoked_count: number
         }[]
       }
-      salary_force_close_open_sessions_after_shift: {
-        Args: { p_now: string; p_user_id: string; p_work_date: string }
-        Returns: undefined
-      }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
         Returns: boolean
@@ -11839,6 +11930,10 @@ export type Database = {
       }
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
+        Returns: undefined
+      }
+      set_tally_payroll_flag: {
+        Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
         Returns: undefined
       }
       split_bid_into_versions: {

@@ -132,6 +132,13 @@ Example: `20260206220800_add_unique_constraint_to_price_book_versions.sql`
 
 ### July 2026
 
+#### July 4, 2026
+
+**`20260704140000_tally_payroll_flags_and_rules.sql`** _(applied to prod 2026-07-04 via Supabase MCP `apply_migration`, ahead of client; validated by full-transaction dry-run first)_
+- **Purpose**: **Job Parts Tally "mark as payroll" + auto-rules (dev-only).** New tables **`mercury_tally_payroll_flags`** (`mercury_transaction_id` PK, `is_payroll`, `source` manual/rule, `rule_id`; manual rows incl. false tombstones win over rules) and **`mercury_tally_payroll_rules`** (`name`, `criteria` jsonb V1, `enabled`, `sort_order`). Both dev-only RLS (`is_dev()`). RPCs (SECURITY DEFINER, `search_path=public`, dev-gated): **`set_tally_payroll_flag(uuid, bool)`** — RAISE P0001 when the tx has `mercury_transaction_job_allocations` (flag↔splits mutually exclusive → prevents double-counting payroll against clocked labor); **`bulk_apply_tally_payroll_rule_flags(jsonb)`** — insert `source='rule'` flags only where no flag row exists and no job allocations.
+- **Impact**: [`JobTally.tsx`](../src/pages/JobTally.tsx) per-row toggle + rules manager; [`tallyPayrollRules.ts`](../src/lib/tallyPayrollRules.ts) preflight; [`mercuryTxRowFromTally.ts`](../src/lib/mercuryTxRowFromTally.ts) `tallyRowIsResolved` honors `is_payroll`. `npm run gen-types:linked` run after apply; no new security advisors. **`RECENT_FEATURES.md` v2.641**.
+- **Category**: Tally / Banking / Payroll / RLS / RPC
+
 #### July 3, 2026
 
 **`20260703150000_customers_master_role_heal_and_guard.sql`** _(applied to prod 2026-07-03 via Supabase MCP `apply_migration`, ahead of client; validated by full-transaction dry-run first)_
