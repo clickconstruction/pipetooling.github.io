@@ -40,6 +40,7 @@ const CARD_META: Record<CardKey, { title: string; hint: string; linkTo: string; 
 const STAGES_SECTION_LINKS: Record<string, string> = {
   'Ready to Bill': '/jobs?tab=stages&stagesSection=readyToBill',
   Working: '/jobs?tab=stages&stagesSection=working',
+  Collections: '/jobs?tab=stages&stagesSection=collections',
 }
 
 function shortDate(ymd: string | null): string {
@@ -375,6 +376,7 @@ function ItemsModal({
   upcomingSection,
   onOpenApBill,
   apBills,
+  arCollectionsSection,
 }: {
   cardKey: CardKey
   bucket: FinancialBucket
@@ -389,6 +391,8 @@ function ItemsModal({
   onOpenApBill: ((item: FinancialItem) => void) | null
   /** AP only: per-bill detail (due date, job allocations) keyed by item key — enriches the rows. */
   apBills: Record<string, DashboardApBill> | null
+  /** AR only: parked difficult-to-collect receivables — listed after the main rows, excluded from the headline total. */
+  arCollectionsSection: FinancialBucket | null
 }) {
   const meta = CARD_META[cardKey]
   // Grouped views (items keep their amount-desc order within each section):
@@ -423,7 +427,13 @@ function ItemsModal({
               },
             ] as ModalSection[]
           ).filter((s) => s.items.length > 0)
-        : [{ title: null, items: bucket.items }]
+        : cardKey === 'ar' && arCollectionsSection && arCollectionsSection.count > 0
+          ? [
+              { title: null, items: bucket.items },
+              // Parked receivables — its own collapsible section, outside the headline total.
+              { title: 'Collections', items: arCollectionsSection.items, noun: 'item' },
+            ]
+          : [{ title: null, items: bucket.items }]
   // AR: sortable by date or amount via the column headers; null = incoming order (amount desc).
   const [arSort, setArSort] = useState<{ key: 'date' | 'amount'; dir: 'asc' | 'desc' } | null>(null)
   const sortedSections =
@@ -446,9 +456,10 @@ function ItemsModal({
   const arSortIndicator = (key: 'date' | 'amount') =>
     arSort?.key === key ? (arSort.dir === 'desc' ? ' ▼' : ' ▲') : ''
   const columnCount = onSendToDispatch ? 4 : 3
-  // AP sections (Payroll due / Upcoming payroll / Supplies) are collapsible; expanded on open.
+  // AP sections (Payroll due / Upcoming payroll / Supplies) and the AR Collections section are
+  // collapsible; expanded on open.
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
-  const collapsible = cardKey === 'ap'
+  const collapsible = cardKey === 'ap' || sections.some((s) => s.title === 'Collections')
   const isCollapsed = (title: string) => collapsible && (collapsedSections[title] ?? false)
   const toggleSection = (title: string) =>
     setCollapsedSections((prev) => ({ ...prev, [title]: !(prev[title] ?? false) }))
@@ -766,7 +777,11 @@ function ItemsModal({
             <tfoot>
               <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
                 <td style={{ padding: '0.5rem 0.65rem' }} colSpan={2}>
-                  {upcomingSection && upcomingSection.count > 0 ? 'Total due' : 'Total'}
+                  {upcomingSection && upcomingSection.count > 0
+                    ? 'Total due'
+                    : sections.some((s) => s.title === 'Collections')
+                      ? 'Total (excl. Collections)'
+                      : 'Total'}
                 </td>
                 <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                   ${formatCurrency(bucket.total)}
@@ -792,7 +807,14 @@ export default function DashboardFinancialsSection() {
 
   const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string }> = data
     ? [
-        { key: 'ar', bucket: data.ar },
+        {
+          key: 'ar',
+          bucket: data.ar,
+          extra:
+            data.arCollections.count > 0
+              ? `Collections: $${formatCurrency(data.arCollections.total)} (${data.arCollections.count} item${data.arCollections.count === 1 ? '' : 's'})`
+              : undefined,
+        },
         {
           key: 'ap',
           bucket: data.ap,
@@ -879,6 +901,7 @@ export default function DashboardFinancialsSection() {
               : null
           }
           apBills={openCard === 'ap' ? data.apBills : null}
+          arCollectionsSection={openCard === 'ar' ? data.arCollections : null}
         />
       ) : null}
       {apBill ? (
