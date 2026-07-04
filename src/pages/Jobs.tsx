@@ -3461,14 +3461,14 @@ ${totalsHtml}
     }, { replace: true })
   }, [stagesInvoiceParam, jobsListLoading, activeTab, applyStagesInvoiceFocus, setSearchParams])
 
-  // ?stagesSection=waiting|working|readyToBill|billed — deep link that opens + scrolls to a
-  // Stages section (e.g. from the Dashboard Financials drill-downs), then strips itself.
+  // ?stagesSection=waiting|working|readyToBill|billed|collections — deep link that opens + scrolls
+  // to a Stages section (e.g. from the Dashboard Financials drill-downs), then strips itself.
   const stagesSectionParam = searchParams.get('stagesSection')
   useEffect(() => {
     const raw = stagesSectionParam?.trim()
     if (!raw || jobsListLoading || activeTab !== 'stages') return
 
-    if (raw === 'waiting' || raw === 'working' || raw === 'readyToBill' || raw === 'billed') {
+    if (raw === 'waiting' || raw === 'working' || raw === 'readyToBill' || raw === 'billed' || raw === 'collections') {
       focusStagesSection(raw)
     }
     setSearchParams((p) => {

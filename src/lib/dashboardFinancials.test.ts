@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildApBucket,
   buildArBucket,
+  buildArBuckets,
   buildUnbilledBucket,
   buildUpcomingApSection,
   financialJobLabel,
@@ -215,5 +216,64 @@ describe('buildUnbilledBucket', () => {
     )
     expect(bucket.items.find((i) => i.key === 'job:j1')?.address).toBe('123 Main St, Tulsa')
     expect(bucket.items.find((i) => i.key === 'job:j2')?.address).toBeNull()
+  })
+})
+
+describe('buildArBuckets (collections split)', () => {
+  it('routes a flagged job invoice to collections and keeps unflagged in ar', () => {
+    const flagged = job({ id: 'j1', collections_at: '2026-07-01T00:00:00Z' })
+    const active = job({ id: 'j2', hcp_number: '501', job_name: 'Jones House' })
+    const { ar, collections } = buildArBuckets(
+      [flagged, active],
+      [invoice({ id: 'i1', job_id: 'j1', amount: 400 }), invoice({ id: 'i2', job_id: 'j2', amount: 300 })],
+      [{ invoice_id: 'i1', amount: 150 }],
+    )
+    expect(collections.total).toBeCloseTo(250)
+    expect(collections.count).toBe(1)
+    expect(collections.items[0]?.jobId).toBe('j1')
+    expect(ar.total).toBeCloseTo(300)
+    expect(ar.count).toBe(1)
+    expect(ar.items[0]?.jobId).toBe('j2')
+  })
+
+  it('routes flagged invoice-less billed jobs to collections', () => {
+    const { ar, collections } = buildArBuckets(
+      [job({ id: 'j1', revenue: 900, payments_made: 100, collections_at: '2026-07-01T00:00:00Z' })],
+      [],
+      [],
+    )
+    expect(collections.total).toBeCloseTo(800)
+    expect(collections.items[0]?.sublabel).toBe('Billed job (no invoice rows)')
+    expect(ar).toMatchObject({ total: 0, count: 0 })
+  })
+
+  it('ignores the flag on non-billed jobs (sticky-flag semantics)', () => {
+    // A working job with a stale flag contributes nothing to either AR bucket.
+    const { ar, collections } = buildArBuckets(
+      [job({ status: 'working', collections_at: '2026-07-01T00:00:00Z' })],
+      [],
+      [],
+    )
+    expect(ar.count).toBe(0)
+    expect(collections.count).toBe(0)
+  })
+
+  it('ar + collections equals the merged buildArBucket total (buckets are disjoint)', () => {
+    const jobs = [
+      job({ id: 'j1', collections_at: '2026-07-01T00:00:00Z' }),
+      job({ id: 'j2', hcp_number: '501' }),
+      job({ id: 'j3', hcp_number: '502', revenue: 500, payments_made: 50 }),
+    ]
+    const invoices = [
+      invoice({ id: 'i1', job_id: 'j1', amount: 400 }),
+      invoice({ id: 'i2', job_id: 'j2', amount: 300 }),
+    ]
+    const payments = [{ invoice_id: 'i2', amount: 100 }]
+    const split = buildArBuckets(jobs, invoices, payments)
+    const merged = buildArBucket(jobs, invoices, payments)
+    expect(split.ar.total + split.collections.total).toBeCloseTo(merged.total)
+    expect(split.ar.count + split.collections.count).toBe(merged.count)
+    const splitKeys = [...split.ar.items, ...split.collections.items].map((i) => i.key).sort()
+    expect(merged.items.map((i) => i.key).sort()).toEqual(splitKeys)
   })
 })
