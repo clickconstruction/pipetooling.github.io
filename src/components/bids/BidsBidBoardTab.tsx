@@ -19,6 +19,7 @@ import { BidBoardNotesExpandIcon } from '../icons/BidBoardNotesExpandIcon'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
 import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
+import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardBidNumberMark } from './BidBoardBidNumberMark'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
 
@@ -98,6 +99,7 @@ export function BidsBidBoardTab({
   const [bidBoardNotesTab, setBidBoardNotesTab] = useState<BidBoardNotesTab>('all')
   const [bidBoardNotesUnreadByBidId, setBidBoardNotesUnreadByBidId] = useState<Record<string, number>>({})
   const [workingBoardArchivedModalOpen, setWorkingBoardArchivedModalOpen] = useState(false)
+  const [customerReviewOpen, setCustomerReviewOpen] = useState(false)
   const bidBoardUnreadFetchSeqRef = useRef(0)
   const bidsForBoardUnreadRef = useRef(bids)
   bidsForBoardUnreadRef.current = bids
@@ -670,6 +672,16 @@ export function BidsBidBoardTab({
 
   return (
     <div>
+      {/* Board tools row — home for modal-opening buttons (Customer review is the first). */}
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <button
+          type="button"
+          onClick={() => setCustomerReviewOpen(true)}
+          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+        >
+          Customer review
+        </button>
+      </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
         <input
           type="text"
@@ -876,6 +888,7 @@ export function BidsBidBoardTab({
           />
         </div>
       )}
+      {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
     </div>
   )
 }
