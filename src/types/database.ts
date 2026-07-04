@@ -11103,6 +11103,14 @@ export type Database = {
           work_date: string
         }[]
       }
+      list_customer_review_job_hours: {
+        Args: never
+        Returns: {
+          customer_id: string
+          customer_name: string
+          hours: number
+        }[]
+      }
       list_feedback_peer_candidates: {
         Args: never
         Returns: {
