@@ -142,6 +142,16 @@ In this repo, **Cursor** loads **[`.cursor/rules/supabase-incident-triage.mdc`](
 
 ---
 
+## "infinite recursion detected in policy for relation X"
+
+**Symptoms**: A read or write on a table fails with `infinite recursion detected in policy for relation "<table>"`. Seen 2026-07-04 on **every** `public.users` UPDATE (role changes, profile edits) — the failing policy queried `users` inside a `users` policy.
+
+**Cause**: An RLS policy on a table references **that same table** in its `USING` / `WITH CHECK` expression (e.g. `EXISTS (SELECT 1 FROM users WHERE …)` inside a policy **on** `users`). Postgres re-applies the policy while evaluating the subquery → unbounded recursion.
+
+**Solution**: Move the self-referential check into a **`SECURITY DEFINER`** helper function (which bypasses RLS), then reference the helper from the policy. The repo already does this for the common role checks — `is_dev()`, `is_master_or_dev()`, `is_estimator()`, `is_user_notes_editor()`, etc. Pattern and rationale are in [ADDING_A_NEW_ROLE.md](./ADDING_A_NEW_ROLE.md) ("Helper Functions"). Never put a bare `FROM <same-table>` subquery in a policy on that table.
+
+---
+
 ## Investigating errors under load (CLI + logs)
 
 For **timeouts**, **503s**, **DB contention**, or “everyone clocked out and the app died”:

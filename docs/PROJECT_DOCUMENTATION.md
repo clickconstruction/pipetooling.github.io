@@ -1011,10 +1011,6 @@ WHERE proname IN (
 - **Purpose**: Deprecated. Replaced by claim-dev Edge Function (DEV_PROMOTION_CODE secret).
 - **Usage**: Called from Settings page
 
-#### `public.touch_last_sign_in()`
-- **Trigger**: Fires on `auth.users` UPDATE when `last_sign_in_at` changes
-- **Purpose**: Updates `public.users.last_sign_in_at`
-
 #### `public.track_price_history()`
 - **Trigger**: Fires on `material_part_prices` INSERT and UPDATE
 - **Purpose**: Automatically logs price changes to `material_part_price_history` table

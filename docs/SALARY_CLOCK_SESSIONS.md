@@ -19,6 +19,17 @@ Salaried users get **auto materialized** `clock_sessions` rows with `origin = 's
 
 ---
 
+## Payroll & cost hours (the flat 8/0 rule)
+
+The materialized `salary_schedule` sessions above drive the **calendar/On-Shift display**. They do **not** drive payroll math. For **hours grids, cost matrix, and upcoming-payroll** surfaces, a salaried person is credited a **flat 8 hours on weekdays and 0 on weekends**, independent of their clock sessions. The per-person flags live on `people_pay_config`:
+
+- **`is_salary`** — the flag. Payroll/costing uses the flat 8/0 credit.
+- **`record_hours_but_salary`** — lets a salaried person still **log** hours that show on the Hours surfaces; **costing stays on the flat 8/0** regardless.
+
+Both semantics are centralized in the kernel [`src/lib/salariedEffectiveHours.ts`](../src/lib/salariedEffectiveHours.ts) (unit-tested): `effectiveHoursForCost` (salaried → always flat 8/0), `effectiveHoursForDisplay` (`record_hours_but_salary` → logged hours; otherwise flat 8/0), `canEditRecordedHours`. Every People / Quickfill / Crew hours surface calls it — do not re-derive the 8/0 conditional inline. There is **no** stored salary amount or per-person daily-hours override; the 8h/day is fixed.
+
+---
+
 ## `clock_sessions` fields (salary-specific)
 
 | Column | Meaning |
