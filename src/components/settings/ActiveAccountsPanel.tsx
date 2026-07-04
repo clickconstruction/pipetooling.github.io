@@ -302,7 +302,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     <td className="activeAccountsCard__lastLogin">{timeSinceAgo(u.last_sign_in_at)}</td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', alignItems: 'flex-start' }}>
-                        <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'wrap', gap: '0.375rem', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '0.375rem', alignItems: 'center' }}>
                           {editingUserId === u.id ? (
                             <>
                               <button
