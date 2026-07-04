@@ -250,7 +250,7 @@ const response = await supabase.functions.invoke('create-user', {
 **400 Bad Request** - Invalid role:
 ```json
 {
-  "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, estimator"
+  "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent"
 }
 ```
 
@@ -1976,7 +1976,7 @@ interface ReverseStripeInvoiceOobBody {
 
 ### stripe-invoice-agreed-write-down
 
-**Purpose**: Apply an **agreed discount** on a **billed** **Stripe-hosted** **`jobs_ledger_invoices`** row: validates the requested **new total** against Stripe **`amount_paid`** / **`amount_remaining`**, creates a Stripe **credit note** (**`reason: customer_request`**, metadata **`pipetooling_write_down`**), **retrieves** the invoice again, and calls RPC **`service_apply_agreed_write_down_from_stripe`** to set **`jobs_ledger_invoices.amount`** (and audit **`agreed_write_down_*`**) from **`(amount_paid + amount_remaining) / 100`**. Non-Stripe rows use **`apply_agreed_write_down_to_billed_invoice`** from the app instead.
+**Purpose**: Apply an **agreed discount** on a **billed** **Stripe-hosted** **`jobs_ledger_invoices`** row: validates the requested **new total** against Stripe **`amount_paid`** / **`amount_remaining`**, creates a Stripe **credit note** (**`reason: order_change`** — the only credit-note reason that fits an agreed discount; Stripe rejects `customer_request`, which is a *refund* reason — metadata **`pipetooling_write_down`**), **retrieves** the invoice again, and calls RPC **`service_apply_agreed_write_down_from_stripe`** to set **`jobs_ledger_invoices.amount`** (and audit **`agreed_write_down_*`**) from **`(amount_paid + amount_remaining) / 100`**. Non-Stripe rows use **`apply_agreed_write_down_to_billed_invoice`** from the app instead.
 
 **Endpoint**: `POST /functions/v1/stripe-invoice-agreed-write-down`
 
@@ -2272,7 +2272,7 @@ All Edge Functions return errors in consistent JSON format:
 { "error": "Missing required fields: email, password, and role" }
 
 // Invalid field value
-{ "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, estimator" }
+{ "error": "Invalid role. Must be one of: dev, master_technician, assistant, subcontractor, helpers, estimator, primary, superintendent" }
 
 // Password validation
 { "error": "Password must be at least 6 characters" }
