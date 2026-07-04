@@ -424,6 +424,27 @@ function ItemsModal({
             ] as ModalSection[]
           ).filter((s) => s.items.length > 0)
         : [{ title: null, items: bucket.items }]
+  // AR: sortable by date or amount via the column headers; null = incoming order (amount desc).
+  const [arSort, setArSort] = useState<{ key: 'date' | 'amount'; dir: 'asc' | 'desc' } | null>(null)
+  const sortedSections =
+    cardKey === 'ar' && arSort
+      ? sections.map((sec) => ({
+          ...sec,
+          items: [...sec.items].sort((a, b) => {
+            const dir = arSort.dir === 'asc' ? 1 : -1
+            if (arSort.key === 'amount') return (a.amount - b.amount) * dir
+            // Missing dates always sort last regardless of direction.
+            if (!a.dateYmd && !b.dateYmd) return 0
+            if (!a.dateYmd) return 1
+            if (!b.dateYmd) return -1
+            return a.dateYmd.localeCompare(b.dateYmd) * dir
+          }),
+        }))
+      : sections
+  const toggleArSort = (key: 'date' | 'amount') =>
+    setArSort((prev) => ({ key, dir: prev?.key === key && prev.dir === 'desc' ? 'asc' : 'desc' }))
+  const arSortIndicator = (key: 'date' | 'amount') =>
+    arSort?.key === key ? (arSort.dir === 'desc' ? ' ▼' : ' ▲') : ''
   const columnCount = onSendToDispatch ? 4 : 3
   // AP sections (Payroll due / Upcoming payroll / Supplies) are collapsible; expanded on open.
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
@@ -533,13 +554,41 @@ function ItemsModal({
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Item</th>
-                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>{cardKey === 'ap' ? 'Due' : 'Date'}</th>
-                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Amount</th>
+                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>
+                  {cardKey === 'ar' ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleArSort('date')}
+                      title="Sort by date"
+                      style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 'inherit', cursor: 'pointer' }}
+                    >
+                      Date{arSortIndicator('date')}
+                    </button>
+                  ) : cardKey === 'ap' ? (
+                    'Due'
+                  ) : (
+                    'Date'
+                  )}
+                </th>
+                <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>
+                  {cardKey === 'ar' ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleArSort('amount')}
+                      title="Sort by amount"
+                      style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', fontWeight: 'inherit', cursor: 'pointer' }}
+                    >
+                      Amount{arSortIndicator('amount')}
+                    </button>
+                  ) : (
+                    'Amount'
+                  )}
+                </th>
                 {onSendToDispatch ? <th style={{ padding: '0.5rem 0.35rem', width: '1%' }} aria-label="Send to Dispatch" /> : null}
               </tr>
             </thead>
             <tbody>
-              {sections.map((section) => (
+              {sortedSections.map((section) => (
                 <Fragment key={section.title ?? 'all'}>
                   {section.title ? (
                     <tr
@@ -712,7 +761,7 @@ function ItemsModal({
                   {section.title === 'Payroll due' ? upcomingPayrollRows : null}
                 </Fragment>
               ))}
-              {sections.some((sec) => sec.title === 'Payroll due') ? null : upcomingPayrollRows}
+              {sortedSections.some((sec) => sec.title === 'Payroll due') ? null : upcomingPayrollRows}
             </tbody>
             <tfoot>
               <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
