@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -22,6 +22,10 @@ import {
   tallyUniqueJobSplitEntries,
 } from '../lib/mercuryTxRowFromTally'
 import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFromRaw'
+import { useToastContext } from '../contexts/ToastContext'
+import { formatErrorMessage } from '../utils/errorHandling'
+import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
+import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesModal'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
@@ -227,9 +231,23 @@ const tabStyle = (active: boolean) => ({
 
 export default function JobTally() {
   const { user: authUser } = useAuth()
+  const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<JobTallyTab>('transactions')
   const [role, setRole] = useState<string | null>(null)
+  const isDevTally = role === 'dev'
+  // Dev-only "mark as payroll": tx ids currently flagged payroll (merged onto rows for resolved-ness).
+  const [payrollFlaggedIds, setPayrollFlaggedIds] = useState<Set<string>>(new Set())
+  // Tx ids with any flag row (marked or tombstoned) — rules never re-touch these.
+  const [payrollDecidedIds, setPayrollDecidedIds] = useState<Set<string>>(new Set())
+  const [payrollRulesModalOpen, setPayrollRulesModalOpen] = useState(false)
+  const [payrollAutoApply, setPayrollAutoApply] = useState(() => {
+    try {
+      return localStorage.getItem('jobs-tally-payroll-autoapply') === 'true'
+    } catch {
+      return false
+    }
+  })
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([])
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string | null>(null)
   const [jobs, setJobs] = useState<JobForTally[]>([])
@@ -286,7 +304,32 @@ export default function JobTally() {
           'list tally linked debit cards',
         ),
       ])
-      setTallyTxRows((txData ?? []) as TallyLinkedMercuryRow[])
+      const rows = (txData ?? []) as TallyLinkedMercuryRow[]
+      // Dev-only payroll flags: merge is_payroll onto each row + track decided ids.
+      if (role === 'dev' && rows.length > 0) {
+        try {
+          const flags = await withSupabaseRetry(
+            () =>
+              supabase
+                .from('mercury_tally_payroll_flags')
+                .select('mercury_transaction_id, is_payroll')
+                .in('mercury_transaction_id', rows.map((r) => r.mercury_transaction_id)),
+            'load tally payroll flags',
+          )
+          const flagRows = (flags ?? []) as Array<{ mercury_transaction_id: string; is_payroll: boolean }>
+          const flagged = new Set(flagRows.filter((f) => f.is_payroll).map((f) => f.mercury_transaction_id))
+          const decided = new Set(flagRows.map((f) => f.mercury_transaction_id))
+          for (const r of rows) r.is_payroll = flagged.has(r.mercury_transaction_id)
+          setPayrollFlaggedIds(flagged)
+          setPayrollDecidedIds(decided)
+        } catch {
+          // flags are best-effort; rows still render without the payroll chip
+        }
+      } else {
+        setPayrollFlaggedIds(new Set())
+        setPayrollDecidedIds(new Set())
+      }
+      setTallyTxRows(rows)
       setLinkedDebitCards((cardData ?? []) as TallyLinkedDebitCardRow[])
     } catch (e) {
       setTallyTxError(e instanceof Error ? e.message : 'Could not load transactions.')
@@ -295,7 +338,98 @@ export default function JobTally() {
     } finally {
       setTallyTxLoading(false)
     }
-  }, [authUser?.id])
+  }, [authUser?.id, role])
+
+  const setTallyPayrollFlag = useCallback(
+    async (mercuryTransactionId: string, isPayroll: boolean) => {
+      try {
+        await withSupabaseRetry(
+          () =>
+            supabase.rpc('set_tally_payroll_flag', {
+              p_mercury_transaction_id: mercuryTransactionId,
+              p_is_payroll: isPayroll,
+            }),
+          'set tally payroll flag',
+        )
+        await loadTallyTransactions()
+        showToast(isPayroll ? 'Marked as payroll' : 'Payroll mark removed', 'success')
+      } catch (e) {
+        showToast(formatErrorMessage(e, 'Could not update payroll mark'), 'error')
+      }
+    },
+    [loadTallyTransactions, showToast],
+  )
+
+  const applyPayrollRules = useCallback(
+    async (opts?: { silent?: boolean }) => {
+      if (role !== 'dev') return
+      try {
+        const rulesData = await withSupabaseRetry(
+          () => supabase.from('mercury_tally_payroll_rules').select('id, enabled, sort_order, criteria').eq('enabled', true),
+          'load tally payroll rules',
+        )
+        const rules = (rulesData ?? []) as TallyPayrollRuleForMatch[]
+        if (rules.length === 0) {
+          if (!opts?.silent) showToast('No enabled payroll rules yet.', 'info')
+          return
+        }
+        const txIdsWithJobSplits = new Set(
+          tallyTxRows.filter((r) => tallyUniqueJobSplitEntries(r.job_splits).length > 0).map((r) => r.mercury_transaction_id),
+        )
+        const { toFlag, blockedByJobSplits } = buildTallyPayrollRuleFlagsToInsert({
+          txs: tallyTxRows.map((r) => ({
+            mercury_transaction_id: r.mercury_transaction_id,
+            amount: r.amount,
+            counterparty_name: r.counterparty_name ?? null,
+            raw: r.raw,
+          })),
+          rules,
+          decidedTxIds: payrollDecidedIds,
+          txIdsWithJobSplits,
+        })
+        if (toFlag.length === 0) {
+          if (!opts?.silent) {
+            showToast(
+              blockedByJobSplits.length > 0
+                ? `No new payroll marks. ${blockedByJobSplits.length} matched but are split to jobs — resolve those manually.`
+                : 'No new transactions matched the payroll rules.',
+              'info',
+            )
+          }
+          return
+        }
+        const inserted = await withSupabaseRetry(
+          () => supabase.rpc('bulk_apply_tally_payroll_rule_flags', { p_rows: toFlag as unknown as Database['public']['Functions']['bulk_apply_tally_payroll_rule_flags']['Args']['p_rows'] }),
+          'bulk apply tally payroll rule flags',
+        )
+        await loadTallyTransactions()
+        const n = Number(inserted ?? 0)
+        showToast(
+          `Marked ${n} transaction${n === 1 ? '' : 's'} as payroll` +
+            (blockedByJobSplits.length > 0 ? ` · ${blockedByJobSplits.length} skipped (split to jobs)` : ''),
+          'success',
+        )
+      } catch (e) {
+        if (!opts?.silent) showToast(formatErrorMessage(e, 'Could not apply payroll rules'), 'error')
+      }
+    },
+    [role, tallyTxRows, payrollDecidedIds, loadTallyTransactions, showToast],
+  )
+
+  // Auto-apply payroll rules on load (dev opt-in). Signature = undecided tx ids, so a pass that
+  // flags/decides transactions shrinks the set and won't re-fire for the same ones.
+  const payrollAutoApplySigRef = useRef<string>('')
+  useEffect(() => {
+    if (role !== 'dev' || !payrollAutoApply || tallyTxLoading) return
+    const undecided = tallyTxRows
+      .map((r) => r.mercury_transaction_id)
+      .filter((id) => !payrollDecidedIds.has(id))
+      .sort()
+    const sig = undecided.join(',')
+    if (sig === '' || sig === payrollAutoApplySigRef.current) return
+    payrollAutoApplySigRef.current = sig
+    void applyPayrollRules({ silent: true })
+  }, [role, payrollAutoApply, tallyTxLoading, tallyTxRows, payrollDecidedIds, applyPayrollRules])
 
   const tallyTxRowsGlobalFiltered = useMemo(() => {
     if (!tallyGlobalMinPostedYmd) return tallyTxRows
@@ -854,8 +988,27 @@ export default function JobTally() {
               >
                 Show unlinked
               </button>
+              {isDevTally ? (
+                <button
+                  type="button"
+                  onClick={() => setPayrollRulesModalOpen(true)}
+                  title="Manage payroll auto-mark rules and apply them"
+                  style={tallyCardFilterChipButtonStyle(false)}
+                >
+                  Payroll rules
+                </button>
+              ) : null}
             </div>
           </div>
+          {isDevTally && payrollFlaggedIds.size > 0 ? (
+            <div style={{ textAlign: 'center', margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#7c3aed' }}>
+              {(() => {
+                const rows = tallyTxRowsFiltered.filter((r) => r.is_payroll)
+                const total = rows.reduce((s, r) => s + Math.abs(Number(r.amount) || 0), 0)
+                return `Payroll: ${rows.length} · $${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              })()}
+            </div>
+          ) : null}
           {!tallyTxLoading ? (
             <div
               style={{
@@ -1477,6 +1630,53 @@ export default function JobTally() {
                                 Assign jobs
                               </button>
                             )
+                            const markPayrollBtn = isDevTally ? (
+                              <button
+                                type="button"
+                                onClick={() => void setTallyPayrollFlag(row.mercury_transaction_id, true)}
+                                title="Mark as payroll — resolves this transaction without allocating it to any job"
+                                style={{
+                                  fontSize: '0.75rem',
+                                  fontWeight: 500,
+                                  lineHeight: 1.25,
+                                  padding: '0.15rem 0.45rem',
+                                  minHeight: 0,
+                                  borderRadius: 4,
+                                  border: '1px solid #d1d5db',
+                                  background: '#fff',
+                                  color: '#6b7280',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Mark payroll
+                              </button>
+                            ) : null
+                            if (isDevTally && row.is_payroll) {
+                              return (
+                                <div style={tallyJobsSubRowBannerStyle(true)}>
+                                  <div style={rowFlexEnd}>
+                                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#7c3aed' }}>Payroll ✓</span>
+                                    <span aria-hidden="true" style={{ color: '#c4b5fd' }}>{' | '}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => void setTallyPayrollFlag(row.mercury_transaction_id, false)}
+                                      style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        padding: '0.15rem 0.45rem',
+                                        borderRadius: 4,
+                                        border: '1px solid #d1d5db',
+                                        background: '#fff',
+                                        color: '#6b7280',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Unmark
+                                    </button>
+                                  </div>
+                                </div>
+                              )
+                            }
                             if (jobEntries.length > 0) {
                               return (
                                 <div style={tallyJobsSubRowBannerStyle(true)}>
@@ -1554,6 +1754,7 @@ export default function JobTally() {
                                     {' | '}
                                   </span>
                                   {assignJobsCompactBtn}
+                                  {markPayrollBtn}
                                 </div>
                               </div>
                             )
@@ -2076,6 +2277,23 @@ export default function JobTally() {
           void loadTallyTransactions()
         }}
       />
+      {isDevTally ? (
+        <TallyPayrollRulesModal
+          open={payrollRulesModalOpen}
+          onClose={() => setPayrollRulesModalOpen(false)}
+          autoApply={payrollAutoApply}
+          onToggleAutoApply={(next) => {
+            setPayrollAutoApply(next)
+            try {
+              localStorage.setItem('jobs-tally-payroll-autoapply', String(next))
+            } catch {
+              // session-only if unavailable
+            }
+          }}
+          onApplyNow={() => applyPayrollRules()}
+          sampleTransactions={tallyTxRows}
+        />
+      ) : null}
     </div>
   )
 }

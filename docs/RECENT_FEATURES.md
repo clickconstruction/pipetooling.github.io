@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-04 (v2.640)
+last_updated: 2026-07-04 (v2.641)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.641 — **Job Parts Tally** — **"Mark as payroll" + auto-mark rules (dev-only)**. Robert pays payroll on the company card; splitting those charges across jobs would double-count against clocked labor. A dev-only per-row **Mark payroll** toggle resolves a transaction (drops it from the unlinked queue) **without** any job allocation — so per-job spend is untouched. **Block+warn** if the tx already has job splits. A **Payroll rules** manager (counterparty / amount / bank-description criteria, reusing the banking match kernel) auto-marks matches — direct apply (manual mark/unmark always wins via a tombstone), with an **Apply now** button, an **auto-apply-on-load** toggle, and a live test-match count. A **Payroll: N · $X** chip gives a reconciliation surface vs the Payroll ledger. New tables `mercury_tally_payroll_flags` / `mercury_tally_payroll_rules` (dev-only RLS) + RPCs `set_tally_payroll_flag` / `bulk_apply_tally_payroll_rule_flags` enforcing the no-split invariant; migration `20260704140000` applied to prod. Pure kernel `tallyPayrollRules.ts` (4 tests)](#latest-updates-v2641)
 **New:** [v2.640 — **Jobs → Stages** — **"Follow cards I move" toggle**. New toolbar pill (after the ham-mode toggle, persisted in `localStorage['jobs-stages-follow-moves']`, default off): after any stage move — Waiting↔Working, Working↔Ready to Bill, Bill Customer, all send-backs incl. billed-invoice reverts — the destination section opens (if collapsed) and the page smooth-scrolls to the moved card, which flashes amber for ~2.6s (the invoice-focus idiom, cloned for jobs). One hook in `executeUpdateJobStatus` covers ham-mode and confirm-modal paths alike; job rows gained `data-stages-job-id` in both Stages renderers; scroll effect retries once at ~950ms for late-rendering rows. Mark Paid intentionally not followed (paid jobs leave the board). New kernel helper `stagesSectionKeyForJobStatus` (+1 test)](#latest-updates-v2640)
 **New:** [v2.639 — **Jobs** — **fix: "Create customer from job" minted assistant-mastered customers** (Taunya's P0001 "Job linked customer must belong to the job master" on job 886). [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) set the new customer's `master_user_id` to the **creator** (an assistant), not the job's master — the v2.612 invariant trigger then rejected the link and every retry left an orphan duplicate (5× "Richard Visiko"). Client now resolves the JOB's master (`resolveEditJobMasterUserId`; new-job path maps assistants via `master_assistants`). **Prod healed** (migration `20260703150000` + surgery): 95 mis-mastered customers repointed to their master (cascade moved their **104 linked jobs** off Taunya to Malachi), 4 orphan duplicates deleted, job 886 linked; new backstop trigger `customers_master_role_check` requires `customers.master_user_id` to be a dev/master. All verified: 0 mis-mastered rows, 0 invariant violations](#latest-updates-v2639)
 **New:** [v2.638 — **Materials → Supply Houses** — **view toggles inline with the heading**: the `Show paid invoices` / `Show last payment` checkboxes moved from the standalone header row down into the same band as the `Supply Houses: $X` heading and `Summary | Aging map` pills (absolutely positioned right of the centered block). [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) only](#latest-updates-v2638)
@@ -2016,6 +2017,31 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.641)
+
+**Date**: 2026-07-04
+
+### Job Parts Tally — "Mark as payroll" + auto-mark rules (dev-only)
+
+Robert sometimes pays **payroll with the company card**. Payroll cost already reaches per-job numbers via **clocked labor** (hours × wage), so splitting the card charge across jobs would **double-count**. But leaving it unassigned strands it in the "unlinked" queue. Fix: mark such transactions **payroll** — resolved (out of the queue) with **no job allocation**, so no job's spend moves.
+
+- **Per-row toggle** (dev-only, transactions tab): **Mark payroll** on an unassigned row → a **Payroll ✓** chip with **Unmark**. Marking is **blocked with a warning** if the transaction already has job splits (remove them first). Un-marking writes a tombstone so a rule can't silently re-mark it.
+- **Payroll rules** manager (toolbar, dev-only): create rules on **counterparty / amount / bank-description** (contains|equals) — reusing the banking accounting match kernel ([`accountingLabelRuleMatch.ts`](../src/lib/accountingLabelRuleMatch.ts)) with a live "matches N of M loaded" test count. **Apply payroll rules now** button + **Auto-apply on load** toggle (`localStorage['jobs-tally-payroll-autoapply']`). Direct auto-mark (no review queue); rules never touch a transaction with an existing manual decision or job splits (those are reported as skipped).
+- **Reconciliation chip**: `Payroll: N · $X` over the current scope — a glance-check against People → Payroll stub payments.
+- **Correctness by construction**: a payroll-flagged transaction is never written to `mercury_transaction_job_allocations`, so [`fetchMercuryJobAllocationsWithAttributionForJob`](../src/lib/fetchMercuryJobAllocationsWithAttributionForJob.ts) (per-job card spend) is unaffected. The RPCs enforce the flag↔splits mutual exclusion server-side.
+
+**Data**: new dev-only tables `mercury_tally_payroll_flags` (per-tx `is_payroll` + `source` manual/rule, with tombstones) and `mercury_tally_payroll_rules` (V1 criteria jsonb); RPCs `set_tally_payroll_flag(tx, bool)` (P0001 block when split) and `bulk_apply_tally_payroll_rule_flags(rows)` (insert source='rule' only where undecided + split-free). Migration `20260704140000_tally_payroll_flags_and_rules.sql` **applied to prod** via MCP after a `BEGIN…ROLLBACK` dry-run; `gen-types:linked` regenerated; no new security advisors.
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1810/1810** (4 new kernel tests: match→flag, decided-skip, split-conflict routing, disabled/empty rules); JobTally.tsx lint at its pre-existing 1-warning baseline. Prod: both RPCs present, block-invariant guard confirmed against a real allocated transaction.
+
+#### Files
+
+New: [`src/lib/tallyPayrollRules.ts`](../src/lib/tallyPayrollRules.ts) (+ test), [`src/components/tally/TallyPayrollRulesModal.tsx`](../src/components/tally/TallyPayrollRulesModal.tsx), [`supabase/migrations/20260704140000_tally_payroll_flags_and_rules.sql`](../supabase/migrations/20260704140000_tally_payroll_flags_and_rules.sql). Modified: [`src/pages/JobTally.tsx`](../src/pages/JobTally.tsx), [`src/lib/mercuryTxRowFromTally.ts`](../src/lib/mercuryTxRowFromTally.ts), [`src/types/database.ts`](../src/types/database.ts) (regenerated).
+
 ---
 
 ## Latest Updates (v2.640)
