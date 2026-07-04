@@ -168,6 +168,7 @@ import {
   buildBilledStageRows,
   buildJobsStagesBoardLists,
   jobBillingUnallocatedDollars,
+  jobInCollections,
   locateStagesInvoiceSection,
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
@@ -178,6 +179,7 @@ import {
   type StageRow,
 } from '../lib/jobsStagesBoard'
 import { jobLedgerHasCustomerForBilling } from '../lib/jobLedgerCustomerForBilling'
+import { setJobCollectionsFlag } from '../lib/setJobCollectionsFlag'
 import {
   fetchJobIdsMatchingScheduleOrClockSessions,
   shouldFetchStagesScheduleSessionSearch,
@@ -664,6 +666,7 @@ export default function Jobs() {
     working: true,
     readyToBill: true,
     billed: true,
+    collections: true,
     paid: false,
   })
   const [billedTotalByNameModalOpen, setBilledTotalByNameModalOpen] = useState(false)
@@ -729,6 +732,10 @@ export default function Jobs() {
   const [sendBackStatusEventLine, setSendBackStatusEventLine] = useState<string | null>(null)
   const sendBackCollectPaymentNotice = useSendBackCollectPaymentFlowNotice(sendBackJob)
   const [sendBackConfirmJob, setSendBackConfirmJob] = useState<{ id: string; toStatus: 'waiting' | 'ready_to_bill' | 'billed' } | null>(null)
+  // Collections flag confirm: 'to' = Billed → Collections (optional note), 'from' = Collections → Billed.
+  const [collectionsConfirm, setCollectionsConfirm] = useState<{ job: JobWithDetails; direction: 'to' | 'from' } | null>(null)
+  const [collectionsNoteDraft, setCollectionsNoteDraft] = useState('')
+  const [collectionsSaving, setCollectionsSaving] = useState(false)
   const [confirmJobStatusJob, setConfirmJobStatusJob] = useState<{ id: string; toStatus: 'billed' | 'paid'; message: string } | null>(null)
   const [stagesHamMode, setStagesHamMode] = useState(() => {
     try {
@@ -847,7 +854,7 @@ export default function Jobs() {
     }
   }, [stagesWorkingJobsWithoutPictures.length])
 
-  const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed') => {
+  const focusStagesSection = useCallback((key: 'waiting' | 'working' | 'readyToBill' | 'billed' | 'collections') => {
     setStagesSectionOpen((prev) => ({ ...prev, [key]: true }))
     const elId =
       key === 'waiting'
@@ -856,7 +863,9 @@ export default function Jobs() {
           ? 'stages-working'
           : key === 'readyToBill'
             ? 'stages-ready-to-bill'
-            : 'stages-billed'
+            : key === 'collections'
+              ? 'stages-collections'
+              : 'stages-billed'
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.getElementById(elId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -946,7 +955,8 @@ export default function Jobs() {
 
   const billedAgingBuckets = useMemo(() => {
     const st = (j: JobWithDetails) => (j.status ?? 'working') as string
-    const filtered = stagesFilteredJobs
+    // Aging chips describe the Billed Awaiting Payment section, so parked Collections jobs are excluded.
+    const filtered = stagesFilteredJobs.filter((j) => !jobInCollections(j))
     const billedJobsList = filtered.filter((j) => st(j) === 'billed')
     const billedInvoicesList = filtered.flatMap((j) =>
       (j.invoices ?? []).filter((i) => i.status === 'billed').map((inv) => ({ ...inv, job: j })),
@@ -5083,7 +5093,7 @@ ${totalsHtml}
                 <button
                   type="button"
                   onClick={() => focusStagesSection('billed')}
-                  aria-label={`Jump to Billed Awaiting Payment, ${stagesBoardLists.billedRows.length} rows`}
+                  aria-label={`Jump to Billed Awaiting Payment, ${stagesBoardLists.billedActiveRows.length} rows`}
                   style={{
                     padding: 0,
                     border: 'none',
@@ -5097,8 +5107,35 @@ ${totalsHtml}
                 >
                   Billed Awaiting Payment
                 </button>
-                <span>({stagesBoardLists.billedRows.length})</span>
+                <span>({stagesBoardLists.billedActiveRows.length})</span>
               </span>
+              {stagesBoardLists.collectionsRows.length > 0 ? (
+                <>
+                  <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+                    →
+                  </span>
+                  <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => focusStagesSection('collections')}
+                      aria-label={`Jump to Collections, ${stagesBoardLists.collectionsRows.length} rows`}
+                      style={{
+                        padding: 0,
+                        border: 'none',
+                        background: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        color: '#b91c1c',
+                        textDecoration: 'underline',
+                        textUnderlineOffset: '2px',
+                      }}
+                    >
+                      Collections
+                    </button>
+                    <span>({stagesBoardLists.collectionsRows.length})</span>
+                  </span>
+                </>
+              ) : null}
             </div>
             {stagesJobsWithoutCustomer.length > 0 || stagesWorkingJobsWithoutPictures.length > 0 ? (
               <div
@@ -5196,7 +5233,7 @@ ${totalsHtml}
             </div>
           )}
           {(() => {
-            const { waiting, working, paid, readyToBillRows, billedRows } = stagesBoardLists
+            const { waiting, working, paid, readyToBillRows, billedActiveRows, collectionsRows } = stagesBoardLists
 
             /** Shared metrics so Job HCP badge and service-type pill match box height. */
             const stagesJobSublinePillBoxBase: CSSProperties = {
@@ -6325,6 +6362,10 @@ ${totalsHtml}
                 showClickTooling?: boolean
                 /** Billed Awaiting Payment: open Lien Tooling prefill modal. */
                 onOpenLienTooling?: (ctx: { job: JobWithDetails; invoice: JobsLedgerInvoice | null }) => void
+                /** Billed Awaiting Payment: flag the row's job as difficult-to-collect (Collections section). */
+                onJobMoveToCollections?: (j: JobWithDetails) => void
+                /** Collections: short muted note line under the amounts (e.g. the stored collections reason). */
+                jobNoteLine?: (j: JobWithDetails) => string | null
               }
             ) {
               const {
@@ -6344,7 +6385,29 @@ ${totalsHtml}
                 flashInvoiceId = null,
                 showClickTooling = true,
                 onOpenLienTooling,
+                onJobMoveToCollections,
+                jobNoteLine,
               } = options
+              const renderJobNoteLine = (j: JobWithDetails) => {
+                const note = jobNoteLine?.(j)
+                if (!note) return null
+                return (
+                  <span
+                    title={note}
+                    style={{
+                      fontSize: '0.75rem',
+                      color: '#b91c1c',
+                      fontStyle: 'italic',
+                      maxWidth: '11rem',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {note}
+                  </span>
+                )
+              }
               const unifiedStagesColCount = 6
               const flashRowStyle = (invoiceId: string): CSSProperties =>
                 flashInvoiceId === invoiceId
@@ -6642,6 +6705,17 @@ ${totalsHtml}
                                             {jobSendBackLabel}
                                           </button>
                                         )}
+                                        {onJobMoveToCollections && (
+                                          <button
+                                            type="button"
+                                            onClick={() => onJobMoveToCollections(j)}
+                                            title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
+                                            style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
+                                          >
+                                            Move to Collections
+                                          </button>
+                                        )}
+                                        {renderJobNoteLine(j)}
                                       </>
                                     ) : (
                                       <>
@@ -6675,6 +6749,17 @@ ${totalsHtml}
                                             {invoiceBundleActionLabel}
                                           </button>
                                         )}
+                                        {onJobMoveToCollections && (
+                                          <button
+                                            type="button"
+                                            onClick={() => onJobMoveToCollections(j)}
+                                            title="Flag this job as difficult to collect (moves to the Collections section; stays Billed)"
+                                            style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
+                                          >
+                                            Move to Collections
+                                          </button>
+                                        )}
+                                        {renderJobNoteLine(j)}
                                       </>
                                     )}
                                   </div>
@@ -7156,6 +7241,17 @@ ${totalsHtml}
                                         {invoiceStandaloneActionLabel}
                                       </button>
                                     )}
+                                    {onJobMoveToCollections && (
+                                      <button
+                                        type="button"
+                                        onClick={() => onJobMoveToCollections(job)}
+                                        title="Flag this job as difficult to collect (moves all its billed lines to the Collections section; stays Billed)"
+                                        style={{ ...stagesSecondaryOutlineButtonBase, cursor: 'pointer' }}
+                                      >
+                                        Move to Collections
+                                      </button>
+                                    )}
+                                    {renderJobNoteLine(job)}
                                   </div>
                                 </td>
                                 <td style={{ padding: '0.75rem', verticalAlign: 'top' }}>
@@ -7378,7 +7474,11 @@ ${totalsHtml}
               return s + Math.max(0, toBill)
             }, 0)
             const readyToBillTotal = readyToBillRowsExposureTotal(readyToBillRows)
-            const billedTotal = billedRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+            const billedTotal = billedActiveRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+            const collectionsTotal = collectionsRows.reduce((s, r) => s + stageRowBilledRemainingAmount(r), 0)
+            // Server RPC is authoritative; this only controls button visibility (same office pool as other stage moves).
+            const canManageCollections =
+              authRole === 'dev' || authRole === 'master_technician' || authRole === 'assistant'
             return (
               <>
                 <div id="stages-waiting" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
@@ -7517,7 +7617,7 @@ ${totalsHtml}
                       style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
                     >
                       <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
-                      Billed Awaiting Payment ({billedRows.length}) - ${formatCurrency(billedTotal)}
+                      Billed Awaiting Payment ({billedActiveRows.length}) - ${formatCurrency(billedTotal)}
                     </button>
                     <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#6b7280' }}>
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
@@ -7601,8 +7701,8 @@ ${totalsHtml}
                   </div>
                   <button
                     type="button"
-                    onClick={() => printBilledAwaitingPaymentReport(billedRows, { searchFilter: stagesSearchQuery })}
-                    disabled={billedRows.length === 0}
+                    onClick={() => printBilledAwaitingPaymentReport(billedActiveRows, { searchFilter: stagesSearchQuery })}
+                    disabled={billedActiveRows.length === 0}
                     title="Print customers, contacts, and amounts due"
                     aria-label="Print billed awaiting payment report"
                     style={{
@@ -7615,8 +7715,8 @@ ${totalsHtml}
                       padding: '0 0.75rem',
                       border: '1px solid #d1d5db',
                       borderRadius: 4,
-                      background: billedRows.length === 0 ? '#f3f4f6' : 'white',
-                      cursor: billedRows.length === 0 ? 'not-allowed' : 'pointer',
+                      background: billedActiveRows.length === 0 ? '#f3f4f6' : 'white',
+                      cursor: billedActiveRows.length === 0 ? 'not-allowed' : 'pointer',
                       color: '#374151',
                       fontSize: '0.8125rem',
                       fontWeight: 500,
@@ -7631,7 +7731,7 @@ ${totalsHtml}
                     Print
                   </button>
                 </div>
-                {stagesSectionOpen.billed && renderUnifiedStagesTable(billedRows, {
+                {stagesSectionOpen.billed && renderUnifiedStagesTable(billedActiveRows, {
                   actionLabel: 'Mark Paid',
                   onJobAction: (j) => setMarkPaidJob(j),
                   onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
@@ -7660,7 +7760,52 @@ ${totalsHtml}
                   showCreatePartialInvoice: false,
                   invoiceBundleActionLabel: 'Send back',
                   flashInvoiceId: stagesInvoiceFlashId,
+                  onJobMoveToCollections: canManageCollections
+                    ? (j) => {
+                        setCollectionsNoteDraft('')
+                        setCollectionsConfirm({ job: j, direction: 'to' })
+                      }
+                    : undefined,
                 })}
+
+                <div id="stages-collections" style={{ margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => toggleStages('collections')}
+                    aria-expanded={stagesSectionOpen.collections}
+                    style={{ fontSize: '1rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'inherit' }}
+                  >
+                    <span aria-hidden>{stagesSectionOpen.collections ? '▼' : '▶'}</span>
+                    Collections ({collectionsRows.length}) - ${formatCurrency(collectionsTotal)}
+                  </button>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#6b7280' }}>
+                    Billed jobs flagged difficult to collect — still awaiting payment
+                  </span>
+                </div>
+                {stagesSectionOpen.collections && (collectionsRows.length === 0 ? (
+                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+                    No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
+                  </p>
+                ) : renderUnifiedStagesTable(collectionsRows, {
+                  actionLabel: 'Mark Paid',
+                  onJobAction: (j) => setMarkPaidJob(j),
+                  onInvoiceAction: (inv) => setMarkPaidInvoice(inv),
+                  onViewBill: (inv) => setViewBillInvoice(inv),
+                  showClickTooling: false,
+                  onOpenLienTooling: (ctx) =>
+                    setLienToolingPrefillModal({ job: ctx.job, invoice: ctx.invoice }),
+                  onJobSendBack: (j) => setCollectionsConfirm({ job: j, direction: 'from' }),
+                  onInvoiceSendBack: (inv) => setCollectionsConfirm({ job: inv.job, direction: 'from' }),
+                  showRemaining: true,
+                  showTimeOpen: true,
+                  sendBackBelowRemaining: true,
+                  showCreatePartialInvoice: false,
+                  jobSendBackLabel: 'Send back to Billed',
+                  invoiceBundleActionLabel: 'Send back to Billed',
+                  invoiceStandaloneActionLabel: 'Send back to Billed',
+                  flashInvoiceId: stagesInvoiceFlashId,
+                  jobNoteLine: (j) => j.collections_note ?? null,
+                }))}
 
                 <button
                   type="button"
@@ -7720,7 +7865,7 @@ ${totalsHtml}
 
                 {billedTotalByNameModalOpen && (() => {
                   const byNameRows = new Map<string, StageRow[]>()
-                  for (const r of billedRows) {
+                  for (const r of billedActiveRows) {
                     const name = r.job.job_name || '—'
                     const list = byNameRows.get(name) ?? []
                     list.push(r)
@@ -7740,8 +7885,8 @@ ${totalsHtml}
                           <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0 }}>Billed Awaiting Payment by Job Name</h2>
                           <button
                             type="button"
-                            onClick={() => printBilledAwaitingPaymentReport(billedRows, { searchFilter: stagesSearchQuery })}
-                            disabled={billedRows.length === 0}
+                            onClick={() => printBilledAwaitingPaymentReport(billedActiveRows, { searchFilter: stagesSearchQuery })}
+                            disabled={billedActiveRows.length === 0}
                             title="Print customers, contacts, and amounts due"
                             aria-label="Print billed awaiting payment report"
                             style={{
@@ -7754,8 +7899,8 @@ ${totalsHtml}
                               padding: '0 0.75rem',
                               border: '1px solid #d1d5db',
                               borderRadius: 4,
-                              background: billedRows.length === 0 ? '#f3f4f6' : 'white',
-                              cursor: billedRows.length === 0 ? 'not-allowed' : 'pointer',
+                              background: billedActiveRows.length === 0 ? '#f3f4f6' : 'white',
+                              cursor: billedActiveRows.length === 0 ? 'not-allowed' : 'pointer',
                               color: '#374151',
                               fontSize: '0.8125rem',
                               fontWeight: 500,
@@ -10115,6 +10260,85 @@ ${totalsHtml}
                 }}
               >
                 {stagesStatusUpdatingId === sendBackConfirmJob.id ? '…' : 'Confirm'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {collectionsConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
+            <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
+              {collectionsConfirm.direction === 'to' ? 'Move to Collections?' : 'Send back to Billed?'}
+            </h2>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              {collectionsConfirm.direction === 'to'
+                ? `Flag ${(collectionsConfirm.job.hcp_number ?? '').trim() || (collectionsConfirm.job.click_number ?? '').trim() || '—'} · ${(collectionsConfirm.job.job_name ?? '').trim() || 'Job'} as difficult to collect? It stays Billed — this only moves it to the Collections section.`
+                : `Return ${(collectionsConfirm.job.hcp_number ?? '').trim() || (collectionsConfirm.job.click_number ?? '').trim() || '—'} · ${(collectionsConfirm.job.job_name ?? '').trim() || 'Job'} to Billed Awaiting Payment?`}
+            </p>
+            {collectionsConfirm.direction === 'to' ? (
+              <label style={{ display: 'block', margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151' }}>
+                Note (optional)
+                <textarea
+                  value={collectionsNoteDraft}
+                  onChange={(e) => setCollectionsNoteDraft(e.target.value)}
+                  placeholder="e.g. customer disputing invoice, no response in 60 days"
+                  rows={3}
+                  style={{ display: 'block', width: '100%', marginTop: '0.35rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, font: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                />
+              </label>
+            ) : collectionsConfirm.job.collections_note ? (
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#b91c1c', fontStyle: 'italic' }}>
+                Collections note: {collectionsConfirm.job.collections_note}
+              </p>
+            ) : null}
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setCollectionsConfirm(null)
+                  setCollectionsNoteDraft('')
+                }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={collectionsSaving}
+                onClick={async () => {
+                  if (!collectionsConfirm || collectionsSaving) return
+                  const { job, direction } = collectionsConfirm
+                  setCollectionsSaving(true)
+                  try {
+                    const res = await setJobCollectionsFlag(job.id, direction === 'to', direction === 'to' ? collectionsNoteDraft : undefined)
+                    if (!res.ok) {
+                      showToast(res.error ?? 'Could not update Collections.', 'error')
+                      return
+                    }
+                    setCollectionsConfirm(null)
+                    setCollectionsNoteDraft('')
+                    showToast(direction === 'to' ? 'Job moved to Collections.' : 'Job returned to Billed Awaiting Payment.', 'success')
+                    await loadJobs()
+                    if (stagesFollowMoves) {
+                      setStagesSectionOpen((prev) => ({ ...prev, [direction === 'to' ? 'collections' : 'billed']: true }))
+                      setPendingStagesJobFocusId(job.id)
+                      setStagesJobFlashId(job.id)
+                    }
+                  } finally {
+                    setCollectionsSaving(false)
+                  }
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: !collectionsSaving ? '#3b82f6' : '#9ca3af',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: !collectionsSaving ? 'pointer' : 'not-allowed',
+                }}
+              >
+                {collectionsSaving ? '…' : 'Confirm'}
               </button>
             </div>
           </div>

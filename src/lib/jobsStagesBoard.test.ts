@@ -6,6 +6,7 @@ import {
   buildReadyToBillStageRows,
   filterJobsByStagesSearch,
   jobBillingUnallocatedDollars,
+  jobInCollections,
   readyToBillRowsExposureTotal,
   stagesMergedBillingInvoiceId,
   type InvoiceWithJob,
@@ -753,5 +754,71 @@ describe('stagesSectionKeyForJobStatus', () => {
     expect(stagesSectionKeyForJobStatus('billed')).toBe('billed')
     expect(stagesSectionKeyForJobStatus('paid')).toBeNull()
     expect(stagesSectionKeyForJobStatus(null)).toBeNull()
+  })
+})
+
+describe('jobInCollections', () => {
+  it('true only for billed jobs with collections_at set', () => {
+    expect(jobInCollections({ status: 'billed', collections_at: '2026-07-04T12:00:00Z' })).toBe(true)
+    expect(jobInCollections({ status: 'billed', collections_at: null })).toBe(false)
+    // Sticky-flag semantics: the flag alone never counts on non-billed statuses.
+    expect(jobInCollections({ status: 'paid', collections_at: '2026-07-04T12:00:00Z' })).toBe(false)
+    expect(jobInCollections({ status: 'working', collections_at: '2026-07-04T12:00:00Z' })).toBe(false)
+  })
+})
+
+describe('collections partition in buildJobsStagesBoardLists', () => {
+  const billedInvoiceStub = (id: string, jobId: string, amount: number) =>
+    rtbInvoiceStub({ id, job_id: jobId, amount, status: 'billed' })
+
+  it('flagged billed job lands in collections lists but stays in the all-billed lists', () => {
+    const inv = billedInvoiceStub('inv-1', 'job-1', 7000)
+    const flagged = jobStub({ id: 'job-1', status: 'billed', collections_at: '2026-07-01T00:00:00Z', invoices: [inv] })
+    const active = jobStub({ id: 'job-2', status: 'billed', collections_at: null, invoices: [] })
+    const lists = buildJobsStagesBoardLists([flagged, active], '')
+
+    expect(lists.collectionsJobs.map((j) => j.id)).toEqual(['job-1'])
+    expect(lists.billedActiveJobs.map((j) => j.id)).toEqual(['job-2'])
+    // AR-page contract: billedJobs/billedRows keep meaning ALL billed, Collections included.
+    expect(lists.billedJobs.map((j) => j.id).sort()).toEqual(['job-1', 'job-2'])
+    expect(lists.billedRows).toHaveLength(2)
+
+    expect(lists.collectionsRows).toHaveLength(1)
+    expect(lists.collectionsRows[0]?.kind).toBe('job_with_merged_billed')
+    expect(lists.billedActiveRows).toHaveLength(1)
+    expect(lists.billedActiveRows[0]?.kind).toBe('job')
+  })
+
+  it('billed invoice rows follow their parent job flag', () => {
+    const invA = billedInvoiceStub('inv-a', 'job-1', 2000)
+    const invB = billedInvoiceStub('inv-b', 'job-1', 3000)
+    const flagged = jobStub({ id: 'job-1', status: 'billed', collections_at: '2026-07-01T00:00:00Z', invoices: [invA, invB] })
+    const lists = buildJobsStagesBoardLists([flagged], '')
+
+    // 2+ billed invoices → invoice rows only; both must land in collectionsRows.
+    expect(lists.collectionsRows).toHaveLength(2)
+    expect(lists.collectionsRows.every((r) => r.kind === 'invoice')).toBe(true)
+    expect(lists.billedActiveRows).toHaveLength(0)
+  })
+
+  it('flagged non-billed job appears in no collections list', () => {
+    const working = jobStub({ id: 'job-1', status: 'working', collections_at: '2026-07-01T00:00:00Z', invoices: [] })
+    const paid = jobStub({ id: 'job-2', status: 'paid', collections_at: '2026-07-01T00:00:00Z', invoices: [] })
+    const lists = buildJobsStagesBoardLists([working, paid], '')
+    expect(lists.collectionsJobs).toHaveLength(0)
+    expect(lists.collectionsRows).toHaveLength(0)
+    expect(lists.working.map((j) => j.id)).toEqual(['job-1'])
+    expect(lists.paid.map((j) => j.id)).toEqual(['job-2'])
+  })
+
+  it('unflagged board partitions cleanly: active + collections = billed', () => {
+    const jobs = [
+      jobStub({ id: 'a', status: 'billed', collections_at: null, invoices: [] }),
+      jobStub({ id: 'b', status: 'billed', collections_at: '2026-06-01T00:00:00Z', invoices: [] }),
+      jobStub({ id: 'c', status: 'billed', collections_at: null, invoices: [] }),
+    ]
+    const lists = buildJobsStagesBoardLists(jobs, '')
+    expect(lists.billedActiveJobs.length + lists.collectionsJobs.length).toBe(lists.billedJobs.length)
+    expect(lists.billedActiveRows.length + lists.collectionsRows.length).toBe(lists.billedRows.length)
   })
 })
