@@ -10,14 +10,17 @@
  * - Local file not applied remotely (pending)  -> warn on pushes, FAIL when STRICT_PENDING=1
  *   (the daily cron sets it: on main every migration should be pushed right after merge)
  *
- * Uses `supabase migration list` for the remote side, so auth follows the CLI: a local
- * `supabase login` session, or SUPABASE_ACCESS_TOKEN + `supabase link` in CI.
+ * Remote side: with SUPABASE_ACCESS_TOKEN set (CI), queries the ledger via the Management API —
+ * no DB connection or `supabase link` needed (in CI, `migration list` can't reach the DB with
+ * the access token alone). Locally, falls back to `supabase migration list`, which rides the
+ * CLI login session.
  */
 
 import { readdirSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 
 const MIGRATIONS_DIR = 'supabase/migrations'
+const PROJECT_REF = process.env.SUPABASE_PROJECT_REF || 'yewfzhbofbbyvkvtaatw'
 const STRICT_PENDING = !!process.env.STRICT_PENDING
 
 function repoVersions() {
@@ -32,7 +35,30 @@ function repoVersions() {
   return { versions: seen, dupes }
 }
 
-function remoteVersions() {
+async function remoteVersionsViaApi(token) {
+  const res = await fetch(`https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: 'select version from supabase_migrations.schema_migrations' }),
+  })
+  if (!res.ok) {
+    console.error(
+      `check-migration-drift: Management API query failed (HTTP ${res.status}): ` +
+        `${(await res.text()).slice(0, 300)}`,
+    )
+    process.exit(1)
+  }
+  const rows = await res.json()
+  if (!Array.isArray(rows)) {
+    console.error(
+      `check-migration-drift: unexpected Management API response shape: ${JSON.stringify(rows).slice(0, 300)}`,
+    )
+    process.exit(1)
+  }
+  return new Set(rows.map((r) => r.version))
+}
+
+function remoteVersionsViaCli() {
   let raw
   try {
     raw = execFileSync('npx', ['--yes', 'supabase', 'migration', 'list'], {
@@ -44,8 +70,7 @@ function remoteVersions() {
     console.error(
       'check-migration-drift: `supabase migration list` failed.\n' +
         (stderr ? `${stderr}\n` : '') +
-        'Auth: run `npx supabase login` locally, or in CI set SUPABASE_ACCESS_TOKEN and run ' +
-        '`npx supabase link --project-ref <ref>` first.',
+        'Auth: run `npx supabase login` locally, or set SUPABASE_ACCESS_TOKEN to use the Management API.',
     )
     process.exit(1)
   }
@@ -66,14 +91,22 @@ function remoteVersions() {
     }
   }
   if (versions.size === 0) {
-    console.error('check-migration-drift: parsed 0 remote versions — `migration list` output format changed?')
+    console.error(
+      'check-migration-drift: parsed 0 remote versions — `migration list` output format changed?\n' +
+        `raw output (first 500 chars):\n${raw.slice(0, 500)}`,
+    )
     process.exit(1)
   }
   return versions
 }
 
 const { versions: repo, dupes } = repoVersions()
-const remote = remoteVersions()
+const token = process.env.SUPABASE_ACCESS_TOKEN
+const remote = token ? await remoteVersionsViaApi(token) : remoteVersionsViaCli()
+if (remote.size === 0) {
+  console.error('check-migration-drift: remote ledger returned 0 versions — refusing to compare against nothing.')
+  process.exit(1)
+}
 
 const remoteOnly = [...remote].filter((v) => !repo.has(v)).sort()
 const pending = [...repo.keys()].filter((v) => !remote.has(v)).sort()
