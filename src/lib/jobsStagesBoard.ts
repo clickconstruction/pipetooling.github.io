@@ -420,3 +420,21 @@ export function stagesInvoiceVisibleWithEmptySearch(invoiceId: string, jobs: Job
   const { readyToBillRows, billedRows } = buildJobsStagesBoardLists(jobs, '')
   return locateStagesInvoiceSection(invoiceId, readyToBillRows, billedRows) != null
 }
+
+/** Stages section (stagesSectionOpen key / stages-* anchor) a job lands in for a given status. */
+export function stagesSectionKeyForJobStatus(
+  status: string | null | undefined,
+): 'waiting' | 'working' | 'readyToBill' | 'billed' | null {
+  switch (status ?? '') {
+    case 'waiting':
+      return 'waiting'
+    case 'working':
+      return 'working'
+    case 'ready_to_bill':
+      return 'readyToBill'
+    case 'billed':
+      return 'billed'
+    default:
+      return null
+  }
+}

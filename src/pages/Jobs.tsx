@@ -172,6 +172,7 @@ import {
   readyToBillRowsExposureTotal,
   stagesInvoiceVisibleWithEmptySearch,
   stagesJobsWithoutCustomerFromFiltered,
+  stagesSectionKeyForJobStatus,
   stagesWorkingJobsWithoutPicturesFromWorking,
   type InvoiceWithJob,
   type StageRow,
@@ -655,6 +656,9 @@ export default function Jobs() {
   const [pendingScrollToPartsJobId, setPendingScrollToPartsJobId] = useState<string | null>(null)
   const [pendingStagesInvoiceFocusId, setPendingStagesInvoiceFocusId] = useState<string | null>(null)
   const [stagesInvoiceFlashId, setStagesInvoiceFlashId] = useState<string | null>(null)
+  // "Follow cards I move": scroll to + flash a job row after a stage move (invoice-focus idiom).
+  const [pendingStagesJobFocusId, setPendingStagesJobFocusId] = useState<string | null>(null)
+  const [stagesJobFlashId, setStagesJobFlashId] = useState<string | null>(null)
   const [stagesSectionOpen, setStagesSectionOpen] = useState({
     waiting: false,
     working: true,
@@ -729,6 +733,13 @@ export default function Jobs() {
   const [stagesHamMode, setStagesHamMode] = useState(() => {
     try {
       return localStorage.getItem('jobs-stages-ham-mode') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [stagesFollowMoves, setStagesFollowMoves] = useState(() => {
+    try {
+      return localStorage.getItem('jobs-stages-follow-moves') === 'true'
     } catch {
       return false
     }
@@ -852,6 +863,19 @@ export default function Jobs() {
       })
     })
   }, [])
+
+  /** "Follow cards I move": open the destination section, then scroll to + flash the job row. */
+  const followMovedJob = useCallback(
+    (jobId: string, toStatus: string) => {
+      if (!stagesFollowMoves) return
+      const section = stagesSectionKeyForJobStatus(toStatus)
+      if (!section) return
+      setStagesSectionOpen((prev) => ({ ...prev, [section]: true }))
+      setPendingStagesJobFocusId(jobId)
+      setStagesJobFlashId(jobId)
+    },
+    [stagesFollowMoves],
+  )
 
   const stagesFilteredJobs = stagesBoardLists.filtered
 
@@ -1047,6 +1071,7 @@ export default function Jobs() {
         return false
       }
       setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status: toStatus } : j)))
+      followMovedJob(jobId, toStatus)
       scheduleLoadJobsAfterMutation()
       return true
     } finally {
@@ -1102,6 +1127,7 @@ export default function Jobs() {
             setError(sync.message)
             return false
           }
+          followMovedJob(inv.job_id, 'ready_to_bill')
           scheduleLoadJobsAfterMutation()
           return true
         } catch (e: unknown) {
@@ -1143,6 +1169,7 @@ export default function Jobs() {
           setError(sync.message)
           return false
         }
+        followMovedJob(inv.job_id, 'ready_to_bill')
         scheduleLoadJobsAfterMutation()
         return true
       } finally {
@@ -3483,6 +3510,40 @@ ${totalsHtml}
     return () => window.clearTimeout(timer)
   }, [pendingStagesInvoiceFocusId])
 
+  // "Follow cards I move" — job-row cousins of the invoice flash/focus effects above.
+  useEffect(() => {
+    if (!stagesJobFlashId) return
+    const t = window.setTimeout(() => setStagesJobFlashId(null), 2600)
+    return () => window.clearTimeout(t)
+  }, [stagesJobFlashId])
+
+  useEffect(() => {
+    if (!pendingStagesJobFocusId) return
+    const jobId = pendingStagesJobFocusId
+    const scrollTo = () => {
+      const el = document.querySelector(`[data-stages-job-id="${jobId}"]`)
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return !!el
+    }
+    // First attempt after the section-open re-render; one retry covers the destination row
+    // appearing late (e.g. the post-move debounced refetch re-keying the lists).
+    let retry: number | undefined
+    const timer = window.setTimeout(() => {
+      if (scrollTo()) {
+        setPendingStagesJobFocusId(null)
+        return
+      }
+      retry = window.setTimeout(() => {
+        scrollTo()
+        setPendingStagesJobFocusId(null)
+      }, 700)
+    }, 250)
+    return () => {
+      window.clearTimeout(timer)
+      if (retry !== undefined) window.clearTimeout(retry)
+    }
+  }, [pendingStagesJobFocusId])
+
   useEffect(() => {
     if (activeTab === 'sub_sheet_ledger') {
       const t = setTimeout(() => loadRoster(), 80)
@@ -4843,6 +4904,38 @@ ${totalsHtml}
             )}
             <button
               type="button"
+              onClick={() =>
+                setStagesFollowMoves((prev) => {
+                  const next = !prev
+                  try {
+                    localStorage.setItem('jobs-stages-follow-moves', String(next))
+                  } catch {
+                    // localStorage unavailable — session-only toggle
+                  }
+                  return next
+                })
+              }
+              title="After you move a card, scroll to it in its new section and highlight it"
+              aria-pressed={stagesFollowMoves}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                height: 36,
+                padding: '0 0.7rem',
+                border: '1px solid #d1d5db',
+                borderRadius: 4,
+                background: stagesFollowMoves ? '#eff6ff' : 'white',
+                cursor: 'pointer',
+                color: stagesFollowMoves ? '#2563eb' : '#6b7280',
+                fontSize: '0.8125rem',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Follow cards I move
+            </button>
+            <button
+              type="button"
               onClick={() => setBilledTotalByNameModalOpen(true)}
               title="Total by Name"
               aria-label="Total by Name"
@@ -5776,8 +5869,12 @@ ${totalsHtml}
                         jobList.map((j) => (
                           <Fragment key={j.id}>
                           <tr
+                            data-stages-job-id={j.id}
                             style={{
                               borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
+                              ...(stagesJobFlashId === j.id
+                                ? { backgroundColor: '#fef3c7', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
+                                : {}),
                             }}
                             onClick={(e) => {
                               if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
@@ -6345,9 +6442,13 @@ ${totalsHtml}
                               <Fragment key={bundleRowKey}>
                               <tr
                                 data-stages-invoice-id={bundleInv != null ? bundleInv.id : undefined}
+                                data-stages-job-id={j.id}
                                 style={{
                                   borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
                                   ...(bundleInv != null ? flashRowStyle(bundleInv.id) : {}),
+                                  ...(stagesJobFlashId === j.id
+                                    ? { backgroundColor: '#fef3c7', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
+                                    : {}),
                                 }}
                                 onClick={(e) => {
                                   if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
@@ -6885,9 +6986,13 @@ ${totalsHtml}
                               <Fragment key={`inv-${inv.id}`}>
                               <tr
                                 data-stages-invoice-id={inv.id}
+                                data-stages-job-id={job.id}
                                 style={{
                                   borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
                                   ...flashRowStyle(inv.id),
+                                  ...(stagesJobFlashId === job.id
+                                    ? { backgroundColor: '#fef3c7', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
+                                    : {}),
                                 }}
                                 onClick={(e) => {
                                   if (shouldSuppressStagesRowJobThreadToggle(e.target)) return
@@ -7350,6 +7455,7 @@ ${totalsHtml}
                       payload: { kind: 'job', job: jobBillingContextFromJob(j) },
                       onSuccess: async () => {
                         await loadJobs()
+                        followMovedJob(j.id, 'billed')
                       },
                       onAfterEnsureSuccess: async () => {
                         await loadJobs()
@@ -7374,6 +7480,7 @@ ${totalsHtml}
                       },
                       onSuccess: async () => {
                         await loadJobs()
+                        followMovedJob(inv.job.id, 'billed')
                       },
                       onAfterEnsureSuccess: async () => {
                         await loadJobs()

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  stagesSectionKeyForJobStatus,
   buildBilledStageRows,
   buildJobsStagesBoardLists,
   buildReadyToBillStageRows,
@@ -741,5 +742,16 @@ describe('buildBilledStageRows', () => {
     const rows = buildBilledStageRows([job], [])
     expect(rows).toHaveLength(1)
     expect(rows[0]?.kind).toBe('job')
+  })
+})
+
+describe('stagesSectionKeyForJobStatus', () => {
+  it('maps job statuses to Stages section keys', () => {
+    expect(stagesSectionKeyForJobStatus('waiting')).toBe('waiting')
+    expect(stagesSectionKeyForJobStatus('working')).toBe('working')
+    expect(stagesSectionKeyForJobStatus('ready_to_bill')).toBe('readyToBill')
+    expect(stagesSectionKeyForJobStatus('billed')).toBe('billed')
+    expect(stagesSectionKeyForJobStatus('paid')).toBeNull()
+    expect(stagesSectionKeyForJobStatus(null)).toBeNull()
   })
 })
