@@ -640,7 +640,21 @@ function ItemsModal({
                   <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
                     {(() => {
                       const bill = apBills?.[item.key]
-                      if (!bill) return shortDate(item.dateYmd)
+                      if (!bill) {
+                        // AR: age the billed date — "2/9/26 (+45)" = days since the bill went out.
+                        if (cardKey === 'ar' && item.dateYmd) {
+                          const age = daysPastDue(item.dateYmd, new Date().toLocaleDateString('en-CA'))
+                          return (
+                            <>
+                              {shortDate(item.dateYmd)}
+                              {age !== null && age > 0 ? (
+                                <span style={{ color: '#6b7280' }}> (+{age})</span>
+                              ) : null}
+                            </>
+                          )
+                        }
+                        return shortDate(item.dateYmd)
+                      }
                       const days = bill.dueDateYmd
                         ? daysPastDue(bill.dueDateYmd, new Date().toLocaleDateString('en-CA'))
                         : null
