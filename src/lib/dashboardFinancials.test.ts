@@ -277,3 +277,30 @@ describe('buildArBuckets (collections split)', () => {
     expect(merged.items.map((i) => i.key).sort()).toEqual(splitKeys)
   })
 })
+
+describe('buildArBuckets edge cases', () => {
+  it('flagged billed job with zero remainder appears in NEITHER bucket (EPSILON filter)', () => {
+    // Real prod case: revenue fully paid but status still 'billed'. Stages Collections still
+    // lists it (Stages does not filter by remaining); the dashboard drops it like any $0 AR row.
+    const { ar, collections } = buildArBuckets(
+      [job({ revenue: 220, payments_made: 220, collections_at: '2026-07-01T00:00:00Z' })],
+      [],
+      [],
+    )
+    expect(ar.count).toBe(0)
+    expect(collections.count).toBe(0)
+  })
+
+  it('flagged job with one paid and one open invoice: only the open one lands in collections', () => {
+    const flagged = job({ id: 'j1', collections_at: '2026-07-01T00:00:00Z' })
+    const { ar, collections } = buildArBuckets(
+      [flagged],
+      [invoice({ id: 'i-paid', job_id: 'j1', amount: 200 }), invoice({ id: 'i-open', job_id: 'j1', amount: 300 })],
+      [{ invoice_id: 'i-paid', amount: 200 }],
+    )
+    expect(ar.count).toBe(0)
+    expect(collections.count).toBe(1)
+    expect(collections.items[0]?.key).toBe('inv:i-open')
+    expect(collections.total).toBeCloseTo(300)
+  })
+})
