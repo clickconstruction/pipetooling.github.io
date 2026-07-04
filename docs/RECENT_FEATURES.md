@@ -7,7 +7,7 @@ file: RECENT_FEATURES.md
 type: Changelog
 purpose: Chronological log of all features and updates by version
 audience: All users (developers, product managers, AI agents)
-last_updated: 2026-07-03 (v2.639)
+last_updated: 2026-07-04 (v2.640)
  estimated_read_time: 30-45 minutes
  difficulty: Beginner to Intermediate
  
@@ -1588,6 +1588,7 @@ when_to_read:
 ---
 
 ## Table of Contents
+**New:** [v2.640 — **Jobs → Stages** — **"Follow cards I move" toggle**. New toolbar pill (after the ham-mode toggle, persisted in `localStorage['jobs-stages-follow-moves']`, default off): after any stage move — Waiting↔Working, Working↔Ready to Bill, Bill Customer, all send-backs incl. billed-invoice reverts — the destination section opens (if collapsed) and the page smooth-scrolls to the moved card, which flashes amber for ~2.6s (the invoice-focus idiom, cloned for jobs). One hook in `executeUpdateJobStatus` covers ham-mode and confirm-modal paths alike; job rows gained `data-stages-job-id` in both Stages renderers; scroll effect retries once at ~950ms for late-rendering rows. Mark Paid intentionally not followed (paid jobs leave the board). New kernel helper `stagesSectionKeyForJobStatus` (+1 test)](#latest-updates-v2640)
 **New:** [v2.639 — **Jobs** — **fix: "Create customer from job" minted assistant-mastered customers** (Taunya's P0001 "Job linked customer must belong to the job master" on job 886). [`JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) set the new customer's `master_user_id` to the **creator** (an assistant), not the job's master — the v2.612 invariant trigger then rejected the link and every retry left an orphan duplicate (5× "Richard Visiko"). Client now resolves the JOB's master (`resolveEditJobMasterUserId`; new-job path maps assistants via `master_assistants`). **Prod healed** (migration `20260703150000` + surgery): 95 mis-mastered customers repointed to their master (cascade moved their **104 linked jobs** off Taunya to Malachi), 4 orphan duplicates deleted, job 886 linked; new backstop trigger `customers_master_role_check` requires `customers.master_user_id` to be a dev/master. All verified: 0 mis-mastered rows, 0 invariant violations](#latest-updates-v2639)
 **New:** [v2.638 — **Materials → Supply Houses** — **view toggles inline with the heading**: the `Show paid invoices` / `Show last payment` checkboxes moved from the standalone header row down into the same band as the `Supply Houses: $X` heading and `Summary | Aging map` pills (absolutely positioned right of the centered block). [`SupplyHousesTab.tsx`](../src/components/SupplyHousesTab.tsx) only](#latest-updates-v2638)
 **New:** [v2.637 — **Dashboard → Financials** — **AP supply rows show due date + allocated jobs inline**. The AP drill-down's date column is now headed **Due** and supply rows show the bill's `due_date` with a compact **`Nd`** past-due chip (orange <60d, red ≥60d) instead of the invoice date; each supply row also gets a muted second line listing its job allocations (`500 · Smith House (60%), …`) from the v2.635 `apBills` map. Payroll-due rows keep their period-end date under the same `Due` header; other cards keep `Date`. [`DashboardFinancialsSection.tsx`](../src/components/DashboardFinancialsSection.tsx) only](#latest-updates-v2637)
@@ -2015,6 +2016,29 @@ when_to_read:
 153. [Email Templates](#email-templates)
 154. [Financial Tracking](#financial-tracking)
 155. [Customer and Project Management](#customer-and-project-management)
+---
+
+## Latest Updates (v2.640)
+
+**Date**: 2026-07-04
+
+### Jobs → Stages — "Follow cards I move" toggle
+
+When you move a card between stages, it silently jumps to another section and you lose it. New toolbar toggle — **`Follow cards I move`** (pill button after the ham-mode toggle; per-browser persisted via `localStorage['jobs-stages-follow-moves']`; default **off**) — makes the board follow your moves:
+
+- After a move, the **destination section opens** (if collapsed), the page **smooth-scrolls to the card** in its new home, and the row **flashes amber ~2.6s** (same styling as the existing invoice focus flash).
+- **Covered moves**: Waiting → Working, Working → Ready to Bill (incl. Stripe prep), Working → Waiting, Ready to Bill → Working, Billed → Ready to Bill (job- and invoice-level send-backs), and **Bill Customer** (follows into Billed) — in both ham-mode and confirmation-modal paths, because the hook lives in the central `executeUpdateJobStatus` pipeline (plus the revert + Bill Customer callbacks).
+- **Mark Paid is intentionally not followed** — paid jobs leave the visible board.
+- Mechanics: job rows in both Stages renderers gained `data-stages-job-id`; a cloned pair of the invoice focus/flash effects scrolls (250ms, one retry at ~950ms for rows that render late) and clears the flash; new kernel helper [`stagesSectionKeyForJobStatus`](../src/lib/jobsStagesBoard.ts) maps status → section (+1 test).
+
+#### Verification
+
+`tsc -b` clean; `vitest run` **1806/1806** (1 new); Jobs.tsx lint at its pre-existing 12-warning baseline (verified no new).
+
+#### Files
+
+Modified: [`src/pages/Jobs.tsx`](../src/pages/Jobs.tsx), [`src/lib/jobsStagesBoard.ts`](../src/lib/jobsStagesBoard.ts) (+ test). No DB changes.
+
 ---
 
 ## Latest Updates (v2.639)
