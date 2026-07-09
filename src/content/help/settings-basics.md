@@ -9,7 +9,13 @@ Settings is where you manage your own profile and notifications. Which tabs you 
 
 ## Your profile
 
-Under **Your account → My Profile** you can edit your **Name**, **Email**, and **Phone**, then press **Save**.
+Under **Your account → My Profile** you can edit your details:
+
+:::example My Profile
+Name: `Mike Thompson` &nbsp;·&nbsp; Email: `mike@example.com` &nbsp;·&nbsp; Phone: `(555) 123-4567`
+
+{{button:blue|Save}}
+:::
 
 If your name is managed by admins, the Name field is locked — the note reads "Name is managed by admins. Contact a master or dev to change it."
 
@@ -17,8 +23,12 @@ If your name is managed by admins, the Name field is locked — the note reads "
 
 Push notifications are how the app reaches you: dispatch alerts, report notifications, reminders.
 
-1. In **Your account → Push Notifications**, tap **Enable push notifications**.
-2. When it shows a green **Enabled**, send a **Test notification** — you should see "If you see this, push notifications are working!"
+:::example Your account → Push Notifications
+{{button:blue|Enable push notifications}} &nbsp;→&nbsp; {{chip:green|Enabled}} &nbsp;→&nbsp; {{button:outline|Test notification}}
+:::
+
+1. Tap {{button:blue|Enable push notifications}}.
+2. When it shows {{chip:green|Enabled}}, send a **Test notification** — you should see "If you see this, push notifications are working!"
 
 Recent notifications you've received are listed under the **Recent push** tab, so you can catch up on anything you dismissed.
 
@@ -26,7 +36,14 @@ On a phone, use the **Add to Home Screen** helper so the app (and its notificati
 
 ## Report notifications
 
-Under **Dashboard & alerts → Report notifications** (office roles), check **"Notify me when someone submits: [report type]"** for each report type you want pushed to you, then **Save report notification preferences**.
+Under **Dashboard & alerts → Report notifications** (office roles), pick which report types get pushed to you:
+
+:::example Report notifications
+☑ Notify me when someone submits: **Job Complete**
+☐ Notify me when someone submits: **Status Report**
+
+{{button:blue|Save report notification preferences}}
+:::
 
 ## Pinned pages
 

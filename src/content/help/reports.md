@@ -9,11 +9,27 @@ Field reports are how what happened on site becomes something the office can act
 
 ## Filing a report (field side)
 
-Tap **Leave Report** — on the Job Mode card, or during clock-out. Pick the job if it isn't pre-filled, choose a report type, fill in the fields, and submit. Your location is attached automatically.
+Tap {{button:blue|Leave Report}} — on the Job Mode card, or during clock-out. Pick the job if it isn't pre-filled, choose a report type, fill in the fields, and submit. Your location is attached automatically.
+
+:::example Picking a report type
+Report type: &nbsp;{{button:outline-blue|Job Complete}} &nbsp; {{button:outline-blue|Status Report}} &nbsp; {{button:outline|Materials Needed}}
+
+How complete is the job? `100` %
+
+{{button:outline|Cancel}} &nbsp; {{button:blue|Save report}}
+:::
 
 The two most common types:
 
-- **Job Complete** — includes "How complete is the job?" as a percentage. Reporting **100%** on a Working job triggers the **"Move to Ready to Bill?"** prompt, which is how finished work flows straight into billing (see the billing guide).
+- **Job Complete** — includes "How complete is the job?" as a percentage. Reporting **100%** on a Working job triggers the prompt below, which is how finished work flows straight into billing (see the billing guide):
+
+:::example After a 100% Job Complete report
+**Move to Ready to Bill?**
+☑ I have reported all the Job Parts I've used
+
+{{button:outline|Not yet}} &nbsp; {{button:green|Move to Ready to Bill}}
+:::
+
 - **Status Report** — a general progress update.
 
 ## Reviewing reports (office side)
@@ -24,8 +40,8 @@ Your own reports are available under **My Reports**, and you can edit a report w
 
 ## Getting notified
 
-Don't poll the Reports tab — subscribe. In **Settings → Dashboard & alerts → Report notifications**, check **"Notify me when someone submits: [report type]"** for each type you want, and save. You'll get a push the moment one is filed (enable push notifications first — see Settings Basics).
+Don't poll the Reports tab — subscribe. In **Settings → Dashboard & alerts → Report notifications**, check the types you want and {{button:blue|Save report notification preferences}}. You'll get a push the moment one is filed (enable push notifications first — see Settings Basics).
 
 ## Special reports
 
-Some reports are filed by dedicated buttons rather than the generic picker — for example, **Turnaway** reports come from the Turnaway button on the Job Mode card, because they also alert dispatch for a trip charge. They still appear in the Reports tab like any other report.
+Some reports are filed by dedicated buttons rather than the generic picker — for example, **Turnaway** reports come from {{button:amber|Turnaway — not ready / not home}} on the Job Mode card, because they also alert dispatch for a trip charge. They still appear in the Reports tab like any other report.
