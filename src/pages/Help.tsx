@@ -10,6 +10,7 @@ import {
 import { searchHelpGuides } from '../lib/helpGuideSearch'
 import { helpGuideMarkdownToSafeHtml } from '../lib/helpGuideHtml'
 import { displayLabelForUserRole } from '../lib/userRoleDisplay'
+import { HelpGuideFeedbackForm } from '../components/HelpGuideFeedbackForm'
 
 const GUIDE_PARAM = 'g'
 
@@ -119,7 +120,7 @@ export default function Help() {
             style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: '#374151' }}
             dangerouslySetInnerHTML={{ __html: articleHtml }}
           />
-          {/* PR B: help_feedback form mounts here */}
+          <HelpGuideFeedbackForm guideSlug={selectedGuide.slug} />
         </div>
       </div>
     )

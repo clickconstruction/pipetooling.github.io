@@ -98,6 +98,7 @@ import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
 import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
+import { HelpFeedbackInboxSection } from '../components/HelpFeedbackInboxSection'
 import {
   EstimatorInboxSection,
   type EstimatorInboxRow,
@@ -5211,6 +5212,7 @@ export default function Dashboard() {
         />
       )}
       {isDev && authUser?.id && <DashboardDevRejectedNotification />}
+      {isDev && authUser?.id && <HelpFeedbackInboxSection />}
       {authUser?.id && dispatchInboxEligible && (
         <DispatchDismissedItemsModal
           open={dispatchDismissedModalOpen}
