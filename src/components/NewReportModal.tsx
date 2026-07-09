@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { Database } from '../types/database'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
+import { isTurnawayTemplateName } from '../lib/turnaway'
 import { fieldValueForSubmit, normalizePercentFieldValueToString } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { REPORT_SIGNATURE_ON_FILE, validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
@@ -54,7 +55,9 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   useEffect(() => {
     if (!open) return
     supabase.from('report_templates').select('*').order('sequence_order').then(({ data }) => {
-      const list = (data as ReportTemplate[]) ?? []
+      // Turnaway is filed only through the Job Mode TurnawayModal (which also
+      // creates the dispatch request), so keep it out of the generic picker.
+      const list = ((data as ReportTemplate[]) ?? []).filter((t) => !isTurnawayTemplateName(t.name))
       setTemplates(list)
       if (list.length > 0) {
         if (initialTemplateName) {
