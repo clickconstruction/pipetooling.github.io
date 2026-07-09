@@ -15,6 +15,7 @@ const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
 const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
 const Workflow = lazy(() => import('./pages/Workflow'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Help = lazy(() => import('./pages/Help'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const Map = lazy(() => import('./pages/Map'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -264,6 +265,7 @@ function AppContent() {
           <Route path="checklist" element={<Checklist />} />
           <Route path="tally" element={<JobTally />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="help" element={<Help />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -32,4 +32,5 @@ The linked prod project is `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"). Th
 
 - Ship small: one change → PR → auto-merge (`gh pr merge --auto --squash`). Never `git add -A` — parallel sessions leave WIP in the tree; stage specific files.
 - Extract logic into pure `.ts` kernels with unit tests (`npm test`); there is no render-test harness in this repo.
+- **Help guides ship with features**: any PR that adds or changes a user-facing flow must add/update the matching guide in `src/content/help/` (frontmatter: title/category/roles/keywords; slug = filename; headings start at `##`). `src/lib/helpGuideContent.test.ts` validates frontmatter in CI.
 - Migration files are squash-baselined at `20250101000000_baseline.sql`; pre-baseline history lives in `supabase/archive/migrations-pre-baseline/`.

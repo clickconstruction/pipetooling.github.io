@@ -68,9 +68,9 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 
 const IMPERSONATION_KEY = 'impersonation_original'
 
-const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally']
-const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/documents', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally']
-const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally']
+const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally', '/help']
+const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/documents', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help']
+const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally', '/help']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
 
@@ -340,6 +340,11 @@ export default function Layout() {
   const checklistNavIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
       <path d="M584 352C597.3 352 608 362.7 608 376L608 480C608 515.3 579.3 544 544 544L96 544C60.7 544 32 515.3 32 480L32 376C32 362.7 42.7 352 56 352C69.3 352 80 362.7 80 376L80 480C80 488.8 87.2 496 96 496L544 496C552.8 496 560 488.8 560 480L560 376C560 362.7 570.7 352 584 352zM448 96C483.3 96 512 124.7 512 160L512 384C512 419.3 483.3 448 448 448L192 448C156.7 448 128 419.3 128 384L128 160C128 124.7 156.7 96 192 96L448 96zM410.9 180.6C400.2 172.8 385.2 175.2 377.4 185.9L291.8 303.6L265.3 276.2C256.1 266.7 240.9 266.4 231.4 275.6C221.9 284.8 221.6 300 230.8 309.5L277.2 357.5C282.1 362.6 289 365.3 296.1 364.8C303.2 364.3 309.7 360.7 313.9 355L416.2 214.1C424 203.4 421.6 188.4 410.9 180.6z" />
+    </svg>
+  )
+  const helpIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M224 224C224 171 267 128 320 128C373 128 416 171 416 224C416 266.7 388.1 302.9 349.5 315.4C321.1 324.6 288 350.7 288 392L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 392C352 390.3 352.6 387.9 355.5 384.7C358.5 381.4 363.4 378.2 369.2 376.3C433.5 355.6 480 295.3 480 224C480 135.6 408.4 64 320 64C231.6 64 160 135.6 160 224C160 241.7 174.3 256 192 256C209.7 256 224 241.7 224 224zM320 576C342.1 576 360 558.1 360 536C360 513.9 342.1 496 320 496C297.9 496 280 513.9 280 536C280 558.1 297.9 576 320 576z" />
     </svg>
   )
 
@@ -845,6 +850,23 @@ export default function Layout() {
               )}
             </>
           )}
+            {!isMobile && (
+              <NavLink
+                to="/help"
+                style={({ isActive }) => ({
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '0.5rem',
+                  color: 'inherit',
+                  textDecoration: 'none',
+                  ...(isActive && { borderBottom: '1px solid currentColor' }),
+                })}
+                title="Help"
+                aria-label="Help"
+              >
+                {helpIcon}
+              </NavLink>
+            )}
             <div ref={gearRef} style={{ position: 'relative' }}>
             <button
               type="button"
@@ -1042,6 +1064,28 @@ export default function Layout() {
                   >
                     {bankingIcon}
                     Banking
+                  </NavLink>
+                )}
+                {isMobile && (
+                  <NavLink
+                    to="/help"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid #e5e7eb',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Help"
+                    aria-label="Help"
+                  >
+                    {helpIcon}
+                    Help
                   </NavLink>
                 )}
                 <NavLink
