@@ -9,24 +9,33 @@ Job Mode turns the Dashboard into one big card built for working in the field: i
 
 ## Turning Job Mode on
 
-1. Tap the **gear menu** in the top-right of the header.
+1. Tap the {{icon:gear}} **gear menu** in the top-right of the header.
 2. Toggle **Job Mode**.
 
-With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap **Show full dashboard** underneath it to see everything else.
+With Job Mode on, the Dashboard shows the Job Mode card first. You can always tap {{button:outline|Show full dashboard}} underneath it to see everything else.
 
-## Your day on the card
+## The Job Mode card
 
-The card reads your schedule for today and shows:
+Here's what the card looks like during a working day:
 
-- The job you're **clocked into** right now (or your next scheduled job if you haven't started).
-- **Leave Report** — file a field report on the current job (see the Reports guide).
-- A green button that changes with your day: **Clock In**, **Start First Job**, **Next Job**, or **Last job of the day**.
-- **Turnaway — not ready / not home** — for when you arrive and can't do the work (see the Turnaways guide).
+:::example The Job Mode card
+**J512** &nbsp; Smith House Repipe
+123 Main St
+*Clocked in since 8:02 AM*
+
+{{button:blue|Leave Report}} &nbsp; {{button:green|Next Job}}
+
+{{button:amber|Turnaway — not ready / not home}}
+:::
+
+- {{button:blue|Leave Report}} — file a field report on the current job (see the Reports guide).
+- The green button changes with your day: {{button:green|Clock In}}, {{button:green|Start First Job}}, {{button:green|Next Job}}, or {{button:gray|Last job of the day}} when there's nowhere left to go.
+- {{button:amber|Turnaway — not ready / not home}} — for when you arrive and can't do the work (see the Turnaways guide).
 
 ## Clocking in and out
 
-- Tap **Clock In** to start your day. If you have a schedule, the card offers your scheduled job; otherwise you can pick a job manually.
-- Moving to the next job? Tap **Next Job** — you'll be asked for brief notes about the job you're leaving, then your clock switches to the new job in one step.
+- Tap {{button:green|Clock In}} to start your day. If you have a schedule, the card offers your scheduled job; otherwise you can pick a job manually.
+- Moving on? Tap {{button:green|Next Job}} — you'll be asked for brief notes about the job you're leaving, then your clock switches to the new job in one step.
 - Your location is captured when you punch, and your hours flow to the office automatically for approval.
 
 ## Good habits

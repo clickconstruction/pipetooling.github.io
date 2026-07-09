@@ -14,7 +14,13 @@ PipeTooling helps Masters better manage Projects with Subs. There are three main
 3. Masters assign People to **Project Stages**
 4. When People complete Stages, Masters are updated
 
-Day-to-day service work runs through **Jobs**: each job belongs to a customer, moves through a simple pipeline (Waiting → Working → Ready to Bill → Billed → Paid), and collects everything about the work — schedule blocks, clock time, reports, materials, and billing — in one place.
+Day-to-day service work runs through **Jobs**: each job belongs to a customer and moves through a simple pipeline. You'll see these status chips all over the app:
+
+:::example The job pipeline
+{{chip:gray|Waiting}} → {{chip:blue|Working}} → {{chip:yellow|Ready to bill}} → {{chip:red|Billed}} → {{chip:green|Paid}}
+:::
+
+A job collects everything about the work in one place — schedule blocks, clock time, reports, materials, and billing.
 
 ## Sharing
 
@@ -30,7 +36,13 @@ Day-to-day service work runs through **Jobs**: each job belongs to a customer, m
 
 When a Master or Assistant selects **Notify** on a stage, that stage shows up in their Subscribed Stages on the Dashboard.
 
-## Where things live
+## Finding your way around
+
+The header is your map. On a phone, most of these live behind the {{icon:gear}} gear menu in the top-right.
+
+:::example Header icons (top-right)
+{{icon:help}} **Help** — this page &nbsp;·&nbsp; {{icon:gear}} **Gear menu** — Job Mode toggle, Settings, Sign out
+:::
 
 - **Dashboard** — your day at a glance: assigned jobs, clock, inboxes, and (for office roles) billing queues.
 - **Jobs** — the job ledger and its Stages board.

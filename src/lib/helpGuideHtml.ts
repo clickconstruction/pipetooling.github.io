@@ -11,6 +11,7 @@
  */
 import { marked } from 'marked'
 import { sanitizeContractSigningHtml } from './sanitizeContractSigningHtml'
+import { encodeHelpIllustrations, expandHelpIllustrations } from './helpGuideIllustrations'
 
 const CODE_OPEN = '[[[help-code-open]]]'
 const CODE_CLOSE = '[[[help-code-close]]]'
@@ -41,6 +42,9 @@ export function restoreHelpCodeTags(html: string): string {
 
 export function helpGuideMarkdownToSafeHtml(markdown: string): string {
   // Per-call options (not marked.setOptions) to avoid coupling with contractBodyFormat's config.
-  const rawHtml = marked.parse(markdown, { async: false, gfm: true, breaks: false })
-  return restoreHelpCodeTags(sanitizeContractSigningHtml(encodeHelpCodeTags(rawHtml)))
+  // Illustration tokens ({{button:…}}, :::example panels) are marker-encoded before marked and
+  // expanded after sanitizing — see helpGuideIllustrations.ts.
+  // breaks: true (unlike contracts) so multi-line :::example panels render as stacked lines.
+  const rawHtml = marked.parse(encodeHelpIllustrations(markdown), { async: false, gfm: true, breaks: true })
+  return expandHelpIllustrations(restoreHelpCodeTags(sanitizeContractSigningHtml(encodeHelpCodeTags(rawHtml))))
 }

@@ -11,11 +11,21 @@ Quickfill is the office's daily runway: one page of review sections, each with a
 
 Every section is a card with a **"Mark [Section] up to date!"** button. The button's color tells you how fresh the last review is:
 
-- **Red** — never marked, or more than 30 hours ago
-- **Yellow** — 12 to 30 hours ago
-- **Green** — reviewed within the last 12 hours
+:::example The freshness colors
+{{button:red|Mark Warnings up to date!}} &nbsp;— never marked, or more than 30 hours ago
 
-Pressing it records who marked it and when, and collapses the section into a green bar showing "Marked up to date at [time] by [name]". Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. Use **Open now** to peek inside a collapsed section, and the history icon to see who marked it recently.
+{{button:amber|Mark Warnings up to date!}} &nbsp;— 12 to 30 hours ago
+
+{{button:green|Mark Warnings up to date!}} &nbsp;— reviewed within the last 12 hours
+:::
+
+Pressing it records who marked it and when, and collapses the section into a green bar:
+
+:::example A marked section
+{{chip:green|Warnings — Marked up to date at 8:41 AM by Dana. Expands automatically in 12h.}} &nbsp; {{button:outline|Open now}}
+:::
+
+Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. Use {{button:outline|Open now}} to peek inside a collapsed section, and the history icon to see who marked it recently.
 
 ## What's on the page
 
@@ -24,7 +34,7 @@ The sections cover the office's recurring review surfaces — among them:
 - **Warnings** and **Office Arriving / Office Leaving** — start and end of day checks.
 - **People Hours** and **Unassigned field time** — time approval.
 - **Jobs Billing** and **Billing Awaiting Payments** — the billing loop (see the billing guide).
-- **Dispatch inbox** — field requests, including Turnaway alerts.
+- **Dispatch inbox** — field requests, including Turnaway alerts with their {{button:outline-amber|Create trip charge}} button.
 - **Schedule** ("Are there any obvious schedule conflicts?") and **Tomorrow's Schedule** ("Who is on what job tomorrow?").
 - **Email / Texts / Physical inbox** — communication queues.
 - **Prospects**, **Supply Houses**, **Banking sorting**, and more.
@@ -33,4 +43,4 @@ Devs can reorder sections, hide them, and edit each section's banner prompt — 
 
 ## The habit
 
-The page is built for one pass in the morning and a lighter pass after lunch. If every bar is green by mid-morning, the office is caught up; anything red is exactly where to spend attention next.
+The page is built for one pass in the morning and a lighter pass after lunch. If every bar is green by mid-morning, the office is caught up; anything {{button:red|red}} is exactly where to spend attention next.
