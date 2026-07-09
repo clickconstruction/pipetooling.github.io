@@ -1,0 +1,36 @@
+---
+title: Quickfill
+category: Office
+roles: assistant
+keywords: quickfill, daily, mark up to date, office routine, sections
+order: 10
+---
+Quickfill is the office's daily runway: one page of review sections, each with a button that says "I've looked at this." Working top to bottom keeps the whole operation reviewed on a rhythm without anyone keeping a mental checklist.
+
+## How marking works
+
+Every section is a card with a **"Mark [Section] up to date!"** button. The button's color tells you how fresh the last review is:
+
+- **Red** — never marked, or more than 30 hours ago
+- **Yellow** — 12 to 30 hours ago
+- **Green** — reviewed within the last 12 hours
+
+Pressing it records who marked it and when, and collapses the section into a green bar showing "Marked up to date at [time] by [name]". Sections re-expand on their own after 12 hours, so tomorrow's pass starts fresh. Use **Open now** to peek inside a collapsed section, and the history icon to see who marked it recently.
+
+## What's on the page
+
+The sections cover the office's recurring review surfaces — among them:
+
+- **Warnings** and **Office Arriving / Office Leaving** — start and end of day checks.
+- **People Hours** and **Unassigned field time** — time approval.
+- **Jobs Billing** and **Billing Awaiting Payments** — the billing loop (see the billing guide).
+- **Dispatch inbox** — field requests, including Turnaway alerts.
+- **Schedule** ("Are there any obvious schedule conflicts?") and **Tomorrow's Schedule** ("Who is on what job tomorrow?").
+- **Email / Texts / Physical inbox** — communication queues.
+- **Prospects**, **Supply Houses**, **Banking sorting**, and more.
+
+Devs can reorder sections, hide them, and edit each section's banner prompt — everyone else sees the configured order.
+
+## The habit
+
+The page is built for one pass in the morning and a lighter pass after lunch. If every bar is green by mid-morning, the office is caught up; anything red is exactly where to spend attention next.
