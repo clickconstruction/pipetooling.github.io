@@ -28,6 +28,7 @@ import { QuickfillTomorrowsScheduleSection } from '../components/quickfill/Quick
 import { QuickfillProspectsSection } from '../components/quickfill/QuickfillProspectsSection'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
+import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import {
   QuickfillSectionMetricsProvider,
@@ -452,6 +453,7 @@ function QuickfillPage() {
   const [sectionBanners, setSectionBanners] = useState<Record<string, string>>({})
   const [sectionBannerDrafts, setSectionBannerDrafts] = useState<Record<string, string>>({})
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
+  const [tripChargeTarget, setTripChargeTarget] = useState<CreateTripChargeTarget | null>(null)
 
   const persistHiddenSectionIds = useCallback(async (hidden: Set<string>) => {
     try {
@@ -1160,6 +1162,11 @@ function QuickfillPage() {
                   ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
                   : undefined
               }
+              onCreateTripCharge={
+                role === 'dev' || role === 'master_technician' || role === 'assistant'
+                  ? (args) => setTripChargeTarget(args)
+                  : undefined
+              }
             />
           </QuickfillSectionWrapper>
         )
@@ -1481,6 +1488,13 @@ function QuickfillPage() {
           open={dispatchDismissedModalOpen}
           onClose={() => setDispatchDismissedModalOpen(false)}
           loadRows={fetchDismissedDispatchInboxRows}
+        />
+      )}
+      {tripChargeTarget && (
+        <CreateTripChargeModal
+          target={tripChargeTarget}
+          onClose={() => setTripChargeTarget(null)}
+          onCreated={() => setTripChargeTarget(null)}
         />
       )}
     </div>

@@ -72,6 +72,8 @@ type DispatchInboxSectionProps = {
   onOpenDismissedArchive?: () => void
   /** Opens Edit Job with the Customer Pictures input scrolled into view and focused. */
   onLinkJobPictures?: (jobId: string) => void
+  /** Opens the Create Trip Charge modal for a Turnaway request (pending_action 'trip_charge_turnaway'). */
+  onCreateTripCharge?: (args: { requestId: string; jobId: string; referenceSummary: string | null }) => void
 }
 
 export function DispatchInboxSection({
@@ -96,6 +98,7 @@ export function DispatchInboxSection({
   onDismiss,
   onOpenDismissedArchive,
   onLinkJobPictures,
+  onCreateTripCharge,
 }: DispatchInboxSectionProps) {
   const narrow = useNarrowViewport640()
   const body = (
@@ -209,6 +212,41 @@ export function DispatchInboxSection({
                     }}
                   >
                     Add Customer Pictures URL
+                  </button>
+                ) : null
+                const showCreateTripChargeAction =
+                  !isClosed &&
+                  req.pending_action === 'trip_charge_turnaway' &&
+                  !!req.job_ledger_id &&
+                  !!onCreateTripCharge
+                const createTripChargeBtn = showCreateTripChargeAction ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (req.job_ledger_id && onCreateTripCharge) {
+                        onCreateTripCharge({
+                          requestId: req.id,
+                          jobId: req.job_ledger_id,
+                          referenceSummary: req.reference_summary,
+                        })
+                      }
+                    }}
+                    title="Create a ready-to-bill trip charge for this Turnaway"
+                    aria-label="Create trip charge"
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      background: 'white',
+                      border: '1px solid #fcd34d',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: '0.875rem',
+                      color: '#b45309',
+                      fontWeight: 500,
+                      flexShrink: 0,
+                    }}
+                  >
+                    Create trip charge
                   </button>
                 ) : null
                 return (
@@ -380,11 +418,13 @@ export function DispatchInboxSection({
                           <>
                             {statsEl}
                             {linkJobPicturesBtn}
+                            {createTripChargeBtn}
                           </>
                         ) : (
                           <>
                             {statsEl}
                             {linkJobPicturesBtn}
+                            {createTripChargeBtn}
                             {isClosed ? (
                               <>
                                 <div style={{ display: 'contents' }}>{dismissBtn}</div>

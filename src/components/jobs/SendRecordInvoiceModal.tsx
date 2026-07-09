@@ -425,6 +425,8 @@ export default function SendRecordInvoiceModal({
   const kind = payload?.kind ?? 'job'
   const job = payload?.job ?? null
   const invoice = payload?.kind === 'invoice' ? payload.invoice : null
+  // A stored memo (e.g. Turnaway trip charges) beats the preset default on open.
+  const storedInvoiceMemo = (invoice?.stripe_invoice_memo ?? '').trim()
 
   const handleHostedStripeOobUnwindSuccess = useCallback(async () => {
     const invSnap = stripeSuccessInvoiceRef.current
@@ -475,7 +477,7 @@ export default function SendRecordInvoiceModal({
     const billCustomerOpenYmd = todayIsoDate()
     setSentDate(billCustomerOpenYmd)
     setStripeDueDate(billCustomerOpenYmd)
-    const memoDefault = getBillCustomerMemoDefaultOnOpen()
+    const memoDefault = storedInvoiceMemo || getBillCustomerMemoDefaultOnOpen()
     setExternalNote(memoDefault)
     setOutsideError(null)
     setOutsideSubmitting(false)
@@ -488,8 +490,12 @@ export default function SendRecordInvoiceModal({
     setEditDueDateOpen(false)
     setDraftDueYmd('')
     setDraftServiceYmd('')
-    // Empty until fixtures load: billable Specific Work must omit line_description for multi-line Stripe items.
-    setStripeLineDescription('')
+    // Empty until fixtures load: billable Specific Work must omit line_description for
+    // multi-line Stripe items. Exception: non-primary rows with a stored memo (standalone
+    // charges like Turnaway trip charges) pre-fill it, forcing one clean Stripe line.
+    setStripeLineDescription(
+      storedInvoiceMemo && invoice?.is_primary_rtb_bundle === false ? storedInvoiceMemo : '',
+    )
     setStripeMemo(memoDefault)
     setStripeInvoiceFooter(getStripeInvoiceFooterDefaultOnOpen())
     setStripeFooterSectionOpen(false)
@@ -528,7 +534,7 @@ export default function SendRecordInvoiceModal({
       setPhysicalInvoiceFooter(getPhysicalInvoiceFooterDefaultOnOpen())
       setStripeInvoiceFooter(getStripeInvoiceFooterDefaultOnOpen())
       setBillCustomerMemoPresetsGeneration((g) => g + 1)
-      const memoDefaultAfterFetch = getBillCustomerMemoDefaultOnOpen()
+      const memoDefaultAfterFetch = storedInvoiceMemo || getBillCustomerMemoDefaultOnOpen()
       setExternalNote(memoDefaultAfterFetch)
       setStripeMemo(memoDefaultAfterFetch)
     })()

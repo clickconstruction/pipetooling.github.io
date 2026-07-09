@@ -1,7 +1,10 @@
-/** Settings → Jobs & dispatch tab: dev-only job-creation owner overrides (+ re-assign) and default labor rate.
- * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
+/** Settings → Jobs & dispatch tab: dev-only job-creation owner overrides (+ re-assign), default labor
+ * rate, and Turnaway trip charge amounts.
+ * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props
+ * (except the self-contained TripChargeAmountsSettingsBlock).
  * The SettingsGroup wrapper and the `myRole === 'dev'` gate stay in the parent. */
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
+import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 
 type JobsTabUserRow = { id: string; name: string; email: string; role: string }
 
@@ -270,6 +273,8 @@ export default function SettingsJobsTab({
           </div>
         )}
       </div>
+
+      <TripChargeAmountsSettingsBlock />
     </>
   )
 }

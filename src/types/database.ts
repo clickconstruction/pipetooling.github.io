@@ -11953,6 +11953,15 @@ export type Database = {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
         Returns: Json
       }
+      create_turnaway_trip_charge: {
+        Args: {
+          p_amount: number
+          p_dispatch_request_id?: string
+          p_job_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       set_tally_payroll_flag: {
         Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
         Returns: undefined

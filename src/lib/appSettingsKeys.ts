@@ -58,6 +58,12 @@ export const APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1 = 'physical_invoice_iss
 export const APP_SETTINGS_KEY_DISPATCH_NOTE_REQUIREMENT_CONFIG =
   'dispatch_note_requirement_config_v1' as const
 
+/** Dollars in `value_num` — default Turnaway trip charge when the client isn't home. NULL/≤0 = not configured. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_TRIP_CHARGE_CLIENT_NOT_HOME = 'trip_charge_client_not_home' as const
+
+/** Dollars in `value_num` — default Turnaway trip charge when the site isn't ready. NULL/≤0 = not configured. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_TRIP_CHARGE_SITE_NOT_READY = 'trip_charge_site_not_ready' as const
+
 export function isValidYmd(s: string): boolean {
   return /^(\d{4})-(\d{2})-(\d{2})$/.test(s.trim())
 }
