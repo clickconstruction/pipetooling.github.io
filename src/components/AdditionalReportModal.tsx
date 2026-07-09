@@ -9,6 +9,7 @@ import {
   additionalReportModalTemplateChipLabel,
   findStatusReportTemplateId,
 } from '../lib/reportTemplateDisplayName'
+import { isTurnawayTemplateName } from '../lib/turnaway'
 import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
@@ -115,7 +116,9 @@ export default function AdditionalReportModal({
   useEffect(() => {
     if (!open) return
     supabase.from('report_templates').select('*').order('sequence_order').then(({ data }) => {
-      const list = (data as ReportTemplate[]) ?? []
+      // Turnaway is filed only through the Job Mode TurnawayModal (which also
+      // creates the dispatch request), so keep it out of the generic picker.
+      const list = ((data as ReportTemplate[]) ?? []).filter((t) => !isTurnawayTemplateName(t.name))
       setTemplates(list)
       if (list.length > 0) {
         const id = findStatusReportTemplateId(list) ?? list[0]?.id

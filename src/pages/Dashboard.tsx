@@ -37,6 +37,7 @@ import { useDocumentVisibility } from '../hooks/useDocumentVisibility'
 import { isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
 import { useJobModeEnabled } from '../hooks/useJobModeEnabled'
 import DashboardJobModeCard from '../components/jobMode/DashboardJobModeCard'
+import TurnawayModal from '../components/jobMode/TurnawayModal'
 import { useSendBackCollectPaymentFlowNotice } from '../hooks/useSendBackCollectPaymentFlowNotice'
 import NewReportModal from '../components/NewReportModal'
 import JobReportsModal from '../components/JobReportsModal'
@@ -1155,6 +1156,7 @@ export default function Dashboard() {
     jobName: string
   } | null>(null)
   const [leaveReportJob, setLeaveReportJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
+  const [turnawayJob, setTurnawayJob] = useState<{ id: string; hcpNumber: string; jobName: string; jobAddress: string } | null>(null)
   const [jobModeEnabled] = useJobModeEnabled(authUser?.id ?? null)
   // Component-local "show full dashboard" override; resets every page load so
   // the field-first paint is consistent. The Job Mode toggle in the gear menu
@@ -4578,6 +4580,7 @@ export default function Dashboard() {
         <DashboardJobModeCard
           userId={authUser.id}
           onLeaveReport={(j) => setLeaveReportJob(j)}
+          onTurnaway={(j) => setTurnawayJob(j)}
         />
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem' }}>
           <button
@@ -4612,6 +4615,22 @@ export default function Dashboard() {
             hcpNumber={leaveReportJob.hcpNumber}
             jobName={leaveReportJob.jobName}
             jobAddress={leaveReportJob.jobAddress}
+          />
+        )}
+        {turnawayJob && (
+          <TurnawayModal
+            open={!!turnawayJob}
+            onClose={() => setTurnawayJob(null)}
+            onSubmitted={() => {
+              setTurnawayJob(null)
+              void refreshDashboardAssignedJobLists()
+            }}
+            authUserId={authUser?.id ?? null}
+            userRole={role}
+            jobId={turnawayJob.id}
+            hcpNumber={turnawayJob.hcpNumber}
+            jobName={turnawayJob.jobName}
+            jobAddress={turnawayJob.jobAddress}
           />
         )}
       </div>

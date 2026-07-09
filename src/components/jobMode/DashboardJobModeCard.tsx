@@ -26,6 +26,8 @@ type Props = {
   userId: string
   /** Mounts AdditionalReportModal in Dashboard. */
   onLeaveReport: (job: LeaveReportJobPick) => void
+  /** Mounts TurnawayModal in Dashboard (client not home / site not ready). */
+  onTurnaway: (job: LeaveReportJobPick) => void
 }
 
 type OpenSessionState = {
@@ -132,6 +134,15 @@ const nextJobBtn: CSSProperties = {
   color: 'white',
 }
 
+const turnawayBtn: CSSProperties = {
+  ...bigButtonBase,
+  gridColumn: '1 / -1',
+  minHeight: 56,
+  fontSize: '0.95rem',
+  background: '#d97706',
+  color: 'white',
+}
+
 const disabledBtnOverlay: CSSProperties = {
   background: '#9ca3af',
   color: 'white',
@@ -148,7 +159,7 @@ function safeTrim(s: string | null | undefined): string {
   return (s ?? '').trim()
 }
 
-export default function DashboardJobModeCard({ userId, onLeaveReport }: Props) {
+export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { requestOpenUpdateFocus, applyUpdateFocusDirect } = useUpdateFocusOpenerBridge()
 
@@ -577,6 +588,19 @@ export default function DashboardJobModeCard({ userId, onLeaveReport }: Props) {
           onClick={() => void handleRightButton()}
         >
           {rightButton.label}
+        </button>
+        <button
+          type="button"
+          style={leaveDisabled ? { ...turnawayBtn, ...disabledBtnOverlay } : turnawayBtn}
+          disabled={leaveDisabled}
+          title={leaveDisabledReason ?? undefined}
+          aria-label="Turnaway — client not home or site not ready"
+          onClick={() => {
+            if (!leaveReportTarget) return
+            onTurnaway(leaveReportTarget)
+          }}
+        >
+          Turnaway — not ready / not home
         </button>
       </div>
       <JobModeAdvanceNotesModal
