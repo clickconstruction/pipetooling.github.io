@@ -37,6 +37,7 @@ When a Master or Assistant selects **Notify** on a stage, that stage shows up in
 - **Schedule** — who is on which job, each day.
 - **Bids / Estimates** — winning the work before it becomes a job.
 - **Settings** — your profile, notifications, and role-specific configuration.
+- **Help** (this page) — guides for every part of the app. Each guide has a feedback box at the bottom that goes straight to the devs.
 
 ## Our mission
 

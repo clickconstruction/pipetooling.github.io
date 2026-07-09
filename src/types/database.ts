@@ -3338,6 +3338,57 @@ export type Database = {
         }
         Relationships: []
       }
+      help_feedback: {
+        Row: {
+          body: string
+          closed_at: string | null
+          closed_by_user_id: string | null
+          closed_note: string | null
+          created_at: string
+          from_user_id: string
+          guide_slug: string
+          id: string
+          status: string
+        }
+        Insert: {
+          body: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          closed_note?: string | null
+          created_at?: string
+          from_user_id: string
+          guide_slug: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          body?: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
+          closed_note?: string | null
+          created_at?: string
+          from_user_id?: string
+          guide_slug?: string
+          id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "help_feedback_closed_by_user_id_fkey"
+            columns: ["closed_by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "help_feedback_from_user_id_fkey"
+            columns: ["from_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       hours_days_correct: {
         Row: {
           marked_at: string | null

@@ -6,9 +6,11 @@ import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { DispatchInboxSection } from '../DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../DispatchDismissedItemsModal'
 import { EstimatorInboxSection } from '../EstimatorInboxSection'
+import { HelpFeedbackInboxSection } from '../HelpFeedbackInboxSection'
 
 /**
- * Checklist Review tab: one dispatch card and one estimator card (open rows first, then closed).
+ * Checklist Review tab: one dispatch card, one estimator card (open rows first,
+ * then closed), and the dev-only help-feedback card.
  * Hidden for assistant role (matches Dashboard).
  */
 export function ChecklistReviewInboxes() {
@@ -55,7 +57,7 @@ export function ChecklistReviewInboxes() {
   const jobFormModal = useJobFormModal()
 
   if (role === 'assistant') return null
-  if (!dispatchInboxEligible && !estimatorInboxEligible) return null
+  if (!dispatchInboxEligible && !estimatorInboxEligible && role !== 'dev') return null
 
   const dispatchOpenRows = dispatchRequests.filter((r) => r.status === 'open')
   const dispatchClosedRows = dispatchRequests.filter((r) => r.status === 'closed')
@@ -67,6 +69,7 @@ export function ChecklistReviewInboxes() {
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
+      <HelpFeedbackInboxSection />
       {dispatchInboxEligible ? (
         <DispatchInboxSection
           variant="card"

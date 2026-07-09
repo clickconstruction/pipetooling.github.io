@@ -420,6 +420,11 @@ verify_jwt = false
 [functions.notify-dispatch-request]
 verify_jwt = false
 
+# Signed-in users: JWT validated in function (getUser + help_feedback.from_user_id match).
+# Gateway verify_jwt caused 401s for legitimate browser sessions (match notify-dispatch-request).
+[functions.notify-help-feedback]
+verify_jwt = false
+
 # Dev-only: validates JWT + users.role = dev, pulls Mercury transactions into mercury_transactions.
 [functions.sync-mercury-transactions]
 verify_jwt = false
