@@ -97,6 +97,7 @@ import { ApplyScheduleApprovedConfirmModal } from '../components/clock-sessions/
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
+import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
 import {
   EstimatorInboxSection,
   type EstimatorInboxRow,
@@ -1328,6 +1329,7 @@ export default function Dashboard() {
 
   const [dispatchRequestsOpen, setDispatchRequestsOpen] = useState(true)
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
+  const [tripChargeTarget, setTripChargeTarget] = useState<CreateTripChargeTarget | null>(null)
 
   const [estimatorInboxEligible, setEstimatorInboxEligible] = useState(false)
   const [estimatorRequestsOpen, setEstimatorRequestsOpen] = useState(true)
@@ -3237,7 +3239,13 @@ export default function Dashboard() {
       payload: {
         kind: 'invoice',
         job: jobBillingFromDashboardInvoice(inv),
-        invoice: { id: inv.id, amount: inv.amount, status: inv.status },
+        invoice: {
+          id: inv.id,
+          amount: inv.amount,
+          status: inv.status,
+          stripe_invoice_memo: inv.stripe_invoice_memo,
+          is_primary_rtb_bundle: inv.is_primary_rtb_bundle,
+        },
       },
       onSuccess: refreshInvoices,
       onAfterEnsureSuccess: refreshInvoices,
@@ -4983,6 +4991,7 @@ export default function Dashboard() {
                   ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
                   : undefined
               }
+              onCreateTripCharge={(args) => setTripChargeTarget(args)}
             />
           )}
           {authUser?.id && estimatorInboxEligible && (
@@ -5207,6 +5216,16 @@ export default function Dashboard() {
           open={dispatchDismissedModalOpen}
           onClose={() => setDispatchDismissedModalOpen(false)}
           loadRows={fetchDismissedDispatchInboxRows}
+        />
+      )}
+      {tripChargeTarget && (
+        <CreateTripChargeModal
+          target={tripChargeTarget}
+          onClose={() => setTripChargeTarget(null)}
+          onCreated={() => {
+            setTripChargeTarget(null)
+            void refreshInvoicesRef.current()
+          }}
         />
       )}
       {(role === 'dev' || role === 'master_technician') && authUser?.id && (
@@ -5450,6 +5469,11 @@ export default function Dashboard() {
           onLinkJobPictures={
             jobFormModal
               ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+              : undefined
+          }
+          onCreateTripCharge={
+            role === 'dev' || role === 'master_technician'
+              ? (args) => setTripChargeTarget(args)
               : undefined
           }
         />
