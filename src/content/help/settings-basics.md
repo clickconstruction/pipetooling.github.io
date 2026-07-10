@@ -7,6 +7,10 @@ order: 2
 ---
 Settings is where you manage your own profile and notifications. Which tabs you see depends on your role — every user gets **Recent push**, **Your account**, **Dashboard & alerts**, and **How it works**; office and dev roles see additional configuration tabs.
 
+Here's the whole flow in 30 seconds — gear menu → Settings, then the sections this guide walks through:
+
+{{gif:settings-basics.gif|Gear menu → Settings → Your account (profile, push notifications) → Dashboard & alerts (report notifications)}}
+
 ## Your profile
 
 Under **Your account → My Profile** you can edit your details:

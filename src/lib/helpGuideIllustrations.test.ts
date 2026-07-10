@@ -41,6 +41,24 @@ describe('expandHelpIllustrations', () => {
     expect(expandHelpIllustrations('[[[help-ill|icon,unknown,]]]')).toBe('')
   })
 
+  it('renders gif embeds with lazy loading, caption, and a validated filename', () => {
+    const html = expandHelpIllustrations('[[[help-ill|gif,settings-basics.gif,Quick%20tour]]]')
+    expect(html).toContain('src="/help/settings-basics.gif"')
+    expect(html).toContain('loading="lazy"')
+    expect(html).toContain('Quick tour')
+  })
+
+  it('rejects gif filenames that are not plain .gif names', () => {
+    expect(expandHelpIllustrations('[[[help-ill|gif,..%2Fsecret.gif,x]]]')).toBe('')
+    expect(expandHelpIllustrations('[[[help-ill|gif,evil.js,x]]]')).toBe('')
+  })
+
+  it('unwraps <p> around standalone gif markers', () => {
+    const html = expandHelpIllustrations('<p>[[[help-ill|gif,tour.gif,Cap]]]</p>')
+    expect(html).not.toContain('<p><div')
+    expect(html.startsWith('<div')).toBe(true)
+  })
+
   it('unwraps <p> around panel markers and closes the panel div', () => {
     const html = expandHelpIllustrations(
       '<p>[[[help-panel-open|Card]]]</p><p>body</p><p>[[[help-panel-close]]]</p>',
