@@ -25,6 +25,7 @@ import PhysicalInvoiceFooterDevSettingsBlock from './PhysicalInvoiceFooterDevSet
 import BillCustomerMemoDevSettingsBlock from './BillCustomerMemoDevSettingsBlock'
 import MapDefaultViewSettingsBlock from './MapDefaultViewSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from './PhysicalInvoiceIssuerDevSettingsBlock'
+import BidCoverLetterDefaultsSettingsBlock from './BidCoverLetterDefaultsSettingsBlock'
 
 type TemplatesTabUserRow = { id: string; name: string; email: string; role: string }
 
@@ -223,6 +224,7 @@ export default function SettingsTemplatesTab({
           <PhysicalInvoiceIssuerDevSettingsBlock />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
+          <BidCoverLetterDefaultsSettingsBlock />
           <MapDefaultViewSettingsBlock />
           <div
             style={{

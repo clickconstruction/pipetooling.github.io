@@ -51,6 +51,15 @@ This proposal excludes all impact fees.
 This proposal excludes any work not specifically described within.
 This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.`
 
+/** Closing paragraph lines (before "Respectfully submitted…"); overridable per-org via app_settings. */
+export const DEFAULT_COVER_LETTER_CLOSING =
+  'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.\nWork will not commence until building permit is issued and sent to Click Plumbing.'
+
+function closingLinesFrom(closingParagraph: string | null): string[] {
+  const src = closingParagraph?.trim() ? closingParagraph : DEFAULT_COVER_LETTER_CLOSING
+  return src.split(/\n/).map((l) => l.trim()).filter(Boolean)
+}
+
 /** Service-type word for cover letter (plumbing/electrical/HVAC). "Click Plumbing and Electrical" is never changed. */
 export function serviceTypeWordForCoverLetter(serviceTypeName: string): string {
   const name = (serviceTypeName ?? 'Plumbing').toLowerCase()
@@ -74,7 +83,8 @@ export function buildCoverLetterHtml(
   serviceTypeName: string,
   includeSignature = true,
   includeFixturesPerPlan = true,
-  paymentSchedule: CoverLetterPaymentSchedule | null = null
+  paymentSchedule: CoverLetterPaymentSchedule | null = null,
+  closingParagraph: string | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -113,8 +123,7 @@ export function buildCoverLetterHtml(
   if (scheduleLines.length > 0) {
     html += br2 + '<strong>' + escapeHtml(scheduleLines[0] ?? '') + '</strong>' + br + scheduleLines.slice(1).map((l) => escapeHtml(l)).join(br)
   }
-  html += br2 + escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.')
-  html += br + escapeHtml('Work will not commence until building permit is issued and sent to Click Plumbing.')
+  html += br2 + closingLinesFrom(closingParagraph).map((l) => escapeHtml(l)).join(br)
   html += br + escapeHtml('Respectfully submitted by Click Plumbing and Electrical')
   if (includeSignature) {
     html += br2 + escapeHtml('_______________________________')
@@ -142,7 +151,8 @@ export function buildCoverLetterText(
   serviceTypeName: string,
   includeSignature = true,
   includeFixturesPerPlan = true,
-  paymentSchedule: CoverLetterPaymentSchedule | null = null
+  paymentSchedule: CoverLetterPaymentSchedule | null = null,
+  closingParagraph: string | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -177,8 +187,7 @@ export function buildCoverLetterText(
       ? ['', ...buildPaymentScheduleSectionLines(paymentSchedule.rows, paymentSchedule.amountDollars)]
       : []),
     '',
-    'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.',
-    'Work will not commence until building permit is issued and sent to Click Plumbing.',
+    ...closingLinesFrom(closingParagraph),
     'Respectfully submitted by Click Plumbing and Electrical',
     '',
     ...(includeSignature ? [

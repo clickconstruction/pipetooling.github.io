@@ -6,6 +6,11 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { BidProjectCell } from './BidProjectCell'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import {
+  APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
+  APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
+  APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
+} from '../../lib/appSettingsKeys'
 import { addressLines, printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import {
   buildCoverLetterHtml,
@@ -146,6 +151,41 @@ export function BidsCoverLetterTab({
   const [paymentScheduleEnabled, setPaymentScheduleEnabled] = useState(false)
   // Per-row editing buffer so percent typing doesn't write on every keystroke (commit on blur/Enter)
   const [paymentSchedulePercentDrafts, setPaymentSchedulePercentDrafts] = useState<Record<string, string>>({})
+  // Org-editable cover letter text (Settings → Templates & testing → Bid Cover Letter
+  // Defaults); null = use the built-in constants.
+  const [orgCoverLetterDefaults, setOrgCoverLetterDefaults] = useState<{
+    terms: string | null
+    exclusions: string | null
+    closing: string | null
+  }>({ terms: null, exclusions: null, closing: null })
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase
+      .from('app_settings')
+      .select('key, value_text')
+      .in('key', [
+        APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
+        APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
+        APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
+      ])
+      .then(({ data }) => {
+        if (cancelled) return
+        const byKey = new Map((data ?? []).map((r) => [r.key, r.value_text]))
+        const pick = (key: string) => {
+          const v = (byKey.get(key) ?? '')?.trim()
+          return v ? v : null
+        }
+        setOrgCoverLetterDefaults({
+          terms: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT),
+          exclusions: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT),
+          closing: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING),
+        })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const bid = selectedBidForPricing
@@ -435,10 +475,10 @@ export function BidsCoverLetterTab({
         const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
         const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
         const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? ''
-        const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''
-        const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? DEFAULT_EXCLUSIONS
-        const terms = coverLetterTermsByBid[bid.id] ?? ''
-        const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
+        const exclusions = coverLetterExclusionsByBid[bid.id] ?? orgCoverLetterDefaults.exclusions ?? ''
+        const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? orgCoverLetterDefaults.exclusions ?? DEFAULT_EXCLUSIONS
+        const terms = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? ''
+        const termsDisplay = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? DEFAULT_TERMS_AND_WARRANTY
         const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
         // The Design Drawings Plan Date and Fixtures-per-plan toggles are independent:
         // each is included strictly per its own checkbox (one, the other, both, or none).
@@ -450,21 +490,21 @@ export function BidsCoverLetterTab({
         const paymentScheduleInputs = paymentScheduleSorted.map((r) => ({ timing: r.timing, percent: Number(r.percent) }))
         const paymentSchedulePercentSum = paymentSchedulePercentTotal(paymentScheduleInputs)
         const paymentScheduleActive = paymentScheduleEnabled && paymentScheduleInputs.length > 0
-        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null)
-        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null)
+        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
+        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
         const finalCoverLetterHtml = bundlePricings.length > 1
           ? buildCombinedCoverLetterDocument(bundlePricings.map((s) => ({
               label: `Pricing: ${s.name}`,
-              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null),
+              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing),
             })))
           : combinedHtml
         const finalCoverLetterText = bundlePricings.length > 1
           ? buildCombinedCoverLetterText(bundlePricings.map((s) => ({
               label: `Pricing: ${s.name}`,
-              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null),
+              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing),
             })))
           : combinedText
         const now = new Date()

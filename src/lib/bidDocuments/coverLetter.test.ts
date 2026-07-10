@@ -93,6 +93,27 @@ describe('buildCoverLetterHtml', () => {
     expect(html()).toContain('Work will not commence until building permit is issued and sent to Click Plumbing.')
   })
 
+  it('uses a custom closing paragraph when provided (org override), keeping "Respectfully submitted"', () => {
+    const out = buildCoverLetterHtml(
+      'John Doe', '123 Main St', 'Acme Tower', '456 Job Rd',
+      'One Hundred 00/100 Dollars', '$100.00', [], '', '', '', null, 'Plumbing',
+      true, true, null,
+      'Custom closing line one.\nCustom closing line two.',
+    )
+    expect(out).toContain('Custom closing line one.<br/>Custom closing line two.')
+    expect(out).not.toContain('No work shall commence')
+    expect(out).toContain('Respectfully submitted by Click Plumbing and Electrical')
+
+    const text = buildCoverLetterText(
+      'John Doe', '123 Main St', 'Acme Tower', '456 Job Rd',
+      'One Hundred 00/100 Dollars', '$100.00', [], '', '', '', null, 'Plumbing',
+      true, true, null,
+      'Custom closing line one.\nCustom closing line two.',
+    )
+    expect(text).toContain('Custom closing line one.\nCustom closing line two.\nRespectfully submitted')
+    expect(text).not.toContain('No work shall commence')
+  })
+
   it('matches the established output (parity snapshot)', () => {
     expect(html()).toMatchInlineSnapshot(`"<p style="margin:0;line-height:1;white-space:pre-wrap"><strong>John Doe</strong><br/>123 Main St<br/>Austin, TX 78701<br/><br/><strong>Acme Tower</strong><br/>456 Job Rd<br/>Austin, TX 78702<br/><br/>As per plumbing plans and specifications, we propose to do the plumbing in the amount of: <strong>One Hundred 00/100 Dollars ($100.00)</strong><br/><br/><strong>Inclusions:</strong><br/>     • Fixtures provided and installed by us per plan:<br/>            • [3] Water Closet<br/>            • [2] Lavatory<br/><br/><strong>Exclusions and Scope:</strong><br/>     • Concrete cutting, removal, and/or pour back is excluded from this proposal.<br/>     • This proposal excludes all impact fees.<br/>     • This proposal excludes any work not specifically described within.<br/>     • This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.<br/><br/>All work to be completed in a workmanlike manner in accordance with uniform code and/or specifications; workmanship warranty of one year for new construction projects considering substantial completion date. All material is guaranteed to be as specified; warranty by manufacturer, labor not included. No liability, no warranty on customer provided materials. All agreements contingent upon strikes, accidents or delays beyond our control. This estimate is subject to acceptance within thirty (30) days and is void thereafter at the option of Click Plumbing and Electrical. Any alteration or deviation from above specifications involving extra cost, including rock excavation and removal or haul-off of spoils or debris will become an extra charge over and above the estimate. Anything outside the scope of work described in this estimate, including any additional trips or visits beyond the standard rough-in, top-out, and trim phases, will be charged as a change order and will include a trip charge. Additionally, any trips or delays caused by builder, general contractor error, scheduling issues, or failure to provide timely access will be charged as a trip charge.<br/><br/>No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.<br/>Work will not commence until building permit is issued and sent to Click Plumbing.<br/>Respectfully submitted by Click Plumbing and Electrical<br/><br/>_______________________________<br/>The above prices, specifications, and conditions are satisfactory and are hereby accepted. You are authorized to perform the work as specified.<br/><br/><strong>Acceptance of estimate</strong><br/>General Contractor / Builder Signature:<br/><br/>____________________________________<br/><br/>Date: ____________________________________</p>"`)
   })
