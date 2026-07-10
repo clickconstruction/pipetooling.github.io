@@ -114,6 +114,7 @@ export function buildCoverLetterHtml(
     html += br2 + '<strong>' + escapeHtml(scheduleLines[0] ?? '') + '</strong>' + br + scheduleLines.slice(1).map((l) => escapeHtml(l)).join(br)
   }
   html += br2 + escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.')
+  html += br + escapeHtml('Work will not commence until building permit is issued and sent to Click Plumbing.')
   html += br + escapeHtml('Respectfully submitted by Click Plumbing and Electrical')
   if (includeSignature) {
     html += br2 + escapeHtml('_______________________________')
@@ -177,6 +178,7 @@ export function buildCoverLetterText(
       : []),
     '',
     'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.',
+    'Work will not commence until building permit is issued and sent to Click Plumbing.',
     'Respectfully submitted by Click Plumbing and Electrical',
     '',
     ...(includeSignature ? [
