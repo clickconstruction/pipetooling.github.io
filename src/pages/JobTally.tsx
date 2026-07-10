@@ -314,12 +314,15 @@ export default function JobTally() {
       // Dev-only payroll flags: merge is_payroll onto each row + track decided ids.
       if (role === 'dev' && rows.length > 0) {
         try {
+          // Fetch the WHOLE flags table (it only holds payroll-decided txs, so it's
+          // inherently small). Filtering with .in(<thousands of row ids>) exceeded the
+          // request-URL limit, failed, and was swallowed below — marked rows then
+          // reappeared under "Show unlinked" because is_payroll never merged.
           const flags = await withSupabaseRetry(
             () =>
               supabase
                 .from('mercury_tally_payroll_flags')
-                .select('mercury_transaction_id, is_payroll')
-                .in('mercury_transaction_id', rows.map((r) => r.mercury_transaction_id)),
+                .select('mercury_transaction_id, is_payroll'),
             'load tally payroll flags',
           )
           const flagRows = (flags ?? []) as Array<{ mercury_transaction_id: string; is_payroll: boolean }>
@@ -328,8 +331,9 @@ export default function JobTally() {
           for (const r of rows) r.is_payroll = flagged.has(r.mercury_transaction_id)
           setPayrollFlaggedIds(flagged)
           setPayrollDecidedIds(decided)
-        } catch {
+        } catch (e) {
           // flags are best-effort; rows still render without the payroll chip
+          console.error('Tally payroll flags merge failed:', e)
         }
       } else {
         setPayrollFlaggedIds(new Set())
