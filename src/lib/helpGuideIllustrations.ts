@@ -7,6 +7,8 @@
  *   {{button:<variant>|<label>}}   variants: blue green amber red gray outline outline-blue outline-amber
  *   {{chip:<variant>|<label>}}     variants: red green yellow blue gray
  *   {{icon:<name>}}                names: help gear
+ *   {{gif:<filename>|<caption>}}   screen recording from public/help/ (lazy-loaded,
+ *                                  NOT precached — needs connectivity, unlike the mocks)
  *   :::example <caption>           framed panel that looks like an app card
  *   …markdown…                     (regular markdown inside)
  *   :::
@@ -63,8 +65,8 @@ export function encodeHelpIllustrations(markdown: string): string {
       return `[[[help-panel-open|${encodeURIComponent(caption.trim())}]]]`
     })
     .replace(/^:::[ \t]*$/gm, '[[[help-panel-close]]]')
-    .replace(/\{\{(button|chip|icon):([a-z-]+)(?:\|([^}]*))?\}\}/g, (_m, kind: string, variant: string, label?: string) => {
-      const payload = [kind, variant, label ?? ''].map((p) => encodeURIComponent(p)).join(',')
+    .replace(/\{\{(button|chip|icon|gif):([a-z0-9._-]+)(?:\|([^}]*))?\}\}/gi, (_m, kind: string, variant: string, label?: string) => {
+      const payload = [kind.toLowerCase(), variant, label ?? ''].map((p) => encodeURIComponent(p)).join(',')
       return `[[[help-ill|${payload}]]]`
     })
 }
@@ -82,6 +84,20 @@ function renderChip(variant: string, label: string): string {
   return (
     `<span style="display:inline-block;${style}padding:0.1rem 0.6rem;border-radius:999px;` +
     `font-size:0.8em;font-weight:600;line-height:1.4;">${escapeHtml(label)}</span>`
+  )
+}
+
+/** Screen recordings live in public/help/; filename is allowlist-validated (no paths). */
+function renderGif(filename: string, caption: string): string {
+  if (!/^[a-z0-9][a-z0-9._-]*\.gif$/i.test(filename) || filename.includes('..')) return ''
+  const captionHtml = caption.trim()
+    ? `<div style="font-size:0.75rem;color:#9ca3af;margin-top:0.3rem;">${escapeHtml(caption.trim())}</div>`
+    : ''
+  return (
+    `<div style="margin:0.75rem 0;">` +
+    `<img src="/help/${filename}" alt="${escapeHtml(caption.trim() || 'Screen recording')}" loading="lazy" ` +
+    `style="max-width:100%;border:1px solid #e5e7eb;border-radius:8px;display:block;" />` +
+    `${captionHtml}</div>`
   )
 }
 
@@ -108,6 +124,7 @@ export function expandHelpIllustrations(html: string): string {
   return html
     // Block markers end up wrapped in <p> by marked; unwrap so the divs nest cleanly.
     .replace(/<p>\s*(\[\[\[help-panel-(?:open\|[^\]]*|close)\]\]\])\s*<\/p>/g, '$1')
+    .replace(/<p>\s*(\[\[\[help-ill\|gif,[^\]]*\]\]\])\s*<\/p>/g, '$1')
     .replace(/\[\[\[help-panel-open\|([^\]]*)\]\]\]/g, (_m, enc: string) => {
       let caption = ''
       try {
@@ -133,6 +150,7 @@ export function expandHelpIllustrations(html: string): string {
       if (kind === 'button') return renderButton(variant, label)
       if (kind === 'chip') return renderChip(variant, label)
       if (kind === 'icon') return renderIcon(variant)
+      if (kind === 'gif') return renderGif(variant, label)
       return escapeHtml(label)
     })
 }
