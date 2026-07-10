@@ -197,8 +197,10 @@ export function PartFormModal({
 
   if (!isOpen) return null
 
+  // Always the leaf dialog (opened FROM other modals, e.g. Bids Takeoff Edit Template
+  // at z 1100 and its pickers at 1200) — zIndex must stack above every host.
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }}>
       <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
         <h2 style={{ margin: '0 0 1rem' }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
         {!editingPart && (

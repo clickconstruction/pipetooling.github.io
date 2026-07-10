@@ -3327,7 +3327,7 @@ export function BidsTakeoffTab({
                           </div>
                           {takeoffNewItemPartDropdownOpen && (
                             <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.{' '}<button type="button" onClick={() => { openBidsPartFormForCreate(takeoffNewItemPartSearchQuery.trim()); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
+                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(takeoffNewItemPartSearchQuery.trim()); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                             </ul>
                           )}
                         </div>
@@ -3339,7 +3339,7 @@ export function BidsTakeoffTab({
                           </div>
                           {takeoffNewItemTemplateDropdownOpen && (
                             <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
+                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
                             </ul>
                           )}
                         </div>
@@ -4336,6 +4336,7 @@ export function BidsTakeoffTab({
                         No parts match.{' '}
                         <button
                           type="button"
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
                             openBidsPartFormForCreate(addPartsSearchQuery.trim())
                             setAddPartsDropdownOpen(false)
@@ -4349,6 +4350,7 @@ export function BidsTakeoffTab({
                       filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).map((p) => (
                         <li
                           key={p.id}
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => {
                             setAddPartsSelectedPartId(p.id)
                             setAddPartsSearchQuery('')
@@ -4557,7 +4559,7 @@ export function BidsTakeoffTab({
                     </div>
                     {editTemplateNewItemPartDropdownOpen && (
                       <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.{' '}<button type="button" onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
+                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                       </ul>
                     )}
                   </div>
@@ -4581,7 +4583,7 @@ export function BidsTakeoffTab({
                     </div>
                     {editTemplateNewItemTemplateDropdownOpen && (
                       <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
+                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
                       </ul>
                     )}
                   </div>
@@ -5273,6 +5275,7 @@ function SortableRoughPartLineRow({
                   No parts match.{' '}
                   <button
                     type="button"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       openBidsPartFormForCreate(takeoffRoughPartSearchQuery.trim())
                       setTakeoffRoughPartPickerLineId(line.id)
