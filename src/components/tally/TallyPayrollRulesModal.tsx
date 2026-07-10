@@ -7,6 +7,7 @@ import {
   type AccountingLabelRuleCriteriaV1,
 } from '../../lib/accountingLabelRuleMatch'
 import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
+import type { TallyPayrollRuleFormSeed } from '../../lib/tallyPayrollRuleSeed'
 import type { Json } from '../../types/database'
 
 type RuleRow = { id: string; name: string; criteria: Json; enabled: boolean; sort_order: number }
@@ -72,6 +73,8 @@ export function TallyPayrollRulesModal({
   onToggleAutoApply,
   onApplyNow,
   sampleTransactions,
+  initialForm,
+  onRuleSaved,
 }: {
   open: boolean
   onClose: () => void
@@ -79,6 +82,10 @@ export function TallyPayrollRulesModal({
   onToggleAutoApply: (next: boolean) => void
   onApplyNow: () => void | Promise<void>
   sampleTransactions: TallyLinkedMercuryRow[]
+  /** Pre-fills the New-rule form when opening ("Create rule…" from a transaction). Parent must hold this in state — an inline object would re-seed on every render and clobber edits. */
+  initialForm?: TallyPayrollRuleFormSeed | null
+  /** Fired after a rule insert/update succeeds (parent runs an apply pass so the new rule takes effect immediately). */
+  onRuleSaved?: () => void
 }) {
   const { showToast } = useToastContext()
   const [rules, setRules] = useState<RuleRow[]>([])
@@ -105,6 +112,13 @@ export function TallyPayrollRulesModal({
   useEffect(() => {
     if (open) void load()
   }, [open, load])
+
+  useEffect(() => {
+    if (open && initialForm) {
+      setEditingId(null)
+      setForm({ ...EMPTY_FORM, ...initialForm })
+    }
+  }, [open, initialForm])
 
   if (!open) return null
 
@@ -145,6 +159,7 @@ export function TallyPayrollRulesModal({
       resetForm()
       await load()
       showToast('Rule saved', 'success')
+      onRuleSaved?.()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save rule'), 'error')
     } finally {
