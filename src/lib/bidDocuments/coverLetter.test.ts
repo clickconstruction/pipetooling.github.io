@@ -38,6 +38,23 @@ describe('numberToWords', () => {
     expect(numberToWords(0)).toBe('Zero 00/100 Dollars')
     expect(numberToWords(1)).toBe('One 00/100 Dollars')
   })
+
+  it('handles amounts of one million and above', () => {
+    expect(numberToWords(1_000_000)).toBe('One Million 00/100 Dollars')
+    expect(numberToWords(1_250_000)).toBe('One Million Two Hundred Fifty Thousand 00/100 Dollars')
+    expect(numberToWords(2_547_310.25)).toBe(
+      'Two Million Five Hundred Forty Seven Thousand Three Hundred Ten 25/100 Dollars',
+    )
+    expect(numberToWords(12_000_450)).toBe('Twelve Million Four Hundred Fifty 00/100 Dollars')
+    expect(numberToWords(1_000_000_000)).toBe('One Billion 00/100 Dollars')
+  })
+
+  it('keeps sub-million amounts unchanged', () => {
+    expect(numberToWords(999_999.99)).toBe(
+      'Nine Hundred Ninety Nine Thousand Nine Hundred Ninety Nine 99/100 Dollars',
+    )
+    expect(numberToWords(100_000)).toBe('One Hundred Thousand 00/100 Dollars')
+  })
 })
 
 describe('serviceTypeWordForCoverLetter', () => {

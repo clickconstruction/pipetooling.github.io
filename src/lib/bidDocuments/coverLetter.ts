@@ -27,11 +27,17 @@ export function numberToWords(amount: number): string {
   }
   function toWords(n: number): string {
     if (n === 0) return 'Zero'
-    const thousands = Math.floor(n / 1000)
-    const rest = n % 1000
-    const th = thousands ? toHundreds(thousands) + ' Thousand' : ''
-    const r = rest ? toHundreds(rest) : ''
-    return (th + (th && r ? ' ' : '') + r).trim()
+    // Groups of three digits with scale words — the old thousands-only split fed
+    // toHundreds values ≥ 1000 for amounts over $1M and produced garbage.
+    const SCALES = ['', ' Thousand', ' Million', ' Billion', ' Trillion']
+    const parts: string[] = []
+    let remaining = n
+    for (let idx = 0; remaining > 0 && idx < SCALES.length; idx++) {
+      const group = remaining % 1000
+      if (group) parts.unshift(toHundreds(group) + SCALES[idx])
+      remaining = Math.floor(remaining / 1000)
+    }
+    return parts.join(' ').trim()
   }
   const words = toWords(whole)
   return `${words} ${centsStr}/100 Dollars`
