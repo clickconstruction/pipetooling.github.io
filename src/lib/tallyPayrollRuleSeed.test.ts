@@ -11,6 +11,21 @@ describe('buildPayrollRuleSeedFromTransaction', () => {
     })
   })
 
+  it('seeds BOTH counterparty and description when the transaction has both', () => {
+    expect(
+      buildPayrollRuleSeedFromTransaction({
+        counterparty_name: 'Gusto',
+        raw: { bankDescription: 'GUSTO PAY 88' },
+      }),
+    ).toEqual({
+      name: 'Gusto - payroll',
+      counterpartyOp: 'contains',
+      counterpartyValue: 'Gusto',
+      bankOp: 'contains',
+      bankValue: 'GUSTO PAY 88',
+    })
+  })
+
   it('trims counterparty whitespace', () => {
     const seed = buildPayrollRuleSeedFromTransaction({ counterparty_name: '  Gusto Inc  ', raw: null })
     expect(seed).toEqual({ name: 'Gusto Inc - payroll', counterpartyOp: 'contains', counterpartyValue: 'Gusto Inc' })

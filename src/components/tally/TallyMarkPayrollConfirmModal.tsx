@@ -95,9 +95,9 @@ export function TallyMarkPayrollConfirmModal({
               marginRight: 'auto',
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: '#fff',
-              border: '1px solid #d1d5db',
-              color: '#374151',
+              background: busy ? '#e5e7eb' : '#2563eb',
+              color: busy ? '#6b7280' : '#fff',
+              border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
@@ -111,8 +111,9 @@ export function TallyMarkPayrollConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: busy ? '#e5e7eb' : '#dc2626',
+              color: busy ? '#6b7280' : '#fff',
+              border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}

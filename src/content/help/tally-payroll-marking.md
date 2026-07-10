@@ -16,14 +16,14 @@ On a transaction with no jobs assigned, press {{button:outline|Mark payroll}}. A
 
 This resolves the transaction without allocating it to any job.
 
-{{button:outline|Create rule…}} &nbsp;&nbsp; {{button:outline|Cancel}} &nbsp; {{button:purple|Mark payroll}}
+{{button:blue|Create rule…}} &nbsp;&nbsp; {{button:red|Cancel}} &nbsp; {{button:purple|Mark payroll}}
 :::
 
 Confirming marks the row {{chip:blue|Payroll ✓}} and drops it from the unlinked queue. Made a mistake? **Unmark** is one click on the row — and an unmark is remembered, so rules will never re-mark that transaction.
 
 ## Turning one mark into a rule
 
-If this counterparty is payroll every time, don't mark it by hand each run — press {{button:outline|Create rule…}} in the confirmation instead. The **Payroll auto-mark rules** form opens pre-filled from the transaction (counterparty contains, with a suggested name), and a live line shows *"Test: matches N of M loaded transactions"* so you can see exactly what the rule would catch before saving.
+If this counterparty is payroll every time, don't mark it by hand each run — press {{button:blue|Create rule…}} in the confirmation instead. The **Payroll auto-mark rules** form opens pre-filled from the transaction (counterparty contains and description contains, with a suggested name), and a live line shows *"Test: matches N of M loaded transactions"* so you can see exactly what the rule would catch before saving. If the description carries run-specific numbers, clear that field so the rule stays broad.
 
 Press {{button:blue|Add rule}} — the rule saves and applies immediately, marking this transaction (and any other loaded matches) as payroll.
 
