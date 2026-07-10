@@ -33,8 +33,9 @@ function seedName(base: string): string {
 /**
  * Build the pre-filled rule form for a transaction: counterparty-contains and
  * description-contains, each when present; null when neither exists (caller
- * opens the rules modal unseeded). The name comes from the counterparty,
- * falling back to the bank description.
+ * opens the rules modal unseeded). The name comes from the bank description
+ * (the specific signal — e.g. "CASH APP*ISAIAH WHITES" vs the generic
+ * counterparty "Cash App"), falling back to the counterparty.
  */
 export function buildPayrollRuleSeedFromTransaction(tx: {
   counterparty_name: string | null
@@ -43,7 +44,7 @@ export function buildPayrollRuleSeedFromTransaction(tx: {
   const cp = (tx.counterparty_name ?? '').trim()
   const bank = mercuryBankDescriptionFromRaw(tx.raw)
   if (!cp && !bank) return null
-  const seed: TallyPayrollRuleFormSeed = { name: seedName(cp || bank!) }
+  const seed: TallyPayrollRuleFormSeed = { name: seedName(bank || cp) }
   if (cp) {
     seed.counterpartyOp = 'contains'
     seed.counterpartyValue = cp
