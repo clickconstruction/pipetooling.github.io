@@ -50,6 +50,14 @@ describe('searchHelpGuides', () => {
     expect(both.matches.map((m) => m.slug)).toEqual(['quickfill'])
   })
 
+  it('strips a leading "how do I…" question phrase and trailing question marks', () => {
+    expect(searchHelpGuides('How do I clock in?', GUIDES).matches[0]!.slug).toBe('clocking')
+    expect(searchHelpGuides('how to clock in', GUIDES).matches[0]!.slug).toBe('clocking')
+    expect(searchHelpGuides('how can I clock in', GUIDES).matches[0]!.slug).toBe('clocking')
+    // Only the leading phrase is stripped — a bare phrase leaves no tokens.
+    expect(searchHelpGuides('how do i', GUIDES).matches).toEqual([])
+  })
+
   it('is case-insensitive and breaks ties by input order', () => {
     const guides = [
       guide({ slug: 'first', title: 'Dispatch One' }),

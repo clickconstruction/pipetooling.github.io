@@ -5,6 +5,7 @@ import { HELP_GUIDES } from '../lib/helpGuideRegistry'
 import {
   groupGuidesByCategory,
   guideIsRelevantForRole,
+  helpGuideQuestionTitle,
   type HelpGuide,
 } from '../lib/helpGuides'
 import { searchHelpGuides } from '../lib/helpGuideSearch'
@@ -90,7 +91,10 @@ export default function Help() {
   function renderGuideRow(guide: HelpGuide) {
     return (
       <button key={guide.slug} type="button" style={guideRowStyle} onClick={() => openGuide(guide.slug)}>
-        <span style={{ fontWeight: 600 }}>{guide.title}</span>
+        <span style={{ fontWeight: 600 }}>
+          <span style={{ color: '#9ca3af', fontWeight: 400 }}>…</span>
+          {guide.title.trim()}?
+        </span>
         {guide.roles !== 'all' && (
           <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
             {guide.roles.map((r) => displayLabelForUserRole(r)).join(', ')}
@@ -112,7 +116,7 @@ export default function Help() {
         </button>
         <div style={cardStyle}>
           <div style={{ marginBottom: '0.75rem' }}>
-            <h1 style={{ margin: '0 0 0.35rem', fontSize: '1.35rem' }}>{selectedGuide.title}</h1>
+            <h1 style={{ margin: '0 0 0.35rem', fontSize: '1.35rem' }}>{helpGuideQuestionTitle(selectedGuide.title)}</h1>
             <span style={categoryChipStyle}>{selectedGuide.category}</span>
           </div>
           <div
@@ -128,7 +132,10 @@ export default function Help() {
 
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
-      <h1 style={{ margin: '0 0 0.75rem', fontSize: '1.35rem' }}>Help</h1>
+      <h1 style={{ margin: '0 0 0.35rem', fontSize: '1.6rem' }}>How do I…</h1>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        Type what you want to do and the guide pulls up.
+      </p>
       {selectedSlug && !selectedGuide && (
         <p style={{ fontSize: '0.875rem', color: '#b45309', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
           That guide wasn't found — it may have been renamed. Browse or search below.
@@ -138,9 +145,10 @@ export default function Help() {
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search guides…"
-        aria-label="Search guides"
-        style={{ width: '100%', padding: '0.6rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 8, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+        placeholder="…clock in on a job? bill a customer? file a report?"
+        aria-label="How do I…"
+        autoFocus
+        style={{ width: '100%', padding: '0.7rem 0.85rem', border: '1px solid #d1d5db', borderRadius: 8, marginBottom: '0.75rem', boxSizing: 'border-box', fontSize: '1rem' }}
       />
       {!seesAllByDefault && (
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', cursor: 'pointer' }}>

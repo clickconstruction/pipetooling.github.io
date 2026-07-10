@@ -31,4 +31,13 @@ describe('help guide content', () => {
       expect(/^# /m.test(g.body), `guide "${g.slug}" uses a top-level # heading`).toBe(false)
     }
   })
+
+  it('titles are completions of "How do I…" (no leading "how", no trailing "?")', () => {
+    const guides = buildHelpGuideRegistry(loadContent())
+    for (const g of guides) {
+      expect(/^how\b/i.test(g.title), `guide "${g.slug}" title starts with "how"`).toBe(false)
+      expect(g.title.endsWith('?'), `guide "${g.slug}" title ends with "?"`).toBe(false)
+      expect(/^[a-z]/.test(g.title), `guide "${g.slug}" title should start lowercase`).toBe(true)
+    }
+  })
 })

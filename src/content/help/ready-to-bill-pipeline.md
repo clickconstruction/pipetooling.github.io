@@ -1,5 +1,5 @@
 ---
-title: From Ready to Bill to Paid
+title: bill a customer and get paid
 category: Billing & Money
 roles: assistant, master_technician, primary
 keywords: billing, ready to bill, invoice, stripe, bill customer, paid, accounts receivable

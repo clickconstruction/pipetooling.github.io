@@ -19,11 +19,24 @@ const KEYWORD_SCORE = 50
 const CATEGORY_SCORE = 25
 const BODY_SCORE = 10
 
+/**
+ * The page prompts "How do I…", so users often type the whole question —
+ * strip the leading question phrase so tokens match guide titles (which are
+ * stored as sentence completions).
+ */
+const LEADING_QUESTION_PHRASE =
+  /^(?:how\s+(?:do|can|would|should)\s+(?:i|we|you)\s+|how\s+to\s+|how\s+do\s+i\s*)/i
+
 export function searchHelpGuides(
   query: string,
   guides: readonly HelpGuide[],
 ): HelpGuideSearchResult {
-  const normalizedQuery = query.trim().toLowerCase()
+  const normalizedQuery = query
+    .trim()
+    .replace(LEADING_QUESTION_PHRASE, '')
+    .replace(/\?+\s*$/, '')
+    .trim()
+    .toLowerCase()
   if (!normalizedQuery) {
     return { normalizedQuery: '', matches: [] }
   }

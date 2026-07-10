@@ -1,5 +1,5 @@
 ---
-title: Schedule & Dispatch
+title: schedule people onto jobs
 category: Scheduling
 roles: assistant, superintendent, master_technician
 keywords: schedule, dispatch, assign, blocks, not coming in, share schedule

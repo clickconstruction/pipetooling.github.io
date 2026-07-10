@@ -1,5 +1,5 @@
 ---
-title: How PipeTooling Works
+title: understand how PipeTooling works
 category: Getting Started
 roles: all
 keywords: overview, masters, assistants, subs, projects, stages, sharing, mission
