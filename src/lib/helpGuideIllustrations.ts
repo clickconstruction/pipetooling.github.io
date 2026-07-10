@@ -4,7 +4,7 @@
  * chips, header icons, framed example panels) styled like the real app.
  *
  * Author syntax:
- *   {{button:<variant>|<label>}}   variants: blue green amber red gray outline outline-blue outline-amber
+ *   {{button:<variant>|<label>}}   variants: blue green amber red purple gray outline outline-blue outline-amber
  *   {{chip:<variant>|<label>}}     variants: red green yellow blue gray
  *   {{icon:<name>}}                names: help gear
  *   {{gif:<filename>|<caption>}}   screen recording from public/help/ (lazy-loaded,
@@ -26,6 +26,7 @@ const BUTTON_STYLES: Record<string, string> = {
   green: 'background:#16a34a;color:white;border:none;',
   amber: 'background:#d97706;color:white;border:none;',
   red: 'background:#dc2626;color:white;border:none;',
+  purple: 'background:#7c3aed;color:white;border:none;',
   gray: 'background:#9ca3af;color:white;border:none;',
   outline: 'background:white;color:#1f2937;border:1px solid #d1d5db;',
   'outline-blue': 'background:white;color:#1d4ed8;border:1px solid #93c5fd;',

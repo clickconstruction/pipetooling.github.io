@@ -25,7 +25,9 @@ import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFrom
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
+import { buildPayrollRuleSeedFromTransaction, type TallyPayrollRuleFormSeed } from '../lib/tallyPayrollRuleSeed'
 import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesModal'
+import { TallyMarkPayrollConfirmModal } from '../components/tally/TallyMarkPayrollConfirmModal'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
@@ -241,6 +243,10 @@ export default function JobTally() {
   // Tx ids with any flag row (marked or tombstoned) — rules never re-touch these.
   const [payrollDecidedIds, setPayrollDecidedIds] = useState<Set<string>>(new Set())
   const [payrollRulesModalOpen, setPayrollRulesModalOpen] = useState(false)
+  // "Mark payroll" y/n confirm: the row awaiting confirmation, and the seed for "Create rule…".
+  const [pendingPayrollTx, setPendingPayrollTx] = useState<TallyLinkedMercuryRow | null>(null)
+  const [payrollMarkBusy, setPayrollMarkBusy] = useState(false)
+  const [payrollRulesSeed, setPayrollRulesSeed] = useState<TallyPayrollRuleFormSeed | null>(null)
   const [payrollAutoApply, setPayrollAutoApply] = useState(() => {
     try {
       return localStorage.getItem('jobs-tally-payroll-autoapply') === 'true'
@@ -991,7 +997,10 @@ export default function JobTally() {
               {isDevTally ? (
                 <button
                   type="button"
-                  onClick={() => setPayrollRulesModalOpen(true)}
+                  onClick={() => {
+                    setPayrollRulesSeed(null)
+                    setPayrollRulesModalOpen(true)
+                  }}
                   title="Manage payroll auto-mark rules and apply them"
                   style={tallyCardFilterChipButtonStyle(false)}
                 >
@@ -1633,7 +1642,7 @@ export default function JobTally() {
                             const markPayrollBtn = isDevTally ? (
                               <button
                                 type="button"
-                                onClick={() => void setTallyPayrollFlag(row.mercury_transaction_id, true)}
+                                onClick={() => setPendingPayrollTx(row)}
                                 title="Mark as payroll — resolves this transaction without allocating it to any job"
                                 style={{
                                   fontSize: '0.75rem',
@@ -2280,7 +2289,10 @@ export default function JobTally() {
       {isDevTally ? (
         <TallyPayrollRulesModal
           open={payrollRulesModalOpen}
-          onClose={() => setPayrollRulesModalOpen(false)}
+          onClose={() => {
+            setPayrollRulesModalOpen(false)
+            setPayrollRulesSeed(null)
+          }}
           autoApply={payrollAutoApply}
           onToggleAutoApply={(next) => {
             setPayrollAutoApply(next)
@@ -2292,6 +2304,39 @@ export default function JobTally() {
           }}
           onApplyNow={() => applyPayrollRules()}
           sampleTransactions={tallyTxRows}
+          initialForm={payrollRulesSeed}
+          onRuleSaved={() => void applyPayrollRules()}
+        />
+      ) : null}
+      {isDevTally ? (
+        <TallyMarkPayrollConfirmModal
+          open={pendingPayrollTx !== null}
+          busy={payrollMarkBusy}
+          counterpartyName={pendingPayrollTx?.counterparty_name ?? null}
+          bankDescription={pendingPayrollTx ? mercuryBankDescriptionFromRaw(pendingPayrollTx.raw) : null}
+          amountLabel={pendingPayrollTx ? formatTallyCurrency(Number(pendingPayrollTx.amount)) : ''}
+          postedLabel={(() => {
+            const posted = pendingPayrollTx ? formatTallyPostedParts(pendingPayrollTx.posted_at) : null
+            return posted ? `${posted.date} · ${posted.weekday}` : null
+          })()}
+          onCancel={() => setPendingPayrollTx(null)}
+          onConfirm={() => {
+            const tx = pendingPayrollTx
+            if (!tx || payrollMarkBusy) return
+            setPayrollMarkBusy(true)
+            // setTallyPayrollFlag never throws — it catches and toasts internally.
+            void setTallyPayrollFlag(tx.mercury_transaction_id, true).finally(() => {
+              setPayrollMarkBusy(false)
+              setPendingPayrollTx(null)
+            })
+          }}
+          onCreateRule={() => {
+            const tx = pendingPayrollTx
+            if (!tx) return
+            setPayrollRulesSeed(buildPayrollRuleSeedFromTransaction(tx))
+            setPendingPayrollTx(null)
+            setPayrollRulesModalOpen(true)
+          }}
         />
       ) : null}
     </div>
