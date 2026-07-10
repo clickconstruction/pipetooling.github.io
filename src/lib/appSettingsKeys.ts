@@ -58,6 +58,15 @@ export const APP_SETTINGS_KEY_PHYSICAL_INVOICE_ISSUER_V1 = 'physical_invoice_iss
 export const APP_SETTINGS_KEY_DISPATCH_NOTE_REQUIREMENT_CONFIG =
   'dispatch_note_requirement_config_v1' as const
 
+/** `value_text` — org default for the bid cover letter Terms & warranty paragraph (used when a bid's Terms box is empty). Blank/missing = built-in DEFAULT_TERMS_AND_WARRANTY. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT = 'bid_cover_letter_terms_default_v1' as const
+
+/** `value_text` — org default for the bid cover letter Exclusions list (one per line; used when a bid's Exclusions box is empty). Blank/missing = built-in DEFAULT_EXCLUSIONS. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT = 'bid_cover_letter_exclusions_default_v1' as const
+
+/** `value_text` — the cover letter closing paragraph lines (before "Respectfully submitted…"). Blank/missing = built-in DEFAULT_COVER_LETTER_CLOSING. Dev writes; all authenticated read. */
+export const APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING = 'bid_cover_letter_closing_v1' as const
+
 /** Dollars in `value_num` — default Turnaway trip charge when the client isn't home. NULL/≤0 = not configured. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_TRIP_CHARGE_CLIENT_NOT_HOME = 'trip_charge_client_not_home' as const
 
