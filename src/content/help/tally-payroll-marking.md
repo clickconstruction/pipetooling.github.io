@@ -19,7 +19,7 @@ This resolves the transaction without allocating it to any job.
 {{button:blue|Create rule…}} &nbsp;&nbsp; {{button:red|Cancel}} &nbsp; {{button:purple|Mark payroll}}
 :::
 
-Confirming marks the row {{chip:blue|Payroll ✓}} and drops it from the unlinked queue. Made a mistake? **Unmark** is one click on the row — and an unmark is remembered, so rules will never re-mark that transaction.
+Confirming marks the row {{chip:blue|Payroll ✓}} and it counts as linked everywhere — it drops out of the unlinked queue, the Dashboard unlinked banner, and the stale-tally warnings. Made a mistake? **Unmark** is one click on the row — and an unmark is remembered, so rules will never re-mark that transaction.
 
 ## Turning one mark into a rule
 
