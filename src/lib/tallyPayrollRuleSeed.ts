@@ -5,7 +5,9 @@
  *
  * Amount is deliberately never seeded: payroll amounts vary per run, so an
  * amount clause would silently stop matching future transactions. Counterparty
- * is the stable signal; bank description is the fallback when it's missing.
+ * and bank description are both pre-filled when present (criteria AND
+ * together — the form's live match count shows when a run-specific
+ * description makes the rule too narrow, and the dev can clear it).
  *
  * Separate from tallyPayrollRules.ts (the rule APPLY engine) — this is form
  * seeding, and TallyPayrollRulesModal imports the seed type from here.
@@ -29,21 +31,26 @@ function seedName(base: string): string {
 }
 
 /**
- * Build the pre-filled rule form for a transaction. Counterparty-contains when
- * present; bank-description-contains as fallback; null when neither exists
- * (caller opens the rules modal unseeded).
+ * Build the pre-filled rule form for a transaction: counterparty-contains and
+ * description-contains, each when present; null when neither exists (caller
+ * opens the rules modal unseeded). The name comes from the counterparty,
+ * falling back to the bank description.
  */
 export function buildPayrollRuleSeedFromTransaction(tx: {
   counterparty_name: string | null
   raw: Json | null
 }): TallyPayrollRuleFormSeed | null {
   const cp = (tx.counterparty_name ?? '').trim()
-  if (cp) {
-    return { name: seedName(cp), counterpartyOp: 'contains', counterpartyValue: cp }
-  }
   const bank = mercuryBankDescriptionFromRaw(tx.raw)
-  if (bank) {
-    return { name: seedName(bank), bankOp: 'contains', bankValue: bank }
+  if (!cp && !bank) return null
+  const seed: TallyPayrollRuleFormSeed = { name: seedName(cp || bank!) }
+  if (cp) {
+    seed.counterpartyOp = 'contains'
+    seed.counterpartyValue = cp
   }
-  return null
+  if (bank) {
+    seed.bankOp = 'contains'
+    seed.bankValue = bank
+  }
+  return seed
 }
