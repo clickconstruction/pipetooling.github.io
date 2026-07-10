@@ -11,18 +11,18 @@ describe('buildPayrollRuleSeedFromTransaction', () => {
     })
   })
 
-  it('seeds BOTH counterparty and description when the transaction has both', () => {
+  it('seeds BOTH counterparty and description when the transaction has both, naming from the description', () => {
     expect(
       buildPayrollRuleSeedFromTransaction({
-        counterparty_name: 'Gusto',
-        raw: { bankDescription: 'GUSTO PAY 88' },
+        counterparty_name: 'Cash App',
+        raw: { bankDescription: 'CASH APP*ISAIAH WHITES' },
       }),
     ).toEqual({
-      name: 'Gusto - payroll',
+      name: 'CASH APP*ISAIAH WHITES - payroll',
       counterpartyOp: 'contains',
-      counterpartyValue: 'Gusto',
+      counterpartyValue: 'Cash App',
       bankOp: 'contains',
-      bankValue: 'GUSTO PAY 88',
+      bankValue: 'CASH APP*ISAIAH WHITES',
     })
   })
 
