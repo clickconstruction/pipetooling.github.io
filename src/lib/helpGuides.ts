@@ -139,6 +139,15 @@ export function guideIsRelevantForRole(guide: HelpGuide, role: UserRole | null):
   return guide.roles.includes(role)
 }
 
+/**
+ * Guide titles are stored as completions of "How do I…" (e.g. "clock in and
+ * out with Job Mode"); this renders the full question for headings.
+ */
+export function helpGuideQuestionTitle(title: string): string {
+  const t = title.trim().replace(/\?+$/, '')
+  return `How do I ${t}?`
+}
+
 export function groupGuidesByCategory(
   guides: readonly HelpGuide[],
 ): Array<{ category: string; guides: HelpGuide[] }> {

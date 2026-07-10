@@ -1,5 +1,5 @@
 ---
-title: Settings Basics
+title: set up my profile and notifications
 category: Getting Started
 roles: all
 keywords: profile, name, phone, push notifications, pinned pages, tabs
@@ -51,4 +51,4 @@ Pages you pin appear in a quick bar for fast navigation, and pins sync across yo
 
 ## How it works
 
-The **How it works** tab (always the last tab) is a plain-language explainer of the Masters / Assistants / Subs model — the same content as the "How PipeTooling Works" guide here in Help.
+The **How it works** tab (always the last tab) is a plain-language explainer of the Masters / Assistants / Subs model — the same content as the "How do I understand how PipeTooling works?" guide here in Help.

@@ -1,5 +1,5 @@
 ---
-title: Job Mode & Clocking In/Out
+title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
 keywords: clock in, clock out, job mode, time tracking, leave report, next job

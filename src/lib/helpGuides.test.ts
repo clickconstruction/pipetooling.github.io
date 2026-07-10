@@ -3,6 +3,7 @@ import {
   buildHelpGuideRegistry,
   groupGuidesByCategory,
   guideIsRelevantForRole,
+  helpGuideQuestionTitle,
   helpGuideSlugFromGlobPath,
   parseHelpGuideFrontmatter,
   type HelpGuide,
@@ -128,6 +129,18 @@ describe('guideIsRelevantForRole', () => {
     expect(guideIsRelevantForRole(g, 'helpers')).toBe(false)
     expect(guideIsRelevantForRole(g, 'dev')).toBe(true)
     expect(guideIsRelevantForRole(g, null)).toBe(true)
+  })
+})
+
+describe('helpGuideQuestionTitle', () => {
+  it('renders the stored completion as a full question', () => {
+    expect(helpGuideQuestionTitle('clock in and out with Job Mode')).toBe(
+      'How do I clock in and out with Job Mode?',
+    )
+  })
+
+  it('trims whitespace and never doubles the question mark', () => {
+    expect(helpGuideQuestionTitle('  bill a customer?  ')).toBe('How do I bill a customer?')
   })
 })
 

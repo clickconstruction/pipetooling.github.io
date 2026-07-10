@@ -1,5 +1,5 @@
 ---
-title: Turnaways & Trip Charges
+title: report a turnaway and bill a trip charge
 category: Field Work
 roles: subcontractor, helpers, superintendent, assistant
 keywords: turnaway, client not home, site not ready, trip charge, no access
