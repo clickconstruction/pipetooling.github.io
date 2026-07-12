@@ -426,7 +426,8 @@ export function PeopleUsersTab({
             <button type="button" onClick={() => openEdit(item as Person)} style={{ padding: '2px 6px', fontSize: '0.8125rem' }}>
               Edit
             </button>
-            {item.master_user_id === authUserId ? (
+            {/* Owner always; devs on anyone's row (RLS: "Devs can update any people"). */}
+            {(item.master_user_id === authUserId || isDev) && (
               <button
                 type="button"
                 onClick={() => archivePerson(item.id)}
@@ -435,7 +436,8 @@ export function PeopleUsersTab({
               >
                 {archivingId === item.id ? '...' : 'Archive'}
               </button>
-            ) : (
+            )}
+            {item.master_user_id !== authUserId && (
               <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
                 Created by {creatorNames[item.master_user_id] ?? 'Unknown'}
               </span>
