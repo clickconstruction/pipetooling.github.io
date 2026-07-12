@@ -55,6 +55,7 @@ import {
   type JobTallyPartLine,
 } from '../../lib/fetchJobMaterialsCostSnapshot'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
+import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import JobProjectLinkChoiceModal from './JobProjectLinkChoiceModal'
 import JobBidLinkChoiceModal, { type JobBidLinkOption } from './JobBidLinkChoiceModal'
 import { JobFormImportEstimateOrBidModal } from './JobFormImportEstimateOrBidModal'
@@ -6145,6 +6146,7 @@ export default function JobFormModal({
                   </tbody>
                 </table>
               </MaterialsCostAccordionRow>
+              {editing ? <JobChargesTimelineStandalone job={editing} /> : null}
           </div>
         </div>
         <div
