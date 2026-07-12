@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildJobClockSummaries,
   buildQuickfillCompleteNoBillList,
   jobHasNoTotalBill,
   quickfillCompleteNoBillCandidates,
@@ -80,5 +81,59 @@ describe('buildQuickfillCompleteNoBillList', () => {
   })
   it('excludes jobs with no completion signal at all', () => {
     expect(buildQuickfillCompleteNoBillList([job()], new Map(), 406)).toEqual([])
+  })
+})
+
+describe('buildJobClockSummaries', () => {
+  it('rolls sessions into first-clock-in, count, closed-hours, and distinct work dates', () => {
+    const map = buildJobClockSummaries([
+      {
+        job_ledger_id: 'a',
+        clocked_in_at: '2026-06-03T14:00:00Z',
+        clocked_out_at: '2026-06-03T18:00:00Z',
+        work_date: '2026-06-03',
+      },
+      {
+        job_ledger_id: 'a',
+        clocked_in_at: '2026-06-01T13:00:00Z',
+        clocked_out_at: '2026-06-01T15:30:00Z',
+        work_date: '2026-06-01',
+      },
+      {
+        job_ledger_id: 'a',
+        clocked_in_at: '2026-06-03T19:00:00Z',
+        clocked_out_at: '2026-06-03T20:00:00Z',
+        work_date: '2026-06-03',
+      },
+    ])
+    const a = map.get('a')
+    expect(a?.firstClockInAt).toBe('2026-06-01T13:00:00Z')
+    expect(a?.sessionCount).toBe(3)
+    expect(a?.totalHours).toBeCloseTo(7.5, 5)
+    expect(a?.workDates).toEqual(['2026-06-01', '2026-06-03'])
+    expect(a?.hasOpenSession).toBe(false)
+  })
+  it('marks open sessions without counting their hours, and falls back to the clock-in date', () => {
+    const map = buildJobClockSummaries([
+      {
+        job_ledger_id: 'b',
+        clocked_in_at: '2026-06-05T14:00:00Z',
+        clocked_out_at: null,
+        work_date: null,
+      },
+    ])
+    const b = map.get('b')
+    expect(b?.hasOpenSession).toBe(true)
+    expect(b?.totalHours).toBe(0)
+    expect(b?.sessionCount).toBe(1)
+    expect(b?.workDates).toEqual(['2026-06-05'])
+  })
+  it('groups by job and skips rows without a job id', () => {
+    const map = buildJobClockSummaries([
+      { job_ledger_id: 'a', clocked_in_at: '2026-06-01T13:00:00Z', clocked_out_at: '2026-06-01T14:00:00Z', work_date: '2026-06-01' },
+      { job_ledger_id: 'c', clocked_in_at: '2026-06-02T13:00:00Z', clocked_out_at: '2026-06-02T14:00:00Z', work_date: '2026-06-02' },
+      { job_ledger_id: null, clocked_in_at: '2026-06-02T13:00:00Z', clocked_out_at: null, work_date: null },
+    ])
+    expect([...map.keys()].sort()).toEqual(['a', 'c'])
   })
 })
