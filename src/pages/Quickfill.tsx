@@ -1120,6 +1120,7 @@ function QuickfillPage() {
           >
             <QuickfillCompleteNoBillSection
               completeNoBillJobs={quickfillCompleteNoBill.completeNoBillJobs}
+              clockSummaryByJobId={quickfillCompleteNoBill.clockSummaryByJobId}
               jobsListBusy={quickfillCompleteNoBill.jobsListBusy}
             />
           </QuickfillSectionWrapper>
