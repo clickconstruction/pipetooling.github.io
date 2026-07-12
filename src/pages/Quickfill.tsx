@@ -10,6 +10,7 @@ import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwai
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
+import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
@@ -40,6 +41,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
+import { useQuickfillCompleteNoBillJobs } from '../hooks/useQuickfillCompleteNoBillJobs'
 import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import {
@@ -72,6 +74,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
+  { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Stages: customer link & customer pictures' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
@@ -448,6 +451,12 @@ function QuickfillPage() {
   const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => new Set())
   const [activeSectionsPanelOpen, setActiveSectionsPanelOpen] = useState(false)
   const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(DEFAULT_JOBS_BILLING_MIN_HCP)
+  const quickfillCompleteNoBill = useQuickfillCompleteNoBillJobs(jobsBillingMinHcp)
+  useReportQuickfillSectionMetric(
+    'complete-no-bill',
+    quickfillCompleteNoBill.fetchEnabled ? quickfillCompleteNoBill.completeNoBillJobs.length : null,
+    quickfillCompleteNoBill.fetchEnabled && quickfillCompleteNoBill.loading,
+  )
   const [markHistoryModal, setMarkHistoryModal] = useState<{ sectionId: string; label: string } | null>(null)
   const [sectionOrderIds, setSectionOrderIds] = useState<string[]>(() => [...DEFAULT_SECTION_ORDER_IDS])
   const [sectionBanners, setSectionBanners] = useState<Record<string, string>>({})
@@ -626,6 +635,7 @@ function QuickfillPage() {
         return role === 'dev' || role === 'master_technician' || role === 'assistant'
       }
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
+      if (sectionId === 'complete-no-bill') return quickfillCompleteNoBill.fetchEnabled
       if (sectionId === 'dispatch-inbox') return dispatchInboxEligible
       if (sectionId === 'schedule' || sectionId === 'tomorrow-schedule') {
         return role != null && CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE.has(role)
@@ -646,6 +656,7 @@ function QuickfillPage() {
       role,
       canAccessProspects,
       quickfillNoCustomerStages.fetchEnabled,
+      quickfillCompleteNoBill.fetchEnabled,
     ],
   )
 
@@ -1088,6 +1099,29 @@ function QuickfillPage() {
             onOpenHistory={() => setMarkHistoryModal({ sectionId: 'jobs-billing', label: 'Jobs Billing' })}
           >
             <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
+          </QuickfillSectionWrapper>
+        )
+      case 'complete-no-bill':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['complete-no-bill']?.marked_at ?? null)}
+            collapsed={isCollapsed('complete-no-bill') && !forceExpandedSections.has('complete-no-bill')}
+            mark={sectionMarks['complete-no-bill']}
+            onMarkUpToDate={() => void markSectionUpToDate('complete-no-bill')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'complete-no-bill']))}
+            onOpenHistory={() =>
+              setMarkHistoryModal({ sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' })
+            }
+          >
+            <QuickfillCompleteNoBillSection
+              completeNoBillJobs={quickfillCompleteNoBill.completeNoBillJobs}
+              jobsListBusy={quickfillCompleteNoBill.jobsListBusy}
+            />
           </QuickfillSectionWrapper>
         )
       case 'no-customer-stages':

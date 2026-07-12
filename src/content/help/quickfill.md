@@ -34,6 +34,7 @@ The sections cover the office's recurring review surfaces — among them:
 - **Warnings** and **Office Arriving / Office Leaving** — start and end of day checks.
 - **People Hours** and **Unassigned field time** — time approval.
 - **Jobs Billing** and **Billing Awaiting Payments** — the billing loop (see the billing guide).
+- **Complete, no Total Bill** — jobs marked **100% complete** (latest field report %, or the Edit Job **% complete** field when no report has one) whose **Total Bill** is empty or $0. Click {{button:red|Open list (N)}}, then click a job to open **Edit Job** and set the Job Total so the job can be billed. Uses the same 100% rule as the Job Summary **%** column and the same minimum-HCP cutoff as Jobs Billing.
 - **Dispatch inbox** — field requests, including Turnaway alerts with their {{button:outline-amber|Create trip charge}} button.
 - **Schedule** ("Are there any obvious schedule conflicts?") and **Tomorrow's Schedule** ("Who is on what job tomorrow?").
 - **Email / Texts / Physical inbox** — communication queues.
