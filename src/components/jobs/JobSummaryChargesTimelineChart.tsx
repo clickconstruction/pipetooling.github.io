@@ -1,9 +1,10 @@
 /** Jobs → Job Summary expanded row: "Charges & Value" timeline chart.
  *
- * Main stepAfter line = NET position (cumulative charges − payments received): charges step it
- * up in red with per-source icons; payments step it down with those stretches overlaid in green
- * (one thin green Line per `paymentDropSegment` — recharts can't color a single line
- * per-segment) and a 💵 marker. Below zero = job has collected more than it cost.
+ * Main stepAfter line = PROFIT (cumulative payments received − charges): charges step it DOWN
+ * in red with per-source icons; payments step it UP with those stretches overlaid in green
+ * (one thin green Line per `paymentRiseSegment` — recharts can't color a single line
+ * per-segment) and a 💵 marker. Above the dashed $0 line = job has collected more than it
+ * cost; both money lines carry end-of-line value labels.
  * Blue stepAfter line = value created — each field report with a completion % steps it to
  * (% × job revenue); reports without a % show a 🚩 marker only. Data shaping lives in the pure
  * kernel `src/lib/jobChargesTimeline.ts` (unit-tested); this component only adapts props and renders.
@@ -13,6 +14,7 @@ import {
   CartesianGrid,
   Line,
   LineChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -27,7 +29,7 @@ import {
   tallyPartEventAmount,
   ymdFromDateOnlyOrIso,
   type JobChargesTimelineChartRow,
-  type JobPaymentDropSegment,
+  type JobPaymentRiseSegment,
 } from '../../lib/jobChargesTimeline'
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
@@ -58,47 +60,96 @@ type TimelineDotProps = {
   payload?: JobChargesTimelineChartRow
 }
 
-function renderNetDot(props: TimelineDotProps) {
-  const { cx, cy, index, payload } = props
-  const key = `net-dot-${index ?? 'x'}`
-  const sources = payload?.chargeSources ?? []
-  const hasPayment = payload?.hasPaymentMarker === true
-  if (cx == null || cy == null || (sources.length === 0 && !hasPayment)) return <g key={key} />
-  return (
-    <g key={key}>
-      <circle cx={cx} cy={cy} r={2.5} fill={sources.length === 0 ? '#16a34a' : '#dc2626'} />
-      {sources.map((s, i) => (
-        <text
-          key={s}
-          x={cx + (i - (sources.length - 1) / 2) * 24}
-          y={cy - 12}
-          fontSize={22}
-          textAnchor="middle"
-        >
-          {JOB_CHARGE_SOURCE_META[s].icon}
-        </text>
-      ))}
-      {hasPayment && (
-        <text x={cx} y={cy + 24} fontSize={22} textAnchor="middle">
-          💵
-        </text>
-      )}
-    </g>
-  )
+/** Signed money label: +$166.21 / −$83.79. */
+function signedCurrency(n: number): string {
+  return `${n < 0 ? '−' : '+'}$${formatCurrency(Math.abs(n))}`
 }
 
-function renderValueDot(props: TimelineDotProps) {
-  const { cx, cy, index, payload } = props
-  const key = `value-dot-${index ?? 'x'}`
-  if (cx == null || cy == null || !payload?.hasReportMarker) return <g key={key} />
-  return (
-    <g key={key}>
-      <circle cx={cx} cy={cy} r={2.5} fill="#2563eb" />
-      <text x={cx} y={cy + 26} fontSize={22} textAnchor="middle">
-        🚩
-      </text>
-    </g>
-  )
+/** Dot renderer for the profit line: source icons (clamped inside the plot), 💵 payment
+ * marker (flips above the point near the chart floor), and a bold end-of-line value label. */
+function makeProfitDot(lastIndex: number) {
+  return function renderProfitDot(props: TimelineDotProps) {
+    const { cx, cy, index, payload } = props
+    const key = `profit-dot-${index ?? 'x'}`
+    const sources = payload?.chargeSources ?? []
+    const hasPayment = payload?.hasPaymentMarker === true
+    const isLast = index === lastIndex && payload != null
+    if (cx == null || cy == null || (sources.length === 0 && !hasPayment && !isLast)) {
+      return <g key={key} />
+    }
+    const iconRowY = Math.max(24, cy - 12)
+    const paymentY = cy > 190 ? cy - 16 : cy + 26
+    return (
+      <g key={key}>
+        {(sources.length > 0 || hasPayment) && (
+          <circle cx={cx} cy={cy} r={2.5} fill={sources.length === 0 ? '#16a34a' : '#dc2626'} />
+        )}
+        {sources.map((s, i) => (
+          <text
+            key={s}
+            x={cx + (i - (sources.length - 1) / 2) * 24}
+            y={iconRowY}
+            fontSize={22}
+            textAnchor="middle"
+          >
+            {JOB_CHARGE_SOURCE_META[s].icon}
+          </text>
+        ))}
+        {hasPayment && (
+          <text x={cx} y={paymentY} fontSize={22} textAnchor="middle">
+            💵
+          </text>
+        )}
+        {isLast && payload && (
+          <text
+            x={cx + 8}
+            y={cy + 4}
+            fontSize={13}
+            fontWeight={700}
+            textAnchor="start"
+            fill={payload.profit >= 0 ? '#15803d' : '#b91c1c'}
+          >
+            {signedCurrency(payload.profit)}
+          </text>
+        )}
+      </g>
+    )
+  }
+}
+
+/** Dot renderer for the value line: 🚩 report markers + an end-of-line value label. */
+function makeValueDot(lastIndex: number) {
+  return function renderValueDot(props: TimelineDotProps) {
+    const { cx, cy, index, payload } = props
+    const key = `value-dot-${index ?? 'x'}`
+    const hasMarker = payload?.hasReportMarker === true
+    const isLast = index === lastIndex && payload?.value != null
+    if (cx == null || cy == null || (!hasMarker && !isLast)) return <g key={key} />
+    return (
+      <g key={key}>
+        {hasMarker && (
+          <>
+            <circle cx={cx} cy={cy} r={2.5} fill="#2563eb" />
+            <text x={cx} y={cy - 12} fontSize={22} textAnchor="middle">
+              🚩
+            </text>
+          </>
+        )}
+        {isLast && payload?.value != null && (
+          <text
+            x={cx + 8}
+            y={cy - 6}
+            fontSize={13}
+            fontWeight={700}
+            textAnchor="start"
+            fill="#2563eb"
+          >
+            ${formatCurrency(payload.value)}
+          </text>
+        )}
+      </g>
+    )
+  }
 }
 
 type TimelineTooltipProps = {
@@ -141,14 +192,20 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         </div>
       ))}
       <div style={{ marginTop: '0.25rem', borderTop: '1px solid #f3f4f6', paddingTop: '0.25rem' }}>
-        <span style={{ color: '#dc2626' }}>Expense: ${formatCurrency(row.expense)}</span>
+        <span style={{ color: '#dc2626' }}>Cost: ${formatCurrency(row.expense)}</span>
         {row.paymentsToDate > 0 && (
           <span style={{ color: '#15803d', marginLeft: '0.6rem' }}>
-            Payments: ${formatCurrency(row.paymentsToDate)}
+            Paid: ${formatCurrency(row.paymentsToDate)}
           </span>
         )}
-        <span style={{ fontWeight: 600, color: row.net >= 0 ? '#374151' : '#15803d', marginLeft: '0.6rem' }}>
-          Net: ${formatCurrency(row.net)}
+        <span
+          style={{
+            fontWeight: 600,
+            color: row.profit >= 0 ? '#15803d' : '#b91c1c',
+            marginLeft: '0.6rem',
+          }}
+        >
+          Profit: {signedCurrency(row.profit)}
         </span>
         {row.value != null && (
           <span style={{ color: '#2563eb', marginLeft: '0.6rem' }}>
@@ -238,6 +295,10 @@ export default function JobSummaryChargesTimelineChart({
     return buildJobChargesTimelineChartData(chargeEvents, valueEvents, revenue, paymentEvents)
   }, [loading, row, mercuryRows, invoiceLines, reports, mercuryNeeded, invoicesNeeded, mileageCost, timePerMile])
 
+  const lastIndex = data ? data.chartRows.length - 1 : -1
+  const profitDot = useMemo(() => makeProfitDot(lastIndex), [lastIndex])
+  const valueDot = useMemo(() => makeValueDot(lastIndex), [lastIndex])
+
   if (loading) {
     return (
       <p style={{ color: '#6b7280', fontSize: '0.75rem', margin: '0 0 0.75rem' }}>
@@ -257,33 +318,43 @@ export default function JobSummaryChargesTimelineChart({
     <div style={{ marginBottom: '0.75rem' }}>
       <div style={{ width: '100%', minHeight: 260, minWidth: 0 }}>
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={data.chartRows} margin={{ top: 36, right: 20, left: 8, bottom: 4 }}>
+          <LineChart data={data.chartRows} margin={{ top: 36, right: 72, left: 8, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={8} />
+            <XAxis
+              dataKey="dateLabel"
+              tick={{ fontSize: 10 }}
+              interval="preserveStartEnd"
+              minTickGap={8}
+              padding={{ left: 28, right: 12 }}
+            />
             <YAxis
               width={56}
               tick={{ fontSize: 10 }}
-              domain={[(dataMin: number) => Math.min(0, dataMin), 'auto']}
+              domain={[
+                (dataMin: number) => Math.min(0, dataMin) * 1.15 - 5,
+                (dataMax: number) => Math.max(0, dataMax) * 1.15 + 5,
+              ]}
               tickFormatter={(v: number) => `$${Math.round(v).toLocaleString('en-US')}`}
             />
+            <ReferenceLine y={0} stroke="#9ca3af" strokeDasharray="4 4" />
             <Tooltip content={<JobChargesTimelineTooltip />} />
             <Line
               type="stepAfter"
-              dataKey="net"
-              name="Net cost"
+              dataKey="profit"
+              name="Profit"
               stroke="#dc2626"
               strokeWidth={2}
-              dot={renderNetDot}
+              dot={profitDot}
               activeDot={{ r: 4 }}
               isAnimationActive={false}
               connectNulls
             />
-            {data.paymentDropSegments.map((seg: JobPaymentDropSegment) => (
+            {data.paymentRiseSegments.map((seg: JobPaymentRiseSegment) => (
               <Line
                 key={`payseg-${seg.from}-${seg.to}`}
                 type="stepAfter"
                 dataKey={(r: JobChargesTimelineChartRow) =>
-                  r.index >= seg.from && r.index <= seg.to ? r.net : null
+                  r.index >= seg.from && r.index <= seg.to ? r.profit : null
                 }
                 stroke="#16a34a"
                 strokeWidth={2.5}
@@ -300,7 +371,7 @@ export default function JobSummaryChargesTimelineChart({
                 name="Value created"
                 stroke="#2563eb"
                 strokeWidth={2}
-                dot={renderValueDot}
+                dot={valueDot}
                 activeDot={{ r: 4 }}
                 isAnimationActive={false}
                 connectNulls
@@ -309,16 +380,18 @@ export default function JobSummaryChargesTimelineChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      <p style={{ color: '#6b7280', fontSize: '0.6875rem', margin: '0.25rem 0 0' }}>
-        <span style={{ color: '#dc2626', fontWeight: 600 }}>Red</span> = net cost to date, rises on
-        charges (
+      <p style={{ color: '#374151', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+        <span style={{ color: '#dc2626', fontWeight: 600 }}>Red falls</span> = money out ·{' '}
+        <span style={{ color: '#16a34a', fontWeight: 600 }}>Green rises</span> = payment received
+        (💵) · <span style={{ color: '#2563eb', fontWeight: 600 }}>Blue</span> = value created
+        (report % × job total) · 🚩 = field report · above the $0 line ={' '}
+        <span style={{ color: '#15803d', fontWeight: 600 }}>profit</span>
+      </p>
+      <p style={{ color: '#9ca3af', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
+        Cost sources:{' '}
         {Object.values(JOB_CHARGE_SOURCE_META)
           .map((m) => `${m.icon} ${m.name}`)
           .join(' · ')}
-        ) · <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = payment received
-        drops the line (💵; below $0 = collected more than it cost) ·{' '}
-        <span style={{ color: '#2563eb', fontWeight: 600 }}>Blue</span> = value created
-        (report completion % × job total) · 🚩 = field report
         {data.hasUnknownDateBucket && ' · “No date” bucket holds items without a date'}
         {!data.valueSeriesAvailable &&
           (row.job.revenue == null || Number(row.job.revenue) === 0

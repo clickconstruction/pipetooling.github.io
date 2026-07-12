@@ -1,13 +1,13 @@
 /** Jobs → Job Summary expanded row: "Charges & Value" timeline kernel.
  *
- * Pure data shaping for the per-job step chart: a NET series (cumulative expense − cumulative
- * payments received) built from the six cost streams (team labor, sub labor, Mercury card
- * charges, supply-house invoice allocations, tally parts, manual "Other job charges") minus
- * `jobs_ledger_payments`, plus a VALUE series that steps to (report completion % × job revenue)
- * at each field report. Charge steps render red; payment drops render green (see
- * `paymentDropSegments`). Rendered by `JobSummaryChargesTimelineChart.tsx`; charge amounts must
- * stay in parity with the `jobSummaryData` memo in `Jobs.tsx` so `endExpense` matches the row's
- * cost columns.
+ * Pure data shaping for the per-job step chart: a PROFIT series (cumulative payments received −
+ * cumulative expense) built from `jobs_ledger_payments` minus the six cost streams (team labor,
+ * sub labor, Mercury card charges, supply-house invoice allocations, tally parts, manual "Other
+ * job charges"), plus a VALUE series that steps to (report completion % × job revenue) at each
+ * field report. Charges step the line DOWN (red); payments step it UP with those stretches
+ * rendered green (see `paymentRiseSegments`); above $0 = the job has collected more than it
+ * cost. Rendered by `JobSummaryChargesTimelineChart.tsx`; charge amounts must stay in parity
+ * with the `jobSummaryData` memo in `Jobs.tsx` so `endExpense` matches the row's cost columns.
  */
 import {
   REPORT_FIELD_LABEL_JOB_COMPLETION,
@@ -239,8 +239,8 @@ export type JobChargesTimelineChartRow = {
   expense: number
   /** Cumulative payments received at end of this bucket. */
   paymentsToDate: number
-  /** Running net position = expense − paymentsToDate (the main line; below 0 = overpaid). */
-  net: number
+  /** Running profit = paymentsToDate − expense (the main line; above 0 = money made). */
+  profit: number
   /** Last-known completion% × revenue; null until the first % report (or when revenue missing). */
   value: number | null
   chargeEvents: JobChargeEvent[]
@@ -252,18 +252,18 @@ export type JobChargesTimelineChartRow = {
   hasPaymentMarker: boolean
 }
 
-/** Inclusive row-index range whose net-line stretch renders green (payment drop). */
-export type JobPaymentDropSegment = { from: number; to: number }
+/** Inclusive row-index range whose profit-line stretch renders green (payment rise). */
+export type JobPaymentRiseSegment = { from: number; to: number }
 
 export type JobChargesTimelineData = {
   chartRows: JobChargesTimelineChartRow[]
   /** Reconciles with teamLaborCost + subLaborCost + partsCost for the row. */
   endExpense: number
   endPayments: number
-  /** endExpense − endPayments (what the last chart point shows). */
-  endNet: number
-  /** Transitions where a payment dropped the net line; consecutive drops merged. */
-  paymentDropSegments: JobPaymentDropSegment[]
+  /** endPayments − endExpense (what the last chart point shows). */
+  endProfit: number
+  /** Transitions where a payment lifted the profit line; consecutive rises merged. */
+  paymentRiseSegments: JobPaymentRiseSegment[]
   valueSeriesAvailable: boolean
   hasUnknownDateBucket: boolean
 }
@@ -354,7 +354,7 @@ export function buildJobChargesTimelineChartData(
       dateLabel: formatJobChargesDateLabel(dateKey, lastYear),
       expense,
       paymentsToDate,
-      net: Math.round((expense - paymentsToDate) * 100) / 100,
+      profit: Math.round((paymentsToDate - expense) * 100) / 100,
       value: runningValue != null ? Math.round(runningValue * 100) / 100 : null,
       chargeEvents: dayCharges,
       valueEvents: dayValues,
@@ -365,17 +365,17 @@ export function buildJobChargesTimelineChartData(
     }
   })
 
-  // A transition (i-1 → i) renders green when a payment landed in bucket i and the net
-  // position fell. Same-day charges can outweigh a payment — that transition stays red;
-  // the 💵 marker + tooltip still surface the payment. Consecutive drops merge.
-  const paymentDropSegments: JobPaymentDropSegment[] = []
+  // A transition (i-1 → i) renders green when a payment landed in bucket i and the profit
+  // line rose. Same-day charges can outweigh a payment — that transition stays red; the 💵
+  // marker + tooltip still surface the payment. Consecutive rises merge.
+  const paymentRiseSegments: JobPaymentRiseSegment[] = []
   for (let i = 1; i < chartRows.length; i++) {
     const row = chartRows[i]
     const prev = chartRows[i - 1]
-    if (!row || !prev || !row.hasPaymentMarker || row.net >= prev.net) continue
-    const last = paymentDropSegments[paymentDropSegments.length - 1]
+    if (!row || !prev || !row.hasPaymentMarker || row.profit <= prev.profit) continue
+    const last = paymentRiseSegments[paymentRiseSegments.length - 1]
     if (last && last.to === i - 1) last.to = i
-    else paymentDropSegments.push({ from: i - 1, to: i })
+    else paymentRiseSegments.push({ from: i - 1, to: i })
   }
 
   const endExpense = Math.round(runningExpense * 100) / 100
@@ -384,8 +384,8 @@ export function buildJobChargesTimelineChartData(
     chartRows,
     endExpense,
     endPayments,
-    endNet: Math.round((endExpense - endPayments) * 100) / 100,
-    paymentDropSegments,
+    endProfit: Math.round((endPayments - endExpense) * 100) / 100,
+    paymentRiseSegments,
     valueSeriesAvailable: revenueUsable && sawPercentReport,
     hasUnknownDateBucket,
   }
