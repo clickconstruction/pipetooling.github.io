@@ -98,6 +98,13 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     deleteReassignError,
     setDeleteReassignError,
     deleteReassignCustomerCount,
+    archiveConfirmUser,
+    archiveConfirmSubmitting,
+    archiveConfirmError,
+    archiveConfirmCustomerCount,
+    openArchiveConfirm,
+    closeArchiveConfirm,
+    handleArchiveConfirm,
     mergeOpen,
     mergeSurvivorId,
     setMergeSurvivorId,
@@ -370,6 +377,17 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         >
                           {sendingSignInEmailId === u.id ? 'Sending…' : 'Send email to sign in'}
                         </button>
+                        {editingUserId === u.id && (
+                          <button
+                            type="button"
+                            onClick={() => openArchiveConfirm(u)}
+                            disabled={archiveConfirmSubmitting}
+                            className="activeAccountsCard__rowBtn"
+                            style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+                          >
+                            Archive
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -1064,6 +1082,73 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {archiveConfirmUser && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
+            <h2 style={{ marginTop: 0 }}>
+              Archive {archiveConfirmUser.name || archiveConfirmUser.email}?
+            </h2>
+            <p style={{ color: '#374151', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+              Are you sure? Archiving <strong>{archiveConfirmUser.email}</strong> means:
+            </p>
+            <ul style={{ margin: '0 0 1rem', paddingLeft: '1.2rem', fontSize: '0.875rem', color: '#374151' }}>
+              <li>They can no longer sign in (their login is banned).</li>
+              <li>They disappear from active-account lists and assignment pickers.</li>
+              <li>
+                Nothing is deleted — their jobs, clock time, reports, and history stay attached to
+                the account.
+              </li>
+              <li>You can restore them anytime from the Archived users section.</li>
+            </ul>
+            {archiveConfirmCustomerCount != null && archiveConfirmCustomerCount > 0 && (
+              <p
+                style={{
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  padding: '0.75rem',
+                  borderRadius: 4,
+                  marginBottom: '1rem',
+                  fontSize: '0.875rem',
+                }}
+              >
+                ⚠️ This user owns <strong>{archiveConfirmCustomerCount}</strong> customer
+                {archiveConfirmCustomerCount !== 1 ? 's' : ''}, which will stay assigned to the
+                archived account. Use <strong>Archive User &amp; Reassign Customers</strong> instead if
+                they should move to another master.
+              </p>
+            )}
+            {archiveConfirmError && (
+              <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{archiveConfirmError}</p>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => void handleArchiveConfirm()}
+                disabled={archiveConfirmSubmitting}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                }}
+              >
+                {archiveConfirmSubmitting ? 'Archiving…' : 'Archive user'}
+              </button>
+              <button
+                type="button"
+                onClick={closeArchiveConfirm}
+                disabled={archiveConfirmSubmitting}
+                style={{ padding: '0.5rem 1rem' }}
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
