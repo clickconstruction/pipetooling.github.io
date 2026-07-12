@@ -10,6 +10,7 @@ import type { UserRow } from '../../types/settingsRows'
 import { ROLES } from '../../lib/userRoles'
 import { displayLabelForUserRole } from '../../lib/userRoleDisplay'
 import { isSubcontractorLikeRole } from '../../lib/subcontractorLikeRole'
+import { eligibleAbsorbCandidates } from '../../lib/mergeUserAccounts'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
 import { useToastContext } from '../../contexts/ToastContext'
 import PasswordInput from '../PasswordInput'
@@ -97,6 +98,19 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     deleteReassignError,
     setDeleteReassignError,
     deleteReassignCustomerCount,
+    mergeOpen,
+    mergeSurvivorId,
+    setMergeSurvivorId,
+    mergeAbsorbedId,
+    setMergeAbsorbedId,
+    mergeError,
+    setMergeError,
+    mergeSubmitting,
+    mergePreview,
+    setMergePreview,
+    openMerge,
+    closeMerge,
+    runMerge,
     restoreSubmitting,
     restoreError,
     restoringUserId,
@@ -207,6 +221,9 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             </button>
             <button type="button" onClick={openArchiveReassign} className="activeAccountsCard__btnDanger">
               Archive User & Reassign Customers
+            </button>
+            <button type="button" onClick={openMerge} className="activeAccountsCard__btnDanger">
+              Merge users
             </button>
           </div>
           {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
@@ -1050,6 +1067,147 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
           </div>
         </div>
       )}
+
+      {mergeOpen && (() => {
+        const allAccounts = [...users, ...archivedUsers]
+        const survivor = allAccounts.find((u) => u.id === mergeSurvivorId) ?? null
+        const absorbCandidates = eligibleAbsorbCandidates(survivor, allAccounts)
+        const accountLabel = (u: UserRow) =>
+          `${u.name || u.email} (${u.email})${u.archived_at ? ' — archived' : ''}`
+        const movedEntries = mergePreview ? Object.entries(mergePreview.moved) : []
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
+            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 540, maxHeight: '85vh', overflow: 'auto' }}>
+              <h2 style={{ marginTop: 0 }}>Merge users</h2>
+              <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                Moves everything the merged-away account owns (clock time, reports, job and bid
+                assignments, notes, banking attributions…) onto the account you keep, then leaves
+                the merged-away account archived and banned. Both accounts must have the same
+                role, and the merged-away account must be archived or never signed into.
+              </p>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="merge-survivor" style={{ display: 'block', marginBottom: 4 }}>
+                  Keep this account *
+                </label>
+                <select
+                  id="merge-survivor"
+                  value={mergeSurvivorId}
+                  onChange={(e) => {
+                    setMergeSurvivorId(e.target.value)
+                    setMergeAbsorbedId('')
+                    setMergeError(null)
+                    setMergePreview(null)
+                  }}
+                  disabled={mergeSubmitting}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">Select account…</option>
+                  {allAccounts.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {accountLabel(u)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ marginBottom: '1rem' }}>
+                <label htmlFor="merge-absorbed" style={{ display: 'block', marginBottom: 4 }}>
+                  Merge this account away *
+                </label>
+                <select
+                  id="merge-absorbed"
+                  value={mergeAbsorbedId}
+                  onChange={(e) => {
+                    setMergeAbsorbedId(e.target.value)
+                    setMergeError(null)
+                    setMergePreview(null)
+                  }}
+                  disabled={mergeSubmitting || !mergeSurvivorId}
+                  style={{ width: '100%', padding: '0.5rem' }}
+                >
+                  <option value="">
+                    {mergeSurvivorId ? 'Select account…' : 'Pick the account to keep first…'}
+                  </option>
+                  {absorbCandidates.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {accountLabel(u)}
+                    </option>
+                  ))}
+                </select>
+                {mergeSurvivorId && absorbCandidates.length === 0 && (
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    No eligible accounts: same role, and archived or never signed into.
+                  </p>
+                )}
+              </div>
+              {mergePreview && (
+                <div
+                  style={{
+                    background: '#fffbeb',
+                    border: '1px solid #f59e0b',
+                    borderRadius: 4,
+                    padding: '0.75rem',
+                    marginBottom: '1rem',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>
+                    Preview — this merge would move:
+                  </div>
+                  {movedEntries.length === 0 ? (
+                    <div>No data rows — only the account itself is affected.</div>
+                  ) : (
+                    <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+                      {movedEntries.map(([k, n]) => (
+                        <li key={k}>
+                          {k}: <strong>{n}</strong>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {mergePreview.warnings.map((w, i) => (
+                    <p key={i} style={{ margin: '0.5rem 0 0', color: '#92400e' }}>
+                      ⚠️ {w}
+                    </p>
+                  ))}
+                  <p style={{ margin: '0.5rem 0 0', fontWeight: 600, color: '#b91c1c' }}>
+                    Merging cannot be undone.
+                  </p>
+                </div>
+              )}
+              {mergeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{mergeError}</p>}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => void runMerge(true)}
+                  disabled={mergeSubmitting || !mergeSurvivorId || !mergeAbsorbedId}
+                  style={{ padding: '0.5rem 1rem' }}
+                >
+                  {mergeSubmitting && !mergePreview ? 'Previewing…' : 'Preview merge'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void runMerge(false)}
+                  disabled={mergeSubmitting || !mergePreview}
+                  title={mergePreview ? undefined : 'Run Preview merge first'}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: mergePreview ? '#dc2626' : '#fca5a5',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    cursor: mergePreview ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {mergeSubmitting && mergePreview ? 'Merging…' : 'Merge now'}
+                </button>
+                <button type="button" onClick={closeMerge} disabled={mergeSubmitting} style={{ padding: '0.5rem 1rem' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {setPasswordUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>

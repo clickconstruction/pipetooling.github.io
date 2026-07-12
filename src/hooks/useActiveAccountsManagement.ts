@@ -54,6 +54,15 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [deleteReassignSubmitting, setDeleteReassignSubmitting] = useState(false)
   const [deleteReassignError, setDeleteReassignError] = useState<string | null>(null)
   const [deleteReassignCustomerCount, setDeleteReassignCustomerCount] = useState<number>(0)
+  const [mergeOpen, setMergeOpen] = useState(false)
+  const [mergeSurvivorId, setMergeSurvivorId] = useState('')
+  const [mergeAbsorbedId, setMergeAbsorbedId] = useState('')
+  const [mergeError, setMergeError] = useState<string | null>(null)
+  const [mergeSubmitting, setMergeSubmitting] = useState(false)
+  const [mergePreview, setMergePreview] = useState<{
+    moved: Record<string, number>
+    warnings: string[]
+  } | null>(null)
   const [restoreSubmitting, setRestoreSubmitting] = useState(false)
   const [restoreError, setRestoreError] = useState<string | null>(null)
   const [restoringUserId, setRestoringUserId] = useState<string | null>(null)
@@ -727,10 +736,71 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     if (!authUser?.id) return
     const { data } = await supabase
       .from('users')
-      .select('id, email, name, role, archived_at')
+      .select('id, email, name, role, archived_at, last_sign_in_at')
       .not('archived_at', 'is', null)
       .order('archived_at', { ascending: false })
     setArchivedUsers((data as UserRow[]) ?? [])
+  }
+
+  // ---- Merge users (Active Accounts → Merge users; RPC merge_user_accounts via merge-users fn)
+  function openMerge() {
+    setMergeOpen(true)
+    setMergeSurvivorId('')
+    setMergeAbsorbedId('')
+    setMergeError(null)
+    setMergePreview(null)
+  }
+
+  function closeMerge() {
+    setMergeOpen(false)
+  }
+
+  async function runMerge(dryRun: boolean) {
+    if (!mergeSurvivorId || !mergeAbsorbedId) {
+      setMergeError('Pick both accounts.')
+      return
+    }
+    setMergeError(null)
+    setMergeSubmitting(true)
+    const { data, error: eFn } = await supabase.functions.invoke('merge-users', {
+      body: {
+        survivor_user_id: mergeSurvivorId,
+        absorbed_user_id: mergeAbsorbedId,
+        dry_run: dryRun,
+      },
+    })
+    setMergeSubmitting(false)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch {
+          /* ignore */
+        }
+      }
+      setMergeError(msg)
+      return
+    }
+    const res = data as {
+      success?: boolean
+      error?: string
+      dry_run?: boolean
+      moved?: Record<string, number>
+      warnings?: string[]
+    } | null
+    if (!res?.success) {
+      setMergeError(res?.error || 'Merge failed.')
+      return
+    }
+    if (dryRun) {
+      setMergePreview({ moved: res.moved ?? {}, warnings: res.warnings ?? [] })
+      return
+    }
+    showToast('Accounts merged.', 'success')
+    setMergeOpen(false)
+    await reloadAfterMutation()
   }
 
   async function loadServiceTypes() {
@@ -887,6 +957,19 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     openArchive,
     closeArchive,
     handleArchive,
+    mergeOpen,
+    mergeSurvivorId,
+    setMergeSurvivorId,
+    mergeAbsorbedId,
+    setMergeAbsorbedId,
+    mergeError,
+    setMergeError,
+    mergeSubmitting,
+    mergePreview,
+    setMergePreview,
+    openMerge,
+    closeMerge,
+    runMerge,
     openArchiveReassign,
     closeArchiveReassign,
     loadCustomerCount,
