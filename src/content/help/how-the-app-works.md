@@ -45,7 +45,7 @@ The header is your map. On a phone, most of these live behind the {{icon:gear}} 
 :::
 
 - **Dashboard** — your day at a glance: assigned jobs, clock, inboxes, and (for office roles) billing queues.
-- **Jobs** — the job ledger and its Stages board.
+- **Jobs** — the job ledger and its Stages board. Jobs open in two modals that link to each other: **Job Detail** (read-only view with the activity history; has an Edit affordance) and **Edit Job** (the form; its {{button:outline-blue|Job Detail}} button at the top closes the form and opens the detail view).
 - **Schedule** — who is on which job, each day.
 - **Bids / Estimates** — winning the work before it becomes a job.
 - **Settings** — your profile, notifications, and role-specific configuration.

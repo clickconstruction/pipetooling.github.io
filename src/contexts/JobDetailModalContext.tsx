@@ -1,10 +1,19 @@
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import DetailJobModal, {
   type DetailJobModalAssignedJobRow,
   type DetailJobScheduleContext,
 } from '../components/jobs/DetailJobModal'
 import { useAuth } from '../hooks/useAuth'
 import type { JobWithDetails } from '../types/jobWithDetails'
+import { useJobDetailOpenerBridge } from './JobDetailOpenerBridgeContext'
 import { useJobsListCache } from './JobsListCacheContext'
 
 export type OpenJobDetailOptions = {
@@ -86,6 +95,14 @@ export function JobDetailModalProvider({ children }: { children: ReactNode }) {
       onEditJobSaved: options.onEditJobSaved,
     })
   }, [])
+
+  // Let components above this provider (e.g. the Edit Job singleton) open Job Detail.
+  const openerBridge = useJobDetailOpenerBridge()
+  useEffect(() => {
+    if (!openerBridge) return
+    openerBridge.registerJobDetailOpener((jobId) => openJobDetail({ jobId }))
+    return () => openerBridge.registerJobDetailOpener(null)
+  }, [openerBridge, openJobDetail])
 
   const value = useMemo(
     (): JobDetailModalContextValue => ({
