@@ -1051,6 +1051,12 @@ export default function Jobs() {
     return () => window.clearTimeout(t)
   }, [authUser?.id, activeTab, stagesFilteredJobs, refreshJobThreadStatsForJobIds])
 
+  // Job Summary expanded rows show the Stages-style Last activity header — stats for expanded ids only.
+  useEffect(() => {
+    if (!authUser?.id || activeTab !== 'job-summary' || expandedJobSummaryJobIds.size === 0) return
+    void refreshJobThreadStatsForJobIds([...expandedJobSummaryJobIds])
+  }, [authUser?.id, activeTab, expandedJobSummaryJobIds, refreshJobThreadStatsForJobIds])
+
   /** True when loaded customers include exactly one row matching name (prefer same master_user_id as the job). */
   function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUserId: string, customerNameTrimmed: string): boolean {
     const nameKey = customerNameTrimmed.trim().toLowerCase()
@@ -8639,6 +8645,11 @@ ${totalsHtml}
           jobSummaryMercuryAllocationsByJobId={jobSummaryMercuryAllocationsByJobId}
           jobSummaryReportsByJobId={jobSummaryReportsByJobId}
           jobSummaryReportPctByJobId={jobSummaryReportPctByJobId}
+          jobThreadStatsByJobId={jobThreadStatsByJobId}
+          onOpenJobDetail={(jobId) =>
+            jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => void loadJobSummaryLedger() })
+          }
+          onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => void loadJobSummaryLedger() })}
           setJobSummaryCostDrilldown={setJobSummaryCostDrilldown}
           printCostBreakdownJobId={printCostBreakdownJobId}
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}

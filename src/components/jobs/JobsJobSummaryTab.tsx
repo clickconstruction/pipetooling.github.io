@@ -37,6 +37,13 @@ import {
   jobInvoicesAllPaidWithAmount,
   resolveJobSummaryPercentComplete,
 } from '../../lib/jobSummaryPercentComplete'
+import {
+  deriveStagesBillingActivityDetail,
+  deriveStagesFieldReferenceYmd,
+} from '../../lib/stagesJobReferenceDates'
+import { formatEstimatedCompletionDisplay } from '../../lib/jobs/jobFormatting'
+import { getDispatchNoteDisplayMeta } from '../../utils/dispatchNoteDisplay'
+import type { JobThreadNoteStats } from '../../hooks/useJobThreadNotes'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   filterJobSummaryMercuryRowsForPersonName,
@@ -59,6 +66,175 @@ import type {
   JobSummaryReportRow,
 } from '../../types/jobSummary'
 
+
+/** Newest of the job's last note vs last report (same pick logic as the Stages Last activity cell). */
+function latestThreadActivity(
+  stat: JobThreadNoteStats | undefined,
+): { atIso: string; author: string; body: string } | null {
+  if (!stat) return null
+  const tN = stat.last_note_at ? Date.parse(stat.last_note_at) : NaN
+  const tR = stat.last_report_at ? Date.parse(stat.last_report_at) : NaN
+  const hasN = !Number.isNaN(tN)
+  const hasR = !Number.isNaN(tR)
+  if (!hasN && !hasR) return null
+  const useReport = hasR && (!hasN || tR > tN)
+  const atIso = (useReport ? stat.last_report_at : stat.last_note_at) as string
+  const author = (useReport ? stat.last_report_author_name : stat.last_note_author_name)?.trim() || ''
+  const body = useReport
+    ? (() => {
+        const tmpl = (stat.last_report_template_name ?? '').trim() || 'Report'
+        const prev = (stat.last_report_preview ?? '').trim()
+        return prev ? `Report: ${tmpl} — ${prev}` : `Report: ${tmpl}`
+      })()
+    : (stat.last_note_body ?? '').trim()
+  return { atIso, author, body }
+}
+
+const expandedHeaderLabelStyle: CSSProperties = {
+  fontSize: '0.6875rem',
+  fontWeight: 600,
+  color: '#6b7280',
+  textTransform: 'uppercase',
+  letterSpacing: '0.03em',
+  marginBottom: '0.15rem',
+}
+
+/** Quick links + the Stages Assigned / HCP / Last-Activity info at the top of an expanded row. */
+function JobSummaryExpandedHeader({
+  job,
+  stat,
+  onOpenJobDetail,
+  onOpenEditJob,
+}: {
+  job: JobWithDetails
+  stat: JobThreadNoteStats | undefined
+  onOpenJobDetail: (jobId: string) => void
+  onOpenEditJob: (jobId: string) => void
+}) {
+  const assigned = (job.team_members ?? [])
+    .map((m) => m.users?.name?.trim())
+    .filter((n): n is string => Boolean(n))
+  const num = effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'
+  const serviceName = job.serviceType?.name?.trim()
+  const jYmd = deriveStagesFieldReferenceYmd({
+    lastWorkDate: job.last_work_date,
+    lastScheduleWorkDate: job.last_schedule_work_date ?? null,
+  })
+  const bDetail = deriveStagesBillingActivityDetail(job)
+  const activity = latestThreadActivity(stat)
+  const activityMeta = activity ? getDispatchNoteDisplayMeta(activity.atIso) : null
+  const infoValueStyle: CSSProperties = { fontSize: '0.8125rem', color: '#374151' }
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        alignItems: 'flex-start',
+        background: '#f9fafb',
+        border: '1px solid #e5e7eb',
+        borderRadius: 6,
+        padding: '0.6rem 0.75rem',
+        marginBottom: '0.75rem',
+      }}
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpenJobDetail(job.id)
+          }}
+          style={{
+            padding: '0.35rem 0.7rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            borderRadius: 6,
+            cursor: 'pointer',
+            border: '1px solid #bfdbfe',
+            background: '#eff6ff',
+            color: '#1d4ed8',
+          }}
+        >
+          Job Detail
+        </button>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpenEditJob(job.id)
+          }}
+          style={{
+            padding: '0.35rem 0.7rem',
+            fontSize: '0.8125rem',
+            fontWeight: 600,
+            borderRadius: 6,
+            cursor: 'pointer',
+            border: '1px solid #d1d5db',
+            background: 'white',
+            color: '#374151',
+          }}
+        >
+          Edit Job
+        </button>
+      </div>
+      <div style={{ minWidth: 110 }}>
+        <div style={expandedHeaderLabelStyle}>Assigned</div>
+        {assigned.length === 0 ? (
+          <div style={{ ...infoValueStyle, color: '#9ca3af' }}>—</div>
+        ) : (
+          assigned.map((n) => (
+            <div key={n} style={infoValueStyle}>
+              {n}
+            </div>
+          ))
+        )}
+      </div>
+      <div style={{ minWidth: 120 }}>
+        <div style={expandedHeaderLabelStyle}>HCP</div>
+        <div style={{ ...infoValueStyle, fontWeight: 600 }}>
+          Job: {num}
+          {serviceName ? (
+            <span style={{ fontWeight: 400, color: '#6b7280' }}> · {serviceName}</span>
+          ) : null}
+        </div>
+        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+          j: {jYmd ? formatEstimatedCompletionDisplay(jYmd) : '—'}
+        </div>
+        <div style={{ fontSize: '0.75rem', color: '#6b7280' }} title={bDetail?.tooltip}>
+          b: {bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : '—'}
+        </div>
+      </div>
+      <div style={{ flex: 1, minWidth: 180 }}>
+        <div style={expandedHeaderLabelStyle}>Last activity</div>
+        {activity && activityMeta ? (
+          <>
+            <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.15rem' }}>
+              {activity.author ? <span>{activity.author}</span> : null}
+              {activity.author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
+              <span>{activityMeta.weekdayTimeChicago}</span>
+              <span style={{ marginLeft: '0.35rem' }}>({activityMeta.daysAgoLabel})</span>
+            </div>
+            <div
+              style={{
+                ...infoValueStyle,
+                whiteSpace: 'pre-wrap',
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}
+            >
+              {activity.body || '—'}
+            </div>
+          </>
+        ) : (
+          <div style={{ ...infoValueStyle, color: '#9ca3af' }}>{stat ? '—' : '…'}</div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function jobSummaryDrilldownCellKeyboard(
   e: KeyboardEvent<HTMLTableCellElement>,
@@ -210,6 +386,10 @@ export type JobsJobSummaryTabProps = {
   jobSummaryReportsByJobId: Map<string, JobSummaryReportRow[]>
   /** Latest field-report completion % per job (RPC list_latest_report_completion_pct). */
   jobSummaryReportPctByJobId: Map<string, number>
+  /** Thread-note stats for expanded rows (same source as Stages Last activity). */
+  jobThreadStatsByJobId: Record<string, JobThreadNoteStats>
+  onOpenJobDetail: (jobId: string) => void
+  onOpenEditJob: (jobId: string) => void
   setJobSummaryCostDrilldown: (v: { title: string; body: ReactNode } | null) => void
   printCostBreakdownJobId: string | null
   setPrintCostBreakdownJobId: (v: string | null) => void
@@ -261,6 +441,9 @@ export default function JobsJobSummaryTab({
   jobSummaryMercuryAllocationsByJobId,
   jobSummaryReportsByJobId,
   jobSummaryReportPctByJobId,
+  jobThreadStatsByJobId,
+  onOpenJobDetail,
+  onOpenEditJob,
   setJobSummaryCostDrilldown,
   printCostBreakdownJobId,
   setPrintCostBreakdownJobId,
@@ -446,6 +629,12 @@ export default function JobsJobSummaryTab({
                           <tr key={`${job.id}-summary-detail`}>
                             <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
+                                <JobSummaryExpandedHeader
+                                  job={job}
+                                  stat={jobThreadStatsByJobId[job.id]}
+                                  onOpenJobDetail={onOpenJobDetail}
+                                  onOpenEditJob={onOpenEditJob}
+                                />
                                 <div
                                   style={{
                                     display: 'flex',
