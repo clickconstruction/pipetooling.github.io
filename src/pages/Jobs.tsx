@@ -55,6 +55,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
+import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
 import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../types/laborJob'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
@@ -4200,85 +4201,7 @@ ${totalsHtml}
     return arr
   }, [filteredJobs, billingSortAsc])
 
-  const teamsSummaryData = useMemo(() => {
-    const laborCostByName = new Map<string, number>()
-    const billingByName = new Map<string, number>()
-
-    for (const job of jobs) {
-      const rev = job.revenue != null ? Number(job.revenue) : 0
-      if (rev <= 0 || job.team_members.length === 0) continue
-      const share = rev / job.team_members.length
-      for (const tm of job.team_members) {
-        const name = tm.users?.name ?? 'Unknown'
-        billingByName.set(name, (billingByName.get(name) ?? 0) + share)
-      }
-    }
-
-    for (const job of laborJobs) {
-      const laborCost = laborJobSubCost(job, driveMileageCost ?? 0.70, driveTimePerMile ?? 0.02)
-      const names = (job.assigned_to_name ?? '')
-        .split(LABOR_ASSIGNED_DELIMITER)
-        .map((n) => n.trim())
-        .filter(Boolean)
-      if (names.length === 0 || laborCost <= 0) continue
-      const share = laborCost / names.length
-      for (const name of names) {
-        laborCostByName.set(name, (laborCostByName.get(name) ?? 0) + share)
-      }
-    }
-
-    for (const row of teamLaborData) {
-      for (const p of row.breakdown) {
-        laborCostByName.set(p.personName, (laborCostByName.get(p.personName) ?? 0) + p.cost)
-      }
-    }
-
-    const allNames = new Set<string>()
-    for (const [name] of billingByName) allNames.add(name)
-    for (const [name] of laborCostByName) allNames.add(name)
-    const rows = [...allNames].sort((a, b) => a.localeCompare(b)).map((name) => ({
-      name,
-      laborCost: laborCostByName.get(name) ?? 0,
-      billing: billingByName.get(name) ?? 0,
-    }))
-
-    const billingHcps = new Set(
-      jobs.filter((j) => j.revenue != null && Number(j.revenue) > 0).map((j) => (j.hcp_number ?? '').trim().toLowerCase())
-    )
-    const laborHcps = new Set(
-      laborJobs
-        .filter((job) => laborItemsSubtotal(job.items, job.labor_rate ?? 0) > 0)
-        .map((j) => (j.job_number ?? '').trim().toLowerCase())
-    )
-    const matchedHcps = new Set([...billingHcps].filter((h) => h && laborHcps.has(h)))
-
-    const hcpByJobId = new Map<string, string>()
-    for (const j of jobs) {
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp) hcpByJobId.set(j.id, hcp)
-    }
-
-    let matchedLaborTotal = 0
-    let matchedBillingTotal = 0
-    const mileageCost = driveMileageCost ?? 0.70
-    const timePerMile = driveTimePerMile ?? 0.02
-    for (const job of laborJobs) {
-      const hcp = (job.job_number ?? '').trim().toLowerCase()
-      if (!hcp || !matchedHcps.has(hcp)) continue
-      matchedLaborTotal += laborJobSubCost(job, mileageCost, timePerMile)
-    }
-    for (const row of teamLaborData) {
-      const hcp = hcpByJobId.get(row.jobId)
-      if (hcp && matchedHcps.has(hcp)) matchedLaborTotal += row.jobCost
-    }
-    for (const job of jobs) {
-      const hcp = (job.hcp_number ?? '').trim().toLowerCase()
-      if (!hcp || !matchedHcps.has(hcp) || job.revenue == null) continue
-      matchedBillingTotal += Number(job.revenue)
-    }
-
-    return { rows, matchedLaborTotal, matchedBillingTotal }
-  }, [jobs, laborJobs, teamLaborData, driveMileageCost, driveTimePerMile])
+  // Crew P&L math lives in src/lib/crewPnlSummary.ts; the tab component owns its own state.
 
   const jobSummaryData = useMemo(() => {
     const sourceJobs =
@@ -4664,7 +4587,7 @@ ${totalsHtml}
             }}
             style={pageUnderlineTabStyle(activeTab === 'teams-summary')}
           >
-            Teams
+            Crew P&L
           </button>
         )}
         <button
@@ -8559,37 +8482,15 @@ ${totalsHtml}
       )}
 
       {activeTab === 'teams-summary' && (
-        <div>
-          {teamsSummaryData.rows.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No jobs yet. Add billing jobs and labor jobs to see the summary.</p>
-          ) : (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Labor Cost</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Billing</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamsSummaryData.rows.map((row) => (
-                    <tr key={row.name} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.75rem' }}>{row.name}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.laborCost)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.billing)}</td>
-                    </tr>
-                  ))}
-                  <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600, background: '#f9fafb' }}>
-                    <td style={{ padding: '0.75rem' }}>Total (matched jobs only)</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedLaborTotal)}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedBillingTotal)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <JobsCrewPnlTab
+          jobs={jobs}
+          laborJobs={laborJobs}
+          teamLaborData={teamLaborData}
+          loading={laborJobsLoading || teamLaborLoading}
+          driveMileageCost={driveMileageCost}
+          driveTimePerMile={driveTimePerMile}
+          onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
+        />
       )}
 
       {activeTab === 'parts' && (
