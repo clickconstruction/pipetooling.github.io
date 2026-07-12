@@ -64,6 +64,7 @@ import {
 import { normalizeEstimateLineItemsFromJson } from '../../lib/estimateLineItemNormalize'
 import type { JobBillingContext } from '../../lib/jobBillingContext'
 import { useBillCustomerModal } from '../../contexts/BillCustomerModalContext'
+import { useJobDetailOpenerBridge } from '../../contexts/JobDetailOpenerBridgeContext'
 import { useNewProjectModal } from '../../contexts/NewProjectModalContext'
 import BilledBillViewModal, { type InvoiceWithJobForBillView } from './BilledBillViewModal'
 import AgreedWriteDownModal from './AgreedWriteDownModal'
@@ -603,6 +604,7 @@ export default function JobFormModal({
   const { showToast } = useToastContext()
   const prefixMap = useLedgerPrefixMap()
   const billCustomer = useBillCustomerModal()
+  const jobDetailOpenerBridge = useJobDetailOpenerBridge()
   const newProjectModal = useNewProjectModal()
   const navigate = useNavigate()
   const onSavedRef = useRef(onSaved)
@@ -3221,6 +3223,40 @@ export default function JobFormModal({
                 }}
               >
                 Import
+              </button>
+            </div>
+          ) : editing?.id ? (
+            <div
+              style={{
+                flex: 1,
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                minWidth: 0,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  const id = editing?.id
+                  if (!id) return
+                  closeForm()
+                  jobDetailOpenerBridge?.requestOpenJobDetail(id)
+                }}
+                aria-label="Close Edit Job and open Job Detail"
+                title="Close Edit Job and open Job Detail"
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  color: '#1d4ed8',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Job Detail
               </button>
             </div>
           ) : (

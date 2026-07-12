@@ -55,6 +55,7 @@ import { NewProjectModalProvider } from './contexts/NewProjectModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { EditProjectModalProvider } from './contexts/EditProjectModalContext'
 import { BillCustomerModalProvider } from './contexts/BillCustomerModalContext'
+import { JobDetailOpenerBridgeProvider } from './contexts/JobDetailOpenerBridgeContext'
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
 import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -207,6 +208,7 @@ function AppContent() {
                             <EditCustomerModalProvider>
                               <EditProjectModalProvider>
                                 <BillCustomerModalProvider>
+                                  <JobDetailOpenerBridgeProvider>
                                   <JobFormModalProvider>
                                     <BidPreviewModalProvider>
                                       <DailyGoalsGateProvider>
@@ -224,6 +226,7 @@ function AppContent() {
                                       </DailyGoalsGateProvider>
                                     </BidPreviewModalProvider>
                                   </JobFormModalProvider>
+                                  </JobDetailOpenerBridgeProvider>
                                 </BillCustomerModalProvider>
                               </EditProjectModalProvider>
                             </EditCustomerModalProvider>
