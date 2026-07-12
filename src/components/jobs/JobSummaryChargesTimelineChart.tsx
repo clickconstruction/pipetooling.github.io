@@ -65,9 +65,9 @@ function renderExpenseDot(props: TimelineDotProps) {
       {sources.map((s, i) => (
         <text
           key={s}
-          x={cx + (i - (sources.length - 1) / 2) * 13}
-          y={cy - 9}
-          fontSize={11}
+          x={cx + (i - (sources.length - 1) / 2) * 24}
+          y={cy - 12}
+          fontSize={22}
           textAnchor="middle"
         >
           {JOB_CHARGE_SOURCE_META[s].icon}
@@ -84,7 +84,7 @@ function renderValueDot(props: TimelineDotProps) {
   return (
     <g key={key}>
       <circle cx={cx} cy={cy} r={2.5} fill="#16a34a" />
-      <text x={cx} y={cy + 16} fontSize={11} textAnchor="middle">
+      <text x={cx} y={cy + 26} fontSize={22} textAnchor="middle">
         🚩
       </text>
     </g>
@@ -226,7 +226,7 @@ export default function JobSummaryChargesTimelineChart({
     <div style={{ marginBottom: '0.75rem' }}>
       <div style={{ width: '100%', minHeight: 260, minWidth: 0 }}>
         <ResponsiveContainer width="100%" height={260}>
-          <LineChart data={data.chartRows} margin={{ top: 24, right: 16, left: 8, bottom: 4 }}>
+          <LineChart data={data.chartRows} margin={{ top: 36, right: 20, left: 8, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
             <XAxis dataKey="dateLabel" tick={{ fontSize: 10 }} interval="preserveStartEnd" minTickGap={8} />
             <YAxis
