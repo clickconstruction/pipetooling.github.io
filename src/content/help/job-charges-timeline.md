@@ -37,6 +37,10 @@ Each field report that includes a completion percent steps the green line to **t
 
 If the green line is missing, the caption under the chart says why — usually the job total isn't set yet, or no report has a completion percent.
 
+## The % column
+
+The Job Summary table's last column, **%**, shows the same completion percent the green line uses: the latest field report that included a completion percent. When no report carries a percent, it falls back to the job's **% complete** field from Edit Job, and shows **—** when neither is set.
+
 ## Hover for detail
 
 Hover any point to see everything that happened that day: who charged what, which invoices were allocated, who filed a report and their completion percent, plus the running **Expense to date** and **Value created** totals.

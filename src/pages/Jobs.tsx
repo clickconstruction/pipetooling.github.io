@@ -638,6 +638,12 @@ export default function Jobs() {
     }
   }, [])
 
+  /** Latest field-report completion % per job (Job Summary "%" column; report wins over pct_complete). */
+  const jobSummaryReportPctRequestedRef = useRef<Set<string>>(new Set())
+  const [jobSummaryReportPctByJobId, setJobSummaryReportPctByJobId] = useState<Map<string, number>>(
+    () => new Map(),
+  )
+
   const jobSummaryReportsLoadedRef = useRef<Set<string>>(new Set())
   const [jobSummaryReportsByJobId, setJobSummaryReportsByJobId] = useState<Map<string, JobSummaryReportRow[]>>(
     () => new Map(),
@@ -3718,6 +3724,33 @@ ${totalsHtml}
       void loadJobSummaryReportsForJob(jobId)
     }
   }, [activeTab, expandedJobSummaryJobIds, loadJobSummaryReportsForJob])
+
+  useEffect(() => {
+    if (activeTab !== 'job-summary' || !jobSummaryLedgerJobs) return
+    const missing = jobSummaryLedgerJobs
+      .map((j) => j.id)
+      .filter((id) => !jobSummaryReportPctRequestedRef.current.has(id))
+    if (missing.length === 0) return
+    for (const id of missing) jobSummaryReportPctRequestedRef.current.add(id)
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () => await supabase.rpc('list_latest_report_completion_pct', { p_job_ids: missing }),
+          'job summary report completion pct',
+        )
+        const rows = (data ?? []) as Array<{ job_ledger_id: string; pct: number }>
+        if (rows.length === 0) return
+        setJobSummaryReportPctByJobId((prev) => {
+          const next = new Map(prev)
+          for (const r of rows) next.set(r.job_ledger_id, r.pct)
+          return next
+        })
+      } catch {
+        // Column falls back to jobs_ledger.pct_complete; un-mark so a later visit retries.
+        for (const id of missing) jobSummaryReportPctRequestedRef.current.delete(id)
+      }
+    })()
+  }, [activeTab, jobSummaryLedgerJobs])
 
   useEffect(() => {
     if (activeTab !== 'job-summary' || !authUser?.id) return
@@ -8605,6 +8638,7 @@ ${totalsHtml}
           jobSummaryInvoiceLinesByJobId={jobSummaryInvoiceLinesByJobId}
           jobSummaryMercuryAllocationsByJobId={jobSummaryMercuryAllocationsByJobId}
           jobSummaryReportsByJobId={jobSummaryReportsByJobId}
+          jobSummaryReportPctByJobId={jobSummaryReportPctByJobId}
           setJobSummaryCostDrilldown={setJobSummaryCostDrilldown}
           printCostBreakdownJobId={printCostBreakdownJobId}
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}

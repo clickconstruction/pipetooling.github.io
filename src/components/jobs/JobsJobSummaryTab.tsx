@@ -32,6 +32,10 @@ import {
   type TallyLineForPersonRollup,
 } from '../../lib/partsPerPersonCostSummary'
 import { normalizePersonNameKey } from '../../lib/personNameKey'
+import {
+  formatJobSummaryPercentComplete,
+  resolveJobSummaryPercentComplete,
+} from '../../lib/jobSummaryPercentComplete'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import {
   filterJobSummaryMercuryRowsForPersonName,
@@ -203,6 +207,8 @@ export type JobsJobSummaryTabProps = {
   jobSummaryInvoiceLinesByJobId: Map<string, JobSummaryInvoiceAllocationLine[]>
   jobSummaryMercuryAllocationsByJobId: Map<string, JobSummaryMercuryAllocationRow[]>
   jobSummaryReportsByJobId: Map<string, JobSummaryReportRow[]>
+  /** Latest field-report completion % per job (RPC list_latest_report_completion_pct). */
+  jobSummaryReportPctByJobId: Map<string, number>
   setJobSummaryCostDrilldown: (v: { title: string; body: ReactNode } | null) => void
   printCostBreakdownJobId: string | null
   setPrintCostBreakdownJobId: (v: string | null) => void
@@ -253,6 +259,7 @@ export default function JobsJobSummaryTab({
   jobSummaryInvoiceLinesByJobId,
   jobSummaryMercuryAllocationsByJobId,
   jobSummaryReportsByJobId,
+  jobSummaryReportPctByJobId,
   setJobSummaryCostDrilldown,
   printCostBreakdownJobId,
   setPrintCostBreakdownJobId,
@@ -300,6 +307,12 @@ export default function JobsJobSummaryTab({
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts Cost</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue before Overhead</th>
+                    <th
+                      title="Percent complete — latest field report %, or the job's % complete field when no report has one"
+                      style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}
+                    >
+                      %
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -416,12 +429,20 @@ export default function JobsJobSummaryTab({
                             >
                               ${formatCurrency(profit)}
                             </td>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', color: '#374151' }}>
+                              {formatJobSummaryPercentComplete(
+                                resolveJobSummaryPercentComplete(
+                                  jobSummaryReportPctByJobId.get(job.id) ?? null,
+                                  job.pct_complete,
+                                ),
+                              )}
+                            </td>
                           </tr>
                         )
                         if (!expanded) return [mainRow]
                         const detailRow = (
                           <tr key={`${job.id}-summary-detail`}>
-                            <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
+                            <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
                                 <div
                                   style={{

@@ -10674,6 +10674,15 @@ export type Database = {
         }
         Returns: Json
       }
+      create_turnaway_trip_charge: {
+        Args: {
+          p_amount: number
+          p_dispatch_request_id?: string
+          p_job_id: string
+          p_reason: string
+        }
+        Returns: Json
+      }
       create_view_link: {
         Args: { p_expires_at?: string; p_name?: string; p_project_id: string }
         Returns: Json
@@ -11214,6 +11223,13 @@ export type Database = {
           id: string
           job_address: string
           job_name: string
+        }[]
+      }
+      list_latest_report_completion_pct: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          job_ledger_id: string
+          pct: number
         }[]
       }
       list_manual_bank_accounts: {
@@ -11992,6 +12008,10 @@ export type Database = {
         }
         Returns: Json
       }
+      set_job_collections_flag: {
+        Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
+        Returns: Json
+      }
       set_mercury_transaction_ar_returned: {
         Args: { p_mercury_transaction_id: string; p_returned: boolean }
         Returns: undefined
@@ -11999,19 +12019,6 @@ export type Database = {
       set_mercury_transaction_duplicate: {
         Args: { p_duplicate_id: string; p_keeper_id: string }
         Returns: undefined
-      }
-      set_job_collections_flag: {
-        Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
-        Returns: Json
-      }
-      create_turnaway_trip_charge: {
-        Args: {
-          p_amount: number
-          p_dispatch_request_id?: string
-          p_job_id: string
-          p_reason: string
-        }
-        Returns: Json
       }
       set_tally_payroll_flag: {
         Args: { p_is_payroll: boolean; p_mercury_transaction_id: string }
