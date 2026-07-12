@@ -38,6 +38,7 @@ import { useJobClockSessionBounds } from '../../hooks/useJobClockSessionBounds'
 import { useJobThreadNotesForModal } from '../../hooks/useJobThreadNotesForModal'
 import { formatClockSessionTimestampPartsChicago } from '../../lib/formatClockSessionTimestamp'
 import { JobDetailMaterialsCostSection } from './JobDetailMaterialsCostSection'
+import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import { JobDetailScheduleSessionsSection } from './JobDetailScheduleSessionsSection'
 import { JobLedgerStatusPipeline } from './JobLedgerStatusPipeline'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
@@ -1198,12 +1199,15 @@ export default function DetailJobModal({
             </div>
 
             {showMaterialsCostSection ? (
-              <JobDetailMaterialsCostSection
-                loading={materialsSnapshotLoading}
-                snapshot={materialsSnapshot}
-                canExpand={canExpandJobDetailMaterials(authRole)}
-                billedMaterials={fullJob.materials ?? []}
-              />
+              <>
+                <JobDetailMaterialsCostSection
+                  loading={materialsSnapshotLoading}
+                  snapshot={materialsSnapshot}
+                  canExpand={canExpandJobDetailMaterials(authRole)}
+                  billedMaterials={fullJob.materials ?? []}
+                />
+                <JobChargesTimelineStandalone job={fullJob} />
+              </>
             ) : null}
 
             <div style={{ marginTop: '1rem' }}>

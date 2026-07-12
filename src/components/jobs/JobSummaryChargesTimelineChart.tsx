@@ -29,6 +29,7 @@ import {
   tallyPartEventAmount,
   ymdFromDateOnlyOrIso,
   type JobChargesTimelineChartRow,
+  type JobChargesTimelineData,
   type JobPaymentRiseSegment,
 } from '../../lib/jobChargesTimeline'
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
@@ -295,10 +296,6 @@ export default function JobSummaryChargesTimelineChart({
     return buildJobChargesTimelineChartData(chargeEvents, valueEvents, revenue, paymentEvents)
   }, [loading, row, mercuryRows, invoiceLines, reports, mercuryNeeded, invoicesNeeded, mileageCost, timePerMile])
 
-  const lastIndex = data ? data.chartRows.length - 1 : -1
-  const profitDot = useMemo(() => makeProfitDot(lastIndex), [lastIndex])
-  const valueDot = useMemo(() => makeValueDot(lastIndex), [lastIndex])
-
   if (loading) {
     return (
       <p style={{ color: '#6b7280', fontSize: '0.75rem', margin: '0 0 0.75rem' }}>
@@ -315,8 +312,33 @@ export default function JobSummaryChargesTimelineChart({
   }
 
   return (
+    <JobChargesTimelineChartView
+      data={data}
+      revenue={row.job.revenue != null ? Number(row.job.revenue) : null}
+      cardChargesExcluded={cardChargesExcluded}
+    />
+  )
+}
+
+/** Presentational chart (shared by Job Summary and the modal Parts-cost sections). Scrolls
+ * horizontally once the day-bucket count outgrows the container (~56px per bucket). */
+export function JobChargesTimelineChartView({
+  data,
+  revenue,
+  cardChargesExcluded,
+}: {
+  data: JobChargesTimelineData
+  revenue: number | null
+  cardChargesExcluded: boolean
+}) {
+  const lastIndex = data.chartRows.length - 1
+  const profitDot = useMemo(() => makeProfitDot(lastIndex), [lastIndex])
+  const valueDot = useMemo(() => makeValueDot(lastIndex), [lastIndex])
+
+  return (
     <div style={{ marginBottom: '0.75rem' }}>
-      <div style={{ width: '100%', minHeight: 260, minWidth: 0 }}>
+      <div style={{ width: '100%', overflowX: 'auto', minWidth: 0 }}>
+        <div style={{ minWidth: Math.max(520, data.chartRows.length * 56), height: 260 }}>
         <ResponsiveContainer width="100%" height={260}>
           <LineChart data={data.chartRows} margin={{ top: 36, right: 72, left: 8, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -379,6 +401,7 @@ export default function JobSummaryChargesTimelineChart({
             )}
           </LineChart>
         </ResponsiveContainer>
+        </div>
       </div>
       <p style={{ color: '#374151', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
         <span style={{ color: '#dc2626', fontWeight: 600 }}>Red falls</span> = money out ·{' '}
@@ -394,7 +417,7 @@ export default function JobSummaryChargesTimelineChart({
           .join(' · ')}
         {data.hasUnknownDateBucket && ' · “No date” bucket holds items without a date'}
         {!data.valueSeriesAvailable &&
-          (row.job.revenue == null || Number(row.job.revenue) === 0
+          (revenue == null || revenue === 0
             ? ' · Value line hidden: job total not set'
             : ' · Value line hidden: no report has a completion %')}
         {cardChargesExcluded && ' · Card charges not included (no Banking access)'}
