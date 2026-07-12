@@ -54,6 +54,10 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   const [deleteReassignSubmitting, setDeleteReassignSubmitting] = useState(false)
   const [deleteReassignError, setDeleteReassignError] = useState<string | null>(null)
   const [deleteReassignCustomerCount, setDeleteReassignCustomerCount] = useState<number>(0)
+  const [archiveConfirmUser, setArchiveConfirmUser] = useState<UserRow | null>(null)
+  const [archiveConfirmSubmitting, setArchiveConfirmSubmitting] = useState(false)
+  const [archiveConfirmError, setArchiveConfirmError] = useState<string | null>(null)
+  const [archiveConfirmCustomerCount, setArchiveConfirmCustomerCount] = useState<number | null>(null)
   const [mergeOpen, setMergeOpen] = useState(false)
   const [mergeSurvivorId, setMergeSurvivorId] = useState('')
   const [mergeAbsorbedId, setMergeAbsorbedId] = useState('')
@@ -742,6 +746,57 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     setArchivedUsers((data as UserRow[]) ?? [])
   }
 
+  // ---- Per-row Archive with confirm (Edit mode → Archive; same archive-user fn as the dialog)
+  function openArchiveConfirm(u: UserRow) {
+    setArchiveConfirmUser(u)
+    setArchiveConfirmError(null)
+    setArchiveConfirmCustomerCount(null)
+    void (async () => {
+      const { count } = await supabase
+        .from('customers')
+        .select('id', { count: 'exact', head: true })
+        .eq('master_user_id', u.id)
+      setArchiveConfirmCustomerCount(count ?? 0)
+    })()
+  }
+
+  function closeArchiveConfirm() {
+    setArchiveConfirmUser(null)
+  }
+
+  async function handleArchiveConfirm() {
+    const u = archiveConfirmUser
+    if (!u) return
+    setArchiveConfirmError(null)
+    setArchiveConfirmSubmitting(true)
+    const { data, error: eFn } = await supabase.functions.invoke('archive-user', {
+      body: { email: (u.email ?? '').trim(), name: (u.name ?? '').trim() },
+    })
+    setArchiveConfirmSubmitting(false)
+    if (eFn) {
+      let msg = eFn.message
+      if (eFn instanceof FunctionsHttpError && eFn.context?.json) {
+        try {
+          const b = (await eFn.context.json()) as { error?: string } | null
+          if (b?.error) msg = b.error
+        } catch {
+          /* ignore */
+        }
+      }
+      setArchiveConfirmError(msg)
+      return
+    }
+    const err = (data as { error?: string } | null)?.error
+    if (err) {
+      setArchiveConfirmError(err)
+      return
+    }
+    showToast(`${u.name || u.email} archived.`, 'success')
+    setArchiveConfirmUser(null)
+    cancelEditUser()
+    await reloadAfterMutation()
+  }
+
   // ---- Merge users (Active Accounts → Merge users; RPC merge_user_accounts via merge-users fn)
   function openMerge() {
     setMergeOpen(true)
@@ -957,6 +1012,13 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     openArchive,
     closeArchive,
     handleArchive,
+    archiveConfirmUser,
+    archiveConfirmSubmitting,
+    archiveConfirmError,
+    archiveConfirmCustomerCount,
+    openArchiveConfirm,
+    closeArchiveConfirm,
+    handleArchiveConfirm,
     mergeOpen,
     mergeSurvivorId,
     setMergeSurvivorId,
