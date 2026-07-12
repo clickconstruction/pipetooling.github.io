@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { useJobFormModal } from '../../contexts/JobFormModalContext'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -40,6 +41,7 @@ export function QuickfillCompleteNoBillSection({
   jobsListBusy: boolean
 }) {
   const { runFetchJobs } = useJobsListCache()
+  const jobDetailModal = useJobDetailModal()
   const jobFormModal = useJobFormModal()
   const { showToast } = useToastContext()
   const { user: authUser, role: authRole, profileName } = useAuth()
@@ -121,6 +123,23 @@ export function QuickfillCompleteNoBillSection({
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+                    <button
+                      type="button"
+                      onClick={() => jobDetailModal?.openJobDetail({ jobId: j.id })}
+                      title="Open the Job Detail modal"
+                      style={{
+                        padding: '0.35rem 0.7rem',
+                        fontSize: '0.8125rem',
+                        fontWeight: 600,
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                      }}
+                    >
+                      Job Detail
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEditJob(j.id)}
