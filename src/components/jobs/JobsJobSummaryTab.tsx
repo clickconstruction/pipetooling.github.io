@@ -42,6 +42,7 @@ import {
   JobSummaryDrilldownMercuryTable,
   JobSummaryDrilldownTeamLaborByWorkDate,
 } from './JobSummaryCostCellDrilldownModal'
+import JobSummaryChargesTimelineChart from './JobSummaryChargesTimelineChart'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -50,6 +51,7 @@ import type {
   JobSummaryClockSessionRow,
   JobSummaryInvoiceAllocationLine,
   JobSummaryMercuryAllocationRow,
+  JobSummaryReportRow,
 } from '../../types/jobSummary'
 
 
@@ -200,6 +202,7 @@ export type JobsJobSummaryTabProps = {
   jobSummaryClockSessionsByJobId: Map<string, JobSummaryClockSessionRow[]>
   jobSummaryInvoiceLinesByJobId: Map<string, JobSummaryInvoiceAllocationLine[]>
   jobSummaryMercuryAllocationsByJobId: Map<string, JobSummaryMercuryAllocationRow[]>
+  jobSummaryReportsByJobId: Map<string, JobSummaryReportRow[]>
   setJobSummaryCostDrilldown: (v: { title: string; body: ReactNode } | null) => void
   printCostBreakdownJobId: string | null
   setPrintCostBreakdownJobId: (v: string | null) => void
@@ -249,6 +252,7 @@ export default function JobsJobSummaryTab({
   jobSummaryClockSessionsByJobId,
   jobSummaryInvoiceLinesByJobId,
   jobSummaryMercuryAllocationsByJobId,
+  jobSummaryReportsByJobId,
   setJobSummaryCostDrilldown,
   printCostBreakdownJobId,
   setPrintCostBreakdownJobId,
@@ -309,21 +313,22 @@ export default function JobsJobSummaryTab({
                       return hcp.includes(q) || name.includes(q) || addr.includes(q)
                     })
                     .flatMap(
-                      ({
-                        job,
-                        subLaborCost,
-                        teamLaborCost,
-                        partsCost,
-                        totalBill,
-                        profit,
-                        partsFromTally,
-                        invoicesFromSupplyHouses,
-                        billedMaterialsSum,
-                        cardCharges,
-                        teamLaborRow,
-                        subLaborJobs,
-                        tallyPartsForJob,
-                      }) => {
+                      (summaryRow) => {
+                        const {
+                          job,
+                          subLaborCost,
+                          teamLaborCost,
+                          partsCost,
+                          totalBill,
+                          profit,
+                          partsFromTally,
+                          invoicesFromSupplyHouses,
+                          billedMaterialsSum,
+                          cardCharges,
+                          teamLaborRow,
+                          subLaborJobs,
+                          tallyPartsForJob,
+                        } = summaryRow
                         const expanded = expandedJobSummaryJobIds.has(job.id)
                         const mileageCost = driveMileageCost ?? 0.7
                         const timePerMile = driveTimePerMile ?? 0.02
@@ -468,6 +473,15 @@ export default function JobsJobSummaryTab({
                                     {printCostBreakdownJobId === job.id ? 'Preparing…' : 'Print / Save as PDF'}
                                   </button>
                                 </div>
+                                <JobSummaryChargesTimelineChart
+                                  row={summaryRow}
+                                  mercuryRows={jobSummaryMercuryAllocationsByJobId.get(job.id)}
+                                  invoiceLines={jobSummaryInvoiceLinesByJobId.get(job.id)}
+                                  reports={jobSummaryReportsByJobId.get(job.id)}
+                                  canAccessBankingForParts={canAccessBankingForParts}
+                                  mileageCost={mileageCost}
+                                  timePerMile={timePerMile}
+                                />
                                 {(() => {
                                   const teamBreakdownLite = (teamLaborRow?.breakdown ?? []).map((b) => ({
                                     personName: b.personName,

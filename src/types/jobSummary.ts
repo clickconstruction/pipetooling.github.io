@@ -26,6 +26,14 @@ export type JobSummaryInvoiceAllocationLine = {
   pct: number
 }
 
+/** Field report row for the expanded-row Charges & Value timeline (lazy-loaded per job). */
+export type JobSummaryReportRow = {
+  id: string
+  created_at: string
+  field_values: Record<string, unknown> | null
+  users: { name: string } | null
+}
+
 export type JobSummaryMercuryAllocationRow = {
   id: string
   mercury_transaction_id: string
