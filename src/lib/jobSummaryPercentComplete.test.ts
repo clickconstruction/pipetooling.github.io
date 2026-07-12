@@ -1,10 +1,53 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatJobSummaryPercentComplete,
+  jobInvoicesAllPaidWithAmount,
   resolveJobSummaryPercentComplete,
 } from './jobSummaryPercentComplete'
 
+describe('jobInvoicesAllPaidWithAmount', () => {
+  it('is true when every invoice is paid and the total is above zero', () => {
+    expect(
+      jobInvoicesAllPaidWithAmount([
+        { status: 'paid', amount: 500 },
+        { status: 'paid', amount: 250 },
+      ]),
+    ).toBe(true)
+  })
+  it('is false with no invoices', () => {
+    expect(jobInvoicesAllPaidWithAmount([])).toBe(false)
+    expect(jobInvoicesAllPaidWithAmount(null)).toBe(false)
+    expect(jobInvoicesAllPaidWithAmount(undefined)).toBe(false)
+  })
+  it('is false when any invoice is not paid', () => {
+    expect(
+      jobInvoicesAllPaidWithAmount([
+        { status: 'paid', amount: 500 },
+        { status: 'billed', amount: 100 },
+      ]),
+    ).toBe(false)
+    expect(jobInvoicesAllPaidWithAmount([{ status: 'ready_to_bill', amount: 500 }])).toBe(false)
+  })
+  it('is false when the paid total is zero or negative (write-downs, null amounts)', () => {
+    expect(jobInvoicesAllPaidWithAmount([{ status: 'paid', amount: 0 }])).toBe(false)
+    expect(jobInvoicesAllPaidWithAmount([{ status: 'paid', amount: null }])).toBe(false)
+    expect(
+      jobInvoicesAllPaidWithAmount([
+        { status: 'paid', amount: 100 },
+        { status: 'paid', amount: -100 },
+      ]),
+    ).toBe(false)
+  })
+})
+
 describe('resolveJobSummaryPercentComplete', () => {
+  it('returns 100 when all invoices are paid with a positive total, beating any report %', () => {
+    expect(resolveJobSummaryPercentComplete(60, 20, { invoicesAllPaidWithAmount: true })).toBe(100)
+    expect(resolveJobSummaryPercentComplete(null, null, { invoicesAllPaidWithAmount: true })).toBe(100)
+  })
+  it('ignores the invoices flag when false', () => {
+    expect(resolveJobSummaryPercentComplete(60, 20, { invoicesAllPaidWithAmount: false })).toBe(60)
+  })
   it('prefers the report percent when present', () => {
     expect(resolveJobSummaryPercentComplete(60, 20)).toBe(60)
     expect(resolveJobSummaryPercentComplete(0, 50)).toBe(0)
