@@ -1,8 +1,10 @@
 /** Jobs → Job Summary expanded row: "Charges & Value" timeline chart.
  *
- * Red stepAfter line = cumulative expense (team labor, sub labor, card charges, supply-house
- * invoices, tally parts, other job charges), with per-source icons at each day's step.
- * Green stepAfter line = value created — each field report with a completion % steps it to
+ * Main stepAfter line = NET position (cumulative charges − payments received): charges step it
+ * up in red with per-source icons; payments step it down with those stretches overlaid in green
+ * (one thin green Line per `paymentDropSegment` — recharts can't color a single line
+ * per-segment) and a 💵 marker. Below zero = job has collected more than it cost.
+ * Blue stepAfter line = value created — each field report with a completion % steps it to
  * (% × job revenue); reports without a % show a 🚩 marker only. Data shaping lives in the pure
  * kernel `src/lib/jobChargesTimeline.ts` (unit-tested); this component only adapts props and renders.
  */
@@ -19,11 +21,13 @@ import {
 import {
   buildJobChargeEvents,
   buildJobChargesTimelineChartData,
+  buildJobPaymentEvents,
   buildJobValueEvents,
   JOB_CHARGE_SOURCE_META,
   tallyPartEventAmount,
   ymdFromDateOnlyOrIso,
   type JobChargesTimelineChartRow,
+  type JobPaymentDropSegment,
 } from '../../lib/jobChargesTimeline'
 import { formatCurrency, jobSummaryPartsCostIsZero } from '../../lib/jobs/jobFormatting'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
@@ -54,14 +58,15 @@ type TimelineDotProps = {
   payload?: JobChargesTimelineChartRow
 }
 
-function renderExpenseDot(props: TimelineDotProps) {
+function renderNetDot(props: TimelineDotProps) {
   const { cx, cy, index, payload } = props
-  const key = `expense-dot-${index ?? 'x'}`
+  const key = `net-dot-${index ?? 'x'}`
   const sources = payload?.chargeSources ?? []
-  if (cx == null || cy == null || sources.length === 0) return <g key={key} />
+  const hasPayment = payload?.hasPaymentMarker === true
+  if (cx == null || cy == null || (sources.length === 0 && !hasPayment)) return <g key={key} />
   return (
     <g key={key}>
-      <circle cx={cx} cy={cy} r={2.5} fill="#dc2626" />
+      <circle cx={cx} cy={cy} r={2.5} fill={sources.length === 0 ? '#16a34a' : '#dc2626'} />
       {sources.map((s, i) => (
         <text
           key={s}
@@ -73,6 +78,11 @@ function renderExpenseDot(props: TimelineDotProps) {
           {JOB_CHARGE_SOURCE_META[s].icon}
         </text>
       ))}
+      {hasPayment && (
+        <text x={cx} y={cy + 24} fontSize={22} textAnchor="middle">
+          💵
+        </text>
+      )}
     </g>
   )
 }
@@ -83,7 +93,7 @@ function renderValueDot(props: TimelineDotProps) {
   if (cx == null || cy == null || !payload?.hasReportMarker) return <g key={key} />
   return (
     <g key={key}>
-      <circle cx={cx} cy={cy} r={2.5} fill="#16a34a" />
+      <circle cx={cx} cy={cy} r={2.5} fill="#2563eb" />
       <text x={cx} y={cy + 26} fontSize={22} textAnchor="middle">
         🚩
       </text>
@@ -119,16 +129,29 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
           {JOB_CHARGE_SOURCE_META[e.source].icon} {e.label} — ${formatCurrency(e.amount)}
         </div>
       ))}
+      {row.paymentEvents.map((e, i) => (
+        <div key={`p-${i}`} style={{ color: '#15803d' }}>
+          💵 {e.label} — ${formatCurrency(e.amount)}
+        </div>
+      ))}
       {row.valueEvents.map((e, i) => (
-        <div key={`v-${i}`} style={{ color: '#14532d' }}>
+        <div key={`v-${i}`} style={{ color: '#1e40af' }}>
           🚩 {e.label}
           {e.percent != null ? ` — ${e.percent}% complete` : ' — no completion %'}
         </div>
       ))}
       <div style={{ marginTop: '0.25rem', borderTop: '1px solid #f3f4f6', paddingTop: '0.25rem' }}>
-        <span style={{ color: '#dc2626' }}>Expense to date: ${formatCurrency(row.expense)}</span>
+        <span style={{ color: '#dc2626' }}>Expense: ${formatCurrency(row.expense)}</span>
+        {row.paymentsToDate > 0 && (
+          <span style={{ color: '#15803d', marginLeft: '0.6rem' }}>
+            Payments: ${formatCurrency(row.paymentsToDate)}
+          </span>
+        )}
+        <span style={{ fontWeight: 600, color: row.net >= 0 ? '#374151' : '#15803d', marginLeft: '0.6rem' }}>
+          Net: ${formatCurrency(row.net)}
+        </span>
         {row.value != null && (
-          <span style={{ color: '#16a34a', marginLeft: '0.6rem' }}>
+          <span style={{ color: '#2563eb', marginLeft: '0.6rem' }}>
             Value created: ${formatCurrency(row.value)}
           </span>
         )}
@@ -203,8 +226,16 @@ export default function JobSummaryChargesTimelineChart({
         fieldValues: r.field_values,
       })),
     )
+    const paymentEvents = buildJobPaymentEvents(
+      (row.job.payments ?? []).map((p) => ({
+        dateKey: toYmd(p.paid_on ?? p.created_at),
+        amount: Number(p.amount ?? 0),
+        paymentType: p.payment_type,
+        note: p.note,
+      })),
+    )
     const revenue = row.job.revenue != null ? Number(row.job.revenue) : null
-    return buildJobChargesTimelineChartData(chargeEvents, valueEvents, revenue)
+    return buildJobChargesTimelineChartData(chargeEvents, valueEvents, revenue, paymentEvents)
   }, [loading, row, mercuryRows, invoiceLines, reports, mercuryNeeded, invoicesNeeded, mileageCost, timePerMile])
 
   if (loading) {
@@ -232,27 +263,42 @@ export default function JobSummaryChargesTimelineChart({
             <YAxis
               width={56}
               tick={{ fontSize: 10 }}
-              domain={[0, 'auto']}
+              domain={[(dataMin: number) => Math.min(0, dataMin), 'auto']}
               tickFormatter={(v: number) => `$${Math.round(v).toLocaleString('en-US')}`}
             />
             <Tooltip content={<JobChargesTimelineTooltip />} />
             <Line
               type="stepAfter"
-              dataKey="expense"
-              name="Expense"
+              dataKey="net"
+              name="Net cost"
               stroke="#dc2626"
               strokeWidth={2}
-              dot={renderExpenseDot}
+              dot={renderNetDot}
               activeDot={{ r: 4 }}
               isAnimationActive={false}
               connectNulls
             />
+            {data.paymentDropSegments.map((seg: JobPaymentDropSegment) => (
+              <Line
+                key={`payseg-${seg.from}-${seg.to}`}
+                type="stepAfter"
+                dataKey={(r: JobChargesTimelineChartRow) =>
+                  r.index >= seg.from && r.index <= seg.to ? r.net : null
+                }
+                stroke="#16a34a"
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={false}
+                isAnimationActive={false}
+                legendType="none"
+              />
+            ))}
             {data.valueSeriesAvailable && (
               <Line
                 type="stepAfter"
                 dataKey="value"
                 name="Value created"
-                stroke="#16a34a"
+                stroke="#2563eb"
                 strokeWidth={2}
                 dot={renderValueDot}
                 activeDot={{ r: 4 }}
@@ -264,11 +310,14 @@ export default function JobSummaryChargesTimelineChart({
         </ResponsiveContainer>
       </div>
       <p style={{ color: '#6b7280', fontSize: '0.6875rem', margin: '0.25rem 0 0' }}>
-        <span style={{ color: '#dc2626', fontWeight: 600 }}>Red</span> = cost to date (
+        <span style={{ color: '#dc2626', fontWeight: 600 }}>Red</span> = net cost to date, rises on
+        charges (
         {Object.values(JOB_CHARGE_SOURCE_META)
           .map((m) => `${m.icon} ${m.name}`)
           .join(' · ')}
-        ) · <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = value created
+        ) · <span style={{ color: '#16a34a', fontWeight: 600 }}>Green</span> = payment received
+        drops the line (💵; below $0 = collected more than it cost) ·{' '}
+        <span style={{ color: '#2563eb', fontWeight: 600 }}>Blue</span> = value created
         (report completion % × job total) · 🚩 = field report
         {data.hasUnknownDateBucket && ' · “No date” bucket holds items without a date'}
         {!data.valueSeriesAvailable &&

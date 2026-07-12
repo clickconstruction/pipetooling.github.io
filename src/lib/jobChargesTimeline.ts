@@ -1,11 +1,13 @@
 /** Jobs → Job Summary expanded row: "Charges & Value" timeline kernel.
  *
- * Pure data shaping for the per-job step chart: a cumulative EXPENSE series built from the six
- * cost streams (team labor, sub labor, Mercury card charges, supply-house invoice allocations,
- * tally parts, manual "Other job charges") and a VALUE series that steps to
- * (report completion % × job revenue) at each field report. Rendered by
- * `JobSummaryChargesTimelineChart.tsx`; amounts here must stay in parity with the
- * `jobSummaryData` memo in `Jobs.tsx` so the red line's end matches the row's cost columns.
+ * Pure data shaping for the per-job step chart: a NET series (cumulative expense − cumulative
+ * payments received) built from the six cost streams (team labor, sub labor, Mercury card
+ * charges, supply-house invoice allocations, tally parts, manual "Other job charges") minus
+ * `jobs_ledger_payments`, plus a VALUE series that steps to (report completion % × job revenue)
+ * at each field report. Charge steps render red; payment drops render green (see
+ * `paymentDropSegments`). Rendered by `JobSummaryChargesTimelineChart.tsx`; charge amounts must
+ * stay in parity with the `jobSummaryData` memo in `Jobs.tsx` so `endExpense` matches the row's
+ * cost columns.
  */
 import {
   REPORT_FIELD_LABEL_JOB_COMPLETION,
@@ -44,6 +46,34 @@ export type JobValueEvent = {
   dateKey: string | null
   percent: number | null
   label: string
+}
+
+/** One payment received on the job (`jobs_ledger_payments`); steps the net line DOWN. */
+export type JobPaymentEvent = {
+  dateKey: string | null
+  amount: number
+  label: string
+}
+
+/** Flatten `jobs_ledger_payments` rows into payment events (note wins over payment_type for the label). */
+export function buildJobPaymentEvents(
+  payments: Array<{
+    dateKey: string | null
+    amount: number
+    paymentType: string | null
+    note: string | null
+  }>,
+): JobPaymentEvent[] {
+  return payments
+    .filter((p) => Number(p.amount) > 0)
+    .map((p) => {
+      const detail = (p.note ?? '').trim() || (p.paymentType ?? '').trim()
+      return {
+        dateKey: p.dateKey,
+        amount: Number(p.amount),
+        label: detail ? `Payment — ${detail}` : 'Payment',
+      }
+    })
 }
 
 /** Synthetic leading bucket for events without a date (keeps endExpense reconciled). */
@@ -200,24 +230,40 @@ export function buildJobValueEvents(
 }
 
 export type JobChargesTimelineChartRow = {
+  /** Position in `chartRows` (drives the per-segment green payment overlays). */
+  index: number
   /** `JOB_CHARGES_UNKNOWN_DATE_KEY` or YYYY-MM-DD; the x-axis category. */
   dateKey: string
   dateLabel: string
   /** Cumulative expense at end of this bucket. */
   expense: number
+  /** Cumulative payments received at end of this bucket. */
+  paymentsToDate: number
+  /** Running net position = expense − paymentsToDate (the main line; below 0 = overpaid). */
+  net: number
   /** Last-known completion% × revenue; null until the first % report (or when revenue missing). */
   value: number | null
   chargeEvents: JobChargeEvent[]
   valueEvents: JobValueEvent[]
+  paymentEvents: JobPaymentEvent[]
   /** Unique sources with an event in this bucket (drives the icon stack on the red line). */
   chargeSources: JobChargeSource[]
   hasReportMarker: boolean
+  hasPaymentMarker: boolean
 }
+
+/** Inclusive row-index range whose net-line stretch renders green (payment drop). */
+export type JobPaymentDropSegment = { from: number; to: number }
 
 export type JobChargesTimelineData = {
   chartRows: JobChargesTimelineChartRow[]
   /** Reconciles with teamLaborCost + subLaborCost + partsCost for the row. */
   endExpense: number
+  endPayments: number
+  /** endExpense − endPayments (what the last chart point shows). */
+  endNet: number
+  /** Transitions where a payment dropped the net line; consecutive drops merged. */
+  paymentDropSegments: JobPaymentDropSegment[]
   valueSeriesAvailable: boolean
   hasUnknownDateBucket: boolean
 }
@@ -238,6 +284,7 @@ export function buildJobChargesTimelineChartData(
   chargeEvents: JobChargeEvent[],
   valueEvents: JobValueEvent[],
   revenue: number | null,
+  paymentEvents: JobPaymentEvent[] = [],
 ): JobChargesTimelineData {
   const bucketKey = (dateKey: string | null): string => dateKey ?? JOB_CHARGES_UNKNOWN_DATE_KEY
 
@@ -255,8 +302,19 @@ export function buildJobChargesTimelineChartData(
     if (list) list.push(e)
     else valuesByKey.set(k, [e])
   }
+  const paymentsByKey = new Map<string, JobPaymentEvent[]>()
+  for (const e of paymentEvents) {
+    const k = bucketKey(e.dateKey)
+    const list = paymentsByKey.get(k)
+    if (list) list.push(e)
+    else paymentsByKey.set(k, [e])
+  }
 
-  const allKeys = new Set<string>([...chargesByKey.keys(), ...valuesByKey.keys()])
+  const allKeys = new Set<string>([
+    ...chargesByKey.keys(),
+    ...valuesByKey.keys(),
+    ...paymentsByKey.keys(),
+  ])
   const hasUnknownDateBucket = allKeys.has(JOB_CHARGES_UNKNOWN_DATE_KEY)
   const datedKeys = [...allKeys].filter((k) => k !== JOB_CHARGES_UNKNOWN_DATE_KEY).sort()
   const orderedKeys = hasUnknownDateBucket
@@ -268,13 +326,16 @@ export function buildJobChargesTimelineChartData(
   const lastYear = lastDatedKey ? Number(lastDatedKey.slice(0, 4)) : null
 
   let runningExpense = 0
+  let runningPayments = 0
   let runningValue: number | null = null
   let sawPercentReport = false
 
-  const chartRows: JobChargesTimelineChartRow[] = orderedKeys.map((dateKey) => {
+  const chartRows: JobChargesTimelineChartRow[] = orderedKeys.map((dateKey, index) => {
     const dayCharges = chargesByKey.get(dateKey) ?? []
     const dayValues = valuesByKey.get(dateKey) ?? []
+    const dayPayments = paymentsByKey.get(dateKey) ?? []
     for (const e of dayCharges) runningExpense += e.amount
+    for (const p of dayPayments) runningPayments += p.amount
     for (const v of dayValues) {
       if (v.percent != null) {
         sawPercentReport = true
@@ -285,21 +346,46 @@ export function buildJobChargesTimelineChartData(
     for (const e of dayCharges) {
       if (!chargeSources.includes(e.source)) chargeSources.push(e.source)
     }
+    const expense = Math.round(runningExpense * 100) / 100
+    const paymentsToDate = Math.round(runningPayments * 100) / 100
     return {
+      index,
       dateKey,
       dateLabel: formatJobChargesDateLabel(dateKey, lastYear),
-      expense: Math.round(runningExpense * 100) / 100,
+      expense,
+      paymentsToDate,
+      net: Math.round((expense - paymentsToDate) * 100) / 100,
       value: runningValue != null ? Math.round(runningValue * 100) / 100 : null,
       chargeEvents: dayCharges,
       valueEvents: dayValues,
+      paymentEvents: dayPayments,
       chargeSources,
       hasReportMarker: dayValues.length > 0,
+      hasPaymentMarker: dayPayments.length > 0,
     }
   })
 
+  // A transition (i-1 → i) renders green when a payment landed in bucket i and the net
+  // position fell. Same-day charges can outweigh a payment — that transition stays red;
+  // the 💵 marker + tooltip still surface the payment. Consecutive drops merge.
+  const paymentDropSegments: JobPaymentDropSegment[] = []
+  for (let i = 1; i < chartRows.length; i++) {
+    const row = chartRows[i]
+    const prev = chartRows[i - 1]
+    if (!row || !prev || !row.hasPaymentMarker || row.net >= prev.net) continue
+    const last = paymentDropSegments[paymentDropSegments.length - 1]
+    if (last && last.to === i - 1) last.to = i
+    else paymentDropSegments.push({ from: i - 1, to: i })
+  }
+
+  const endExpense = Math.round(runningExpense * 100) / 100
+  const endPayments = Math.round(runningPayments * 100) / 100
   return {
     chartRows,
-    endExpense: Math.round(runningExpense * 100) / 100,
+    endExpense,
+    endPayments,
+    endNet: Math.round((endExpense - endPayments) * 100) / 100,
+    paymentDropSegments,
     valueSeriesAvailable: revenueUsable && sawPercentReport,
     hasUnknownDateBucket,
   }

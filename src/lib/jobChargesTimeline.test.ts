@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildJobChargeEvents,
   buildJobChargesTimelineChartData,
+  buildJobPaymentEvents,
   buildJobValueEvents,
   formatJobChargesDateLabel,
   JOB_CHARGES_UNKNOWN_DATE_KEY,
@@ -9,6 +10,7 @@ import {
   tallyPartEventAmount,
   ymdFromDateOnlyOrIso,
   type JobChargeEvent,
+  type JobPaymentEvent,
   type JobValueEvent,
 } from './jobChargesTimeline'
 import {
@@ -24,6 +26,10 @@ function charge(partial: Partial<JobChargeEvent>): JobChargeEvent {
 
 function valueEvent(partial: Partial<JobValueEvent>): JobValueEvent {
   return { dateKey: '2026-06-01', percent: null, label: 'Report by A', ...partial }
+}
+
+function payment(partial: Partial<JobPaymentEvent>): JobPaymentEvent {
+  return { dateKey: '2026-06-01', amount: 0, label: 'Payment', ...partial }
 }
 
 describe('ymdFromDateOnlyOrIso', () => {
@@ -314,5 +320,159 @@ describe('formatJobChargesDateLabel', () => {
   })
   it('labels the unknown bucket', () => {
     expect(formatJobChargesDateLabel(JOB_CHARGES_UNKNOWN_DATE_KEY, 2026)).toBe('No date')
+  })
+})
+
+describe('buildJobPaymentEvents', () => {
+  it('maps payments with note winning over payment_type for the label', () => {
+    expect(
+      buildJobPaymentEvents([
+        { dateKey: '2026-06-10', amount: 500, paymentType: 'stripe', note: 'Deposit check' },
+        { dateKey: '2026-06-12', amount: 250, paymentType: 'mercury', note: '  ' },
+        { dateKey: null, amount: 100, paymentType: null, note: null },
+      ]),
+    ).toEqual([
+      { dateKey: '2026-06-10', amount: 500, label: 'Payment — Deposit check' },
+      { dateKey: '2026-06-12', amount: 250, label: 'Payment — mercury' },
+      { dateKey: null, amount: 100, label: 'Payment' },
+    ])
+  })
+  it('drops zero and negative amounts', () => {
+    expect(
+      buildJobPaymentEvents([
+        { dateKey: '2026-06-10', amount: 0, paymentType: null, note: null },
+        { dateKey: '2026-06-11', amount: -50, paymentType: null, note: null },
+      ]),
+    ).toEqual([])
+  })
+})
+
+describe('buildJobChargesTimelineChartData — payments / net line', () => {
+  it('nets payments against expense and marks payment days', () => {
+    const data = buildJobChargesTimelineChartData(
+      [
+        charge({ dateKey: '2026-06-01', amount: 100 }),
+        charge({ dateKey: '2026-06-03', amount: 50 }),
+      ],
+      [],
+      1000,
+      [payment({ dateKey: '2026-06-02', amount: 60 })],
+    )
+    expect(data.chartRows.map((r) => [r.dateKey, r.expense, r.paymentsToDate, r.net])).toEqual([
+      ['2026-06-01', 100, 0, 100],
+      ['2026-06-02', 100, 60, 40],
+      ['2026-06-03', 150, 60, 90],
+    ])
+    expect(data.chartRows.map((r) => r.hasPaymentMarker)).toEqual([false, true, false])
+    expect(data.endExpense).toBe(150)
+    expect(data.endPayments).toBe(60)
+    expect(data.endNet).toBe(90)
+    expect(data.paymentDropSegments).toEqual([{ from: 0, to: 1 }])
+  })
+
+  it('keeps rows indexed and endNet consistent with endExpense − endPayments', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 10.11 })],
+      [],
+      null,
+      [payment({ dateKey: '2026-06-02', amount: 3.03 })],
+    )
+    expect(data.chartRows.map((r) => r.index)).toEqual([0, 1])
+    expect(data.endNet).toBeCloseTo(data.endExpense - data.endPayments, 2)
+  })
+
+  it('lets the net line go negative when payments exceed charges', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 100 })],
+      [],
+      null,
+      [payment({ dateKey: '2026-06-05', amount: 300 })],
+    )
+    expect(data.chartRows[1]?.net).toBe(-200)
+    expect(data.endNet).toBe(-200)
+    expect(data.paymentDropSegments).toEqual([{ from: 0, to: 1 }])
+  })
+
+  it('same-day charge outweighing the payment stays a red (non-drop) transition but keeps the marker', () => {
+    const data = buildJobChargesTimelineChartData(
+      [
+        charge({ dateKey: '2026-06-01', amount: 100 }),
+        charge({ dateKey: '2026-06-02', amount: 80 }),
+      ],
+      [],
+      null,
+      [payment({ dateKey: '2026-06-02', amount: 30 })],
+    )
+    expect(data.chartRows[1]?.net).toBe(150)
+    expect(data.chartRows[1]?.hasPaymentMarker).toBe(true)
+    expect(data.paymentDropSegments).toEqual([])
+  })
+
+  it('merges consecutive payment drops into one segment (no intervening event rows)', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 100 })],
+      [],
+      null,
+      [
+        payment({ dateKey: '2026-06-02', amount: 20 }),
+        payment({ dateKey: '2026-06-03', amount: 20 }),
+        payment({ dateKey: '2026-06-05', amount: 20 }),
+      ],
+    )
+    expect(data.paymentDropSegments).toEqual([{ from: 0, to: 3 }])
+  })
+
+  it('keeps separated drops as separate segments across a rise', () => {
+    const data = buildJobChargesTimelineChartData(
+      [
+        charge({ dateKey: '2026-06-01', amount: 100 }),
+        charge({ dateKey: '2026-06-03', amount: 50 }),
+      ],
+      [],
+      null,
+      [
+        payment({ dateKey: '2026-06-02', amount: 20 }),
+        payment({ dateKey: '2026-06-04', amount: 20 }),
+      ],
+    )
+    expect(data.paymentDropSegments).toEqual([
+      { from: 0, to: 1 },
+      { from: 2, to: 3 },
+    ])
+  })
+
+  it('buckets no-date payments into the leading unknown bucket', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 100 })],
+      [],
+      null,
+      [payment({ dateKey: null, amount: 40 })],
+    )
+    expect(data.hasUnknownDateBucket).toBe(true)
+    expect(data.chartRows[0]?.dateKey).toBe(JOB_CHARGES_UNKNOWN_DATE_KEY)
+    expect(data.chartRows[0]?.net).toBe(-40)
+    expect(data.chartRows[1]?.net).toBe(60)
+    // First row has no predecessor — no drop segment despite the payment.
+    expect(data.paymentDropSegments).toEqual([])
+  })
+
+  it('payment-only job still charts', () => {
+    const data = buildJobChargesTimelineChartData([], [], null, [
+      payment({ dateKey: '2026-06-02', amount: 25 }),
+    ])
+    expect(data.chartRows).toHaveLength(1)
+    expect(data.chartRows[0]?.net).toBe(-25)
+    expect(data.endExpense).toBe(0)
+  })
+
+  it('omitting the payments argument keeps legacy behavior (net === expense)', () => {
+    const data = buildJobChargesTimelineChartData(
+      [charge({ dateKey: '2026-06-01', amount: 42 })],
+      [],
+      null,
+    )
+    expect(data.chartRows[0]?.net).toBe(42)
+    expect(data.endPayments).toBe(0)
+    expect(data.paymentDropSegments).toEqual([])
   })
 })
