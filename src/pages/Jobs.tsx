@@ -90,7 +90,7 @@ import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import type { Database } from '../types/database'
-import type { JobSummaryClockSessionRow, JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow } from '../types/jobSummary'
+import type { JobSummaryClockSessionRow, JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow, JobSummaryReportRow } from '../types/jobSummary'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
@@ -635,6 +635,41 @@ export default function Jobs() {
       })
     } finally {
       jobSummaryInvoiceLinesLoadedRef.current.add(jobId)
+    }
+  }, [])
+
+  const jobSummaryReportsLoadedRef = useRef<Set<string>>(new Set())
+  const [jobSummaryReportsByJobId, setJobSummaryReportsByJobId] = useState<Map<string, JobSummaryReportRow[]>>(
+    () => new Map(),
+  )
+
+  /** Field reports for the expanded-row Charges & Value timeline (lazy per expanded job). */
+  const loadJobSummaryReportsForJob = useCallback(async (jobId: string) => {
+    if (jobSummaryReportsLoadedRef.current.has(jobId)) return
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('reports')
+            .select('id, created_at, field_values, users!reports_created_by_user_id_fkey(name)')
+            .eq('job_ledger_id', jobId)
+            .order('created_at', { ascending: true }),
+        'job summary reports',
+      )
+      const rows = (data ?? []) as unknown as JobSummaryReportRow[]
+      setJobSummaryReportsByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, rows)
+        return next
+      })
+    } catch {
+      setJobSummaryReportsByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, [])
+        return next
+      })
+    } finally {
+      jobSummaryReportsLoadedRef.current.add(jobId)
     }
   }, [])
 
@@ -3676,6 +3711,13 @@ ${totalsHtml}
       }
     }
   }, [activeTab, expandedJobSummaryJobIds, invoiceAmountByJob, loadJobSummaryInvoiceLinesForJob])
+
+  useEffect(() => {
+    if (activeTab !== 'job-summary') return
+    for (const jobId of expandedJobSummaryJobIds) {
+      void loadJobSummaryReportsForJob(jobId)
+    }
+  }, [activeTab, expandedJobSummaryJobIds, loadJobSummaryReportsForJob])
 
   useEffect(() => {
     if (activeTab !== 'job-summary' || !authUser?.id) return
@@ -8562,6 +8604,7 @@ ${totalsHtml}
           jobSummaryClockSessionsByJobId={jobSummaryClockSessionsByJobId}
           jobSummaryInvoiceLinesByJobId={jobSummaryInvoiceLinesByJobId}
           jobSummaryMercuryAllocationsByJobId={jobSummaryMercuryAllocationsByJobId}
+          jobSummaryReportsByJobId={jobSummaryReportsByJobId}
           setJobSummaryCostDrilldown={setJobSummaryCostDrilldown}
           printCostBreakdownJobId={printCostBreakdownJobId}
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}
