@@ -11,9 +11,9 @@ Every expanded job on **Jobs → Job Summary** starts with a timeline chart of t
 
 Go to **Jobs → Job Summary** and click any job row. The row expands to the **Cost breakdown**, with the chart at the top.
 
-## The red line — net cost to date
+## The profit line — money out vs money in
 
-The main line is the job's **net position: charges minus payments received**. It steps up in **red** every day money went into the job, and steps **down in green** every day a payment came in. Its height at any point answers *"how much of this job's cost is still unrecovered?"*
+The main line is the job's **profit: payments received minus what it has cost**. It steps **down in red** every day money went into the job, and **up in green** every day a payment came in. A dashed line marks **$0** — above it, the job has collected more than it cost; the bold label at the end of the line is the job's current profit (for example **+$166.21**).
 
 Each red step is tagged with an icon for where the cost came from:
 
@@ -31,13 +31,13 @@ Each red step is tagged with an icon for where the cost came from:
 🧱 **Other job charge** — manual materials lines from Edit Job
 :::
 
-The red rises add up to the same number as the row's **Team Labor + Sub Labor + Parts Cost** columns. Items that have no date land in a **No date** bucket at the far left so the total still matches.
+The red falls add up to the same number as the row's **Team Labor + Sub Labor + Parts Cost** columns. Items that have no date land in a **No date** bucket at the far left so the total still matches.
 
-## Green drops — payments received
+## Green rises — payments received
 
-Every payment recorded on the job (Edit Job → **Payments received**) pulls the line **down**, and that falling stretch draws **green** with a 💵 marker. If the customer has paid back more than the job has cost, the line dips **below $0** — that's money ahead.
+Every payment recorded on the job (Edit Job → **Payments received**) lifts the line **up**, and that rising stretch draws **green** with a 💵 marker. Once the customer has paid back more than the job has cost, the line crosses **above $0** — that's money made.
 
-If charges and a smaller payment land on the same day, the line still nets upward (red), but the 💵 marker and the hover detail show the payment.
+If charges and a smaller payment land on the same day, the line still nets downward (red), but the 💵 marker and the hover detail show the payment.
 
 ## The blue line — value created
 
@@ -55,4 +55,4 @@ The Job Summary table's last column, **%**, shows how complete the job is:
 
 ## Hover for detail
 
-Hover any point to see everything that happened that day: who charged what, which invoices were allocated, payments received, who filed a report and their completion percent, plus the running **Expense**, **Payments**, **Net**, and **Value created** totals.
+Hover any point to see everything that happened that day: who charged what, which invoices were allocated, payments received, who filed a report and their completion percent, plus the running **Cost**, **Paid**, **Profit**, and **Value created** totals.

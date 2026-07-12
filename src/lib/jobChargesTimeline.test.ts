@@ -347,7 +347,7 @@ describe('buildJobPaymentEvents', () => {
   })
 })
 
-describe('buildJobChargesTimelineChartData — payments / net line', () => {
+describe('buildJobChargesTimelineChartData — payments / profit line', () => {
   it('nets payments against expense and marks payment days', () => {
     const data = buildJobChargesTimelineChartData(
       [
@@ -358,19 +358,19 @@ describe('buildJobChargesTimelineChartData — payments / net line', () => {
       1000,
       [payment({ dateKey: '2026-06-02', amount: 60 })],
     )
-    expect(data.chartRows.map((r) => [r.dateKey, r.expense, r.paymentsToDate, r.net])).toEqual([
-      ['2026-06-01', 100, 0, 100],
-      ['2026-06-02', 100, 60, 40],
-      ['2026-06-03', 150, 60, 90],
+    expect(data.chartRows.map((r) => [r.dateKey, r.expense, r.paymentsToDate, r.profit])).toEqual([
+      ['2026-06-01', 100, 0, -100],
+      ['2026-06-02', 100, 60, -40],
+      ['2026-06-03', 150, 60, -90],
     ])
     expect(data.chartRows.map((r) => r.hasPaymentMarker)).toEqual([false, true, false])
     expect(data.endExpense).toBe(150)
     expect(data.endPayments).toBe(60)
-    expect(data.endNet).toBe(90)
-    expect(data.paymentDropSegments).toEqual([{ from: 0, to: 1 }])
+    expect(data.endProfit).toBe(-90)
+    expect(data.paymentRiseSegments).toEqual([{ from: 0, to: 1 }])
   })
 
-  it('keeps rows indexed and endNet consistent with endExpense − endPayments', () => {
+  it('keeps rows indexed and endProfit consistent with endPayments − endExpense', () => {
     const data = buildJobChargesTimelineChartData(
       [charge({ dateKey: '2026-06-01', amount: 10.11 })],
       [],
@@ -378,22 +378,22 @@ describe('buildJobChargesTimelineChartData — payments / net line', () => {
       [payment({ dateKey: '2026-06-02', amount: 3.03 })],
     )
     expect(data.chartRows.map((r) => r.index)).toEqual([0, 1])
-    expect(data.endNet).toBeCloseTo(data.endExpense - data.endPayments, 2)
+    expect(data.endProfit).toBeCloseTo(data.endPayments - data.endExpense, 2)
   })
 
-  it('lets the net line go negative when payments exceed charges', () => {
+  it('goes positive when payments exceed charges', () => {
     const data = buildJobChargesTimelineChartData(
       [charge({ dateKey: '2026-06-01', amount: 100 })],
       [],
       null,
       [payment({ dateKey: '2026-06-05', amount: 300 })],
     )
-    expect(data.chartRows[1]?.net).toBe(-200)
-    expect(data.endNet).toBe(-200)
-    expect(data.paymentDropSegments).toEqual([{ from: 0, to: 1 }])
+    expect(data.chartRows[1]?.profit).toBe(200)
+    expect(data.endProfit).toBe(200)
+    expect(data.paymentRiseSegments).toEqual([{ from: 0, to: 1 }])
   })
 
-  it('same-day charge outweighing the payment stays a red (non-drop) transition but keeps the marker', () => {
+  it('same-day charge outweighing the payment stays a red (non-rise) transition but keeps the marker', () => {
     const data = buildJobChargesTimelineChartData(
       [
         charge({ dateKey: '2026-06-01', amount: 100 }),
@@ -403,12 +403,12 @@ describe('buildJobChargesTimelineChartData — payments / net line', () => {
       null,
       [payment({ dateKey: '2026-06-02', amount: 30 })],
     )
-    expect(data.chartRows[1]?.net).toBe(150)
+    expect(data.chartRows[1]?.profit).toBe(-150)
     expect(data.chartRows[1]?.hasPaymentMarker).toBe(true)
-    expect(data.paymentDropSegments).toEqual([])
+    expect(data.paymentRiseSegments).toEqual([])
   })
 
-  it('merges consecutive payment drops into one segment (no intervening event rows)', () => {
+  it('merges consecutive payment rises into one segment (no intervening event rows)', () => {
     const data = buildJobChargesTimelineChartData(
       [charge({ dateKey: '2026-06-01', amount: 100 })],
       [],
@@ -419,10 +419,10 @@ describe('buildJobChargesTimelineChartData — payments / net line', () => {
         payment({ dateKey: '2026-06-05', amount: 20 }),
       ],
     )
-    expect(data.paymentDropSegments).toEqual([{ from: 0, to: 3 }])
+    expect(data.paymentRiseSegments).toEqual([{ from: 0, to: 3 }])
   })
 
-  it('keeps separated drops as separate segments across a rise', () => {
+  it('keeps separated rises as separate segments across a fall', () => {
     const data = buildJobChargesTimelineChartData(
       [
         charge({ dateKey: '2026-06-01', amount: 100 }),
@@ -435,7 +435,7 @@ describe('buildJobChargesTimelineChartData — payments / net line', () => {
         payment({ dateKey: '2026-06-04', amount: 20 }),
       ],
     )
-    expect(data.paymentDropSegments).toEqual([
+    expect(data.paymentRiseSegments).toEqual([
       { from: 0, to: 1 },
       { from: 2, to: 3 },
     ])
@@ -450,10 +450,10 @@ describe('buildJobChargesTimelineChartData — payments / net line', () => {
     )
     expect(data.hasUnknownDateBucket).toBe(true)
     expect(data.chartRows[0]?.dateKey).toBe(JOB_CHARGES_UNKNOWN_DATE_KEY)
-    expect(data.chartRows[0]?.net).toBe(-40)
-    expect(data.chartRows[1]?.net).toBe(60)
-    // First row has no predecessor — no drop segment despite the payment.
-    expect(data.paymentDropSegments).toEqual([])
+    expect(data.chartRows[0]?.profit).toBe(40)
+    expect(data.chartRows[1]?.profit).toBe(-60)
+    // First row has no predecessor — no rise segment despite the payment.
+    expect(data.paymentRiseSegments).toEqual([])
   })
 
   it('payment-only job still charts', () => {
@@ -461,18 +461,18 @@ describe('buildJobChargesTimelineChartData — payments / net line', () => {
       payment({ dateKey: '2026-06-02', amount: 25 }),
     ])
     expect(data.chartRows).toHaveLength(1)
-    expect(data.chartRows[0]?.net).toBe(-25)
+    expect(data.chartRows[0]?.profit).toBe(25)
     expect(data.endExpense).toBe(0)
   })
 
-  it('omitting the payments argument keeps legacy behavior (net === expense)', () => {
+  it('omitting the payments argument yields profit === −expense', () => {
     const data = buildJobChargesTimelineChartData(
       [charge({ dateKey: '2026-06-01', amount: 42 })],
       [],
       null,
     )
-    expect(data.chartRows[0]?.net).toBe(42)
+    expect(data.chartRows[0]?.profit).toBe(-42)
     expect(data.endPayments).toBe(0)
-    expect(data.paymentDropSegments).toEqual([])
+    expect(data.paymentRiseSegments).toEqual([])
   })
 })
