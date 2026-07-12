@@ -11734,6 +11734,14 @@ export type Database = {
         Args: { p_field_choices: Json; p_survivor: string; p_victim: string }
         Returns: Json
       }
+      merge_user_accounts: {
+        Args: {
+          p_absorbed_user_id: string
+          p_dry_run?: boolean
+          p_survivor_user_id: string
+        }
+        Returns: Json
+      }
       migrate_job_ledger_costs_and_delete: {
         Args: { p_allow_billed?: boolean; p_from: string; p_to: string }
         Returns: Json
