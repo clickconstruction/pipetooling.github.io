@@ -39,7 +39,11 @@ If the green line is missing, the caption under the chart says why — usually t
 
 ## The % column
 
-The Job Summary table's last column, **%**, shows the same completion percent the green line uses: the latest field report that included a completion percent. When no report carries a percent, it falls back to the job's **% complete** field from Edit Job, and shows **—** when neither is set.
+The Job Summary table's last column, **%**, shows how complete the job is:
+
+1. **100%** when every invoice on the job is **paid** and the invoiced total is more than zero — a fully collected job is done, whatever the last report said.
+2. Otherwise the same completion percent the green line uses: the latest field report that included a completion percent.
+3. Otherwise the job's **% complete** field from Edit Job, and **—** when nothing is set.
 
 ## Hover for detail
 

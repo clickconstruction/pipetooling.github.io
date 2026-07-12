@@ -34,6 +34,7 @@ import {
 import { normalizePersonNameKey } from '../../lib/personNameKey'
 import {
   formatJobSummaryPercentComplete,
+  jobInvoicesAllPaidWithAmount,
   resolveJobSummaryPercentComplete,
 } from '../../lib/jobSummaryPercentComplete'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -308,7 +309,7 @@ export default function JobsJobSummaryTab({
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
                     <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue before Overhead</th>
                     <th
-                      title="Percent complete — latest field report %, or the job's % complete field when no report has one"
+                      title="Percent complete — 100% when all invoices are paid; otherwise latest field report %, or the job's % complete field when no report has one"
                       style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}
                     >
                       %
@@ -434,6 +435,7 @@ export default function JobsJobSummaryTab({
                                 resolveJobSummaryPercentComplete(
                                   jobSummaryReportPctByJobId.get(job.id) ?? null,
                                   job.pct_complete,
+                                  { invoicesAllPaidWithAmount: jobInvoicesAllPaidWithAmount(job.invoices) },
                                 ),
                               )}
                             </td>
