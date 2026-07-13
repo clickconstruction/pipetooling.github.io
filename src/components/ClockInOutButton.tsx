@@ -93,7 +93,7 @@ const UPDATE_FOCUS_OVERLAY_Z_INDEX = 1020
 
 const clockInSelectionOutlineSelected: CSSProperties = {
   border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
-  background: '#fff7ed',
+  background: 'var(--bg-orange-tint)',
   boxSizing: 'border-box',
 }
 

@@ -660,7 +660,7 @@ export default function TeamFeedbackSettingsSection({
               borderRadius: 6,
               border: '1px solid #ea580c',
               background: 'var(--surface)',
-              color: '#c2410c',
+              color: 'var(--text-orange-700)',
               fontWeight: 600,
               fontSize: '0.875rem',
               cursor: authUser?.id ? 'pointer' : 'not-allowed',

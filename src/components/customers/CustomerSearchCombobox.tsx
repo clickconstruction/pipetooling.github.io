@@ -87,9 +87,9 @@ const footerCreateStyle: CSSProperties = {
   padding: '0.65rem 0.75rem',
   border: 'none',
   borderTop: '2px solid var(--border)',
-  background: '#fff7ed',
+  background: 'var(--bg-orange-tint)',
   fontWeight: 600,
-  color: '#c2410c',
+  color: 'var(--text-orange-700)',
   cursor: 'pointer',
   fontSize: '0.875rem',
 }

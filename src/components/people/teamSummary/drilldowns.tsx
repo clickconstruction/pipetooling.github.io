@@ -665,7 +665,7 @@ export function GrossPerHourBody(props: { entry: TeamSummaryBreakdown }) {
             </tr>
           ))}
           {entry.pb.unaccountedHours > 0.01 ? (
-            <tr style={{ background: '#fff7ed' }}>
+            <tr style={{ background: 'var(--bg-orange-tint)' }}>
               <td className="num">&mdash;</td>
               <td>
                 <em>Unallocated hours</em>
@@ -779,7 +779,7 @@ export function NetPerHourBody(props: { entry: TeamSummaryBreakdown }) {
               </tr>
             ))}
             {entry.pb.unaccountedHours > 0.01 ? (
-              <tr style={{ background: '#fff7ed' }}>
+              <tr style={{ background: 'var(--bg-orange-tint)' }}>
                 <td className="num">&mdash;</td>
                 <td>
                   <em>Unallocated hours</em>
@@ -1373,7 +1373,7 @@ export function FieldHoursBody(props: {
               )
             })}
             {unaccountedFieldHrs > 0.005 ? (
-              <tr style={{ background: '#fff7ed' }}>
+              <tr style={{ background: 'var(--bg-orange-tint)' }}>
                 <td>
                   <em>Unallocated field hrs</em>
                   <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
