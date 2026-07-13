@@ -88,7 +88,7 @@ const headerActionButtonBase = {
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser, role, profileName, estimatorProspectsAccess } = useAuth()
+  const { user: authUser, role, profileName, estimatorProspectsAccess, readOnly } = useAuth()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
   useAssistantDispatchLanding()
@@ -543,6 +543,21 @@ export default function Layout() {
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
       <AddTaskShortcutBanner role={role} />
+      {readOnly && (
+        <div
+          role="status"
+          style={{
+            background: '#fef3c7',
+            borderBottom: '1px solid #f59e0b',
+            color: '#92400e',
+            padding: '0.4rem 1rem',
+            fontSize: '0.8125rem',
+            textAlign: 'center',
+          }}
+        >
+          <strong>Training mode — read-only.</strong> Explore anything; changes won't save until an admin turns this off.
+        </div>
+      )}
       <div className="appNavChrome">
       <nav
         className="appNav"

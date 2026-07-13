@@ -9906,6 +9906,7 @@ export type Database = {
           notes: string | null
           phone: string | null
           primary_service_type_ids: string[] | null
+          read_only: boolean
           role: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids: string[] | null
           superintendent_service_type_ids: string[] | null
@@ -9924,6 +9925,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
+          read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
@@ -9942,6 +9944,7 @@ export type Database = {
           notes?: string | null
           phone?: string | null
           primary_service_type_ids?: string[] | null
+          read_only?: boolean
           role?: Database["public"]["Enums"]["user_role"]
           subcontractor_service_type_ids?: string[] | null
           superintendent_service_type_ids?: string[] | null
