@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
+import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs_ledger']['Row'],
@@ -154,13 +155,17 @@ export function useMapPageData(enabled: boolean) {
       const keys = [...new Set(next.map((n) => n.addressKey))]
 
       type GeocodeRow = { address_normalized: string; lat: number; lng: number }
-      const cached: GeocodeRow[] =
-        keys.length === 0
-          ? []
-          : await withSupabaseRetry<GeocodeRow[]>(
-              async () => supabase.from('address_geocodes').select('address_normalized, lat, lng').in('address_normalized', keys),
+      // Batched: one .in() with every key overflows the GET URL past ~600 addresses → 400.
+      const cached: GeocodeRow[] = (
+        await Promise.all(
+          batchGeocodeCacheKeys(keys).map((batch) =>
+            withSupabaseRetry<GeocodeRow[]>(
+              async () => supabase.from('address_geocodes').select('address_normalized, lat, lng').in('address_normalized', batch),
               'map address_geocodes'
             )
+          )
+        )
+      ).flat()
 
       if (gen !== loadGenerationRef.current) return
 
