@@ -5,7 +5,7 @@ import { formatStripeCents } from '../../lib/stripeInvoicePreview'
 const sectionTitle: CSSProperties = {
   fontSize: '0.75rem',
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--text-700)',
   margin: '0 0 0.35rem',
 }
 
@@ -28,7 +28,7 @@ export function StripeInvoiceLinesSummary({
   const inner = (
     <>
       {showTitle ? <div style={sectionTitle}>{title}</div> : null}
-      <div style={{ fontSize: '0.75rem', color: '#374151' }}>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-700)' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <tbody>
             {sp.lines.map((line, i) => (
@@ -43,7 +43,7 @@ export function StripeInvoiceLinesSummary({
             ))}
           </tbody>
         </table>
-        <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid #e5e7eb', fontWeight: 600 }}>
+        <div style={{ marginTop: '0.35rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border)', fontWeight: 600 }}>
           Total due: {formatStripeCents(sp.amount_due, sp.currency)}
         </div>
       </div>
@@ -59,8 +59,8 @@ export function StripeInvoiceLinesSummary({
       style={{
         padding: '0.75rem',
         borderRadius: 6,
-        border: '1px solid #e5e7eb',
-        background: '#f9fafb',
+        border: '1px solid var(--border)',
+        background: 'var(--bg-subtle)',
         fontSize: '0.8125rem',
       }}
     >

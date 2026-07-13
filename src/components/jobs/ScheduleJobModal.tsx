@@ -452,7 +452,7 @@ export function ScheduleJobModal({
         role="dialog"
         aria-labelledby="schedule-job-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 560,
@@ -483,7 +483,7 @@ export function ScheduleJobModal({
                 style={{
                   margin: 0,
                   fontSize: '1.15rem',
-                  color: '#4b5563',
+                  color: 'var(--text-600)',
                   display: 'flex',
                   flexWrap: 'wrap',
                   alignItems: 'baseline',
@@ -492,7 +492,7 @@ export function ScheduleJobModal({
                 {contextStack.map((ctx, i) => (
                   <span key={`${ctx.jobId}-${i}`}>
                     {i > 0 ? (
-                      <span aria-hidden style={{ margin: '0 0.25rem', color: '#9ca3af' }}>
+                      <span aria-hidden style={{ margin: '0 0.25rem', color: 'var(--text-faint)' }}>
                         ←
                       </span>
                     ) : null}
@@ -506,7 +506,7 @@ export function ScheduleJobModal({
                           margin: 0,
                           border: 'none',
                           background: 'none',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           cursor: contextNavLoading ? 'not-allowed' : 'pointer',
                           font: 'inherit',
                           textDecoration: 'underline',
@@ -516,7 +516,7 @@ export function ScheduleJobModal({
                         {ctx.jobTitle}
                       </button>
                     ) : (
-                      <span aria-current="page" style={{ fontWeight: 600, color: '#111827' }}>
+                      <span aria-current="page" style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
                         {ctx.jobTitle}
                       </span>
                     )}
@@ -531,8 +531,8 @@ export function ScheduleJobModal({
             style={{
               padding: '0.35rem 0.65rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: 'pointer',
               flexShrink: 0,
@@ -555,19 +555,19 @@ export function ScheduleJobModal({
           <button
             type="button"
             onClick={() => shiftDay(-1)}
-            style={{ padding: '0.4rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+            style={{ padding: '0.4rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
             aria-label="Previous day"
           >
             ←
           </button>
           <div style={{ fontWeight: 600, fontSize: '0.9375rem', textAlign: 'center', flex: '1 1 auto' }}>
             {scheduleFormatWeekdayLong(workDate)}
-            <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 400 }}>{workDate}</div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>{workDate}</div>
           </div>
           <button
             type="button"
             onClick={() => shiftDay(1)}
-            style={{ padding: '0.4rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+            style={{ padding: '0.4rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
             aria-label="Next day"
           >
             →
@@ -575,16 +575,16 @@ export function ScheduleJobModal({
           <button
             type="button"
             onClick={() => setWorkDate(scheduleTodayDateKey())}
-            style={{ padding: '0.4rem 0.75rem', border: '1px solid #2563eb', color: '#2563eb', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+            style={{ padding: '0.4rem 0.75rem', border: '1px solid #2563eb', color: 'var(--text-link)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
           >
             Today
           </button>
         </div>
 
-        {contextNavLoading ? <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading job…</p> : null}
-        {contextNavError ? <p style={{ color: '#b91c1c', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{contextNavError}</p> : null}
-        {loading ? <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p> : null}
-        {error ? <p style={{ color: '#b91c1c', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{error}</p> : null}
+        {contextNavLoading ? <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading job…</p> : null}
+        {contextNavError ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{contextNavError}</p> : null}
+        {loading ? <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p> : null}
+        {error ? <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{error}</p> : null}
 
         <ScheduleDayTimeline
           segments={timelineSegments}
@@ -596,16 +596,16 @@ export function ScheduleJobModal({
           style={{
             marginTop: '1rem',
             paddingTop: '1rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
           }}
         >
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-700)' }}>
             Add block for this job
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               <div style={{ marginBottom: 4 }}>Team members</div>
-              <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginBottom: 6 }}>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginBottom: 6 }}>
                 Linked: same time and note for everyone selected ({assigneeUserIds.length} selected).
               </div>
               <SearchableMultiSelect
@@ -641,7 +641,7 @@ export function ScheduleJobModal({
                 alignItems: 'flex-end',
               }}
             >
-              <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 120px' }}>
                 Start
                 <input
                   type="time"
@@ -661,19 +661,19 @@ export function ScheduleJobModal({
                   paddingBottom: 2,
                 }}
               >
-                <div style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: 2 }}>Duration</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: 2 }}>Duration</div>
                 <div
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: 600,
                     fontVariantNumeric: 'tabular-nums',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                   }}
                 >
                   {durationDisplay}
                 </div>
               </div>
-              <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 120px' }}>
                 End
                 <input
                   type="time"
@@ -683,7 +683,7 @@ export function ScheduleJobModal({
                 />
               </label>
             </div>
-            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Note (optional)
               <input
                 type="text"
@@ -705,7 +705,7 @@ export function ScheduleJobModal({
                 fontSize: '0.875rem',
                 background:
                   saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
-                    ? '#e5e7eb'
+                    ? 'var(--bg-200)'
                     : '#2563eb',
                 color:
                   saving || assigneeUserIds.length === 0 || !hasAssigneePickOptions
@@ -729,11 +729,11 @@ export function ScheduleJobModal({
         </div>
 
         <div style={{ marginTop: '1rem' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-700)' }}>
             This job — {blocksThisJob.length} block{blocksThisJob.length === 1 ? '' : 's'}
           </div>
           {blocksThisJob.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No blocks on this day yet.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No blocks on this day yet.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {blocksThisJob.map((b) => (
@@ -761,8 +761,8 @@ export function ScheduleJobModal({
                     style={{
                       padding: '0.25rem 0.5rem',
                       fontSize: '0.75rem',
-                      background: '#fef2f2',
-                      color: '#b91c1c',
+                      background: 'var(--bg-red-tint)',
+                      color: 'var(--text-red-700)',
                       border: '1px solid #fecaca',
                       borderRadius: 4,
                       cursor: 'pointer',

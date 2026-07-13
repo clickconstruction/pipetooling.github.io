@@ -56,7 +56,7 @@ function sessionStatusLabel(s: JobDetailClockSessionRow): string | null {
 const listBoxStyle = {
   maxHeight: 320,
   overflowY: 'auto' as const,
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 4,
   fontSize: '0.875rem',
 }
@@ -87,31 +87,31 @@ export function JobDetailScheduleSessionsSection({
         <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Schedule and recorded time</div>
       )}
 
-      {loading ? <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading schedule and sessions…</p> : null}
+      {loading ? <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading schedule and sessions…</p> : null}
       {error && !loading ? (
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#b91c1c', whiteSpace: 'pre-wrap' }}>{error}</p>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-red-700)', whiteSpace: 'pre-wrap' }}>{error}</p>
       ) : null}
 
-      <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem', color: '#374151' }}>Calendar blocks</div>
+      <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>Calendar blocks</div>
       {scheduleBlocks.length === 0 && !loading ? (
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#9ca3af' }}>No schedule blocks for this job.</p>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-faint)' }}>No schedule blocks for this job.</p>
       ) : scheduleBlocks.length > 0 && filteredScheduleBlocks.length === 0 && filterActive ? (
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No rows match this filter.</p>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No rows match this filter.</p>
       ) : scheduleBlocks.length > 0 ? (
         <div style={{ ...listBoxStyle, marginBottom: '0.75rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb', position: 'sticky', top: 0 }}>
+            <thead style={{ background: 'var(--bg-subtle)', position: 'sticky', top: 0 }}>
               <tr>
-                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                   Date
                 </th>
-                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                   Time
                 </th>
-                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                   Assignee
                 </th>
-                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                   Note
                 </th>
               </tr>
@@ -121,7 +121,7 @@ export function JobDetailScheduleSessionsSection({
                 const note = (b.note ?? '').trim()
                 const noteShort = note.length > 80 ? `${note.slice(0, 80)}…` : note
                 return (
-                  <tr key={b.id} style={{ borderBottom: idx < filteredScheduleBlocks.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                  <tr key={b.id} style={{ borderBottom: idx < filteredScheduleBlocks.length - 1 ? '1px solid var(--border)' : 'none' }}>
                     <td style={{ padding: '0.5rem 0.625rem', verticalAlign: 'top' }}>
                       {scheduleFormatDateLongNoWeekday(b.work_date)}
                     </td>
@@ -132,7 +132,7 @@ export function JobDetailScheduleSessionsSection({
                       {(b.users?.name ?? '').trim() || b.assignee_user_id}
                     </td>
                     <td
-                      style={{ padding: '0.5rem 0.625rem', verticalAlign: 'top', color: '#4b5563' }}
+                      style={{ padding: '0.5rem 0.625rem', verticalAlign: 'top', color: 'var(--text-600)' }}
                       title={note.length > 80 ? note : undefined}
                     >
                       {noteShort || '—'}
@@ -145,16 +145,16 @@ export function JobDetailScheduleSessionsSection({
         </div>
       ) : null}
       {scheduleTruncated ? (
-        <p style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Showing first {scheduleBlocks.length} loaded blocks; more may exist in dispatch.
         </p>
       ) : null}
 
-      <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem', color: '#374151' }}>Clock sessions</div>
+      <div style={{ fontWeight: 600, fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>Clock sessions</div>
       {clockSessions.length === 0 && !loading ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>No clock sessions on this job.</p>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>No clock sessions on this job.</p>
       ) : clockSessions.length > 0 && filteredClockSessions.length === 0 && filterActive ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No rows match this filter.</p>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No rows match this filter.</p>
       ) : clockSessions.length > 0 ? (
         <div style={listBoxStyle}>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -172,7 +172,7 @@ export function JobDetailScheduleSessionsSection({
                   key={s.id}
                   style={{
                     padding: '0.45rem 0.625rem',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--border)',
                     fontSize: '0.875rem',
                   }}
                 >
@@ -181,7 +181,7 @@ export function JobDetailScheduleSessionsSection({
                   </div>
                   <div
                     style={{
-                      color: '#4b5563',
+                      color: 'var(--text-600)',
                       marginTop: 2,
                       fontSize: '0.8125rem',
                       fontVariantNumeric: 'tabular-nums',
@@ -190,10 +190,10 @@ export function JobDetailScheduleSessionsSection({
                     {durDisplay} | {timeStart} to {timeEnd}
                   </div>
                   {status ? (
-                    <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#6b7280' }}>{status}</div>
+                    <div style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{status}</div>
                   ) : null}
                   {notes ? (
-                    <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'pre-wrap' }}>{notes}</div>
+                    <div style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'pre-wrap' }}>{notes}</div>
                   ) : null}
                 </li>
               )
@@ -202,7 +202,7 @@ export function JobDetailScheduleSessionsSection({
         </div>
       ) : null}
       {sessionsTruncated ? (
-        <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Showing first {clockSessions.length} loaded sessions; more may exist.
         </p>
       ) : null}

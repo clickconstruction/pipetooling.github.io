@@ -552,7 +552,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
         aria-modal="true"
         aria-labelledby="jobs-combine-separate-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 360,
@@ -563,7 +563,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id="jobs-combine-separate-title" style={{ margin: '0 0 1rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>
+        <h2 id="jobs-combine-separate-title" style={{ margin: '0 0 1rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
           Combine / Separate jobs
         </h2>
 
@@ -578,8 +578,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 onClick={() => dismissSplitSuccess()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   cursor: 'pointer',
                   fontSize: '0.875rem',
@@ -616,7 +616,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
             <div
               role="tablist"
               aria-label="Combine or separate jobs"
-              style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem', borderBottom: '1px solid #e5e7eb' }}
+              style={{ display: 'flex', gap: '0.25rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)' }}
             >
               <button
                 type="button"
@@ -632,7 +632,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   background: 'none',
                   cursor: overlayBusy ? 'not-allowed' : 'pointer',
                   fontWeight: activeTab === 'combine' ? 600 : 400,
-                  color: activeTab === 'combine' ? '#1d4ed8' : '#6b7280',
+                  color: activeTab === 'combine' ? 'var(--text-blue-700)' : 'var(--text-muted)',
                   fontSize: '0.875rem',
                 }}
               >
@@ -652,7 +652,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   background: 'none',
                   cursor: overlayBusy ? 'not-allowed' : 'pointer',
                   fontWeight: activeTab === 'separate' ? 600 : 400,
-                  color: activeTab === 'separate' ? '#1d4ed8' : '#6b7280',
+                  color: activeTab === 'separate' ? 'var(--text-blue-700)' : 'var(--text-muted)',
                   fontSize: '0.875rem',
                 }}
               >
@@ -662,13 +662,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
             {activeTab === 'combine' ? (
               <div>
-                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                   Move labor, parts, materials, Specific Work, and related rows from the <strong>source</strong> job into
                   the <strong>target</strong> job, add the source <strong>Job total (revenue)</strong> to the target, then
                   remove the source job. Matches <strong>Edit Job → Migrate and Delete</strong>. This cannot be undone.
                 </p>
 
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
                   Job to remove (source)
                 </label>
                 <input
@@ -685,13 +685,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     width: '100%',
                     padding: '0.5rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.875rem',
                     marginBottom: 8,
                   }}
                 />
                 {cSourceSearchLoading ? (
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>Searching…</p>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
                 ) : null}
                 <ul
                   style={{
@@ -700,7 +700,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     padding: 0,
                     maxHeight: 140,
                     overflow: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                   }}
                 >
@@ -720,26 +720,26 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           padding: '0.5rem 0.65rem',
                           border: 'none',
                           borderBottom: '1px solid #f3f4f6',
-                          background: cSourceId === j.id ? '#eff6ff' : 'white',
+                          background: cSourceId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: cMigrateBusy ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',
                         }}
                       >
                         <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                        <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                        <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                       </button>
                     </li>
                   ))}
                 </ul>
 
                 {cSourceRow ? (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                     <strong>Source selected:</strong> {effectiveJobLedgerNumber(cSourceRow.hcp_number, cSourceRow.click_number) || '—'} —{' '}
                     {(cSourceRow.job_name ?? '').trim() || '—'}
                   </p>
                 ) : null}
 
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
                   Job to keep (target)
                 </label>
                 <input
@@ -755,13 +755,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     width: '100%',
                     padding: '0.5rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.875rem',
                     marginBottom: 8,
                   }}
                 />
                 {cTargetSearchLoading ? (
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>Searching…</p>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
                 ) : null}
                 <ul
                   style={{
@@ -770,7 +770,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     padding: 0,
                     maxHeight: 140,
                     overflow: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                   }}
                 >
@@ -786,31 +786,31 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           padding: '0.5rem 0.65rem',
                           border: 'none',
                           borderBottom: '1px solid #f3f4f6',
-                          background: cTargetId === j.id ? '#eff6ff' : 'white',
+                          background: cTargetId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: cMigrateBusy ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',
                         }}
                       >
                         <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                        <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                        <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                       </button>
                     </li>
                   ))}
                 </ul>
 
                 <div style={{ marginBottom: '1rem' }}>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', marginBottom: 8 }}>Summary</div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 8 }}>Summary</div>
                   <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '4px 8px 4px 0', color: '#6b7280', fontWeight: 600 }} />
-                        <th style={{ textAlign: 'right', padding: '4px 4px', color: '#6b7280', fontWeight: 600 }}>Source</th>
-                        <th style={{ textAlign: 'right', padding: '4px 0 4px 4px', color: '#6b7280', fontWeight: 600 }}>Target</th>
+                        <th style={{ textAlign: 'left', padding: '4px 8px 4px 0', color: 'var(--text-muted)', fontWeight: 600 }} />
+                        <th style={{ textAlign: 'right', padding: '4px 4px', color: 'var(--text-muted)', fontWeight: 600 }}>Source</th>
+                        <th style={{ textAlign: 'right', padding: '4px 0 4px 4px', color: 'var(--text-muted)', fontWeight: 600 }}>Target</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Parts-style costs</td>
+                        <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Parts-style costs</td>
                         <td style={{ textAlign: 'right', padding: '4px 4px' }}>
                           {cSourcePreviewLoading
                             ? '…'
@@ -827,7 +827,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Billed materials</td>
+                        <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Billed materials</td>
                         <td style={{ textAlign: 'right', padding: '4px 4px' }}>
                           {cSourcePreviewLoading
                             ? '…'
@@ -844,7 +844,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                         </td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Team labor (est.)</td>
+                        <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Team labor (est.)</td>
                         <td style={{ textAlign: 'right', padding: '4px 4px' }}>
                           {cSourcePreviewLoading
                             ? '…'
@@ -874,8 +874,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     disabled={cMigrateBusy}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
+                      background: 'var(--bg-muted)',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 6,
                       cursor: cMigrateBusy ? 'not-allowed' : 'pointer',
                       fontSize: '0.875rem',
@@ -904,7 +904,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
               </div>
             ) : (
               <div>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                   Pick a <strong>Working</strong> job, select one or more <strong>Specific Work</strong> lines to move into a
                   new job, then enter the new job&apos;s HCP, name, and address. At least one line must remain on the
                   original job.
@@ -913,9 +913,9 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   style={{
                     margin: '0 0 1rem',
                     fontSize: '0.8125rem',
-                    color: '#92400e',
+                    color: 'var(--text-amber-800)',
                     lineHeight: 1.45,
-                    background: '#fffbeb',
+                    background: 'var(--bg-amber-tint)',
                     padding: '0.65rem 0.75rem',
                     borderRadius: 6,
                     border: '1px solid #fde68a',
@@ -926,7 +926,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   original billing job unless you adjust them manually.
                 </p>
 
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
                   Source job
                 </label>
                 <input
@@ -943,13 +943,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     width: '100%',
                     padding: '0.5rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.875rem',
                     marginBottom: 8,
                   }}
                 />
                 {sJobSearchLoading ? (
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>Searching…</p>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
                 ) : null}
                 <ul
                   style={{
@@ -958,7 +958,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     padding: 0,
                     maxHeight: 120,
                     overflow: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                   }}
                 >
@@ -977,31 +977,31 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           padding: '0.5rem 0.65rem',
                           border: 'none',
                           borderBottom: '1px solid #f3f4f6',
-                          background: sSourceId === j.id ? '#eff6ff' : 'white',
+                          background: sSourceId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: sSplitBusy ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',
                         }}
                       >
                         <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                        <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                        <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                       </button>
                     </li>
                   ))}
                 </ul>
 
                 {sSourceRow ? (
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                     <strong>Selected:</strong> {effectiveJobLedgerNumber(sSourceRow.hcp_number, sSourceRow.click_number) || '—'} — {(sSourceRow.job_name ?? '').trim() || '—'}
                   </p>
                 ) : null}
 
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', marginBottom: 8 }}>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 8 }}>
                   Specific Work lines to move
                 </div>
                 {sFixturesLoading ? (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>Loading lines…</p>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading lines…</p>
                 ) : sFixtures.length === 0 && sSourceId ? (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>No Specific Work lines on this job.</p>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No Specific Work lines on this job.</p>
                 ) : (
                   <ul
                     style={{
@@ -1010,7 +1010,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                       padding: 0,
                       maxHeight: 200,
                       overflow: 'auto',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                     }}
                   >
@@ -1045,7 +1045,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                           />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 500 }}>{(f.name ?? '').trim() || '(unnamed line)'}</div>
-                            <div style={{ color: '#6b7280' }}>
+                            <div style={{ color: 'var(--text-muted)' }}>
                               qty {f.count} · ${formatCurrency(Number(f.line_unit_price) || 0)} unit →{' '}
                               <strong>${formatCurrency(line$)}</strong> extended
                             </div>
@@ -1057,14 +1057,14 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 )}
 
                 {sMovingAllFixtures ? (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#b91c1c' }}>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
                     Leave at least one Specific Work line on the original job, or use Combine to merge into another job
                     instead.
                   </p>
                 ) : null}
 
                 {sPickCount > 0 ? (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#374151' }}>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                     <strong>New job revenue (from selected lines):</strong> ${formatCurrency(projectedSplitRevenue)}
                   </p>
                 ) : null}
@@ -1074,13 +1074,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   onToggle={(e) => setSSessionsOpen((e.target as HTMLDetailsElement).open)}
                   style={{ marginBottom: '1rem', fontSize: '0.875rem' }}
                 >
-                  <summary style={{ cursor: sSplitBusy ? 'not-allowed' : 'pointer', fontWeight: 600, color: '#374151' }}>
+                  <summary style={{ cursor: sSplitBusy ? 'not-allowed' : 'pointer', fontWeight: 600, color: 'var(--text-700)' }}>
                     Clock sessions on this job ({sSessionsLoading ? '…' : sSessions.length})
                   </summary>
                   {sSessionsLoading ? (
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>Loading sessions…</p>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading sessions…</p>
                   ) : sSessions.length === 0 ? (
-                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>No sessions linked to this job.</p>
+                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No sessions linked to this job.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0, maxHeight: 160, overflow: 'auto' }}>
                       {sSessions.map((s) => {
@@ -1122,7 +1122,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   )}
                 </details>
 
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
                   New HCP #
                 </label>
                 <input
@@ -1133,13 +1133,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     width: '100%',
                     padding: '0.5rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.875rem',
                     marginBottom: 10,
                     boxSizing: 'border-box',
                   }}
                 />
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
                   New job name
                 </label>
                 <input
@@ -1150,13 +1150,13 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     width: '100%',
                     padding: '0.5rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.875rem',
                     marginBottom: 10,
                     boxSizing: 'border-box',
                   }}
                 />
-                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+                <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
                   New job address
                 </label>
                 <input
@@ -1167,7 +1167,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     width: '100%',
                     padding: '0.5rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     fontSize: '0.875rem',
                     marginBottom: '1rem',
                     boxSizing: 'border-box',
@@ -1184,8 +1184,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     disabled={sSplitBusy}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
+                      background: 'var(--bg-muted)',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 6,
                       cursor: sSplitBusy ? 'not-allowed' : 'pointer',
                       fontSize: '0.875rem',

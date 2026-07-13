@@ -95,10 +95,10 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     padding: `${pad} 0.65rem`,
     fontSize: p.compact ? '0.75rem' : '0.8125rem',
     borderRadius: 4,
-    border: '1px solid #d1d5db',
-    background: 'white',
+    border: '1px solid var(--border-strong)',
+    background: 'var(--surface)',
     cursor: 'pointer',
-    color: '#374151',
+    color: 'var(--text-700)',
     fontWeight: 500,
   }
 
@@ -111,7 +111,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
     border: 'none',
     background: 'transparent',
     cursor: 'pointer',
-    color: '#2563eb',
+    color: 'var(--text-link)',
     lineHeight: 0,
   }
 
@@ -121,7 +121,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
   const paymentLinkCluster = p.paymentLinkActionsAsIcons ? (
     <span style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap', gap: '0.35rem' }}>
       {!p.omitPaymentLinksLabel ? (
-        <span style={{ color: '#374151', fontWeight: 500, marginRight: 2 }}>Payment Links:</span>
+        <span style={{ color: 'var(--text-700)', fontWeight: 500, marginRight: 2 }}>Payment Links:</span>
       ) : null}
       <span
         style={{
@@ -203,8 +203,8 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
         marginTop: p.compact ? 6 : 8,
         padding: p.compact ? '0.5rem' : '0.75rem',
         borderRadius: 6,
-        border: '1px solid #e5e7eb',
-        background: '#fafafa',
+        border: '1px solid var(--border)',
+        background: 'var(--bg-page)',
         fontSize: p.compact ? '0.75rem' : '0.8125rem',
       }
 
@@ -254,7 +254,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
           <button
             type="button"
             onClick={() => window.open(url, '_blank', 'noopener,noreferrer')}
-            style={{ ...btnStyle, borderColor: '#2563eb', color: '#1d4ed8' }}
+            style={{ ...btnStyle, borderColor: '#2563eb', color: 'var(--text-blue-700)' }}
           >
             Customer pay page
           </button>
@@ -270,7 +270,7 @@ export function StripeInvoiceSharePanel(p: StripeInvoiceSharePanelProps) {
           style={{
             margin: unboxed ? '0.5rem 0 0' : '0.35rem 0 0',
             fontSize: '0.75rem',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             textAlign: unboxed ? 'center' : undefined,
           }}
         >

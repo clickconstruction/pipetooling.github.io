@@ -6,7 +6,7 @@ import { anyLineSegmentsStartWithLowercase } from '../../lib/invoiceLineDescript
 const metaLabel: CSSProperties = {
   padding: '0.15rem 0.75rem 0.15rem 0',
   verticalAlign: 'top',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.72rem',
   fontWeight: 500,
   whiteSpace: 'nowrap',
@@ -16,24 +16,24 @@ const metaValue: CSSProperties = {
   padding: '0.15rem 0',
   verticalAlign: 'top',
   fontSize: '0.875rem',
-  color: '#111827',
+  color: 'var(--text-strong)',
   wordBreak: 'break-word',
 }
 
 const heroAmount: CSSProperties = {
   fontSize: '1.35rem',
   fontWeight: 700,
-  color: '#111827',
+  color: 'var(--text-strong)',
 }
 
 const tableHead: CSSProperties = {
   textAlign: 'left',
   fontSize: '0.65rem',
   fontWeight: 600,
-  color: '#4b5563',
+  color: 'var(--text-600)',
   padding: '0.35rem 0.25rem',
-  borderBottom: '1px solid #e5e7eb',
-  background: '#f9fafb',
+  borderBottom: '1px solid var(--border)',
+  background: 'var(--bg-subtle)',
 }
 
 const tableCell: CSSProperties = {
@@ -62,13 +62,13 @@ const lineItemsSectionTitleTh: CSSProperties = {
   width: '48%',
   fontSize: '0.72rem',
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--text-700)',
   textAlign: 'left',
 }
 
 /** Bill Customer preview only: matches lowercase-leading-line hint (not on customer PDF). */
 const proseLowercaseIssueShell: CSSProperties = {
-  background: '#fef2f2',
+  background: 'var(--bg-red-tint)',
   border: '1px solid #f87171',
   borderRadius: 4,
   padding: '0.35rem 0.5rem',
@@ -109,9 +109,9 @@ function LineItemsTable({
   return (
     <div style={{ marginTop: '0.65rem' }}>
       {!mergeTitleIntoHeader ? (
-        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>{title}</div>
+        <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>{title}</div>
       ) : null}
-      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid #e5e7eb' }}>
+      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)' }}>
         <thead>
           <tr>
             <th style={mergeTitleIntoHeader ? lineItemsSectionTitleTh : { ...tableHead, width: '48%' }}>
@@ -188,8 +188,8 @@ export function PhysicalInvoicePreview({
     return (
       <div
         style={{
-          background: '#f9fafb',
-          border: '1px solid #e5e7eb',
+          background: 'var(--bg-subtle)',
+          border: '1px solid var(--border)',
           borderRadius: 8,
           padding: '0.75rem 1rem',
           marginBottom: '0.75rem',
@@ -199,7 +199,7 @@ export function PhysicalInvoicePreview({
           style={{
             fontSize: '0.875rem',
             fontWeight: 600,
-            color: '#111827',
+            color: 'var(--text-strong)',
             marginBottom: '0.65rem',
             textAlign: 'center',
           }}
@@ -207,16 +207,16 @@ export function PhysicalInvoicePreview({
           Invoice (PDF preview)
         </div>
         {!hideIssuerContact && issuer ? (
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', marginBottom: 6 }}>{issuer}</div>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 6 }}>{issuer}</div>
         ) : null}
-        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginBottom: '0.65rem' }}>INVOICE</div>
+        <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '0.65rem' }}>INVOICE</div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 160px', minWidth: 0 }}>
             {d.narrativeTitle.trim() ? (
               <div
                 style={{
                   fontSize: '0.875rem',
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   whiteSpace: 'pre-wrap',
                   lineHeight: 1.35,
                   ...(narrativeNeedsIssueEmphasis ? proseLowercaseIssueShell : {}),
@@ -230,13 +230,13 @@ export function PhysicalInvoicePreview({
                 style={{
                   marginTop: '0.35rem',
                   paddingTop: '0.35rem',
-                  borderTop: '1px solid #e5e7eb',
+                  borderTop: '1px solid var(--border)',
                 }}
               >
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>
                   SERVICE ADDRESS
                 </div>
-                <div style={{ fontSize: '0.8125rem', color: '#111827', whiteSpace: 'pre-wrap' }}>{d.serviceAddress}</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap' }}>{d.serviceAddress}</div>
               </div>
             ) : null}
             {d.customerName || d.customerEmail || d.customerPhone ? (
@@ -244,13 +244,13 @@ export function PhysicalInvoicePreview({
                 style={{
                   marginTop: '0.35rem',
                   paddingTop: '0.35rem',
-                  borderTop: '1px solid #e5e7eb',
+                  borderTop: '1px solid var(--border)',
                 }}
               >
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>CONTACT</div>
-                <div style={{ fontSize: '0.8125rem', color: '#111827' }}>{d.customerName}</div>
-                {d.customerEmail ? <div style={{ fontSize: '0.8125rem', color: '#111827' }}>{d.customerEmail}</div> : null}
-                {d.customerPhone ? <div style={{ fontSize: '0.8125rem', color: '#111827' }}>{d.customerPhone}</div> : null}
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>CONTACT</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>{d.customerName}</div>
+                {d.customerEmail ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>{d.customerEmail}</div> : null}
+                {d.customerPhone ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>{d.customerPhone}</div> : null}
               </div>
             ) : null}
           </div>
@@ -308,7 +308,7 @@ export function PhysicalInvoicePreview({
 
         {!hideIssuerContact &&
         ((d.issuer.addressText ?? '').trim() || d.issuer.phone || d.issuer.email) ? (
-          <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: '#374151', lineHeight: 1.35 }}>
+          <div style={{ marginTop: '0.65rem', fontSize: '0.78rem', color: 'var(--text-700)', lineHeight: 1.35 }}>
             {(d.issuer.addressText ?? '').split('\n').map((line, i) => (
               <div key={i}>{line}</div>
             ))}
@@ -331,22 +331,22 @@ export function PhysicalInvoicePreview({
           onRowDescriptionClick={detailedMaterialLineDescriptionClick}
         />
 
-        <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: '#111827' }}>
+        <div style={{ marginTop: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
           <strong>Subtotal:</strong> {d.subtotalFormatted}
         </div>
-        <div style={{ marginTop: 4, fontSize: '0.8125rem', fontWeight: 600, color: '#111827' }}>
+        <div style={{ marginTop: 4, fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
           Amount due: {d.amountFormatted}
         </div>
 
         {d.paymentHistory.length > 0 ? (
-          <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #e5e7eb' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Payment history</div>
+          <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Payment history</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.78rem' }}>
               <tbody>
                 {d.paymentHistory.map((p, i) => (
                   <tr key={i}>
-                    <td style={{ padding: '0.25rem 0', color: '#374151' }}>{p.dateDisplay}</td>
-                    <td style={{ padding: '0.25rem 0', color: '#111827' }}>{p.method}</td>
+                    <td style={{ padding: '0.25rem 0', color: 'var(--text-700)' }}>{p.dateDisplay}</td>
+                    <td style={{ padding: '0.25rem 0', color: 'var(--text-strong)' }}>{p.method}</td>
                     <td style={{ padding: '0.25rem 0', textAlign: 'right' }}>{p.amountFormatted}</td>
                   </tr>
                 ))}
@@ -356,9 +356,9 @@ export function PhysicalInvoicePreview({
         ) : null}
 
         {d.memo ? (
-          <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #e5e7eb' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Memo</div>
-            <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>{d.memo}</div>
+          <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid var(--border)' }}>
+            <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Memo</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>{d.memo}</div>
           </div>
         ) : null}
 
@@ -369,7 +369,7 @@ export function PhysicalInvoicePreview({
                 style={{
                   fontSize: '0.875rem',
                   fontWeight: 600,
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   whiteSpace: 'pre-wrap',
                   lineHeight: 1.35,
                   marginBottom: licenseTrim ? '0.35rem' : hasLegal ? '0.35rem' : 0,
@@ -382,7 +382,7 @@ export function PhysicalInvoicePreview({
               <div
                 style={{
                   fontSize: '0.8125rem',
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   whiteSpace: 'pre-wrap',
                   lineHeight: 1.35,
                   marginBottom: hasLegal ? '0.5rem' : 0,
@@ -396,11 +396,11 @@ export function PhysicalInvoicePreview({
                 style={{
                   marginTop: taglineTrim || licenseTrim ? '0.65rem' : 0,
                   paddingTop: '0.65rem',
-                  borderTop: '1px solid #e5e7eb',
+                  borderTop: '1px solid var(--border)',
                 }}
               >
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Footer</div>
-                <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Footer</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>
                   {d.footer}
                 </div>
               </div>
@@ -414,8 +414,8 @@ export function PhysicalInvoicePreview({
   return (
     <div
       style={{
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb',
+        background: 'var(--bg-subtle)',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '0.75rem 1rem',
         marginBottom: '0.75rem',
@@ -425,7 +425,7 @@ export function PhysicalInvoicePreview({
         style={{
           fontSize: '0.875rem',
           fontWeight: 600,
-          color: '#111827',
+          color: 'var(--text-strong)',
           marginBottom: '0.65rem',
           textAlign: 'center',
         }}
@@ -434,7 +434,7 @@ export function PhysicalInvoicePreview({
       </div>
       <div style={{ textAlign: 'center', marginBottom: '0.65rem' }}>
         <span style={heroAmount}>{d.amountFormatted}</span>
-        <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Amount due</span>
+        <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Amount due</span>
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
         <tbody>
@@ -465,12 +465,12 @@ export function PhysicalInvoicePreview({
         </tbody>
       </table>
       {d.lineDescription.trim() ? (
-        <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Description</div>
+        <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Description</div>
           <div
             style={{
               fontSize: '0.875rem',
-              color: '#111827',
+              color: 'var(--text-strong)',
               whiteSpace: 'pre-wrap',
               lineHeight: 1.35,
               ...(emphasize && anyLineSegmentsStartWithLowercase(d.lineDescription) ? proseLowercaseIssueShell : {}),
@@ -481,15 +481,15 @@ export function PhysicalInvoicePreview({
         </div>
       ) : null}
       {d.memo ? (
-        <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Memo</div>
-          <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>{d.memo}</div>
+        <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Memo</div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>{d.memo}</div>
         </div>
       ) : null}
       {d.footer ? (
-        <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>Footer</div>
-          <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>{d.footer}</div>
+        <div style={{ marginTop: '0.65rem', paddingTop: '0.65rem', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 4 }}>Footer</div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap', lineHeight: 1.35 }}>{d.footer}</div>
         </div>
       ) : null}
     </div>

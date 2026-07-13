@@ -53,7 +53,7 @@ export default function JobsSubLaborTab({
 
   return (
     <div>
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <input
@@ -61,7 +61,7 @@ export default function JobsSubLaborTab({
           placeholder="Search contractor, HCP, address…"
           value={subLaborSearch}
           onChange={(e) => onSubLaborSearchChange(e.target.value)}
-          style={{ flex: '1 1 200px', minWidth: 200, maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+          style={{ flex: '1 1 200px', minWidth: 200, maxWidth: 400, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
         />
         <button
           type="button"
@@ -73,7 +73,7 @@ export default function JobsSubLaborTab({
         <button
           type="button"
           onClick={onOpenDriveSettings}
-          style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+          style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
         >
           Drive Settings
         </button>
@@ -81,7 +81,7 @@ export default function JobsSubLaborTab({
           <button
             type="button"
             onClick={onOpenDefaultLaborRate}
-            style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
           >
             Default Labor Rate
           </button>
@@ -92,22 +92,22 @@ export default function JobsSubLaborTab({
         </div>
       </div>
       {laborJobsLoading ? (
-        <p style={{ color: '#6b7280' }}>Loading sub sheet ledger…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading sub sheet ledger…</p>
       ) : laborJobs.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No jobs yet. Click New Sub Labor to add one.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No jobs yet. Click New Sub Labor to add one.</p>
       ) : (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
           <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} />
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractor</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Due</th>
-                <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Sub Sheet</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid #e5e7eb' }} />
+                <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }} />
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractor</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Due</th>
+                <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Sub Sheet</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
+                <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid var(--border)' }} />
               </tr>
             </thead>
             <tbody>
@@ -145,7 +145,7 @@ export default function JobsSubLaborTab({
                 return [
                   <tr
                     key={job.id}
-                    style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer', background: expanded ? '#f9fafb' : undefined }}
+                    style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: expanded ? 'var(--bg-subtle)' : undefined }}
                     onClick={toggle}
                   >
                     <td style={{ padding: '0.75rem', width: 32 }}>{expanded ? '▼' : '▶'}</td>
@@ -158,13 +158,13 @@ export default function JobsSubLaborTab({
                             <> | {laborJobNamesByHcp[(job.job_number ?? '').trim().toLowerCase()]}</>
                           ) : null}
                         </div>
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                           {job.address ? (
                             <a
                               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(job.address)}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{ color: '#2563eb', textDecoration: 'none' }}
+                              style={{ color: 'var(--text-link)', textDecoration: 'none' }}
                               title={job.address}
                               onClick={(e) => e.stopPropagation()}
                             >
@@ -180,11 +180,11 @@ export default function JobsSubLaborTab({
                     <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '0.8125rem' }}>
                       {totalCost > 0 ? (
                         balance > 0 ? (
-                          <span style={{ color: '#b91c1c' }}>${formatCurrency(balance)} due</span>
+                          <span style={{ color: 'var(--text-red-700)' }}>${formatCurrency(balance)} due</span>
                         ) : balance < 0 ? (
-                          <span style={{ color: '#059669' }}>Over ${formatCurrency(-balance)}</span>
+                          <span style={{ color: 'var(--text-green-600)' }}>Over ${formatCurrency(-balance)}</span>
                         ) : (
-                          <span style={{ color: '#059669' }}>Paid</span>
+                          <span style={{ color: 'var(--text-green-600)' }}>Paid</span>
                         )
                       ) : '—'}
                     </td>
@@ -198,7 +198,7 @@ export default function JobsSubLaborTab({
                         type="date"
                         value={dateInputValue}
                         onChange={(e) => onUpdateLaborJobDate(job.id, e.target.value || null)}
-                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                       />
                     </td>
                     <td style={{ padding: '0.75rem', verticalAlign: 'middle' }} onClick={(e) => e.stopPropagation()}>
@@ -217,7 +217,7 @@ export default function JobsSubLaborTab({
                         >
                           Backcharge
                         </button>
-                        <button type="button" onClick={() => onEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
+                        <button type="button" onClick={() => onEditLaborJob(job)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>
                           Edit
                         </button>
                       </div>
@@ -226,7 +226,7 @@ export default function JobsSubLaborTab({
                   ...(expanded
                     ? [
                         <tr key={`${job.id}-expand`}>
-                          <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                          <td colSpan={8} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--surface)', verticalAlign: 'top' }}>
                             <div onClick={(e) => e.stopPropagation()} style={{ padding: '1rem' }}>
                               <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', fontWeight: 500 }}>
                                 Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)}
@@ -238,25 +238,25 @@ export default function JobsSubLaborTab({
                                     href={normalizeUrl(job.invoice_link)}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    style={{ color: '#2563eb', textDecoration: 'none' }}
+                                    style={{ color: 'var(--text-link)', textDecoration: 'none' }}
                                   >
                                     {job.invoice_link}
                                   </a>
                                 </p>
                               ) : (
-                                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#9ca3af' }}>No invoice linked.</p>
+                                <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-faint)' }}>No invoice linked.</p>
                               )}
                               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Specific Work (Line Items)</h4>
-                              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
+                              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                  <thead style={{ background: '#f9fafb' }}>
+                                  <thead style={{ background: 'var(--bg-subtle)' }}>
                                     <tr>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rate</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Count</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>hrs/unit</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Labor Hours</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rate</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Cost</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -268,7 +268,7 @@ export default function JobsSubLaborTab({
                                       const isDirect =
                                         i.direct_labor_amount != null && Number.isFinite(Number(i.direct_labor_amount))
                                       return (
-                                        <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                        <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                                           <td style={{ padding: '0.5rem 0.75rem' }}>{i.fixture ?? '—'}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : Number(i.count)}</td>
                                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{isDirect ? '—' : hrs.toFixed(2)}</td>
@@ -279,25 +279,25 @@ export default function JobsSubLaborTab({
                                       )
                                     })}
                                     {(job.items ?? []).length === 0 && (
-                                      <tr><td colSpan={6} style={{ padding: '0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>No line items yet</td></tr>
+                                      <tr><td colSpan={6} style={{ padding: '0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>No line items yet</td></tr>
                                     )}
                                   </tbody>
                                 </table>
                               </div>
                               <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments</h4>
-                              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                  <thead style={{ background: '#f9fafb' }}>
+                                  <thead style={{ background: 'var(--bg-subtle)' }}>
                                     <tr>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Memo</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Amount</th>
+                                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Memo</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {(job.payments ?? []).map((p) => (
-                                      <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                      <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                         <td style={{ padding: '0.5rem 0.75rem' }}>{p.created_at ? new Date(p.created_at).toLocaleDateString() : '—'}</td>
                                         <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
                                         <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
@@ -305,7 +305,7 @@ export default function JobsSubLaborTab({
                                       </tr>
                                     ))}
                                     {(job.payments ?? []).length === 0 && (
-                                      <tr><td colSpan={4} style={{ padding: '0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>No payments yet</td></tr>
+                                      <tr><td colSpan={4} style={{ padding: '0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>No payments yet</td></tr>
                                     )}
                                   </tbody>
                                 </table>

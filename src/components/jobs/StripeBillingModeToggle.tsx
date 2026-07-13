@@ -42,7 +42,7 @@ export default function StripeBillingModeToggle({
   const trackStyle: CSSProperties = {
     display: 'inline-flex',
     borderRadius: 4,
-    border: value === 'live' ? '1px solid #d97706' : '1px solid #d1d5db',
+    border: value === 'live' ? '1px solid #d97706' : '1px solid var(--border-strong)',
     overflow: 'hidden',
     minHeight: 28,
     width: 'auto',
@@ -61,8 +61,8 @@ export default function StripeBillingModeToggle({
       fontWeight: selected ? 600 : 400,
       border: 'none',
       cursor: disabled ? 'not-allowed' : 'pointer',
-      background: selected ? (isLive ? '#fffbeb' : '#eff6ff') : '#ffffff',
-      color: selected && isLive ? '#92400e' : '#111827',
+      background: selected ? (isLive ? 'var(--bg-amber-tint)' : 'var(--bg-blue-tint)') : '#ffffff',
+      color: selected && isLive ? 'var(--text-amber-800)' : 'var(--text-strong)',
     }
   }
 
@@ -83,7 +83,7 @@ export default function StripeBillingModeToggle({
         onClick={() => !disabled && onChange('test')}
         style={{
           ...segmentStyle('test'),
-          borderRight: '1px solid #e5e7eb',
+          borderRight: '1px solid var(--border)',
         }}
       >
         Test

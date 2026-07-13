@@ -353,7 +353,7 @@ const PAYMENT_MEMO_SUB_ROW_CELL_STYLE: CSSProperties = {
   paddingBottom: '0.5rem',
   paddingLeft: '3.5rem',
   fontSize: '0.75rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   wordBreak: 'break-word',
   lineHeight: 1.35,
 }
@@ -361,9 +361,9 @@ const PAYMENT_MEMO_SUB_ROW_CELL_STYLE: CSSProperties = {
 const JOB_FIELD_CLIPBOARD_WRAPPER_STYLE: CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: '#fff',
+  background: 'var(--surface)',
 }
 
 const JOB_FIELD_TEXT_INPUT_IN_WRAPPER_STYLE: CSSProperties = {
@@ -555,7 +555,7 @@ function ReadOnlyPaymentRefCopy({
         border: 'none',
         background: 'none',
         font: 'inherit',
-        color: '#2563eb',
+        color: 'var(--text-link)',
         cursor: 'pointer',
         textDecoration: 'underline',
         textUnderlineOffset: 2,
@@ -1995,7 +1995,7 @@ export default function JobFormModal({
     padding: 0,
     margin: 0,
     cursor: 'pointer',
-    color: '#2563eb',
+    color: 'var(--text-link)',
     font: 'inherit',
     fontWeight: 400,
     textDecoration: 'underline',
@@ -2004,12 +2004,12 @@ export default function JobFormModal({
 
   const projectFilesPlansPlainSegmentStyle: CSSProperties = {
     fontWeight: 400,
-    color: '#6b7280',
+    color: 'var(--text-muted)',
     fontSize: 'inherit',
   }
 
   const projectFilesPlansPipeStyle: CSSProperties = {
-    color: '#9ca3af',
+    color: 'var(--text-faint)',
     userSelect: 'none',
     fontWeight: 400,
     fontSize: 'inherit',
@@ -3075,7 +3075,7 @@ export default function JobFormModal({
           zIndex: JOB_FORM_OVERLAY_Z_INDEX,
         }}
       >
-        <div style={{ background: 'white', padding: '1.25rem 1.5rem', borderRadius: 8, fontSize: '0.9375rem' }}>Loading…</div>
+        <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, fontSize: '0.9375rem' }}>Loading…</div>
       </div>
     )
   }
@@ -3098,7 +3098,7 @@ export default function JobFormModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.5rem',
           maxWidth: 560,
@@ -3125,8 +3125,8 @@ export default function JobFormModal({
                 justifyContent: 'center',
                 borderRadius: '50%',
                 border: '1px solid #bfdbfe',
-                background: hcpHelpOpen ? '#dbeafe' : '#eff6ff',
-                color: '#1d4ed8',
+                background: hcpHelpOpen ? '#dbeafe' : 'var(--bg-blue-tint)',
+                color: 'var(--text-blue-700)',
                 fontSize: '0.8125rem',
                 fontWeight: 700,
                 fontStyle: 'italic',
@@ -3150,7 +3150,7 @@ export default function JobFormModal({
                   width: 'max-content',
                   maxWidth: 340,
                   zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX,
-                  background: '#eff6ff',
+                  background: 'var(--bg-blue-tint)',
                   border: '1px solid #bfdbfe',
                   borderRadius: 8,
                   padding: '0.6rem 0.75rem',
@@ -3170,7 +3170,7 @@ export default function JobFormModal({
                     right: 6,
                     border: 'none',
                     background: 'none',
-                    color: '#64748b',
+                    color: 'var(--text-slate-500)',
                     fontSize: '1rem',
                     lineHeight: 1,
                     cursor: 'pointer',
@@ -3216,8 +3216,8 @@ export default function JobFormModal({
                   padding: '0.4rem 0.85rem',
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  color: '#1d4ed8',
-                  background: '#eff6ff',
+                  color: 'var(--text-blue-700)',
+                  background: 'var(--bg-blue-tint)',
                   border: '1px solid #bfdbfe',
                   borderRadius: 6,
                   cursor: 'pointer',
@@ -3250,8 +3250,8 @@ export default function JobFormModal({
                   padding: '0.4rem 0.85rem',
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  color: '#1d4ed8',
-                  background: '#eff6ff',
+                  color: 'var(--text-blue-700)',
+                  background: 'var(--bg-blue-tint)',
                   border: '1px solid #bfdbfe',
                   borderRadius: 6,
                   cursor: 'pointer',
@@ -3274,15 +3274,15 @@ export default function JobFormModal({
               flexShrink: 0,
             }}
           >
-            <span style={{ color: '#6b7280', userSelect: 'none' }}>Link to:</span>
+            <span style={{ color: 'var(--text-muted)', userSelect: 'none' }}>Link to:</span>
             {bidId ? (
               <Link
                 to={`/bids?bidId=${encodeURIComponent(bidId)}&tab=cover-letter`}
                 aria-label="Open linked bid"
                 style={{
                   padding: '0.25rem 0.5rem',
-                  background: '#eff6ff',
-                  color: '#1d4ed8',
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-700)',
                   borderRadius: 4,
                   textDecoration: 'none',
                   fontWeight: 500,
@@ -3297,7 +3297,7 @@ export default function JobFormModal({
                 onClick={() => setJobBidLinkChoiceOpen(true)}
                 aria-label="Choose bid to link"
                 style={{
-                  color: '#2563eb',
+                  color: 'var(--text-link)',
                   fontWeight: 500,
                   background: 'none',
                   border: 'none',
@@ -3311,7 +3311,7 @@ export default function JobFormModal({
                 Bid
               </button>
             )}
-            <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+            <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
               |
             </span>
             {projectId ? (
@@ -3320,8 +3320,8 @@ export default function JobFormModal({
                 aria-label="Open linked project workflow"
                 style={{
                   padding: '0.25rem 0.5rem',
-                  background: '#eff6ff',
-                  color: '#1d4ed8',
+                  background: 'var(--bg-blue-tint)',
+                  color: 'var(--text-blue-700)',
                   borderRadius: 4,
                   textDecoration: 'none',
                   fontWeight: 500,
@@ -3336,7 +3336,7 @@ export default function JobFormModal({
                 onClick={() => setJobProjectLinkChoiceOpen(true)}
                 aria-label="Choose project to link"
                 style={{
-                  color: '#2563eb',
+                  color: 'var(--text-link)',
                   fontWeight: 500,
                   background: 'none',
                   border: 'none',
@@ -3353,14 +3353,14 @@ export default function JobFormModal({
           </div>
         </div>
         {editing && sourceEstimateLoading ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Checking for linked estimate…</p>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Checking for linked estimate…</p>
         ) : null}
         {editing && !sourceEstimateLoading && sourceEstimateForJob ? (
           <div
             style={{
               marginBottom: '0.75rem',
               padding: '0.6rem 0.75rem',
-              background: '#f0fdf4',
+              background: 'var(--bg-green-tint)',
               border: '1px solid #bbf7d0',
               borderRadius: 6,
               fontSize: '0.875rem',
@@ -3386,7 +3386,7 @@ export default function JobFormModal({
               style={{
                 padding: '0.35rem 0.65rem',
                 fontSize: '0.8rem',
-                background: 'white',
+                background: 'var(--surface)',
                 border: '1px solid #86efac',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -3399,7 +3399,7 @@ export default function JobFormModal({
         {error && (
           <p
             style={{
-              color: '#b91c1c',
+              color: 'var(--text-red-700)',
               marginBottom: '0.75rem',
               fontSize: '0.875rem',
               whiteSpace: 'pre-wrap',
@@ -3418,7 +3418,7 @@ export default function JobFormModal({
                 value={hcpNumber}
                 onChange={(e) => setHcpNumber(e.target.value)}
                 placeholder="HCP number"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </div>
             <div style={{ flex: '0 0 110px', minWidth: 110 }}>
@@ -3428,11 +3428,11 @@ export default function JobFormModal({
                 value={clickNumber}
                 onChange={(e) => setClickNumber(e.target.value)}
                 placeholder="Click number"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: '#b91c1c' }}>*</span></label>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Name <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
               <div style={{ ...JOB_FIELD_CLIPBOARD_WRAPPER_STYLE, position: 'relative' }}>
                 <input
                   ref={jobNameInputRef}
@@ -3472,7 +3472,7 @@ export default function JobFormModal({
                 htmlFor="job-form-service-type"
                 style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}
               >
-                Service type <span style={{ color: '#b91c1c' }}>*</span>
+                Service type <span style={{ color: 'var(--text-red-700)' }}>*</span>
               </label>
               <SearchableSelect
                 id="job-form-service-type"
@@ -3494,11 +3494,11 @@ export default function JobFormModal({
                 type="date"
                 value={lastBillDate}
                 onChange={(e) => setLastBillDate(e.target.value)}
-                style={{ width: '100%', minWidth: 140, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                style={{ width: '100%', minWidth: 140, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </div>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: '#b91c1c' }}>*</span></label>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Job Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
               <div style={{ ...JOB_FIELD_CLIPBOARD_WRAPPER_STYLE, position: 'relative' }}>
                 <input
                   ref={jobAddressInputRef}
@@ -3562,7 +3562,7 @@ export default function JobFormModal({
                     }
                   }}
                   placeholder="Add People..."
-                  style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
                 />
                 {contractorsDropdownOpen && (() => {
                   const filtered = users.filter((u) => !teamMemberIds.includes(u.id) && u.name.toLowerCase().includes(contractorsSearch.toLowerCase().trim()))
@@ -3574,8 +3574,8 @@ export default function JobFormModal({
                         top: '100%',
                         left: 0,
                         right: 0,
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
                         borderRadius: 4,
                         marginTop: 2,
                         maxHeight: 200,
@@ -3598,21 +3598,21 @@ export default function JobFormModal({
                               width: '100%',
                               padding: '0.5rem 0.75rem',
                               textAlign: 'left',
-                              background: 'white',
+                              background: 'var(--surface)',
                               border: 'none',
-                              borderBottom: idx < filtered.length - 1 ? '1px solid #e5e7eb' : 'none',
+                              borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none',
                               cursor: 'pointer',
-                              color: '#111827',
+                              color: 'var(--text-strong)',
                               fontSize: '0.875rem',
                             }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                           >
                             {u.name}
                           </button>
                         ))
                       ) : (
-                        <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                        <div style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           No matches
                         </div>
                       )}
@@ -3633,7 +3633,7 @@ export default function JobFormModal({
                         alignItems: 'center',
                         gap: '0.25rem',
                         padding: '0.25rem 0.5rem',
-                        background: '#eff6ff',
+                        background: 'var(--bg-blue-tint)',
                         borderRadius: 6,
                         fontSize: '0.875rem',
                       }}
@@ -3650,7 +3650,7 @@ export default function JobFormModal({
                           cursor: 'pointer',
                           display: 'inline-flex',
                           alignItems: 'center',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           fontSize: '0.875rem',
                         }}
                       >
@@ -3713,8 +3713,8 @@ export default function JobFormModal({
                           padding: '0.15rem 0.4rem',
                           fontSize: '0.75rem',
                           fontWeight: 500,
-                          background: '#fef3c7',
-                          color: '#92400e',
+                          background: 'var(--bg-amber-100)',
+                          color: 'var(--text-amber-800)',
                           borderRadius: 4,
                         }}
                       >
@@ -3731,8 +3731,8 @@ export default function JobFormModal({
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
-                    background: '#f9fafb',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--bg-subtle)',
                     borderRadius: 4,
                     cursor: 'pointer',
                   }}
@@ -3742,7 +3742,7 @@ export default function JobFormModal({
               )}
             </div>
             {customerExpanded && (
-              <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
+              <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border)' }}>
                 <div
                   ref={billingCustomerHighlightRef}
                   style={{
@@ -3752,7 +3752,7 @@ export default function JobFormModal({
                       ? {
                           padding: '0.75rem',
                           borderRadius: 8,
-                          background: '#fef2f2',
+                          background: 'var(--bg-red-tint)',
                           border: '2px solid #fecaca',
                         }
                       : {}),
@@ -3786,7 +3786,7 @@ export default function JobFormModal({
                     onBlur={() => setTimeout(() => setCustomerDropdownOpen(false), 200)}
                     placeholder="Search customers (residential & commercial)…"
                     aria-label="Search customers to link, residential and commercial"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                   {customerDropdownOpen && (
                     <div
@@ -3795,8 +3795,8 @@ export default function JobFormModal({
                         top: '100%',
                         left: 0,
                         right: 0,
-                        background: 'white',
-                        border: '1px solid #e5e7eb',
+                        background: 'var(--surface)',
+                        border: '1px solid var(--border)',
                         borderRadius: 4,
                         maxHeight: 180,
                         overflowY: 'auto',
@@ -3806,7 +3806,7 @@ export default function JobFormModal({
                       }}
                     >
                       {customersLoading ? (
-                        <div style={{ padding: '0.5rem', color: '#6b7280' }}>Loading…</div>
+                        <div style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>Loading…</div>
                       ) : (
                         (() => {
                           const q = customerSearch.toLowerCase()
@@ -3829,20 +3829,20 @@ export default function JobFormModal({
                                 setCustomerDropdownOpen(false)
                               }}
                               style={{ padding: '0.5rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
-                              onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6' }}
-                              onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-muted)' }}
+                              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                             >
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
                                 <span style={{ fontWeight: 500 }}>{c.name}</span>
-                                <span style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 500 }}>
+                                <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 500 }}>
                                   {customerTypeShortLabel(c)}
                                 </span>
                               </div>
-                              {c.address && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
+                              {c.address && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>{c.address}</div>}
                             </div>
                               ))}
                               {filtered.length === 0 && (
-                                <div style={{ padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>No customers found</div>
+                                <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No customers found</div>
                               )}
                             </>
                           )
@@ -3859,8 +3859,8 @@ export default function JobFormModal({
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
-                          border: '1px solid #d1d5db',
-                          background: !customerName.trim() ? '#f3f4f6' : '#f9fafb',
+                          border: '1px solid var(--border-strong)',
+                          background: !customerName.trim() ? 'var(--bg-muted)' : 'var(--bg-subtle)',
                           borderRadius: 4,
                           cursor: !customerName.trim() ? 'not-allowed' : 'pointer',
                         }}
@@ -3872,7 +3872,7 @@ export default function JobFormModal({
                       <button
                         type="button"
                         onClick={() => { setCustomerId(null); setCustomerSearch(''); setDateMet('') }}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer', color: '#6b7280' }}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer', color: 'var(--text-muted)' }}
                       >
                         Clear link
                       </button>
@@ -3881,21 +3881,21 @@ export default function JobFormModal({
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Name</label>
-                  <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="text" value={customerName} onChange={(e) => setCustomerName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Phone</label>
-                  <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="tel" value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Customer Email</label>
-                  <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="email" value={customerEmail} onChange={(e) => setCustomerEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>
                     Date Met
                     {customerId && customers.find((c) => c.id === customerId)?.date_met && (
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 400, marginLeft: 4 }}>(edit in Customers)</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400, marginLeft: 4 }}>(edit in Customers)</span>
                     )}
                   </label>
                   <input
@@ -3906,10 +3906,10 @@ export default function JobFormModal({
                     style={{
                       width: '100%',
                       padding: '0.5rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: customerId && customers.find((c) => c.id === customerId)?.date_met ? '#f9fafb' : 'white',
-                      color: customerId && customers.find((c) => c.id === customerId)?.date_met ? '#6b7280' : 'inherit',
+                      background: customerId && customers.find((c) => c.id === customerId)?.date_met ? 'var(--bg-subtle)' : 'var(--surface)',
+                      color: customerId && customers.find((c) => c.id === customerId)?.date_met ? 'var(--text-muted)' : 'inherit',
                       cursor: customerId && customers.find((c) => c.id === customerId)?.date_met ? 'not-allowed' : 'text',
                     }}
                   />
@@ -3925,7 +3925,7 @@ export default function JobFormModal({
                     value={googleDriveLink}
                     onChange={(e) => setGoogleDriveLink(e.target.value)}
                     placeholder="https://drive.google.com/..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                   <a
                     href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
@@ -3935,7 +3935,7 @@ export default function JobFormModal({
                       e.preventDefault()
                       openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link')
                     }}
-                    style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)', marginTop: 4, display: 'inline-block' }}
                   >
                     customer and job folders
                   </a>
@@ -3948,7 +3948,7 @@ export default function JobFormModal({
                     ...(jobPicturesLinkHighlight
                       ? {
                           padding: '0.75rem',
-                          background: '#eff6ff',
+                          background: 'var(--bg-blue-tint)',
                           border: '2px solid #93c5fd',
                         }
                       : {}),
@@ -3964,7 +3964,7 @@ export default function JobFormModal({
                     value={jobPicturesLink}
                     onChange={(e) => setJobPicturesLink(e.target.value)}
                     placeholder="https://drive.google.com/..."
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                   <a
                     href="https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link"
@@ -3974,7 +3974,7 @@ export default function JobFormModal({
                       e.preventDefault()
                       openInExternalBrowser('https://drive.google.com/drive/folders/1cOTvZrJFTUlxTiUMoESdMtTRvQgxft60?usp=drive_link')
                     }}
-                    style={{ fontSize: '0.8125rem', color: '#2563eb', marginTop: 4, display: 'inline-block' }}
+                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)', marginTop: 4, display: 'inline-block' }}
                   >
                     customer and job folders
                   </a>
@@ -4071,7 +4071,7 @@ export default function JobFormModal({
                 id="job-form-project-files-plans-panel"
                 role="region"
                 aria-label="Project, plans, and bid"
-                style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}
+                style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border)' }}
               >
                 <div ref={jobFormProjectSectionRef} style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Project</label>
@@ -4081,7 +4081,7 @@ export default function JobFormModal({
                       const disconnectLabel = `Disconnect from ${linkedName}`
                       return (
                         <>
-                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                             Linked to: <strong>{linkedName}</strong>
                           </p>
                           <button
@@ -4096,11 +4096,11 @@ export default function JobFormModal({
                             style={{
                               padding: '0.5rem 0.75rem',
                               fontSize: '0.875rem',
-                              border: '1px solid #d1d5db',
-                              background: '#f9fafb',
+                              border: '1px solid var(--border-strong)',
+                              background: 'var(--bg-subtle)',
                               borderRadius: 6,
                               cursor: 'pointer',
-                              color: '#374151',
+                              color: 'var(--text-700)',
                               fontWeight: 500,
                             }}
                           >
@@ -4124,7 +4124,7 @@ export default function JobFormModal({
                             }
                           }
                         }}
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                       >
                         <option value="">None</option>
                         {projects.map((p) => (
@@ -4134,7 +4134,7 @@ export default function JobFormModal({
                           </option>
                         ))}
                       </select>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                         Link job to a multi-phase project for billing after each phase
                       </span>
                     </>
@@ -4148,14 +4148,14 @@ export default function JobFormModal({
                       value={jobPlansLink}
                       onChange={(e) => setJobPlansLink(e.target.value)}
                       placeholder="https://drive.google.com/..."
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                     />
                 </div>
                 <div ref={jobFormBidSectionRef} style={{ marginBottom: '0.75rem' }}>
                   <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>Bid proposal</label>
                   {bidId ? (
                     <>
-                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                         Linked: <strong>{formatJobFormBidLinkTitle(prefixMap, linkedBidSummary)}</strong>
                       </p>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
@@ -4164,8 +4164,8 @@ export default function JobFormModal({
                           style={{
                             fontSize: '0.875rem',
                             padding: '0.35rem 0.65rem',
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
+                            background: 'var(--bg-blue-tint)',
+                            color: 'var(--text-blue-700)',
                             borderRadius: 4,
                             textDecoration: 'none',
                             fontWeight: 500,
@@ -4184,11 +4184,11 @@ export default function JobFormModal({
                           style={{
                             padding: '0.35rem 0.65rem',
                             fontSize: '0.875rem',
-                            border: '1px solid #d1d5db',
-                            background: '#f9fafb',
+                            border: '1px solid var(--border-strong)',
+                            background: 'var(--bg-subtle)',
                             borderRadius: 6,
                             cursor: 'pointer',
-                            color: '#374151',
+                            color: 'var(--text-700)',
                             fontWeight: 500,
                           }}
                         >
@@ -4205,17 +4205,17 @@ export default function JobFormModal({
                         style={{
                           padding: '0.5rem 0.75rem',
                           fontSize: '0.875rem',
-                          border: '1px solid #d1d5db',
-                          background: 'white',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--surface)',
                           borderRadius: 6,
                           cursor: 'pointer',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           fontWeight: 500,
                         }}
                       >
                         Link a bid proposal
                       </button>
-                      <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                         Tie this job to a bid for quick access (optional)
                       </span>
                     </>
@@ -4225,7 +4225,7 @@ export default function JobFormModal({
             )}
             </div>
           </div>
-          <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
+          <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
           <div
             ref={fixturesSectionHighlightRef}
             style={{
@@ -4234,23 +4234,23 @@ export default function JobFormModal({
               ...(fixturesSectionHighlight
                 ? {
                     padding: '0.75rem',
-                    background: '#eff6ff',
+                    background: 'var(--bg-blue-tint)',
                     border: '2px solid #93c5fd',
                   }
                 : {}),
             }}
           >
-            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Specific Work or Materials (Fixtures / Tie-ins / Repair)</div>
+            <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Specific Work or Materials (Fixtures / Tie-ins / Repair)</div>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
               <colgroup>
                 <col />
                 <col style={{ width: '5.25rem' }} />
                 <col style={{ width: 'calc(5.5rem + 4px + 1.75rem + 0.5rem)' }} />
               </colgroup>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
-                  <th style={{ padding: '0.625rem 0.625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontWeight: 600, whiteSpace: 'nowrap' }}>Count</th>
+                  <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Line Item</th>
+                  <th style={{ padding: '0.625rem 0.625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontWeight: 600, whiteSpace: 'nowrap' }}>Count</th>
                   <th
                     style={{
                       paddingTop: '0.625rem',
@@ -4258,7 +4258,7 @@ export default function JobFormModal({
                       paddingLeft: '0.625rem',
                       paddingRight: '0.375rem',
                       textAlign: 'center',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       verticalAlign: 'middle',
                       fontWeight: 600,
                       whiteSpace: 'nowrap',
@@ -4311,7 +4311,7 @@ export default function JobFormModal({
                             placeholder="Specific work or materials"
                             style={{
                               padding: '0.375rem 0.625rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 6,
                               fontSize: '0.875rem',
                               lineHeight: 1.4,
@@ -4340,7 +4340,7 @@ export default function JobFormModal({
                               maxWidth: '100%',
                               boxSizing: 'border-box',
                               padding: '0.375rem 0.625rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 6,
                               fontSize: '0.875rem',
                               textAlign: 'center',
@@ -4377,7 +4377,7 @@ export default function JobFormModal({
                                 flexShrink: 0,
                                 boxSizing: 'border-box',
                                 padding: '0.375rem 0.5rem',
-                                border: '1px solid #d1d5db',
+                                border: '1px solid var(--border-strong)',
                                 borderRadius: 6,
                                 fontSize: '0.875rem',
                                 textAlign: 'right',
@@ -4465,7 +4465,7 @@ export default function JobFormModal({
                       </tr>
                       <tr
                         style={{
-                          borderBottom: idx < fixtures.length - 1 ? '1px solid #e5e7eb' : 'none',
+                          borderBottom: idx < fixtures.length - 1 ? '1px solid var(--border)' : 'none',
                         }}
                       >
                         <td
@@ -4493,7 +4493,7 @@ export default function JobFormModal({
                                   aria-live="polite"
                                   style={{
                                     fontSize: '0.75rem',
-                                    color: stripeLineOverLimit ? '#d97706' : '#6b7280',
+                                    color: stripeLineOverLimit ? '#d97706' : 'var(--text-muted)',
                                   }}
                                 >
                                   ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
@@ -4509,7 +4509,7 @@ export default function JobFormModal({
                                     background: 'none',
                                     cursor: 'pointer',
                                     fontSize: '0.8125rem',
-                                    color: '#2563eb',
+                                    color: 'var(--text-link)',
                                     textDecoration: 'underline',
                                     textUnderlineOffset: '2px',
                                   }}
@@ -4533,7 +4533,7 @@ export default function JobFormModal({
                                   width: '100%',
                                   boxSizing: 'border-box',
                                   padding: '0.375rem 0.625rem',
-                                  border: '1px solid #d1d5db',
+                                  border: '1px solid var(--border-strong)',
                                   borderRadius: 6,
                                   fontSize: '0.875rem',
                                   resize: 'vertical',
@@ -4558,7 +4558,7 @@ export default function JobFormModal({
                                 <span
                                   id={stripeLenDescId}
                                   aria-live="polite"
-                                  style={{ color: stripeLineOverLimit ? '#d97706' : '#6b7280' }}
+                                  style={{ color: stripeLineOverLimit ? '#d97706' : 'var(--text-muted)' }}
                                 >
                                   ({stripeFixtureLineLen} / {STRIPE_INVOICE_LINE_DESCRIPTION_MAX})
                                 </span>
@@ -4579,7 +4579,7 @@ export default function JobFormModal({
                                     background: 'none',
                                     cursor: 'pointer',
                                     fontSize: '0.8125rem',
-                                    color: '#2563eb',
+                                    color: 'var(--text-link)',
                                     textDecoration: 'underline',
                                     textUnderlineOffset: '2px',
                                   }}
@@ -4598,7 +4598,7 @@ export default function JobFormModal({
                                   background: 'none',
                                   cursor: 'pointer',
                                   fontSize: '0.8125rem',
-                                  color: '#2563eb',
+                                  color: 'var(--text-link)',
                                   textDecoration: 'underline',
                                   textUnderlineOffset: '2px',
                                 }}
@@ -4624,13 +4624,13 @@ export default function JobFormModal({
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
                   ${formatCurrency(jobTotalBidDollars)}
                 </div>
-                <span style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, display: 'block' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                   Total of lines above.
                 </span>
               </div>
@@ -4640,7 +4640,7 @@ export default function JobFormModal({
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
@@ -4678,7 +4678,7 @@ export default function JobFormModal({
                       style={{
                         fontSize: '0.875rem',
                         fontWeight: 500,
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         flexShrink: 0,
                         whiteSpace: 'nowrap',
                       }}
@@ -4729,10 +4729,10 @@ export default function JobFormModal({
                         flexShrink: 0,
                         boxSizing: 'border-box',
                         padding: '0.375rem 0.5rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 6,
                         fontSize: '0.875rem',
-                        background: 'white',
+                        background: 'var(--surface)',
                       }}
                     />
                     <button
@@ -4780,7 +4780,7 @@ export default function JobFormModal({
                         title="Payments plus this draft amount as a share of Job Total."
                         style={{
                           fontSize: '0.75rem',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           flexShrink: 0,
                           whiteSpace: 'nowrap',
                         }}
@@ -4813,7 +4813,7 @@ export default function JobFormModal({
                             right: 0,
                             top: 8,
                             height: 8,
-                            background: '#e5e7eb',
+                            background: 'var(--bg-200)',
                             borderRadius: 4,
                             zIndex: 0,
                           }}
@@ -4862,7 +4862,7 @@ export default function JobFormModal({
                                 transform: 'translateX(-50%)',
                                 width: 1,
                                 height: h,
-                                background: '#ffffff',
+                                background: 'var(--surface)',
                                 borderRadius: 1,
                                 zIndex: 2,
                                 pointerEvents: 'none',
@@ -4946,7 +4946,7 @@ export default function JobFormModal({
                                 left: `${pct}%`,
                                 transform: 'translateX(-50%)',
                                 fontSize: '0.65rem',
-                                color: '#6b7280',
+                                color: 'var(--text-muted)',
                                 lineHeight: 1.2,
                                 whiteSpace: 'nowrap',
                               }}
@@ -4958,7 +4958,7 @@ export default function JobFormModal({
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.4 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
                       Add Specific Work lines to set Job Total for this chart.
                     </div>
                   )}
@@ -4980,7 +4980,7 @@ export default function JobFormModal({
                     >
                       {(
                         [
-                          { color: '#2563eb', label: 'Paid', sub: '', circle: false },
+                          { color: 'var(--text-link)', label: 'Paid', sub: '', circle: false },
                           { color: '#93c5fd', label: 'New Invoice', sub: '', circle: false },
                           {
                             color: '#facc15',
@@ -5018,8 +5018,8 @@ export default function JobFormModal({
                               marginTop: 2,
                             }}
                           />
-                          <span style={{ fontSize: '0.7rem', color: '#6b7280', lineHeight: 1.35, minWidth: 0 }}>
-                            <span style={{ fontWeight: 600, color: '#4b5563' }}>{item.label}</span>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.35, minWidth: 0 }}>
+                            <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>{item.label}</span>
                             {item.sub ? (
                               <>
                                 {' — '}
@@ -5036,7 +5036,7 @@ export default function JobFormModal({
               {(editing.invoices ?? []).some((i) => i.status === 'ready_to_bill') && (
                 <div style={{ marginBottom: '1rem' }}>
                   <h4 style={{ margin: '0 0 0.35rem', fontSize: '0.9375rem' }}>Ready to Bill</h4>
-                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     Draft invoices not yet sent. After you bill, they move to Outstanding billing below.
                   </p>
                   <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.875rem' }}>
@@ -5052,7 +5052,7 @@ export default function JobFormModal({
                               onClose()
                               navigate(`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(inv.id)}`)
                             }}
-                            style={{ marginLeft: 8, padding: '0.15rem 0.35rem', fontSize: '0.75rem', background: '#e5e7eb', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ marginLeft: 8, padding: '0.15rem 0.35rem', fontSize: '0.75rem', background: 'var(--bg-200)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
                             See in Stages
                           </button>
@@ -5137,11 +5137,11 @@ export default function JobFormModal({
                         <col style={{ width: '24%' }} />
                         <col style={{ width: '48%' }} />
                       </colgroup>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Billed</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Actions</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Date</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Billed</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -5164,7 +5164,7 @@ export default function JobFormModal({
                             const btnGray: CSSProperties = {
                               padding: '0.15rem 0.45rem',
                               fontSize: '0.75rem',
-                              background: '#e5e7eb',
+                              background: 'var(--bg-200)',
                               border: 'none',
                               borderRadius: 4,
                               cursor: 'pointer',
@@ -5289,7 +5289,7 @@ export default function JobFormModal({
                                         paddingBottom: '0.5rem',
                                         paddingLeft: '3.5rem',
                                         fontSize: '0.75rem',
-                                        color: '#6b7280',
+                                        color: 'var(--text-muted)',
                                         wordBreak: 'break-word',
                                         lineHeight: 1.35,
                                       }}
@@ -5300,19 +5300,19 @@ export default function JobFormModal({
                                             marginBottom: memoLine || footerLine ? '0.15rem' : 0,
                                           }}
                                         >
-                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Note: </span>
+                                          <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Note: </span>
                                           {noteLine}
                                         </div>
                                       ) : null}
                                       {memoLine ? (
                                         <div style={{ marginBottom: footerLine ? '0.15rem' : 0 }}>
-                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Memo: </span>
+                                          <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Memo: </span>
                                           {memoLine}
                                         </div>
                                       ) : null}
                                       {footerLine ? (
                                         <div>
-                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Footer: </span>
+                                          <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Footer: </span>
                                           {footerLine}
                                         </div>
                                       ) : null}
@@ -5346,11 +5346,11 @@ export default function JobFormModal({
                   <col style={{ width: '24%' }} />
                   <col style={{ width: '48%' }} />
                 </colgroup>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Paid</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }} aria-hidden />
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Date</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Paid</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }} aria-hidden />
                   </tr>
                 </thead>
                 <tbody>
@@ -5407,7 +5407,7 @@ export default function JobFormModal({
                           <td style={paymentDateCellStyle}>
                             {stripePaymentLocked ? (
                               <span
-                                style={{ color: '#374151', fontVariantNumeric: 'tabular-nums' }}
+                                style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}
                                 title="Recorded from the Stripe invoice."
                                 aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
                               >
@@ -5415,7 +5415,7 @@ export default function JobFormModal({
                               </span>
                             ) : mercuryPaymentLocked ? (
                               <span
-                                style={{ color: '#374151', fontVariantNumeric: 'tabular-nums' }}
+                                style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}
                                 title="Recorded from Bank Payments (Mercury)."
                                 aria-label={`Payment date ${formatPaymentDateForDisplay(row.paid_on)}`}
                               >
@@ -5433,7 +5433,7 @@ export default function JobFormModal({
                                   maxWidth: '100%',
                                   boxSizing: 'border-box',
                                   padding: '0.375rem 0.5rem',
-                                  border: '1px solid #d1d5db',
+                                  border: '1px solid var(--border-strong)',
                                   borderRadius: 6,
                                   fontSize: '0.875rem',
                                 }}
@@ -5471,7 +5471,7 @@ export default function JobFormModal({
                                         border: 'none',
                                         borderRadius: 4,
                                         cursor: 'pointer',
-                                        color: '#2563eb',
+                                        color: 'var(--text-link)',
                                         display: 'inline-flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -5492,7 +5492,7 @@ export default function JobFormModal({
                                 })()}
                                 <span
                                   style={{
-                                    color: '#111827',
+                                    color: 'var(--text-strong)',
                                     fontVariantNumeric: 'tabular-nums',
                                     minWidth: 0,
                                     overflow: 'hidden',
@@ -5522,8 +5522,8 @@ export default function JobFormModal({
                                     fontWeight: 700,
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.04em',
-                                    color: '#1d4ed8',
-                                    background: '#eff6ff',
+                                    color: 'var(--text-blue-700)',
+                                    background: 'var(--bg-blue-tint)',
                                     border: '1px solid #bfdbfe',
                                     borderRadius: 4,
                                     padding: '0.1rem 0.35rem',
@@ -5534,7 +5534,7 @@ export default function JobFormModal({
                                 </span>
                                 <span
                                   style={{
-                                    color: '#111827',
+                                    color: 'var(--text-strong)',
                                     fontVariantNumeric: 'tabular-nums',
                                     minWidth: 0,
                                   }}
@@ -5555,7 +5555,7 @@ export default function JobFormModal({
                                   maxWidth: '100%',
                                   boxSizing: 'border-box',
                                   padding: '0.375rem 0.5rem',
-                                  border: '1px solid #d1d5db',
+                                  border: '1px solid var(--border-strong)',
                                   borderRadius: 6,
                                   fontSize: '0.875rem',
                                   textAlign: 'right',
@@ -5583,8 +5583,8 @@ export default function JobFormModal({
                                   padding: '0.35rem 0.5rem',
                                   fontSize: '0.75rem',
                                   fontWeight: 500,
-                                  color: unlinkingMercuryPaymentId === row.id ? '#9ca3af' : '#1d4ed8',
-                                  background: '#eff6ff',
+                                  color: unlinkingMercuryPaymentId === row.id ? 'var(--text-faint)' : 'var(--text-blue-700)',
+                                  background: 'var(--bg-blue-tint)',
                                   border: '1px solid #bfdbfe',
                                   borderRadius: 6,
                                   cursor: unlinkingMercuryPaymentId === row.id ? 'not-allowed' : 'pointer',
@@ -5657,8 +5657,8 @@ export default function JobFormModal({
                                 aria-label="Remove payment row"
                                 style={{
                                   padding: '0.35rem',
-                                  background: !payRowCanRemove ? '#f3f4f6' : 'transparent',
-                                  color: !payRowCanRemove ? '#9ca3af' : '#991b1c',
+                                  background: !payRowCanRemove ? 'var(--bg-muted)' : 'transparent',
+                                  color: !payRowCanRemove ? 'var(--text-faint)' : '#991b1c',
                                   border: 'none',
                                   borderRadius: 4,
                                   cursor: !payRowCanRemove ? 'not-allowed' : 'pointer',
@@ -5678,23 +5678,23 @@ export default function JobFormModal({
                               {paymentReadOnly ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                   {(ptTrim || refTrim) ? (
-                                    <div style={{ fontSize: '0.75rem', color: '#374151' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-700)' }}>
                                       {ptTrim ? (
                                         <span style={{ marginRight: '0.75rem' }}>
-                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Type: </span>
+                                          <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Type: </span>
                                           {ptTrim}
                                         </span>
                                       ) : null}
                                       {refTrim ? (
                                         <span>
-                                          <span style={{ fontWeight: 600, color: '#4b5563' }}>Ref: </span>
+                                          <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Ref: </span>
                                           <ReadOnlyPaymentRefCopy refText={refTrim} showToast={showToast} />
                                         </span>
                                       ) : null}
                                     </div>
                                   ) : null}
                                   <div>
-                                    <span style={{ fontWeight: 600, color: '#4b5563' }}>Memo: </span>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-600)' }}>Memo: </span>
                                     {noteTrim || '—'}
                                   </div>
                                 </div>
@@ -5708,7 +5708,7 @@ export default function JobFormModal({
                                   }}
                                 >
                                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                    <span style={{ fontWeight: 600, color: '#4b5563', flexShrink: 0 }}>Type: </span>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-600)', flexShrink: 0 }}>Type: </span>
                                     <input
                                       id={`edit-job-payment-type-${row.id}`}
                                       type="text"
@@ -5726,17 +5726,17 @@ export default function JobFormModal({
                                         maxWidth: '100%',
                                         boxSizing: 'border-box',
                                         padding: '0.2rem 0.35rem',
-                                        border: '1px solid #d1d5db',
+                                        border: '1px solid var(--border-strong)',
                                         borderRadius: 4,
                                         fontSize: '0.75rem',
-                                        color: '#374151',
-                                        background: 'white',
+                                        color: 'var(--text-700)',
+                                        background: 'var(--surface)',
                                         lineHeight: 1.35,
                                       }}
                                     />
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                    <span style={{ fontWeight: 600, color: '#4b5563', flexShrink: 0 }}>Ref: </span>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-600)', flexShrink: 0 }}>Ref: </span>
                                     <input
                                       id={`edit-job-payment-ref-${row.id}`}
                                       type="text"
@@ -5754,17 +5754,17 @@ export default function JobFormModal({
                                         maxWidth: '100%',
                                         boxSizing: 'border-box',
                                         padding: '0.2rem 0.35rem',
-                                        border: '1px solid #d1d5db',
+                                        border: '1px solid var(--border-strong)',
                                         borderRadius: 4,
                                         fontSize: '0.75rem',
-                                        color: '#374151',
-                                        background: 'white',
+                                        color: 'var(--text-700)',
+                                        background: 'var(--surface)',
                                         lineHeight: 1.35,
                                       }}
                                     />
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                    <span style={{ fontWeight: 600, color: '#4b5563', flexShrink: 0 }}>Memo: </span>
+                                    <span style={{ fontWeight: 600, color: 'var(--text-600)', flexShrink: 0 }}>Memo: </span>
                                     <input
                                       id={`edit-job-payment-note-${row.id}`}
                                       type="text"
@@ -5780,11 +5780,11 @@ export default function JobFormModal({
                                         maxWidth: '100%',
                                         boxSizing: 'border-box',
                                         padding: '0.2rem 0.35rem',
-                                        border: '1px solid #d1d5db',
+                                        border: '1px solid var(--border-strong)',
                                         borderRadius: 4,
                                         fontSize: '0.75rem',
-                                        color: '#374151',
-                                        background: 'white',
+                                        color: 'var(--text-700)',
+                                        background: 'var(--surface)',
                                         lineHeight: 1.35,
                                       }}
                                     />
@@ -5805,12 +5805,12 @@ export default function JobFormModal({
           </div>
           {editing?.id ? (
             <>
-              <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid #9ca3af', width: '50%' }} />
-              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Labor Cost</div>
+              <hr style={{ margin: '0.75rem auto', border: 'none', borderTop: '1px solid var(--border-400)', width: '50%' }} />
+              <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Labor Cost</div>
               <div
                 style={{
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '0.75rem 1rem',
                   marginBottom: '1rem',
@@ -5826,8 +5826,8 @@ export default function JobFormModal({
                     marginBottom: '0.5rem',
                   }}
                 >
-                  <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#374151' }}>Team Labor</span>
-                <span style={{ flex: '1 1 8rem', fontSize: '0.875rem', color: '#4b5563', textAlign: 'right', minWidth: 0 }}>
+                  <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)' }}>Team Labor</span>
+                <span style={{ flex: '1 1 8rem', fontSize: '0.875rem', color: 'var(--text-600)', textAlign: 'right', minWidth: 0 }}>
                   {editJobTeamLaborLoading
                     ? 'Loading…'
                     : editJobTeamLaborError
@@ -5848,7 +5848,7 @@ export default function JobFormModal({
                       background: 'none',
                       border: 'none',
                       padding: 0,
-                      color: '#2563eb',
+                      color: 'var(--text-link)',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                       fontWeight: 500,
@@ -5869,8 +5869,8 @@ export default function JobFormModal({
                   justifyContent: 'space-between',
                 }}
               >
-                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#374151' }}>Sub Labor</span>
-                <span style={{ flex: '1 1 8rem', fontSize: '0.875rem', color: '#4b5563', textAlign: 'right', minWidth: 0 }}>
+                <span style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)' }}>Sub Labor</span>
+                <span style={{ flex: '1 1 8rem', fontSize: '0.875rem', color: 'var(--text-600)', textAlign: 'right', minWidth: 0 }}>
                   {editJobSubLaborLoading
                     ? 'Loading…'
                     : !editJobEffectiveHcp
@@ -5894,7 +5894,7 @@ export default function JobFormModal({
                       background: 'none',
                       border: 'none',
                       padding: 0,
-                      color: '#2563eb',
+                      color: 'var(--text-link)',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                       fontWeight: 500,
@@ -5909,8 +5909,8 @@ export default function JobFormModal({
               </div>
             </>
           ) : null}
-          <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#374151', marginBottom: '0.75rem' }}>Parts Cost</div>
-          <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1rem', overflow: 'hidden' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.9375rem', color: 'var(--text-700)', marginBottom: '0.75rem' }}>Parts Cost</div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', marginBottom: '1rem', overflow: 'hidden' }}>
               {editing?.id ? (
                 <>
                   <MaterialsCostAccordionRow
@@ -5921,24 +5921,24 @@ export default function JobFormModal({
                     busy={jobMaterialsSnapshotLoading}
                   >
                     {supplyInvoiceLines.length === 0 && supplyInvoiceTotal > 0 && !supplyInvoiceRpcFailed ? (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                         Allocated invoice total for this job; line detail is available to office roles in Materials.
                       </p>
                     ) : supplyInvoiceLines.length === 0 ? (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No supply house invoice allocations for this job.</p>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No supply house invoice allocations for this job.</p>
                     ) : (
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                        <thead style={{ background: '#f9fafb' }}>
+                        <thead style={{ background: 'var(--bg-subtle)' }}>
                           <tr>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Supply house</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Invoice</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Date</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Allocated</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Supply house</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Invoice</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Date</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Allocated</th>
                           </tr>
                         </thead>
                         <tbody>
                           {supplyInvoiceLines.map((ln, idx) => (
-                            <tr key={`${ln.invoiceNumber}-${ln.invoiceDate}-${idx}`} style={{ borderBottom: idx < supplyInvoiceLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                            <tr key={`${ln.invoiceNumber}-${ln.invoiceDate}-${idx}`} style={{ borderBottom: idx < supplyInvoiceLines.length - 1 ? '1px solid var(--border)' : 'none' }}>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.supplyHouseName ?? '—'}</td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceNumber}</td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.invoiceDate || '—'}</td>
@@ -5957,23 +5957,23 @@ export default function JobFormModal({
                     busy={jobMaterialsSnapshotLoading}
                   >
                     {mercuryFetchFailed ? (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>Could not load card allocations.</p>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>Could not load card allocations.</p>
                     ) : mercuryAllocLines.length === 0 ? (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No Mercury card splits for this job.</p>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No Mercury card splits for this job.</p>
                     ) : (
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                        <thead style={{ background: '#f9fafb' }}>
+                        <thead style={{ background: 'var(--bg-subtle)' }}>
                           <tr>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Posted</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Card</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Counterparty</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Note</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Posted</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Card</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Counterparty</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Amount</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Note</th>
                           </tr>
                         </thead>
                         <tbody>
                           {mercuryAllocLines.map((ln, idx) => (
-                            <tr key={ln.id} style={{ borderBottom: idx < mercuryAllocLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                            <tr key={ln.id} style={{ borderBottom: idx < mercuryAllocLines.length - 1 ? '1px solid var(--border)' : 'none' }}>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{formatMercuryCardChargesPostedDate(ln.postedAt)}</td>
                               <td
                                 style={{
@@ -5995,7 +5995,7 @@ export default function JobFormModal({
                               </td>
                               <td style={{ padding: '0.5rem 0.625rem' }}>{ln.counterpartyName ?? '—'}</td>
                               <td style={{ padding: '0.5rem 0.625rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{formatCurrency(Math.abs(ln.allocationAmount))}</td>
-                              <td style={{ padding: '0.5rem 0.625rem', color: '#4b5563' }}>{ln.note ?? '—'}</td>
+                              <td style={{ padding: '0.5rem 0.625rem', color: 'var(--text-600)' }}>{ln.note ?? '—'}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -6010,21 +6010,21 @@ export default function JobFormModal({
                     busy={jobMaterialsSnapshotLoading}
                   >
                     {tallyFetchFailed ? (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>Could not load tally parts.</p>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>Could not load tally parts.</p>
                     ) : tallyPartLines.length === 0 ? (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No tally parts for this job.</p>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No tally parts for this job.</p>
                     ) : (
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                        <thead style={{ background: '#f9fafb' }}>
+                        <thead style={{ background: 'var(--bg-subtle)' }}>
                           <tr>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Description</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Qty</th>
-                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line total</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Description</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'center', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Qty</th>
+                            <th style={{ padding: '0.5rem 0.625rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Line total</th>
                           </tr>
                         </thead>
                         <tbody>
                           {tallyPartLines.map((ln, idx) => (
-                            <tr key={ln.id} style={{ borderBottom: idx < tallyPartLines.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                            <tr key={ln.id} style={{ borderBottom: idx < tallyPartLines.length - 1 ? '1px solid var(--border)' : 'none' }}>
                               <td style={{ padding: '0.5rem 0.625rem' }}>
                                 {[ln.fixtureName, ln.partName].filter(Boolean).join(' · ') || '—'}
                               </td>
@@ -6046,11 +6046,11 @@ export default function JobFormModal({
                 busy={false}
               >
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead style={{ background: '#f9fafb' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
                     <tr>
-                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Line Item</th>
-                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>Amount ($)</th>
-                      <th style={{ padding: '0.625rem 0.5rem', minWidth: '4.5rem', width: '4.5rem', borderBottom: '1px solid #e5e7eb' }} />
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Line Item</th>
+                      <th style={{ padding: '0.625rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>Amount ($)</th>
+                      <th style={{ padding: '0.625rem 0.5rem', minWidth: '4.5rem', width: '4.5rem', borderBottom: '1px solid var(--border)' }} />
                     </tr>
                   </thead>
                   <tbody>
@@ -6059,14 +6059,14 @@ export default function JobFormModal({
                       const removeTitle = materials.length > 1 ? 'Remove' : 'Clear row'
                       const showAddMaterialRow = materials.length === 1 || idx === materials.length - 1
                       return (
-                      <tr key={row.id} style={{ borderBottom: idx < materials.length - 1 ? '1px solid #e5e7eb' : 'none' }}>
+                      <tr key={row.id} style={{ borderBottom: idx < materials.length - 1 ? '1px solid var(--border)' : 'none' }}>
                         <td style={{ padding: '0.625rem 0.75rem' }}>
                           <input
                             type="text"
                             value={row.description}
                             onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
                             placeholder="Item description"
-                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                            style={{ width: '100%', padding: '0.375rem 0.625rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
                           />
                         </td>
                         <td style={{ padding: '0.625rem 0.75rem', textAlign: 'right' }}>
@@ -6077,7 +6077,7 @@ export default function JobFormModal({
                             value={row.amount || ''}
                             onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
                             placeholder="0"
-                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
+                            style={{ width: '6rem', padding: '0.375rem 0.625rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem', textAlign: 'right' }}
                           />
                         </td>
                         <td style={{ padding: '0.625rem 0.5rem', verticalAlign: 'middle' }}>
@@ -6169,8 +6169,8 @@ export default function JobFormModal({
                   style={{
                     padding: '0.5rem 1rem',
                     background:
-                      deletingId === editing?.id || migratingJob ? '#f3f4f6' : '#fee2e2',
-                    color: deletingId === editing?.id || migratingJob ? '#9ca3af' : '#b91c1c',
+                      deletingId === editing?.id || migratingJob ? 'var(--bg-muted)' : 'var(--bg-red-100)',
+                    color: deletingId === editing?.id || migratingJob ? 'var(--text-faint)' : 'var(--text-red-700)',
                     border: 'none',
                     borderRadius: 4,
                     cursor: deletingId === editing?.id || migratingJob ? 'not-allowed' : 'pointer',
@@ -6182,7 +6182,7 @@ export default function JobFormModal({
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+            <button type="button" onClick={closeForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
               Cancel
             </button>
             {!jobFormCanSubmit && !saving && jobFormMissingFields.length > 0 && (
@@ -6232,7 +6232,7 @@ export default function JobFormModal({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 360,
@@ -6242,14 +6242,14 @@ export default function JobFormModal({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>Remove payment?</h2>
+            <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Remove payment?</h2>
             {paymentRemovePreview ? (
-              <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 <p style={{ margin: '0 0 0.75rem' }}>
                   This removes a payment of{' '}
                   <strong style={{ fontVariantNumeric: 'tabular-nums' }}>${formatCurrency(paymentRemovePreview.rowAmt)}</strong> from this job.
                 </p>
-                <p style={{ margin: '0 0 0.75rem', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)' }}>
                   {paymentRemoveConfirmsPersistedRpc ? (
                     <>
                       This updates the database immediately (payments recorded on this job and any linked invoice status).
@@ -6263,20 +6263,20 @@ export default function JobFormModal({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
                   <tbody>
                     <tr>
-                      <td style={{ padding: '0.35rem 0', color: '#6b7280' }}>Job total</td>
+                      <td style={{ padding: '0.35rem 0', color: 'var(--text-muted)' }}>Job total</td>
                       <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                         ${formatCurrency(paymentRemovePreview.jobTotal)}
                       </td>
                     </tr>
                     <tr>
-                      <td style={{ padding: '0.35rem 0', color: '#6b7280' }}>Remaining ($) now</td>
+                      <td style={{ padding: '0.35rem 0', color: 'var(--text-muted)' }}>Remaining ($) now</td>
                       <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
                         ${formatCurrency(paymentRemovePreview.currentRem)}
                       </td>
                     </tr>
-                    <tr style={{ borderTop: '1px solid #e5e7eb' }}>
-                      <td style={{ padding: '0.35rem 0', fontWeight: 600, color: '#111827' }}>Remaining ($) after removal</td>
-                      <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: '#111827' }}>
+                    <tr style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: '0.35rem 0', fontWeight: 600, color: 'var(--text-strong)' }}>Remaining ($) after removal</td>
+                      <td style={{ padding: '0.35rem 0', textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)' }}>
                         ${formatCurrency(paymentRemovePreview.newRem)}
                       </td>
                     </tr>
@@ -6284,7 +6284,7 @@ export default function JobFormModal({
                 </table>
               </div>
             ) : (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>This payment line is no longer available.</p>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>This payment line is no longer available.</p>
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button
@@ -6294,8 +6294,8 @@ export default function JobFormModal({
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   cursor: paymentRemoveRpcBusy ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
@@ -6343,7 +6343,7 @@ export default function JobFormModal({
             aria-modal="true"
             aria-labelledby="stripe-fixture-line-preview-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 320,
@@ -6359,7 +6359,7 @@ export default function JobFormModal({
                 margin: '0 0 0.75rem',
                 fontSize: '1.125rem',
                 fontWeight: 600,
-                color: '#111827',
+                color: 'var(--text-strong)',
                 textAlign: 'center',
               }}
             >
@@ -6372,10 +6372,10 @@ export default function JobFormModal({
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
                 padding: '0.75rem',
-                background: '#f9fafb',
+                background: 'var(--bg-subtle)',
                 borderRadius: 6,
-                border: '1px solid #e5e7eb',
-                color: '#111827',
+                border: '1px solid var(--border)',
+                color: 'var(--text-strong)',
                 marginBottom: '1rem',
               }}
             >
@@ -6388,7 +6388,7 @@ export default function JobFormModal({
               style={{
                 margin: '0 0 1rem',
                 fontSize: '0.8125rem',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 lineHeight: 1.5,
                 textAlign: 'center',
               }}
@@ -6437,7 +6437,7 @@ export default function JobFormModal({
             aria-modal="true"
             aria-labelledby="job-form-unlink-mercury-confirm-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 360,
@@ -6449,11 +6449,11 @@ export default function JobFormModal({
           >
             <h2
               id="job-form-unlink-mercury-confirm-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
             >
               Unlink and remove?
             </h2>
-            <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
               <p style={{ margin: '0 0 0.75rem' }}>
                 Remove this payment line from the job and unlink it from the bank deposit? The bank transaction will
                 show those funds as available again in Jobs → Stages → Accounts Receivable.
@@ -6468,7 +6468,7 @@ export default function JobFormModal({
                 could double-count.
               </p>
               {normalizeJobsLedgerStatus(editing?.status) === 'paid' ? (
-                <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.8125rem' }}>
+                <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                   This job is Paid: if a balance remains after removing this payment, it will move back to Billed on
                   Stages.
                 </p>
@@ -6484,8 +6484,8 @@ export default function JobFormModal({
                 disabled={Boolean(unlinkingMercuryPaymentId)}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   cursor: unlinkingMercuryPaymentId ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
@@ -6535,7 +6535,7 @@ export default function JobFormModal({
             aria-modal="true"
             aria-labelledby="job-form-delete-job-confirm-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 360,
@@ -6547,16 +6547,16 @@ export default function JobFormModal({
           >
             <h2
               id="job-form-delete-job-confirm-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
             >
               Delete job from Billing?
             </h2>
-            <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.5, marginBottom: '1rem' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5, marginBottom: '1rem' }}>
               <p style={{ margin: '0 0 0.5rem' }}>
                 <strong>HCP:</strong> {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}{' '}
                 <strong>Job:</strong> {(editing.job_name ?? '').trim() || '—'}
               </p>
-              <p style={{ margin: 0, color: '#6b7280' }}>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                 This permanently removes the job from Billing. This cannot be undone.
               </p>
               {hasMigrateableCosts && !costSnapshotStillLoading ? (
@@ -6564,12 +6564,12 @@ export default function JobFormModal({
                   style={{
                     marginTop: '0.85rem',
                     padding: '0.65rem 0.75rem',
-                    background: '#fffbeb',
+                    background: 'var(--bg-amber-tint)',
                     border: '1px solid #fde68a',
                     borderRadius: 6,
                   }}
                 >
-                  <p style={{ margin: '0 0 0.4rem', fontWeight: 600, color: '#92400e' }}>
+                  <p style={{ margin: '0 0 0.4rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
                     This job has costs attached
                   </p>
                   <ul style={{ margin: '0 0 0.5rem', paddingLeft: '1.1rem' }}>
@@ -6585,7 +6585,7 @@ export default function JobFormModal({
                       </li>
                     ) : null}
                   </ul>
-                  <p style={{ margin: 0, color: '#6b7280' }}>
+                  <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                     To delete this job you must first reassign these to another job — otherwise card
                     charges &amp; supply-invoice splits would be unlinked and tally parts &amp; materials
                     permanently lost.
@@ -6597,12 +6597,12 @@ export default function JobFormModal({
                   style={{
                     marginTop: '0.85rem',
                     padding: '0.65rem 0.75rem',
-                    background: '#fffbeb',
+                    background: 'var(--bg-amber-tint)',
                     border: '1px solid #fde68a',
                     borderRadius: 6,
                   }}
                 >
-                  <p style={{ margin: 0, color: '#92400e' }}>
+                  <p style={{ margin: 0, color: 'var(--text-amber-800)' }}>
                     Couldn’t verify this job’s costs. To avoid losing any, reassign it to another job
                     instead of deleting.
                   </p>
@@ -6619,8 +6619,8 @@ export default function JobFormModal({
                 disabled={deletingId === editing.id}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
@@ -6715,7 +6715,7 @@ export default function JobFormModal({
             aria-modal="true"
             aria-labelledby="job-form-migrate-delete-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 360,
@@ -6728,27 +6728,27 @@ export default function JobFormModal({
           >
             <h2
               id="job-form-migrate-delete-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
             >
               Migrate costs and delete this job
             </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
               Move labor, parts, materials, Specific Work, and related rows to another job, add this job’s{' '}
               <strong>Job total (revenue)</strong> to the target’s total, then remove{' '}
               <strong>HCP {effectiveJobLedgerNumber(editing.hcp_number, editing.click_number) || '—'}</strong> —{' '}
               <strong>{(editing.job_name ?? '').trim() || '—'}</strong>. This cannot be undone.
             </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.45 }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
               This job’s own invoices and recorded payments are permanently deleted with it — only costs,
               labor, and revenue move to the target.
             </p>
             {editJobSubLaborData != null && editJobSubLaborData.count > 0 ? (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.45 }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)', lineHeight: 1.45 }}>
                 Subcontractor labor on this HCP is tracked separately from this billing job; it is not changed by
                 migrate-delete. Update People Labor if the HCP should follow the target job.
               </p>
             ) : null}
-            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: 6 }}>
               Target job
             </label>
             <input
@@ -6764,16 +6764,16 @@ export default function JobFormModal({
                 width: '100%',
                 padding: '0.5rem 0.65rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 fontSize: '0.875rem',
                 marginBottom: 8,
               }}
             />
             {migrateTargetSearchLoading ? (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>Searching…</p>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Searching…</p>
             ) : null}
             {migrateTargetSearch.trim().length >= 2 && migrateTargetCandidates.length === 0 && !migrateTargetSearchLoading ? (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>No jobs match.</p>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No jobs match.</p>
             ) : null}
             <ul
               style={{
@@ -6782,7 +6782,7 @@ export default function JobFormModal({
                 padding: 0,
                 maxHeight: 200,
                 overflow: 'auto',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
               }}
             >
@@ -6798,30 +6798,30 @@ export default function JobFormModal({
                       padding: '0.5rem 0.65rem',
                       border: 'none',
                       borderBottom: '1px solid #f3f4f6',
-                      background: migrateTargetJobId === j.id ? '#eff6ff' : 'white',
+                      background: migrateTargetJobId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: migratingJob ? 'not-allowed' : 'pointer',
                       fontSize: '0.8125rem',
                     }}
                   >
                     <strong>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</strong> — {(j.job_name ?? '').trim() || '—'}
-                    <div style={{ color: '#6b7280', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
+                    <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{(j.job_address ?? '').trim() || '—'}</div>
                   </button>
                 </li>
               ))}
             </ul>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', marginBottom: 8 }}>Summary</div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', marginBottom: 8 }}>Summary</div>
               <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: 'left', padding: '4px 8px 4px 0', color: '#6b7280', fontWeight: 600 }} />
-                    <th style={{ textAlign: 'right', padding: '4px 4px', color: '#6b7280', fontWeight: 600 }}>Source</th>
-                    <th style={{ textAlign: 'right', padding: '4px 0 4px 4px', color: '#6b7280', fontWeight: 600 }}>Target</th>
+                    <th style={{ textAlign: 'left', padding: '4px 8px 4px 0', color: 'var(--text-muted)', fontWeight: 600 }} />
+                    <th style={{ textAlign: 'right', padding: '4px 4px', color: 'var(--text-muted)', fontWeight: 600 }}>Source</th>
+                    <th style={{ textAlign: 'right', padding: '4px 0 4px 4px', color: 'var(--text-muted)', fontWeight: 600 }}>Target</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Parts-style costs</td>
+                    <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Parts-style costs</td>
                     <td style={{ textAlign: 'right', padding: '4px 4px' }}>${formatCurrency(partsCostStyleTotal)}</td>
                     <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>
                       {migrateTargetPreviewLoading
@@ -6832,14 +6832,14 @@ export default function JobFormModal({
                     </td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Billed materials</td>
+                    <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Billed materials</td>
                     <td style={{ textAlign: 'right', padding: '4px 4px' }}>
                       ${formatCurrency(materialsBilledTotalForMigrate)}
                     </td>
                     <td style={{ textAlign: 'right', padding: '4px 0 4px 4px' }}>—</td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '4px 8px 4px 0', color: '#374151' }}>Team labor (est.)</td>
+                    <td style={{ padding: '4px 8px 4px 0', color: 'var(--text-700)' }}>Team labor (est.)</td>
                     <td style={{ textAlign: 'right', padding: '4px 4px' }}>
                       {editJobTeamLaborRow
                         ? `$${formatCurrency(editJobTeamLaborRow.jobCost)}`
@@ -6866,8 +6866,8 @@ export default function JobFormModal({
                 disabled={migratingJob}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
                   cursor: migratingJob ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
@@ -6976,9 +6976,9 @@ export default function JobFormModal({
       )}
       {createCustomerFromJobModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: JOB_FORM_NESTED_OVERLAY_Z_INDEX }} onClick={() => setCreateCustomerFromJobModalOpen(false)}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Create customer from job</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {customerName.trim() || '—'} · {jobAddress.trim() || '—'}
               {(customerEmail.trim() || customerPhone.trim()) && (
                 <span> · {customerEmail.trim() || customerPhone.trim()}</span>
@@ -6994,10 +6994,10 @@ export default function JobFormModal({
                     flex: 1,
                     padding: '0.5rem 0.75rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: '4px 0 0 4px',
-                    background: createCustomerFromJobType === 'residential' ? '#3b82f6' : 'white',
-                    color: createCustomerFromJobType === 'residential' ? 'white' : '#374151',
+                    background: createCustomerFromJobType === 'residential' ? '#3b82f6' : 'var(--surface)',
+                    color: createCustomerFromJobType === 'residential' ? 'white' : 'var(--text-700)',
                     cursor: 'pointer',
                   }}
                 >
@@ -7010,10 +7010,10 @@ export default function JobFormModal({
                     flex: 1,
                     padding: '0.5rem 0.75rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: '0 4px 4px 0',
-                    background: createCustomerFromJobType === 'commercial' ? '#3b82f6' : 'white',
-                    color: createCustomerFromJobType === 'commercial' ? 'white' : '#374151',
+                    background: createCustomerFromJobType === 'commercial' ? '#3b82f6' : 'var(--surface)',
+                    color: createCustomerFromJobType === 'commercial' ? 'white' : 'var(--text-700)',
                     cursor: 'pointer',
                   }}
                 >
@@ -7024,31 +7024,31 @@ export default function JobFormModal({
             <div style={{ marginBottom: '1rem' }}>
               <span style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Possible matches – link instead?</span>
               {createCustomerFromJobModalLoading ? (
-                <div style={{ padding: '0.5rem', color: '#6b7280', fontSize: '0.875rem' }}>Loading…</div>
+                <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
               ) : similarCustomersForCreate.length > 0 ? (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: 160, overflowY: 'auto' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: 160, overflowY: 'auto' }}>
                   {similarCustomersForCreate.map((c) => (
                     <div
                       key={c.id}
                       onClick={() => handleLinkToSimilarCustomer(c)}
                       style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                     >
                       <div style={{ fontWeight: 500 }}>{c.name}</div>
-                      {c.address && <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
+                      {c.address && <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>{c.address}</div>}
                     </div>
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '0.5rem', color: '#6b7280', fontSize: '0.875rem', fontStyle: 'italic' }}>No similar customers found</div>
+                <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No similar customers found</div>
               )}
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
               <button
                 type="button"
                 onClick={() => setCreateCustomerFromJobModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>

@@ -173,13 +173,13 @@ export default function JobChargesTimelineStandalone({ job }: { job: JobWithDeta
         Cost breakdown
       </div>
       {state.kind === 'loading' ? (
-        <p style={{ color: '#6b7280', fontSize: '0.75rem', margin: 0 }}>Loading charge timeline…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>Loading charge timeline…</p>
       ) : state.kind === 'error' ? (
-        <p style={{ color: '#6b7280', fontSize: '0.75rem', margin: 0 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>
           Could not load the charge timeline.
         </p>
       ) : state.data.chartRows.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.75rem', margin: 0 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: 0 }}>
           No dated cost events or reports yet.
         </p>
       ) : (

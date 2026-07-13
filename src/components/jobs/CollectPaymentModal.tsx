@@ -98,10 +98,10 @@ function lineTotalDollars(f: CertifyFixture): number {
 
 function CollectPaymentFixturesLineItemsTable({ fixtures }: { fixtures: CertifyFixture[] }) {
   return (
-    <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+    <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
       <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ background: '#f9fafb' }}>
+          <tr style={{ background: 'var(--bg-subtle)' }}>
             <th style={{ textAlign: 'left', padding: 8 }}>Item</th>
             <th style={{ textAlign: 'right', padding: 8 }}>Qty</th>
             <th style={{ textAlign: 'right', padding: 8 }}>Total</th>
@@ -113,7 +113,7 @@ function CollectPaymentFixturesLineItemsTable({ fixtures }: { fixtures: CertifyF
               <td style={{ padding: 8 }}>
                 {f.name}
                 {f.line_description ? (
-                  <span style={{ color: '#6b7280', display: 'block' }}>{f.line_description}</span>
+                  <span style={{ color: 'var(--text-muted)', display: 'block' }}>{f.line_description}</span>
                 ) : null}
               </td>
               <td style={{ padding: 8, textAlign: 'right' }}>{f.count}</td>
@@ -773,9 +773,9 @@ export default function CollectPaymentModal({
         fontSize: '0.75rem',
         fontWeight: 600,
         borderRadius: 6,
-        border: '1px solid #d1d5db',
-        background: stripeDashOpenEnabled ? '#f8fafc' : '#f3f4f6',
-        color: stripeDashOpenEnabled ? '#1e40af' : '#9ca3af',
+        border: '1px solid var(--border-strong)',
+        background: stripeDashOpenEnabled ? 'var(--bg-slate-tint)' : 'var(--bg-muted)',
+        color: stripeDashOpenEnabled ? '#1e40af' : 'var(--text-faint)',
         cursor: stripeDashOpenEnabled ? 'pointer' : 'not-allowed',
         flexShrink: 0,
       } as const)
@@ -822,7 +822,7 @@ export default function CollectPaymentModal({
         aria-modal="true"
         aria-labelledby={titleId}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 320,
@@ -850,7 +850,7 @@ export default function CollectPaymentModal({
             <h2 id={titleId} style={{ margin: 0, fontSize: '1.25rem' }}>
               Collect Payment
             </h2>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {hcpNumber} · {jobName}
             </p>
           </div>
@@ -899,7 +899,7 @@ export default function CollectPaymentModal({
                   border: 'none',
                   borderRadius: 8,
                   background: 'transparent',
-                  color: '#4b5563',
+                  color: 'var(--text-600)',
                   cursor: 'pointer',
                 }}
               >
@@ -913,7 +913,7 @@ export default function CollectPaymentModal({
           style={{
             marginBottom: '1rem',
             fontSize: '0.8125rem',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             textAlign: 'center',
           }}
         >
@@ -922,7 +922,7 @@ export default function CollectPaymentModal({
         </div>
 
         {loadingPayload ? (
-          <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
+          <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p>
         ) : step === 1 ? (
           <div>
             {payload?.invoice ? (
@@ -933,7 +933,7 @@ export default function CollectPaymentModal({
                 </strong>
               </p>
             ) : (payload?.fixtures ?? []).length === 0 ? (
-              <p style={{ fontSize: '0.875rem', color: '#b45309', margin: '0 0 0.75rem' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', margin: '0 0 0.75rem' }}>
                 No Ready-to-Bill invoice row yet. Office may need to add a bill line first.
               </p>
             ) : null}
@@ -954,7 +954,7 @@ export default function CollectPaymentModal({
                   fontSize: '0.875rem',
                   fontWeight: 600,
                   margin: '0 0 0.5rem',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   background: 'transparent',
                   border: 'none',
                   cursor: 'pointer',
@@ -971,9 +971,9 @@ export default function CollectPaymentModal({
               {jobBookSectionExpanded ? (
                 <div id={jobBookSectionPanelId} role="region" aria-labelledby={jobBookSectionHeaderId}>
                   {jobBookLoading ? (
-                    <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>Loading Job Book…</p>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>Loading Job Book…</p>
                   ) : jobBookFiltered.length === 0 ? (
-                    <p style={{ fontSize: '0.8125rem', color: '#b45309', margin: 0 }}>
+                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)', margin: 0 }}>
                       {jobBookAll.length === 0
                         ? 'No Job Book lines yet. Ask office staff to add entries in Settings → Job Book.'
                         : 'No Job Book lines match this job’s service type. Use “All types” lines or ask office to add entries for this type.'}
@@ -993,13 +993,13 @@ export default function CollectPaymentModal({
                           boxSizing: 'border-box',
                           margin: '0 0 0.75rem',
                           padding: '0.45rem 0.6rem',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           fontSize: '0.875rem',
                         }}
                       />
                       {jobBookSearchRows.length === 0 ? (
-                        <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
                           No lines match your search.
                         </p>
                       ) : (
@@ -1007,13 +1007,13 @@ export default function CollectPaymentModal({
                           style={{
                             maxHeight: 220,
                             overflow: 'auto',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 6,
                           }}
                         >
                           <table style={{ width: '100%', fontSize: '0.8125rem', borderCollapse: 'collapse' }}>
                             <thead>
-                              <tr style={{ background: '#f9fafb' }}>
+                              <tr style={{ background: 'var(--bg-subtle)' }}>
                                 <th style={{ textAlign: 'left', padding: 8 }}>Work</th>
                                 <th style={{ textAlign: 'right', padding: 8 }}>Cost</th>
                                 <th style={{ padding: 8, width: 88 }} />
@@ -1087,7 +1087,7 @@ export default function CollectPaymentModal({
                   marginTop: '0.75rem',
                   padding: 8,
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   boxSizing: 'border-box',
                 }}
               />
@@ -1095,7 +1095,7 @@ export default function CollectPaymentModal({
           </div>
         ) : step === 2 ? (
           <div>
-            <p style={{ fontSize: '0.875rem', color: '#374151', margin: '0 0 1rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: '0 0 1rem' }}>
               Dispatch now has your Invoice Request, you can call them and close this tab. The{' '}
               <strong>Collect Payment</strong> button will turn{' '}
               <strong style={{ color: '#15803d' }}>green</strong> when the invoice is approved and has been
@@ -1113,7 +1113,7 @@ export default function CollectPaymentModal({
               <span
                 style={{
                   fontSize: '0.8125rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   fontVariantNumeric: 'tabular-nums',
                 }}
                 aria-label="Time waiting for dispatch review"
@@ -1135,7 +1135,7 @@ export default function CollectPaymentModal({
                   <p
                     style={{
                       fontSize: '0.8125rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       margin: '0 0 0.75rem',
                       textAlign: 'center',
                     }}
@@ -1198,9 +1198,9 @@ export default function CollectPaymentModal({
                 disabled={!payload?.collect_invoice?.hosted_invoice_url?.trim()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--bg-muted)',
+                  color: 'var(--text-700)',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                   cursor: payload?.collect_invoice?.hosted_invoice_url?.trim() ? 'pointer' : 'not-allowed',
                 }}
@@ -1231,7 +1231,7 @@ export default function CollectPaymentModal({
                   <div
                     style={{
                       fontSize: '0.75rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       marginTop: '0.35rem',
                     }}
                   >
@@ -1246,12 +1246,12 @@ export default function CollectPaymentModal({
                     maxWidth: 400,
                     textAlign: 'left',
                     padding: '0.75rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
-                    background: '#fafafa',
+                    background: 'var(--bg-page)',
                   }}
                 >
-                  <label htmlFor="collect-payment-change-email" style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                  <label htmlFor="collect-payment-change-email" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Customer email (Stripe will use this)
                   </label>
                   <input
@@ -1267,7 +1267,7 @@ export default function CollectPaymentModal({
                       marginTop: 6,
                       padding: '0.5rem 0.65rem',
                       borderRadius: 4,
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       fontSize: '0.875rem',
                       boxSizing: 'border-box',
                     }}
@@ -1314,9 +1314,9 @@ export default function CollectPaymentModal({
                       }}
                       style={{
                         padding: '0.45rem 0.85rem',
-                        background: '#f3f4f6',
-                        color: '#374151',
-                        border: '1px solid #e5e7eb',
+                        background: 'var(--bg-muted)',
+                        color: 'var(--text-700)',
+                        border: '1px solid var(--border)',
                         borderRadius: 4,
                         cursor: changeEmailSaving ? 'not-allowed' : 'pointer',
                       }}
@@ -1335,7 +1335,7 @@ export default function CollectPaymentModal({
                       flexWrap: 'wrap',
                       gap: '0.35rem',
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                     }}
                   >
                     {invOkForEmail && !stripeEmailLoading ? (
@@ -1355,7 +1355,7 @@ export default function CollectPaymentModal({
                           style={{
                             padding: '0.35rem 0.65rem',
                             background: 'transparent',
-                            color: '#2563eb',
+                            color: 'var(--text-link)',
                             border: 'none',
                             borderRadius: 4,
                             cursor: 'pointer',
@@ -1366,7 +1366,7 @@ export default function CollectPaymentModal({
                         >
                           Change email
                         </button>
-                        <span aria-hidden="true" style={{ color: '#9ca3af', userSelect: 'none' }}>
+                        <span aria-hidden="true" style={{ color: 'var(--text-faint)', userSelect: 'none' }}>
                           |
                         </span>
                       </>
@@ -1374,19 +1374,19 @@ export default function CollectPaymentModal({
                     <span>Stripe will email:</span>
                   </div>
                   {stripeEmailLoading ? (
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0.25rem 0 0.75rem' }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.75rem' }}>
                       Loading Stripe email…
                     </p>
                   ) : stripeEmailError ? (
-                    <p style={{ fontSize: '0.875rem', color: '#b45309', margin: '0.25rem 0 0.35rem' }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', margin: '0.25rem 0 0.35rem' }}>
                       {stripeEmailError}
                     </p>
                   ) : stripeEmailResolved ? (
-                    <p style={{ fontSize: '0.875rem', color: '#374151', margin: '0.25rem 0 0.35rem' }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: '0.25rem 0 0.35rem' }}>
                       <strong>{stripeEmailResolved}</strong>
                     </p>
                   ) : (
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0.25rem 0 0.35rem' }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0.25rem 0 0.35rem' }}>
                       No email on this Stripe customer or invoice.
                     </p>
                   )}
@@ -1402,23 +1402,23 @@ export default function CollectPaymentModal({
                   return null
                 }
                 return (
-                  <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem', lineHeight: 1.4 }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-faint)', margin: '0 0 0.75rem', lineHeight: 1.4 }}>
                     Job billing line: {jobEm}
                   </p>
                 )
               })()}
               {stripeEmailError && (payload?.billing_customer?.email ?? '').trim() ? (
-                <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 0.75rem', lineHeight: 1.4 }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-faint)', margin: '0 0 0.75rem', lineHeight: 1.4 }}>
                   Job billing line: {(payload?.billing_customer?.email ?? '').trim()}
                 </p>
               ) : null}
             </div>
             {!payload?.collect_invoice?.hosted_invoice_url?.trim() ? (
-              <p style={{ fontSize: '0.875rem', color: '#b45309', margin: '0 0 1rem' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', margin: '0 0 1rem' }}>
                 No payment link is available yet. Ask the office to finalize the Stripe invoice for this job.
               </p>
             ) : null}
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '1rem 0 0' }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '1rem 0 0' }}>
               After the customer pays, this job updates automatically. If the screen does not change, use the
               refresh icon above.
             </p>
@@ -1441,9 +1441,9 @@ export default function CollectPaymentModal({
             onClick={onClose}
             style={{
               padding: '0.5rem 1rem',
-              background: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #e5e7eb',
+              background: 'var(--bg-muted)',
+              color: 'var(--text-700)',
+              border: '1px solid var(--border)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -1457,8 +1457,8 @@ export default function CollectPaymentModal({
               disabled={sendingBack}
               style={{
                 padding: '0.5rem 1rem',
-                background: 'white',
-                color: '#b45309',
+                background: 'var(--surface)',
+                color: 'var(--text-amber-700)',
                 border: '1px solid #f59e0b',
                 borderRadius: 4,
                 cursor: sendingBack ? 'not-allowed' : 'pointer',
@@ -1479,7 +1479,7 @@ export default function CollectPaymentModal({
                 padding: '0.35rem 0.65rem',
                 borderRadius: 6,
                 border: '1px solid #15803d',
-                background: '#f0fdf4',
+                background: 'var(--bg-green-tint)',
                 color: '#166534',
                 textDecoration: 'none',
                 fontSize: '0.75rem',
@@ -1562,7 +1562,7 @@ export default function CollectPaymentModal({
               aria-modal="true"
               aria-labelledby={sendBackTitleId}
               style={{
-                background: 'white',
+                background: 'var(--surface)',
                 padding: '1.25rem',
                 borderRadius: 8,
                 maxWidth: 400,
@@ -1574,11 +1574,11 @@ export default function CollectPaymentModal({
               <h3 id={sendBackTitleId} style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>
                 Send back to office
               </h3>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45 }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                 Dispatch will see your note on the dashboard. You cannot collect payment until they fix the
                 invoice and approve again.
               </p>
-              <label htmlFor={sendBackTitleId + '-note'} style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+              <label htmlFor={sendBackTitleId + '-note'} style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 What needs to change?
               </label>
               <textarea
@@ -1594,7 +1594,7 @@ export default function CollectPaymentModal({
                   marginTop: 6,
                   padding: 8,
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   boxSizing: 'border-box',
                   fontSize: '0.875rem',
                 }}
@@ -1617,9 +1617,9 @@ export default function CollectPaymentModal({
                   }}
                   style={{
                     padding: '0.45rem 0.85rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-700)',
+                    border: '1px solid var(--border)',
                     borderRadius: 4,
                     cursor: sendingBack ? 'not-allowed' : 'pointer',
                   }}

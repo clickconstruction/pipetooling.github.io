@@ -16,7 +16,7 @@ const overlay: CSSProperties = {
 }
 
 const panel: CSSProperties = {
-  background: 'white',
+  background: 'var(--surface)',
   borderRadius: 8,
   maxWidth: 800,
   width: '100%',
@@ -126,9 +126,9 @@ export function JobSummaryCostCellDrilldownModal({ open, onClose, title, childre
   const actionBtn: CSSProperties = {
     padding: '0.35rem 0.6rem',
     fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
-    background: '#fff',
+    background: 'var(--surface)',
     cursor: 'pointer',
   }
 
@@ -151,13 +151,13 @@ export function JobSummaryCostCellDrilldownModal({ open, onClose, title, childre
             gap: '0.5rem',
             flexWrap: 'wrap',
             padding: '0.75rem 1rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}
         >
           <h2
             id="job-summary-drilldown-title"
-            style={{ margin: 0, fontSize: '1.05rem', color: '#111827', flex: '1 1 auto', minWidth: 0 }}
+            style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-strong)', flex: '1 1 auto', minWidth: 0 }}
           >
             {title}
           </h2>
@@ -176,7 +176,7 @@ export function JobSummaryCostCellDrilldownModal({ open, onClose, title, childre
             <button
               type="button"
               onClick={onClose}
-              style={{ ...actionBtn, background: '#f9fafb' }}
+              style={{ ...actionBtn, background: 'var(--bg-subtle)' }}
               aria-label="Close"
             >
               Close
@@ -214,12 +214,12 @@ export function JobSummaryDrilldownMercuryTable({
 }: MercuryTableProps) {
   const showActions = Boolean(canEditAllocations && onReassignJob)
   if (rows.length === 0) {
-    return <p style={{ margin: 0, color: '#6b7280' }}>No card allocation lines for this selection.</p>
+    return <p style={{ margin: 0, color: 'var(--text-muted)' }}>No card allocation lines for this selection.</p>
   }
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
       <thead>
-        <tr style={{ background: '#f3f4f6' }}>
+        <tr style={{ background: 'var(--bg-muted)' }}>
           <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left' }}>Posted</th>
           <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left' }}>Counterparty</th>
           <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left' }}>User</th>
@@ -240,13 +240,13 @@ export function JobSummaryDrilldownMercuryTable({
           const debitCardLabel =
             debitCardId != null ? nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId) : '—'
           return (
-            <tr key={row.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+            <tr key={row.id} style={{ borderTop: '1px solid var(--border)' }}>
               <td style={{ padding: '0.3rem 0.45rem' }}>{posted}</td>
               <td style={{ padding: '0.3rem 0.45rem' }}>{tx?.counterparty_name ?? '—'}</td>
               <td style={{ padding: '0.3rem 0.45rem' }}>{row.attributionDisplayName ?? '—'}</td>
               <td style={{ padding: '0.3rem 0.45rem' }}>{debitCardLabel}</td>
               <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>${formatCurrency(allocAbs)}</td>
-              <td style={{ padding: '0.3rem 0.45rem', color: '#4b5563' }}>
+              <td style={{ padding: '0.3rem 0.45rem', color: 'var(--text-600)' }}>
                 {[row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'}
               </td>
               {showActions ? (
@@ -260,7 +260,7 @@ export function JobSummaryDrilldownMercuryTable({
                       padding: '0.2rem 0.45rem',
                       borderRadius: 4,
                       border: '1px solid #cbd5e1',
-                      background: '#fff',
+                      background: 'var(--surface)',
                       cursor: 'pointer',
                       fontFamily: 'inherit',
                       whiteSpace: 'nowrap',
@@ -299,17 +299,17 @@ export function JobSummaryDrilldownTeamLaborByWorkDate({
 }) {
   if (byWorkDate.length === 0) {
     return (
-      <p style={{ margin: 0, color: '#6b7280' }}>
+      <p style={{ margin: 0, color: 'var(--text-muted)' }}>
         No per-work-date breakdown for {personName} (labor is allocated at job level only, or no rows).
       </p>
     )
   }
   return (
     <div>
-      <p style={{ margin: '0 0 0.5rem', color: '#374151' }}>Team labor for {personName}</p>
+      <p style={{ margin: '0 0 0.5rem', color: 'var(--text-700)' }}>Team labor for {personName}</p>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
         <thead>
-          <tr style={{ background: '#f3f4f6' }}>
+          <tr style={{ background: 'var(--bg-muted)' }}>
             <th style={{ padding: '0.3rem 0.45rem', textAlign: 'left' }}>Work date</th>
             <th style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>Hours</th>
             <th style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>Cost</th>
@@ -317,7 +317,7 @@ export function JobSummaryDrilldownTeamLaborByWorkDate({
         </thead>
         <tbody>
           {byWorkDate.map((b) => (
-            <tr key={b.workDate} style={{ borderTop: '1px solid #e5e7eb' }}>
+            <tr key={b.workDate} style={{ borderTop: '1px solid var(--border)' }}>
               <td style={{ padding: '0.3rem 0.45rem' }}>{fmt(b.workDate)}</td>
               <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>{fh(b.hours)}</td>
               <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>${fc(b.cost)}</td>
@@ -325,7 +325,7 @@ export function JobSummaryDrilldownTeamLaborByWorkDate({
           ))}
         </tbody>
         <tfoot>
-          <tr style={{ fontWeight: 600, borderTop: '1px solid #d1d5db' }}>
+          <tr style={{ fontWeight: 600, borderTop: '1px solid var(--border-strong)' }}>
             <td style={{ padding: '0.3rem 0.45rem' }}>Total</td>
             <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>{fh(totalHours)}</td>
             <td style={{ padding: '0.3rem 0.45rem', textAlign: 'right' }}>${fc(totalCost)}</td>

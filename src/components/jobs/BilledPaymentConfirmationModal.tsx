@@ -255,7 +255,7 @@ export default function BilledPaymentConfirmationModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 420,
@@ -265,14 +265,14 @@ export default function BilledPaymentConfirmationModal({
         }}
       >
         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>{title}</h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{subtitle}</p>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{subtitle}</p>
 
         {mode === 'invoice' && inv && (
           <div
             style={{
               marginBottom: '1rem',
               padding: '0.75rem',
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
               borderRadius: 6,
               fontSize: '0.875rem',
             }}
@@ -280,37 +280,37 @@ export default function BilledPaymentConfirmationModal({
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Outstanding billing ({outsideOrStripe})</div>
             <div style={{ display: 'grid', gap: '0.35rem' }}>
               <div>
-                <span style={{ color: '#6b7280' }}>Billed amount: </span>${formatMoney(Number(inv.amount ?? 0))}
+                <span style={{ color: 'var(--text-muted)' }}>Billed amount: </span>${formatMoney(Number(inv.amount ?? 0))}
               </div>
               {applied > 0 && (
                 <div>
-                  <span style={{ color: '#6b7280' }}>Applied to date: </span>${formatMoney(applied)}
+                  <span style={{ color: 'var(--text-muted)' }}>Applied to date: </span>${formatMoney(applied)}
                 </div>
               )}
               <div>
-                <span style={{ color: '#6b7280' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
+                <span style={{ color: 'var(--text-muted)' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
               </div>
               {stripeInvoicePath && (
-                <p style={{ margin: '0.35rem 0 0', color: '#92400e', fontSize: '0.8125rem' }}>
+                <p style={{ margin: '0.35rem 0 0', color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
                   Stripe does not move money for this action. The invoice is marked paid in Stripe to match payment
                   received outside Stripe (check, cash, etc.).
                 </p>
               )}
               {inv.sent_to_customer_at && (
                 <div>
-                  <span style={{ color: '#6b7280' }}>Sent: </span>
+                  <span style={{ color: 'var(--text-muted)' }}>Sent: </span>
                   {String(inv.sent_to_customer_at).slice(0, 10)}
                 </div>
               )}
               {inv.external_send_note && (
                 <div>
-                  <span style={{ color: '#6b7280' }}>Note: </span>
+                  <span style={{ color: 'var(--text-muted)' }}>Note: </span>
                   {inv.external_send_note}
                 </div>
               )}
               {inv.stripe_invoice_id && inv.hosted_invoice_url && (
                 <div>
-                  <a href={inv.hosted_invoice_url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>
+                  <a href={inv.hosted_invoice_url} target="_blank" rel="noreferrer" style={{ color: 'var(--text-link)' }}>
                     Open Stripe invoice
                   </a>
                 </div>
@@ -324,20 +324,20 @@ export default function BilledPaymentConfirmationModal({
             style={{
               marginBottom: '1rem',
               padding: '0.75rem',
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
               borderRadius: 6,
               fontSize: '0.875rem',
             }}
           >
             <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Job balance</div>
             <div>
-              <span style={{ color: '#6b7280' }}>Bid / revenue: </span>${formatMoney(Number(jb.revenue ?? 0))}
+              <span style={{ color: 'var(--text-muted)' }}>Bid / revenue: </span>${formatMoney(Number(jb.revenue ?? 0))}
             </div>
             <div>
-              <span style={{ color: '#6b7280' }}>Payments to date: </span>${formatMoney(Number(jb.payments_made ?? 0))}
+              <span style={{ color: 'var(--text-muted)' }}>Payments to date: </span>${formatMoney(Number(jb.payments_made ?? 0))}
             </div>
             <div>
-              <span style={{ color: '#6b7280' }}>Remaining: </span>${formatMoney(jobRemaining)}
+              <span style={{ color: 'var(--text-muted)' }}>Remaining: </span>${formatMoney(jobRemaining)}
             </div>
           </div>
         )}
@@ -357,7 +357,7 @@ export default function BilledPaymentConfirmationModal({
             padding: '0.35rem',
             marginBottom: '0.75rem',
             boxSizing: 'border-box',
-            ...(stripeInvoicePath ? { background: '#f3f4f6', color: '#374151' } : {}),
+            ...(stripeInvoicePath ? { background: 'var(--bg-muted)', color: 'var(--text-700)' } : {}),
           }}
         />
 
@@ -371,7 +371,7 @@ export default function BilledPaymentConfirmationModal({
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.25rem', boxSizing: 'border-box' }}
         />
         {effectivePreview ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>Example: {effectivePreview}</p>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Example: {effectivePreview}</p>
         ) : (
           <div style={{ marginBottom: '0.75rem' }} />
         )}
@@ -419,14 +419,14 @@ export default function BilledPaymentConfirmationModal({
           style={{ width: '100%', padding: '0.35rem', marginBottom: '0.75rem', boxSizing: 'border-box', resize: 'vertical' }}
         />
 
-        {error && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</p>}
 
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button
             type="button"
             onClick={onClose}
             disabled={submitting}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer' }}
           >
             Cancel
           </button>
