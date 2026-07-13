@@ -5,6 +5,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from '@dnd-kit/utilities'
 import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
 import { SectionDock } from '../components/SectionDock'
+import { markStampInitial, markStampTime } from '../lib/quickfillMarkStamp'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
@@ -213,12 +214,6 @@ function formatRelativeTime(iso: string): string {
   if (hours < 24) return `${hours}h ago`
   if (days < 7) return `${days}d ago`
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
-/** Jump-button subline: same buckets as formatRelativeTime but no " ago", space before name only (e.g. "2d Taunya"). */
-function formatJumpMarkSublineRelative(iso: string): string {
-  const s = formatRelativeTime(iso)
-  return s.endsWith(' ago') ? s.slice(0, -4) : s
 }
 
 function formatTime(iso: string): string {
@@ -1403,12 +1398,9 @@ function QuickfillPage() {
           const color = getButtonColor(mark?.marked_at ?? null)
           const byName = mark?.marked_by_name?.trim() ?? ''
           const markRelative = mark ? formatRelativeTime(mark.marked_at) : ''
-          const sublineRelative = mark ? formatJumpMarkSublineRelative(mark.marked_at) : ''
-          const subline =
-            mark && byName ? `${sublineRelative} ${byName}` : mark ? sublineRelative : 'Never marked'
           const lastMarkedTitle = mark ? `Last marked ${markRelative}${byName ? ` by ${byName}` : ''}` : 'Never marked'
           return (
-            <div key={id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
+            <div key={id} style={{ position: 'relative' }}>
               <button
                 type="button"
                 onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })}
@@ -1426,7 +1418,48 @@ function QuickfillPage() {
               >
                 {label}
               </button>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{subline}</span>
+              {mark ? (
+                // Compact who+when stamp floating over the button's corner; hover title carries the full text.
+                <span
+                  aria-hidden="true"
+                  style={{
+                    position: 'absolute',
+                    bottom: -8,
+                    right: -6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    padding: '1px 6px 1px 1px',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 999,
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    color: 'var(--text-muted)',
+                    pointerEvents: 'none',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.12)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      background: '#3b82f6',
+                      color: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.625rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    {markStampInitial(byName)}
+                  </span>
+                  {markStampTime(mark.marked_at, Date.now())}
+                </span>
+              ) : null}
             </div>
           )
         })}
