@@ -440,10 +440,10 @@ export default function PeoplePayStubsTab({
     <>
       <div>
         {payStubsLoading ? (
-          <p style={{ color: '#6b7280' }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <>
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             <section>
               <div style={{ marginBottom: '0.75rem' }}>
                 <div
@@ -458,13 +458,13 @@ export default function PeoplePayStubsTab({
                   <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
                     <h2 style={{ margin: 0, fontSize: '1.125rem' }}>Ledger</h2>
                     {payStubs.length > 0 && ledgerFilteredPayStubs.length > 0 ? (
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }} aria-live="polite">
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }} aria-live="polite">
                         {ledgerOpenBalanceSummary.openCount > 0
                           ? `${ledgerOpenBalanceSummary.openCount} open · $${formatCurrency(ledgerOpenBalanceSummary.totalRemaining)} remaining`
                           : 'All paid'}
                         {upcomingSummary && upcomingSummary.personWeekCount > 0 ? (
                           <>
-                            <span style={{ color: '#9ca3af' }}>{' | '}</span>
+                            <span style={{ color: 'var(--text-faint)' }}>{' | '}</span>
                             <button
                               type="button"
                               onClick={() => setUpcomingModalOpen(true)}
@@ -475,7 +475,7 @@ export default function PeoplePayStubsTab({
                                 padding: 0,
                                 margin: 0,
                                 font: 'inherit',
-                                color: '#b45309',
+                                color: 'var(--text-amber-700)',
                                 textDecoration: 'underline dotted',
                                 textUnderlineOffset: '2px',
                                 cursor: 'pointer',
@@ -507,8 +507,8 @@ export default function PeoplePayStubsTab({
                       style={{
                         padding: '0.5rem 1rem',
                         fontSize: '0.9375rem',
-                        background: 'white',
-                        color: forecastDisabled ? '#9ca3af' : '#374151',
+                        background: 'var(--surface)',
+                        color: forecastDisabled ? 'var(--text-faint)' : 'var(--text-700)',
                         border: `1px solid ${forecastDisabled ? '#e5e7eb' : '#d1d5db'}`,
                         borderRadius: 6,
                         cursor: forecastDisabled ? 'not-allowed' : 'pointer',
@@ -555,26 +555,26 @@ export default function PeoplePayStubsTab({
                     width: '100%',
                     boxSizing: 'border-box',
                     padding: '0.35rem 0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.875rem',
                   }}
                 />
-                <p id="ledger-person-search-hint" style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                <p id="ledger-person-search-hint" style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   Search filters the ledger by person name.
                 </p>
               </div>
               {payStubs.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
                   No pay reports yet. Use Draft Payroll.
                 </p>
               ) : ledgerFilteredPayStubs.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No pay reports match this search.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No pay reports match this search.</p>
               ) : (
-                <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead>
-                      <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                      <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Period</th>
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
@@ -617,7 +617,7 @@ export default function PeoplePayStubsTab({
                         const showPayDetail =
                           payRows.length > 0 || Boolean(stub.paid_note?.trim()) || Boolean(stub.paid_at)
                         return (
-                        <tr key={stub.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={stub.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             <button
                               type="button"
@@ -627,7 +627,7 @@ export default function PeoplePayStubsTab({
                                 border: 'none',
                                 padding: 0,
                                 cursor: 'pointer',
-                                color: '#2563eb',
+                                color: 'var(--text-link)',
                                 textDecoration: 'underline',
                                 fontSize: 'inherit',
                                 fontFamily: 'inherit',
@@ -660,7 +660,7 @@ export default function PeoplePayStubsTab({
                                   border: 'none',
                                   padding: 0,
                                   cursor: 'pointer',
-                                  color: '#2563eb',
+                                  color: 'var(--text-link)',
                                   textDecoration: 'underline',
                                   fontSize: 'inherit',
                                   fontFamily: 'inherit',
@@ -669,7 +669,7 @@ export default function PeoplePayStubsTab({
                                 -{formatCurrency(lessSum)}
                               </button>
                             )}
-                            <span style={{ color: '#9ca3af' }}>{' | '}</span>
+                            <span style={{ color: 'var(--text-faint)' }}>{' | '}</span>
                             {fully ? (
                               <span
                                 title="Fully paid — change payments first to edit Additional"
@@ -688,7 +688,7 @@ export default function PeoplePayStubsTab({
                                   border: 'none',
                                   padding: 0,
                                   cursor: 'pointer',
-                                  color: '#2563eb',
+                                  color: 'var(--text-link)',
                                   textDecoration: 'underline',
                                   fontSize: 'inherit',
                                   fontFamily: 'inherit',
@@ -741,7 +741,7 @@ export default function PeoplePayStubsTab({
                                   background: 'none',
                                   cursor: 'pointer',
                                   borderRadius: 4,
-                                  color: '#6b7280',
+                                  color: 'var(--text-muted)',
                                 }}
                                 onMouseEnter={(e) => {
                                   e.currentTarget.style.color = '#2563eb'
@@ -783,7 +783,7 @@ export default function PeoplePayStubsTab({
                                     cursor: 'pointer',
                                     borderRadius: 4,
                                     verticalAlign: 'middle',
-                                    color: '#2563eb',
+                                    color: 'var(--text-link)',
                                   }}
                                 >
                                   <PayStubPaidNoteIcon />
@@ -808,7 +808,7 @@ export default function PeoplePayStubsTab({
                             ) : (
                               '—'
                             )}
-                            <span style={{ color: '#9ca3af' }}>{' - '}</span>
+                            <span style={{ color: 'var(--text-faint)' }}>{' - '}</span>
                             {lastPaidAt ? (
                               <span title={`Last paid ${new Date(lastPaidAt).toLocaleDateString()}`}>
                                 {shortMonthDay(lastPaidAt)}
@@ -816,11 +816,11 @@ export default function PeoplePayStubsTab({
                             ) : (
                               '—'
                             )}
-                            <span style={{ color: '#9ca3af' }}>{' - '}</span>
+                            <span style={{ color: 'var(--text-faint)' }}>{' - '}</span>
                             {paymentDelay.kind === 'paid' ? (
                               <span title="Days between period end and the last payment.">{paymentDelay.days}d</span>
                             ) : paymentDelay.kind === 'outstanding' ? (
-                              <span style={{ color: '#b45309' }} title="No payment yet — days since period end.">
+                              <span style={{ color: 'var(--text-amber-700)' }} title="No payment yet — days since period end.">
                                 {paymentDelay.days}d…
                               </span>
                             ) : (
@@ -859,13 +859,13 @@ export default function PeoplePayStubsTab({
                                   background: 'none',
                                   border: 'none',
                                   borderRadius: 4,
-                                  color: deletingPayStubId === stub.id ? '#9ca3af' : '#dc2626',
+                                  color: deletingPayStubId === stub.id ? 'var(--text-faint)' : 'var(--text-red-600)',
                                   cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer',
                                   verticalAlign: 'middle',
                                 }}
                               >
                                 {deletingPayStubId === stub.id ? (
-                                  <span style={{ fontSize: '0.75rem', lineHeight: 1, color: '#9ca3af' }}>…</span>
+                                  <span style={{ fontSize: '0.75rem', lineHeight: 1, color: 'var(--text-faint)' }}>…</span>
                                 ) : (
                                   <PayStubDeleteIcon color="currentColor" size={16} />
                                 )}
@@ -911,7 +911,7 @@ export default function PeoplePayStubsTab({
               if (e.key === 'Escape') setUpcomingModalOpen(false)
             }}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               maxWidth: 640,
               width: '100%',
@@ -920,19 +920,19 @@ export default function PeoplePayStubsTab({
               boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
             }}
           >
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <h2 id="upcoming-payroll-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
                   Upcoming payroll — not yet reported
                 </h2>
-                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
                   {(() => {
                     const weekStart = payWeekStartYmd(todayYmd)
                     return `Current week: ${ledgerPayPeriodShortLabel(weekStart, ymdAddDays(weekStart, 6))}`
                   })()}
                 </p>
                 <p
-                  style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}
+                  style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}
                   title="Clocked time (including pending approval) with no pay report covering the week — estimate is hours × wage. Use Draft Payroll to generate these reports."
                 >
                   {upcomingSummary.personWeekCount} person-week{upcomingSummary.personWeekCount === 1 ? '' : 's'} ·{' '}
@@ -944,7 +944,7 @@ export default function PeoplePayStubsTab({
                 onClick={() => setUpcomingModalOpen(false)}
                 title="Close"
                 aria-label="Close"
-                style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
               >
                 ×
               </button>
@@ -952,7 +952,7 @@ export default function PeoplePayStubsTab({
             <div style={{ padding: '1rem 1.25rem' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                  <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Person</th>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left', whiteSpace: 'nowrap' }}>Period</th>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Hours</th>
@@ -975,7 +975,7 @@ export default function PeoplePayStubsTab({
                             padding: 0,
                             margin: 0,
                             font: 'inherit',
-                            color: '#2563eb',
+                            color: 'var(--text-link)',
                             textDecoration: 'underline dotted',
                             textUnderlineOffset: '2px',
                             cursor: 'pointer',
@@ -994,7 +994,7 @@ export default function PeoplePayStubsTab({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                  <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
                     <td style={{ padding: '0.5rem 0.65rem' }} colSpan={2}>
                       Total
                     </td>
@@ -1085,13 +1085,13 @@ export default function PeoplePayStubsTab({
           <div
             role="dialog"
             aria-labelledby="pay-stub-note-detail-title"
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 520, width: '100%', maxHeight: '85vh', overflow: 'auto' }}
+            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 520, width: '100%', maxHeight: '85vh', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="pay-stub-note-detail-title" style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>
               Payment details
             </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {payStubNoteDetail.person_name} · Pay period{' '}
               {new Date(payStubNoteDetail.period_start + 'T12:00:00').toLocaleDateString()} –{' '}
               {new Date(payStubNoteDetail.period_end + 'T12:00:00').toLocaleDateString()}
@@ -1110,7 +1110,7 @@ export default function PeoplePayStubsTab({
                         type="button"
                         onClick={() => void deletePayStubPayment(p.id)}
                         disabled={deletingPayStubPaymentId === p.id}
-                        style={{ marginLeft: '0.5rem', padding: '1px 6px', fontSize: '0.75rem', border: '1px solid #fecaca', background: 'white', color: '#dc2626', borderRadius: 4, cursor: deletingPayStubPaymentId === p.id ? 'not-allowed' : 'pointer' }}
+                        style={{ marginLeft: '0.5rem', padding: '1px 6px', fontSize: '0.75rem', border: '1px solid #fecaca', background: 'var(--surface)', color: 'var(--text-red-600)', borderRadius: 4, cursor: deletingPayStubPaymentId === p.id ? 'not-allowed' : 'pointer' }}
                       >
                         {deletingPayStubPaymentId === p.id ? '…' : 'Delete'}
                       </button>
@@ -1135,14 +1135,14 @@ export default function PeoplePayStubsTab({
               <div style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>
                 <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Legacy memo</div>
                 {payStubNoteDetail.paid_at ? (
-                  <div style={{ marginBottom: '0.35rem', color: '#6b7280' }}>
+                  <div style={{ marginBottom: '0.35rem', color: 'var(--text-muted)' }}>
                     Marked paid {new Date(payStubNoteDetail.paid_at).toLocaleDateString()}
                   </div>
                 ) : null}
                 <p style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{payStubNoteDetail.paid_note.trim()}</p>
               </div>
             ) : payStubNoteDetail.paid_at ? (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Legacy: marked paid {new Date(payStubNoteDetail.paid_at).toLocaleDateString()} (no installment records).
               </p>
             ) : null}
@@ -1165,7 +1165,7 @@ export default function PeoplePayStubsTab({
           onClick={() => setPayStubCalendarPerson(null)}
         >
           <div
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}
+            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '95vw', maxHeight: '90vh', overflow: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -1176,7 +1176,7 @@ export default function PeoplePayStubsTab({
                   <select
                     value={payStubCalendarYear}
                     onChange={(e) => setPayStubCalendarYear(parseInt(e.target.value, 10))}
-                    style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   >
                     {[new Date().getFullYear(), new Date().getFullYear() - 1, new Date().getFullYear() - 2].map((y) => (
                       <option key={y} value={y}>
@@ -1191,18 +1191,18 @@ export default function PeoplePayStubsTab({
               </div>
             </div>
             {payStubCalendarLoading ? (
-              <p style={{ color: '#6b7280' }}>Loading…</p>
+              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
             ) : payStubCalendarData ? (
               <>
                 <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.75rem', fontSize: '0.8125rem', flexWrap: 'wrap' }}>
                   <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#22c55e', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Fully paid</span>
                   <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#eab308', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Underpaid</span>
                   <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#f97316', marginRight: '0.25rem', verticalAlign: 'middle' }} /> Overpaid</span>
-                  <span><span style={{ display: 'inline-block', width: 12, height: 12, background: '#e5e7eb', marginRight: '0.25rem', verticalAlign: 'middle' }} /> No hours</span>
+                  <span><span style={{ display: 'inline-block', width: 12, height: 12, background: 'var(--bg-200)', marginRight: '0.25rem', verticalAlign: 'middle' }} /> No hours</span>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: '#e5e7eb', border: '1px solid #e5e7eb', fontSize: '0.625rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 1, background: 'var(--bg-200)', border: '1px solid var(--border)', fontSize: '0.625rem' }}>
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                    <div key={d} style={{ background: '#f9fafb', padding: '0.25rem', textAlign: 'center', fontWeight: 600 }}>
+                    <div key={d} style={{ background: 'var(--bg-subtle)', padding: '0.25rem', textAlign: 'center', fontWeight: 600 }}>
                       {d}
                     </div>
                   ))}
@@ -1229,7 +1229,7 @@ export default function PeoplePayStubsTab({
                     }
                     return cells.map((cell, idx) => {
                       if (!cell) {
-                        return <div key={idx} style={{ background: '#f3f4f6', minHeight: 10 }} />
+                        return <div key={idx} style={{ background: 'var(--bg-muted)', minHeight: 10 }} />
                       }
                       const { date, earned, paid } = cell
                       const tol = 0.01

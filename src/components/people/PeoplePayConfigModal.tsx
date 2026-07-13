@@ -52,7 +52,7 @@ function PayConfigRowTr({
     record_hours_but_salary: false,
   }
   return (
-    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+    <tr style={{ borderBottom: '1px solid var(--border)' }}>
       <td style={{ padding: '0.5rem 0.75rem' }}>{n}</td>
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
         <input
@@ -62,7 +62,7 @@ function PayConfigRowTr({
           value={payConfigDraft[n] !== undefined ? payConfigDraft[n] : (c.hourly_wage ?? '')}
           onChange={(e) => onHourlyWageChange(n, e.target.value)}
           disabled={payConfigSaving}
-          style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+          style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
         />
       </td>
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
@@ -75,7 +75,7 @@ function PayConfigRowTr({
           disabled={payConfigSaving || c.is_salary}
           placeholder={c.is_salary ? '—' : 'same'}
           title={c.is_salary ? 'Office rate does not apply to salaried people' : 'Optional: rate for office/bid/unassigned time. Blank = same as hourly wage.'}
-          style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: c.is_salary ? '#f3f4f6' : 'white' }}
+          style={{ width: 80, padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: c.is_salary ? 'var(--bg-muted)' : 'var(--surface)' }}
         />
       </td>
       <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -209,7 +209,7 @@ export function PeoplePayConfigModal({
         aria-describedby="people-pay-config-modal-desc"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(960px, calc(100vw - 2rem))',
           maxHeight: '90vh',
@@ -237,8 +237,8 @@ export function PeoplePayConfigModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -247,10 +247,10 @@ export function PeoplePayConfigModal({
             Close
           </button>
         </div>
-        <p id="people-pay-config-modal-desc" style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
+        <p id="people-pay-config-modal-desc" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
           Set hourly wage, Salary (8 hrs/day), Show in Hours (include in Hours tab), and Show in Cost Matrix (include in cost matrix and teams).
         </p>
-        <label htmlFor="people-pay-config-modal-name-filter" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: '#374151', marginBottom: '0.35rem', flexShrink: 0 }}>
+        <label htmlFor="people-pay-config-modal-name-filter" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-700)', marginBottom: '0.35rem', flexShrink: 0 }}>
           Filter by name
         </label>
         <input
@@ -268,44 +268,44 @@ export function PeoplePayConfigModal({
             marginBottom: '0.75rem',
             padding: '0.45rem 0.65rem',
             fontSize: '0.875rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             boxSizing: 'border-box',
             flexShrink: 0,
           }}
         />
-        <div style={{ flex: 1, minHeight: 0, border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+        <div style={{ flex: 1, minHeight: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hourly wage ($)</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }} title="Optional second rate for office/bid/unassigned time. Blank = same as hourly wage.">Office wage ($)</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Salary</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Hours</th>
-                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Show in Cost Matrix</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Hourly wage ($)</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }} title="Optional second rate for office/bid/unassigned time. Blank = same as hourly wage.">Office wage ($)</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Salary</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }} title="Record hours for tracking (salary still used for pay)">Record hours</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Show in Hours</th>
+                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Show in Cost Matrix</th>
               </tr>
             </thead>
             <tbody>
               {sectionBlocks.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                  <td colSpan={6} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                     {emptyMessage}
                   </td>
                 </tr>
               ) : (
                 sectionBlocks.map(({ section, filteredNames }) => (
                   <Fragment key={section.label}>
-                    <tr style={{ background: '#f3f4f6' }}>
+                    <tr style={{ background: 'var(--bg-muted)' }}>
                       <td
                         colSpan={7}
                         style={{
                           padding: '0.5rem 0.75rem',
                           fontWeight: 600,
                           fontSize: '0.8125rem',
-                          color: '#374151',
-                          borderBottom: '1px solid #e5e7eb',
+                          color: 'var(--text-700)',
+                          borderBottom: '1px solid var(--border)',
                         }}
                       >
                         {section.label}

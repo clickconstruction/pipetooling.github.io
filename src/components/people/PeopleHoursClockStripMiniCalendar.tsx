@@ -50,21 +50,21 @@ function miniDayPickerButtonStyle(isToday: boolean, isSelected: boolean, isWeeke
     minWidth: '3rem',
     padding: '0.35rem 0.45rem',
     borderRadius: 6,
-    border: '1px solid #d1d5db',
-    background: '#fff',
+    border: '1px solid var(--border-strong)',
+    background: 'var(--surface)',
     cursor: 'pointer',
     fontSize: '0.72rem',
     lineHeight: 1.22,
     textAlign: 'center',
     fontFamily: 'inherit',
-    color: '#111827',
+    color: 'var(--text-strong)',
   }
 
   const neutralWeekend: CSSProperties =
     !isWeekend
       ? {}
       : {
-          borderColor: '#e5e7eb',
+          borderColor: 'var(--border)',
           background: '#faf5ff',
         }
 
@@ -81,7 +81,7 @@ function miniDayPickerButtonStyle(isToday: boolean, isSelected: boolean, isWeeke
     return {
       ...base,
       borderColor: '#93c5fd',
-      background: isWeekend ? '#eef2ff' : '#eff6ff',
+      background: isWeekend ? '#eef2ff' : 'var(--bg-blue-tint)',
     }
   }
   if (isSelected) {
@@ -159,7 +159,7 @@ export function PeopleHoursClockStripMiniCalendar({
               onClick={() => onSelectYmd(ymd)}
             >
               <div style={{ fontWeight: isSelected ? 600 : isToday ? 600 : 500 }}>{mdLine}</div>
-              <div style={{ color: mutedWeekendWeekday ? '#6b7280' : '#4b5563', fontWeight: 500 }}>{weekdayLine}</div>
+              <div style={{ color: mutedWeekendWeekday ? 'var(--text-muted)' : 'var(--text-600)', fontWeight: 500 }}>{weekdayLine}</div>
             </button>
           )
         })}
@@ -188,7 +188,7 @@ export function PeopleHoursClockStripMiniCalendar({
                 textAlign: 'center',
                 fontSize: '0.72rem',
                 fontWeight: countsLoading ? 500 : n > 0 ? 700 : 600,
-                color: countsLoading ? '#9ca3af' : n > 0 ? '#b45309' : '#374151',
+                color: countsLoading ? '#9ca3af' : n > 0 ? 'var(--text-amber-700)' : 'var(--text-700)',
                 lineHeight: 1.2,
                 fontFamily: 'inherit',
                 fontVariantNumeric: 'tabular-nums',

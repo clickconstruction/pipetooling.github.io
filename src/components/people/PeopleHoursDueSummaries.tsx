@@ -160,7 +160,7 @@ export function PeopleHoursDueSummaries({
           >
             <div
               style={{
-                background: 'white',
+                background: 'var(--surface)',
                 borderRadius: 8,
                 padding: '1rem 1.25rem',
                 maxWidth: '90vw',
@@ -177,7 +177,7 @@ export function PeopleHoursDueSummaries({
                 <button
                   type="button"
                   onClick={() => setTagLedgerModalTag(null)}
-                  style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Close
                 </button>
@@ -217,7 +217,7 @@ export function PeopleHoursDueSummaries({
           >
             <div
               style={{
-                background: 'white',
+                background: 'var(--surface)',
                 borderRadius: 8,
                 padding: '1rem 1.25rem',
                 maxWidth: '90vw',
@@ -234,7 +234,7 @@ export function PeopleHoursDueSummaries({
                 <button
                   type="button"
                   onClick={() => setTeamLedgerModalTeam(null)}
-                  style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Close
                 </button>

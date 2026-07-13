@@ -71,7 +71,7 @@ export function PeopleHoursSharing({
               </button>
               {costMatrixShareSectionOpen && (
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                     Select Masters or assistants to grant view-only access to Cost matrix and Teams.
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
@@ -87,7 +87,7 @@ export function PeopleHoursSharing({
                       </label>
                     ))}
                   </div>
-                  {costMatrixShareError && <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
+                  {costMatrixShareError && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginTop: '0.5rem' }}>{costMatrixShareError}</p>}
                 </div>
               )}
             </div>
@@ -107,7 +107,7 @@ export function PeopleHoursSharing({
               </button>
               {costMatrixTagColorsSectionOpen && (
                 <div style={{ marginBottom: '0.75rem' }}>
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                     Click a tag to change its color.
                   </p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
@@ -174,7 +174,7 @@ export function PeopleHoursSharing({
                                   }
                                 }
                               }}
-                              style={{ width: 80, padding: '0.1rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.7rem' }}
+                              style={{ width: 80, padding: '0.1rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.7rem' }}
                             />
                             <label style={{ cursor: 'pointer', display: 'inline-block', position: 'relative' }} title="Color for new tag">
                               <input
@@ -213,7 +213,7 @@ export function PeopleHoursSharing({
                                   setNewTagColor('#e5e7eb')
                                 }
                               }}
-                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.7rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+                              style={{ padding: '0.1rem 0.35rem', fontSize: '0.7rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                             >
                               Add
                             </button>

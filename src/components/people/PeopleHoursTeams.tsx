@@ -78,11 +78,11 @@ export function PeopleHoursTeams({
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
               <label>
                 <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-                <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="date" value={teamPeriodStart} onChange={(e) => setTeamPeriodStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </label>
               <label>
                 <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-                <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </label>
               {canAccessPay && (
                 <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
@@ -90,7 +90,7 @@ export function PeopleHoursTeams({
                 </button>
               )}
             </div>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
               {canViewCostMatrixShared && !canAccessPay ? 'Teams and combined cost for a date range.' : 'Add people to teams to see combined cost for a date range (default: last 7 days).'}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -129,7 +129,7 @@ export function PeopleHoursTeams({
                   return { member: m, byDay, total }
                 })
                 return (
-                  <div key={team.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'white' }}>
+                  <div key={team.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.75rem', background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                       {teamsReadOnly ? (
                         <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{team.name}</span>
@@ -140,7 +140,7 @@ export function PeopleHoursTeams({
                             value={team.name}
                             onChange={(e) => setTeams((prev) => prev.map((t) => (t.id === team.id ? { ...t, name: e.target.value } : t)))}
                             onBlur={(e) => updateTeamName(team.id, e.target.value.trim() || 'New Team')}
-                            style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontWeight: 600, minWidth: 100, fontSize: '0.875rem' }}
+                            style={{ padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontWeight: 600, minWidth: 100, fontSize: '0.875rem' }}
                           />
                           <button
                             type="button"
@@ -155,7 +155,7 @@ export function PeopleHoursTeams({
                               padding: '0.15rem 0.35rem',
                               fontSize: '1rem',
                               lineHeight: 1,
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                             }}
                           >
                             ×
@@ -164,14 +164,14 @@ export function PeopleHoursTeams({
                       )}
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 0.75rem', fontSize: '0.8125rem' }}>
                         <span style={{ fontWeight: 600 }}>Period: ${Math.round(periodCost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>7d: ${Math.round(last7Cost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>3d: ${Math.round(last3Cost).toLocaleString('en-US')}</span>
-                        <span style={{ color: '#6b7280' }}>Yesterday: ${Math.round(yesterdayCost).toLocaleString('en-US')}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>7d: ${Math.round(last7Cost).toLocaleString('en-US')}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>3d: ${Math.round(last3Cost).toLocaleString('en-US')}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Yesterday: ${Math.round(yesterdayCost).toLocaleString('en-US')}</span>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
                       {team.members.map((m) => (
-                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.35rem', background: '#e5e7eb', borderRadius: 4, fontSize: '0.75rem' }}>
+                        <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', padding: '0.15rem 0.35rem', background: 'var(--bg-200)', borderRadius: 4, fontSize: '0.75rem' }}>
                           {m}
                           {!teamsReadOnly && (
                             <button type="button" onClick={() => removeTeamMember(team.id, m)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}>×</button>
@@ -185,7 +185,7 @@ export function PeopleHoursTeams({
                             const v = e.target.value
                             if (v) { addTeamMember(team.id, v); e.target.value = '' }
                           }}
-                          style={{ padding: '0.15rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem' }}
+                          style={{ padding: '0.15rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.75rem' }}
                         >
                           <option value="">+ Add person</option>
                           {showPeopleForMatrix.filter((p) => !team.members.includes(p)).map((p) => (
@@ -234,7 +234,7 @@ export function PeopleHoursTeams({
             aria-labelledby="people-delete-team-title"
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 320,
@@ -244,7 +244,7 @@ export function PeopleHoursTeams({
             <h3 id="people-delete-team-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>
               Delete team?
             </h3>
-            <p style={{ fontSize: '0.875rem', color: '#4b5563', margin: '0 0 1rem', lineHeight: 1.45 }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-600)', margin: '0 0 1rem', lineHeight: 1.45 }}>
               Delete <strong>{teamToDelete.name}</strong>? All people on this team will be removed from it. This cannot be undone.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -254,9 +254,9 @@ export function PeopleHoursTeams({
                 onClick={() => setTeamToDelete(null)}
                 style={{
                   padding: '0.45rem 0.85rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: teamDeletingId ? 'not-allowed' : 'pointer',
                   fontSize: '0.875rem',
                 }}

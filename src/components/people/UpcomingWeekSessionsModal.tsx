@@ -195,7 +195,7 @@ export function UpcomingWeekSessionsModal({
           }
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 620,
           width: '100%',
@@ -204,12 +204,12 @@ export function UpcomingWeekSessionsModal({
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 200 }}>
             <h3 id="upcoming-week-sessions-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
               {personName} — {weekLabel}
             </h3>
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {grouped ? `${grouped.totalHours.toFixed(2)}h this week · ` : ''}
               click a day to open My Time.
             </p>
@@ -238,18 +238,18 @@ export function UpcomingWeekSessionsModal({
             onClick={onClose}
             title="Close"
             aria-label="Close"
-            style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
           >
             ×
           </button>
         </div>
         <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
           {fetchError ? (
-            <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.875rem' }}>{fetchError}</p>
+            <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{fetchError}</p>
           ) : !grouped ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading sessions…</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading sessions…</p>
           ) : grouped.days.length === 0 ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No clocked sessions this week.</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No clocked sessions this week.</p>
           ) : (
             grouped.days.map((day) => (
               <div key={day.workDate} style={{ marginBottom: '0.75rem' }}>
@@ -266,7 +266,7 @@ export function UpcomingWeekSessionsModal({
                     font: 'inherit',
                     fontWeight: 600,
                     fontSize: '0.875rem',
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     textDecoration: 'underline dotted',
                     textUnderlineOffset: '2px',
                     cursor: 'pointer',
@@ -300,7 +300,7 @@ export function UpcomingWeekSessionsModal({
                         <span style={{ whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
                           {timeShort(s.clocked_in_at)} – {s.clocked_out_at ? timeShort(s.clocked_out_at) : 'open'}
                         </span>
-                        <span style={{ whiteSpace: 'nowrap', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                        <span style={{ whiteSpace: 'nowrap', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                           {upcomingSessionHours(s, Date.now()).toFixed(2)}h
                         </span>
                         <span
@@ -310,7 +310,7 @@ export function UpcomingWeekSessionsModal({
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap',
-                            color: '#374151',
+                            color: 'var(--text-700)',
                           }}
                           title={[jobLabel, notes].filter(Boolean).join(' — ')}
                         >
@@ -326,8 +326,8 @@ export function UpcomingWeekSessionsModal({
                             ...(approved
                               ? { background: '#d1fae5', color: '#065f46' }
                               : open
-                                ? { background: '#f3f4f6', color: '#6b7280' }
-                                : { background: '#fef3c7', color: '#b45309' }),
+                                ? { background: 'var(--bg-muted)', color: 'var(--text-muted)' }
+                                : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-700)' }),
                           }}
                         >
                           {approved ? 'Approved' : open ? 'Open' : 'Pending'}
@@ -359,8 +359,8 @@ export function UpcomingWeekSessionsModal({
                               style={{
                                 padding: '2px 8px',
                                 fontSize: '0.75rem',
-                                background: 'white',
-                                color: rejectConfirmId === s.id ? 'white' : '#b91c1c',
+                                background: 'var(--surface)',
+                                color: rejectConfirmId === s.id ? 'white' : 'var(--text-red-700)',
                                 border: '1px solid #b91c1c',
                                 ...(rejectConfirmId === s.id ? { background: '#b91c1c' } : {}),
                                 borderRadius: 4,

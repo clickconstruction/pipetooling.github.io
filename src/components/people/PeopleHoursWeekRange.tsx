@@ -26,7 +26,7 @@ export function PeopleHoursWeekRange({
           margin: '0 0 0.75rem 0',
           fontSize: '0.875rem',
           fontWeight: 600,
-          color: '#111827',
+          color: 'var(--text-strong)',
           lineHeight: 1.25,
           textAlign: 'left',
         }}
@@ -48,7 +48,7 @@ export function PeopleHoursWeekRange({
               type="button"
               aria-label="Previous week"
               onClick={() => shiftHoursWeek(-1)}
-              style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+              style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
             >
               ‹
             </button>
@@ -59,13 +59,13 @@ export function PeopleHoursWeekRange({
               type="button"
               aria-label="Next week"
               onClick={() => shiftHoursWeek(1)}
-              style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
+              style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '1.125rem', lineHeight: 1 }}
             >
               ›
             </button>
           </div>
           <details style={{ marginTop: '0.35rem', width: '100%', maxWidth: '100%' }}>
-            <summary style={{ fontSize: '0.8125rem', cursor: 'pointer', color: '#374151', textAlign: 'center' }}>
+            <summary style={{ fontSize: '0.8125rem', cursor: 'pointer', color: 'var(--text-700)', textAlign: 'center' }}>
               Custom dates
             </summary>
             <div
@@ -87,7 +87,7 @@ export function PeopleHoursWeekRange({
                 }}
               >
                 <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>Start</span>
-                <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </label>
               <label
                 style={{
@@ -98,7 +98,7 @@ export function PeopleHoursWeekRange({
                 }}
               >
                 <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>End</span>
-                <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </label>
             </div>
           </details>
@@ -117,7 +117,7 @@ export function PeopleHoursWeekRange({
           <button
             type="button"
             onClick={() => shiftHoursWeek(-1)}
-            style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
           >
             ← last week
           </button>
@@ -130,7 +130,7 @@ export function PeopleHoursWeekRange({
             }}
           >
             <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>Start</span>
-            <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
           </label>
           <label
             style={{
@@ -141,12 +141,12 @@ export function PeopleHoursWeekRange({
             }}
           >
             <span style={{ fontSize: '0.875rem', textAlign: 'center' }}>End</span>
-            <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
           </label>
           <button
             type="button"
             onClick={() => shiftHoursWeek(1)}
-            style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
           >
             next week →
           </button>

@@ -116,7 +116,7 @@ export function ForceClockOutModal({
         aria-labelledby="force-clock-out-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 420,
@@ -127,17 +127,17 @@ export function ForceClockOutModal({
         <h2 id="force-clock-out-title" style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: 600 }}>
           Force clock out and fix hours
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Sets when they stopped working. If the session is not yet approved, hours still flow through the usual approve flow.
         </p>
         <div style={{ marginBottom: '0.75rem' }}>
-          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
+          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem' }}>
             Clock in
           </span>
-          <div style={{ fontSize: '0.875rem', color: '#111827' }}>{clockInLabel}</div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)' }}>{clockInLabel}</div>
         </div>
         <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
+          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem' }}>
             Clock out (correct time)
           </span>
           <input
@@ -145,11 +145,11 @@ export function ForceClockOutModal({
             value={clockOutLocal}
             onChange={(e) => setClockOutLocal(e.target.value)}
             disabled={saving}
-            style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', width: '100%', maxWidth: 280 }}
+            style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', width: '100%', maxWidth: 280 }}
           />
         </label>
         {error ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b91c1c' }} role="alert">
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }} role="alert">
             {error}
           </p>
         ) : null}
@@ -160,9 +160,9 @@ export function ForceClockOutModal({
             disabled={saving}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: saving ? 'not-allowed' : 'pointer',
               fontSize: '0.875rem',
             }}
