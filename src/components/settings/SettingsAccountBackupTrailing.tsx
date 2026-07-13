@@ -38,7 +38,7 @@ export default function SettingsAccountBackupTrailing({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   lineHeight: 1.35,
                   textAlign: 'right',
                 }}
@@ -68,7 +68,7 @@ export default function SettingsAccountBackupTrailing({
                   border: 'none',
                   borderRadius: 6,
                   background: 'transparent',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   cursor: exportBackupBusy ? 'not-allowed' : 'pointer',
                   opacity: exportBackupBusy ? 0.55 : 1,
                 }}

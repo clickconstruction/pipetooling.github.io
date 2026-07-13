@@ -234,7 +234,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               Merge users
             </button>
           </div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
           <div style={{ overflowX: 'auto' }}>
             <table className="activeAccountsCard__table">
               <thead>
@@ -248,7 +248,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               <tbody>
                 {users.map((u) => (
                   <React.Fragment key={u.id}>
-                  <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       {editingUserId === u.id ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -279,13 +279,13 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                               {u.name}
                             </button>
                           ) : (
-                            <span style={{ color: '#9ca3af' }}>—</span>
+                            <span style={{ color: 'var(--text-faint)' }}>—</span>
                           )}
                           <button
                             type="button"
                             onClick={() => copyToClipboard(u.email)}
                             title="Click to copy email"
-                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left', color: '#6b7280' }}
+                            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left', color: 'var(--text-muted)' }}
                           >
                             {u.email}
                           </button>
@@ -297,14 +297,14 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', fontSize: '0.875rem' }}>
                           {(() => {
                             const ids = serviceTypeIdsForUser(u)
-                            if (ids === null) return <span style={{ color: '#9ca3af' }}>—</span>
+                            if (ids === null) return <span style={{ color: 'var(--text-faint)' }}>—</span>
                             if (ids.length === 0) return <span>All</span>
                             const pills = ids
                               .map((id) => serviceTypes.find((st) => st.id === id)?.name)
                               .filter((n): n is string => Boolean(n))
                               .map((name) => buildServiceTypeTradePill(name))
                               .filter((pill): pill is NonNullable<typeof pill> => pill !== null)
-                            if (pills.length === 0) return <span style={{ color: '#9ca3af' }}>—</span>
+                            if (pills.length === 0) return <span style={{ color: 'var(--text-faint)' }}>—</span>
                             return pills.map((pill) => (
                               <span key={pill.label} style={pill.style}>{pill.label}</span>
                             ))
@@ -330,7 +330,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         {u.role === 'assistant' && (
                           <label
                             title="Training mode: they can browse everything their role can see, but every change is blocked."
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap', color: u.read_only ? '#b45309' : '#6b7280' }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap', color: u.read_only ? 'var(--text-amber-700)' : 'var(--text-muted)' }}
                           >
                             <input
                               type="checkbox"
@@ -402,7 +402,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                             onClick={() => openArchiveConfirm(u)}
                             disabled={archiveConfirmSubmitting}
                             className="activeAccountsCard__rowBtn"
-                            style={{ color: '#b91c1c', borderColor: '#fecaca' }}
+                            style={{ color: 'var(--text-red-700)', borderColor: '#fecaca' }}
                           >
                             Archive
                           </button>
@@ -411,11 +411,11 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     </td>
                   </tr>
                   {editingUserId === u.id && u.role === 'estimator' && (
-                    <tr key={`${u.id}-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                    <tr key={`${u.id}-service-types`} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-subtle)' }}>
                       <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                             {serviceTypes.map((st) => (
                               <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -449,11 +449,11 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     </tr>
                   )}
                   {editingUserId === u.id && u.role === 'primary' && (
-                    <tr key={`${u.id}-primary-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                    <tr key={`${u.id}-primary-service-types`} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-subtle)' }}>
                       <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                             {serviceTypes.map((st) => (
                               <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -478,11 +478,11 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     </tr>
                   )}
                   {editingUserId === u.id && u.role === 'superintendent' && (
-                    <tr key={`${u.id}-superintendent-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                    <tr key={`${u.id}-superintendent-service-types`} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-subtle)' }}>
                       <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Materials, Bids)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict.</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                             {serviceTypes.map((st) => (
                               <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -507,11 +507,11 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     </tr>
                   )}
                   {editingUserId === u.id && isSubcontractorLikeRole(u.role) && (
-                    <tr key={`${u.id}-subcontractor-service-types`} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+                    <tr key={`${u.id}-subcontractor-service-types`} style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--bg-subtle)' }}>
                       <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>
                         <div style={{ fontSize: '0.875rem' }}>
                           <div style={{ marginBottom: 4, fontWeight: 500 }}>Service types (Clock In, Dispatch)</div>
-                          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict job/bid association.</p>
+                          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>Leave unchecked for access to all. Select specific types to restrict job/bid association.</p>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                             {serviceTypes.map((st) => (
                               <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -541,14 +541,14 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             </table>
           </div>
           {editError && (
-            <p style={{ color: '#b91c1c', marginTop: '0.5rem' }}>
+            <p style={{ color: 'var(--text-red-700)', marginTop: '0.5rem' }}>
               {editError}
             </p>
           )}
           {users.length === 0 && <p style={{ marginTop: '1rem' }}>No users yet.</p>}
 
           {/* Archived users */}
-          <div style={{ marginTop: '2rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
+          <div style={{ marginTop: '2rem', border: '1px solid var(--border)', borderRadius: '0.5rem', maxWidth: 640 }}>
             <button
               type="button"
               onClick={() => setArchivedSectionOpen((prev) => !prev)}
@@ -571,15 +571,15 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               Archived users ({archivedUsers.length})
             </button>
             {archivedSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                {restoreError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{restoreError}</p>}
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                {restoreError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{restoreError}</p>}
                 {archivedUsers.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No archived users.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No archived users.</p>
                 ) : (
                   <div style={{ overflowX: 'auto' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                       <thead>
-                        <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                        <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                           <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
                           <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                           <th style={{ padding: '0.5rem 0.75rem' }}>Role</th>
@@ -589,7 +589,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                       </thead>
                       <tbody>
                         {archivedUsers.map((u) => (
-                          <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{u.email}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{u.name}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{u.role}</td>
@@ -618,7 +618,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
           {/* Convert Master to Assistant/Subcontractor */}
           {users.length > 0 && (
-            <div style={{ marginTop: '2rem', border: '1px solid #e5e7eb', borderRadius: '0.5rem', maxWidth: 640 }}>
+            <div style={{ marginTop: '2rem', border: '1px solid var(--border)', borderRadius: '0.5rem', maxWidth: 640 }}>
               <button
                 type="button"
                 onClick={() => setConvertMasterSectionOpen((prev) => !prev)}
@@ -641,8 +641,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                 Convert Master to Assistant/Subcontractor
               </button>
               {convertMasterSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+              <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 Convert an existing master into an assistant or subcontractor. All of their customers, projects, and people
                 will be reassigned to another master.
               </p>
@@ -724,12 +724,12 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     </label>
                   </div>
                 )}
-                <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.8125rem' }}>
+                <p style={{ marginBottom: '0.75rem', color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
                   This operation reassigns all customers, projects, and people owned by the selected master to the new master and
                   changes their role. It is not easily reversible.
                 </p>
-                {convertError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{convertError}</p>}
-                {convertSummary && <p style={{ color: '#059669', marginBottom: '0.75rem' }}>{convertSummary}</p>}
+                {convertError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{convertError}</p>}
+                {convertSummary && <p style={{ color: 'var(--text-green-600)', marginBottom: '0.75rem' }}>{convertSummary}</p>}
                 <button
                   type="submit"
                   disabled={
@@ -747,8 +747,8 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             </div>
           )}
             {onOpenFindDuplicates && (
-            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ color: '#6b7280', margin: '0 0 0.5rem 0', fontSize: '0.875rem' }}>
+            <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+              <p style={{ color: 'var(--text-muted)', margin: '0 0 0.5rem 0', fontSize: '0.875rem' }}>
                 Roster of Assistants, Masters, and Subcontractors. You can add people who have not signed up. Use these when assigning workflow steps.
               </p>
               <button
@@ -767,7 +767,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {inviteOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Invite via email</h2>
             <form onSubmit={handleInvite}>
               <div style={{ marginBottom: '1rem' }}>
@@ -799,7 +799,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               {(inviteRole === 'estimator' || inviteRole === 'subcontractor' || inviteRole === 'helpers') && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
-                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>{inviteRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>{inviteRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                     {serviceTypes.map((st) => (
                       <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -832,7 +832,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
-              {inviteError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{inviteError}</p>}
+              {inviteError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{inviteError}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="submit" disabled={inviteSubmitting}>
                   {inviteSubmitting ? 'Sending…' : 'Send invite'}
@@ -846,7 +846,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {manualAddOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Manually add user</h2>
             <form onSubmit={handleManualAdd}>
               <div style={{ marginBottom: '1rem' }}>
@@ -890,7 +890,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               {(manualAddRole === 'estimator' || manualAddRole === 'subcontractor' || manualAddRole === 'helpers') && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: 4 }}>Service types (optional)</label>
-                  <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>{manualAddRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
+                  <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>{manualAddRole === 'estimator' ? 'Leave unchecked for access to all service types. Select specific types to restrict.' : 'Leave unchecked for access to all. Select specific types to restrict job/bid association in Clock In and Dispatch.'}</p>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                     {serviceTypes.map((st) => (
                       <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -923,7 +923,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
-              {manualAddError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{manualAddError}</p>}
+              {manualAddError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{manualAddError}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="submit" disabled={manualAddSubmitting}>
                   {manualAddSubmitting ? 'Creating…' : 'Create user'}
@@ -937,9 +937,9 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {deleteOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Archive user</h2>
-            <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
               Enter the user&apos;s email and/or name as shown in Active accounts. At least one field must match;
               the server finds the user by email first, then by name.
             </p>
@@ -966,9 +966,9 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
               </div>
-              {deleteError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{deleteError}</p>}
+              {deleteError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{deleteError}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={deleteSubmitting} style={{ color: '#b91c1c' }}>
+                <button type="submit" disabled={deleteSubmitting} style={{ color: 'var(--text-red-700)' }}>
                   {deleteSubmitting ? 'Archiving…' : 'Archive user'}
                 </button>
                 <button type="button" onClick={closeArchive} disabled={deleteSubmitting}>Cancel</button>
@@ -980,9 +980,9 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {deleteReassignOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 500 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 500 }}>
             <h2 style={{ marginTop: 0 }}>Archive User & Reassign Customers</h2>
-            <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
               Select a user to archive and a master to inherit their customers. 
               The user will be archived after all customers are reassigned.
             </p>
@@ -1016,7 +1016,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               
               {deleteReassignCustomerCount > 0 && (
                 <p style={{ 
-                  background: '#fef3c7', 
+                  background: 'var(--bg-amber-100)', 
                   border: '1px solid #f59e0b', 
                   padding: '0.75rem', 
                   borderRadius: 4, 
@@ -1071,7 +1071,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               </div>
               
               {deleteReassignError && (
-                <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>
+                <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>
                   {deleteReassignError}
                 </p>
               )}
@@ -1107,14 +1107,14 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {archiveConfirmUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
             <h2 style={{ marginTop: 0 }}>
               Archive {archiveConfirmUser.name || archiveConfirmUser.email}?
             </h2>
-            <p style={{ color: '#374151', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
+            <p style={{ color: 'var(--text-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>
               Are you sure? Archiving <strong>{archiveConfirmUser.email}</strong> means:
             </p>
-            <ul style={{ margin: '0 0 1rem', paddingLeft: '1.2rem', fontSize: '0.875rem', color: '#374151' }}>
+            <ul style={{ margin: '0 0 1rem', paddingLeft: '1.2rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
               <li>They can no longer sign in (their login is banned).</li>
               <li>They disappear from active-account lists and assignment pickers.</li>
               <li>
@@ -1126,7 +1126,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
             {archiveConfirmCustomerCount != null && archiveConfirmCustomerCount > 0 && (
               <p
                 style={{
-                  background: '#fef3c7',
+                  background: 'var(--bg-amber-100)',
                   border: '1px solid #f59e0b',
                   padding: '0.75rem',
                   borderRadius: 4,
@@ -1141,7 +1141,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               </p>
             )}
             {archiveConfirmError && (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{archiveConfirmError}</p>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{archiveConfirmError}</p>
             )}
             <div style={{ display: 'flex', gap: 8 }}>
               <button
@@ -1181,9 +1181,9 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
         const movedEntries = mergePreview ? Object.entries(mergePreview.moved) : []
         return (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 540, maxHeight: '85vh', overflow: 'auto' }}>
+            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 540, maxHeight: '85vh', overflow: 'auto' }}>
               <h2 style={{ marginTop: 0 }}>Merge users</h2>
-              <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
                 Moves everything the merged-away account owns (clock time, reports, job and bid
                 assignments, notes, banking attributions…) onto the account you keep, then leaves
                 the merged-away account archived and banned. Both accounts must have the same
@@ -1238,7 +1238,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   ))}
                 </select>
                 {mergeSurvivorId && absorbCandidates.length === 0 && (
-                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     No eligible accounts: same role, and archived or never signed into.
                   </p>
                 )}
@@ -1246,7 +1246,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
               {mergePreview && (
                 <div
                   style={{
-                    background: '#fffbeb',
+                    background: 'var(--bg-amber-tint)',
                     border: '1px solid #f59e0b',
                     borderRadius: 4,
                     padding: '0.75rem',
@@ -1269,16 +1269,16 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                     </ul>
                   )}
                   {mergePreview.warnings.map((w, i) => (
-                    <p key={i} style={{ margin: '0.5rem 0 0', color: '#92400e' }}>
+                    <p key={i} style={{ margin: '0.5rem 0 0', color: 'var(--text-amber-800)' }}>
                       ⚠️ {w}
                     </p>
                   ))}
-                  <p style={{ margin: '0.5rem 0 0', fontWeight: 600, color: '#b91c1c' }}>
+                  <p style={{ margin: '0.5rem 0 0', fontWeight: 600, color: 'var(--text-red-700)' }}>
                     Merging cannot be undone.
                   </p>
                 </div>
               )}
-              {mergeError && <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{mergeError}</p>}
+              {mergeError && <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{mergeError}</p>}
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
                   type="button"
@@ -1315,7 +1315,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
 
       {setPasswordUser && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Set password for {setPasswordUser.email}</h2>
             <form onSubmit={handleSetPassword}>
               <div style={{ marginBottom: '1rem' }}>
@@ -1342,7 +1342,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                   autoComplete="new-password"
                 />
               </div>
-              {setPasswordError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{setPasswordError}</p>}
+              {setPasswordError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{setPasswordError}</p>}
               <div style={{ display: 'flex', gap: 8 }}>
                 <button type="submit" disabled={setPasswordSubmitting}>
                   {setPasswordSubmitting ? 'Setting…' : 'Set password'}

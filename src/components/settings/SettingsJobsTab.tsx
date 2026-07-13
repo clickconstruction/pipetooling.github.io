@@ -62,7 +62,7 @@ export default function SettingsJobsTab({
   return (
     <>
       {/* Job creation overrides */}
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+      <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
         <button
           type="button"
           onClick={() => setJobOwnerOverridesSectionOpen((prev) => !prev)}
@@ -85,15 +85,15 @@ export default function SettingsJobsTab({
           Job creation overrides
         </button>
         {jobOwnerOverridesSectionOpen && (
-          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-            <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+            <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               When a user creates a job, assign it to another user instead of themselves.
             </p>
             <form onSubmit={saveJobOwnerOverrides}>
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                    <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                       <th style={{ padding: '0.5rem 0.75rem' }}>User</th>
                       <th style={{ padding: '0.5rem 0.75rem' }}>Create jobs as</th>
                       <th style={{ padding: '0.5rem 0.75rem' }}>Jobs</th>
@@ -104,7 +104,7 @@ export default function SettingsJobsTab({
                     {users
                       .filter((u) => ['dev', 'master_technician', 'assistant'].includes(u.role))
                       .map((u) => (
-                        <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || u.email}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             <select
@@ -191,9 +191,9 @@ export default function SettingsJobsTab({
 
       {reassignConfirmOpen && reassignSourceUserId && reassignTargetUserId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Re-assign jobs</h2>
-            <p style={{ color: '#6b7280', marginBottom: '1rem', fontSize: '0.875rem' }}>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.875rem' }}>
               Re-assign {jobCountByUserId[reassignSourceUserId] ?? 0} jobs from {users.find((u) => u.id === reassignSourceUserId)?.name || 'Unknown'} to {users.find((u) => u.id === reassignTargetUserId)?.name || 'Unknown'}? This cannot be undone.
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -222,7 +222,7 @@ export default function SettingsJobsTab({
         </div>
       )}
 
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+      <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
         <button
           type="button"
           aria-expanded={defaultLaborRateSectionOpen}
@@ -246,8 +246,8 @@ export default function SettingsJobsTab({
           Default Labor Rate (dev)
         </button>
         {defaultLaborRateSectionOpen && (
-          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-            <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+            <p style={{ marginBottom: '1rem', marginTop: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               Set the default Labor rate ($/hr) used when adding a new labor job in Jobs → + Labor. Leave blank for no default.
             </p>
             <form onSubmit={saveDefaultLaborRate} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -260,7 +260,7 @@ export default function SettingsJobsTab({
                 value={defaultLaborRate}
                 onChange={(e) => setDefaultLaborRate(e.target.value)}
                 placeholder="e.g. 75"
-                style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: 120, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
               <button
                 type="submit"

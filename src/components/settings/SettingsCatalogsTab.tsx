@@ -233,7 +233,7 @@ export default function SettingsCatalogsTab({
 }: SettingsCatalogsTabProps) {
   return (
     <>
-        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
           <button
             type="button"
             onClick={() => setManagePartsSectionOpen((prev) => !prev)}
@@ -256,9 +256,9 @@ export default function SettingsCatalogsTab({
             Manage Parts
           </button>
           {managePartsSectionOpen && (
-          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Duplicate Materials</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Find and delete duplicate material parts in the Parts Book (matching names or 80%+ similarity).
           </p>
           <Link
@@ -270,7 +270,7 @@ export default function SettingsCatalogsTab({
           {myRole === 'dev' && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Service Types</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Manage service types for categorizing bids and materials (Plumbing, Electrical, HVAC, etc.). These filters appear on the Materials and Bids pages.
           </p>
           
@@ -287,17 +287,17 @@ export default function SettingsCatalogsTab({
           {serviceTypes.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {serviceTypes.map((st, idx) => (
-                <div key={st.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                <div key={st.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--surface)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
                         <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{st.name}</h3>
                         {st.color && (
-                          <div style={{ width: '1rem', height: '1rem', borderRadius: '50%', background: st.color, border: '1px solid #d1d5db' }}></div>
+                          <div style={{ width: '1rem', height: '1rem', borderRadius: '50%', background: st.color, border: '1px solid var(--border-strong)' }}></div>
                         )}
                       </div>
                       {st.description && (
-                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>{st.description}</p>
+                        <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{st.description}</p>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -308,8 +308,8 @@ export default function SettingsCatalogsTab({
                         style={{
                           padding: '0.25rem 0.5rem',
                           fontSize: '0.875rem',
-                          background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
-                          border: '1px solid #d1d5db',
+                          background: idx === 0 ? 'var(--bg-muted)' : 'var(--bg-200)',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           cursor: idx === 0 ? 'not-allowed' : 'pointer'
                         }}
@@ -323,8 +323,8 @@ export default function SettingsCatalogsTab({
                         style={{
                           padding: '0.25rem 0.5rem',
                           fontSize: '0.875rem',
-                          background: idx === serviceTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
-                          border: '1px solid #d1d5db',
+                          background: idx === serviceTypes.length - 1 ? 'var(--bg-muted)' : 'var(--bg-200)',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           cursor: idx === serviceTypes.length - 1 ? 'not-allowed' : 'pointer'
                         }}
@@ -341,7 +341,7 @@ export default function SettingsCatalogsTab({
                       <button
                         type="button"
                         onClick={() => deleteServiceType(st)}
-                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }}
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fecaca' }}
                       >
                         Delete
                       </button>
@@ -351,18 +351,18 @@ export default function SettingsCatalogsTab({
               ))}
             </div>
           ) : (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', fontStyle: 'italic' }}>No service types created yet.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontStyle: 'italic' }}>No service types created yet.</p>
           )}
 
           {serviceTypeFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ background: 'white', borderRadius: 8, padding: '1.5rem', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
                 <h3 style={{ marginTop: 0, marginBottom: '1rem' }}>
                   {editingServiceType ? 'Edit Service Type' : 'Add Service Type'}
                 </h3>
                 
                 {serviceTypeError && (
-                  <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem', fontSize: '0.875rem' }}>
+                  <div style={{ padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, marginBottom: '1rem', fontSize: '0.875rem' }}>
                     {serviceTypeError}
                   </div>
                 )}
@@ -376,7 +376,7 @@ export default function SettingsCatalogsTab({
                       type="text"
                       value={serviceTypeName}
                       onChange={(e) => setServiceTypeName(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       required
                       autoFocus
                     />
@@ -389,7 +389,7 @@ export default function SettingsCatalogsTab({
                     <textarea
                       value={serviceTypeDescription}
                       onChange={(e) => setServiceTypeDescription(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minHeight: '80px' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minHeight: '80px' }}
                     />
                   </div>
                   
@@ -403,9 +403,9 @@ export default function SettingsCatalogsTab({
                       onChange={(e) => setServiceTypeLedgerJobPrefix(e.target.value)}
                       placeholder="e.g. JP — leave empty for J"
                       maxLength={4}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
-                    <p style={{ margin: '0.35rem 0 0', color: '#6b7280', fontSize: '0.8125rem' }}>
+                    <p style={{ margin: '0.35rem 0 0', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                       Shown before the job number in the app. Empty uses the default <strong>J</strong>. Max 4 characters.
                     </p>
                   </div>
@@ -420,9 +420,9 @@ export default function SettingsCatalogsTab({
                       onChange={(e) => setServiceTypeLedgerBidPrefix(e.target.value)}
                       placeholder="e.g. BP — leave empty for B"
                       maxLength={4}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
-                    <p style={{ margin: '0.35rem 0 0', color: '#6b7280', fontSize: '0.8125rem' }}>
+                    <p style={{ margin: '0.35rem 0 0', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                       Shown before the bid number in the app. Empty uses the default <strong>B</strong>. Max 4 characters.
                     </p>
                   </div>
@@ -433,14 +433,14 @@ export default function SettingsCatalogsTab({
                         type="color"
                         value={serviceTypeColor || '#3b82f6'}
                         onChange={(e) => setServiceTypeColor(e.target.value)}
-                        style={{ width: '60px', height: '40px', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                        style={{ width: '60px', height: '40px', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                       />
                       <input
                         type="text"
                         value={serviceTypeColor}
                         onChange={(e) => setServiceTypeColor(e.target.value)}
                         placeholder="#3b82f6"
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       />
                     </div>
                   </div>
@@ -480,7 +480,7 @@ export default function SettingsCatalogsTab({
       {(myRole === 'dev' || myRole === 'estimator') && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Material Part Types</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Manage material part types for each service type. Material part types are used in the Materials system to categorize material parts (pipes, fittings, valves, etc.). This is separate from Takeoff, Labor, and Price Book Names which are used in Bids/Books for installed fixtures.
           </p>
           
@@ -491,7 +491,7 @@ export default function SettingsCatalogsTab({
             <select
               value={selectedServiceTypeForParts}
               onChange={(e) => setSelectedServiceTypeForParts(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+              style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
               {visibleServiceTypesForMaterials.map((st) => (
@@ -503,7 +503,7 @@ export default function SettingsCatalogsTab({
           {selectedServiceTypeForParts && (
             <>
               {myRole === 'estimator' && visibleServiceTypesForMaterials.length > 1 && (
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Showing part types for <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForParts)?.name ?? 'this service type'}</strong>. Change the service type above to see types for other trades.
                 </p>
               )}
@@ -541,7 +541,7 @@ export default function SettingsCatalogsTab({
               {partTypes.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {partTypes.map((pt, idx) => (
-                    <div key={pt.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                    <div key={pt.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--surface)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -550,8 +550,8 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#d1fae5' : '#f3f4f6',
-                                color: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#065f46' : '#6b7280',
+                                background: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
+                                color: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#065f46' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -569,8 +569,8 @@ export default function SettingsCatalogsTab({
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.875rem',
-                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
+                              background: idx === 0 ? 'var(--bg-muted)' : 'var(--bg-200)',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
                               cursor: idx === 0 ? 'not-allowed' : 'pointer'
                             }}
@@ -584,8 +584,8 @@ export default function SettingsCatalogsTab({
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.875rem',
-                              background: idx === partTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
+                              background: idx === partTypes.length - 1 ? 'var(--bg-muted)' : 'var(--bg-200)',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
                               cursor: idx === partTypes.length - 1 ? 'not-allowed' : 'pointer'
                             }}
@@ -614,7 +614,7 @@ export default function SettingsCatalogsTab({
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8 }}>
                   No material part types yet. Click "Add Material Part Type" to create one.
                 </div>
               )}
@@ -623,17 +623,17 @@ export default function SettingsCatalogsTab({
 
           {partTypeFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
                 <h2 style={{ marginBottom: '1rem' }}>{editingPartType ? 'Edit Material Part Type' : 'Add Material Part Type'}</h2>
                 
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForParts)?.name}</strong>
                   </span>
                 </div>
                 
                 {partTypeError && (
-                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', borderRadius: 4, color: 'var(--text-red-700)' }}>
                     {partTypeError}
                   </div>
                 )}
@@ -647,7 +647,7 @@ export default function SettingsCatalogsTab({
                       type="text"
                       value={partTypeName}
                       onChange={(e) => setPartTypeName(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       required
                       autoFocus
                       placeholder="e.g., Pipe, Fitting, Valve, Sink, Faucet"
@@ -689,7 +689,7 @@ export default function SettingsCatalogsTab({
       {(myRole === 'dev' || myRole === 'estimator') && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Material Assembly Types</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Manage assembly types for each service type. Assembly types are used in the Materials system to categorize material assemblies/templates (e.g., Bathroom, Kitchen, Utility). This helps organize and filter assemblies.
           </p>
           
@@ -700,7 +700,7 @@ export default function SettingsCatalogsTab({
             <select
               value={selectedServiceTypeForAssemblies}
               onChange={(e) => setSelectedServiceTypeForAssemblies(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+              style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
               {visibleServiceTypesForMaterials.map((st) => (
@@ -712,7 +712,7 @@ export default function SettingsCatalogsTab({
           {selectedServiceTypeForAssemblies && (
             <>
               {myRole === 'estimator' && visibleServiceTypesForMaterials.length > 1 && (
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Showing assembly types for <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForAssemblies)?.name ?? 'this service type'}</strong>. Change the service type above to see types for other trades.
                 </p>
               )}
@@ -750,7 +750,7 @@ export default function SettingsCatalogsTab({
               {assemblyTypes.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {assemblyTypes.map((at, idx) => (
-                    <div key={at.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                    <div key={at.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--surface)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -759,8 +759,8 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#d1fae5' : '#f3f4f6',
-                                color: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#065f46' : '#6b7280',
+                                background: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
+                                color: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#065f46' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -778,8 +778,8 @@ export default function SettingsCatalogsTab({
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.875rem',
-                              background: idx === 0 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
+                              background: idx === 0 ? 'var(--bg-muted)' : 'var(--bg-200)',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
                               cursor: idx === 0 ? 'not-allowed' : 'pointer'
                             }}
@@ -793,8 +793,8 @@ export default function SettingsCatalogsTab({
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.875rem',
-                              background: idx === assemblyTypes.length - 1 ? '#f3f4f6' : '#e5e7eb',
-                              border: '1px solid #d1d5db',
+                              background: idx === assemblyTypes.length - 1 ? 'var(--bg-muted)' : 'var(--bg-200)',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
                               cursor: idx === assemblyTypes.length - 1 ? 'not-allowed' : 'pointer'
                             }}
@@ -823,7 +823,7 @@ export default function SettingsCatalogsTab({
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8 }}>
                   No assembly types yet. Click "Add Assembly Type" to create one.
                 </div>
               )}
@@ -832,17 +832,17 @@ export default function SettingsCatalogsTab({
 
           {assemblyTypeFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
                 <h2 style={{ marginBottom: '1rem' }}>{editingAssemblyType ? 'Edit Assembly Type' : 'Add Assembly Type'}</h2>
                 
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForAssemblies)?.name}</strong>
                   </span>
                 </div>
                 
                 {assemblyTypeError && (
-                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', borderRadius: 4, color: 'var(--text-red-700)' }}>
                     {assemblyTypeError}
                   </div>
                 )}
@@ -856,7 +856,7 @@ export default function SettingsCatalogsTab({
                       type="text"
                       value={assemblyTypeName}
                       onChange={(e) => setAssemblyTypeName(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       required
                       autoFocus
                       placeholder="e.g., Bathroom, Kitchen, Utility, Commercial"
@@ -898,7 +898,7 @@ export default function SettingsCatalogsTab({
       {myRole === 'dev' && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Takeoff, Labor, and Price Book Names</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Book names are the fixture and tie-in names (e.g., Toilet, Kitchen Sink, Water Heater) used across the Takeoff, Labor, and Price books. Each row shows a name with badges indicating how many entries in each book use it. These names appear in Bids Counts and when adding or editing book entries. New names can also be created automatically when adding book entries. Note: Materials uses Material Part Types for categorizing parts and supplies.
           </p>
           
@@ -909,7 +909,7 @@ export default function SettingsCatalogsTab({
             <select
               value={selectedServiceTypeForFixtures}
               onChange={(e) => setSelectedServiceTypeForFixtures(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+              style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
               {serviceTypes.map((st) => (
@@ -933,7 +933,7 @@ export default function SettingsCatalogsTab({
                   onClick={() => removeUnusedFixtureTypes()}
                   disabled={removingUnusedFixtureTypes}
                   title="Remove book names with 0 takeoff, 0 labor, 0 price"
-                  style={{ padding: '0.5rem 1rem', background: removingUnusedFixtureTypes ? '#d1d5db' : '#f3f4f6', color: 'inherit', border: '1px solid #d1d5db', borderRadius: 4, cursor: removingUnusedFixtureTypes ? 'not-allowed' : 'pointer'
+                  style={{ padding: '0.5rem 1rem', background: removingUnusedFixtureTypes ? '#d1d5db' : 'var(--bg-muted)', color: 'inherit', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: removingUnusedFixtureTypes ? 'not-allowed' : 'pointer'
                   }}
                 >
                   {removingUnusedFixtureTypes ? 'Removing…' : 'Remove unused book names (0 takeoff, 0 labor, 0 price)'}
@@ -943,7 +943,7 @@ export default function SettingsCatalogsTab({
               {fixtureTypes.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {fixtureTypes.map((ft) => (
-                    <div key={ft.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                    <div key={ft.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--surface)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
@@ -952,8 +952,8 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#ede9fe' : '#f3f4f6',
-                                color: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#5b21b6' : '#6b7280',
+                                background: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#ede9fe' : 'var(--bg-muted)',
+                                color: (fixtureTypeTakeoffBookCounts[ft.id] ?? 0) > 0 ? '#5b21b6' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -965,8 +965,8 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#dbeafe' : '#f3f4f6',
-                                color: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#1e40af' : '#6b7280',
+                                background: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#dbeafe' : 'var(--bg-muted)',
+                                color: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#1e40af' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -978,8 +978,8 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#d1fae5' : '#f3f4f6',
-                                color: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#065f46' : '#6b7280',
+                                background: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
+                                color: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#065f46' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -1010,7 +1010,7 @@ export default function SettingsCatalogsTab({
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8 }}>
                   No book names yet. Click "Add Book Name" to create one.
                 </div>
               )}
@@ -1019,17 +1019,17 @@ export default function SettingsCatalogsTab({
 
           {fixtureTypeFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+              <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
                 <h2 style={{ marginBottom: '1rem' }}>{editingFixtureType ? 'Edit Book Name' : 'Add Book Name'}</h2>
                 
-                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeForFixtures)?.name}</strong>
                   </span>
                 </div>
                 
                 {fixtureTypeError && (
-                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, color: '#b91c1c' }}>
+                  <div style={{ padding: '0.75rem', marginBottom: '1rem', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', borderRadius: 4, color: 'var(--text-red-700)' }}>
                     {fixtureTypeError}
                   </div>
                 )}
@@ -1043,7 +1043,7 @@ export default function SettingsCatalogsTab({
                       type="text"
                       value={fixtureTypeName}
                       onChange={(e) => setFixtureTypeName(e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       required
                       autoFocus
                       placeholder="e.g., Toilet, Kitchen Sink, Water Heater"
@@ -1085,7 +1085,7 @@ export default function SettingsCatalogsTab({
       {myRole === 'dev' && (
         <>
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Counts Quick-add Names</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Quick-select fixture groups shown when adding count rows in Bids. Each service type (Plumbing, Electrical, HVAC) has its own set of groups and fixtures.
           </p>
           <div style={{ marginBottom: '1.5rem' }}>
@@ -1093,7 +1093,7 @@ export default function SettingsCatalogsTab({
             <select
               value={selectedServiceTypeForCountsFixtures}
               onChange={(e) => setSelectedServiceTypeForCountsFixtures(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px' }}
+              style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '200px' }}
             >
               <option value="">-- Select a service type --</option>
               {serviceTypes.map((st) => (
@@ -1115,7 +1115,7 @@ export default function SettingsCatalogsTab({
               {countsFixtureGroups.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {countsFixtureGroups.map((grp, gIdx) => (
-                    <div key={grp.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: 'white' }}>
+                    <div key={grp.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--surface)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                         <span style={{ fontWeight: 600, fontSize: '1rem' }}>{grp.label}</span>
                         <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
@@ -1134,9 +1134,9 @@ export default function SettingsCatalogsTab({
                             <div key={item.id} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                               <button type="button" onClick={() => moveCountsFixtureItem(item, 'up')} disabled={iIdx === 0} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem' }}>↑</button>
                               <button type="button" onClick={() => moveCountsFixtureItem(item, 'down')} disabled={iIdx === countsFixtureGroupItems.filter((x) => x.group_id === grp.id).length - 1} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem' }}>↓</button>
-                              <span style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem' }}>{item.name}</span>
+                              <span style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.875rem' }}>{item.name}</span>
                               <button type="button" onClick={() => openEditCountsFixtureItem(grp, item)} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem' }}>Edit</button>
-                              <button type="button" onClick={() => deleteCountsFixtureItem(item)} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem', color: '#dc2626' }}>×</button>
+                              <button type="button" onClick={() => deleteCountsFixtureItem(item)} style={{ padding: '0.125rem 0.25rem', fontSize: '0.75rem', color: 'var(--text-red-600)' }}>×</button>
                             </div>
                           ))}
                       </div>
@@ -1144,7 +1144,7 @@ export default function SettingsCatalogsTab({
                   ))}
                 </div>
               ) : (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8 }}>
                   No groups yet. Click "Add Group" to create one (e.g. Bathrooms:, Kitchen:).
                 </div>
               )}
@@ -1152,12 +1152,12 @@ export default function SettingsCatalogsTab({
           )}
           {countsFixtureGroupFormOpen && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureGroup ? 'Edit Group' : 'Add Group'}</h3>
-                {countsFixtureGroupError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureGroupError}</div>}
+                {countsFixtureGroupError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureGroupError}</div>}
                 <form onSubmit={saveCountsFixtureGroup}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Group label (e.g. Bathrooms:, Kitchen:)</label>
-                  <input type="text" value={countsFixtureGroupLabel} onChange={(e) => setCountsFixtureGroupLabel(e.target.value)} placeholder="Bathrooms:" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem' }} required />
+                  <input type="text" value={countsFixtureGroupLabel} onChange={(e) => setCountsFixtureGroupLabel(e.target.value)} placeholder="Bathrooms:" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem' }} required />
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" onClick={closeEditCountsFixtureGroup} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
                     <button type="submit" disabled={countsFixtureGroupSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureGroupSaving ? 'Saving...' : 'Save'}</button>
@@ -1168,13 +1168,13 @@ export default function SettingsCatalogsTab({
           )}
           {countsFixtureItemFormOpen && editingCountsFixtureGroupForItem && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+              <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
                 <h3 style={{ margin: '0 0 1rem' }}>{editingCountsFixtureItem ? 'Edit Fixture' : 'Add Fixture'}</h3>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Group: {editingCountsFixtureGroupForItem.label}</p>
-                {countsFixtureItemError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureItemError}</div>}
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Group: {editingCountsFixtureGroupForItem.label}</p>
+                {countsFixtureItemError && <div style={{ marginBottom: '0.75rem', padding: '0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 4, fontSize: '0.875rem' }}>{countsFixtureItemError}</div>}
                 <form onSubmit={saveCountsFixtureItem}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture name</label>
-                  <input type="text" value={countsFixtureItemName} onChange={(e) => setCountsFixtureItemName(e.target.value)} placeholder="e.g. Toilets, Kitchen sinks" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem' }} required />
+                  <input type="text" value={countsFixtureItemName} onChange={(e) => setCountsFixtureItemName(e.target.value)} placeholder="e.g. Toilets, Kitchen sinks" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem' }} required />
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" onClick={closeEditCountsFixtureItem} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
                     <button type="submit" disabled={countsFixtureItemSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureItemSaving ? 'Saving...' : 'Save'}</button>
@@ -1186,7 +1186,7 @@ export default function SettingsCatalogsTab({
         </>
       )}
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Maintenance: Materials prices</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Review and clean up material prices that don&apos;t match any part or supply house (these won&apos;t appear in the Parts Book).
           </p>
           <button

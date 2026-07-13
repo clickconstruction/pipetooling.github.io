@@ -72,12 +72,12 @@ export default function BillCustomerMemoDevSettingsBlock() {
     boxSizing: 'border-box' as const,
     padding: '0.5rem',
     fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
   }
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -103,16 +103,16 @@ export default function BillCustomerMemoDevSettingsBlock() {
         <div
           style={{
             padding: '0 1rem 1rem 1rem',
-            borderTop: '1px solid #e5e7eb',
-            background: '#fafafa',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-page)',
           }}
         >
-          <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
             These presets apply <strong>organization-wide</strong> for Bill Customer <strong>Memo</strong> on Stripe,
             HouseCall Pro, and Physical tabs (all signed-in users). Shipped defaults stay empty until you save overrides
             here.
           </p>
-          <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+          <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
             Builtin: standard
           </p>
           <label
@@ -120,7 +120,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
             style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}
           >
             Display name
-            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               {' '}
               ({standardLabel.length} / {BILL_CUSTOMER_MEMO_LABEL_MAX_CHARS})
             </span>
@@ -134,7 +134,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
           />
           <label htmlFor="bill-customer-memo-preset-standard" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>
             Body
-            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               {' '}
               ({standardText.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
             </span>
@@ -150,13 +150,13 @@ export default function BillCustomerMemoDevSettingsBlock() {
               marginBottom: '0.75rem',
               padding: '0.5rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               resize: 'vertical',
               lineHeight: 1.4,
             }}
           />
-          <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+          <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
             Builtin: alternate
           </p>
           <label
@@ -164,7 +164,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
             style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}
           >
             Display name
-            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               {' '}
               ({alternateLabel.length} / {BILL_CUSTOMER_MEMO_LABEL_MAX_CHARS})
             </span>
@@ -178,7 +178,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
           />
           <label htmlFor="bill-customer-memo-preset-alternate" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>
             Body
-            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               {' '}
               ({alternateText.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
             </span>
@@ -194,7 +194,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
               marginBottom: '0.75rem',
               padding: '0.5rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               resize: 'vertical',
               lineHeight: 1.4,
@@ -220,14 +220,14 @@ export default function BillCustomerMemoDevSettingsBlock() {
               </option>
             ))}
           </select>
-          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
+          <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)' }}>
             Additional presets
-            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               {' '}
               (max {BILL_CUSTOMER_MEMO_CUSTOM_PRESET_MAX})
             </span>
           </h4>
-          <p style={{ margin: '0 0 0.65rem', color: '#6b7280', fontSize: '0.8125rem', lineHeight: 1.45 }}>
+          <p style={{ margin: '0 0 0.65rem', color: 'var(--text-muted)', fontSize: '0.8125rem', lineHeight: 1.45 }}>
             Rows with empty label or body are skipped when you Save.
           </p>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -237,7 +237,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
                 style={{
                   marginBottom: '0.85rem',
                   paddingBottom: '0.85rem',
-                  borderBottom: idx < customRows.length - 1 ? '1px solid #e5e7eb' : 'none',
+                  borderBottom: idx < customRows.length - 1 ? '1px solid var(--border)' : 'none',
                 }}
               >
                 <div
@@ -255,7 +255,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
                       style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}
                     >
                       Label
-                      <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+                      <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                         {' '}
                         ({row.label.length} / {BILL_CUSTOMER_MEMO_LABEL_MAX_CHARS})
                       </span>
@@ -273,7 +273,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
                         width: '100%',
                         padding: '0.35rem 0.5rem',
                         fontSize: '0.875rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         boxSizing: 'border-box',
                       }}
@@ -286,10 +286,10 @@ export default function BillCustomerMemoDevSettingsBlock() {
                       padding: '0.3rem 0.55rem',
                       fontSize: '0.8125rem',
                       cursor: 'pointer',
-                      background: '#fff',
-                      border: '1px solid #d1d5db',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      color: '#b91c1c',
+                      color: 'var(--text-red-700)',
                       flexShrink: 0,
                     }}
                   >
@@ -301,7 +301,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
                   style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}
                 >
                   Body
-                  <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+                  <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                     {' '}
                     ({row.body.length} / {BILL_CUSTOMER_MEMO_MAX_CHARS})
                   </span>
@@ -320,7 +320,7 @@ export default function BillCustomerMemoDevSettingsBlock() {
                     boxSizing: 'border-box',
                     padding: '0.5rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     resize: 'vertical',
                     lineHeight: 1.4,
