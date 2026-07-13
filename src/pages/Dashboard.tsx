@@ -4352,19 +4352,19 @@ export default function Dashboard() {
     fontWeight: 600,
     fontSize: '1rem',
   }
-  /** Same box model as gray pin pills (padding, font, border, radius) so row height matches */
-  const quickActionLinkStyleWithPins: CSSProperties = {
+  /** Pinned-row chips share the quick-button look; slightly tighter padding so many pins still fit one row. */
+  const pinnedItemLinkStyle: CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     boxSizing: 'border-box',
-    padding: '0.35rem 0.75rem',
-    fontSize: '0.875rem',
+    padding: '0.5rem 1rem',
+    fontSize: '0.9375rem',
     fontWeight: 600,
     background: '#3b82f6',
     color: 'white',
-    border: '1px solid #2563eb',
-    borderRadius: 6,
+    border: 'none',
+    borderRadius: 8,
     textDecoration: 'none',
   }
   const quickActionDefs = useMemo(() => {
@@ -4512,26 +4512,14 @@ export default function Dashboard() {
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
             {isDev && (
-              <Link
-                to="/people?tab=hours"
-                style={{
-                  padding: '0.35rem 0.75rem',
-                  fontSize: '0.875rem',
-                  background: 'var(--bg-muted)',
-                  color: 'var(--text-700)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 6,
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                }}
-              >
+              <Link to="/people?tab=hours" style={pinnedItemLinkStyle}>
                 Hours Awaiting Approval: {hoursAwaitingCount ?? '…'}
               </Link>
             )}
             {quickButtonsPlacement === 'with_pins' &&
               showDashboardQuickButtons &&
               quickActionDefs.map((b) => (
-                <Link key={b.key} to={b.to} style={quickActionLinkStyleWithPins}>
+                <Link key={b.key} to={b.to} style={pinnedItemLinkStyle}>
                   {b.label}
                 </Link>
               ))}
@@ -4555,20 +4543,7 @@ export default function Dashboard() {
                       ? (subLaborDueTotal != null ? `Sub Labor Due: $${subLaborDueTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : item.label)
                       : (item.tab ? `${item.label} · ${item.tab.replace(/-/g, ' ').replace(/_/g, ' ')}` : item.label)
               return (
-                <Link
-                  key={item.path + (item.tab ?? '')}
-                  to={to}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.875rem',
-                    background: 'var(--bg-muted)',
-                    color: 'var(--text-700)',
-                    border: '1px solid var(--border)',
-                    borderRadius: 6,
-                    textDecoration: 'none',
-                    fontWeight: 500,
-                  }}
-                >
+                <Link key={item.path + (item.tab ?? '')} to={to} style={pinnedItemLinkStyle}>
                   {displayLabel}
                 </Link>
               )
