@@ -10464,6 +10464,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_read_only_write_blocks: { Args: never; Returns: number }
       approve_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -11066,6 +11067,7 @@ export type Database = {
       is_estimator_group_member: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
+      is_read_only: { Args: never; Returns: boolean }
       is_team_lead_for_member: {
         Args: { p_leader: string; p_member: string }
         Returns: boolean
