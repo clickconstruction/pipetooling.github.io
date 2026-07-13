@@ -587,7 +587,8 @@ export function MapPageView() {
           minWidth: 0,
         }}
       >
-        <div style={{ flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+        {/* isolation contains Leaflet's internal z-indexes (panes 200-700, controls 1000) so they can't paint over header dropdowns */}
+        <div style={{ flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', isolation: 'isolate' }}>
           <MapContainer
             key={`${mapView.lat}-${mapView.lng}-${mapView.zoom}`}
             center={[mapView.lat, mapView.lng] as L.LatLngExpression}
