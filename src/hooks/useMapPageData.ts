@@ -4,13 +4,17 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
+import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
 import { mapGeocodeErrorMessage } from '../lib/map/geocodeErrorMessage'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs_ledger']['Row'],
   'id' | 'hcp_number' | 'job_name' | 'job_address' | 'status'
 >
-type BidRow = Pick<Database['public']['Tables']['bids']['Row'], 'id' | 'bid_number' | 'project_name' | 'address' | 'outcome'>
+type BidRow = Pick<
+  Database['public']['Tables']['bids']['Row'],
+  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent'
+>
 
 type EstimateRow = Pick<
   Database['public']['Tables']['estimates']['Row'],
@@ -31,6 +35,8 @@ export type MapPageEntity = {
   sublabel: string
   linkTo: string
   meta: string
+  /** Bid Board section this bid falls in (bids only); same kernel as the board's buckets. */
+  bidSection?: SubmissionSectionKey
 }
 
 /** Matches [`geocode-address-batch`](supabase/functions/geocode-address-batch/index.ts) `MAX_ADDRESSES`. */
@@ -79,7 +85,7 @@ export function useMapPageData(enabled: boolean) {
           'map jobs_ledger'
         ),
         withSupabaseRetry<BidRow[]>(
-          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome').order('project_name'),
+          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent').order('project_name'),
           'map bids'
         ),
         withSupabaseRetry<EstimateRow[]>(
@@ -132,6 +138,7 @@ export function useMapPageData(enabled: boolean) {
           sublabel: b.bid_number ?? '',
           linkTo: `/bids?bidId=${encodeURIComponent(b.id)}`,
           meta: b.outcome ?? '',
+          bidSection: getSubmissionSectionKey(b) ?? undefined,
         })
       }
       for (const e of estRows) {

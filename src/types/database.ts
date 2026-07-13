@@ -6269,12 +6269,14 @@ export type Database = {
           archived_at: string | null
           created_at: string | null
           email: string | null
+          end_date: string | null
           id: string
           kind: string
           master_user_id: string
           name: string
           notes: string | null
           phone: string | null
+          start_date: string | null
           updated_at: string | null
         }
         Insert: {
@@ -6282,12 +6284,14 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
+          end_date?: string | null
           id?: string
           kind: string
           master_user_id: string
           name: string
           notes?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -6295,12 +6299,14 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
+          end_date?: string | null
           id?: string
           kind?: string
           master_user_id?: string
           name?: string
           notes?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string | null
         }
         Relationships: [

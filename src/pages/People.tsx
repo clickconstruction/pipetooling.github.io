@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
+import PeopleEmploymentTab from '../components/people/PeopleEmploymentTab'
 import PeopleVehiclesTab from '../components/people/PeopleVehiclesTab'
 import PeopleHousingTab from '../components/people/PeopleHousingTab'
 import PeopleLicensesTab from '../components/people/PeopleLicensesTab'
@@ -206,6 +207,7 @@ type PeopleTab =
   | 'users'
   | 'teams'
   | 'overhead'
+  | 'employment'
   | 'pay_stubs'
   | 'hours'
   | 'offsets'
@@ -713,6 +715,7 @@ export default function People() {
       tab === 'users' ||
       tab === 'teams' ||
       tab === 'overhead' ||
+      tab === 'employment' ||
       tab === 'pay_stubs' ||
       tab === 'hours' ||
       tab === 'vehicles' ||
@@ -752,6 +755,15 @@ export default function People() {
         setActiveTab('users')
         return
       }
+      if (tab === 'employment' && !canAccessPay) {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'users')
+          return next
+        }, { replace: true })
+        setActiveTab('users')
+        return
+      }
       if (tab === 'writeups' && !canAccessContracts) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
@@ -769,7 +781,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, canAccessPay, setSearchParams])
 
   useEffect(() => {
     if (searchParams.get('tab') !== 'contracts') return
@@ -2281,6 +2293,17 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, canOpenHoursTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
 
+  // Employment tab reads payConfig + template indicators; load them here since the
+  // hours-tab load cycle (the usual owner) may never have run this session.
+  useEffect(() => {
+    if (activeTab !== 'employment' || !canAccessPay) return
+    const t = setTimeout(() => {
+      void loadPayConfig()
+      void loadPayConfigSalaryTemplateIndicators()
+    }, 80)
+    return () => clearTimeout(t)
+  }, [activeTab, canAccessPay])
+
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay && payStubPeriodStart <= payStubPeriodEnd) {
       const t = setTimeout(() => {
@@ -2999,6 +3022,22 @@ export default function People() {
             |
           </span>
         ) : null}
+        {canAccessPay && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('employment')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'employment')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'employment')}
+          >
+            Employment
+          </button>
+        )}
         {canOpenHoursTab && (
           <button
             type="button"
@@ -3910,6 +3949,21 @@ export default function People() {
           />
         ) : null}
         </>
+      )}
+
+      {activeTab === 'employment' && canAccessPay && (
+        <PeopleEmploymentTab
+          users={users}
+          payConfig={payConfig}
+          payConfigDraft={payConfigDraft}
+          payConfigOfficeWageDraft={payConfigOfficeWageDraft}
+          payConfigSaving={payConfigSaving}
+          isDev={isDev}
+          salaryTemplateByPersonName={salaryTemplateByPersonName}
+          onUpsertPayConfig={upsertPayConfig}
+          onHourlyWageChange={updatePayConfigHourlyWage}
+          onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
+        />
       )}
 
       {activeTab === 'vehicles' && canAccessPay && (
