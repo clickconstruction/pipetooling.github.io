@@ -4751,6 +4751,54 @@ export default function Dashboard() {
       )}
       {role === 'assistant' && (
         <>
+          {/* Inboxes first: processing dispatch/estimator requests is the assistant's primary queue. */}
+          {authUser?.id && dispatchInboxEligible && (
+            <DispatchInboxSection
+              sectionOpen={dispatchRequestsOpen}
+              onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
+              requests={dispatchRequests}
+              loading={dispatchRequestsLoading}
+              expandedRequestId={expandedDispatchRequestId}
+              onToggleExpandRequest={toggleExpandDispatchRequest}
+              notesByRequestId={dispatchThreadNotesByRequestId}
+              notesLoadingRequestId={dispatchNotesLoadingRequestId}
+              noteSubmitRequestId={dispatchNoteSubmitRequestId}
+              canAddNotes={dispatchInboxEligible}
+              dispatchRequestDismissingId={dispatchRequestDismissingId}
+              noteDraft={dispatchNoteDraft}
+              onNoteDraftChange={setDispatchNoteDraft}
+              onSubmitNote={submitDispatchNote}
+              onSubmitNoteAndClose={submitDispatchNoteAndClose}
+              onDismiss={dismissDispatchRequest}
+              onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+              onLinkJobPictures={
+                jobFormModal
+                  ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+                  : undefined
+              }
+              onCreateTripCharge={(args) => setTripChargeTarget(args)}
+            />
+          )}
+          {authUser?.id && estimatorInboxEligible && (
+            <EstimatorInboxSection
+              sectionOpen={estimatorRequestsOpen}
+              onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
+              requests={estimatorRequests}
+              loading={estimatorRequestsLoading}
+              expandedRequestId={expandedEstimatorRequestId}
+              onToggleExpandRequest={toggleExpandEstimatorRequest}
+              notesByRequestId={estimatorThreadNotesByRequestId}
+              notesLoadingRequestId={estimatorNotesLoadingRequestId}
+              noteSubmitRequestId={estimatorNoteSubmitRequestId}
+              canAddNotes={estimatorInboxEligible}
+              estimatorRequestDismissingId={estimatorRequestDismissingId}
+              noteDraft={estimatorNoteDraft}
+              onNoteDraftChange={setEstimatorNoteDraft}
+              onSubmitNote={submitEstimatorNote}
+              onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+              onDismiss={dismissEstimatorRequest}
+            />
+          )}
           {authUser?.id && (
             <DashboardFieldCollectPaymentQueue
               onPrepareBill={handlePrepareBillFromFieldQueue}
@@ -4972,53 +5020,6 @@ export default function Dashboard() {
             </>
             )}
           </div>
-          {authUser?.id && dispatchInboxEligible && (
-            <DispatchInboxSection
-              sectionOpen={dispatchRequestsOpen}
-              onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
-              requests={dispatchRequests}
-              loading={dispatchRequestsLoading}
-              expandedRequestId={expandedDispatchRequestId}
-              onToggleExpandRequest={toggleExpandDispatchRequest}
-              notesByRequestId={dispatchThreadNotesByRequestId}
-              notesLoadingRequestId={dispatchNotesLoadingRequestId}
-              noteSubmitRequestId={dispatchNoteSubmitRequestId}
-              canAddNotes={dispatchInboxEligible}
-              dispatchRequestDismissingId={dispatchRequestDismissingId}
-              noteDraft={dispatchNoteDraft}
-              onNoteDraftChange={setDispatchNoteDraft}
-              onSubmitNote={submitDispatchNote}
-              onSubmitNoteAndClose={submitDispatchNoteAndClose}
-              onDismiss={dismissDispatchRequest}
-              onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
-              onLinkJobPictures={
-                jobFormModal
-                  ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
-                  : undefined
-              }
-              onCreateTripCharge={(args) => setTripChargeTarget(args)}
-            />
-          )}
-          {authUser?.id && estimatorInboxEligible && (
-            <EstimatorInboxSection
-              sectionOpen={estimatorRequestsOpen}
-              onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
-              requests={estimatorRequests}
-              loading={estimatorRequestsLoading}
-              expandedRequestId={expandedEstimatorRequestId}
-              onToggleExpandRequest={toggleExpandEstimatorRequest}
-              notesByRequestId={estimatorThreadNotesByRequestId}
-              notesLoadingRequestId={estimatorNotesLoadingRequestId}
-              noteSubmitRequestId={estimatorNoteSubmitRequestId}
-              canAddNotes={estimatorInboxEligible}
-              estimatorRequestDismissingId={estimatorRequestDismissingId}
-              noteDraft={estimatorNoteDraft}
-              onNoteDraftChange={setEstimatorNoteDraft}
-              onSubmitNote={submitEstimatorNote}
-              onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-              onDismiss={dismissEstimatorRequest}
-            />
-          )}
           {(waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
             <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
               <button

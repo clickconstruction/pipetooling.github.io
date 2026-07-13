@@ -83,8 +83,18 @@ export function EstimatorInboxSection({
   onDismiss,
 }: EstimatorInboxSectionProps) {
   const narrow = useNarrowViewport640()
+  // Amber header while work is waiting, so a collapsed inbox still signals at a glance.
+  const hasOpenWork = !loading && headerBadge === 'open' && requests.some((r) => r.status === 'open')
+
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+    <div
+      style={{
+        marginBottom: '1.5rem',
+        border: `1px solid ${hasOpenWork ? 'var(--border-orange)' : 'var(--border)'}`,
+        borderRadius: 8,
+        overflow: 'hidden',
+      }}
+    >
       <button
         type="button"
         onClick={onToggleSection}
@@ -95,7 +105,7 @@ export function EstimatorInboxSection({
           width: '100%',
           padding: '0.75rem 1rem',
           margin: 0,
-          background: 'var(--bg-subtle)',
+          background: hasOpenWork ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)',
           border: 'none',
           cursor: 'pointer',
           fontSize: '1rem',
@@ -106,7 +116,14 @@ export function EstimatorInboxSection({
         <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
         {sectionTitle}
         {!loading && requests.length > 0 && headerBadge !== 'none' ? (
-          <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-link)' }}>
+          <span
+            style={{
+              marginLeft: '0.5rem',
+              fontSize: '0.875rem',
+              fontWeight: 500,
+              color: hasOpenWork ? 'var(--text-amber-800)' : 'var(--text-link)',
+            }}
+          >
             {headerBadge === 'open'
               ? `(${requests.filter((r) => r.status === 'open').length} open)`
               : `(${requests.filter((r) => r.status === 'closed').length} closed)`}
