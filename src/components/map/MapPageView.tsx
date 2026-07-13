@@ -32,6 +32,8 @@ import {
   fetchMapDefaultViewFromAppSettings,
 } from '../../lib/mapDefaultViewSettings'
 import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
+import { ALL_BID_STAGES_ON, mapEntityPassesLayerFilter } from '../../lib/map/mapLayerFilter'
+import type { SubmissionSectionKey } from '../../lib/bids/submissionSections'
 
 const openLinkLikeStyle: CSSProperties = {
   color: 'var(--text-link)',
@@ -152,6 +154,57 @@ function LayerPill({
           transition: 'background 120ms ease',
         }}
       />
+      {label}
+    </button>
+  )
+}
+
+/** Bid stage sub-filters; keys and meanings match the Bid Board sections (submissionSections kernel). */
+const BID_STAGE_META: { key: SubmissionSectionKey; label: string; title: string }[] = [
+  { key: 'unsent', label: 'Unsent', title: 'Unsent / Working Bids' },
+  { key: 'pending', label: 'Pending', title: 'Not yet won or lost' },
+  { key: 'won', label: 'Won', title: 'Won' },
+  { key: 'startedOrComplete', label: 'Started', title: 'Started or Complete' },
+  { key: 'lost', label: 'Lost', title: 'Lost' },
+]
+
+const BID_STAGE_TITLE: Record<SubmissionSectionKey, string> = Object.fromEntries(
+  BID_STAGE_META.map((m) => [m.key, m.title])
+) as Record<SubmissionSectionKey, string>
+
+/** Compact toggle for one bid stage; shown only while the Bids layer is on. */
+function BidStageChip({
+  label,
+  title,
+  active,
+  onToggle,
+}: {
+  label: string
+  title: string
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      title={title}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '0.2rem 0.6rem',
+        borderRadius: 999,
+        border: `1px solid ${active ? KIND_COLOR.bid : 'var(--border)'}`,
+        background: active ? KIND_PILL_ACTIVE.bid.bg : 'transparent',
+        color: active ? KIND_PILL_ACTIVE.bid.text : 'var(--text-muted)',
+        fontSize: '0.75rem',
+        fontWeight: 500,
+        lineHeight: 1.2,
+        cursor: 'pointer',
+        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+      }}
+    >
       {label}
     </button>
   )
@@ -504,6 +557,7 @@ export function MapPageView() {
   const [showJobs, setShowJobs] = useState(true)
   const [showBids, setShowBids] = useState(true)
   const [showEst, setShowEst] = useState(true)
+  const [bidStages, setBidStages] = useState<Record<SubmissionSectionKey, boolean>>(ALL_BID_STAGES_ON)
   const [mapSearchQuery, setMapSearchQuery] = useState('')
   const [filterPoly, setFilterPoly] = useState<Feature<Polygon> | null>(null)
   const [clearDraw, setClearDraw] = useState(0)
@@ -545,13 +599,9 @@ export function MapPageView() {
   }, [])
 
   const visible = useMemo(() => {
-    return entities.filter(
-      (e) =>
-        (e.kind === 'job' && showJobs) ||
-        (e.kind === 'bid' && showBids) ||
-        (e.kind === 'estimate' && showEst)
-    )
-  }, [entities, showJobs, showBids, showEst])
+    const f = { showJobs, showBids, showEst, bidStages }
+    return entities.filter((e) => mapEntityPassesLayerFilter(e, f))
+  }, [entities, showJobs, showBids, showEst, bidStages])
 
   const mapSearchTrim = useMemo(() => mapSearchQuery.trim(), [mapSearchQuery])
 
@@ -594,6 +644,19 @@ export function MapPageView() {
         <h1 style={{ margin: 0, marginRight: '0.25rem', fontSize: '1.25rem' }}>Map</h1>
         <LayerPill kind="job" label="Jobs" active={showJobs} onToggle={() => setShowJobs((s) => !s)} />
         <LayerPill kind="bid" label="Bids" active={showBids} onToggle={() => setShowBids((s) => !s)} />
+        {showBids ? (
+          <div role="group" aria-label="Bid stages" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+            {BID_STAGE_META.map((m) => (
+              <BidStageChip
+                key={m.key}
+                label={m.label}
+                title={m.title}
+                active={bidStages[m.key]}
+                onToggle={() => setBidStages((prev) => ({ ...prev, [m.key]: !prev[m.key] }))}
+              />
+            ))}
+          </div>
+        ) : null}
         <LayerPill kind="estimate" label="Estimates" active={showEst} onToggle={() => setShowEst((s) => !s)} />
         <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
         <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
@@ -753,7 +816,14 @@ export function MapPageView() {
               >
                 <Popup>
                   <div style={{ fontSize: '0.8rem' }}>
-                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{e.kind}</div>
+                    <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>
+                      {e.kind}
+                      {e.kind === 'bid' && e.bidSection ? (
+                        <span style={{ fontWeight: 400, textTransform: 'none', color: 'var(--text-muted)' }}>
+                          {` — ${BID_STAGE_TITLE[e.bidSection]}`}
+                        </span>
+                      ) : null}
+                    </div>
                     <div>{e.tableLabel}</div>
                     <div style={{ color: 'var(--text-muted)' }}>{e.addressLabel}</div>
                     {e.kind === 'job' && jobFormModal ? (
