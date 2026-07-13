@@ -23,7 +23,7 @@ export function buildServiceTypeTradePill(
 
   const tagInfo = getBidServiceTypeTag(stName)
   const label = (tagInfo?.tag ?? stName.slice(0, 4)).toUpperCase()
-  const borderColor = tagInfo?.color ?? '#d1d5db'
+  const borderColor = tagInfo?.color ?? 'var(--border-strong)'
 
   return {
     label,
@@ -32,8 +32,8 @@ export function buildServiceTypeTradePill(
       marginTop: '0.15rem',
       letterSpacing: '0.02em',
       border: `1px solid ${borderColor}`,
-      background: tagInfo ? borderColor : '#f3f4f6',
-      color: tagInfo ? '#fff' : '#374151',
+      background: tagInfo ? borderColor : 'var(--bg-muted)',
+      color: tagInfo ? '#fff' : 'var(--text-700)',
     },
   }
 }

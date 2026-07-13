@@ -44,6 +44,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     document.documentElement.dataset.theme = theme
   }, [theme])
 
+  // Printing is always light: printed/PDF output must not depend on the
+  // viewer's theme (estimates, team summary, reports).
+  useEffect(() => {
+    const before = () => {
+      document.documentElement.dataset.theme = 'light'
+    }
+    const after = () => {
+      document.documentElement.dataset.theme = theme
+    }
+    window.addEventListener('beforeprint', before)
+    window.addEventListener('afterprint', after)
+    return () => {
+      window.removeEventListener('beforeprint', before)
+      window.removeEventListener('afterprint', after)
+    }
+  }, [theme])
+
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>
     const arm = () => {
