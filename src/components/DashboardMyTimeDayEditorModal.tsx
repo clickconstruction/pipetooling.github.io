@@ -387,6 +387,7 @@ export function DashboardMyTimeDayEditorModal({
   const salaryStripPrefetchDoneKeyRef = useRef<string | null>(null)
   const [salarySchedulePrefetchBusy, setSalarySchedulePrefetchBusy] = useState(false)
   const [stripEmptyDayHint, setStripEmptyDayHint] = useState<'time_off' | 'no_work' | null>(null)
+  const [stripTimeOffLabel, setStripTimeOffLabel] = useState<string>(UNPAID_TIME_OFF_LABEL)
   const [forceClockOutSession, setForceClockOutSession] = useState<DayEditorSession | null>(null)
   const [adjustTimesSession, setAdjustTimesSession] = useState<DayEditorSession | null>(null)
   const [addDisjointOpen, setAddDisjointOpen] = useState<{
@@ -734,6 +735,7 @@ export function DashboardMyTimeDayEditorModal({
         })
 
         if (resolution.kind === 'time_off') {
+          setStripTimeOffLabel(resolution.kindLabel)
           setStripEmptyDayHint('time_off')
           setSalarySchedulePrefetchBusy(false)
           return
@@ -2706,7 +2708,7 @@ export function DashboardMyTimeDayEditorModal({
         ) : resolvedSessions.length === 0 ? (
           <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             {stripEmptyDayHint === 'time_off'
-              ? `No sessions this day — ${UNPAID_TIME_OFF_LABEL}.`
+              ? `No sessions this day — ${stripTimeOffLabel}.`
               : stripEmptyDayHint === 'no_work'
                 ? 'No scheduled work this day (e.g. weekend or no shift blocks).'
                 : 'No sessions this day.'}

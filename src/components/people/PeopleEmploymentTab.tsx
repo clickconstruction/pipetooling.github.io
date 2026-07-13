@@ -6,6 +6,8 @@ import type { PayConfigRow } from '../../types/peoplePayConfig'
 import { KIND_LABELS } from './peopleUsersTabShared'
 import type { PersonKind } from '../../hooks/usePeopleRoster'
 import { SalaryWorkScheduleSettings } from '../SalaryWorkScheduleSettings'
+import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../../lib/salaryScheduleSync'
+import { timeOffKindLabel } from '../../lib/resolveCalendarWorkday'
 
 type EmploymentPersonRow = {
   id: string
@@ -18,6 +20,14 @@ type EmploymentPersonRow = {
 }
 
 type EmploymentUserRow = { id: string; name: string | null }
+
+type EmploymentTimeOffRow = {
+  id: string
+  start_date: string
+  end_date: string
+  kind: string
+  note: string | null
+}
 
 export type PeopleEmploymentTabProps = {
   users: EmploymentUserRow[]
@@ -117,6 +127,117 @@ export default function PeopleEmploymentTab({
   const archivedRows = rows.filter((r) => r.archived_at).filter(matches)
 
   const datesDirty = selected != null && ((selected.start_date ?? '') !== draftStart || (selected.end_date ?? '') !== draftEnd)
+
+  const selectedCfg: PayConfigRow | null = selected
+    ? payConfig[selected.name] ?? { person_name: selected.name, ...DEFAULT_PAY_CONFIG }
+    : null
+  const selectedNameMatches = useMemo(
+    () => (selected ? users.filter((u) => (u.name ?? '').trim() === selected.name.trim()) : []),
+    [users, selected],
+  )
+  /** Login user for time off: explicit roster link first, then unique trimmed-name match. */
+  const timeOffUserId = selected
+    ? selected.account_user_id ?? (selectedNameMatches.length === 1 ? selectedNameMatches[0]!.id : null)
+    : null
+
+  const [timeOffRows, setTimeOffRows] = useState<EmploymentTimeOffRow[]>([])
+  const [timeOffLoading, setTimeOffLoading] = useState(false)
+  const [toStart, setToStart] = useState('')
+  const [toEnd, setToEnd] = useState('')
+  const [toKind, setToKind] = useState<'unpaid' | 'paid'>('unpaid')
+  const [toNote, setToNote] = useState('')
+  const [toSaving, setToSaving] = useState(false)
+
+  const loadTimeOff = useCallback(async (uid: string) => {
+    setTimeOffLoading(true)
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('user_time_off')
+            .select('id, start_date, end_date, kind, note')
+            .eq('user_id', uid)
+            .order('start_date', { ascending: false }),
+        'employment time off list',
+      )
+      setTimeOffRows((data ?? []) as EmploymentTimeOffRow[])
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Failed to load time off'), 'error')
+      setTimeOffRows([])
+    } finally {
+      setTimeOffLoading(false)
+    }
+  }, [showToast])
+
+  useEffect(() => {
+    setToStart('')
+    setToEnd('')
+    setToKind('unpaid')
+    setToNote('')
+    if (!timeOffUserId) {
+      setTimeOffRows([])
+      return
+    }
+    void loadTimeOff(timeOffUserId)
+  }, [timeOffUserId, loadTimeOff])
+
+  async function syncSelectedForToday(uid: string) {
+    const today = denverWorkDateToday()
+    const { error: syncErr } = await syncSalaryClockSessionsForUserDay(uid, today)
+    if (syncErr) showToast(syncErr, 'warning')
+  }
+
+  async function addTimeOff() {
+    if (!timeOffUserId) return
+    if (!toStart || !toEnd) {
+      showToast('Start and end date required', 'warning')
+      return
+    }
+    if (toEnd < toStart) {
+      showToast('End date must be on or after start date', 'warning')
+      return
+    }
+    const kind = toKind === 'paid' && selectedCfg?.is_salary ? 'paid' : 'unpaid'
+    setToSaving(true)
+    try {
+      await withSupabaseRetry(
+        async () =>
+          supabase.from('user_time_off').insert({
+            user_id: timeOffUserId,
+            start_date: toStart,
+            end_date: toEnd,
+            kind,
+            note: toNote.trim() || null,
+          }),
+        'employment time off insert',
+      )
+      showToast(`${timeOffKindLabel(kind)} saved`, 'success')
+      setToNote('')
+      await loadTimeOff(timeOffUserId)
+      const today = denverWorkDateToday()
+      if (today >= toStart && today <= toEnd) await syncSelectedForToday(timeOffUserId)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Save failed'), 'error')
+    } finally {
+      setToSaving(false)
+    }
+  }
+
+  async function deleteTimeOff(id: string) {
+    if (!timeOffUserId) return
+    if (!window.confirm('Remove this time off entry?')) return
+    try {
+      await withSupabaseRetry(
+        async () => supabase.from('user_time_off').delete().eq('id', id).eq('user_id', timeOffUserId),
+        'employment time off delete',
+      )
+      showToast('Removed', 'success')
+      await loadTimeOff(timeOffUserId)
+      await syncSelectedForToday(timeOffUserId)
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Delete failed'), 'error')
+    }
+  }
 
   async function saveDates() {
     if (!selected) return
@@ -417,10 +538,115 @@ export default function PeopleEmploymentTab({
               )
             })()}
 
-            <p style={{ margin: '0.75rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-              Paid and unpaid time off moves into this tab in an upcoming update — for now it stays in Settings and the
-              salaried-workdays bulk modal on the Hours tab.
-            </p>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', padding: '0.75rem', marginTop: '0.75rem' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.2rem' }}>Time off</div>
+              {!timeOffUserId ? (
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
+                  No login user is linked to this person, so time off cannot be recorded here.
+                </p>
+              ) : (
+                <>
+                  <p style={{ margin: '0 0 0.6rem 0', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                    Company-calendar dates, inclusive. Time off always clears scheduled salary sessions.
+                    {selectedCfg?.is_salary
+                      ? ' Unpaid days reduce salaried pay; paid days keep it.'
+                      : ' Hourly pay follows logged hours, so entries here are informational.'}
+                  </p>
+                  {timeOffLoading ? (
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
+                  ) : (
+                    <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem 0' }}>
+                      {timeOffRows.length === 0 ? (
+                        <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No entries.</li>
+                      ) : (
+                        timeOffRows.map((r) => (
+                          <li
+                            key={r.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              gap: '0.5rem',
+                              padding: '0.4rem 0',
+                              borderBottom: '1px solid var(--border)',
+                              fontSize: '0.875rem',
+                            }}
+                          >
+                            <span>
+                              <strong>{timeOffKindLabel(r.kind)}</strong> · {r.start_date} → {r.end_date}
+                              {r.note ? ` — ${r.note}` : ''}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => void deleteTimeOff(r.id)}
+                              style={{
+                                padding: '0.2rem 0.5rem',
+                                fontSize: '0.8125rem',
+                                color: 'var(--text-red-700)',
+                                border: '1px solid #fecaca',
+                                borderRadius: 4,
+                                background: 'var(--surface)',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))
+                      )}
+                    </ul>
+                  )}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end' }}>
+                    <label>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Start</span>
+                      <input type="date" value={toStart} onChange={(e) => setToStart(e.target.value)} style={{ padding: '0.35rem' }} />
+                    </label>
+                    <label>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>End</span>
+                      <input type="date" value={toEnd} onChange={(e) => setToEnd(e.target.value)} style={{ padding: '0.35rem' }} />
+                    </label>
+                    {selectedCfg?.is_salary ? (
+                      <label>
+                        <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Kind</span>
+                        <select
+                          value={toKind}
+                          onChange={(e) => setToKind(e.target.value === 'paid' ? 'paid' : 'unpaid')}
+                          style={{ padding: '0.35rem' }}
+                        >
+                          <option value="unpaid">Unpaid</option>
+                          <option value="paid">Paid</option>
+                        </select>
+                      </label>
+                    ) : null}
+                    <label style={{ flex: '1 1 160px' }}>
+                      <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Note (optional)</span>
+                      <input
+                        type="text"
+                        value={toNote}
+                        onChange={(e) => setToNote(e.target.value)}
+                        style={{ width: '100%', padding: '0.35rem', boxSizing: 'border-box' }}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      disabled={toSaving}
+                      onClick={() => void addTimeOff()}
+                      style={{
+                        padding: '0.45rem 0.9rem',
+                        fontWeight: 600,
+                        color: 'white',
+                        background: toSaving ? 'var(--text-faint-300)' : '#ea580c',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: toSaving ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {toSaving ? 'Saving…' : 'Add time off'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

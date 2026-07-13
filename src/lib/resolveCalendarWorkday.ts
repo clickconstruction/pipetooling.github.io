@@ -10,8 +10,13 @@ type TemplateRow = Database['public']['Tables']['salary_work_schedule_templates'
 type OverrideRo = Database['public']['Tables']['salary_work_schedule_day_overrides']['Row']
 type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
 
-/** Display label for all time-off rows (`user_time_off.kind` is always `unpaid`). */
+/** Display labels for time-off rows by `user_time_off.kind` ('unpaid' | 'paid'). */
 export const UNPAID_TIME_OFF_LABEL = 'Unpaid time off'
+export const PAID_TIME_OFF_LABEL = 'Paid time off'
+
+export function timeOffKindLabel(kind: string): string {
+  return kind === 'paid' ? PAID_TIME_OFF_LABEL : UNPAID_TIME_OFF_LABEL
+}
 
 export type CalendarWorkdayResolution =
   | { kind: 'none' }
@@ -113,7 +118,7 @@ export function resolveCalendarWorkday(params: {
 
   const off = timeOffRows.find((r) => workDateYmd >= r.start_date && workDateYmd <= r.end_date)
   if (off) {
-    return { kind: 'time_off', kindLabel: UNPAID_TIME_OFF_LABEL, note: off.note }
+    return { kind: 'time_off', kindLabel: timeOffKindLabel(off.kind), note: off.note }
   }
 
   const isoDow = isoWeekdayFromYmd(workDateYmd)

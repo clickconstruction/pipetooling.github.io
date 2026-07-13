@@ -5,6 +5,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { useToastContext } from '../contexts/ToastContext'
 import { denverWorkDateToday, syncSalaryClockSessionsForUserDay } from '../lib/salaryScheduleSync'
 import { recordNotComingInSelf } from '../lib/notComingInTimeOff'
+import { timeOffKindLabel } from '../lib/resolveCalendarWorkday'
 
 type TimeOffRow = Database['public']['Tables']['user_time_off']['Row']
 
@@ -173,7 +174,7 @@ export function TimeOffSettings({ userId }: { userId: string }) {
               }}
             >
               <span>
-                <strong>Unpaid time off</strong> · <strong>{r.start_date}</strong> → <strong>{r.end_date}</strong>
+                <strong>{timeOffKindLabel(r.kind)}</strong> · <strong>{r.start_date}</strong> → <strong>{r.end_date}</strong>
                 {r.note ? ` — ${r.note}` : ''}
               </span>
               <button

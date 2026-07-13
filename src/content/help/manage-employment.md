@@ -68,7 +68,26 @@ same settings as Settings → Salaried workday: continuous or split day, start t
 a custom schedule for a single date. If the card says no login user matches the person's name,
 fix the roster name or invite them first.
 
-## What's coming to this tab
+## Recording time off
 
-Paid and unpaid time off is moving into this tab so everything about a person lives in one place.
-Until then it remains in Settings and the salaried-workdays bulk modal on the Hours tab.
+The **Time off** card lists a person's time off and lets you add or remove ranges (company
+calendar dates, inclusive). Time off always clears the person's scheduled salary sessions for
+those days.
+
+For **salaried** people you choose the kind:
+
+- {{chip:yellow|Unpaid}} — the days are not paid; they reduce the salaried weekday credit on pay
+  reports.
+- {{chip:green|Paid}} — the person keeps their pay for those days; they just don't appear on the
+  schedule.
+
+Hourly people can have time off recorded too, but it's informational — their pay already follows
+the hours they log.
+
+:::example Vacation for a salaried tech
+Select the person, add a range for their vacation week, and pick **Paid**. Their calendar shows
+the time off, the on-shift strip skips them, and their pay report still credits the full week.
+:::
+
+People can also add their own **unpaid** time off from Settings, and the salaried-workdays bulk
+modal on the Hours tab still handles marking many people at once.
