@@ -100,10 +100,13 @@ serve(async (req) => {
   }
 
   const results: { address_normalized: string; lat: number; lng: number }[] = []
+  // Per-address failure reasons; error_code values match mapGeocodeErrorMessage on the client.
+  const failures: { address_normalized: string; error_code: string; detail?: string }[] = []
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
 
   for (let i = 0; i < uniqueInput.length; i++) {
     const { key, display } = uniqueInput[i]!
+    let failure: { error_code: string; detail?: string } | null = null
 
     const { data: existing, error: exErr } = await supabase
       .from('address_geocodes')
@@ -126,19 +129,29 @@ serve(async (req) => {
     let lng: number | null = null
 
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(display)}&limit=1&addressdetails=0`
-    const nRes = await fetch(url, {
-      headers: { 'User-Agent': 'PipeTooling/1.0 (https://github.com/Click-Construction; map page geocode)' },
-    })
-    if (nRes.ok) {
-      const arr = (await nRes.json()) as NominatimHit[]
-      if (Array.isArray(arr) && arr.length > 0) {
-        const la = parseFloat(arr[0]!.lat)
-        const lo = parseFloat(arr[0]!.lon)
-        if (Number.isFinite(la) && Number.isFinite(lo)) {
-          lat = la
-          lng = lo
+    try {
+      const nRes = await fetch(url, {
+        headers: { 'User-Agent': 'PipeTooling/1.0 (https://github.com/Click-Construction; map page geocode)' },
+      })
+      if (nRes.ok) {
+        const arr = (await nRes.json()) as NominatimHit[]
+        if (Array.isArray(arr) && arr.length > 0) {
+          const la = parseFloat(arr[0]!.lat)
+          const lo = parseFloat(arr[0]!.lon)
+          if (Number.isFinite(la) && Number.isFinite(lo)) {
+            lat = la
+            lng = lo
+          } else {
+            failure = { error_code: 'invalid_coordinates', detail: 'OpenStreetMap returned unusable coordinates' }
+          }
+        } else {
+          failure = { error_code: 'not_found', detail: 'No match from OpenStreetMap' }
         }
+      } else {
+        failure = { error_code: 'upstream', detail: `OpenStreetMap (Nominatim) HTTP ${nRes.status}` }
       }
+    } catch {
+      failure = { error_code: 'upstream', detail: 'OpenStreetMap (Nominatim) request failed' }
     }
 
     if (lat !== null && lng !== null) {
@@ -160,7 +173,12 @@ serve(async (req) => {
     }
 
     if (googleKey.length > 0) {
-      const g = await geocodeWithGoogle(display, googleKey)
+      let g: Awaited<ReturnType<typeof geocodeWithGoogle>>
+      try {
+        g = await geocodeWithGoogle(display, googleKey)
+      } catch {
+        g = { ok: false, error: 'google_upstream', detail: 'Google Geocoding request failed' }
+      }
       if (g.ok) {
         const { error: upErr } = await supabase.from('address_geocodes').upsert(
           {
@@ -176,11 +194,23 @@ serve(async (req) => {
           return jsonResponse(500, { error: upErr.message })
         }
         results.push({ address_normalized: key, lat: g.lat, lng: g.lng })
+        continue
+      }
+      failure =
+        g.error === 'not_found' && !g.detail
+          ? { error_code: 'not_found', detail: 'No match from OpenStreetMap or Google' }
+          : { error_code: g.error, detail: g.detail }
+    } else if (failure) {
+      failure = {
+        ...failure,
+        detail: failure.detail ? `${failure.detail}; Google fallback not configured` : 'Google fallback not configured',
       }
     }
+
+    failures.push({ address_normalized: key, ...(failure ?? { error_code: 'not_found' }) })
   }
 
-  return new Response(JSON.stringify({ results }), {
+  return new Response(JSON.stringify({ results, failures }), {
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })

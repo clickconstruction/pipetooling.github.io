@@ -4,6 +4,7 @@ import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
 import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
+import { mapGeocodeErrorMessage } from '../lib/map/geocodeErrorMessage'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs_ledger']['Row'],
@@ -36,6 +37,7 @@ export type MapPageEntity = {
 const GEOCODE_BATCH_MAX = 20
 
 type GeocodeBatchResultRow = { address_normalized: string; lat: number; lng: number }
+type GeocodeBatchFailureRow = { address_normalized: string; error_code: string; detail?: string }
 
 function resolveEstimateAddress(e: EstimateRow): string | null {
   const a = e.for_address?.trim()
@@ -206,10 +208,10 @@ export function useMapPageData(enabled: boolean) {
             prev.map((r) => (chunkKeys.has(r.address_normalized) ? { ...r, status: 'in_progress' as const } : r))
           )
 
-          const { data, error: fnErr } = await supabase.functions.invoke<{ results?: GeocodeBatchResultRow[] }>(
-            'geocode-address-batch',
-            { body: { addresses: chunk.map((c) => c.display) } }
-          )
+          const { data, error: fnErr } = await supabase.functions.invoke<{
+            results?: GeocodeBatchResultRow[]
+            failures?: GeocodeBatchFailureRow[]
+          }>('geocode-address-batch', { body: { addresses: chunk.map((c) => c.display) } })
 
           if (gen !== loadGenerationRef.current) return
 
@@ -238,6 +240,22 @@ export function useMapPageData(enabled: boolean) {
           for (const r of results) {
             byKey.set(r.address_normalized, { lat: r.lat, lng: r.lng })
           }
+          const rawFailures =
+            data != null && typeof data === 'object' && Array.isArray(data.failures) ? data.failures : []
+          const failureMessageByKey = new Map<string, string>(
+            rawFailures
+              .filter(
+                (f): f is GeocodeBatchFailureRow =>
+                  f != null &&
+                  typeof f === 'object' &&
+                  typeof (f as GeocodeBatchFailureRow).address_normalized === 'string' &&
+                  typeof (f as GeocodeBatchFailureRow).error_code === 'string'
+              )
+              .map((f) => [
+                f.address_normalized,
+                mapGeocodeErrorMessage(f.error_code, typeof f.detail === 'string' ? f.detail : undefined),
+              ])
+          )
           setGeocodeAddressRows((prev) =>
             prev.map((row) => {
               if (!chunkKeys.has(row.address_normalized)) return row
@@ -245,7 +263,7 @@ export function useMapPageData(enabled: boolean) {
               return {
                 ...row,
                 status: 'error' as const,
-                errorMessage: 'Could not geocode address',
+                errorMessage: failureMessageByKey.get(row.address_normalized) ?? 'Could not geocode address',
               }
             })
           )
