@@ -3926,6 +3926,9 @@ export type Database = {
           collections_at: string | null
           collections_by: string | null
           collections_note: string | null
+          completeness_marked_at: string | null
+          completeness_marked_by: string | null
+          completeness_pct: number | null
           created_at: string | null
           customer_email: string | null
           customer_id: string | null
@@ -3955,6 +3958,9 @@ export type Database = {
           collections_at?: string | null
           collections_by?: string | null
           collections_note?: string | null
+          completeness_marked_at?: string | null
+          completeness_marked_by?: string | null
+          completeness_pct?: number | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null
@@ -3984,6 +3990,9 @@ export type Database = {
           collections_at?: string | null
           collections_by?: string | null
           collections_note?: string | null
+          completeness_marked_at?: string | null
+          completeness_marked_by?: string | null
+          completeness_pct?: number | null
           created_at?: string | null
           customer_email?: string | null
           customer_id?: string | null

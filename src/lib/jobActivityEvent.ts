@@ -25,6 +25,7 @@ export type JobActivityEventType =
   | 'job_combined'
   | 'job_separated'
   | 'collections_change'
+  | 'completeness_marked'
 
 export type JobActivityEvent = {
   /** Stable React key + dedupe key: `ev:status:<id>` (Phase 1) / `ev:<rowid>` (Phase 2). */
@@ -83,6 +84,7 @@ export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRender
   job_combined: { tag: 'Combined', ...COMBINE_PURPLE, bucket: 'other' },
   job_separated: { tag: 'Separated', ...COMBINE_PURPLE, bucket: 'other' },
   collections_change: { tag: 'Collections', ...DANGER_RED, bucket: 'billing' },
+  completeness_marked: { tag: 'Progress', ...WORK_TEAL, bucket: 'status' },
 }
 
 export function eventRenderMeta(type: JobActivityEventType): EventRenderMeta {

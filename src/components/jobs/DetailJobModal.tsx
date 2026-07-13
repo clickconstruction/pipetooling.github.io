@@ -14,6 +14,7 @@ import {
 } from '../../lib/formatJobDetailModalDateYmd'
 import { deriveRecordedBillingActivityDetail } from '../../lib/stagesJobReferenceDates'
 import { buildServiceTypeTradePill } from '../../lib/serviceTypeTradePill'
+import { JobDetailCompletenessRow } from './JobDetailCompletenessRow'
 import {
   canExpandJobDetailMaterials,
   isStaffFullJobLedgerDetailRole,
@@ -1082,6 +1083,21 @@ export default function DetailJobModal({
               <DetailRow label="Status" noBottomMargin centered>
                 <JobLedgerStatusPipeline status={fullJob.status} />
               </DetailRow>
+            </div>
+
+            <div style={{ marginTop: '0.75rem' }}>
+              <JobDetailCompletenessRow
+                jobId={fullJob.id}
+                pct={fullJob.completeness_pct ?? null}
+                markedByUserId={fullJob.completeness_marked_by ?? null}
+                markedAtIso={fullJob.completeness_marked_at ?? null}
+                canEdit={isStaffFullJobLedgerDetailRole(authRole)}
+                onMarked={() => {
+                  void loadDetail()
+                  threadNotes.reload()
+                }}
+                showToast={showToast}
+              />
             </div>
 
             <DetailJobModalFilesPlansRow googleDriveLink={fullJob.google_drive_link} jobPlansLink={fullJob.job_plans_link} />

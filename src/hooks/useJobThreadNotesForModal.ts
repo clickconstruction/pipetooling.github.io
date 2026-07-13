@@ -270,5 +270,11 @@ export function useJobThreadNotesForModal(
 
   const canPost = Boolean(authUserId)
 
-  return { activity, loading, draft, setDraft, submitting, submitNote, submitStamp, canPost }
+  /** Silent re-fetch of the activity feed (e.g. after a lifecycle write like a completeness mark). */
+  const reload = useCallback(() => {
+    const id = openJobIdRef.current
+    if (id) void reloadActivityQuiet(id)
+  }, [reloadActivityQuiet])
+
+  return { activity, loading, draft, setDraft, submitting, submitNote, submitStamp, canPost, reload }
 }
