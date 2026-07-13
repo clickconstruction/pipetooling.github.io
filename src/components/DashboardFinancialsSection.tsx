@@ -43,6 +43,11 @@ const STAGES_SECTION_LINKS: Record<string, string> = {
   Collections: '/jobs?tab=stages&stagesSection=collections',
 }
 
+/** Whole-dollar display for card glance figures, e.g. 56186.78 → "56,187". */
+function roundDollars(n: number): string {
+  return Math.round(n).toLocaleString('en-US')
+}
+
 function shortDate(ymd: string | null): string {
   if (!ymd) return '—'
   const d = new Date(ymd + 'T12:00:00')
@@ -828,24 +833,28 @@ export default function DashboardFinancialsSection() {
   const [apBill, setApBill] = useState<DashboardApBill | null>(null)
   const jobDetailModal = useJobDetailModal()
 
-  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string; extraLines?: string[] }> = data
+  // extraLines render as a second column beside the total (not a run-on subtitle line).
+  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extraLines?: string[] }> = data
     ? [
         {
           key: 'ar',
           bucket: data.ar,
-          extra:
+          extraLines:
             data.arCollections.count > 0
-              ? `Collections: $${formatCurrency(data.arCollections.total)} (${data.arCollections.count} item${data.arCollections.count === 1 ? '' : 's'})`
+              ? [
+                  'Collections:',
+                  `$${formatCurrency(data.arCollections.total)} (${data.arCollections.count} item${data.arCollections.count === 1 ? '' : 's'})`,
+                ]
               : undefined,
         },
         {
           key: 'ap',
           bucket: data.ap,
-          // Rendered as a second column beside the total (not a run-on subtitle line).
+          // Whole dollars: these are glance figures; the drill-down modal has cents.
           extraLines: [
-            `Supplies $${formatCurrency(data.ap.supplyTotal)}`,
-            `Payroll: $${formatCurrency(data.ap.payrollTotal)} due`,
-            ...(data.apUpcoming.count > 0 ? [`$${formatCurrency(data.apUpcoming.total)} upcoming`] : []),
+            `Supply Houses: $${roundDollars(data.ap.supplyTotal)}`,
+            `Payroll: $${roundDollars(data.ap.payrollTotal)} due`,
+            ...(data.apUpcoming.count > 0 ? [`($${roundDollars(data.apUpcoming.total)} upcoming)`] : []),
           ],
         },
         { key: 'unbilled', bucket: data.unbilled },
@@ -860,7 +869,7 @@ export default function DashboardFinancialsSection() {
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-          {cards.map(({ key, bucket, extra, extraLines }) => (
+          {cards.map(({ key, bucket, extraLines }) => (
             <button
               key={key}
               type="button"
@@ -893,7 +902,6 @@ export default function DashboardFinancialsSection() {
                   {bucket.count} item{bucket.count === 1 ? '' : 's'}
                   {bucket.oldestDateYmd ? ` · oldest ${shortDate(bucket.oldestDateYmd)}` : ''}
                 </span>
-                {extra ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{extra}</span> : null}
               </span>
               {extraLines && extraLines.length > 0 ? (
                 <span
