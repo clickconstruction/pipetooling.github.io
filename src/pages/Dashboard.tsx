@@ -51,6 +51,7 @@ import {
   stripScopeEligible,
 } from '../lib/dashboardClockStripScopeStorage'
 import DashboardFieldCollectPaymentQueue from '../components/dashboard/DashboardFieldCollectPaymentQueue'
+import { BillingPipelineCard, BillingPipelineStage } from '../components/dashboard/BillingPipelineCard'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import {
@@ -4774,13 +4775,18 @@ export default function Dashboard() {
               onDismiss={dismissEstimatorRequest}
             />
           )}
+          <BillingPipelineCard>
           {authUser?.id && (
-            <DashboardFieldCollectPaymentQueue
-              onPrepareBill={handlePrepareBillFromFieldQueue}
-              shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
-            />
+            <BillingPipelineStage step={1} connectToNext>
+              <DashboardFieldCollectPaymentQueue
+                embedded
+                onPrepareBill={handlePrepareBillFromFieldQueue}
+                shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
+              />
+            </BillingPipelineStage>
           )}
-          <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+          <BillingPipelineStage step={2} connectToNext={waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0}>
+          <div style={{ marginBottom: '0.5rem' }}>
             <button
               type="button"
               onClick={() => setReadyToBillExpanded((prev) => !prev)}
@@ -4995,8 +5001,10 @@ export default function Dashboard() {
             </>
             )}
           </div>
+          </BillingPipelineStage>
           {(waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
-            <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+            <BillingPipelineStage step={3}>
+            <div style={{ marginBottom: 0 }}>
               <button
                 type="button"
                 onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
@@ -5116,7 +5124,9 @@ export default function Dashboard() {
               </>
               )}
             </div>
+            </BillingPipelineStage>
           )}
+          </BillingPipelineCard>
         </>
       )}
       {role !== 'assistant' && tallyAndPinnedBlock}
@@ -5214,14 +5224,70 @@ export default function Dashboard() {
           }}
         />
       )}
-      {(role === 'dev' || role === 'master_technician') && authUser?.id && (
-        <DashboardFieldCollectPaymentQueue
-          onPrepareBill={handlePrepareBillFromFieldQueue}
-          shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
+      {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
+        <DispatchInboxSection
+          sectionOpen={dispatchRequestsOpen}
+          onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
+          requests={dispatchRequests}
+          loading={dispatchRequestsLoading}
+          expandedRequestId={expandedDispatchRequestId}
+          onToggleExpandRequest={toggleExpandDispatchRequest}
+          notesByRequestId={dispatchThreadNotesByRequestId}
+          notesLoadingRequestId={dispatchNotesLoadingRequestId}
+          noteSubmitRequestId={dispatchNoteSubmitRequestId}
+          canAddNotes={dispatchInboxEligible}
+          dispatchRequestDismissingId={dispatchRequestDismissingId}
+          noteDraft={dispatchNoteDraft}
+          onNoteDraftChange={setDispatchNoteDraft}
+          onSubmitNote={submitDispatchNote}
+          onSubmitNoteAndClose={submitDispatchNoteAndClose}
+          onDismiss={dismissDispatchRequest}
+          onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
+          onLinkJobPictures={
+            jobFormModal
+              ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+              : undefined
+          }
+          onCreateTripCharge={
+            role === 'dev' || role === 'master_technician'
+              ? (args) => setTripChargeTarget(args)
+              : undefined
+          }
+        />
+      )}
+      {authUser?.id && estimatorInboxEligible && role !== 'assistant' && (
+        <EstimatorInboxSection
+          sectionOpen={estimatorRequestsOpen}
+          onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
+          requests={estimatorRequests}
+          loading={estimatorRequestsLoading}
+          expandedRequestId={expandedEstimatorRequestId}
+          onToggleExpandRequest={toggleExpandEstimatorRequest}
+          notesByRequestId={estimatorThreadNotesByRequestId}
+          notesLoadingRequestId={estimatorNotesLoadingRequestId}
+          noteSubmitRequestId={estimatorNoteSubmitRequestId}
+          canAddNotes={estimatorInboxEligible}
+          estimatorRequestDismissingId={estimatorRequestDismissingId}
+          noteDraft={estimatorNoteDraft}
+          onNoteDraftChange={setEstimatorNoteDraft}
+          onSubmitNote={submitEstimatorNote}
+          onSubmitNoteAndClose={submitEstimatorNoteAndClose}
+          onDismiss={dismissEstimatorRequest}
         />
       )}
       {(role === 'dev' || role === 'master_technician') && (
-        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+        <BillingPipelineCard>
+        {authUser?.id && (
+          <BillingPipelineStage step={1} connectToNext>
+            <DashboardFieldCollectPaymentQueue
+              embedded
+              onPrepareBill={handlePrepareBillFromFieldQueue}
+              shouldShowPrepareBill={shouldShowPrepareBillForFieldQueue}
+            />
+          </BillingPipelineStage>
+        )}
+        <BillingPipelineStage step={2} connectToNext={waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0}>
+        <div style={{ marginBottom: '0.5rem' }}>
           <button
             type="button"
             onClick={() => setReadyToBillExpanded((prev) => !prev)}
@@ -5436,61 +5502,10 @@ export default function Dashboard() {
           </>
           )}
         </div>
-      )}
-      {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
-        <DispatchInboxSection
-          sectionOpen={dispatchRequestsOpen}
-          onToggleSection={() => setDispatchRequestsOpen((o) => !o)}
-          requests={dispatchRequests}
-          loading={dispatchRequestsLoading}
-          expandedRequestId={expandedDispatchRequestId}
-          onToggleExpandRequest={toggleExpandDispatchRequest}
-          notesByRequestId={dispatchThreadNotesByRequestId}
-          notesLoadingRequestId={dispatchNotesLoadingRequestId}
-          noteSubmitRequestId={dispatchNoteSubmitRequestId}
-          canAddNotes={dispatchInboxEligible}
-          dispatchRequestDismissingId={dispatchRequestDismissingId}
-          noteDraft={dispatchNoteDraft}
-          onNoteDraftChange={setDispatchNoteDraft}
-          onSubmitNote={submitDispatchNote}
-          onSubmitNoteAndClose={submitDispatchNoteAndClose}
-          onDismiss={dismissDispatchRequest}
-          onOpenDismissedArchive={() => setDispatchDismissedModalOpen(true)}
-          onLinkJobPictures={
-            jobFormModal
-              ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
-              : undefined
-          }
-          onCreateTripCharge={
-            role === 'dev' || role === 'master_technician'
-              ? (args) => setTripChargeTarget(args)
-              : undefined
-          }
-        />
-      )}
-      {authUser?.id && estimatorInboxEligible && role !== 'assistant' && (
-        <EstimatorInboxSection
-          sectionOpen={estimatorRequestsOpen}
-          onToggleSection={() => setEstimatorRequestsOpen((o) => !o)}
-          requests={estimatorRequests}
-          loading={estimatorRequestsLoading}
-          expandedRequestId={expandedEstimatorRequestId}
-          onToggleExpandRequest={toggleExpandEstimatorRequest}
-          notesByRequestId={estimatorThreadNotesByRequestId}
-          notesLoadingRequestId={estimatorNotesLoadingRequestId}
-          noteSubmitRequestId={estimatorNoteSubmitRequestId}
-          canAddNotes={estimatorInboxEligible}
-          estimatorRequestDismissingId={estimatorRequestDismissingId}
-          noteDraft={estimatorNoteDraft}
-          onNoteDraftChange={setEstimatorNoteDraft}
-          onSubmitNote={submitEstimatorNote}
-          onSubmitNoteAndClose={submitEstimatorNoteAndClose}
-          onDismiss={dismissEstimatorRequest}
-        />
-      )}
-
-      {(role === 'dev' || role === 'master_technician') && (waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
-        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+        </BillingPipelineStage>
+        {(waitingForPaymentLoading || billedWaitingDashboardUnits.length > 0) && (
+          <BillingPipelineStage step={3}>
+          <div style={{ marginBottom: 0 }}>
           <button
             type="button"
             onClick={() => setWaitingForPaymentExpanded((prev) => !prev)}
@@ -5610,6 +5625,9 @@ export default function Dashboard() {
           </>
           )}
         </div>
+          </BillingPipelineStage>
+        )}
+        </BillingPipelineCard>
       )}
 
       {(userLoading || showChecklist) && (
