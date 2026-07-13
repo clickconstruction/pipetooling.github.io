@@ -1744,7 +1744,7 @@ function EstimateList() {
             fontSize: '0.875rem',
           }}
         >
-          <span style={{ color: '#1e40af' }}>Filtered by customer</span>
+          <span style={{ color: 'var(--text-blue-800)' }}>Filtered by customer</span>
           <button
             type="button"
             onClick={() =>
@@ -1760,7 +1760,7 @@ function EstimateList() {
               border: '1px solid #93c5fd',
               borderRadius: 4,
               cursor: 'pointer',
-              color: '#1e40af',
+              color: 'var(--text-blue-800)',
               fontSize: '0.8125rem',
             }}
           >
@@ -4578,7 +4578,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-faint)' }}>No supporting document for this quote.</p>
             )}
             <details style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: 'var(--text-700)', textAlign: 'center' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#1f2937' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 500, color: 'var(--text-gray-800)' }}>
                 How to share a file in Google Drive
               </summary>
               <div style={{ textAlign: 'left', marginTop: '0.5rem' }}>

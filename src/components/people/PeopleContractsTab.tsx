@@ -1659,8 +1659,8 @@ export default function PeopleContractsTab({ people, users, canDeletePeopleContr
                                                       fontSize: '0.65rem',
                                                       padding: '0.1rem 0.3rem',
                                                       borderRadius: 4,
-                                                      backgroundColor: '#dbeafe',
-                                                      color: '#1e40af',
+                                                      backgroundColor: 'var(--bg-blue-200)',
+                                                      color: 'var(--text-blue-800)',
                                                     }}
                                                   >
                                                     {isMarkdownBodyFormat(doc.signing_body_format)

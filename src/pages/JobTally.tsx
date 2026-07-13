@@ -151,7 +151,7 @@ function tallyJobsSubRowBannerStyle(allocated: boolean): CSSProperties {
     padding: '0.4rem 0.65rem',
     borderRadius: 6,
     border: allocated ? '1px solid #a7f3d0' : '1px solid #fcd34d',
-    background: allocated ? '#ecfdf5' : 'var(--bg-amber-tint)',
+    background: allocated ? 'var(--bg-emerald-tint)' : 'var(--bg-amber-tint)',
     borderLeft: allocated ? '3px solid #059669' : '3px solid #d97706',
   }
 }

@@ -221,7 +221,7 @@ export function PartsUnattributedMercuryListModal({
                                 padding: '4px 10px',
                                 borderRadius: 6,
                                 border: '1px solid #047857',
-                                background: '#ecfdf5',
+                                background: 'var(--bg-emerald-tint)',
                                 color: '#047857',
                                 cursor: rowBusy ? 'wait' : 'pointer',
                               }}

@@ -139,8 +139,8 @@ function ApBillModal({
                     borderRadius: 999,
                     fontSize: '0.7rem',
                     fontWeight: 600,
-                    background: pastDue >= 60 ? 'var(--bg-red-100)' : '#ffedd5',
-                    color: pastDue >= 60 ? 'var(--text-red-800)' : '#9a3412',
+                    background: pastDue >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
+                    color: pastDue >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
                   }}
                 >
                   {pastDue}d past due
@@ -752,8 +752,8 @@ function ItemsModal({
                                 borderRadius: 999,
                                 fontSize: '0.7rem',
                                 fontWeight: 600,
-                                background: days >= 60 ? 'var(--bg-red-100)' : '#ffedd5',
-                                color: days >= 60 ? 'var(--text-red-800)' : '#9a3412',
+                                background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
+                                color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
                               }}
                             >
                               {days}d

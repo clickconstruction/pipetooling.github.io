@@ -223,7 +223,7 @@ export default function AgreedWriteDownModal({
           line must stay at or below the new total.
         </p>
         {isStripeHosted ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#1e40af', lineHeight: 1.4 }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-blue-800)', lineHeight: 1.4 }}>
             This invoice is hosted on Stripe: we will create a <strong>credit note</strong> for the difference so
             Stripe stays in sync with PipeTooling.
           </p>

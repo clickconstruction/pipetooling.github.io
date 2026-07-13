@@ -432,7 +432,7 @@ export function PeopleUsersTab({
                 type="button"
                 onClick={() => archivePerson(item.id)}
                 disabled={archivingId === item.id}
-                style={{ padding: '2px 6px', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}
+                style={{ padding: '2px 6px', fontSize: '0.8125rem', color: 'var(--text-red-700)', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 3 }}
               >
                 {archivingId === item.id ? '...' : 'Archive'}
               </button>

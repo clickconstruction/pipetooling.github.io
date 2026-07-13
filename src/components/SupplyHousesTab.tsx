@@ -54,11 +54,11 @@ function formatYmdLocal(ymd: string): string {
 
 /** Heat colors for the aging map — green (not due) through deepening reds. */
 const AGING_CELL_STYLES: Record<AgingBucketKey, { background: string; color: string }> = {
-  current: { background: '#ecfdf5', color: '#065f46' },
+  current: { background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)' },
   past1_30: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
-  past30_60: { background: '#ffedd5', color: '#9a3412' },
+  past30_60: { background: 'var(--bg-orange-100)', color: 'var(--text-orange-800)' },
   past60_90: { background: 'var(--bg-red-100)', color: 'var(--text-red-800)' },
-  past90plus: { background: 'var(--bg-red-200)', color: '#7f1d1d' },
+  past90plus: { background: 'var(--bg-red-200)', color: 'var(--text-red-900)' },
   noDueDate: { background: 'var(--bg-muted)', color: 'var(--text-600)' },
 }
 
@@ -956,8 +956,8 @@ export function SupplyHousesTab({
                                                           borderRadius: 999,
                                                           fontSize: '0.7rem',
                                                           fontWeight: 600,
-                                                          background: days >= 60 ? 'var(--bg-red-100)' : '#ffedd5',
-                                                          color: days >= 60 ? 'var(--text-red-800)' : '#9a3412',
+                                                          background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
+                                                          color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
                                                         }}
                                                       >
                                                         {days}d past due

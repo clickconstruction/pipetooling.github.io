@@ -72,7 +72,7 @@ function miniDayPickerButtonStyle(isToday: boolean, isSelected: boolean, isWeeke
     return {
       ...base,
       border: '2px solid #1d4ed8',
-      background: '#dbeafe',
+      background: 'var(--bg-blue-200)',
       fontWeight: 700,
       boxShadow: 'inset 0 0 0 1px #93c5fd',
     }

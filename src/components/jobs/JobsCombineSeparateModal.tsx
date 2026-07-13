@@ -569,7 +569,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
 
         {sSplitFollowUpJobId ? (
           <div style={{ marginBottom: '1rem' }}>
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#166534', lineHeight: 1.5 }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-green-800)', lineHeight: 1.5 }}>
               New job created. Open it in Edit Job to verify details, or close when you are done.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>

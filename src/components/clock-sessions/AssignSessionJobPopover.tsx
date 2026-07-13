@@ -550,7 +550,7 @@ export function AssignSessionJobPopover({
                             border: `1px solid ${isCurrent ? '#86efac' : '#bfdbfe'}`,
                             borderRadius: 4,
                             background: isCurrent ? 'var(--bg-green-tint)' : 'var(--bg-blue-tint)',
-                            color: isCurrent ? '#166534' : 'var(--text-blue-700)',
+                            color: isCurrent ? 'var(--text-green-800)' : 'var(--text-blue-700)',
                             cursor: loading || isCurrent ? 'not-allowed' : 'pointer',
                             width: '100%',
                             maxWidth: '100%',
@@ -569,7 +569,7 @@ export function AssignSessionJobPopover({
                                 alignItems: 'flex-end',
                                 gap: '0.2rem',
                                 textAlign: 'right',
-                                color: isCurrent ? '#15803d' : '#1e40af',
+                                color: isCurrent ? '#15803d' : 'var(--text-blue-800)',
                                 fontVariantNumeric: 'tabular-nums',
                               }}
                             >

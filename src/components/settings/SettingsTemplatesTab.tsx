@@ -415,7 +415,7 @@ export default function SettingsTemplatesTab({
                   background: 'var(--bg-amber-tint)',
                 }}
               >
-                <p style={{ margin: '0 0 0.75rem', color: '#78350f', fontSize: '0.875rem', lineHeight: 1.5 }}>
+                <p style={{ margin: '0 0 0.75rem', color: 'var(--text-amber-900)', fontSize: '0.875rem', lineHeight: 1.5 }}>
                   Permanently removes every estimate for your resolved org (all statuses). Jobs are not deleted. Related
                   thread notes and customer events are removed with each estimate. The next quote number is{' '}
                   <strong>1</strong> only if no estimate rows remain in the database after this; if other organizations still
@@ -805,7 +805,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -857,7 +857,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -908,7 +908,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -958,7 +958,7 @@ export default function SettingsTemplatesTab({
                           type="button"
                           onClick={() => openTestEmail(template)}
                           disabled={!templateTestTargetUserId}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: '#0369a1', border: '1px solid #bae6fd' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                         >
                           Test
                         </button>
@@ -1060,7 +1060,7 @@ export default function SettingsTemplatesTab({
                       type="button" 
                       onClick={testCurrentTemplate}
                       disabled={templateSaving || !templateSubject.trim() || !templateBody.trim() || !templateTestTargetUserId}
-                      style={{ background: 'var(--bg-sky-tint)', color: '#0369a1', border: '1px solid #bae6fd' }}
+                      style={{ background: 'var(--bg-sky-tint)', color: 'var(--text-sky-700)', border: '1px solid #bae6fd' }}
                     >
                       Test Email
                     </button>

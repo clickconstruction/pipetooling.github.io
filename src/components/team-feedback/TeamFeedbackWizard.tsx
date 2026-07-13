@@ -616,7 +616,7 @@ export default function TeamFeedbackWizard({
                 background: 'var(--bg-orange-tint)',
                 border: '1px solid #fed7aa',
                 borderRadius: 6,
-                color: '#9a3412',
+                color: 'var(--text-orange-800)',
               }}
             >
               Preview — submissions disabled.
@@ -628,7 +628,7 @@ export default function TeamFeedbackWizard({
 
           {settingsLoaded && step === 'intro' && (
             <>
-              <h2 id="team-feedback-title" style={{ marginTop: 0, textAlign: 'center', color: '#1f2937' }}>
+              <h2 id="team-feedback-title" style={{ marginTop: 0, textAlign: 'center', color: 'var(--text-gray-800)' }}>
                 30sec Team Feedback
               </h2>
               <p style={{ fontSize: '0.9375rem', color: 'var(--text-600)', lineHeight: 1.5 }}>

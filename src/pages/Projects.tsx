@@ -601,7 +601,7 @@ export default function Projects() {
                       } else if (step.status === 'skipped') {
                         color = '#6b7280'
                       } else if (step.status === 'rejected') {
-                        color = '#b91c1c'
+                        color = 'var(--text-red-700)'
                       } else if (step.status === 'in_progress') {
                         color = '#E87600'
                         fontWeight = 'bold'
@@ -713,8 +713,8 @@ export default function Projects() {
                           alignItems: 'center',
                           gap: '0.25rem',
                           padding: '0.15rem 0.4rem',
-                          background: '#e0f2fe',
-                          color: '#0369a1',
+                          background: 'var(--bg-sky-100)',
+                          color: 'var(--text-sky-700)',
                           borderRadius: 4,
                           fontSize: '0.8125rem',
                         }}
@@ -760,7 +760,7 @@ export default function Projects() {
                             border: '1px solid #bae6fd',
                             borderRadius: 4,
                             background: 'var(--surface)',
-                            color: '#0369a1',
+                            color: 'var(--text-sky-700)',
                             fontSize: '1.125rem',
                             lineHeight: 1,
                             cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer',
@@ -789,14 +789,14 @@ export default function Projects() {
                       <Link
                         key={j.id}
                         to={`/jobs?edit=${j.id}&tab=stages`}
-                        style={{ padding: '0.2rem 0.5rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
+                        style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-neutral-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
                       >
                         {j.hcp_number || j.job_name || 'Job'}
                       </Link>
                     ))}
                     <Link
                       to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
-                      style={{ padding: '0.2rem 0.5rem', background: '#e0f2fe', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#0369a1' }}
+                      style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-sky-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-sky-700)' }}
                     >
                       + Create Job
                     </Link>
@@ -804,7 +804,7 @@ export default function Projects() {
                 ) : (
                   <Link
                     to={`/jobs?newJob=true&project=${p.id}&tab=stages`}
-                    style={{ fontSize: '0.8125rem', color: '#0369a1', textDecoration: 'none' }}
+                    style={{ fontSize: '0.8125rem', color: 'var(--text-sky-700)', textDecoration: 'none' }}
                   >
                     + Create Job for this project
                   </Link>

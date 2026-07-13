@@ -39,7 +39,7 @@ function eligibilitySummary(detail: TeamFeedbackEligibilityDetail): { badge: str
 
 function badgeStyle(detail: TeamFeedbackEligibilityDetail): CSSProperties {
   if (detail.reason === 'ok') {
-    return { background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }
+    return { background: 'var(--bg-emerald-tint)', color: '#047857', border: '1px solid #a7f3d0' }
   }
   if (detail.reason === 'disabled') {
     return { background: 'var(--bg-muted)', color: 'var(--text-600)', border: '1px solid var(--border-strong)' }

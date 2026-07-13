@@ -284,7 +284,7 @@ export default function AdditionalReportModal({
         ...base,
         border: '1px solid #3b82f6',
         background: 'var(--bg-blue-tint)',
-        color: '#1e40af',
+        color: 'var(--text-blue-800)',
         fontWeight: 500,
       }
     }

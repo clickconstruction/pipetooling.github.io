@@ -350,7 +350,7 @@ export function JobThreadNotesPanel({
                           <span style={{ color: 'var(--text-muted)' }}>{` · ${s.assigneeLabels}`}</span>
                         ) : null}
                       </div>
-                      <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{s.note}</div>
+                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>{s.note}</div>
                     </li>
                   )
                 }
@@ -414,7 +414,7 @@ export function JobThreadNotesPanel({
                         ) : null}
                       </div>
                       {c.note ? (
-                        <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap', marginTop: 4 }}>{c.note}</div>
+                        <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap', marginTop: 4 }}>{c.note}</div>
                       ) : null}
                     </li>
                   )
@@ -453,7 +453,7 @@ export function JobThreadNotesPanel({
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
                       </div>
-                      <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{ev.summary}</div>
+                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>{ev.summary}</div>
                     </li>
                   )
                 }
@@ -476,7 +476,7 @@ export function JobThreadNotesPanel({
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
                       </div>
-                      <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{n.body}</div>
+                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>{n.body}</div>
                     </li>
                   )
                 }
@@ -513,7 +513,7 @@ export function JobThreadNotesPanel({
                         {weekdayTimeChicago} · {daysAgoLabel}
                       </span>
                     </div>
-                    <div style={{ color: '#1f2937' }}>
+                    <div style={{ color: 'var(--text-gray-800)' }}>
                       <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
                       {summary ? (
                         <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{summary}</div>

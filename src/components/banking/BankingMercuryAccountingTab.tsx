@@ -1791,7 +1791,7 @@ export function BankingMercuryAccountingTab({
                             alignSelf: 'flex-start',
                             padding: '0.35rem 0.75rem',
                             background: 'var(--surface)',
-                            color: '#1f2937',
+                            color: 'var(--text-gray-800)',
                             border: '1px solid var(--border)',
                             borderRadius: 6,
                             cursor: 'pointer',
@@ -1855,7 +1855,7 @@ export function BankingMercuryAccountingTab({
                     style={{
                       padding: '0.4rem 0.85rem',
                       background: 'var(--surface)',
-                      color: '#1f2937',
+                      color: 'var(--text-gray-800)',
                       border: '1px solid var(--border)',
                       borderRadius: 6,
                       cursor: 'pointer',
@@ -1870,7 +1870,7 @@ export function BankingMercuryAccountingTab({
                     style={{
                       padding: '0.4rem 0.85rem',
                       background: 'var(--surface)',
-                      color: '#1f2937',
+                      color: 'var(--text-gray-800)',
                       border: '1px solid var(--border)',
                       borderRadius: 6,
                       cursor: 'pointer',

@@ -84,8 +84,8 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
 
   /** Badge fill + label color per RPC `kind` (stronger than pastels for contrast on light cards). */
   const BADGE_BY_KIND: Record<string, { bg: string; color: string }> = {
-    thread_note: { bg: '#bfdbfe', color: '#1e40af' },
-    field_report: { bg: '#bbf7d0', color: '#166534' },
+    thread_note: { bg: '#bfdbfe', color: 'var(--text-blue-800)' },
+    field_report: { bg: '#bbf7d0', color: 'var(--text-green-800)' },
     clock: { bg: '#ddd6fe', color: '#6d28d9' },
     schedule: { bg: '#fde68a', color: 'var(--text-amber-800)' },
   }
@@ -245,7 +245,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
                           {formatActivityInstant(row.activity_at)}
                         </time>
                       </div>
-                      <div style={{ color: '#1f2937', lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                      <div style={{ color: 'var(--text-gray-800)', lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
                         {row.summary}
                       </div>
                     </li>

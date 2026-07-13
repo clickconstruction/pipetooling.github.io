@@ -270,7 +270,7 @@ export default function MercuryTransactionInvoiceLinkModal({
                               fontSize: '0.6875rem',
                               fontWeight: 600,
                               color: 'var(--text-blue-700)',
-                              background: '#dbeafe',
+                              background: 'var(--bg-blue-200)',
                               borderRadius: 4,
                               padding: '1px 5px',
                             }}

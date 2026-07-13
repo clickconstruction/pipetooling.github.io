@@ -1321,7 +1321,7 @@ export default function ClockInOutButton({
         ? {
             border: '1px solid #a7f3d0',
             borderRadius: 6,
-            background: '#ecfdf5',
+            background: 'var(--bg-emerald-tint)',
           }
         : {
             border: '1px solid var(--border-strong)',

@@ -324,7 +324,7 @@ export function UpcomingWeekSessionsModal({
                             borderRadius: 9999,
                             whiteSpace: 'nowrap',
                             ...(approved
-                              ? { background: '#d1fae5', color: '#065f46' }
+                              ? { background: '#d1fae5', color: 'var(--text-emerald-800)' }
                               : open
                                 ? { background: 'var(--bg-muted)', color: 'var(--text-muted)' }
                                 : { background: 'var(--bg-amber-100)', color: 'var(--text-amber-700)' }),

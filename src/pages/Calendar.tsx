@@ -96,7 +96,7 @@ function getBidSubmissionStatus(bid: CalendarBid): 'on time' | 'early' | 'not se
 }
 
 function getBidSubmissionStatusColor(status: 'on time' | 'early' | 'not sent'): string {
-  return status === 'not sent' ? '#dc2626' : '#16a34a'
+  return status === 'not sent' ? 'var(--text-red-600)' : '#16a34a'
 }
 
 const CALENDAR_DAY_ACCENT = '#2563eb'
@@ -1273,8 +1273,8 @@ export default function Calendar() {
                             style={{
                               fontSize: '0.75rem',
                               padding: '2px 4px',
-                              background: '#ecfdf5',
-                              color: '#065f46',
+                              background: 'var(--bg-emerald-tint)',
+                              color: 'var(--text-emerald-800)',
                               textDecoration: 'none',
                               borderRadius: 3,
                               overflow: 'hidden',
@@ -1298,7 +1298,7 @@ export default function Calendar() {
                             fontSize: '0.75rem',
                             padding: '2px 4px',
                             background: 'var(--bg-orange-tint)',
-                            color: '#9a3412',
+                            color: 'var(--text-orange-800)',
                             borderRadius: 3,
                             fontWeight: 600,
                             border: '1px solid var(--border-orange)',
@@ -1599,8 +1599,8 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: '#ecfdf5',
-                              color: '#065f46',
+                              background: 'var(--bg-emerald-tint)',
+                              color: 'var(--text-emerald-800)',
                               textDecoration: 'none',
                               borderRadius: 4,
                               border: '1px solid #a7f3d0',
@@ -1620,7 +1620,7 @@ export default function Calendar() {
                               display: 'block',
                               padding: '0.5rem 0.75rem',
                               background: 'var(--bg-orange-tint)',
-                              color: '#9a3412',
+                              color: 'var(--text-orange-800)',
                               borderRadius: 4,
                               border: '1px solid var(--border-orange)',
                             }}
@@ -1945,8 +1945,8 @@ export default function Calendar() {
                           alignItems: 'center',
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
-                          background: '#ecfdf5',
-                          color: '#065f46',
+                          background: 'var(--bg-emerald-tint)',
+                          color: 'var(--text-emerald-800)',
                           textDecoration: 'none',
                           borderRadius: 4,
                           border: '1px solid #a7f3d0',

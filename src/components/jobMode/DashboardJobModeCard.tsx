@@ -75,14 +75,14 @@ const headerWrap: CSSProperties = {
 const headerNum: CSSProperties = {
   fontSize: '1.4rem',
   fontWeight: 800,
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   lineHeight: 1.1,
 }
 
 const headerName: CSSProperties = {
   fontSize: '1.05rem',
   fontWeight: 600,
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   lineHeight: 1.2,
 }
 

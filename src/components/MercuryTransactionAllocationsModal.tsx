@@ -1165,7 +1165,7 @@ export function MercuryTransactionAllocationsModal({
                           padding: '3px 10px',
                           borderRadius: 999,
                           border: '1px solid #e2e8f0',
-                          background: userId === id ? '#e0f2fe' : 'var(--surface)',
+                          background: userId === id ? 'var(--bg-sky-100)' : 'var(--surface)',
                           color: '#334155',
                           cursor: 'pointer',
                           fontFamily: 'inherit',

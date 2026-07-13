@@ -169,7 +169,7 @@ export function BidVersionPicker({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
         <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Version:</span>
         {isUnsplit ? (
-          <span style={{ ...chipBase, background: '#dbeafe', border: '1px solid #3b82f6', cursor: 'default', fontWeight: 600 }}>
+          <span style={{ ...chipBase, background: 'var(--bg-blue-200)', border: '1px solid #3b82f6', cursor: 'default', fontWeight: 600 }}>
             Current
           </span>
         ) : (
@@ -180,7 +180,7 @@ export function BidVersionPicker({
                 key={v.id}
                 style={{
                   ...chipBase,
-                  background: active ? '#dbeafe' : 'var(--bg-muted)',
+                  background: active ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
                   border: active ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                 }}
               >

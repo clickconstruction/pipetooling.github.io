@@ -2360,8 +2360,8 @@ export default function Workflow() {
                       alignItems: 'center',
                       gap: '0.25rem',
                       padding: '0.15rem 0.4rem',
-                      background: '#e0f2fe',
-                      color: '#0369a1',
+                      background: 'var(--bg-sky-100)',
+                      color: 'var(--text-sky-700)',
                       borderRadius: 4,
                       fontSize: '0.8125rem',
                     }}
@@ -2415,7 +2415,7 @@ export default function Workflow() {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                       <Link
                         to={`/jobs?edit=${j.id}&tab=stages`}
-                        style={{ padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
+                        style={{ padding: '0.15rem 0.4rem', background: 'var(--bg-neutral-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
                       >
                         {j.hcp_number || j.job_name || 'Job'}
                       </Link>
@@ -2444,7 +2444,7 @@ export default function Workflow() {
               })}
               <Link
                 to={`/jobs?newJob=true&project=${projectId}&tab=stages`}
-                style={{ padding: '0.15rem 0.4rem', background: '#e0f2fe', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#0369a1' }}
+                style={{ padding: '0.15rem 0.4rem', background: 'var(--bg-sky-100)', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-sky-700)' }}
               >
                 + Create Job
               </Link>
@@ -3283,7 +3283,7 @@ export default function Workflow() {
                             tabIndex={0}
                             onClick={() => setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
                             onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, color: '#0369a1', cursor: 'pointer', fontSize: '0.8125rem' }}
+                            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, color: 'var(--text-sky-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
                           >
                             <span style={{ fontSize: '0.75rem', minWidth: 16, color: 'var(--text-strong)' }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
                             <span>Notes for Office ({(s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length} words)</span>
@@ -3324,7 +3324,7 @@ export default function Workflow() {
                           >
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem' }}>
                               <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
-                              <span style={{ fontWeight: 500, color: '#0369a1' }}>
+                              <span style={{ fontWeight: 500, color: 'var(--text-sky-700)' }}>
                                 Line Items For Office
                                 {!isExpanded && (
                                   <> | {formatAmount((lineItems[s.id] || []).reduce((sum, item) => sum + (item.amount || 0), 0))}</>

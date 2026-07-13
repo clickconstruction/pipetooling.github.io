@@ -405,7 +405,7 @@ export function PeopleHoursGrid({
                           padding: '0 5px',
                           border: '1px solid rgba(217,119,6,0.55)',
                           background: '#fbbf24',
-                          color: '#78350f',
+                          color: 'var(--text-amber-900)',
                           borderRadius: 9999,
                           fontSize: '0.7rem',
                           fontWeight: 700,

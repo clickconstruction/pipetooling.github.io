@@ -108,7 +108,7 @@ export function QuickfillCompleteNoBillSection({
                   }}
                 >
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#7f1d1d' }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-red-900)' }}>
                       {num}
                       {name ? ` · ${name}` : ''}
                     </div>
