@@ -60,7 +60,7 @@ export default function DashboardTallyStaleBanner({
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
         <div style={{ fontWeight: 600, fontSize: '1rem', color: '#c2410c' }}>Stale tally transactions</div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
           {staleCount === 1 ? 'One unlinked transaction — ' : `${staleCount} unlinked transactions — `}
           {agePhrase}. Sort to jobs in Job Parts Tally (Transactions).
         </div>

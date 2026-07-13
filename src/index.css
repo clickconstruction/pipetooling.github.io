@@ -145,6 +145,7 @@ button {
   --surface: #ffffff;
   --bg-subtle: #f9fafb;
   --bg-muted: #f3f4f6;
+  --bg-200: #e5e7eb;
   --bg-blue-tint: #eff6ff;
   --bg-red-tint: #fef2f2;
   --bg-red-100: #fee2e2;
@@ -193,6 +194,7 @@ button {
   --surface: #1f2937;
   --bg-subtle: #18212f;
   --bg-muted: #374151;
+  --bg-200: #4b5563;
   --bg-blue-tint: #1e3358;
   --bg-red-tint: #3b1a1a;
   --bg-red-100: #4c1d1d;

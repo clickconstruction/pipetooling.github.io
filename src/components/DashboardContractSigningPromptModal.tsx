@@ -38,7 +38,7 @@ export function DashboardContractSigningPromptModal({
         aria-labelledby="dashboard-contract-signing-prompt-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 'min(92vw, 480px)',
@@ -52,7 +52,7 @@ export function DashboardContractSigningPromptModal({
         >
           Required Signatures
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
           You have unsigned documents. These must be signed to keep you in compliance with our company and our
           company in compliance with our customers and vendors. App access will be restricted until they are marked
           complete.
@@ -88,9 +88,9 @@ export function DashboardContractSigningPromptModal({
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: openingDocId != null ? 'not-allowed' : 'pointer',
             }}
           >
