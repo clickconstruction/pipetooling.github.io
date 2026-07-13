@@ -2956,7 +2956,7 @@ export default function Materials() {
   return (
     <div className="pageWrap" style={{ maxWidth: '1400px', margin: '0 auto' }}>
       {error && (
-        <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>
+        <div style={{ padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, marginBottom: '1rem' }}>
           {error}
         </div>
       )}
@@ -2971,9 +2971,9 @@ export default function Materials() {
               onClick={() => setSelectedServiceTypeId(st.id)}
               style={{
                 padding: '0.5rem 1rem',
-                border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                background: selectedServiceTypeId === st.id ? '#eff6ff' : 'white',
-                color: selectedServiceTypeId === st.id ? '#3b82f6' : '#374151',
+                border: selectedServiceTypeId === st.id ? '2px solid #3b82f6' : '1px solid var(--border-strong)',
+                background: selectedServiceTypeId === st.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: selectedServiceTypeId === st.id ? 'var(--text-blue-500)' : 'var(--text-700)',
                 borderRadius: 6,
                 fontWeight: selectedServiceTypeId === st.id ? 600 : 400,
                 cursor: 'pointer'
@@ -2986,7 +2986,7 @@ export default function Materials() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', marginBottom: '2rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', gap: '1rem', width: 'max-content', alignItems: 'center' }}>
         {myRole !== 'estimator' && myRole !== 'primary' && myRole !== 'superintendent' && (
@@ -3006,7 +3006,7 @@ export default function Materials() {
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'supply-houses' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'supply-houses' ? '#3b82f6' : '#6b7280',
+              color: activeTab === 'supply-houses' ? 'var(--text-blue-500)' : 'var(--text-muted)',
               fontWeight: activeTab === 'supply-houses' ? 600 : 400,
               cursor: 'pointer',
               flexShrink: 0,
@@ -3029,7 +3029,7 @@ export default function Materials() {
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'po-generator' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'po-generator' ? '#3b82f6' : '#6b7280',
+              color: activeTab === 'po-generator' ? 'var(--text-blue-500)' : 'var(--text-muted)',
               fontWeight: activeTab === 'po-generator' ? 600 : 400,
               cursor: 'pointer',
               flexShrink: 0,
@@ -3037,7 +3037,7 @@ export default function Materials() {
           >
             PO Generator
           </button>
-          <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+          <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
           </>
         )}
         <button
@@ -3055,7 +3055,7 @@ export default function Materials() {
             border: 'none',
             background: 'none',
             borderBottom: activeTab === 'parts-book' ? '2px solid #3b82f6' : '2px solid transparent',
-            color: activeTab === 'parts-book' ? '#3b82f6' : '#6b7280',
+            color: activeTab === 'parts-book' ? 'var(--text-blue-500)' : 'var(--text-muted)',
             fontWeight: activeTab === 'parts-book' ? 600 : 400,
             cursor: 'pointer',
             flexShrink: 0,
@@ -3078,7 +3078,7 @@ export default function Materials() {
             border: 'none',
             background: 'none',
             borderBottom: activeTab === 'assembly-book' ? '2px solid #3b82f6' : '2px solid transparent',
-            color: activeTab === 'assembly-book' ? '#3b82f6' : '#6b7280',
+            color: activeTab === 'assembly-book' ? 'var(--text-blue-500)' : 'var(--text-muted)',
             fontWeight: activeTab === 'assembly-book' ? 600 : 400,
             cursor: 'pointer',
             flexShrink: 0,
@@ -3103,7 +3103,7 @@ export default function Materials() {
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'templates-po' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'templates-po' ? '#3b82f6' : '#6b7280',
+              color: activeTab === 'templates-po' ? 'var(--text-blue-500)' : 'var(--text-muted)',
               fontWeight: activeTab === 'templates-po' ? 600 : 400,
               cursor: 'pointer',
               flexShrink: 0,
@@ -3126,7 +3126,7 @@ export default function Materials() {
               border: 'none',
               background: 'none',
               borderBottom: activeTab === 'purchase-orders' ? '2px solid #3b82f6' : '2px solid transparent',
-              color: activeTab === 'purchase-orders' ? '#3b82f6' : '#6b7280',
+              color: activeTab === 'purchase-orders' ? 'var(--text-blue-500)' : 'var(--text-muted)',
               fontWeight: activeTab === 'purchase-orders' ? 600 : 400,
               cursor: 'pointer',
               flexShrink: 0,
@@ -3164,15 +3164,15 @@ export default function Materials() {
               style={{ 
                 flex: 1, 
                 padding: '0.5rem', 
-                border: '1px solid #d1d5db', 
+                border: '1px solid var(--border-strong)', 
                 borderRadius: 4,
-                background: loadAllMode ? '#f0f9ff' : 'white',
+                background: loadAllMode ? '#f0f9ff' : 'var(--surface)',
               }}
             />
             <select
               value={filterPartTypeId}
               onChange={(e) => setFilterPartTypeId(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             >
               <option value="">All Part Types</option>
               {partTypes.map(ft => (
@@ -3184,7 +3184,7 @@ export default function Materials() {
             <select
               value={filterManufacturer}
               onChange={(e) => setFilterManufacturer(e.target.value)}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             >
               <option value="">All Manufacturers</option>
               {manufacturers.map(m => (
@@ -3210,8 +3210,8 @@ export default function Materials() {
               title={loadAllMode ? "Exit bulk edit mode (paginated)" : "Load all parts for bulk editing"}
               style={{
                 padding: '0.5rem',
-                background: loadAllMode ? '#3b82f6' : 'white',
-                border: '1px solid #d1d5db',
+                background: loadAllMode ? '#3b82f6' : 'var(--surface)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: loadingAllParts ? 'default' : 'pointer',
                 display: 'flex',
@@ -3236,19 +3236,19 @@ export default function Materials() {
             </button>
           </div>
 
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Manufacturer</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part Type</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Best Price</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Manufacturer</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part Type</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Best Price</th>
                   <th
                     style={{
                       padding: '0.75rem',
                       textAlign: 'left',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       cursor: 'pointer',
                       userSelect: 'none',
                     }}
@@ -3258,13 +3258,13 @@ export default function Materials() {
                     #
                     {sortByPriceCountAsc ? ' \u2191' : ''}
                   </th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {displayParts.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                       {(searchQuery || clientSearchQuery || filterPartTypeId || filterManufacturer) ? 'No parts match your filters' : 'No parts yet. Add your first part or wait for the ledger to load!'}
                     </td>
                   </tr>
@@ -3278,9 +3278,9 @@ export default function Materials() {
                         <tr
                           onClick={() => setExpandedPartId(isExpanded ? null : part.id)}
                           style={{
-                            borderBottom: isExpanded ? 'none' : '1px solid #e5e7eb',
+                            borderBottom: isExpanded ? 'none' : '1px solid var(--border)',
                             cursor: 'pointer',
-                            background: isExpanded ? '#f3f4f6' : undefined,
+                            background: isExpanded ? 'var(--bg-muted)' : undefined,
                           }}
                           onMouseEnter={(e) => {
                             if (!isExpanded) e.currentTarget.style.background = '#f9fafb'
@@ -3305,19 +3305,19 @@ export default function Materials() {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); openEditPart(part) }}
-                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                             >
                               Edit
                             </button>
                           </td>
                         </tr>
                         {isExpanded && (
-                          <tr key={`${part.id}-details`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={`${part.id}-details`} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td
                               colSpan={6}
                               style={{
                                 padding: '0.75rem 0.75rem 0.75rem 2.5rem',
-                                background: '#f9fafb',
+                                background: 'var(--bg-subtle)',
                                 whiteSpace: 'pre-wrap',
                               }}
                             >
@@ -3338,7 +3338,7 @@ export default function Materials() {
                                   <strong>Prices</strong>
                                   <div style={{ marginTop: '0.25rem' }}>
                                     {part.prices.length === 0 ? (
-                                      <span style={{ color: '#6b7280' }}>No prices yet</span>
+                                      <span style={{ color: 'var(--text-muted)' }}>No prices yet</span>
                                     ) : (
                                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.875rem' }}>
                                         {part.prices.map((price) => (
@@ -3383,13 +3383,13 @@ export default function Materials() {
           </div>
           {loadAllMode ? (
             loadingAllParts && (
-              <div style={{ marginTop: '0.75rem', textAlign: 'center', padding: '1rem', color: '#6b7280' }}>
+              <div style={{ marginTop: '0.75rem', textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>
                 Loading all parts... ({allParts.length} loaded)
               </div>
             )
           ) : (
             hasMoreParts && (
-              <div style={{ marginTop: '0.75rem', textAlign: 'center', padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ marginTop: '0.75rem', textAlign: 'center', padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 {loadingPartsPage ? 'Loading more parts…' : 'Scroll down to load more'}
               </div>
             )
@@ -3414,7 +3414,7 @@ export default function Materials() {
       {/* Part Prices Modal */}
       {viewingPartPrices && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ marginBottom: '1rem' }}>Prices for {viewingPartPrices.name}</h2>
             <PartPricesManager
               part={viewingPartPrices}
@@ -3451,7 +3451,7 @@ export default function Materials() {
       {/* Supply House Management Modal */}
       {viewingSupplyHouses && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0 }}>Supply Houses</h2>
               <button
@@ -3460,13 +3460,13 @@ export default function Materials() {
                   setViewingSupplyHouses(false)
                   closeSupplyHouseForm()
                 }}
-                style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+                style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 ×
               </button>
             </div>
 
-            <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4, color: '#6b7280', fontSize: '0.875rem' }}>
+            <div style={{ marginBottom: '1.5rem', padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 4, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {/* Service Type Statistics Headers */}
               {supplyHouseStatsByServiceType?.serviceTypes.map(st => {
                 const pctWith = st.totalParts === 0 ? 0 : Math.round((st.partsWithPrices / st.totalParts) * 100)
@@ -3482,12 +3482,12 @@ export default function Materials() {
               <div style={{ marginTop: '1rem', overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
-                    <tr style={{ background: '#f3f4f6' }}>
-                      <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid #d1d5db', fontWeight: 600 }}>
+                    <tr style={{ background: 'var(--bg-muted)' }}>
+                      <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '2px solid var(--border-strong)', fontWeight: 600 }}>
                         Supply House
                       </th>
                       {supplyHouseStatsByServiceType?.serviceTypes.map(st => (
-                        <th key={st.id} style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '2px solid #d1d5db', fontWeight: 600 }}>
+                        <th key={st.id} style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '2px solid var(--border-strong)', fontWeight: 600 }}>
                           {st.name}
                         </th>
                       ))}
@@ -3495,12 +3495,12 @@ export default function Materials() {
                   </thead>
                   <tbody>
                     {supplyHouseStatsByServiceType?.supplyHouses.map(sh => (
-                      <tr key={sh.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={sh.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem', fontWeight: 500 }}>{sh.name}</td>
                         {supplyHouseStatsByServiceType.serviceTypes.map(st => {
                           const count = sh.pricesByServiceType[st.id] ?? 0
                           return (
-                            <td key={st.id} style={{ padding: '0.5rem', textAlign: 'right', color: count === 0 ? '#9ca3af' : '#374151' }}>
+                            <td key={st.id} style={{ padding: '0.5rem', textAlign: 'right', color: count === 0 ? 'var(--text-faint)' : 'var(--text-700)' }}>
                               {count}
                             </td>
                           )
@@ -3512,7 +3512,7 @@ export default function Materials() {
               </div>
               
               {(!supplyHouseStatsByServiceType || supplyHouseStatsByServiceType.supplyHouses.length === 0) && (
-                <div style={{ marginTop: '1rem', textAlign: 'center', color: '#6b7280' }}>
+                <div style={{ marginTop: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   No supply houses or service types available.
                 </div>
               )}
@@ -3562,27 +3562,27 @@ export default function Materials() {
             )}
 
             {/* Supply Houses List */}
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Phone</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Phone</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {supplyHouses.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                      <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         No supply houses yet. Add your first supply house!
                       </td>
                     </tr>
                   ) : (
                     supplyHouses.map(sh => (
-                      <tr key={sh.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={sh.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.75rem', fontWeight: 500 }}>{sh.name}</td>
                         <td style={{ padding: '0.75rem' }}>{sh.contact_name || '-'}</td>
                         <td style={{ padding: '0.75rem' }}>{sh.phone || '-'}</td>
@@ -3591,7 +3591,7 @@ export default function Materials() {
                           <button
                             type="button"
                             onClick={() => openEditSupplyHouse(sh)}
-                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -3626,7 +3626,7 @@ export default function Materials() {
               <button
                 type="button"
                 onClick={() => setFilterAssemblyTypeDropdownOpen(!filterAssemblyTypeDropdownOpen)}
-                style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '200px', background: 'white', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '200px', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
               >
                 <span>
                   {!filterIncludeEmpty && filterAssemblyTypeIds.length === 0
@@ -3650,8 +3650,8 @@ export default function Materials() {
                     top: '100%',
                     left: 0,
                     marginTop: 4,
-                    background: 'white',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     zIndex: 50,
@@ -3661,7 +3661,7 @@ export default function Materials() {
                   }}
                 >
                   <label
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                   >
                     <input
                       type="checkbox"
@@ -3690,7 +3690,7 @@ export default function Materials() {
                     </label>
                   ))}
                   {assemblyTypes.length === 0 && (
-                    <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>No assembly types</div>
+                    <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assembly types</div>
                   )}
                 </div>
               )}
@@ -3701,7 +3701,7 @@ export default function Materials() {
               value={templateSearchQuery}
               onChange={(e) => setTemplateSearchQuery(e.target.value)}
               placeholder="Search assemblies by name, description, or type..."
-              style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
 
@@ -3710,7 +3710,7 @@ export default function Materials() {
             {/* Left: Assembly List */}
             <div>
               {filteredTemplates.length === 0 ? (
-                <div style={{ padding: '3rem', textAlign: 'center', color: '#6b7280', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+                <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 8 }}>
                   {materialTemplates.length === 0 ? 'No assemblies yet. Create your first assembly!' : 'No assemblies match your filters.'}
                 </div>
               ) : (
@@ -3749,9 +3749,9 @@ export default function Materials() {
                         onClick={() => setSelectedTemplate(isSelected ? null : template)}
                         style={{
                           padding: '1rem',
-                          border: `2px solid ${isSelected ? '#3b82f6' : '#e5e7eb'}`,
+                          border: `2px solid ${isSelected ? '#3b82f6' : 'var(--border)'}`,
                           borderRadius: 8,
-                          background: isSelected ? '#eff6ff' : 'white',
+                          background: isSelected ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: 'pointer',
                           transition: 'all 0.15s',
                         }}
@@ -3760,7 +3760,7 @@ export default function Materials() {
                           <div style={{ flex: 1 }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600, marginBottom: '0.25rem' }}>{template.name}</h3>
                             {template.description && (
-                              <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>{template.description}</p>
+                              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{template.description}</p>
                             )}
                           </div>
                           <button
@@ -3769,7 +3769,7 @@ export default function Materials() {
                               e.stopPropagation()
                               openEditTemplate(template)
                             }}
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -3784,12 +3784,12 @@ export default function Materials() {
                           <span style={{ padding: '0.125rem 0.5rem', fontSize: '0.75rem', background: statusBg, color: statusColor, borderRadius: 4, fontWeight: 500 }}>
                             {statusText}
                           </span>
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             {costData.partCount} part{costData.partCount !== 1 ? 's' : ''}
                             {costData.nestedCount > 0 && `, ${costData.nestedCount} nested`}
                           </span>
                           {costData.total > 0 && (
-                            <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-green-600)', fontWeight: 600 }}>
                               ${formatCurrency(costData.total)}
                             </span>
                           )}
@@ -3803,18 +3803,18 @@ export default function Materials() {
 
             {/* Right: Assembly Details */}
             {selectedTemplate && (
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem', background: 'white' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1.5rem', background: 'var(--surface)' }}>
                 <div style={{ marginBottom: '1.5rem' }}>
                   <h2 style={{ margin: 0, marginBottom: '0.5rem' }}>{selectedTemplate.name}</h2>
                   {selectedTemplate.description && (
-                    <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{selectedTemplate.description}</p>
+                    <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{selectedTemplate.description}</p>
                   )}
                 </div>
 
                 {/* Parts Section */}
                 <div style={{ marginBottom: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#6b7280' }}>Parts</h3>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Parts</h3>
                     <button
                       type="button"
                       onClick={() => {
@@ -3835,7 +3835,7 @@ export default function Materials() {
                     </button>
                   </div>
                   {templateItems.filter(item => item.item_type === 'part').length === 0 ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', background: '#f9fafb', borderRadius: 4, fontSize: '0.875rem' }}>
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.875rem' }}>
                       No parts in this assembly
                     </div>
                   ) : (
@@ -3847,7 +3847,7 @@ export default function Materials() {
                         const isExpanded = expandedPartId === part?.id
                         
                         return (
-                          <div key={item.id} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                          <div key={item.id} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                             <div 
                               onClick={() => setExpandedPartId(isExpanded ? null : (part?.id || null))}
                               style={{ 
@@ -3855,7 +3855,7 @@ export default function Materials() {
                                 justifyContent: 'space-between', 
                                 alignItems: 'center', 
                                 padding: '0.75rem', 
-                                background: isExpanded ? '#eff6ff' : '#f9fafb',
+                                background: isExpanded ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
                                 cursor: 'pointer',
                                 transition: 'background 0.15s'
                               }}
@@ -3863,25 +3863,25 @@ export default function Materials() {
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{part?.name || 'Unknown Part'}</div>
                                 {(part?.manufacturer || part?.part_type?.name) && (
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                                     {[part.manufacturer, part.part_type?.name].filter(Boolean).join(' · ')}
                                   </div>
                                 )}
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                                   Qty: {item.quantity}
                                   {item.notes && ` · ${item.notes}`}
                                 </div>
                               </div>
                               <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
                                 {hasPrice ? (
-                                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#059669' }}>
+                                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-600)' }}>
                                     ${formatCurrency(lowestPrice * item.quantity)}
-                                    <div style={{ fontSize: '0.75rem', fontWeight: 400, color: '#6b7280' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                                       ${formatCurrency(lowestPrice)} ea
                                     </div>
                                   </div>
                                 ) : (
-                                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>
+                                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-600)' }}>
                                     No price
                                   </div>
                                 )}
@@ -3890,11 +3890,11 @@ export default function Materials() {
                             
                             {/* Expanded price details */}
                             {isExpanded && part && (
-                              <div style={{ padding: '1rem', background: 'white', borderTop: '1px solid #e5e7eb' }}>
+                              <div style={{ padding: '1rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
                                 {/* Quantity Editor */}
                                 <div style={{ marginBottom: '0.75rem' }}>
                                   <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem' }}>
-                                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#374151' }}>Quantity in Assembly:</span>
+                                    <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-700)' }}>Quantity in Assembly:</span>
                                     {editingItemQuantityId === item.id ? (
                                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                         <input
@@ -3904,7 +3904,7 @@ export default function Materials() {
                                           onChange={(e) => setEditingItemQuantityValue(e.target.value)}
                                           onClick={(e) => e.stopPropagation()}
                                           autoFocus
-                                          style={{ width: '80px', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                                          style={{ width: '80px', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                                         />
                                         <button
                                           type="button"
@@ -3926,14 +3926,14 @@ export default function Materials() {
                                             setEditingItemQuantityId(null)
                                             setEditingItemQuantityValue('')
                                           }}
-                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                         >
                                           Cancel
                                         </button>
                                       </div>
                                     ) : (
                                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#059669' }}>{item.quantity}</span>
+                                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-green-600)' }}>{item.quantity}</span>
                                         <button
                                           type="button"
                                           onClick={(e) => {
@@ -3941,7 +3941,7 @@ export default function Materials() {
                                             setEditingItemQuantityId(item.id)
                                             setEditingItemQuantityValue(item.quantity.toString())
                                           }}
-                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                         >
                                           Edit
                                         </button>
@@ -3951,7 +3951,7 @@ export default function Materials() {
                                 </div>
 
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>Prices at Supply Houses</h4>
+                                  <h4 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-700)' }}>Prices at Supply Houses</h4>
                                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <button
                                       type="button"
@@ -3985,7 +3985,7 @@ export default function Materials() {
                                       }}
                                       title="Remove from assembly"
                                       aria-label="Remove from assembly"
-                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                                     >
                                       Remove
                                     </button>
@@ -3993,7 +3993,7 @@ export default function Materials() {
                                 </div>
                                 
                                 {(part.prices?.length ?? 0) === 0 ? (
-                                  <div style={{ padding: '0.75rem', textAlign: 'center', color: '#dc2626', background: '#fee2e2', borderRadius: 4, fontSize: '0.75rem' }}>
+                                  <div style={{ padding: '0.75rem', textAlign: 'center', color: 'var(--text-red-600)', background: 'var(--bg-red-100)', borderRadius: 4, fontSize: '0.75rem' }}>
                                     No prices available for this part
                                   </div>
                                 ) : (
@@ -4012,12 +4012,12 @@ export default function Materials() {
                                               justifyContent: 'space-between', 
                                               alignItems: 'center',
                                               padding: '0.5rem',
-                                              background: isLowest ? '#d1fae5' : '#f9fafb',
+                                              background: isLowest ? '#d1fae5' : 'var(--bg-subtle)',
                                               borderRadius: 4,
                                               fontSize: '0.75rem'
                                             }}
                                           >
-                                            <span style={{ fontWeight: 500, color: '#374151' }}>
+                                            <span style={{ fontWeight: 500, color: 'var(--text-700)' }}>
                                               {supplyHouseName}
                                               {isLowest && (
                                                 <span style={{ marginLeft: '0.5rem', padding: '0.125rem 0.375rem', background: '#059669', color: 'white', borderRadius: 3, fontSize: '0.625rem', fontWeight: 600 }}>
@@ -4025,7 +4025,7 @@ export default function Materials() {
                                                 </span>
                                               )}
                                             </span>
-                                            <span style={{ fontWeight: 600, color: isLowest ? '#059669' : '#6b7280' }}>
+                                            <span style={{ fontWeight: 600, color: isLowest ? 'var(--text-green-600)' : 'var(--text-muted)' }}>
                                               ${formatCurrency(price.price)}
                                             </span>
                                           </div>
@@ -4045,7 +4045,7 @@ export default function Materials() {
                 {/* Nested Assemblies Section */}
                 <div style={{ marginBottom: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#6b7280' }}>Nested Assemblies</h3>
+                    <h3 style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Nested Assemblies</h3>
                     <button
                       type="button"
                       onClick={() => {
@@ -4066,7 +4066,7 @@ export default function Materials() {
                     </button>
                   </div>
                   {templateItems.filter(item => item.item_type === 'template').length === 0 ? (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', background: '#f9fafb', borderRadius: 4, fontSize: '0.875rem' }}>
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.875rem' }}>
                       No nested assemblies
                     </div>
                   ) : (
@@ -4079,7 +4079,7 @@ export default function Materials() {
                           <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f0f9ff', borderRadius: 4, border: '1px solid #bfdbfe' }}>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{nestedTemplate?.name || 'Unknown Assembly'}</div>
-                              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                                 Qty: {item.quantity} · {nestedCost.partCount} part{nestedCost.partCount !== 1 ? 's' : ''}
                                 {nestedCost.nestedCount > 0 && `, ${nestedCost.nestedCount} nested`}
                                 {item.notes && ` · ${item.notes}`}
@@ -4091,7 +4091,7 @@ export default function Materials() {
                                   ${formatCurrency(nestedCost.total)}
                                 </div>
                               ) : (
-                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>
+                                <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-red-600)' }}>
                                   {nestedCost.missingPrices > 0 ? `${nestedCost.missingPrices} missing` : 'No prices'}
                                 </div>
                               )}
@@ -4118,25 +4118,25 @@ export default function Materials() {
                   const nestedOnly = costData.total - partsOnly
                   
                   return (
-                    <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
-                      <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#6b7280' }}>Cost Summary</h3>
+                    <div style={{ padding: '1rem', background: 'var(--bg-subtle)', borderRadius: 4, border: '1px solid var(--border)' }}>
+                      <h3 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Cost Summary</h3>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#6b7280' }}>Direct Parts:</span>
+                          <span style={{ color: 'var(--text-muted)' }}>Direct Parts:</span>
                           <span style={{ fontWeight: 500 }}>${formatCurrency(partsOnly)}</span>
                         </div>
                         {nestedOnly > 0 && (
                           <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ color: '#6b7280' }}>Nested Assemblies:</span>
+                            <span style={{ color: 'var(--text-muted)' }}>Nested Assemblies:</span>
                             <span style={{ fontWeight: 500 }}>${formatCurrency(nestedOnly)}</span>
                           </div>
                         )}
-                        <div style={{ borderTop: '1px solid #d1d5db', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <div style={{ borderTop: '1px solid var(--border-strong)', paddingTop: '0.5rem', marginTop: '0.25rem', display: 'flex', justifyContent: 'space-between' }}>
                           <span style={{ fontWeight: 600 }}>Total Estimated Cost:</span>
-                          <span style={{ fontWeight: 700, color: '#059669', fontSize: '1rem' }}>${formatCurrency(costData.total)}</span>
+                          <span style={{ fontWeight: 700, color: 'var(--text-green-600)', fontSize: '1rem' }}>${formatCurrency(costData.total)}</span>
                         </div>
                         {costData.missingPrices > 0 && (
-                          <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: '#fef3c7', borderRadius: 4, color: '#92400e', fontSize: '0.75rem' }}>
+                          <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--bg-amber-100)', borderRadius: 4, color: 'var(--text-amber-800)', fontSize: '0.75rem' }}>
                             ⚠ {costData.missingPrices} part{costData.missingPrices !== 1 ? 's' : ''} missing price{costData.missingPrices !== 1 ? 's' : ''}
                           </div>
                         )}
@@ -4146,9 +4146,9 @@ export default function Materials() {
                 })()}
 
                 {/* Supply house bundle prices */}
-                <div style={{ marginTop: '1rem', padding: '1rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: '#6b7280' }}>Supply house prices</h3>
-                  <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.8125rem' }}>
+                <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-subtle)', borderRadius: 4, border: '1px solid var(--border)' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, textTransform: 'uppercase', color: 'var(--text-muted)' }}>Supply house prices</h3>
+                  <p style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                     A bundle price a supply house quotes for this whole assembly (e.g. a discount without a per-part breakdown). Used when adding this assembly as a bundle on a bid takeoff.
                   </p>
                   <TemplatePricesManager template={selectedTemplate} supplyHouses={supplyHouses} />
@@ -4162,7 +4162,7 @@ export default function Materials() {
                       setSelectedTemplate(null)
                       setActiveTab('parts-book')
                     }}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                   >
                     View Parts Book
                   </button>
@@ -4194,7 +4194,7 @@ export default function Materials() {
                 <button
                   type="button"
                   onClick={() => setFilterAssemblyTypeDropdownOpen(!filterAssemblyTypeDropdownOpen)}
-                  style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px', background: 'white', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '180px', background: 'var(--surface)', cursor: 'pointer', textAlign: 'left', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
                 >
                   <span>
                     {!filterIncludeEmpty && filterAssemblyTypeIds.length === 0
@@ -4218,8 +4218,8 @@ export default function Materials() {
                       top: '100%',
                       left: 0,
                       marginTop: 4,
-                      background: 'white',
-                      border: '1px solid #d1d5db',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                       zIndex: 50,
@@ -4229,7 +4229,7 @@ export default function Materials() {
                     }}
                   >
                     <label
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                      style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                     >
                       <input
                         type="checkbox"
@@ -4258,7 +4258,7 @@ export default function Materials() {
                       </label>
                     ))}
                     {assemblyTypes.length === 0 && (
-                      <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>No assembly types</div>
+                      <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assembly types</div>
                     )}
                   </div>
                 )}
@@ -4269,17 +4269,17 @@ export default function Materials() {
                 value={templateSearchQuery}
                 onChange={(e) => setTemplateSearchQuery(e.target.value)}
                 placeholder="Search assemblies by name or description…"
-                style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
 
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '600px', overflow: 'auto' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '600px', overflow: 'auto' }}>
               {materialTemplates.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   No assemblies yet. Create your first assembly!
                 </div>
               ) : filteredTemplates.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   No assemblies match
                 </div>
               ) : (
@@ -4296,8 +4296,8 @@ export default function Materials() {
                       key={template.id}
                       style={{
                         padding: '1rem',
-                        borderBottom: '1px solid #e5e7eb',
-                        background: selectedTemplate?.id === template.id ? '#eff6ff' : 'white',
+                        borderBottom: '1px solid var(--border)',
+                        background: selectedTemplate?.id === template.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                         cursor: 'pointer',
                       }}
                       onClick={() => setSelectedTemplate(template)}
@@ -4313,7 +4313,7 @@ export default function Materials() {
                             )}
                           </div>
                           {template.description && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{template.description}</div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{template.description}</div>
                           )}
                         </div>
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -4334,7 +4334,7 @@ export default function Materials() {
                               e.stopPropagation()
                               openEditTemplate(template)
                             }}
-                            style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -4349,24 +4349,24 @@ export default function Materials() {
 
             {/* Template Items View */}
             {selectedTemplate && (
-              <div ref={templateItemsSectionRef} style={{ marginTop: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem' }}>
+              <div ref={templateItemsSectionRef} style={{ marginTop: '1.5rem', border: '1px solid var(--border)', borderRadius: 4, padding: '1rem' }}>
                 <h3 style={{ marginBottom: '1rem' }}>Items in {selectedTemplate.name}</h3>
 
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part/Assembly Type</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part/Assembly Type</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {templateItems.length === 0 ? (
                         <tr>
-                          <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                          <td colSpan={5} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                             No items yet. Add parts or nested assemblies.
                           </td>
                         </tr>
@@ -4380,9 +4380,9 @@ export default function Materials() {
                             ? assemblyTypes.find(at => at.id === item.nested_template?.assembly_type_id)?.name
                             : null
                           return (
-                          <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
-                            <td style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                            <td style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                               {partTypeName ?? assemblyTypeName ?? '—'}
                             </td>
                             <td style={{ padding: '0.75rem' }}>
@@ -4398,7 +4398,7 @@ export default function Materials() {
                                       onClick={(e) => { e.stopPropagation(); setViewingPartPrices(item.part!) }}
                                       title="Part prices"
                                       aria-label="Part prices"
-                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: priceIconColor }}
+                                      style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: priceIconColor }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
                                         <path d="M128 128C92.7 128 64 156.7 64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192C576 156.7 547.3 128 512 128L128 128zM320 224C373 224 416 267 416 320C416 373 373 416 320 416C267 416 224 373 224 320C224 267 267 224 320 224zM512 248C512 252.4 508.4 256.1 504 255.5C475 251.9 452.1 228.9 448.5 200C448 195.6 451.6 192 456 192L504 192C508.4 192 512 195.6 512 200L512 248zM128 392C128 387.6 131.6 383.9 136 384.5C165 388.1 187.9 411.1 191.5 440C192 444.4 188.4 448 184 448L136 448C131.6 448 128 444.4 128 440L128 392zM136 255.5C131.6 256 128 252.4 128 248L128 200C128 195.6 131.6 192 136 192L184 192C188.4 192 192.1 195.6 191.5 200C187.9 229 164.9 251.9 136 255.5zM504 384.5C508.4 384 512 387.6 512 392L512 440C512 444.4 508.4 448 504 448L456 448C451.6 448 447.9 444.4 448.5 440C452.1 411 475.1 388.1 504 384.5z" />
@@ -4409,7 +4409,7 @@ export default function Materials() {
                                       onClick={(e) => { e.stopPropagation(); openEditPart(item.part!) }}
                                       title="Edit part"
                                       aria-label="Edit part"
-                                      style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={18} height={18} fill="currentColor" aria-hidden="true">
                                         <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
@@ -4422,7 +4422,7 @@ export default function Materials() {
                                   onClick={() => removeItemFromTemplate(item.id)}
                                   title="Remove from assembly"
                                   aria-label="Remove from assembly"
-                                  style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                  style={{ padding: '0.25rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
                                     <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
@@ -4438,7 +4438,7 @@ export default function Materials() {
                   </table>
                 </div>
 
-                <div style={{ padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>
+                <div style={{ padding: '1rem', background: 'var(--bg-subtle)', borderRadius: 4 }}>
                   <div style={{ marginBottom: '0.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Add Item</label>
                     <select
@@ -4457,7 +4457,7 @@ export default function Materials() {
                           setTemplatePartDropdownOpen(false)
                         }
                       }}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                     >
                       <option value="part">Part</option>
                       <option value="template">Nested Assembly</option>
@@ -4475,13 +4475,13 @@ export default function Materials() {
                           onKeyDown={(e) => e.key === 'Escape' && setTemplatePartDropdownOpen(false)}
                           readOnly={!!newItemPartId}
                           placeholder="Search parts by name, manufacturer, type, or notes…"
-                          style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: newItemPartId ? '#f3f4f6' : undefined }}
+                          style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: newItemPartId ? 'var(--bg-muted)' : undefined }}
                         />
                         {newItemPartId && (
                           <button
                             type="button"
                             onClick={() => { setNewItemPartId(''); setTemplatePartSearchQuery(''); setTemplatePartDropdownOpen(true) }}
-                            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                            style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                           >
                             Clear
                           </button>
@@ -4500,15 +4500,15 @@ export default function Materials() {
                             listStyle: 'none',
                             maxHeight: 240,
                             overflowY: 'auto',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
-                            background: '#fff',
+                            background: 'var(--surface)',
                             zIndex: 50,
                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                           }}
                         >
                           {filterPartsByQuery(allParts.length > 0 ? allParts : parts, templatePartSearchQuery).length === 0 ? (
-                            <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                            <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                               No parts match.{' '}
                               <button
                                 type="button"
@@ -4538,7 +4538,7 @@ export default function Materials() {
                               >
                                 <div style={{ fontWeight: 500 }}>{p.name}</div>
                                 {(p.manufacturer || p.part_type?.name) && (
-                                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                                     {[p.manufacturer, p.part_type?.name].filter(Boolean).join(' · ')}
                                   </div>
                                 )}
@@ -4554,7 +4554,7 @@ export default function Materials() {
                       <select
                         value={newItemFilterAssemblyTypeId}
                         onChange={(e) => { setNewItemFilterAssemblyTypeId(e.target.value); setNewItemTemplateDropdownOpen(true) }}
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                       >
                         <option value="">All Assembly Types</option>
                         {assemblyTypes.map(at => (
@@ -4573,13 +4573,13 @@ export default function Materials() {
                             onKeyDown={(e) => e.key === 'Escape' && setNewItemTemplateDropdownOpen(false)}
                             readOnly={!!newItemTemplateId}
                             placeholder="Search assemblies by name, description, or type…"
-                            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: newItemTemplateId ? '#f3f4f6' : undefined }}
+                            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: newItemTemplateId ? 'var(--bg-muted)' : undefined }}
                           />
                           {newItemTemplateId && (
                             <button
                               type="button"
                               onClick={() => { setNewItemTemplateId(''); setNewItemTemplateSearchQuery(''); setNewItemTemplateDropdownOpen(true) }}
-                              style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                              style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                             >
                               Clear
                             </button>
@@ -4598,9 +4598,9 @@ export default function Materials() {
                               listStyle: 'none',
                               maxHeight: 240,
                               overflowY: 'auto',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: '#fff',
+                              background: 'var(--surface)',
                               zIndex: 50,
                               boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                             }}
@@ -4610,7 +4610,7 @@ export default function Materials() {
                               const filteredByType = newItemFilterAssemblyTypeId ? base.filter(t => t.assembly_type_id === newItemFilterAssemblyTypeId) : base
                               const filtered = filterTemplatesByQuery(filteredByType, newItemTemplateSearchQuery, assemblyTypes)
                               return filtered.length === 0 ? (
-                                <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li>
+                                <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li>
                               ) : (
                                 filtered.map(t => {
                                   const typeName = t.assembly_type_id ? assemblyTypes.find(at => at.id === t.assembly_type_id)?.name : null
@@ -4626,7 +4626,7 @@ export default function Materials() {
                                     >
                                       <div style={{ fontWeight: 500 }}>{t.name}</div>
                                       {typeName && (
-                                        <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{typeName}</div>
+                                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{typeName}</div>
                                       )}
                                     </li>
                                   )
@@ -4644,14 +4644,14 @@ export default function Materials() {
                     value={newItemQuantity}
                     onChange={(e) => setNewItemQuantity(e.target.value)}
                     placeholder="Quantity"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                   />
                   <textarea
                     value={newItemNotes}
                     onChange={(e) => setNewItemNotes(e.target.value)}
                     placeholder="Notes (optional)"
                     rows={2}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                   />
                   <button
                     type="button"
@@ -4665,15 +4665,15 @@ export default function Materials() {
               </div>
             )}
             {selectedTemplate && (
-              <div style={{ marginTop: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem' }}>
+              <div style={{ marginTop: '1.5rem', border: '1px solid var(--border)', borderRadius: 4, padding: '1rem' }}>
                 <h3 style={{ marginBottom: '0.5rem' }}>Supply house prices</h3>
-                <p style={{ marginTop: 0, marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   A bundle price a supply house quotes for this whole assembly (e.g. a discount without a per-part breakdown). Used when adding this assembly as a bundle on a bid takeoff.
                 </p>
                 <TemplatePricesManager template={selectedTemplate} supplyHouses={supplyHouses} />
               </div>
             )}
-            <p style={{ marginTop: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            <p style={{ marginTop: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {templateStatsTotal} assemblies | {templateStatsPctWithNoPrice}% of assemblies have unpriced parts
             </p>
           </div>
@@ -4720,9 +4720,9 @@ export default function Materials() {
               </button>
             </div>
 
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '300px', overflow: 'auto', marginBottom: '1.5rem' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '300px', overflow: 'auto', marginBottom: '1.5rem' }}>
               {draftPOs.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   No draft purchase orders. Create one from an assembly or manually.
                 </div>
               ) : (
@@ -4734,8 +4734,8 @@ export default function Materials() {
                         key={po.id}
                         style={{
                           padding: '1rem',
-                          borderBottom: '1px solid #e5e7eb',
-                          background: editingPO?.id === po.id ? '#eff6ff' : 'white',
+                          borderBottom: '1px solid var(--border)',
+                          background: editingPO?.id === po.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: 'pointer',
                         }}
                         onClick={async () => {
@@ -4770,7 +4770,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               {po.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{po.items.length} items • ${formatCurrency(total)} total
                             </div>
                           </div>
@@ -4784,7 +4784,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
 
             {/* Selected PO Details Section */}
             {editingPO && editingPO.status === 'draft' && (
-              <div ref={editingPODetailRef} style={{ border: '1px solid #e5e7eb', borderRadius: 4, padding: '1rem', background: '#f9fafb' }}>
+              <div ref={editingPODetailRef} style={{ border: '1px solid var(--border)', borderRadius: 4, padding: '1rem', background: 'var(--bg-subtle)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <div style={{ flex: 1 }}>
                     {editingPOName === editingPO.id ? (
@@ -4801,7 +4801,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             }
                           }}
                           autoFocus
-                          style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '1.125rem', fontWeight: 600 }}
+                          style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '1.125rem', fontWeight: 600 }}
                         />
                         <button
                           type="button"
@@ -4813,7 +4813,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         <button
                           type="button"
                           onClick={cancelEditPOName}
-                          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                         >
                           Cancel
                         </button>
@@ -4824,13 +4824,13 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         <button
                           type="button"
                           onClick={() => startEditPOName(editingPO.id, editingPO.name)}
-                          style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                          style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                         >
                           Edit
                         </button>
                       </div>
                     )}
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       Status: <strong>{editingPO.status}</strong> • {editingPO.items.filter(i => Number(i.price_at_time ?? 0) > 0).length}/{editingPO.items.length} items • ${formatCurrency(editingPO.items.reduce((sum, item) => sum + (item.price_at_time * item.quantity), 0))} total
                     </div>
                   </div>
@@ -4844,7 +4844,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       setEditingPOName(null)
                       setEditingPONameValue('')
                     }}
-                    style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
                   </button>
@@ -4852,18 +4852,18 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
 
                 {/* Items Table */}
                 {editingPO.items.length > 0 && (
-                  <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From assembly</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Total</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>From assembly</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Notes</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -4871,7 +4871,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           if (editingPOItem === item.id) {
                             // Edit mode
                             return (
-                              <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
+                              <tr key={item.id} style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
                                 <td colSpan={8} style={{ padding: '1rem' }}>
                                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '0.5rem', alignItems: 'end' }}>
                                     <div>
@@ -4881,7 +4881,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                         min="1"
                                         value={editingPOItemQuantity}
                                         onChange={(e) => setEditingPOItemQuantity(e.target.value)}
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                       />
                                     </div>
                                     <div>
@@ -4889,7 +4889,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                       <select
                                         value={editingPOItemSupplyHouse}
                                         onChange={(e) => setEditingPOItemSupplyHouse(e.target.value)}
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                       >
                                         <option value="">None</option>
                                         {supplyHouses.map(sh => (
@@ -4905,7 +4905,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                         min="0"
                                         value={editingPOItemPrice}
                                         onChange={(e) => setEditingPOItemPrice(e.target.value)}
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                       />
                                     </div>
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -4932,7 +4932,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                           setEditingPOItemSupplyHouse('')
                                           setEditingPOItemPrice('')
                                         }}
-                                        style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                        style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                       >
                                         Cancel
                                       </button>
@@ -4943,7 +4943,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             )
                           }
                           return (
-                            <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                               <td style={{ padding: '0.75rem' }}>{item.part?.name ?? '-'}</td>
                               <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
                               <td style={{ padding: '0.75rem' }}>
@@ -4961,7 +4961,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                     if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
                                     else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
                                   }}
-                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                 >
                                   {draftPOSupplyHouseOptionsPartId === item.part.id ? (
                                     loadingDraftPOSupplyHouseOptions ? (
@@ -4986,7 +4986,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                               <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
                               <td style={{ padding: '0.75rem' }}>
                                 {item.source_template ? (
-                                  <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>
+                                  <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>
                                     From: {item.source_template?.name ?? 'Unknown'}
                                   </span>
                                 ) : '—'}
@@ -4999,7 +4999,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                       onChange={(e) => setEditingPOItemNotesValue(e.target.value)}
                                       rows={2}
                                       placeholder="Item notes…"
-                                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, resize: 'vertical' }}
+                                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, resize: 'vertical' }}
                                     />
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                       <button
@@ -5019,7 +5019,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                           setEditingPOItemNotesId(null)
                                           setEditingPOItemNotesValue('')
                                         }}
-                                        style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                        style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                       >
                                         Cancel
                                       </button>
@@ -5034,7 +5034,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                         setEditingPOItemNotesId(item.id)
                                         setEditingPOItemNotesValue(item.notes?.trim() || '')
                                       }}
-                                      style={{ marginLeft: '0.5rem', padding: '0.15rem 0.4rem', fontSize: '0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                      style={{ marginLeft: '0.5rem', padding: '0.15rem 0.4rem', fontSize: '0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                     >
                                       Edit
                                     </button>
@@ -5050,14 +5050,14 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                     setEditingPOItemSupplyHouse(item.supply_house?.id || '')
                                     setEditingPOItemPrice(item.price_at_time.toString())
                                   }}
-                                  style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                  style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                 >
                                   Edit
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => removePOItem(item.id)}
-                                  style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
                                 >
                                   Remove
                                 </button>
@@ -5078,7 +5078,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
       {/* Template Form Modal */}
       {templateFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%' }}>
             <h2 style={{ marginBottom: '1.5rem' }}>{editingTemplate ? 'Edit Assembly' : 'Add Assembly'}</h2>
             <form onSubmit={saveTemplate}>
               <div style={{ marginBottom: '1rem' }}>
@@ -5088,7 +5088,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
                   required
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
@@ -5097,7 +5097,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   value={templateDescription}
                   onChange={(e) => setTemplateDescription(e.target.value)}
                   rows={3}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
@@ -5105,7 +5105,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 <select
                   value={templateAssemblyTypeId}
                   onChange={(e) => setTemplateAssemblyTypeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 >
                   <option value="">No type</option>
                   {assemblyTypes.map(at => (
@@ -5123,7 +5123,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         closeTemplateForm()
                       }
                     }}
-                    style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
@@ -5132,7 +5132,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   <button
                     type="button"
                     onClick={closeTemplateForm}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
@@ -5156,7 +5156,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
           onClick={(e) => e.target === e.currentTarget && closeAddItemModal()}
         >
-          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '450px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '450px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <h2 style={{ marginBottom: '1rem' }}>Add Item to {selectedTemplate.name}</h2>
 
             <div style={{ marginBottom: '1rem' }}>
@@ -5172,7 +5172,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   setAddItemModalFilterPartTypeId('')
                   setAddItemModalFilterAssemblyTypeId('')
                 }}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               >
                 <option value="part">Part</option>
                 <option value="template">Nested Assembly</option>
@@ -5185,7 +5185,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 <select
                   value={addItemModalFilterPartTypeId}
                   onChange={(e) => setAddItemModalFilterPartTypeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 >
                   <option value="">All Part Types</option>
                   {partTypes.map(pt => (
@@ -5196,7 +5196,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 <select
                   value={addItemModalFilterAssemblyTypeId}
                   onChange={(e) => setAddItemModalFilterAssemblyTypeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 >
                   <option value="">All Assembly Types</option>
                   {assemblyTypes.map(at => (
@@ -5219,13 +5219,13 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     onKeyDown={(e) => e.key === 'Escape' && setAddItemModalDropdownOpen(false)}
                     readOnly={!!addItemModalPartId}
                     placeholder="Search parts by name, manufacturer, type, or notes…"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: addItemModalPartId ? '#f3f4f6' : undefined }}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: addItemModalPartId ? 'var(--bg-muted)' : undefined }}
                   />
                   {addItemModalPartId && (
                     <button
                       type="button"
                       onClick={() => { setAddItemModalPartId(''); setAddItemModalSearchQuery(''); setAddItemModalDropdownOpen(true) }}
-                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
                       Clear
                     </button>
@@ -5244,9 +5244,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       listStyle: 'none',
                       maxHeight: 240,
                       overflowY: 'auto',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       zIndex: 50,
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     }}
@@ -5258,7 +5258,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         : baseParts
                       return filterPartsByQuery(filteredByType, addItemModalSearchQuery)
                     })().length === 0 ? (
-                      <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                      <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                         No parts match.{' '}
                         <button
                           type="button"
@@ -5290,7 +5290,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         >
                           <div style={{ fontWeight: 500 }}>{p.name}</div>
                           {(p.manufacturer || p.part_type?.name) && (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                               {[p.manufacturer, p.part_type?.name].filter(Boolean).join(' · ')}
                             </div>
                           )}
@@ -5313,13 +5313,13 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     onKeyDown={(e) => e.key === 'Escape' && setAddItemModalDropdownOpen(false)}
                     readOnly={!!addItemModalTemplateId}
                     placeholder="Search assemblies by name, description, or type…"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: addItemModalTemplateId ? '#f3f4f6' : undefined }}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: addItemModalTemplateId ? 'var(--bg-muted)' : undefined }}
                   />
                   {addItemModalTemplateId && (
                     <button
                       type="button"
                       onClick={() => { setAddItemModalTemplateId(''); setAddItemModalSearchQuery(''); setAddItemModalDropdownOpen(true) }}
-                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
                       Clear
                     </button>
@@ -5338,9 +5338,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       listStyle: 'none',
                       maxHeight: 240,
                       overflowY: 'auto',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       zIndex: 50,
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     }}
@@ -5350,7 +5350,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       const filteredByType = addItemModalFilterAssemblyTypeId ? base.filter(t => t.assembly_type_id === addItemModalFilterAssemblyTypeId) : base
                       const filtered = filterTemplatesByQuery(filteredByType, addItemModalSearchQuery, assemblyTypes)
                       return filtered.length === 0 ? (
-                        <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li>
+                        <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li>
                       ) : (
                         filtered.map(t => {
                           const typeName = t.assembly_type_id ? assemblyTypes.find(at => at.id === t.assembly_type_id)?.name : null
@@ -5366,7 +5366,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             >
                               <div style={{ fontWeight: 500 }}>{t.name}</div>
                               {typeName && (
-                                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{typeName}</div>
+                                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{typeName}</div>
                               )}
                             </li>
                           )
@@ -5379,7 +5379,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
             )}
 
             {addItemModalError && (
-              <div style={{ marginBottom: '1rem', padding: '0.5rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+              <div style={{ marginBottom: '1rem', padding: '0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
                 {addItemModalError}
               </div>
             )}
@@ -5391,7 +5391,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 min={1}
                 value={addItemModalQuantity}
                 onChange={(e) => setAddItemModalQuantity(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
 
@@ -5399,7 +5399,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               <button
                 type="button"
                 onClick={closeAddItemModal}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -5428,7 +5428,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
         <div>
           {/* Selected PO section (inline, above Search) */}
           {selectedPO && (
-            <div ref={selectedPODetailRef} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1.5rem 2rem', background: 'white', marginBottom: '1.5rem' }}>
+            <div ref={selectedPODetailRef} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1.5rem 2rem', background: 'var(--surface)', marginBottom: '1.5rem' }}>
               <h2 style={{ marginBottom: '1rem' }}>{selectedPO.name}</h2>
               
               {/* Notes section - displayed at top for finalized POs */}
@@ -5439,7 +5439,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#0369a1' }}>Notes</div>
                       <div style={{ marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>{selectedPO.notes}</div>
                       {selectedPO.notes_added_by && (
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', fontStyle: 'italic' }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                           Added by {userNamesMap[selectedPO.notes_added_by] || 'Unknown'} 
                           {selectedPO.notes_added_at && ` on ${new Date(selectedPO.notes_added_at).toLocaleString()}`}
                         </div>
@@ -5448,14 +5448,14 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   ) : (
                     <>
                       {addingNotesToPO === selectedPO.id ? (
-                        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 4 }}>
                           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Add Notes</label>
                           <textarea
                             value={notesValue}
                             onChange={(e) => setNotesValue(e.target.value)}
                             placeholder="Enter notes (e.g., final bill amount, pickup difficulties)..."
                             rows={4}
-                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', fontFamily: 'inherit' }}
+                            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.75rem', fontFamily: 'inherit' }}
                           />
                           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                             <button
@@ -5464,7 +5464,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 setAddingNotesToPO(null)
                                 setNotesValue('')
                               }}
-                              style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                             >
                               Cancel
                             </button>
@@ -5497,27 +5497,27 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 </>
               )}
 
-              <div style={{ marginBottom: '1rem', color: '#6b7280' }}>
+              <div style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
                 Status: <strong>{selectedPO.status}</strong>
                 {selectedPO.finalized_at && (
                   <> • Finalized: {new Date(selectedPO.finalized_at).toLocaleString()}</>
                 )}
               </div>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: '#f9fafb' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
                     <tr>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>From assembly</th>
-                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Notes</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Total</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>From assembly</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Notes</th>
                       {selectedPO.status === 'draft' && (
                         <>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Confirmed</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Confirmed</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                         </>
                       )}
                     </tr>
@@ -5526,19 +5526,19 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     {selectedPO.items.map(item => {
                       const isEditing = editingPOItemSupplyHouseView === item.id
                       return (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.75rem' }}>{item.part?.name ?? '-'}</td>
                           <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
                           <td style={{ padding: '0.75rem' }}>
                             {isEditing ? (
                               <div style={{ maxWidth: '100%', overflow: 'auto' }}>
                                 {loadingAvailablePrices ? (
-                                  <span style={{ color: '#6b7280' }}>Loading prices...</span>
+                                  <span style={{ color: 'var(--text-muted)' }}>Loading prices...</span>
                                 ) : availablePricesForItem.length > 0 ? (
                                   <>
                                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                                       <thead>
-                                        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                        <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                           <th style={{ padding: '0.5rem', textAlign: 'left' }}>Supply House</th>
                                           <th style={{ padding: '0.5rem', textAlign: 'left' }}>Current Price</th>
                                           <th style={{ padding: '0.5rem', textAlign: 'left' }}>New Price</th>
@@ -5561,7 +5561,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                                   min="0"
                                                   value={newPriceStr}
                                                   onChange={(e) => setEditingPricesByPriceId(prev => ({ ...prev, [row.price_id]: e.target.value }))}
-                                                  style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                                  style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                                 />
                                               </td>
                                               <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>
@@ -5596,12 +5596,12 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                       const addPriceNum = parseFloat(addPriceValue)
                                       const canAddPrice = addPriceSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !addingNewPrice
                                       return supplyHousesWithoutPrice.length > 0 ? (
-                                        <div style={{ padding: '0.5rem 0', borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <div style={{ padding: '0.5rem 0', borderTop: '1px solid var(--border)', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                           <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
                                           <select
                                             value={addPriceSupplyHouseId}
                                             onChange={(e) => setAddPriceSupplyHouseId(e.target.value)}
-                                            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
+                                            style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '140px' }}
                                           >
                                             <option value="">Select supply house</option>
                                             {supplyHousesWithoutPrice.map(sh => (
@@ -5615,7 +5615,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                             value={addPriceValue}
                                             onChange={(e) => setAddPriceValue(e.target.value)}
                                             placeholder="Price"
-                                            style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                            style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                           />
                                           <button
                                             type="button"
@@ -5639,21 +5639,21 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                         setAddPriceSupplyHouseId('')
                                         setAddPriceValue('')
                                       }}
-                                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', marginTop: '0.5rem' }}
+                                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', marginTop: '0.5rem' }}
                                     >
                                       Cancel
                                     </button>
                                   </>
                                 ) : (
                                   <>
-                                    <span style={{ color: '#6b7280' }}>No prices available.</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>No prices available.</span>
                                     {supplyHouses.length > 0 && (
                                       <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
                                         <select
                                           value={addPriceSupplyHouseId}
                                           onChange={(e) => setAddPriceSupplyHouseId(e.target.value)}
-                                          style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
+                                          style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '140px' }}
                                         >
                                           <option value="">Select supply house</option>
                                           {supplyHouses.map(sh => (
@@ -5668,7 +5668,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                           value={addPriceValue}
                                           onChange={(e) => setAddPriceValue(e.target.value)}
                                           placeholder="Price"
-                                          style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                          style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                         />
                                         <button
                                           type="button"
@@ -5694,7 +5694,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                         setAddPriceSupplyHouseId('')
                                         setAddPriceValue('')
                                       }}
-                                      style={{ marginLeft: '0.5rem', marginTop: '0.5rem', padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                                      style={{ marginLeft: '0.5rem', marginTop: '0.5rem', padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                                     >
                                       Cancel
                                     </button>
@@ -5717,7 +5717,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                     if (opt) updatePOItemSupplyHouse(item.id, opt.supply_house_id, opt.price)
                                     else if (item.supply_house?.id === val) updatePOItemSupplyHouse(item.id, item.supply_house.id, item.price_at_time)
                                   }}
-                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                  style={{ minWidth: '10rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                 >
                                   {draftPOSupplyHouseOptionsPartId === item.part.id ? (
                                     loadingDraftPOSupplyHouseOptions ? (
@@ -5747,7 +5747,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           <td style={{ padding: '0.75rem', fontWeight: 600 }}>${formatCurrency(item.price_at_time * item.quantity)}</td>
                           <td style={{ padding: '0.75rem' }}>
                             {item.source_template ? (
-                              <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>
+                              <span style={{ fontSize: '0.75rem', padding: '0.2rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', borderRadius: 4 }} title={`From: ${item.source_template?.name ?? 'Unknown'}`}>
                                 From: {item.source_template?.name ?? 'Unknown'}
                               </span>
                             ) : '—'}
@@ -5771,11 +5771,11 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                     style={{ cursor: confirmingPriceForItem === item.id ? 'not-allowed' : 'pointer' }}
                                   />
                                   {confirmingPriceForItem === item.id && (
-                                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Updating...</span>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Updating...</span>
                                   )}
                                 </label>
                                 {item.price_confirmed_at && (
-                                  <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '1.5rem' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '1.5rem' }}>
                                     {formatTimeSince(item.price_confirmed_at)}
                                   </span>
                                 )}
@@ -5802,7 +5802,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       )
                     })}
                   </tbody>
-                  <tfoot style={{ background: '#f9fafb' }}>
+                  <tfoot style={{ background: 'var(--bg-subtle)' }}>
                     {(() => {
                       const viewedPOGrandTotal = selectedPO.items.reduce((sum, item) => sum + (Number(item.price_at_time) * Number(item.quantity)), 0) || 0
                       const withTaxAmount = viewedPOGrandTotal * (1 + (parseFloat(viewedPOTaxPercent) || 0) / 100)
@@ -5823,7 +5823,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 step={0.01}
                                 value={viewedPOTaxPercent}
                                 onChange={(e) => setViewedPOTaxPercent(e.target.value)}
-                                style={{ width: '6rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                                style={{ width: '6rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
                               />
                               %:
                             </td>
@@ -5854,7 +5854,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       }
                     }
                   }}
-                  style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Delete
                 </button>
@@ -5862,7 +5862,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                   <button
                     type="button"
                     onClick={() => printPO(selectedPO)}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Print for Review
                   </button>
@@ -5883,7 +5883,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       setAddPriceSupplyHouseId('')
                       setAddPriceValue('')
                     }}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
                   </button>
@@ -5926,12 +5926,12 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               placeholder="Search purchase orders..."
               value={poSearchQuery}
               onChange={(e) => setPoSearchQuery(e.target.value)}
-              style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
             <select
               value={poStatusFilter}
               onChange={(e) => setPoStatusFilter(e.target.value as 'all' | 'draft' | 'finalized')}
-              style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             >
               <option value="all">All Status</option>
               <option value="draft">Draft</option>
@@ -5946,28 +5946,28 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 step={0.01}
                 value={viewedPOTaxPercent}
                 onChange={(e) => setViewedPOTaxPercent(e.target.value)}
-                style={{ width: '5rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                style={{ width: '5rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
               />
             </label>
           </div>
 
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Items</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total with tax</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Created</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Status</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Items</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Total</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Total with tax</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Created</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredPOs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={7} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                       {poSearchQuery || poStatusFilter !== 'all' ? 'No purchase orders match your filters' : 'No purchase orders yet.'}
                     </td>
                   </tr>
@@ -5977,7 +5977,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     const taxPercent = parseFloat(viewedPOTaxPercent) || 8.25
                     const totalWithTax = total * (1 + taxPercent / 100)
                     return (
-                      <tr key={po.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={po.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.75rem' }}>{po.name}</td>
                         <td style={{ padding: '0.75rem' }}>
                           <span style={{
@@ -5985,8 +5985,8 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             borderRadius: 4,
                             fontSize: '0.875rem',
                             fontWeight: 500,
-                            background: po.status === 'finalized' ? '#d1fae5' : '#fef3c7',
-                            color: po.status === 'finalized' ? '#065f46' : '#92400e',
+                            background: po.status === 'finalized' ? '#d1fae5' : 'var(--bg-amber-100)',
+                            color: po.status === 'finalized' ? '#065f46' : 'var(--text-amber-800)',
                           }}>
                             {po.status}
                           </span>
@@ -6001,7 +6001,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           <button
                             type="button"
                             onClick={() => setSelectedPO(po)}
-                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                           >
                             View
                           </button>
@@ -6030,17 +6030,17 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
         <div>
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '1.25rem',
               marginBottom: '1.5rem',
-              background: '#fafafa',
+              background: 'var(--bg-page)',
             }}
           >
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.1rem' }}>Generate PO number</h2>
             <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))' }}>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#374151' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-700)' }}>
                   Job
                 </label>
                 {poGenSelectedJob ? (
@@ -6051,14 +6051,14 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       justifyContent: 'space-between',
                       gap: '0.5rem',
                       padding: '0.5rem 0.75rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 6,
-                      background: 'white',
+                      background: 'var(--surface)',
                     }}
                   >
                     <span style={{ fontSize: '0.875rem' }}>
                       J{poGenSelectedJob.hcp_number?.trim() || '—'} · {poGenSelectedJob.job_name?.trim() || '—'}
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                         {poGenSelectedJob.job_address?.trim() || '—'}
                       </span>
                     </span>
@@ -6084,12 +6084,12 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         width: '100%',
                         boxSizing: 'border-box',
                         padding: '0.5rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                       }}
                     />
                     {poGenJobSearchLoading && (
-                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Searching…</p>
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Searching…</p>
                     )}
                     {poGenJobSearch.trim() && !poGenJobSearchLoading && poGenJobResults.length > 0 && (
                       <ul
@@ -6104,9 +6104,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           listStyle: 'none',
                           maxHeight: 220,
                           overflowY: 'auto',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
-                          background: 'white',
+                          background: 'var(--surface)',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                         }}
                       >
@@ -6126,21 +6126,21 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 padding: '0.5rem 0.75rem',
                                 border: 'none',
                                 borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
-                                background: 'white',
+                                background: 'var(--surface)',
                                 cursor: 'pointer',
                                 font: 'inherit',
                                 fontSize: '0.875rem',
                               }}
                             >
                               <span style={{ fontWeight: 600 }}>J{j.hcp_number?.trim() || '—'} · {j.job_name?.trim() || '—'}</span>
-                              <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280' }}>{j.job_address?.trim() || '—'}</span>
+                              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{j.job_address?.trim() || '—'}</span>
                             </button>
                           </li>
                         ))}
                       </ul>
                     )}
                     {poGenJobSearch.trim() && !poGenJobSearchLoading && poGenJobResults.length === 0 && (
-                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         No jobs match this search for the selected service type.
                       </p>
                     )}
@@ -6148,7 +6148,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 )}
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#374151' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-700)' }}>
                   User
                 </label>
                 {poGenSelectedUser ? (
@@ -6159,9 +6159,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       justifyContent: 'space-between',
                       gap: '0.5rem',
                       padding: '0.5rem 0.75rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 6,
-                      background: 'white',
+                      background: 'var(--surface)',
                     }}
                   >
                     <span style={{ fontSize: '0.875rem' }}>
@@ -6189,12 +6189,12 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         width: '100%',
                         boxSizing: 'border-box',
                         padding: '0.5rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                       }}
                     />
                     {poGenUserSearchLoading && (
-                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>Searching…</p>
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Searching…</p>
                     )}
                     {poGenUserSearch.trim().length >= 2 && !poGenUserSearchLoading && poGenUserResults.length > 0 && (
                       <ul
@@ -6209,9 +6209,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           listStyle: 'none',
                           maxHeight: 220,
                           overflowY: 'auto',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
-                          background: 'white',
+                          background: 'var(--surface)',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                         }}
                       >
@@ -6231,7 +6231,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 padding: '0.5rem 0.75rem',
                                 border: 'none',
                                 borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
-                                background: 'white',
+                                background: 'var(--surface)',
                                 cursor: 'pointer',
                                 font: 'inherit',
                                 fontSize: '0.875rem',
@@ -6239,7 +6239,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             >
                               {u.name?.trim() || u.email?.trim() || u.id.slice(0, 8)}
                               {u.email ? (
-                                <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280' }}>{u.email}</span>
+                                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{u.email}</span>
                               ) : null}
                             </button>
                           </li>
@@ -6250,7 +6250,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 )}
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#374151' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-700)' }}>
                   Supply house (optional)
                 </label>
                 {poGenSelectedSupplyHouse ? (
@@ -6261,9 +6261,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       justifyContent: 'space-between',
                       gap: '0.5rem',
                       padding: '0.5rem 0.75rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 6,
-                      background: 'white',
+                      background: 'var(--surface)',
                     }}
                   >
                     <span style={{ fontSize: '0.875rem' }}>{poGenSelectedSupplyHouse.name.trim() || '—'}</span>
@@ -6289,7 +6289,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                         width: '100%',
                         boxSizing: 'border-box',
                         padding: '0.5rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                       }}
                     />
@@ -6306,9 +6306,9 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                           listStyle: 'none',
                           maxHeight: 220,
                           overflowY: 'auto',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
-                          background: 'white',
+                          background: 'var(--surface)',
                           boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                         }}
                       >
@@ -6327,7 +6327,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                 padding: '0.5rem 0.75rem',
                                 border: 'none',
                                 borderTop: idx === 0 ? 'none' : '1px solid #f3f4f6',
-                                background: 'white',
+                                background: 'var(--surface)',
                                 cursor: 'pointer',
                                 font: 'inherit',
                                 fontSize: '0.875rem',
@@ -6340,7 +6340,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                       </ul>
                     )}
                     {poGenSupplyHouseSearch.trim().length >= 1 && poGenSupplyHouseResults.length === 0 && (
-                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                      <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         No supply houses match this search.
                       </p>
                     )}
@@ -6348,7 +6348,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 )}
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: '#374151' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.35rem', color: 'var(--text-700)' }}>
                   Notes
                 </label>
                 <textarea
@@ -6360,7 +6360,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                     width: '100%',
                     boxSizing: 'border-box',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     resize: 'vertical',
                   }}
@@ -6389,14 +6389,14 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
 
           <h2 style={{ fontSize: '1.1rem', marginBottom: '0.75rem' }}>Ledger</h2>
           {poGenLedgerLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading ledger…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading ledger…</p>
           ) : poGenLedger.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No PO numbers yet for this service type.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No PO numbers yet for this service type.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                     <th style={{ padding: '0.6rem 0.5rem' }}>PO #</th>
                     <th style={{ padding: '0.6rem 0.5rem' }}>Job</th>
                     <th style={{ padding: '0.6rem 0.5rem' }}>User</th>
@@ -6553,21 +6553,21 @@ function TemplatePricesManager({
   return (
     <div>
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading bundle prices…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading bundle prices…</p>
       ) : (
         <>
           {prices.length > 0 && (
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply house</th>
-                  <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Bundle price</th>
-                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }} />
+                  <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply house</th>
+                  <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Bundle price</th>
+                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }} />
                 </tr>
               </thead>
               <tbody>
                 {prices.map((p, idx) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       {p.supply_house?.name ?? '—'}
                       {idx === 0 && prices.length > 1 ? (
@@ -6576,8 +6576,8 @@ function TemplatePricesManager({
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${Number(p.price).toFixed(2)}</td>
                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <button type="button" onClick={() => openEdit(p)} style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', marginRight: '0.5rem' }}>Edit</button>
-                      <button type="button" onClick={() => void deletePrice(p.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}>Delete</button>
+                      <button type="button" onClick={() => openEdit(p)} style={{ background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', marginRight: '0.5rem' }}>Edit</button>
+                      <button type="button" onClick={() => void deletePrice(p.id)} style={{ background: 'none', border: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}>Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -6585,7 +6585,7 @@ function TemplatePricesManager({
             </table>
           )}
           {editingPrice || availableSupplyHouses.length > 0 ? (
-            <form onSubmit={savePrice} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap', background: '#f9fafb', padding: '0.75rem', borderRadius: 4 }}>
+            <form onSubmit={savePrice} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.8125rem', fontWeight: 500 }}>Supply house</label>
                 <select
@@ -6593,7 +6593,7 @@ function TemplatePricesManager({
                   onChange={(e) => setSelectedSupplyHouse(e.target.value)}
                   required
                   disabled={!!editingPrice}
-                  style={{ padding: '0.4rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                  style={{ padding: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '12rem' }}
                 >
                   <option value="">— Select —</option>
                   {(editingPrice ? supplyHouses.filter((sh) => sh.id === selectedSupplyHouse) : availableSupplyHouses).map((sh) => (
@@ -6611,18 +6611,18 @@ function TemplatePricesManager({
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="0.00"
                   required
-                  style={{ padding: '0.4rem', border: '1px solid #d1d5db', borderRadius: 4, width: '8rem' }}
+                  style={{ padding: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '8rem' }}
                 />
               </div>
               <button type="submit" disabled={saving} style={{ padding: '0.45rem 1rem', background: saving ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'wait' : 'pointer' }}>
                 {saving ? 'Saving…' : editingPrice ? 'Save' : 'Add'}
               </button>
               {editingPrice ? (
-                <button type="button" onClick={resetForm} style={{ padding: '0.45rem 1rem', background: '#f3f4f6', color: '#111827', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={resetForm} style={{ padding: '0.45rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               ) : null}
             </form>
           ) : (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Every supply house already has a bundle price for this assembly.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Every supply house already has a bundle price for this assembly.</p>
           )}
         </>
       )}
@@ -6772,7 +6772,7 @@ function PartPricesManager({
       ) : (
         <>
           {(editingPrice || (!editingPrice && availableSupplyHouses.length > 0)) && (
-            <form onSubmit={savePrice} style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9fafb', borderRadius: 4 }}>
+            <form onSubmit={savePrice} style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-subtle)', borderRadius: 4 }}>
               <div style={{ marginBottom: '0.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Supply House *</label>
                 <select
@@ -6780,7 +6780,7 @@ function PartPricesManager({
                   onChange={(e) => setSelectedSupplyHouse(e.target.value)}
                   required
                   disabled={!!editingPrice}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 >
                   <option value="">Select supply house</option>
                   {availableSupplyHouses.map(sh => (
@@ -6798,7 +6798,7 @@ function PartPricesManager({
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   required
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ marginBottom: '0.5rem' }}>
@@ -6807,7 +6807,7 @@ function PartPricesManager({
                   type="date"
                   value={effectiveDate}
                   onChange={(e) => setEffectiveDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -6828,7 +6828,7 @@ function PartPricesManager({
                         setPrice('')
                         setEffectiveDate('')
                       }}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Cancel
                     </button>
@@ -6842,7 +6842,7 @@ function PartPricesManager({
                         deletePrice(editingPrice.id)
                       }
                     }}
-                    style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
@@ -6851,20 +6851,20 @@ function PartPricesManager({
             </form>
           )}
 
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Effective Date</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Effective Date</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {prices.length === 0 ? (
                   <tr>
-                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                    <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                       No prices yet. Add prices from different supply houses.
                     </td>
                   </tr>
@@ -6872,9 +6872,9 @@ function PartPricesManager({
                   prices.map(p => {
                     const isBest = prices.length > 0 && prices[0] && prices[0].id === p.id
                     return (
-                      <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.75rem' }}>{p.supply_house?.name || 'Unknown'}</td>
-                        <td style={{ padding: '0.75rem', fontWeight: isBest ? 600 : 400, color: isBest ? '#059669' : 'inherit' }}>
+                        <td style={{ padding: '0.75rem', fontWeight: isBest ? 600 : 400, color: isBest ? 'var(--text-green-600)' : 'inherit' }}>
                           ${p.price.toFixed(2)} {isBest && '(Best)'}
                         </td>
                         <td style={{ padding: '0.75rem' }}>{p.effective_date || '-'}</td>
@@ -6889,7 +6889,7 @@ function PartPricesManager({
                           <button
                             type="button"
                             onClick={() => openEditPrice(p)}
-                            style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -6913,7 +6913,7 @@ function PartPricesManager({
                     setViewingPriceHistory(null)
                     setPriceHistory([])
                   }}
-                  style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Close History
                 </button>
@@ -6922,17 +6922,17 @@ function PartPricesManager({
               {loadingHistory ? (
                 <p>Loading history...</p>
               ) : priceHistory.length === 0 ? (
-                <p style={{ color: '#6b7280' }}>No price history available for this supply house.</p>
+                <p style={{ color: 'var(--text-muted)' }}>No price history available for this supply house.</p>
               ) : (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date Changed</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Old Price</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>New Price</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Change %</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Effective Date</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date Changed</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Old Price</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>New Price</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Change %</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Effective Date</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -6941,7 +6941,7 @@ function PartPricesManager({
                         const isIncrease = changePercent !== null && changePercent > 0
                         const isDecrease = changePercent !== null && changePercent < 0
                         return (
-                          <tr key={h.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={h.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.75rem' }}>
                               {h.changed_at ? new Date(h.changed_at).toLocaleDateString() : '-'}
                             </td>
@@ -6952,7 +6952,7 @@ function PartPricesManager({
                             <td style={{ 
                               padding: '0.75rem',
                               fontWeight: 600,
-                              color: isIncrease ? '#059669' : isDecrease ? '#dc2626' : '#6b7280'
+                              color: isIncrease ? '#059669' : isDecrease ? 'var(--text-red-600)' : 'var(--text-muted)'
                             }}>
                               {changePercent !== null 
                                 ? `${isIncrease ? '+' : ''}${changePercent.toFixed(2)}%`
@@ -6977,7 +6977,7 @@ function PartPricesManager({
         <button
           type="button"
           onClick={onClose}
-          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+          style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
         >
           Close
         </button>
