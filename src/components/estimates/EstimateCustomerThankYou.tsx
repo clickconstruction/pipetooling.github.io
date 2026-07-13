@@ -24,8 +24,8 @@ export default function EstimateCustomerThankYou({
           style={{
             margin: '0 0 1rem',
             fontSize: '0.85rem',
-            color: '#6b7280',
-            background: '#f9fafb',
+            color: 'var(--text-muted)',
+            background: 'var(--bg-subtle)',
             padding: '0.5rem 0.75rem',
             borderRadius: 6,
           }}

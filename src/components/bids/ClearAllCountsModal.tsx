@@ -35,16 +35,16 @@ export function ClearAllCountsModal({
   const confirmDisabled = busy || value.trim() !== confirmLabel || rowCount === 0
 
   return (
-    <ModalShell cardStyle={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 520, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
-      <h2 style={{ margin: '0 0 1rem 0', color: '#b91c1c' }}>Clear all counts</h2>
-      <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>
+    <ModalShell cardStyle={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 520, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+      <h2 style={{ margin: '0 0 1rem 0', color: 'var(--text-red-700)' }}>Clear all counts</h2>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.5rem' }}>
         This will permanently delete <strong>{rowCount}</strong> count row{rowCount === 1 ? '' : 's'} for this bid.
       </p>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
         Related takeoff template mappings, pricing assignments, and custom fixture prices for those rows will also be removed.
       </p>
-      <p style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.35rem' }}>
-        Type <strong style={{ color: '#b91c1c' }}>{confirmLabel}</strong> exactly to confirm.
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.35rem' }}>
+        Type <strong style={{ color: 'var(--text-red-700)' }}>{confirmLabel}</strong> exactly to confirm.
       </p>
       <input
         ref={inputRef}
@@ -53,13 +53,13 @@ export function ClearAllCountsModal({
         onChange={(e) => onChange(e.target.value)}
         autoComplete="off"
         disabled={busy}
-        style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', marginBottom: '1rem' }}
+        style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '1rem' }}
       />
       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={onCancel}
-          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+          style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
           disabled={busy}
         >
           Cancel

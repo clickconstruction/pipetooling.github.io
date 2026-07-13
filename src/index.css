@@ -111,8 +111,12 @@ button {
    anything still on raw hex simply stays light in dark mode until migrated.
    Light values are EXACTLY the hexes they replace (light mode stays
    pixel-identical); dark values invert the neutral ramp and lighten text
-   accents. scripts/theme-tokenize.mjs rewrites inline styles onto these. */
-:root {
+   accents. scripts/theme-tokenize.mjs rewrites inline styles onto these.
+   A `data-theme="light"` attribute on any element re-pins its subtree to
+   the light values — used by customer-facing documents (estimate accept,
+   contracts) that must never render dark. */
+:root,
+[data-theme='light'] {
   --chrome-bg: #fafafa;
   --menu-bg: #ffffff;
   --chrome-text: #1a1a1a;

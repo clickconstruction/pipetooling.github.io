@@ -50,7 +50,7 @@ export function BidBoardNotesPanel({
     <div
       role="tablist"
       aria-label="Notes type"
-      style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 4, overflow: 'hidden' }}
+      style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 4, overflow: 'hidden' }}
     >
       <button
         type="button"
@@ -62,9 +62,9 @@ export function BidBoardNotesPanel({
         style={{
           padding: '0.25rem 0.65rem',
           border: 'none',
-          borderRight: '1px solid #d1d5db',
-          background: notesTab === 'all' ? '#3b82f6' : '#ffffff',
-          color: notesTab === 'all' ? '#ffffff' : '#374151',
+          borderRight: '1px solid var(--border-strong)',
+          background: notesTab === 'all' ? '#3b82f6' : 'var(--surface)',
+          color: notesTab === 'all' ? '#ffffff' : 'var(--text-700)',
           cursor: 'pointer',
           fontWeight: notesTab === 'all' ? 600 : 400,
           fontSize: '0.875rem',
@@ -82,9 +82,9 @@ export function BidBoardNotesPanel({
         style={{
           padding: '0.25rem 0.65rem',
           border: 'none',
-          borderRight: '1px solid #d1d5db',
-          background: notesTab === 'bid' ? '#3b82f6' : '#ffffff',
-          color: notesTab === 'bid' ? '#ffffff' : '#374151',
+          borderRight: '1px solid var(--border-strong)',
+          background: notesTab === 'bid' ? '#3b82f6' : 'var(--surface)',
+          color: notesTab === 'bid' ? '#ffffff' : 'var(--text-700)',
           cursor: 'pointer',
           fontWeight: notesTab === 'bid' ? 600 : 400,
           fontSize: '0.875rem',
@@ -107,9 +107,9 @@ export function BidBoardNotesPanel({
         style={{
           padding: '0.25rem 0.65rem',
           border: 'none',
-          borderRight: '1px solid #d1d5db',
-          background: notesTab === 'customer' ? '#16a34a' : '#ffffff',
-          color: notesTab === 'customer' ? '#ffffff' : '#374151',
+          borderRight: '1px solid var(--border-strong)',
+          background: notesTab === 'customer' ? '#16a34a' : 'var(--surface)',
+          color: notesTab === 'customer' ? '#ffffff' : 'var(--text-700)',
           cursor: !bid.customers?.id ? 'not-allowed' : 'pointer',
           fontWeight: notesTab === 'customer' ? 600 : 400,
           fontSize: '0.875rem',
@@ -128,8 +128,8 @@ export function BidBoardNotesPanel({
         style={{
           padding: '0.25rem 0.65rem',
           border: 'none',
-          background: notesTab === 'reports' ? '#3b82f6' : '#ffffff',
-          color: notesTab === 'reports' ? '#ffffff' : '#374151',
+          background: notesTab === 'reports' ? '#3b82f6' : 'var(--surface)',
+          color: notesTab === 'reports' ? '#ffffff' : 'var(--text-700)',
           cursor: 'pointer',
           fontWeight: notesTab === 'reports' ? 600 : 400,
           fontSize: '0.875rem',
@@ -199,7 +199,7 @@ export function BidBoardNotesPanel({
               useBidBoardCustomerChrome
             />
           ) : (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               No linked customer — customer notes are not available for this bid.
             </p>
           )

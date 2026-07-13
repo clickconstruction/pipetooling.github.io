@@ -43,11 +43,11 @@ const stickyRowHeader: CSSProperties = {
   padding: '0.375rem 0.75rem',
   fontSize: '0.875rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   position: 'sticky',
   left: 0,
   zIndex: 2,
-  background: '#fff',
+  background: 'var(--surface)',
   boxShadow: '1px 0 0 #e5e7eb',
 }
 
@@ -199,21 +199,21 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
         <h3 id={headingId} style={{ fontSize: '1rem', fontWeight: 600, margin: 0 }}>
           Estimator labor cost (weekly bids sent)
         </h3>
-        <span style={{ fontSize: '0.75rem', color: '#92400e' }}>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
           Rough labor cost vs. bids sent ({APP_CALENDAR_TZ} Sunday–Saturday). Uses all clock hours for the estimator each
           week (by work date); hourly wage from People pay settings.
         </span>
       </div>
 
-      {loading && <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Loading labor data…</p>}
+      {loading && <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading labor data…</p>}
       {fetchError !== null && !loading ? (
-        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#b45309' }}>{fetchError}</p>
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>{fetchError}</p>
       ) : null}
 
       {pivot.weeks.length === 0 ? (
-        <p style={{ margin: '.35rem 0 0', color: '#6b7280', fontSize: '0.875rem' }}>No sent bids in this view.</p>
+        <p style={{ margin: '.35rem 0 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No sent bids in this view.</p>
       ) : estimatorIdsSorted.length === 0 ? (
-        <p style={{ margin: '.35rem 0 0', color: '#6b7280', fontSize: '0.875rem' }}>
+        <p style={{ margin: '.35rem 0 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           No assigned estimators in this weekly sent breakdown.
         </p>
       ) : (
@@ -223,7 +223,7 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
             border: '1px solid #d6c089',
             borderRadius: 4,
             overflowX: 'auto',
-            background: '#fff',
+            background: 'var(--surface)',
           }}
         >
           <table
@@ -253,7 +253,7 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
             </thead>
             <tbody>
               {bodyRows.map((row) => (
-                <tr key={row.estimatorKey} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr key={row.estimatorKey} style={{ borderBottom: '1px solid var(--border)' }}>
                   <th scope="row" style={stickyRowHeader}>
                     {row.displayName}
                   </th>

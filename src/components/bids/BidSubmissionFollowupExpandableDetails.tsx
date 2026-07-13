@@ -55,10 +55,10 @@ function SectionTitle({ children }: { children: ReactNode }) {
     marginTop: 0,
     marginBottom: '0.35rem',
     paddingTop: '0.65rem',
-    borderTop: '1px solid #e5e7eb',
+    borderTop: '1px solid var(--border)',
     fontSize: '0.75rem',
     fontWeight: 700,
-    color: '#6b7280',
+    color: 'var(--text-muted)',
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
     textAlign: 'right',
@@ -79,8 +79,8 @@ function DetailPair({ label, value }: { label: string; value: ReactNode }) {
         minWidth: 0,
       }}
     >
-      <strong style={{ color: '#374151', fontWeight: 600 }}>{label}</strong>
-      <span style={{ color: '#111827', wordBreak: 'break-word' }}>{value}</span>
+      <strong style={{ color: 'var(--text-700)', fontWeight: 600 }}>{label}</strong>
+      <span style={{ color: 'var(--text-strong)', wordBreak: 'break-word' }}>{value}</span>
     </div>
   )
 }
@@ -93,14 +93,14 @@ function BidDateSentNote({ bid, estimatorUsers }: { bid: BidWithBuilder; estimat
   const serverSent = normalizeBidDateInput(bid.bid_date_sent)
   const ackById = bid.bid_date_sent_attested_by
   return (
-    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem', lineHeight: 1.45 }}>
+    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: 1.45 }}>
       <div>
         Sent {days} day{days === 1 ? '' : 's'} ago (by calendar date).
       </div>
       {ackById ? (
         <div>Acknowledged by {bidAttestationDisplayName(estimatorUsers, ackById)}</div>
       ) : serverSent === dNorm ? (
-        <div style={{ color: '#b45309' }}>No attestation on file (saved before this feature).</div>
+        <div style={{ color: 'var(--text-amber-700)' }}>No attestation on file (saved before this feature).</div>
       ) : null}
     </div>
   )
@@ -135,12 +135,12 @@ export function BidSubmissionFollowupExpandableDetails({
           cursor: 'pointer',
           listStyle: 'none',
           padding: '0.5rem 0.75rem',
-          background: '#f9fafb',
-          border: '1px solid #e5e7eb',
+          background: 'var(--bg-subtle)',
+          border: '1px solid var(--border)',
           borderRadius: 6,
           fontWeight: 600,
           fontSize: '0.875rem',
-          color: '#374151',
+          color: 'var(--text-700)',
           textAlign: 'center',
         }}
       >
@@ -181,7 +181,7 @@ export function BidSubmissionFollowupExpandableDetails({
         <SectionTitle>Tracking</SectionTitle>
         <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
           <DetailPair label="Last contact (bid)" value={formatLastContactDisplay(bid.last_contact)} />
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45 }}>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
             Separate from &quot;Last update&quot; in the list below, which uses submission notes and customer contacts.
           </p>
         </div>
@@ -189,7 +189,7 @@ export function BidSubmissionFollowupExpandableDetails({
         <SectionTitle>Notes</SectionTitle>
         <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
           {notesText === '' ? (
-            <span style={{ fontSize: '0.875rem', color: '#111827' }}>—</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-strong)' }}>—</span>
           ) : (
             <pre
               style={{
@@ -198,7 +198,7 @@ export function BidSubmissionFollowupExpandableDetails({
                 fontSize: '0.875rem',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
-                color: '#111827',
+                color: 'var(--text-strong)',
               }}
             >
               {bid.notes}

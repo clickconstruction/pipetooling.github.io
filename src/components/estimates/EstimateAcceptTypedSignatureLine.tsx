@@ -49,7 +49,7 @@ export function EstimateAcceptTypedSignatureLine({
       style={{
         width: '100%',
         boxSizing: 'border-box',
-        borderBottom: '1px solid #d1d5db',
+        borderBottom: '1px solid var(--border-strong)',
         paddingBottom: '0.35rem',
       }}
     >
@@ -71,7 +71,7 @@ export function EstimateAcceptTypedSignatureLine({
             minHeight: '2.5rem',
             minWidth: 0,
             flex: '1 1 auto',
-            color: nameMuted ? '#6b7280' : '#111827',
+            color: nameMuted ? 'var(--text-muted)' : 'var(--text-strong)',
           }}
         >
           {displayName}
@@ -81,7 +81,7 @@ export function EstimateAcceptTypedSignatureLine({
             fontFamily: ESTIMATE_ACCEPT_SIGNATURE_FONT,
             fontSize: '1.2rem',
             lineHeight: 1.3,
-            color: '#374151',
+            color: 'var(--text-700)',
             flexShrink: 0,
             textAlign: 'right',
           }}

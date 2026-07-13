@@ -72,7 +72,7 @@ const SESSION_PAGE_SIZE = 1000
 const thBase: CSSProperties = {
   padding: '0.375rem 0.5rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   fontSize: '0.8125rem',
 }
 
@@ -81,7 +81,7 @@ const stickyCorner: CSSProperties = {
   position: 'sticky',
   left: 0,
   zIndex: 3,
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
   boxShadow: '1px 0 0 #e5e7eb',
 }
 
@@ -89,11 +89,11 @@ const stickyRowHeader: CSSProperties = {
   padding: '0.375rem 0.5rem',
   fontSize: '0.875rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   position: 'sticky',
   left: 0,
   zIndex: 2,
-  background: '#fff',
+  background: 'var(--surface)',
   boxShadow: '1px 0 0 #e5e7eb',
   whiteSpace: 'nowrap',
 }
@@ -105,7 +105,7 @@ const thEstimator: CSSProperties = {
   minWidth: '8rem',
 }
 
-const todayCellBg: CSSProperties = { background: '#fffbeb' }
+const todayCellBg: CSSProperties = { background: 'var(--bg-amber-tint)' }
 
 function canManageColumns(role: Database['public']['Enums']['user_role'] | null): boolean {
   return role === 'dev' || role === 'master_technician' || role === 'assistant'
@@ -352,12 +352,12 @@ export function BidsEstimatorsTab({
                 alignItems: 'center',
                 gap: '0.35rem',
                 padding: '0.3rem 0.55rem',
-                background: costMode ? '#eff6ff' : '#f3f4f6',
+                background: costMode ? 'var(--bg-blue-tint)' : 'var(--bg-muted)',
                 border: `1px solid ${costMode ? '#bfdbfe' : '#d1d5db'}`,
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontSize: '0.8125rem',
-                color: '#374151',
+                color: 'var(--text-700)',
                 userSelect: 'none',
               }}
               title="Show scaled bid value | total bid value next to each chip (dev only)"
@@ -377,12 +377,12 @@ export function BidsEstimatorsTab({
               onClick={() => setExtrasModalOpen(true)}
               style={{
                 padding: '0.4rem 0.7rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontSize: '0.8125rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               Manage columns
@@ -409,11 +409,11 @@ export function BidsEstimatorsTab({
             flex: '1 1 16rem',
             minWidth: 0,
             padding: '0.4rem 0.6rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             fontSize: '0.875rem',
-            background: '#fff',
-            color: '#111827',
+            background: 'var(--surface)',
+            color: 'var(--text-strong)',
           }}
         />
         {searchActive ? (
@@ -421,7 +421,7 @@ export function BidsEstimatorsTab({
             <span
               style={{
                 fontSize: '0.8125rem',
-                color: '#374151',
+                color: 'var(--text-700)',
                 whiteSpace: 'nowrap',
                 fontVariantNumeric: 'tabular-nums',
               }}
@@ -436,12 +436,12 @@ export function BidsEstimatorsTab({
               onClick={() => setSearchInput('')}
               style={{
                 padding: '0.35rem 0.6rem',
-                background: '#fff',
-                border: '1px solid #d1d5db',
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontSize: '0.8125rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               Clear
@@ -450,25 +450,25 @@ export function BidsEstimatorsTab({
         ) : null}
       </div>
       {error ? (
-        <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{error}</p>
+        <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{error}</p>
       ) : null}
 
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : columnUsers.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           No estimator columns yet. {showManageBtn
             ? 'Use Manage columns to add users from the team.'
             : 'Ask a dev, master, or assistant to add users.'}
         </p>
       ) : searchActive && visibleDays.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           No bids in the last {windowDays} days match <strong>{searchInput.trim()}</strong>.
         </p>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.875rem' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
                 <th style={stickyCorner}>Day</th>
                 {columnUsers.map((u) => (
@@ -485,12 +485,12 @@ export function BidsEstimatorsTab({
                   <tr key={d}>
                     <th
                       scope="row"
-                      style={{ ...stickyRowHeader, ...(isToday ? { background: '#fffbeb' } : null) }}
+                      style={{ ...stickyRowHeader, ...(isToday ? { background: 'var(--bg-amber-tint)' } : null) }}
                       title={d}
                     >
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.3rem' }}>
                         <span style={{ fontWeight: 600 }}>{formatMmDdSlash(d)}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{weekdayShortChicago(d)}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{weekdayShortChicago(d)}</span>
                       </div>
                     </th>
                     {columnUsers.map((u) => {
@@ -506,7 +506,7 @@ export function BidsEstimatorsTab({
                           }}
                         >
                           {entries.length === 0 ? (
-                            <span style={{ color: '#d1d5db' }}>·</span>
+                            <span style={{ color: 'var(--text-faint-300)' }}>·</span>
                           ) : (
                             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
                               {entries.map((entry) => {
@@ -526,7 +526,7 @@ export function BidsEstimatorsTab({
                                   fontSize: '0.8125rem',
                                   ...(isMatch
                                     ? {
-                                        background: '#fef3c7',
+                                        background: 'var(--bg-amber-100)',
                                         padding: '0.05rem 0.3rem',
                                         borderRadius: 3,
                                         boxShadow: 'inset 0 0 0 1px #fcd34d',
@@ -544,8 +544,8 @@ export function BidsEstimatorsTab({
                                     : '')
                                 return (
                                   <li key={entry.bidId} style={liStyle}>
-                                    <span style={{ color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{pctText}</span>
-                                    <span style={{ color: '#6b7280', margin: '0 0.35rem' }}>—</span>
+                                    <span style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums' }}>{pctText}</span>
+                                    <span style={{ color: 'var(--text-muted)', margin: '0 0.35rem' }}>—</span>
                                     <button
                                       type="button"
                                       onClick={() => onOpenBidPreview(entry.bidId)}
@@ -554,7 +554,7 @@ export function BidsEstimatorsTab({
                                         background: 'none',
                                         border: 'none',
                                         padding: 0,
-                                        color: '#2563eb',
+                                        color: 'var(--text-link)',
                                         textDecoration: 'underline',
                                         cursor: 'pointer',
                                         fontSize: '0.8125rem',
@@ -564,25 +564,25 @@ export function BidsEstimatorsTab({
                                       {label}
                                     </button>
                                     {projectClip ? (
-                                      <span style={{ color: '#6b7280', marginLeft: '0.3rem' }}>({projectClip})</span>
+                                      <span style={{ color: 'var(--text-muted)', marginLeft: '0.3rem' }}>({projectClip})</span>
                                     ) : null}
                                     {costChip ? (
                                       costChip.kind === 'value' ? (
                                         <span
                                           style={{
-                                            color: '#374151',
+                                            color: 'var(--text-700)',
                                             marginLeft: '0.4rem',
                                             fontVariantNumeric: 'tabular-nums',
                                           }}
                                         >
                                           {formatBidValueK(costChip.scaledDollars)}
-                                          <span style={{ color: '#9ca3af', margin: '0 0.3rem' }}>|</span>
+                                          <span style={{ color: 'var(--text-faint)', margin: '0 0.3rem' }}>|</span>
                                           {formatBidValueK(costChip.totalDollars)}
                                         </span>
                                       ) : (
                                         <span
                                           style={{
-                                            color: '#dc2626',
+                                            color: 'var(--text-red-600)',
                                             marginLeft: '0.4rem',
                                             fontWeight: 500,
                                           }}
