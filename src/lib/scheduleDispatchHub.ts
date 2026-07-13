@@ -215,14 +215,15 @@ export async function fetchArchivedUserIdSetForIds(ids: string[]): Promise<Set<s
   const unique = [...new Set(ids)].filter(Boolean)
   if (unique.length === 0) return new Set()
   try {
+    // RPC (not a users select): the users RLS policy hides archived rows from
+    // non-devs, which made this set come back empty for e.g. assistants.
     const rows = await withSupabaseRetry(
-      async () =>
-        await supabase.from('users').select('id').in('id', unique).not('archived_at', 'is', null),
+      async () => await supabase.rpc('list_user_display_names', { p_user_ids: unique }),
       'fetchArchivedUserIdSetForIds',
     )
     const out = new Set<string>()
-    for (const row of (rows ?? []) as Array<{ id: string }>) {
-      if (row.id) out.add(row.id)
+    for (const row of (rows ?? []) as Array<{ id: string; archived_at: string | null }>) {
+      if (row.id && row.archived_at != null) out.add(row.id)
     }
     return out
   } catch {
@@ -236,9 +237,11 @@ export async function fetchUserNamesForIds(
   const unique = [...new Set(ids)].filter(Boolean)
   if (unique.length === 0) return { data: new Map(), error: null }
   try {
+    // RPC (not a users select): the users RLS policy hides archived rows and
+    // (for some roles) master/dev rows, which rendered those people "Unknown"
+    // across dispatch for non-dev viewers.
     const data = await withSupabaseRetry(
-      async () =>
-        await supabase.from('users').select('id, name').in('id', unique),
+      async () => await supabase.rpc('list_user_display_names', { p_user_ids: unique }),
       'fetchUserNamesForIds',
     )
     const m = new Map<string, string>()

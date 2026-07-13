@@ -11407,6 +11407,14 @@ export type Database = {
           tally_user_note: string
         }[]
       }
+      list_user_display_names: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          archived_at: string | null
+          id: string
+          name: string | null
+        }[]
+      }
       list_my_reports: {
         Args: never
         Returns: {
