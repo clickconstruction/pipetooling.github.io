@@ -101,7 +101,6 @@ export function SupplyHousesTab({
 
   const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
   const [supplyHouseSummaryLoading, setSupplyHouseSummaryLoading] = useState(false)
-  const [supplyHouseView, setSupplyHouseView] = useState<'summary' | 'aging'>('summary')
   const [agingUnpaidInvoices, setAgingUnpaidInvoices] = useState<
     Array<{ supply_house_id: string; amount: number; due_date: string | null }>
   >([])
@@ -640,7 +639,6 @@ export function SupplyHousesTab({
   function openHouseFromAging(supplyHouseId: string) {
     const sh = supplyHousesList.find((s: SupplyHouse) => s.id === supplyHouseId)
     if (!sh) return
-    setSupplyHouseView('summary')
     loadSupplyHouseDetail(sh)
   }
 
@@ -669,31 +667,12 @@ export function SupplyHousesTab({
           <p style={{ color: '#6b7280' }}>Loading…</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
-              <div style={{ marginBottom: '0.5rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'start', marginBottom: '0.75rem' }}>
+              <span aria-hidden="true" />
+              <div style={{ fontSize: '1rem', fontWeight: 600, textAlign: 'center', alignSelf: 'center' }}>
                 Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem' }}>
-              {(['summary', 'aging'] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setSupplyHouseView(v)}
-                  style={{
-                    padding: '0.3rem 0.9rem',
-                    fontSize: '0.8125rem',
-                    borderRadius: 999,
-                    border: '1px solid #d1d5db',
-                    background: supplyHouseView === v ? '#2563eb' : 'white',
-                    color: supplyHouseView === v ? 'white' : '#374151',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {v === 'summary' ? 'Summary' : 'Aging map'}
-                </button>
-              ))}
-              </div>
-              <div style={{ position: 'absolute', right: 0, top: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', justifySelf: 'end' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
                   <input
                     type="checkbox"
@@ -712,8 +691,7 @@ export function SupplyHousesTab({
                 </label>
               </div>
             </div>
-            {supplyHouseView === 'aging' && (
-              <>
+            <div style={{ marginBottom: '1.5rem' }}>
                 <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
                   Unpaid dollars by days past due (from invoice due dates).
                   {agingMatrix.missingDueDateCount > 0
@@ -795,9 +773,7 @@ export function SupplyHousesTab({
                     </tr>
                   </tfoot>
                 </table>
-              </>
-            )}
-            {supplyHouseView === 'summary' && (
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
@@ -1104,7 +1080,6 @@ export function SupplyHousesTab({
                 })}
               </tbody>
             </table>
-            )}
           </div>
         )}
       </section>
