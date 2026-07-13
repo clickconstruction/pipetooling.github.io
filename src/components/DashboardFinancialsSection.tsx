@@ -843,7 +843,7 @@ export default function DashboardFinancialsSection() {
             data.arCollections.count > 0
               ? [
                   'Collections:',
-                  `$${formatCurrency(data.arCollections.total)} (${data.arCollections.count} item${data.arCollections.count === 1 ? '' : 's'})`,
+                  `$${roundDollars(data.arCollections.total)} (${data.arCollections.count} item${data.arCollections.count === 1 ? '' : 's'})`,
                 ]
               : undefined,
         },
@@ -896,7 +896,7 @@ export default function DashboardFinancialsSection() {
               <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 0 }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>{CARD_META[key].title}</span>
                 <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                  ${formatCurrency(bucket.total)}
+                  ${roundDollars(bucket.total)}
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
                   {bucket.count} item{bucket.count === 1 ? '' : 's'}
