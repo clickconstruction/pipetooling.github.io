@@ -381,6 +381,8 @@ type QueueProps = {
   onPrepareBill?: (jobId: string) => void
   /** When false, hide Prepare Bill (e.g. ensure would show nothing left to bill for job-scoped open). */
   shouldShowPrepareBill?: (jobId: string) => boolean
+  /** Inside the Billing Pipeline card: drop the standalone top margin. */
+  embedded?: boolean
 }
 
 function optionLabelForBilledInvoice(o: BilledInvRow, opts: BilledInvRow[]): string {
@@ -396,6 +398,7 @@ function optionLabelForBilledInvoice(o: BilledInvRow, opts: BilledInvRow[]): str
 export default function DashboardFieldCollectPaymentQueue({
   onPrepareBill,
   shouldShowPrepareBill,
+  embedded = false,
 }: QueueProps) {
   const { showToast } = useToastContext()
   const { role: authRole } = useAuth()
@@ -599,7 +602,7 @@ export default function DashboardFieldCollectPaymentQueue({
   }
 
   return (
-    <div style={{ marginTop: '2rem' }}>
+    <div style={{ marginTop: embedded ? 0 : '2rem' }}>
       <button
         type="button"
         onClick={() => setExpanded((e) => !e)}
