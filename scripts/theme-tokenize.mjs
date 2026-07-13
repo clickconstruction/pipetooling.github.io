@@ -46,6 +46,7 @@ const BG = {
   white: 'var(--surface)',
   '#f9fafb': 'var(--bg-subtle)',
   '#f3f4f6': 'var(--bg-muted)',
+  '#e5e7eb': 'var(--bg-200)',
   '#eff6ff': 'var(--bg-blue-tint)',
   '#fef2f2': 'var(--bg-red-tint)',
   '#fee2e2': 'var(--bg-red-100)',

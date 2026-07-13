@@ -70,7 +70,7 @@ export default function DashboardDevRejectedNotification() {
         </span>
         <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           <div style={{ fontWeight: 600, fontSize: '1rem', color: '#9a3412' }}>Rejected clock sessions</div>
-          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Org-wide for the current week. Return to pending, edit, or delete on People → Hours.
           </div>
           <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -81,7 +81,7 @@ export default function DashboardDevRejectedNotification() {
                 padding: 0,
                 border: 'none',
                 background: 'none',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 fontSize: '0.8125rem',
                 cursor: 'pointer',
                 textDecoration: 'underline',
@@ -96,7 +96,7 @@ export default function DashboardDevRejectedNotification() {
                 padding: 0,
                 border: 'none',
                 background: 'none',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 fontSize: '0.8125rem',
                 cursor: 'pointer',
                 textDecoration: 'underline',

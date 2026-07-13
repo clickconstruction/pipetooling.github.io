@@ -299,7 +299,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
           aria-labelledby="stale-tally-staff-followup-title"
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             borderRadius: 8,
             width: 'min(920px, calc(100vw - 2rem))',
             maxHeight: 'min(90vh, 900px)',
@@ -317,8 +317,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
               onClick={onClose}
               style={{
                 padding: '0.35rem 0.65rem',
-                border: '1px solid #d1d5db',
-                background: 'white',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: '0.875rem',
@@ -337,7 +337,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                 style={{
                   padding: '0.4rem 0.9rem',
                   border: '1px solid #94a3b8',
-                  background: hideDevTransactions ? '#f1f5f9' : 'white',
+                  background: hideDevTransactions ? 'var(--bg-slate-100)' : 'var(--surface)',
                   borderRadius: 6,
                   cursor: hideDevBusy ? 'wait' : 'pointer',
                   fontSize: '0.8125rem',
@@ -356,7 +356,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
               style={{
                 padding: '0.4rem 0.9rem',
                 border: '1px solid #94a3b8',
-                background: showAllUnlinked ? '#f1f5f9' : 'white',
+                background: showAllUnlinked ? 'var(--bg-slate-100)' : 'var(--surface)',
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: '0.8125rem',
@@ -368,7 +368,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
               {showAllUnlinked ? 'Show stale only' : 'Show all'}
             </button>
           </div>
-          <p style={{ margin: '0.75rem 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0.75rem 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             {showAllUnlinked ? (
               <>
                 All unlinked Mercury transactions linked via debit card to persons. Open <strong>Assign</strong> to split to
@@ -382,9 +382,9 @@ export function DashboardStaleTallyStaffFollowUpModal({
             )}
           </p>
           {loading ? (
-            <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>
           ) : groups.length === 0 ? (
-            <div style={{ padding: '1.25rem', textAlign: 'center', color: '#6b7280', border: '1px dashed #e5e7eb', borderRadius: 8 }}>
+            <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: 8 }}>
               No stale unlinked transactions for people you can follow up with.
             </div>
           ) : (
@@ -393,7 +393,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                 <section
                   key={g.target_user_id}
                   style={{
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     overflow: 'hidden',
                   }}
@@ -401,8 +401,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
                   <div
                     style={{
                       padding: '0.65rem 0.85rem',
-                      background: '#f9fafb',
-                      borderBottom: '1px solid #e5e7eb',
+                      background: 'var(--bg-subtle)',
+                      borderBottom: '1px solid var(--border)',
                       display: 'flex',
                       flexWrap: 'wrap',
                       alignItems: 'center',
@@ -411,15 +411,15 @@ export function DashboardStaleTallyStaffFollowUpModal({
                   >
                     <span style={{ fontWeight: 600, fontSize: '0.9375rem' }}>{g.target_name}</span>
                     {(g.target_email || g.target_phone) && (
-                      <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                         {g.target_email && (
-                          <a href={`mailto:${g.target_email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <a href={`mailto:${g.target_email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {g.target_email}
                           </a>
                         )}
                         {g.target_email && g.target_phone && ' · '}
                         {g.target_phone && (
-                          <a href={`tel:${g.target_phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <a href={`tel:${g.target_phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {g.target_phone}
                           </a>
                         )}
@@ -435,20 +435,20 @@ export function DashboardStaleTallyStaffFollowUpModal({
                       }}
                     >
                       <thead>
-                        <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#fff' }}>
-                          <th style={{ textAlign: 'left', padding: '0.45rem 0.65rem', fontWeight: 600, color: '#475569' }}>
+                        <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}>
+                          <th style={{ textAlign: 'left', padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-slate-600)' }}>
                             Posted
                           </th>
-                          <th style={{ textAlign: 'right', padding: '0.45rem 0.65rem', fontWeight: 600, color: '#475569' }}>
+                          <th style={{ textAlign: 'right', padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-slate-600)' }}>
                             Amount
                           </th>
-                          <th style={{ textAlign: 'left', padding: '0.45rem 0.65rem', fontWeight: 600, color: '#475569' }}>
+                          <th style={{ textAlign: 'left', padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-slate-600)' }}>
                             Counterparty
                           </th>
-                          <th style={{ textAlign: 'left', padding: '0.45rem 0.65rem', fontWeight: 600, color: '#475569' }}>
+                          <th style={{ textAlign: 'left', padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-slate-600)' }}>
                             Note
                           </th>
-                          <th style={{ textAlign: 'right', padding: '0.45rem 0.65rem', fontWeight: 600, color: '#475569' }}>
+                          <th style={{ textAlign: 'right', padding: '0.45rem 0.65rem', fontWeight: 600, color: 'var(--text-slate-600)' }}>
                             {' '}
                           </th>
                         </tr>
@@ -484,7 +484,7 @@ export function DashboardStaleTallyStaffFollowUpModal({
                                 <div
                                   style={{
                                     fontSize: '0.7rem',
-                                    color: '#6b7280',
+                                    color: 'var(--text-muted)',
                                     marginTop: '0.125rem',
                                     whiteSpace: 'normal',
                                     wordBreak: 'break-word',
@@ -515,8 +515,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
                                     padding: '0.35rem 0.65rem',
                                     borderRadius: 6,
                                     border: '1px solid #2563eb',
-                                    background: '#fff',
-                                    color: '#1d4ed8',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-blue-700)',
                                     fontWeight: 600,
                                     fontSize: '0.8125rem',
                                     cursor: 'pointer',
@@ -533,8 +533,8 @@ export function DashboardStaleTallyStaffFollowUpModal({
                                     padding: '0.35rem 0.65rem',
                                     borderRadius: 6,
                                     border: '1px solid #b45309',
-                                    background: '#fff',
-                                    color: '#b45309',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-amber-700)',
                                     fontWeight: 600,
                                     fontSize: '0.8125rem',
                                     cursor: backchargeBusyTxId === r.mercury_transaction_id ? 'wait' : 'pointer',
