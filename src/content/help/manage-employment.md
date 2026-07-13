@@ -11,7 +11,8 @@ details. Open **People → Employment** (it sits just left of Hours).
 
 ## Finding a person
 
-The left side lists everyone on your roster except subcontractors — they aren't employees, so
+The left side lists every employee — everyone with a login account plus externally-added roster
+people — except subcontractors: they aren't employees, so
 they have no employment dates, pay setup, or time off. Use the search box to filter by name, and
 expand **Archived** at the bottom to see people who no longer appear elsewhere.
 
