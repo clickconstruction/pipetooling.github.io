@@ -99,7 +99,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
   async function loadUsers() {
     const { data: list, error: eList } = await supabase
       .from('users')
-      .select('id, email, name, role, last_sign_in_at, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
+      .select('id, email, name, role, last_sign_in_at, read_only, estimator_prospects_access, estimator_service_type_ids, primary_service_type_ids, superintendent_service_type_ids, subcontractor_service_type_ids, helpers_service_type_ids')
       .is('archived_at', null)
       .order('name')
     if (eList) setError(eList.message)
@@ -130,6 +130,18 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
       setError(e.message)
     } else {
       setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, role } : u)))
+    }
+    setUpdatingId(null)
+  }
+
+  async function updateReadOnly(id: string, readOnly: boolean) {
+    setUpdatingId(id)
+    setError(null)
+    const { error: e } = await supabase.from('users').update({ read_only: readOnly }).eq('id', id)
+    if (e) {
+      setError(e.message)
+    } else {
+      setUsers((prev) => prev.map((u) => (u.id === id ? { ...u, read_only: readOnly } : u)))
     }
     setUpdatingId(null)
   }
@@ -998,6 +1010,7 @@ export function useActiveAccountsManagement({ enabled, onDataChanged }: UseActiv
     activeAccountsSectionOpen,
     setActiveAccountsSectionOpen,
     updateRole,
+    updateReadOnly,
     startEditUser,
     cancelEditUser,
     updateUserProfile,

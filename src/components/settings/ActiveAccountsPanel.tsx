@@ -167,6 +167,7 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
     activeAccountsSectionOpen,
     setActiveAccountsSectionOpen,
     updateRole,
+    updateReadOnly,
     startEditUser,
     cancelEditUser,
     saveUserEdits,
@@ -323,7 +324,25 @@ export default function ActiveAccountsPanel({ variant, onDataChanged, onOpenFind
                         </select>
                       </div>
                     </td>
-                    <td className="activeAccountsCard__lastLogin">{timeSinceAgo(u.last_sign_in_at)}</td>
+                    <td className="activeAccountsCard__lastLogin">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                        <span>{timeSinceAgo(u.last_sign_in_at)}</span>
+                        {u.role === 'assistant' && (
+                          <label
+                            title="Training mode: they can browse everything their role can see, but every change is blocked."
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', whiteSpace: 'nowrap', color: u.read_only ? '#b45309' : '#6b7280' }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={!!u.read_only}
+                              disabled={updatingId === u.id}
+                              onChange={(e) => updateReadOnly(u.id, e.target.checked)}
+                            />
+                            Read-only
+                          </label>
+                        )}
+                      </div>
+                    </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.375rem', alignItems: 'flex-start' }}>
                         <div style={{ display: 'flex', flexDirection: 'row', flexWrap: 'nowrap', gap: '0.375rem', alignItems: 'center' }}>
