@@ -40,8 +40,35 @@ keeps that credit inside their actual employment — someone hired mid-week isn'
 Monday before they started, and someone who left stops accruing days.
 :::
 
+## Pay setup
+
+The **Pay setup** card on each person sets how they're paid. Changes save automatically after a
+moment.
+
+- **Hourly wage** — the rate used everywhere, including for salaried people (their pay is this
+  rate × 8 hours per weekday).
+- **Office wage** — optional second rate for office/bid/unassigned time. Hourly people only; it
+  doesn't apply to salaried people.
+- **Salaried** — switches the person to the flat salary day: 8 hours on weekdays, 0 on weekends,
+  regardless of clock time.
+- **Record hours anyway** — a salaried person's logged hours show on the Hours grids for
+  record-keeping, but pay stays on the flat salary day.
+- **Show in Cost Matrix** — include the person in the cost matrix and team totals.
+
+:::example Switching someone to salaried
+Check {{chip:blue|Salaried}}, then set up their **Salaried workday** card below (start time, one
+block or two). Their scheduled sessions start appearing automatically — they no longer clock in
+or out.
+:::
+
+## Salaried workday schedule
+
+For salaried people, the **Salaried workday** card edits their daily schedule right here — the
+same settings as Settings → Salaried workday: continuous or split day, start time, weekends, and
+a custom schedule for a single date. If the card says no login user matches the person's name,
+fix the roster name or invite them first.
+
 ## What's coming to this tab
 
-Pay setup (wages and the salary flag), the salaried workday schedule, and paid/unpaid time off are
-moving into this tab so everything about a person lives in one place. Until then they remain in
-the Hours tab ({{button:outline|Pay config}}) and Settings.
+Paid and unpaid time off is moving into this tab so everything about a person lives in one place.
+Until then it remains in Settings and the salaried-workdays bulk modal on the Hours tab.
