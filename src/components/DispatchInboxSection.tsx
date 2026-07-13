@@ -696,31 +696,6 @@ export function DispatchInboxSection({
               })}
             </ul>
           )}
-          {onOpenDismissedArchive ? (
-            <div
-              style={{
-                marginTop: '0.75rem',
-                paddingTop: '0.75rem',
-                borderTop: '1px solid var(--border)',
-              }}
-            >
-              <button
-                type="button"
-                onClick={onOpenDismissedArchive}
-                style={{
-                  padding: '0.4rem 0.75rem',
-                  fontSize: '0.875rem',
-                  background: 'var(--bg-muted)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 4,
-                  cursor: 'pointer',
-                  color: 'var(--text-700)',
-                }}
-              >
-                View dismissed…
-              </button>
-            </div>
-          ) : null}
         </div>
   )
 
@@ -740,41 +715,72 @@ export function DispatchInboxSection({
         overflow: 'hidden',
       }}
     >
-      <button
-        type="button"
-        onClick={onToggleSection}
+      <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '0.35rem',
-          width: '100%',
-          padding: '0.75rem 1rem',
-          margin: 0,
           background: hasOpenWork ? 'var(--bg-amber-tint)' : 'var(--bg-subtle)',
-          border: 'none',
-          cursor: 'pointer',
-          fontSize: '1rem',
-          fontWeight: 600,
-          textAlign: 'left',
         }}
       >
-        <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
-        {sectionTitle}
-        {!loading && requests.length > 0 && headerBadge !== 'none' ? (
-          <span
+        <button
+          type="button"
+          onClick={onToggleSection}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+            flex: 1,
+            minWidth: 0,
+            padding: '0.75rem 1rem',
+            margin: 0,
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: '1rem',
+            fontWeight: 600,
+            textAlign: 'left',
+          }}
+        >
+          <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
+          {sectionTitle}
+          {!loading && requests.length > 0 && headerBadge !== 'none' ? (
+            <span
+              style={{
+                marginLeft: '0.5rem',
+                fontSize: '0.875rem',
+                fontWeight: 500,
+                color: hasOpenWork ? 'var(--text-amber-800)' : 'var(--text-link)',
+              }}
+            >
+              {headerBadge === 'open'
+                ? `(${requests.filter((r) => r.status === 'open').length} open)`
+                : `(${requests.filter((r) => r.status === 'closed').length} closed)`}
+            </span>
+          ) : null}
+        </button>
+        {onOpenDismissedArchive ? (
+          <button
+            type="button"
+            onClick={onOpenDismissedArchive}
+            title="View dismissed dispatch items"
             style={{
-              marginLeft: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: 500,
-              color: hasOpenWork ? 'var(--text-amber-800)' : 'var(--text-link)',
+              flexShrink: 0,
+              marginRight: '0.75rem',
+              padding: '0.25rem 0.75rem',
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              background: 'var(--surface)',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 999,
+              color: 'var(--text-700)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
             }}
           >
-            {headerBadge === 'open'
-              ? `(${requests.filter((r) => r.status === 'open').length} open)`
-              : `(${requests.filter((r) => r.status === 'closed').length} closed)`}
-          </span>
+            View dismissed…
+          </button>
         ) : null}
-      </button>
+      </div>
       {sectionOpen && body}
     </div>
   )
