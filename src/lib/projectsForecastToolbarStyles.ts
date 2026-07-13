@@ -20,12 +20,12 @@ export const forecastToolbarLabelStyle: CSSProperties = {
   alignItems: 'center',
   gap: '0.35rem',
   fontSize: '0.875rem',
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 export const forecastDateInputStyle: CSSProperties = {
   padding: '0.35rem 0.3rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   fontSize: '0.875rem',
   width: 92,
@@ -34,11 +34,11 @@ export const forecastDateInputStyle: CSSProperties = {
 
 export const forecastSearchInputStyle: CSSProperties = {
   padding: '0.35rem 1.6rem 0.35rem 0.7rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 999,
   fontSize: '0.875rem',
   minWidth: 240,
-  background: '#ffffff',
+  background: 'var(--surface)',
 }
 
 export const forecastSearchClearButtonStyle: CSSProperties = {
@@ -51,7 +51,7 @@ export const forecastSearchClearButtonStyle: CSSProperties = {
   padding: 0,
   border: 'none',
   background: 'transparent',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '1rem',
   lineHeight: 1,
   cursor: 'pointer',
@@ -63,8 +63,8 @@ export const forecastSearchClearButtonStyle: CSSProperties = {
 export const forecastChipStyle: CSSProperties = {
   padding: '0.3rem 0.7rem',
   fontSize: '0.8125rem',
-  background: '#ffffff',
-  color: '#374151',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
   border: '1px solid #cbd5e1',
   borderRadius: 999,
   cursor: 'pointer',
@@ -73,8 +73,8 @@ export const forecastChipStyle: CSSProperties = {
 export const forecastSecondaryButtonStyle: CSSProperties = {
   padding: '0.3rem 0.7rem',
   fontSize: '0.8125rem',
-  background: '#ffffff',
-  color: '#374151',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
   border: '1px solid #cbd5e1',
   borderRadius: 6,
   cursor: 'pointer',

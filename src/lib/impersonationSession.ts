@@ -6,8 +6,8 @@ export const IMPERSONATION_ORIGINAL_STORAGE_KEY = 'impersonation_original'
 /** Shared palette for header “Back” and other impersonation-context controls ([`Layout.tsx`](../components/Layout.tsx)). */
 export const IMPERSONATION_CHROME_BUTTON_STYLE: CSSProperties = {
   padding: '0.35rem 0.75rem',
-  background: '#fef3c7',
-  color: '#92400e',
+  background: 'var(--bg-amber-100)',
+  color: 'var(--text-amber-800)',
   border: '1px solid #f59e0b',
   borderRadius: 4,
   fontWeight: 600,

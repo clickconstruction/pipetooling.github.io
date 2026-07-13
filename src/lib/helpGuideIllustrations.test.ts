@@ -31,7 +31,7 @@ describe('expandHelpIllustrations', () => {
 
   it('falls back to the outline style for unknown button variants', () => {
     const html = expandHelpIllustrations('[[[help-ill|button,plaid,Save]]]')
-    expect(html).toContain('border:1px solid #d1d5db')
+    expect(html).toContain('border:1px solid var(--border-strong)')
     expect(html).toContain('Save')
   })
 

@@ -7,7 +7,7 @@ export function pageUnderlineTabStyle(active: boolean): CSSProperties {
     border: 'none',
     background: 'none',
     borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-    color: active ? '#3b82f6' : '#6b7280',
+    color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
     fontWeight: active ? 600 : 400,
     cursor: 'pointer',
     flexShrink: 0,

@@ -12,6 +12,11 @@
  * Usage: node scripts/theme-tokenize.mjs <file-or-dir> [...more]
  * Prints per-file replacement counts and, at the end, any mapped hexes left
  * behind (ternaries and computed styles need a manual pass).
+ *
+ * --check: dry-run guard for CI — writes nothing, exits 1 if any file
+ * contains a literal the codemod would rewrite (i.e. someone added a raw
+ * neutral hex instead of a token). Run as:
+ *   node scripts/theme-tokenize.mjs --check src
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -126,20 +131,41 @@ const MAPPED_HEXES = new Set(
   [...Object.keys(TEXT), ...Object.keys(BG), ...Object.keys(BORDER)].filter((k) => k.startsWith('#'))
 )
 
+const args = process.argv.slice(2)
+const checkMode = args.includes('--check')
+const targets = args.filter((a) => a !== '--check')
+
 let totalReplaced = 0
 const leftovers = []
-for (const arg of process.argv.slice(2)) {
+const violations = []
+for (const arg of targets) {
   for (const file of walk(arg)) {
     const src = fs.readFileSync(file, 'utf8')
     const { out, count } = processSource(src)
     if (count > 0) {
-      fs.writeFileSync(file, out)
-      totalReplaced += count
-      console.log(`${file}: ${count} replaced`)
+      if (checkMode) {
+        violations.push(`${file}: ${count} raw color literal(s) the theme codemod would rewrite`)
+      } else {
+        fs.writeFileSync(file, out)
+        totalReplaced += count
+        console.log(`${file}: ${count} replaced`)
+      }
     }
     const remaining = (out.match(/#[0-9a-fA-F]{6}\b/g) ?? []).filter((h) => MAPPED_HEXES.has(h.toLowerCase()))
     if (remaining.length > 0) leftovers.push(`${file}: ${remaining.length} mapped hex(es) left (manual pass)`)
   }
 }
+
+if (checkMode) {
+  if (violations.length > 0) {
+    console.error('theme token check FAILED — use the CSS variables from src/index.css instead of raw hexes:')
+    console.error(violations.join('\n'))
+    console.error('\nFix automatically with: node scripts/theme-tokenize.mjs <file>')
+    process.exit(1)
+  }
+  console.log('theme token check OK: no raw neutral color literals in inline styles.')
+  process.exit(0)
+}
+
 console.log(`\ntotal: ${totalReplaced} replacements`)
 if (leftovers.length > 0) console.log(leftovers.join('\n'))
