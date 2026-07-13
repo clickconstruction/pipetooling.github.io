@@ -554,9 +554,9 @@ export default function Layout() {
         <div
           role="status"
           style={{
-            background: '#fef3c7',
+            background: 'var(--bg-amber-100)',
             borderBottom: '1px solid #f59e0b',
-            color: '#92400e',
+            color: 'var(--text-amber-800)',
             padding: '0.4rem 1rem',
             fontSize: '0.8125rem',
             textAlign: 'center',
@@ -928,8 +928,8 @@ export default function Layout() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: 3,
-                        border: '1px solid #9ca3af',
-                        background: jobModeEnabled ? '#16a34a' : 'white',
+                        border: '1px solid var(--border-400)',
+                        background: jobModeEnabled ? '#16a34a' : 'var(--surface)',
                         color: 'white',
                         fontSize: '0.75rem',
                         lineHeight: 1,
@@ -973,8 +973,8 @@ export default function Layout() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       borderRadius: 3,
-                      border: '1px solid #9ca3af',
-                      background: theme === 'dark' ? '#16a34a' : 'white',
+                      border: '1px solid var(--border-400)',
+                      background: theme === 'dark' ? '#16a34a' : 'var(--surface)',
                       color: 'white',
                       fontSize: '0.75rem',
                       lineHeight: 1,
@@ -996,7 +996,7 @@ export default function Layout() {
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       fontSize: '0.8125rem',
                       borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
@@ -1192,7 +1192,7 @@ export default function Layout() {
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: 'inherit',
-                    color: '#dc2626',
+                    color: 'var(--text-red-600)',
                     borderBottom: '1px solid var(--chrome-border)',
                   }}
                 >
@@ -1213,7 +1213,7 @@ export default function Layout() {
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: 'inherit',
-                    color: '#dc2626',
+                    color: 'var(--text-red-600)',
                     borderBottom: role === 'dev' ? '1px solid var(--chrome-border)' : 'none',
                   }}
                 >
@@ -1297,7 +1297,7 @@ export default function Layout() {
               alignItems: 'center',
               gap: '0.75rem',
               flexWrap: 'wrap',
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
             }}
           >
             <button
@@ -1331,7 +1331,7 @@ export default function Layout() {
                 color: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
                   ? '#3730a3'
                   : '#6b7280',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: 'pointer',
               }}
@@ -1360,8 +1360,8 @@ export default function Layout() {
                     justifyContent: 'center',
                     padding: '0.35rem 0.5rem',
                     background: pinForOpen ? '#e0e7ff' : 'transparent',
-                    color: pinForOpen ? '#3730a3' : '#6b7280',
-                    border: '1px solid #d1d5db',
+                    color: pinForOpen ? '#3730a3' : 'var(--text-muted)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     cursor: 'pointer',
                   }}
@@ -1378,7 +1378,7 @@ export default function Layout() {
                       left: 0,
                       marginBottom: 4,
                       padding: '0.5rem',
-                      background: 'white',
+                      background: 'var(--surface)',
                       border: '1px solid var(--chrome-border)',
                       borderRadius: 8,
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
@@ -1396,7 +1396,7 @@ export default function Layout() {
                         fontSize: '0.8125rem',
                         border: '1px solid var(--chrome-border)',
                         borderRadius: 6,
-                        background: '#fff',
+                        background: 'var(--surface)',
                         minWidth: 120,
                       }}
                       aria-label="Pin for user"
@@ -1435,8 +1435,8 @@ export default function Layout() {
                       style={{
                         padding: '0.35rem 0.6rem',
                         fontSize: '0.8125rem',
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        background: 'var(--bg-blue-tint)',
+                        color: 'var(--text-blue-700)',
                         border: '1px solid #bfdbfe',
                         borderRadius: 6,
                         cursor: pinForSaving ? 'not-allowed' : 'pointer',
@@ -1453,7 +1453,7 @@ export default function Layout() {
               <span
                 style={{
                   fontSize: '0.875rem',
-                  color: pinForMessage.type === 'success' ? '#059669' : '#b91c1c',
+                  color: pinForMessage.type === 'success' ? 'var(--text-green-600)' : 'var(--text-red-700)',
                   fontWeight: 500,
                 }}
               >

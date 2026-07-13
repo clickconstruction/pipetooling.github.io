@@ -90,7 +90,7 @@ function formatBankingDate(iso: string | null): string {
 
 const sectionShell: CSSProperties = {
   marginTop: '1.25rem',
-  borderTop: '2px solid #e5e7eb',
+  borderTop: '2px solid var(--border)',
   paddingTop: '1rem',
 }
 
@@ -104,10 +104,10 @@ const headerStrip: CSSProperties = {
 }
 
 const cardShell: CSSProperties = {
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   overflow: 'hidden',
-  background: '#fff',
+  background: 'var(--surface)',
 }
 
 const cardHeaderButton: CSSProperties = {
@@ -120,7 +120,7 @@ const cardHeaderButton: CSSProperties = {
   padding: '0.65rem 0.85rem',
   cursor: 'pointer',
   boxSizing: 'border-box',
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
 }
 
 const detailThStyle: CSSProperties = {
@@ -128,10 +128,10 @@ const detailThStyle: CSSProperties = {
   textAlign: 'left',
   fontWeight: 600,
   fontSize: '0.7rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
 
 const detailTdStyle: CSSProperties = {
@@ -142,20 +142,20 @@ const detailTdStyle: CSSProperties = {
 const editLinkButtonStyle: CSSProperties = {
   all: 'unset',
   fontSize: '0.75rem',
-  color: '#2563eb',
+  color: 'var(--text-link)',
   cursor: 'pointer',
   padding: '0.15rem 0.4rem',
   borderRadius: 4,
   border: '1px solid #bfdbfe',
-  background: '#eff6ff',
+  background: 'var(--bg-blue-tint)',
 }
 
 const sortToggleButtonStyle = (active: boolean): CSSProperties => ({
   padding: '0.2rem 0.55rem',
   fontSize: '0.75rem',
-  border: '1px solid #d1d5db',
-  background: active ? '#1d4ed8' : '#fff',
-  color: active ? '#fff' : '#374151',
+  border: '1px solid var(--border-strong)',
+  background: active ? '#1d4ed8' : 'var(--surface)',
+  color: active ? '#fff' : 'var(--text-700)',
   cursor: 'pointer',
   fontWeight: active ? 600 : 500,
 })
@@ -438,10 +438,10 @@ export function UserMercuryWindowSection({
           style={{
             margin: '0.5rem 0',
             padding: '0.65rem 0.85rem',
-            background: '#fef2f2',
+            background: 'var(--bg-red-tint)',
             border: '1px solid #fecaca',
             borderRadius: 6,
-            color: '#991b1b',
+            color: 'var(--text-red-800)',
             fontSize: '0.8125rem',
           }}
         >
@@ -454,10 +454,10 @@ export function UserMercuryWindowSection({
           style={{
             margin: '0.5rem 0',
             padding: '0.5rem 0.75rem',
-            background: '#f3f4f6',
-            border: '1px solid #e5e7eb',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border)',
             borderRadius: 4,
-            color: '#374151',
+            color: 'var(--text-700)',
             fontSize: '0.8125rem',
           }}
         >
@@ -469,10 +469,10 @@ export function UserMercuryWindowSection({
         <div
           style={{
             padding: '1.25rem',
-            border: '1px dashed #d1d5db',
+            border: '1px dashed var(--border-strong)',
             borderRadius: 6,
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             fontSize: '0.875rem',
           }}
         >
@@ -486,14 +486,14 @@ export function UserMercuryWindowSection({
             type="button"
             onClick={() => setUnallocatedOpen((v) => !v)}
             aria-expanded={unallocatedOpen}
-            style={{ ...cardHeaderButton, background: '#fef2f2' }}
+            style={{ ...cardHeaderButton, background: 'var(--bg-red-tint)' }}
           >
             <span
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.5rem',
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
                 fontWeight: 600,
                 fontSize: '0.875rem',
                 minWidth: 0,
@@ -623,7 +623,7 @@ function TotalsBlock({
   return (
     <div style={{ textAlign: 'center', fontSize: '0.8125rem' }}>
       <div style={{ fontSize: '0.95rem' }}>
-        <span style={{ fontWeight: 600, color: '#111827' }}>Transactions:</span>{' '}
+        <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Transactions:</span>{' '}
         <span
           style={{
             fontWeight: 600,
@@ -633,26 +633,26 @@ function TotalsBlock({
         >
           {formatUsd(grand.totalAmount)}
         </span>{' '}
-        <span style={{ color: '#6b7280' }}>· {grand.count.toLocaleString()} tx</span>
+        <span style={{ color: 'var(--text-muted)' }}>· {grand.count.toLocaleString()} tx</span>
       </div>
       {/* Only show per-source breakdowns when both sources contribute — otherwise the
           grand total above already conveys the same number. */}
       {byUser.count > 0 && byPerson.count > 0 ? (
-        <div style={{ color: '#374151', marginTop: '0.1rem' }}>
+        <div style={{ color: 'var(--text-700)', marginTop: '0.1rem' }}>
           Attributed to {displayName}:{' '}
           <span style={{ color: amountColor(byUser.totalAmount), fontVariantNumeric: 'tabular-nums' }}>
             {formatUsd(byUser.totalAmount)}
           </span>{' '}
-          <span style={{ color: '#9ca3af' }}>({byUser.count.toLocaleString()} tx)</span>
+          <span style={{ color: 'var(--text-faint)' }}>({byUser.count.toLocaleString()} tx)</span>
         </div>
       ) : null}
       {byUser.count > 0 && byPerson.count > 0 ? (
-        <div style={{ color: '#374151', marginTop: '0.1rem' }}>
+        <div style={{ color: 'var(--text-700)', marginTop: '0.1rem' }}>
           Via person record:{' '}
           <span style={{ color: amountColor(byPerson.totalAmount), fontVariantNumeric: 'tabular-nums' }}>
             {formatUsd(byPerson.totalAmount)}
           </span>{' '}
-          <span style={{ color: '#9ca3af' }}>({byPerson.count.toLocaleString()} tx)</span>
+          <span style={{ color: 'var(--text-faint)' }}>({byPerson.count.toLocaleString()} tx)</span>
         </div>
       ) : null}
     </div>
@@ -693,7 +693,7 @@ function TxSortToggle({
               borderBottomLeftRadius: isFirst ? 4 : 0,
               borderTopRightRadius: isLast ? 4 : 0,
               borderBottomRightRadius: isLast ? 4 : 0,
-              borderRight: isLast ? '1px solid #d1d5db' : 'none',
+              borderRight: isLast ? '1px solid var(--border-strong)' : 'none',
             }}
           >
             {btn.label}
@@ -729,7 +729,7 @@ function JobCard({
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            color: '#111827',
+            color: 'var(--text-strong)',
             fontWeight: 600,
             fontSize: '0.875rem',
             minWidth: 0,
@@ -742,7 +742,7 @@ function JobCard({
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {job.jobLabel}
           </span>
-          <span style={{ color: '#9ca3af', fontSize: '0.75rem', fontWeight: 500 }}>
+          <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem', fontWeight: 500 }}>
             {job.count.toLocaleString()} tx
           </span>
         </span>
@@ -771,7 +771,7 @@ function JobCard({
                   aria-expanded={isOpen}
                   style={{
                     ...cardHeaderButton,
-                    background: '#ffffff',
+                    background: 'var(--surface)',
                     paddingLeft: '1.5rem',
                   }}
                 >
@@ -780,7 +780,7 @@ function JobCard({
                       display: 'flex',
                       alignItems: 'center',
                       gap: '0.5rem',
-                      color: group.labelId == null ? '#9ca3af' : '#111827',
+                      color: group.labelId == null ? 'var(--text-faint)' : 'var(--text-strong)',
                       fontStyle: group.labelId == null ? 'italic' : 'normal',
                       fontSize: '0.8125rem',
                       fontWeight: 500,
@@ -794,7 +794,7 @@ function JobCard({
                     <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {group.labelName}
                     </span>
-                    <span style={{ color: '#9ca3af', fontSize: '0.75rem', fontStyle: 'normal', fontWeight: 500 }}>
+                    <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem', fontStyle: 'normal', fontWeight: 500 }}>
                       {group.count.toLocaleString()} tx
                     </span>
                   </span>
@@ -870,7 +870,7 @@ function LabelCard({
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            color: isUnlabeled ? '#9ca3af' : '#111827',
+            color: isUnlabeled ? 'var(--text-faint)' : 'var(--text-strong)',
             fontStyle: isUnlabeled ? 'italic' : 'normal',
             fontWeight: 600,
             fontSize: '0.875rem',
@@ -884,7 +884,7 @@ function LabelCard({
           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {bucket.labelName}
           </span>
-          <span style={{ color: '#9ca3af', fontSize: '0.75rem', fontStyle: 'normal', fontWeight: 500 }}>
+          <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem', fontStyle: 'normal', fontWeight: 500 }}>
             {bucket.count.toLocaleString()} tx
           </span>
         </span>
@@ -944,7 +944,7 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
         <thead>
-          <tr style={{ background: '#f9fafb' }}>
+          <tr style={{ background: 'var(--bg-subtle)' }}>
             <th style={{ ...detailThStyle, textAlign: 'right' }}>Amount</th>
             <th style={detailThStyle}>Posted</th>
             <th style={detailThStyle}>Counterparty</th>
@@ -976,21 +976,21 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
                 >
                   {formatUsd(displayAmount)}
                   {amountField === 'allocation' && r.allocationAmount != null && r.allocationAmount !== r.amount ? (
-                    <span style={{ display: 'block', fontSize: '0.6875rem', color: '#9ca3af', fontWeight: 400 }}>
+                    <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)', fontWeight: 400 }}>
                       of {formatUsd(r.amount)}
                     </span>
                   ) : null}
                 </td>
                 <td style={detailTdStyle}>{formatBankingDate(r.postedAt ?? r.createdAt)}</td>
                 <td style={detailTdStyle}>
-                  {r.counterpartyName?.trim() || <span style={{ color: '#9ca3af' }}>—</span>}
+                  {r.counterpartyName?.trim() || <span style={{ color: 'var(--text-faint)' }}>—</span>}
                 </td>
                 {showJobColumn ? (
                   <td style={detailTdStyle}>
                     {jobLabel ? (
-                      <span style={{ color: '#111827' }}>{jobLabel}</span>
+                      <span style={{ color: 'var(--text-strong)' }}>{jobLabel}</span>
                     ) : (
-                      <span style={{ color: '#9ca3af' }}>—</span>
+                      <span style={{ color: 'var(--text-faint)' }}>—</span>
                     )}
                     {isSplit ? (
                       <span
@@ -999,8 +999,8 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
                           marginLeft: '0.4rem',
                           padding: '0.05rem 0.35rem',
                           borderRadius: 999,
-                          background: '#f3f4f6',
-                          color: '#6b7280',
+                          background: 'var(--bg-muted)',
+                          color: 'var(--text-muted)',
                           fontSize: '0.6875rem',
                           fontWeight: 500,
                           verticalAlign: 'middle',
@@ -1014,7 +1014,7 @@ function TransactionsTable<R extends UserReviewBreakdownTx>({
                 ) : null}
                 {showLabelColumn ? (
                   <td style={detailTdStyle}>
-                    <span style={{ color: r.labelId == null ? '#9ca3af' : '#111827', fontStyle: r.labelId == null ? 'italic' : 'normal' }}>
+                    <span style={{ color: r.labelId == null ? 'var(--text-faint)' : 'var(--text-strong)', fontStyle: r.labelId == null ? 'italic' : 'normal' }}>
                       {r.labelName}
                     </span>
                   </td>

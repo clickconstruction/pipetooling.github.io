@@ -107,7 +107,7 @@ export default function AcceptInvite() {
     return (
       <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
         <h1 style={{ marginBottom: '1rem' }}>Accept invitation</h1>
-        <p style={{ color: '#b91c1c' }}>{error || 'This invite link is invalid or expired. Ask a dev to resend the invite.'}</p>
+        <p style={{ color: 'var(--text-red-700)' }}>{error || 'This invite link is invalid or expired. Ask a dev to resend the invite.'}</p>
       </div>
     )
   }
@@ -115,7 +115,7 @@ export default function AcceptInvite() {
   return (
     <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
       <h1 style={{ marginBottom: '1rem' }}>Welcome to PipeTooling</h1>
-      <p style={{ marginBottom: '1rem', color: '#374151' }}>
+      <p style={{ marginBottom: '1rem', color: 'var(--text-700)' }}>
         Choose a password to finish setting up your account.
       </p>
       <form onSubmit={handleSubmit}>
@@ -147,7 +147,7 @@ export default function AcceptInvite() {
             minLength={6}
           />
         </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.5rem 1rem' }}>
           {loading ? 'Setting password…' : 'Set password and continue'}
         </button>

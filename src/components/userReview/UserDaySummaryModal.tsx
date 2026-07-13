@@ -24,7 +24,7 @@ const sectionHeadingStyle: CSSProperties = {
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
 }
 
 const listStyle: CSSProperties = {
@@ -43,10 +43,10 @@ const rowBaseStyle: CSSProperties = {
   width: '100%',
   padding: '0.4rem 0.5rem',
   borderRadius: 4,
-  border: '1px solid #e5e7eb',
-  background: '#fff',
+  border: '1px solid var(--border)',
+  background: 'var(--surface)',
   textAlign: 'left',
-  color: '#111827',
+  color: 'var(--text-strong)',
   font: 'inherit',
   fontSize: '0.875rem',
   cursor: 'pointer',
@@ -67,13 +67,13 @@ const rowTopLineStyle: CSSProperties = {
 
 const rowTimeStyle: CSSProperties = {
   fontVariantNumeric: 'tabular-nums',
-  color: '#111827',
+  color: 'var(--text-strong)',
   fontWeight: 500,
   flexShrink: 0,
 }
 
 const rowLabelStyle: CSSProperties = {
-  color: '#374151',
+  color: 'var(--text-700)',
   minWidth: 0,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -82,7 +82,7 @@ const rowLabelStyle: CSSProperties = {
 }
 
 const rowTrailingStyle: CSSProperties = {
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.75rem',
   fontVariantNumeric: 'tabular-nums',
   flexShrink: 0,
@@ -91,7 +91,7 @@ const rowTrailingStyle: CSSProperties = {
 const rowNoteStyle: CSSProperties = {
   margin: 0,
   fontSize: '0.75rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 }
@@ -99,7 +99,7 @@ const rowNoteStyle: CSSProperties = {
 const emptyStyle: CSSProperties = {
   margin: 0,
   fontSize: '0.875rem',
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   fontStyle: 'italic',
 }
 
@@ -182,7 +182,7 @@ export function UserDaySummaryModal({
         aria-modal="true"
         aria-labelledby="user-day-summary-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 520,
@@ -202,7 +202,7 @@ export function UserDaySummaryModal({
             margin: 0,
             fontSize: '1.05rem',
             fontWeight: 600,
-            color: '#111827',
+            color: 'var(--text-strong)',
             display: 'flex',
             alignItems: 'baseline',
             flexWrap: 'wrap',
@@ -213,7 +213,7 @@ export function UserDaySummaryModal({
             {weekday.slice(0, 3)} · {mdShort}
           </span>
           {relativePhrase ? (
-            <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: '#9ca3af' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 400, color: 'var(--text-faint)' }}>
               ({relativePhrase})
             </span>
           ) : null}
@@ -325,11 +325,11 @@ export function UserDaySummaryModal({
             style={{
               padding: '0.4rem 0.85rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
             aria-label="Close"
           >

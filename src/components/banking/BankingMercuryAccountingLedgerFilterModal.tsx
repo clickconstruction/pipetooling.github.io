@@ -100,7 +100,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
         role="dialog"
         aria-labelledby="banking-accounting-ledger-filter-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 420,
           width: '100%',
@@ -118,7 +118,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
         >
           Sorting Ledger filters
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: '#64748b' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>
           Narrow the Sorting Ledger (after search). Posted dates use {APP_CALENDAR_TZ} (company calendar).
         </p>
 
@@ -132,7 +132,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
                   type="date"
                   value={draft.postedFromYmd}
                   onChange={(e) => onDraftChange({ ...draft, postedFromYmd: e.target.value })}
-                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)' }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
@@ -141,7 +141,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
                   type="date"
                   value={draft.postedToYmd}
                   onChange={(e) => onDraftChange({ ...draft, postedToYmd: e.target.value })}
-                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)' }}
                 />
               </label>
             </div>
@@ -168,7 +168,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
                     display: 'block',
                     marginTop: 4,
                     fontSize: '0.75rem',
-                    color: '#64748b',
+                    color: 'var(--text-slate-500)',
                     lineHeight: 1.35,
                     fontWeight: 400,
                   }}
@@ -190,7 +190,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
                   autoComplete="off"
                   value={draft.amountMin == null ? '' : String(draft.amountMin)}
                   onChange={(e) => setAmountMinFromInput(e.target.value)}
-                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', minWidth: '7rem' }}
+                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)', minWidth: '7rem' }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
@@ -201,7 +201,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
                   autoComplete="off"
                   value={draft.amountMax == null ? '' : String(draft.amountMax)}
                   onChange={(e) => setAmountMaxFromInput(e.target.value)}
-                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb', minWidth: '7rem' }}
+                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)', minWidth: '7rem' }}
                 />
               </label>
             </div>
@@ -210,7 +210,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
           <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
             <legend style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Transaction type</legend>
             {kindOptions.length === 0 ? (
-              <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>No types in the current Banking-filtered list.</p>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-slate-400)' }}>No types in the current Banking-filtered list.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {kindOptions.map((k) => (
@@ -232,7 +232,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
 
           <fieldset style={{ margin: 0, padding: 0, border: 'none' }}>
             <legend style={{ fontSize: '0.85rem', fontWeight: 600, marginBottom: 6 }}>Exclude counterparty</legend>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#64748b', lineHeight: 1.35 }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-slate-500)', lineHeight: 1.35 }}>
               One phrase per line. Rows are hidden when the bank <strong>counterparty</strong> contains a phrase (case-insensitive). Blank counterparties are not excluded. Max{' '}
               {LEDGER_FILTER_EXCLUDE_COUNTERPARTY_PHRASES_MAX} phrases.
             </p>
@@ -248,7 +248,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
                 boxSizing: 'border-box',
                 padding: '0.45rem 0.55rem',
                 borderRadius: 6,
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 fontSize: '0.875rem',
                 fontFamily: 'inherit',
                 resize: 'vertical',
@@ -267,7 +267,7 @@ export function BankingMercuryAccountingLedgerFilterModal({
                   onDraftChange({ ...draft, jobSplit: v })
                 }
               }}
-              style={{ padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.875rem' }}
+              style={{ padding: '0.4rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.875rem' }}
             >
               <option value="any">Any</option>
               <option value="has">Has job split</option>
@@ -303,11 +303,11 @@ export function BankingMercuryAccountingLedgerFilterModal({
               marginRight: 'auto',
               padding: '0.45rem 0.75rem',
               fontSize: '0.875rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
-              color: '#64748b',
+              color: 'var(--text-slate-500)',
             }}
           >
             Clear all
@@ -318,9 +318,9 @@ export function BankingMercuryAccountingLedgerFilterModal({
             style={{
               padding: '0.45rem 0.75rem',
               fontSize: '0.875rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
             }}
           >

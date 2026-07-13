@@ -373,10 +373,10 @@ export function BankingMercuryUserReviewTab({
         style={{
           margin: '1rem 0',
           padding: '0.75rem 1rem',
-          background: '#fef2f2',
+          background: 'var(--bg-red-tint)',
           border: '1px solid #fecaca',
           borderRadius: 4,
-          color: '#991b1b',
+          color: 'var(--text-red-800)',
           fontSize: '0.875rem',
         }}
       >
@@ -398,11 +398,11 @@ export function BankingMercuryUserReviewTab({
         }}
       >
         <div>
-          <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
             Rows = users (or persons) attributed to a Mercury transaction. Columns = accounting labels
             from the Drag Sort / Accounting tabs.
           </div>
-          <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6b7280' }}>
+          <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Click any cell to open a searchable ledger; click a user name to see their per-category
             breakdown below the table.
           </div>
@@ -421,10 +421,10 @@ export function BankingMercuryUserReviewTab({
               alignItems: 'center',
               gap: '0.4rem',
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
           >
-            <span style={{ color: '#6b7280' }}>Period</span>
+            <span style={{ color: 'var(--text-muted)' }}>Period</span>
             <select
               value={timeWindow}
               onChange={(e) => {
@@ -435,10 +435,10 @@ export function BankingMercuryUserReviewTab({
               style={{
                 padding: '0.35rem 0.5rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#fff',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 fontSize: '0.8125rem',
-                color: '#111827',
+                color: 'var(--text-strong)',
                 cursor: 'pointer',
               }}
             >
@@ -449,7 +449,7 @@ export function BankingMercuryUserReviewTab({
               ))}
             </select>
             {windowedRangeLabel ? (
-              <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{windowedRangeLabel}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{windowedRangeLabel}</span>
             ) : null}
           </label>
           <label
@@ -458,7 +458,7 @@ export function BankingMercuryUserReviewTab({
               alignItems: 'center',
               gap: '0.4rem',
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
               cursor: 'pointer',
             }}
           >
@@ -474,8 +474,8 @@ export function BankingMercuryUserReviewTab({
             />
             Hide empty columns
           </label>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: '#374151' }}>
-            <span style={{ color: '#6b7280' }}>View</span>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+            <span style={{ color: 'var(--text-muted)' }}>View</span>
             <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden' }}>
               {(['table', 'pie'] as const).map((v, i) => {
                 const active = chartView === v
@@ -491,11 +491,11 @@ export function BankingMercuryUserReviewTab({
                       padding: '0.3rem 0.7rem',
                       fontSize: '0.8125rem',
                       fontWeight: 600,
-                      border: '1px solid #d1d5db',
-                      borderLeft: i === 0 ? '1px solid #d1d5db' : 'none',
+                      border: '1px solid var(--border-strong)',
+                      borderLeft: i === 0 ? '1px solid var(--border-strong)' : 'none',
                       borderRadius: i === 0 ? '6px 0 0 6px' : '0 6px 6px 0',
-                      background: active ? '#2563eb' : '#fff',
-                      color: active ? '#fff' : '#374151',
+                      background: active ? '#2563eb' : 'var(--surface)',
+                      color: active ? '#fff' : 'var(--text-700)',
                       cursor: 'pointer',
                     }}
                   >
@@ -512,10 +512,10 @@ export function BankingMercuryUserReviewTab({
         <div
           style={{
             padding: '0.5rem 0.75rem',
-            background: '#f3f4f6',
-            border: '1px solid #e5e7eb',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border)',
             borderRadius: 4,
-            color: '#374151',
+            color: 'var(--text-700)',
             fontSize: '0.8125rem',
             marginBottom: '0.5rem',
           }}
@@ -542,10 +542,10 @@ export function BankingMercuryUserReviewTab({
         <div
           style={{
             padding: '1.5rem',
-            border: '1px dashed #d1d5db',
+            border: '1px dashed var(--border-strong)',
             borderRadius: 6,
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             fontSize: '0.875rem',
           }}
         >
@@ -556,17 +556,17 @@ export function BankingMercuryUserReviewTab({
             : 'No accounting labels are visible. Toggle Hide empty columns off to see every label.'}
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 600, fontSize: '0.8125rem' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                 <th
                   style={{
                     ...thBase,
                     textAlign: 'left',
                     position: 'sticky',
                     left: 0,
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     zIndex: 2,
                     minWidth: 160,
                   }}
@@ -587,7 +587,7 @@ export function BankingMercuryUserReviewTab({
                         textAlign: 'right',
                         whiteSpace: 'nowrap',
                         minWidth: 110,
-                        color: c.colKey === USER_REVIEW_UNLABELED_COL_KEY ? '#9ca3af' : '#374151',
+                        color: c.colKey === USER_REVIEW_UNLABELED_COL_KEY ? 'var(--text-faint)' : 'var(--text-700)',
                         fontStyle: c.colKey === USER_REVIEW_UNLABELED_COL_KEY ? 'italic' : 'normal',
                         padding: 0,
                       }}
@@ -626,8 +626,8 @@ export function BankingMercuryUserReviewTab({
                   style={{
                     ...thBase,
                     textAlign: 'right',
-                    background: '#f3f4f6',
-                    borderLeft: '1px solid #e5e7eb',
+                    background: 'var(--bg-muted)',
+                    borderLeft: '1px solid var(--border)',
                     minWidth: 110,
                   }}
                 >
@@ -656,7 +656,7 @@ export function BankingMercuryUserReviewTab({
                         left: 0,
                         background: rowBg,
                         fontWeight: 500,
-                        color: isUnassignedRow ? '#9ca3af' : '#111827',
+                        color: isUnassignedRow ? 'var(--text-faint)' : 'var(--text-strong)',
                         fontStyle: isUnassignedRow ? 'italic' : 'normal',
                         zIndex: 1,
                         padding: 0,
@@ -687,7 +687,7 @@ export function BankingMercuryUserReviewTab({
                       >
                         <span>{row.displayName}</span>
                         {row.source === 'person' ? (
-                          <span style={{ display: 'block', fontSize: '0.6875rem', color: '#9ca3af', marginTop: '0.125rem' }}>person</span>
+                          <span style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-faint)', marginTop: '0.125rem' }}>person</span>
                         ) : null}
                       </button>
                     </td>
@@ -700,7 +700,7 @@ export function BankingMercuryUserReviewTab({
                             style={{
                               ...tdBase,
                               textAlign: 'right',
-                              color: '#d1d5db',
+                              color: 'var(--text-faint-300)',
                               whiteSpace: 'nowrap',
                             }}
                           >
@@ -730,7 +730,7 @@ export function BankingMercuryUserReviewTab({
                             <span style={{ fontVariantNumeric: 'tabular-nums', color: amountColor(cell.totalAmount), fontWeight: 500 }}>
                               {formatUsd(cell.totalAmount)}
                             </span>
-                            <span style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                            <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                               {cell.count.toLocaleString()} tx
                             </span>
                           </button>
@@ -741,8 +741,8 @@ export function BankingMercuryUserReviewTab({
                       style={{
                         ...tdBase,
                         textAlign: 'right',
-                        background: '#f9fafb',
-                        borderLeft: '1px solid #e5e7eb',
+                        background: 'var(--bg-subtle)',
+                        borderLeft: '1px solid var(--border)',
                         whiteSpace: 'nowrap',
                         fontVariantNumeric: 'tabular-nums',
                       }}
@@ -750,7 +750,7 @@ export function BankingMercuryUserReviewTab({
                       <div style={{ color: amountColor(rowTotal.totalAmount), fontWeight: 500 }}>
                         {formatUsd(rowTotal.totalAmount)}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                         {rowTotal.count.toLocaleString()} tx
                       </div>
                     </td>
@@ -759,15 +759,15 @@ export function BankingMercuryUserReviewTab({
               })}
             </tbody>
             <tfoot>
-              <tr style={{ borderTop: '2px solid #d1d5db', background: '#f3f4f6' }}>
+              <tr style={{ borderTop: '2px solid var(--border-strong)', background: 'var(--bg-muted)' }}>
                 <td
                   style={{
                     ...tdBase,
                     position: 'sticky',
                     left: 0,
-                    background: '#f3f4f6',
+                    background: 'var(--bg-muted)',
                     fontWeight: 600,
-                    color: '#111827',
+                    color: 'var(--text-strong)',
                     zIndex: 1,
                   }}
                 >
@@ -788,7 +788,7 @@ export function BankingMercuryUserReviewTab({
                       <div style={{ color: amountColor(ct.totalAmount), fontWeight: 500 }}>
                         {formatUsd(ct.totalAmount)}
                       </div>
-                      <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                         {ct.count.toLocaleString()} tx
                       </div>
                     </td>
@@ -798,7 +798,7 @@ export function BankingMercuryUserReviewTab({
                   style={{
                     ...tdBase,
                     textAlign: 'right',
-                    borderLeft: '1px solid #e5e7eb',
+                    borderLeft: '1px solid var(--border)',
                     whiteSpace: 'nowrap',
                     fontVariantNumeric: 'tabular-nums',
                   }}
@@ -806,7 +806,7 @@ export function BankingMercuryUserReviewTab({
                   <div style={{ color: amountColor(pivot.grandTotal.totalAmount), fontWeight: 600 }}>
                     {formatUsd(pivot.grandTotal.totalAmount)}
                   </div>
-                  <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                     {pivot.grandTotal.count.toLocaleString()} tx
                   </div>
                 </td>
@@ -820,9 +820,9 @@ export function BankingMercuryUserReviewTab({
         <div
           style={{
             marginTop: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#fff',
+            background: 'var(--surface)',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}
         >
@@ -838,10 +838,10 @@ export function BankingMercuryUserReviewTab({
             }}
           >
             <div>
-              <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-strong)' }}>
                 {selectedRow.displayName}
               </div>
-              <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: '#6b7280' }}>
+              <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {selectedUserDetailCategories.length.toLocaleString()} categor
                 {selectedUserDetailCategories.length === 1 ? 'y' : 'ies'} ·{' '}
                 {selectedRowTotals.count.toLocaleString()} transactions ·{' '}
@@ -860,11 +860,11 @@ export function BankingMercuryUserReviewTab({
               style={{
                 padding: '0.35rem 0.65rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#fff',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 fontSize: '0.8125rem',
                 fontWeight: 500,
-                color: '#374151',
+                color: 'var(--text-700)',
                 cursor: 'pointer',
               }}
             >
@@ -872,7 +872,7 @@ export function BankingMercuryUserReviewTab({
             </button>
           </div>
           {selectedUserDetailCategories.length === 0 ? (
-            <div style={{ padding: '1.25rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
+            <div style={{ padding: '1.25rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               No transactions for {selectedRow.displayName} in this period.
             </div>
           ) : (
@@ -907,18 +907,18 @@ export function BankingMercuryUserReviewTab({
                           display: 'flex',
                           alignItems: 'center',
                           gap: '0.5rem',
-                          color: entry.isUnlabeled ? '#9ca3af' : '#111827',
+                          color: entry.isUnlabeled ? 'var(--text-faint)' : 'var(--text-strong)',
                           fontStyle: entry.isUnlabeled ? 'italic' : 'normal',
                           fontWeight: 500,
                           fontSize: '0.875rem',
                           minWidth: 0,
                         }}
                       >
-                        <span aria-hidden style={{ color: '#9ca3af', fontSize: '0.75rem', width: '0.75rem', textAlign: 'center' }}>
+                        <span aria-hidden style={{ color: 'var(--text-faint)', fontSize: '0.75rem', width: '0.75rem', textAlign: 'center' }}>
                           {isExpanded ? '▾' : '▸'}
                         </span>
                         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{entry.displayName}</span>
-                        <span style={{ color: '#9ca3af', fontSize: '0.75rem', fontStyle: 'normal' }}>
+                        <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem', fontStyle: 'normal' }}>
                           {entry.count.toLocaleString()} tx
                         </span>
                       </span>
@@ -944,7 +944,7 @@ export function BankingMercuryUserReviewTab({
                           }}
                         >
                           <thead>
-                            <tr style={{ background: '#f9fafb' }}>
+                            <tr style={{ background: 'var(--bg-subtle)' }}>
                               <th style={detailThStyle}>Posted</th>
                               <th style={detailThStyle}>Counterparty</th>
                               <th style={{ ...detailThStyle, textAlign: 'right' }}>Amount</th>
@@ -955,7 +955,7 @@ export function BankingMercuryUserReviewTab({
                               <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                                 <td style={detailTdStyle}>{formatBankingDate(r.posted_at)}</td>
                                 <td style={detailTdStyle}>
-                                  {r.counterparty_name?.trim() || <span style={{ color: '#9ca3af' }}>—</span>}
+                                  {r.counterparty_name?.trim() || <span style={{ color: 'var(--text-faint)' }}>—</span>}
                                 </td>
                                 <td
                                   style={{
@@ -983,10 +983,10 @@ export function BankingMercuryUserReviewTab({
                             style={{
                               padding: '0.3rem 0.6rem',
                               borderRadius: 6,
-                              border: '1px solid #d1d5db',
-                              background: '#fff',
+                              border: '1px solid var(--border-strong)',
+                              background: 'var(--surface)',
                               fontSize: '0.75rem',
-                              color: '#374151',
+                              color: 'var(--text-700)',
                               cursor: 'pointer',
                             }}
                           >
@@ -1052,10 +1052,10 @@ const detailThStyle: CSSProperties = {
   textAlign: 'left',
   fontWeight: 600,
   fontSize: '0.7rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
 
 const detailTdStyle: CSSProperties = {
@@ -1069,8 +1069,8 @@ const thBase: CSSProperties = {
   fontSize: '0.75rem',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  color: '#374151',
-  borderBottom: '1px solid #e5e7eb',
+  color: 'var(--text-700)',
+  borderBottom: '1px solid var(--border)',
 }
 
 const tdBase: CSSProperties = {

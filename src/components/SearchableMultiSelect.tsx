@@ -95,9 +95,9 @@ export function SearchableMultiSelect({
           boxSizing: 'border-box',
           padding: '0.5rem 0.65rem',
           fontSize: '0.875rem',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           borderRadius: '6px 6px 0 0',
-          background: disabled ? '#f3f4f6' : 'white',
+          background: disabled ? 'var(--bg-muted)' : 'var(--surface)',
         }}
       />
       <ul
@@ -109,14 +109,14 @@ export function SearchableMultiSelect({
           padding: 0,
           maxHeight: LIST_MAX_HEIGHT_PX,
           overflow: 'auto',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           borderTop: 'none',
           borderRadius: '0 0 6px 6px',
-          background: 'white',
+          background: 'var(--surface)',
         }}
       >
         {rowsToRender.length === 0 ? (
-          <li style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#9ca3af' }}>No matches</li>
+          <li style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-faint)' }}>No matches</li>
         ) : (
           rowsToRender.map((row, idx) => {
             if (isSeparatorOption(row)) {
@@ -142,7 +142,7 @@ export function SearchableMultiSelect({
                     padding: '0.5rem 0.65rem',
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     fontSize: '0.875rem',
-                    color: '#111827',
+                    color: 'var(--text-strong)',
                   }}
                 >
                   <input

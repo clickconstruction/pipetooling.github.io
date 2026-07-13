@@ -61,15 +61,15 @@ function closedSessionDurationHours(clockedIn: string, clockedOut: string): numb
 
 const navBtnStyle: CSSProperties = {
   padding: '0.35rem 0.65rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: 'white',
+  background: 'var(--surface)',
   cursor: 'pointer',
   fontSize: '0.875rem',
 }
 
 const navMobileSepStyle: CSSProperties = {
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   userSelect: 'none',
   fontSize: '0.875rem',
   padding: '0 0.15rem',
@@ -82,8 +82,8 @@ const assistanceNoticeStyle: CSSProperties = {
   padding: '0.5rem 0.75rem',
   borderRadius: 6,
   border: '1px solid #fbbf24',
-  background: '#fef3c7',
-  color: '#92400e',
+  background: 'var(--bg-amber-100)',
+  color: 'var(--text-amber-800)',
   fontWeight: 500,
 }
 
@@ -275,12 +275,12 @@ export function QuickfillPeopleHoursNewSection() {
   }, [])
 
   if (!authUser?.id) {
-    return <p style={{ color: '#6b7280' }}>Sign in to view clock activity.</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Sign in to view clock activity.</p>
   }
 
   if (!showClockStripScopeToggle && role !== 'superintendent') {
     return (
-      <p style={{ color: '#6b7280' }}>You do not have access to the team clock strip.</p>
+      <p style={{ color: 'var(--text-muted)' }}>You do not have access to the team clock strip.</p>
     )
   }
 
@@ -308,7 +308,7 @@ export function QuickfillPeopleHoursNewSection() {
             aria-modal="true"
             aria-labelledby="quickfill-pending-breakdown-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 10,
               maxWidth: 420,
               width: '100%',
@@ -331,7 +331,7 @@ export function QuickfillPeopleHoursNewSection() {
             >
               <h2
                 id="quickfill-pending-breakdown-title"
-                style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#0f172a' }}
+                style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-slate-900)' }}
               >
                 Pending approvals by day
               </h2>
@@ -343,7 +343,7 @@ export function QuickfillPeopleHoursNewSection() {
                   padding: '0.35rem 0.6rem',
                   borderRadius: 6,
                   border: '1px solid #cbd5e1',
-                  background: '#f8fafc',
+                  background: 'var(--bg-slate-tint)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                 }}
@@ -353,20 +353,20 @@ export function QuickfillPeopleHoursNewSection() {
             </div>
             <div style={{ padding: '0.75rem 1.25rem 1.25rem' }}>
               {pendingApprovalBreakdown.length === 0 ? (
-                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+                <p style={{ margin: 0, color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>
                   No pending approvals in the mini-calendar date range.
                 </p>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
                     <tr>
-                      <th style={{ textAlign: 'left', padding: '0.5rem 0.35rem', color: '#475569', fontWeight: 600 }}>
+                      <th style={{ textAlign: 'left', padding: '0.5rem 0.35rem', color: 'var(--text-slate-600)', fontWeight: 600 }}>
                         Day
                       </th>
-                      <th style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#475569', fontWeight: 600 }}>
+                      <th style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: 'var(--text-slate-600)', fontWeight: 600 }}>
                         Sessions
                       </th>
-                      <th style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: '#475569', fontWeight: 600 }}>
+                      <th style={{ textAlign: 'right', padding: '0.5rem 0.35rem', color: 'var(--text-slate-600)', fontWeight: 600 }}>
                         Hours
                       </th>
                     </tr>
@@ -374,7 +374,7 @@ export function QuickfillPeopleHoursNewSection() {
                   <tbody>
                     {pendingApprovalBreakdown.map((row) => (
                       <tr key={row.workDate} style={{ borderTop: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '0.5rem 0.35rem', color: '#0f172a' }}>
+                        <td style={{ padding: '0.5rem 0.35rem', color: 'var(--text-slate-900)' }}>
                           {formatDenverCalendarDayWithWeekdayAndYear(
                             referenceDateForWorkDateYmd(row.workDate).getTime(),
                           )}
@@ -453,7 +453,7 @@ export function QuickfillPeopleHoursNewSection() {
                     fontSize: '0.8125rem',
                     padding: '0.35rem 0.5rem',
                     borderColor: '#93c5fd',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                   }}
                   onClick={() => setSelectedYmd(todayDenver)}
                 >
@@ -492,7 +492,7 @@ export function QuickfillPeopleHoursNewSection() {
           {selectedYmd !== todayDenver && (
             <button
               type="button"
-              style={{ ...navBtnStyle, borderColor: '#93c5fd', color: '#1d4ed8' }}
+              style={{ ...navBtnStyle, borderColor: '#93c5fd', color: 'var(--text-blue-700)' }}
               onClick={() => setSelectedYmd(todayDenver)}
             >
               Today

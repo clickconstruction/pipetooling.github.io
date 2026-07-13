@@ -8,7 +8,7 @@ export default function EditCustomerModal() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
-      <div style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '560px', width: '92%', maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '560px', width: '92%', maxHeight: '90vh', overflow: 'auto' }}>
         <EditCustomerForm
           customerId={modalContext.customerId}
           onSaved={async () => {

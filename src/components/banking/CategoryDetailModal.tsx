@@ -93,14 +93,14 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
         aria-modal="true"
         aria-labelledby="category-detail-modal-title"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 10, maxWidth: 480, width: '100%', maxHeight: 'min(90vh, 640px)', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', padding: '1.25rem', boxSizing: 'border-box' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 480, width: '100%', maxHeight: 'min(90vh, 640px)', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', padding: '1.25rem', boxSizing: 'border-box' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.75rem' }}>
           <h2 id="category-detail-modal-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
             Category detail
           </h2>
           {label.is_system_default ? (
-            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569', background: '#f1f5f9', borderRadius: 999, padding: '2px 8px' }}>Built-in</span>
+            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-slate-600)', background: 'var(--bg-slate-100)', borderRadius: 999, padding: '2px 8px' }}>Built-in</span>
           ) : null}
         </div>
 
@@ -113,7 +113,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
               onChange={(e) => setName(e.target.value)}
               maxLength={120}
               disabled={saving}
-              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', fontWeight: 400 }}
+              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', fontWeight: 400 }}
             />
           </label>
 
@@ -123,7 +123,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
               value={accountType}
               onChange={(e) => setAccountType(e.target.value === '' ? '' : (e.target.value as AccountType))}
               disabled={saving}
-              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', fontWeight: 400, background: 'white' }}
+              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', fontWeight: 400, background: 'var(--surface)' }}
             >
               <option value="">Unclassified</option>
               {ACCOUNT_TYPE_OPTIONS.map((o) => (
@@ -132,7 +132,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
                 </option>
               ))}
             </select>
-            <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 400 }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)', fontWeight: 400 }}>
               Income/Expense drive the P&L; Asset/Liability/Equity drive the Balance Sheet; Transfer is excluded from both.
             </span>
           </label>
@@ -146,7 +146,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
               maxLength={32}
               disabled={saving}
               placeholder="e.g. 8"
-              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', fontWeight: 400 }}
+              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', fontWeight: 400 }}
             />
           </label>
 
@@ -159,7 +159,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
               maxLength={2000}
               disabled={saving}
               placeholder="What belongs in this category…"
-              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', fontWeight: 400, resize: 'vertical' }}
+              style={{ padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', fontWeight: 400, resize: 'vertical' }}
             />
           </label>
         </div>
@@ -169,7 +169,7 @@ export function CategoryDetailModal({ open, label, onClose, onSaved }: CategoryD
             type="button"
             onClick={() => !saving && onClose()}
             disabled={saving}
-            style={{ padding: '0.5rem 1rem', background: 'white', color: '#111827', border: '1px solid #e5e7eb', borderRadius: 6, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
           >
             Cancel
           </button>

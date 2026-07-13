@@ -150,7 +150,7 @@ export function TallyPreClockOutModal({
       >
         <div
           style={{
-            background: 'white',
+            background: 'var(--surface)',
             borderRadius: 8,
             maxWidth: 520,
             width: '100%',
@@ -168,14 +168,14 @@ export function TallyPreClockOutModal({
           >
             Assign your spending before you clock out
           </h3>
-          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+          <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
             You have card charges that are not assigned to a job. Assign them now, skip and fix them in Job Parts
             Tally, or continue to clock out.
           </p>
 
           {recentJobs.length > 0 ? (
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.35rem' }}>
+              <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)', marginBottom: '0.35rem' }}>
                 Recent jobs you were on
               </div>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -186,17 +186,17 @@ export function TallyPreClockOutModal({
                     style={{
                       fontSize: '0.8125rem',
                       padding: '0.4rem 0.5rem',
-                      background: '#f9fafb',
+                      background: 'var(--bg-subtle)',
                       borderRadius: 6,
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       lineHeight: 1.35,
                     }}
                   >
-                    <div style={{ fontWeight: 600, color: '#111827' }}>
+                    <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
                       {effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name?.trim() || '—'}
                     </div>
                     {j.job_address?.trim() ? (
-                      <div style={{ color: '#6b7280', marginTop: 2 }}>{j.job_address.trim()}</div>
+                      <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{j.job_address.trim()}</div>
                     ) : null}
                   </li>
                 ))}
@@ -204,13 +204,13 @@ export function TallyPreClockOutModal({
             </div>
           ) : null}
 
-          <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.35rem' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)', marginBottom: '0.35rem' }}>
             Unassigned transactions ({unlinkedRows.length})
           </div>
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, overflow: 'hidden', marginBottom: '1rem' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', marginBottom: '1rem' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+                <tr style={{ background: 'var(--bg-muted)', textAlign: 'left' }}>
                   <th style={{ padding: '0.35rem 0.5rem', fontWeight: 600 }}>Posted</th>
                   <th style={{ padding: '0.35rem 0.5rem', fontWeight: 600 }}>Amount</th>
                   <th style={{ padding: '0.35rem 0.5rem', fontWeight: 600 }}>Counterparty</th>
@@ -249,9 +249,9 @@ export function TallyPreClockOutModal({
                                 aria-controls={notePanelId}
                                 style={{
                                   padding: '0.15rem 0.35rem',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid var(--border)',
                                   borderRadius: 4,
-                                  background: '#f9fafb',
+                                  background: 'var(--bg-subtle)',
                                   cursor: 'pointer',
                                   lineHeight: 1,
                                 }}
@@ -261,7 +261,7 @@ export function TallyPreClockOutModal({
                             </div>
                           ) : null}
                           {hasNote && noteOpen ? (
-                            <div id={notePanelId} style={{ marginTop: 6, fontSize: '0.75rem', color: '#4b5563', whiteSpace: 'pre-wrap' }}>
+                            <div id={notePanelId} style={{ marginTop: 6, fontSize: '0.75rem', color: 'var(--text-600)', whiteSpace: 'pre-wrap' }}>
                               {row.note}
                             </div>
                           ) : null}
@@ -276,8 +276,8 @@ export function TallyPreClockOutModal({
                               fontWeight: 600,
                               border: '1px solid #2563eb',
                               borderRadius: 4,
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
+                              background: 'var(--bg-blue-tint)',
+                              color: 'var(--text-blue-700)',
                               cursor: 'pointer',
                               whiteSpace: 'nowrap',
                             }}
@@ -296,7 +296,7 @@ export function TallyPreClockOutModal({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
             <Link
               to="/tally?tab=transactions"
-              style={{ fontSize: '0.875rem', color: '#2563eb', fontWeight: 500 }}
+              style={{ fontSize: '0.875rem', color: 'var(--text-link)', fontWeight: 500 }}
             >
               Open Job Parts Tally (transactions)
             </Link>

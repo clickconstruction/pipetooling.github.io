@@ -31,7 +31,7 @@ export function ChecklistTechTreeRoadmapBar({
         width: '100%',
       }}
     >
-      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: '#374151' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text-700)' }}>
         <span style={{ fontWeight: 600 }}>Roadmap</span>
         <select
           value={selectedRoadmapId ?? ''}
@@ -42,7 +42,7 @@ export function ChecklistTechTreeRoadmapBar({
             borderRadius: 6,
             border: '1px solid #e2e8f0',
             font: 'inherit',
-            background: '#fff',
+            background: 'var(--surface)',
           }}
           aria-label="Select roadmap"
         >
@@ -65,7 +65,7 @@ export function ChecklistTechTreeRoadmapBar({
             padding: '6px 12px',
             borderRadius: 6,
             border: '1px solid #cbd5e1',
-            background: '#f8fafc',
+            background: 'var(--bg-slate-tint)',
             cursor: 'pointer',
             fontSize: 13,
           }}
@@ -81,7 +81,7 @@ export function ChecklistTechTreeRoadmapBar({
             padding: '6px 12px',
             borderRadius: 6,
             border: '1px solid #cbd5e1',
-            background: '#f8fafc',
+            background: 'var(--bg-slate-tint)',
             cursor: 'pointer',
             fontSize: 13,
           }}

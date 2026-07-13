@@ -99,7 +99,7 @@ export function BankingMercuryAccountingRulesModal({
         aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 760,
           width: '100%',
@@ -108,7 +108,7 @@ export function BankingMercuryAccountingRulesModal({
           flexDirection: 'column',
           padding: '1.25rem',
           boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           boxSizing: 'border-box',
         }}
       >
@@ -122,7 +122,7 @@ export function BankingMercuryAccountingRulesModal({
             flexShrink: 0,
           }}
         >
-          <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
+          <h2 id={titleId} style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)' }}>
             Rules ({rules.length})
           </h2>
           <button
@@ -131,18 +131,18 @@ export function BankingMercuryAccountingRulesModal({
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: '#374151',
+              color: 'var(--text-700)',
               cursor: 'pointer',
             }}
           >
             Close
           </button>
         </div>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280', flexShrink: 0 }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', flexShrink: 0 }}>
           All accounting label rules in this organization. Use the toolbar to add, audit, or apply them to
           transactions.
         </p>
@@ -163,8 +163,8 @@ export function BankingMercuryAccountingRulesModal({
             style={{
               padding: '0.4rem 0.85rem',
               fontWeight: 600,
-              background: newRuleDisabled ? '#e5e7eb' : '#2563eb',
-              color: newRuleDisabled ? '#64748b' : '#fff',
+              background: newRuleDisabled ? 'var(--bg-200)' : '#2563eb',
+              color: newRuleDisabled ? 'var(--text-slate-500)' : '#fff',
               border: 'none',
               borderRadius: 6,
               cursor: newRuleDisabled ? 'not-allowed' : 'pointer',
@@ -180,9 +180,9 @@ export function BankingMercuryAccountingRulesModal({
             style={{
               padding: '0.4rem 0.85rem',
               fontWeight: 600,
-              background: auditDisabled ? '#e5e7eb' : '#f1f5f9',
-              color: auditDisabled ? '#64748b' : '#0f172a',
-              border: auditDisabled ? '1px solid #e5e7eb' : '1px solid #e2e8f0',
+              background: auditDisabled ? 'var(--bg-200)' : 'var(--bg-slate-100)',
+              color: auditDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
+              border: auditDisabled ? '1px solid var(--border)' : '1px solid #e2e8f0',
               borderRadius: 6,
               cursor: auditDisabled ? 'not-allowed' : 'pointer',
             }}
@@ -196,9 +196,9 @@ export function BankingMercuryAccountingRulesModal({
             style={{
               padding: '0.4rem 0.85rem',
               fontWeight: 600,
-              background: applyDisabled ? '#e5e7eb' : '#f1f5f9',
-              color: applyDisabled ? '#64748b' : '#0f172a',
-              border: applyDisabled ? '1px solid #e5e7eb' : '1px solid #e2e8f0',
+              background: applyDisabled ? 'var(--bg-200)' : 'var(--bg-slate-100)',
+              color: applyDisabled ? 'var(--text-slate-500)' : 'var(--text-slate-900)',
+              border: applyDisabled ? '1px solid var(--border)' : '1px solid #e2e8f0',
               borderRadius: 6,
               cursor: applyDisabled ? 'not-allowed' : 'pointer',
             }}
@@ -208,9 +208,9 @@ export function BankingMercuryAccountingRulesModal({
         </div>
         <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
           {rulesLoading ? (
-            <div style={{ color: '#64748b' }}>Loading rules…</div>
+            <div style={{ color: 'var(--text-slate-500)' }}>Loading rules…</div>
           ) : rules.length === 0 ? (
-            <div style={{ color: '#64748b' }}>No rules yet.</div>
+            <div style={{ color: 'var(--text-slate-500)' }}>No rules yet.</div>
           ) : (
             <>
               <label
@@ -236,17 +236,17 @@ export function BankingMercuryAccountingRulesModal({
                     boxSizing: 'border-box',
                     padding: '0.45rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                   }}
                 />
               </label>
               {rulesFilteredForTable.length === 0 && rulesSearchNorm !== '' ? (
-                <div style={{ color: '#64748b' }}>No rules match this search.</div>
+                <div style={{ color: 'var(--text-slate-500)' }}>No rules match this search.</div>
               ) : (
                 <div
                   style={{
                     overflow: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     flex: 1,
                     minHeight: 0,
@@ -254,7 +254,7 @@ export function BankingMercuryAccountingRulesModal({
                 >
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead>
-                      <tr style={{ background: '#f9fafb' }}>
+                      <tr style={{ background: 'var(--bg-subtle)' }}>
                         <th
                           scope="col"
                           aria-sort={
@@ -264,7 +264,7 @@ export function BankingMercuryAccountingRulesModal({
                                 : 'descending'
                               : 'none'
                           }
-                          style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}
+                          style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid var(--border)' }}
                         >
                           <button
                             type="button"
@@ -302,7 +302,7 @@ export function BankingMercuryAccountingRulesModal({
                                 : 'descending'
                               : 'none'
                           }
-                          style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid #e5e7eb' }}
+                          style={{ textAlign: 'left', padding: 0, borderBottom: '1px solid var(--border)' }}
                         >
                           <button
                             type="button"
@@ -331,13 +331,13 @@ export function BankingMercuryAccountingRulesModal({
                               : null}
                           </button>
                         </th>
-                        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+                        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
                           Enabled
                         </th>
-                        <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>
+                        <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>
                           Approved uses
                         </th>
-                        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }} />
+                        <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }} />
                       </tr>
                     </thead>
                     <tbody>
@@ -361,7 +361,7 @@ export function BankingMercuryAccountingRulesModal({
                                   fontSize: '0.8rem',
                                   border: 'none',
                                   background: 'transparent',
-                                  color: '#2563eb',
+                                  color: 'var(--text-link)',
                                   cursor: 'pointer',
                                   textDecoration: 'underline',
                                 }}
@@ -376,7 +376,7 @@ export function BankingMercuryAccountingRulesModal({
                                   fontSize: '0.8rem',
                                   border: 'none',
                                   background: 'transparent',
-                                  color: '#b91c1c',
+                                  color: 'var(--text-red-700)',
                                   cursor: 'pointer',
                                   textDecoration: 'underline',
                                 }}

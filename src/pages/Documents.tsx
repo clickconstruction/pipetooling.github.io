@@ -168,9 +168,9 @@ const tableStyle: CSSProperties = {
 const thStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0.65rem 0.75rem',
-  borderBottom: '2px solid #e5e7eb',
+  borderBottom: '2px solid var(--border)',
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 const tdStyle: CSSProperties = {
   padding: '0.6rem 0.75rem',
@@ -186,7 +186,7 @@ const docsIconButtonStyle: CSSProperties = {
   border: 'none',
   background: 'transparent',
   cursor: 'pointer',
-  color: '#374151',
+  color: 'var(--text-700)',
   borderRadius: 4,
 }
 
@@ -199,7 +199,7 @@ const docsAddLinkButtonStyle: CSSProperties = {
   lineHeight: 1,
   fontWeight: 300,
   color: '#c4c4c4',
-  border: '1px dashed #e5e7eb',
+  border: '1px dashed var(--border)',
   borderRadius: 4,
 }
 
@@ -207,7 +207,7 @@ const documentsLedgerSearchInputStyle: CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
   padding: '0.5rem 0.65rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   fontSize: '0.9rem',
 }
@@ -227,7 +227,7 @@ const documentsPageVisuallyHiddenH1Style: CSSProperties = {
 
 type DocumentsLedgerEmbedProps = { embedSearch?: string }
 
-const documentsLedgerEmbedHintStyle: CSSProperties = { color: '#6b7280', margin: 0 }
+const documentsLedgerEmbedHintStyle: CSSProperties = { color: 'var(--text-muted)', margin: 0 }
 
 function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   const embedded = embedSearch !== undefined
@@ -281,7 +281,7 @@ function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {
   }, [load])
 
   if (!user?.id) {
-    return <p style={{ color: '#6b7280' }}>Sign in to view the ledger.</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Sign in to view the ledger.</p>
   }
 
   return (
@@ -345,13 +345,13 @@ function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {
         </div>
       ) : null}
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No estimates in this ledger.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No estimates in this ledger.</p>
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No estimates match your search.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No estimates match your search.</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
@@ -411,7 +411,7 @@ function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {
                       </div>
                     </td>
                     <td style={tdStyle}>
-                      <Link to={`/estimates/${String(r.estimate_number)}`} style={{ color: '#2563eb', fontWeight: 500 }}>
+                      <Link to={`/estimates/${String(r.estimate_number)}`} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
                         {(r.title ?? '').trim() || 'Untitled'}
                       </Link>
                     </td>
@@ -433,7 +433,7 @@ function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {
                             const hcp = ledgerLinkedJobHcp(r)
                             const jn = (r.jobs_ledger?.job_name ?? '').trim()
                             if (!jn || (hcp && jn === hcp)) return null
-                            return <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{jn}</div>
+                            return <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{jn}</div>
                           })()}
                         </>
                       ) : (
@@ -443,7 +443,7 @@ function DocumentsEstimatesLedger({ embedSearch }: DocumentsLedgerEmbedProps = {
                     <td style={tdStyle}>
                       <div>{cx.primary}</div>
                       {cx.secondary ? (
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{cx.secondary}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
                       ) : null}
                     </td>
                     <td style={tdStyle}>{documentsLedgerStatusLabel(r.status)}</td>
@@ -701,7 +701,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
   }, [load])
 
   if (!user?.id) {
-    return <p style={{ color: '#6b7280' }}>Sign in to view the ledger.</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Sign in to view the ledger.</p>
   }
 
   return (
@@ -747,13 +747,13 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
         </div>
       ) : null}
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No jobs in this ledger.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No jobs in this ledger.</p>
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No jobs match your search.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No jobs match your search.</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
@@ -813,17 +813,17 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                         </div>
                       </td>
                       <td style={tdStyle}>
-                        <Link to={`/jobs?edit=${encodeURIComponent(r.id)}`} style={{ color: '#2563eb', fontWeight: 500 }}>
+                        <Link to={`/jobs?edit=${encodeURIComponent(r.id)}`} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
                           {titleText}
                         </Link>
                       </td>
                       <td style={tdStyle}>
-                        {addr ? <div>{addr}</div> : <span style={{ color: '#6b7280' }}>—</span>}
+                        {addr ? <div>{addr}</div> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                       </td>
                       <td style={tdStyle}>
                         <div>{cx.primary}</div>
                         {cx.secondary ? (
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{cx.secondary}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
                         ) : null}
                       </td>
                       <td style={tdStyle}>{documentsJobLedgerStatusLabel(r.status)}</td>
@@ -833,7 +833,7 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                       const sent = (inv.sent_to_customer_at ?? '').trim().slice(0, 10)
                       return (
                         <tr key={inv.id}>
-                          <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: '#fafafa' }}>
+                          <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
                             <button
                               type="button"
                               onClick={() => setBilledInvoiceModal(inv)}
@@ -844,16 +844,16 @@ function DocumentsJobsLedger({ embedSearch }: DocumentsLedgerEmbedProps = {}) {
                                 cursor: 'pointer',
                                 textAlign: 'left',
                                 font: 'inherit',
-                                color: '#1d4ed8',
+                                color: 'var(--text-blue-700)',
                                 textDecoration: 'underline',
                               }}
                             >
                               Invoice #{inv.sequence_order}
                             </button>
-                            <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>{billingTypeLabel(inv)}</span>
+                            <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{billingTypeLabel(inv)}</span>
                             <span style={{ marginLeft: '0.5rem' }}>{formatJobRevenueUsd(inv.amount)}</span>
                             {sent ? (
-                              <span style={{ color: '#6b7280', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {sent}</span>
+                              <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.85rem' }}>Sent {sent}</span>
                             ) : null}
                           </td>
                         </tr>
@@ -961,7 +961,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
   }, [filteredRows, effectiveSearch])
 
   if (!user?.id) {
-    return <p style={{ color: '#6b7280' }}>Sign in to view the ledger.</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Sign in to view the ledger.</p>
   }
 
   return (
@@ -1009,15 +1009,15 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
         </div>
       ) : null}
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No bid proposals in this ledger.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No bid proposals in this ledger.</p>
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No bids match your search.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No bids match your search.</p>
       ) : tableRows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-muted)' }}>
           No bid proposals to show here. Lost bids are hidden unless you search.
         </p>
       ) : (
@@ -1114,7 +1114,7 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
                       <Link
                         to={coverHref}
                         style={{
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           fontWeight: 500,
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -1139,12 +1139,12 @@ function DocumentsBidProposalsLedger({ embedSearch }: DocumentsLedgerEmbedProps 
                       </Link>
                     </td>
                     <td style={tdStyle}>
-                      {addr ? <div>{addr}</div> : <span style={{ color: '#6b7280' }}>—</span>}
+                      {addr ? <div>{addr}</div> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                     </td>
                     <td style={tdStyle}>
                       <div>{cx.primary}</div>
                       {cx.secondary ? (
-                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{cx.secondary}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
                       ) : null}
                     </td>
                     <td style={tdStyle}>{documentsBidStatusLabel(r)}</td>
@@ -1220,7 +1220,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
   }, [load])
 
   if (!user?.id) {
-    return <p style={{ color: '#6b7280' }}>Sign in to view the ledger.</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Sign in to view the ledger.</p>
   }
 
   return (
@@ -1265,13 +1265,13 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
         </div>
       ) : null}
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No supply house invoices in this ledger.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No supply house invoices in this ledger.</p>
       ) : embedded && !embedSearch.trim() ? (
         <p style={documentsLedgerEmbedHintStyle}>Results appear when you type a search above.</p>
       ) : filteredRows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No invoices match your search.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No invoices match your search.</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={tableStyle}>
@@ -1287,7 +1287,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                       marginTop: '0.15rem',
                       fontSize: '0.8rem',
                       fontWeight: 400,
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                     }}
                   >
                     Invoice #
@@ -1354,7 +1354,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                     </td>
                     <td style={tdStyle} title={allocTitle || undefined}>
                       {allocs.length === 0 ? (
-                        <span style={{ color: '#6b7280' }}>—</span>
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
                       ) : (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                           {allocs.map((a) => {
@@ -1389,7 +1389,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                                     marginTop: '0.1rem',
                                     fontSize: '0.8rem',
                                     fontWeight: 400,
-                                    color: '#6b7280',
+                                    color: 'var(--text-muted)',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap',
@@ -1418,7 +1418,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch }: DocumentsLedgerEmbe
                       {(r.purchase_order_number ?? '').trim() ? (
                         <span>{(r.purchase_order_number ?? '').trim()}</span>
                       ) : (
-                        <span style={{ color: '#6b7280' }}>—</span>
+                        <span style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
                     </td>
                     <td style={tdStyle}>{formatSupplyInvoiceDateYmd(r.invoice_date)}</td>
@@ -1449,7 +1449,7 @@ function DocumentsUnifiedSearchTab() {
   const filterQuery = q.length >= 2 ? query : ''
 
   if (!user?.id) {
-    return <p style={{ color: '#6b7280', margin: 0 }}>Sign in to search documents.</p>
+    return <p style={{ color: 'var(--text-muted)', margin: 0 }}>Sign in to search documents.</p>
   }
   return (
     <div>
@@ -1465,7 +1465,7 @@ function DocumentsUnifiedSearchTab() {
           style={documentsLedgerSearchInputStyle}
         />
         {q.length === 1 ? (
-          <p style={{ color: '#6b7280', margin: '0.35rem 0 0', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--text-muted)', margin: '0.35rem 0 0', fontSize: '0.875rem' }}>
             Enter at least 2 characters to search.
           </p>
         ) : null}
@@ -1548,7 +1548,7 @@ export default function Documents() {
       </div>
 
       {documentsTab === 'upload' ? (
-        <p style={{ color: '#6b7280', margin: 0 }}>Upload coming soon.</p>
+        <p style={{ color: 'var(--text-muted)', margin: 0 }}>Upload coming soon.</p>
       ) : null}
       {documentsTab === 'search' ? <DocumentsUnifiedSearchTab /> : null}
       {documentsTab === 'estimates' ? <DocumentsEstimatesLedger /> : null}

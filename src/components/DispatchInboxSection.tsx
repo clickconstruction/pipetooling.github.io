@@ -106,13 +106,13 @@ export function DispatchInboxSection({
           style={
             variant === 'embedded'
               ? { padding: 0 }
-              : { padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb' }
+              : { padding: '0.75rem 1rem', borderTop: '1px solid var(--border)' }
           }
         >
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : requests.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {headerBadge === 'closed' ? 'No closed dispatch items.' : 'No dispatch requests.'}
             </p>
           ) : (
@@ -139,11 +139,11 @@ export function DispatchInboxSection({
                   <div
                     style={{
                       fontSize: '0.75rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       lineHeight: 1.35,
                     }}
                   >
-                    <div style={{ fontWeight: 600, color: '#374151' }}>{noteCountLabel}</div>
+                    <div style={{ fontWeight: 600, color: 'var(--text-700)' }}>{noteCountLabel}</div>
                     {lastNoteMeta ? (
                       narrow ? (
                         <div
@@ -172,7 +172,7 @@ export function DispatchInboxSection({
                     disabled={dispatchRequestDismissingId === req.id}
                     style={{
                       padding: '0.35rem 0.75rem',
-                      background: '#e5e7eb',
+                      background: 'var(--bg-200)',
                       border: 'none',
                       borderRadius: 4,
                       cursor: dispatchRequestDismissingId === req.id ? 'not-allowed' : 'pointer',
@@ -201,12 +201,12 @@ export function DispatchInboxSection({
                     aria-label="Add Customer Pictures URL"
                     style={{
                       padding: '0.35rem 0.75rem',
-                      background: 'white',
+                      background: 'var(--surface)',
                       border: '1px solid #93c5fd',
                       borderRadius: 4,
                       cursor: 'pointer',
                       fontSize: '0.875rem',
-                      color: '#1d4ed8',
+                      color: 'var(--text-blue-700)',
                       fontWeight: 500,
                       flexShrink: 0,
                     }}
@@ -236,12 +236,12 @@ export function DispatchInboxSection({
                     aria-label="Create trip charge"
                     style={{
                       padding: '0.35rem 0.75rem',
-                      background: 'white',
+                      background: 'var(--surface)',
                       border: '1px solid #fcd34d',
                       borderRadius: 4,
                       cursor: 'pointer',
                       fontSize: '0.875rem',
-                      color: '#b45309',
+                      color: 'var(--text-amber-700)',
                       fontWeight: 500,
                       flexShrink: 0,
                     }}
@@ -265,7 +265,7 @@ export function DispatchInboxSection({
                           style={{
                             fontSize: '0.75rem',
                             fontWeight: 600,
-                            color: '#6b7280',
+                            color: 'var(--text-muted)',
                             textTransform: 'uppercase',
                             letterSpacing: '0.04em',
                           }}
@@ -278,7 +278,7 @@ export function DispatchInboxSection({
                       style={{
                         padding: '0.75rem 0',
                         borderBottom: '1px solid #f3f4f6',
-                        background: isClosed ? '#f3f4f6' : undefined,
+                        background: isClosed ? 'var(--bg-muted)' : undefined,
                       }}
                     >
                     <div
@@ -331,10 +331,10 @@ export function DispatchInboxSection({
                               }
                         }
                       >
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', marginRight: 6 }} aria-hidden>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginRight: 6 }} aria-hidden>
                           {expanded ? '▼' : '▶'}
                         </span>
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4, display: 'inline' }}>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 4, display: 'inline' }}>
                           From {fromLabel}
                           {req.created_at ? (
                             <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(req.created_at)}</span>
@@ -344,7 +344,7 @@ export function DispatchInboxSection({
                           <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
                         </div>
                         {req.reference_summary?.trim() ? (
-                          <div style={{ marginTop: 6, fontSize: '0.8125rem', color: '#4b5563' }}>
+                          <div style={{ marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                             Ref: {req.reference_summary.trim()}
                           </div>
                         ) : null}
@@ -355,7 +355,7 @@ export function DispatchInboxSection({
                               target="_blank"
                               rel="noopener noreferrer"
                               title="View location in Google Maps"
-                              style={{ color: '#2563eb', textDecoration: 'none' }}
+                              style={{ color: 'var(--text-link)', textDecoration: 'none' }}
                               onClick={(e) => e.stopPropagation()}
                             >
                               View location
@@ -408,7 +408,7 @@ export function DispatchInboxSection({
                             >
                               {dismissBtn}
                               {noteCount > 0 ? (
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
                                   Expand for thread
                                 </div>
                               ) : null}
@@ -429,7 +429,7 @@ export function DispatchInboxSection({
                               <>
                                 <div style={{ display: 'contents' }}>{dismissBtn}</div>
                                 {noteCount > 0 ? (
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Expand for thread</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Expand for thread</div>
                                 ) : null}
                               </>
                             ) : null}
@@ -442,16 +442,16 @@ export function DispatchInboxSection({
                         style={{
                           marginTop: '0.75rem',
                           padding: '0.75rem',
-                          background: '#fff',
-                          border: '1px solid #e5e7eb',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
                         }}
                       >
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-700)' }}>
                           Activity / notes (Central Time)
                         </div>
                         {notesLoading ? (
-                          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading notes…</p>
+                          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading notes…</p>
                         ) : (
                           <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 0.75rem 0' }}>
                             {threadNotes.map((n) => {
@@ -466,8 +466,8 @@ export function DispatchInboxSection({
                                     fontSize: '0.8125rem',
                                   }}
                                 >
-                                  <div style={{ color: '#6b7280', marginBottom: 2 }}>
-                                    <strong style={{ color: '#111827' }}>{authorName}</strong>
+                                  <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
+                                    <strong style={{ color: 'var(--text-strong)' }}>{authorName}</strong>
                                     <span style={{ marginLeft: '0.5rem' }}>
                                       {weekdayTimeChicago} · {daysAgoLabel}
                                     </span>
@@ -481,7 +481,7 @@ export function DispatchInboxSection({
                                 style={{
                                   padding: '0.5rem 0',
                                   fontSize: '0.8125rem',
-                                  background: '#f0fdf4',
+                                  background: 'var(--bg-green-tint)',
                                   margin: '0 -0.5rem -0.5rem',
                                   paddingLeft: '0.5rem',
                                   paddingRight: '0.5rem',
@@ -489,7 +489,7 @@ export function DispatchInboxSection({
                                 }}
                               >
                                 <div style={{ color: '#166534', fontWeight: 600, marginBottom: 4 }}>Marked closed (final)</div>
-                                <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                                <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
                                   <strong style={{ color: '#14532d' }}>{closedByLabel}</strong>
                                   {req.closed_at ? (
                                     <span style={{ marginLeft: '0.5rem' }}>
@@ -518,17 +518,17 @@ export function DispatchInboxSection({
                               <div
                                 style={{
                                   fontSize: '0.75rem',
-                                  color: '#6b7280',
+                                  color: 'var(--text-muted)',
                                   padding: '0.5rem 0.6rem',
-                                  background: '#f9fafb',
+                                  background: 'var(--bg-subtle)',
                                   borderRadius: 4,
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid var(--border)',
                                 }}
                               >
                                 This task is closed. Your message will be added to the thread and reopen it.
                               </div>
                             ) : null}
-                            <label htmlFor={`dispatch-note-combobox-${req.id}`} style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>
+                            <label htmlFor={`dispatch-note-combobox-${req.id}`} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
                               <DispatchNoteCombobox
                                 id={`dispatch-note-combobox-${req.id}`}
                                 value={noteDraft}
@@ -554,7 +554,7 @@ export function DispatchInboxSection({
                                     textAlign: 'center',
                                     fontSize: '0.75rem',
                                     fontWeight: 400,
-                                    color: '#9ca3af',
+                                    color: 'var(--text-faint)',
                                     lineHeight: 1.35,
                                   }}
                                 >
@@ -585,8 +585,8 @@ export function DispatchInboxSection({
                                             cursor: 'pointer',
                                           }
                                         : {
-                                            background: '#f3f4f6',
-                                            color: '#9ca3af',
+                                            background: 'var(--bg-muted)',
+                                            color: 'var(--text-faint)',
                                             cursor: 'not-allowed',
                                           }),
                                   }}
@@ -628,8 +628,8 @@ export function DispatchInboxSection({
                                             cursor: 'pointer',
                                           }
                                         : {
-                                            background: '#f3f4f6',
-                                            color: '#9ca3af',
+                                            background: 'var(--bg-muted)',
+                                            color: 'var(--text-faint)',
                                             cursor: 'not-allowed',
                                           }),
                                   }}
@@ -643,7 +643,7 @@ export function DispatchInboxSection({
                                     textAlign: 'center',
                                     fontSize: '0.75rem',
                                     fontWeight: 400,
-                                    color: '#9ca3af',
+                                    color: 'var(--text-faint)',
                                     lineHeight: 1.35,
                                   }}
                                 >
@@ -662,22 +662,22 @@ export function DispatchInboxSection({
                                     transition: dispatchBtnTransition,
                                     ...(dispatchRowSaving
                                       ? {
-                                          background: '#e5e7eb',
-                                          color: '#9ca3af',
-                                          border: '1px solid #d1d5db',
+                                          background: 'var(--bg-200)',
+                                          color: 'var(--text-faint)',
+                                          border: '1px solid var(--border-strong)',
                                           cursor: 'not-allowed',
                                         }
                                       : hasDispatchNoteContent
                                         ? {
-                                            background: 'white',
-                                            color: '#b91c1c',
+                                            background: 'var(--surface)',
+                                            color: 'var(--text-red-700)',
                                             border: '1px solid #fecaca',
                                             cursor: 'pointer',
                                           }
                                         : {
-                                            background: '#f9fafb',
-                                            color: '#9ca3af',
-                                            border: '1px solid #e5e7eb',
+                                            background: 'var(--bg-subtle)',
+                                            color: 'var(--text-faint)',
+                                            border: '1px solid var(--border)',
                                             cursor: 'not-allowed',
                                           }),
                                   }}
@@ -701,7 +701,7 @@ export function DispatchInboxSection({
               style={{
                 marginTop: '0.75rem',
                 paddingTop: '0.75rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid var(--border)',
               }}
             >
               <button
@@ -710,11 +710,11 @@ export function DispatchInboxSection({
                 style={{
                   padding: '0.4rem 0.75rem',
                   fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                 }}
               >
                 View dismissed…
@@ -729,7 +729,7 @@ export function DispatchInboxSection({
   }
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
       <button
         type="button"
         onClick={onToggleSection}
@@ -740,7 +740,7 @@ export function DispatchInboxSection({
           width: '100%',
           padding: '0.75rem 1rem',
           margin: 0,
-          background: '#f9fafb',
+          background: 'var(--bg-subtle)',
           border: 'none',
           cursor: 'pointer',
           fontSize: '1rem',
@@ -751,7 +751,7 @@ export function DispatchInboxSection({
         <span aria-hidden>{sectionOpen ? '▼' : '▶'}</span>
         {sectionTitle}
         {!loading && requests.length > 0 && headerBadge !== 'none' ? (
-          <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }}>
+          <span style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-link)' }}>
             {headerBadge === 'open'
               ? `(${requests.filter((r) => r.status === 'open').length} open)`
               : `(${requests.filter((r) => r.status === 'closed').length} closed)`}

@@ -53,7 +53,7 @@ function IconActionButton({
         background: 'transparent',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
-        color: variant === 'danger' ? '#b91c1c' : 'inherit',
+        color: variant === 'danger' ? 'var(--text-red-700)' : 'inherit',
       }}
     >
       <Icon size={14} />
@@ -478,8 +478,8 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
                   top: '100%',
                   left: 0,
                   right: 0,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                   maxHeight: 200,
                   overflowY: 'auto',
@@ -512,18 +512,18 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
                         borderBottom: '1px solid #f3f4f6',
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = '#f3f4f6'
+                        e.currentTarget.style.background = 'var(--bg-muted)'
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'white'
+                        e.currentTarget.style.background = 'var(--surface)'
                       }}
                     >
                       <div style={{ fontWeight: 500 }}>{c.name}</div>
-                      {c.address && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
+                      {c.address && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>{c.address}</div>}
                     </div>
                   ))}
                 {customers.filter((c) => c.name.toLowerCase().includes(customerSearch.toLowerCase())).length === 0 && (
-                  <div style={{ padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>No customers found</div>
+                  <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No customers found</div>
                 )}
               </div>
             )}
@@ -549,7 +549,7 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
             required
             style={{ width: '100%', padding: '0.5rem' }}
           />
-          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>[Street / Town+Building] + [Remodel / New Build / Re-Pipe]</div>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>[Street / Town+Building] + [Remodel / New Build / Re-Pipe]</div>
         </div>
         <div style={{ marginBottom: '1rem' }}>
           <label htmlFor="description" style={{ display: 'block', marginBottom: 4 }}>Description</label>
@@ -596,7 +596,7 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
             ))}
           </select>
         </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="submit"
@@ -615,7 +615,7 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
               </span>
           )}
           {onCancel ? (
-            <button type="button" onClick={onCancel} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
+            <button type="button" onClick={onCancel} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
               Cancel
             </button>
           ) : (
@@ -631,9 +631,9 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
               minWidth: 280,
               width: isNarrow ? '100%' : undefined,
               padding: '1rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
-              background: '#fafafa',
+              background: 'var(--bg-page)',
             }}
           >
             <h2 style={{ marginTop: 0, marginBottom: '0.75rem', fontSize: '1rem' }}>Workflow</h2>
@@ -664,14 +664,14 @@ export default function NewProjectForm({ prefill, onCancel, onCreated }: NewProj
                     Reset to template
                   </button>
                 )}
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Optional. The template&apos;s steps will be copied into the new project&apos;s workflow.</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Optional. The template&apos;s steps will be copied into the new project&apos;s workflow.</span>
               </div>
             </div>
             {previewStepsLoading ? (
-              <p style={{ color: '#6b7280', margin: 0 }}>Loading...</p>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>Loading...</p>
             ) : previewSteps.length === 0 ? (
               <>
-                <p style={{ color: '#6b7280', margin: 0, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
+                <p style={{ color: 'var(--text-muted)', margin: 0, marginBottom: '0.5rem', fontSize: '0.875rem' }}>
                   {!templateId ? 'Build your workflow from scratch. Add steps below.' : 'No steps. Add steps below.'}
                 </p>
                 <button type="button" onClick={addStep} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>

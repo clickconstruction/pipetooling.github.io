@@ -148,7 +148,7 @@ export function PreviewJobModal({
         role="dialog"
         aria-labelledby="preview-job-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 520,
@@ -169,8 +169,8 @@ export function PreviewJobModal({
             style={{
               padding: '0.35rem 0.65rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -178,25 +178,25 @@ export function PreviewJobModal({
             Close
           </button>
         </div>
-        <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0.5rem 0 0' }}>
+        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>
           Project: <strong>{displayProjectName}</strong>
         </p>
 
-        {loading ? <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p> : null}
-        {error ? <p style={{ fontSize: '0.875rem', color: '#b91c1c', whiteSpace: 'pre-wrap' }}>{error}</p> : null}
+        {loading ? <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p> : null}
+        {error ? <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)', whiteSpace: 'pre-wrap' }}>{error}</p> : null}
 
         <div style={{ marginTop: '1rem' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
             Your stages on this project
           </div>
           {displayStages.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No matching stages.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No matching stages.</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
               {displayStages.map((s) => (
                 <li key={s.id} style={{ marginBottom: 4 }}>
                   <span style={{ fontWeight: 600 }}>{s.name}</span>
-                  <span style={{ color: '#6b7280' }}> · {s.status}</span>
+                  <span style={{ color: 'var(--text-muted)' }}> · {s.status}</span>
                 </li>
               ))}
             </ul>
@@ -204,11 +204,11 @@ export function PreviewJobModal({
         </div>
 
         <div style={{ marginTop: '1rem' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
             Your jobs on this project (team)
           </div>
           {assignedJobs.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               No assigned working jobs linked to this project, or none in your team list.
             </p>
           ) : (
@@ -225,7 +225,7 @@ export function PreviewJobModal({
                   <div style={{ fontWeight: 600 }}>
                     {effectiveJobLedgerNumber(j.hcp_number) || '—'} · {(j.job_name ?? '').trim() || 'Job'}
                   </div>
-                  <div style={{ color: '#4b5563', marginTop: 2 }}>{j.job_address}</div>
+                  <div style={{ color: 'var(--text-600)', marginTop: 2 }}>{j.job_address}</div>
                   {showJobsDeepLink ? (
                     <Link
                       to={`/jobs?edit=${encodeURIComponent(j.id)}`}
@@ -242,11 +242,11 @@ export function PreviewJobModal({
         </div>
 
         <div style={{ marginTop: '1rem' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
             Scheduled time (you)
           </div>
           {scheduleRows.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No planned blocks for these jobs yet.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No planned blocks for these jobs yet.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {scheduleRows.map((r) => (
@@ -259,7 +259,7 @@ export function PreviewJobModal({
                   }}
                 >
                   <strong>{r.work_date}</strong> · {scheduleFormatWindow(r.time_start, r.time_end)}
-                  {r.note ? <span style={{ color: '#4b5563' }}> — {r.note}</span> : null}
+                  {r.note ? <span style={{ color: 'var(--text-600)' }}> — {r.note}</span> : null}
                 </li>
               ))}
             </ul>
@@ -267,7 +267,7 @@ export function PreviewJobModal({
         </div>
 
         <div style={{ marginTop: '1rem', fontSize: '0.8125rem' }}>
-          <Link to={`/workflows/${projectId}`} onClick={onClose} style={{ color: '#2563eb' }}>
+          <Link to={`/workflows/${projectId}`} onClick={onClose} style={{ color: 'var(--text-link)' }}>
             Open workflow
           </Link>
         </div>

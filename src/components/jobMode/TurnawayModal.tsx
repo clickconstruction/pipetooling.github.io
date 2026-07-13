@@ -167,8 +167,8 @@ export default function TurnawayModal({
       fontSize: '0.9375rem',
       borderRadius: 6,
       cursor: 'pointer',
-      border: selected ? '2px solid #d97706' : '1px solid #d1d5db',
-      background: selected ? '#fffbeb' : 'white',
+      border: selected ? '2px solid #d97706' : '1px solid var(--border-strong)',
+      background: selected ? 'var(--bg-amber-tint)' : 'var(--surface)',
       fontWeight: selected ? 600 : 400,
     }
   }
@@ -185,22 +185,22 @@ export default function TurnawayModal({
         zIndex: 65,
       }}
     >
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Turnaway</h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', fontWeight: 500 }}>
               {hcpNumber} {jobName}
             </p>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {jobAddress}
             </p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
         </div>
 
         {!templateLoading && !templateId && (
-          <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{TEMPLATE_MISSING_MSG}</p>
+          <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{TEMPLATE_MISSING_MSG}</p>
         )}
 
         <form onSubmit={handleSubmit}>
@@ -221,14 +221,14 @@ export default function TurnawayModal({
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
 
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             <button
               type="submit"
               disabled={!canSubmit}

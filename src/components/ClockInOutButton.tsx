@@ -1248,17 +1248,17 @@ export default function ClockInOutButton({
         ? {
             border: '1px solid #bfdbfe',
             borderRadius: 6,
-            background: '#eff6ff',
+            background: 'var(--bg-blue-tint)',
           }
         : {
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: 'white',
+            background: 'var(--surface)',
           }
     const selected =
       useLastLike === 'clockIn'
         ? clockInSelectionOutlineSelected
-        : { border: '1px solid #9ca3af', background: '#f3f4f6' }
+        : { border: '1px solid var(--border-400)', background: 'var(--bg-muted)' }
     return (
       <div
         style={{
@@ -1301,7 +1301,7 @@ export default function ClockInOutButton({
             >
               <div>{line1}</div>
               {address ? (
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{address}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{address}</div>
               ) : null}
             </button>
           )
@@ -1324,14 +1324,14 @@ export default function ClockInOutButton({
             background: '#ecfdf5',
           }
         : {
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: 'white',
+            background: 'var(--surface)',
           }
     const selected =
       useLastLike === 'clockIn'
         ? clockInSelectionOutlineSelected
-        : { border: '1px solid #9ca3af', background: '#f3f4f6' }
+        : { border: '1px solid var(--border-400)', background: 'var(--bg-muted)' }
     return (
       <div
         style={{
@@ -1392,7 +1392,7 @@ export default function ClockInOutButton({
                 <span>{line1}</span>
               </div>
               {sub ? (
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{sub}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{sub}</div>
               ) : null}
             </button>
           )
@@ -1429,15 +1429,15 @@ export default function ClockInOutButton({
               fontSize: '0.8125rem',
               border: '1px solid #bfdbfe',
               borderRadius: 6,
-              background: '#eff6ff',
+              background: 'var(--bg-blue-tint)',
               cursor: opts.disabled ? 'not-allowed' : 'pointer',
             }
         : {
             padding: '0.25rem 0.5rem',
             fontSize: '0.8125rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: 'white',
+            background: 'var(--surface)',
             cursor: opts.disabled ? 'not-allowed' : 'pointer',
           }
     return (
@@ -1490,9 +1490,9 @@ export default function ClockInOutButton({
             minWidth: 0,
             padding: '0.25rem 0.4rem',
             boxSizing: 'border-box',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: '#fff',
+            background: 'var(--surface)',
             fontSize: '0.75rem',
             lineHeight: 1.3,
           }}
@@ -1503,7 +1503,7 @@ export default function ClockInOutButton({
 
   if (loading) {
     return (
-      <div style={{ padding: '0.5rem 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+      <div style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
         Loading…
       </div>
     )
@@ -1619,7 +1619,7 @@ export default function ClockInOutButton({
           border: `2px solid ${CLOCK_IN_ACCENT_ORANGE}`,
           borderRadius: 8,
           background: canClockIn ? CLOCK_IN_ACCENT_ORANGE : '#f3f4f6',
-          color: canClockIn ? 'white' : '#9ca3af',
+          color: canClockIn ? 'white' : 'var(--text-faint)',
           cursor: canClockIn && !actionLoading ? 'pointer' : 'not-allowed',
         }}
       >
@@ -1637,7 +1637,7 @@ export default function ClockInOutButton({
     </div>
     ) : null}
       {error && (
-        <span style={{ color: '#dc2626', fontSize: '0.875rem' }}>{error}</span>
+        <span style={{ color: 'var(--text-red-600)', fontSize: '0.875rem' }}>{error}</span>
       )}
       {clockInModalOpen && (
         <div
@@ -1674,7 +1674,7 @@ export default function ClockInOutButton({
                 placeholder="e.g. Rough-in, Bid for Kiki, Hydrostatic test"
                 rows={3}
                 disabled={actionLoading}
-                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: 'var(--surface)' }}
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
@@ -1702,7 +1702,7 @@ export default function ClockInOutButton({
                       setUnifiedSearchResults([])
                     }}
                     disabled={actionLoading}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
                   >
                     Clear
                   </button>
@@ -1713,9 +1713,9 @@ export default function ClockInOutButton({
               {renderUnifiedJobBidSearchRow(actionLoading)}
               {unifiedSearchText.trim() !== '' &&
                 (unifiedSearchResults.length > 0 || assignedJobsListLoading) && (
-                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
+                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginTop: '0.25rem' }}>
                   {assignedJobsListLoading && unifiedSearchResults.length === 0 ? (
-                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
                   ) : (
                     unifiedSearchResults.map((r) => (
                       <button
@@ -1741,8 +1741,8 @@ export default function ClockInOutButton({
                             ? { ...clockInSelectionOutlineSelected, borderRadius: 4 }
                             : {
                                 border: 'none',
-                                background: 'white',
-                                borderBottom: '1px solid #e5e7eb',
+                                background: 'var(--surface)',
+                                borderBottom: '1px solid var(--border)',
                               }),
                         }}
                       >
@@ -1767,7 +1767,7 @@ export default function ClockInOutButton({
               })}
             </div>
             {clockInError && (
-              <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
+              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>
                 {clockInError.toLowerCase().includes('network') || clockInError.toLowerCase().includes('fetch')
                   ? "Something went wrong. Please check your connection and try again."
                   : clockInError}
@@ -1778,7 +1778,7 @@ export default function ClockInOutButton({
                 type="button"
                 onClick={() => !actionLoading && setClockInModalOpen(false)}
                 disabled={actionLoading}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: 'white', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: actionLoading ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>
@@ -1820,7 +1820,7 @@ export default function ClockInOutButton({
           <div
             id="update-focus-modal"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               maxWidth: 480,
@@ -1835,7 +1835,7 @@ export default function ClockInOutButton({
             <style>{`#update-focus-modal textarea:focus,#update-focus-modal input[type=text]:focus,#update-focus-modal input[type=text]:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}`}</style>
             <h3 id="update-focus-modal-title" style={{ marginTop: 0, marginBottom: salaryUiActive ? '0.5rem' : '1rem', textAlign: 'center' }}>Update Focus</h3>
             {salaryUiActive ? (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Link this shift to a different job or bid. Your session times stay the same.
               </p>
             ) : null}
@@ -1848,7 +1848,7 @@ export default function ClockInOutButton({
                 placeholder="e.g. Trim set at 456 Oak Ave"
                 rows={3}
                 disabled={updateFocusLoading}
-                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: 'var(--surface)' }}
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
@@ -1857,7 +1857,7 @@ export default function ClockInOutButton({
               </div>
               {selectedAssociation && (associationChipFromSearch || showUpdateFocusAssociationChip) && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ flex: 1, padding: '0.5rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     {(() => {
                       const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
@@ -1875,7 +1875,7 @@ export default function ClockInOutButton({
                       setSelectedAssociation(null)
                     }}
                     disabled={updateFocusLoading}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
                   >
                     Clear
                   </button>
@@ -1886,9 +1886,9 @@ export default function ClockInOutButton({
               {renderUnifiedJobBidSearchRow(updateFocusLoading)}
               {unifiedSearchText.trim() !== '' &&
                 (unifiedSearchResults.length > 0 || assignedJobsListLoading) && (
-                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
+                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginTop: '0.25rem' }}>
                   {assignedJobsListLoading && unifiedSearchResults.length === 0 ? (
-                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
                   ) : (
                     unifiedSearchResults.map((r) => (
                       <button
@@ -1900,7 +1900,7 @@ export default function ClockInOutButton({
                           setUnifiedSearchResults([])
                           setUnifiedSearchText('')
                         }}
-                        style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb', fontSize: '0.875rem' }}
+                        style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer', borderBottom: '1px solid var(--border)', fontSize: '0.875rem' }}
                       >
                         {(() => {
                           const t = serviceTypeTagForUnifiedRow(r)
@@ -1923,14 +1923,14 @@ export default function ClockInOutButton({
               })}
             </div>
             {updateFocusError && (
-              <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{updateFocusError}</p>
+              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{updateFocusError}</p>
             )}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'space-between' }}>
               <button
                 type="button"
                 onClick={() => !updateFocusLoading && setUpdateFocusModalOpen(false)}
                 disabled={updateFocusLoading}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>
@@ -1974,7 +1974,7 @@ export default function ClockInOutButton({
           <div
             id="clock-out-review-modal"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               maxWidth: 480,
@@ -1997,7 +1997,7 @@ export default function ClockInOutButton({
                 placeholder="e.g. Trim set at 456 Oak Ave"
                 rows={3}
                 disabled={clockOutSaving}
-                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: '#fff' }}
+                style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: 'var(--surface)' }}
               />
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
@@ -2006,7 +2006,7 @@ export default function ClockInOutButton({
               </div>
               {selectedAssociation && associationChipFromSearch && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <span style={{ flex: 1, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ flex: 1, padding: '0.5rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     {(() => {
                       const t = serviceTypeTagForUnifiedRow(selectedAssociation)
                       return t ? (
@@ -2024,7 +2024,7 @@ export default function ClockInOutButton({
                       setSelectedAssociation(null)
                     }}
                     disabled={clockOutSaving}
-                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
                   >
                     Clear
                   </button>
@@ -2035,9 +2035,9 @@ export default function ClockInOutButton({
               {renderUnifiedJobBidSearchRow(clockOutSaving)}
               {unifiedSearchText.trim() !== '' &&
                 (unifiedSearchResults.length > 0 || assignedJobsListLoading) && (
-                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginTop: '0.25rem' }}>
+                <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginTop: '0.25rem' }}>
                   {assignedJobsListLoading && unifiedSearchResults.length === 0 ? (
-                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+                    <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
                   ) : (
                     unifiedSearchResults.map((r) => (
                       <button
@@ -2055,9 +2055,9 @@ export default function ClockInOutButton({
                           padding: '0.5rem 0.75rem',
                           textAlign: 'left',
                           border: 'none',
-                          background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? '#eff6ff' : 'white',
+                          background: selectedAssociation && selectedAssociation.source === r.source && selectedAssociation.id === r.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: 'pointer',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           fontSize: '0.875rem',
                         }}
                       >
@@ -2081,19 +2081,19 @@ export default function ClockInOutButton({
                 onAssociatePickBefore: () => setAssociationChipFromSearch(false),
               })}
               {canLeaveJobFieldReport(role) && scheduledDispatchJobs.length > 0 ? (
-                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
                   <div
                     style={{
                       fontSize: '0.8125rem',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       marginBottom: '0.35rem',
                     }}
                   >
                     Missing reports from today (click to make report):
                   </div>
                   {missingReportsCheckLoading ? (
-                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Checking…</p>
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Checking…</p>
                   ) : scheduledJobsMissingReport.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       {scheduledJobsMissingReport.map((d) => {
@@ -2125,12 +2125,12 @@ export default function ClockInOutButton({
                                 cursor: clockOutSaving ? 'not-allowed' : 'pointer',
                                 border: '1px solid #fecaca',
                                 borderRadius: 4,
-                                background: '#fef2f2',
+                                background: 'var(--bg-red-tint)',
                               }}
                             >
                               <div>{line1}</div>
                               {address ? (
-                                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                                   {address}
                                 </div>
                               ) : null}
@@ -2139,7 +2139,7 @@ export default function ClockInOutButton({
                         })}
                     </div>
                   ) : (
-                    <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+                    <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       You've reported on all Dispatch-scheduled jobs today.
                     </p>
                   )}
@@ -2147,14 +2147,14 @@ export default function ClockInOutButton({
               ) : null}
             </div>
             {clockOutReviewError && (
-              <p style={{ color: '#dc2626', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockOutReviewError}</p>
+              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>{clockOutReviewError}</p>
             )}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'space-between' }}>
               <button
                 type="button"
                 onClick={() => !clockOutSaving && setClockOutReviewOpen(false)}
                 disabled={clockOutSaving}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>

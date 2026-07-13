@@ -111,10 +111,10 @@ function ymdDaysBetween(startYmd: string, endYmd: string): number | null {
 }
 
 function getStepStatusStyle(status: StepStatus | null): { color: string; fontWeight: 'normal' | 'bold' } {
-  if (status === 'completed' || status === 'approved') return { color: '#059669', fontWeight: 'normal' }
+  if (status === 'completed' || status === 'approved') return { color: 'var(--text-green-600)', fontWeight: 'normal' }
   if (status === 'in_progress') return { color: '#E87600', fontWeight: 'bold' }
-  if (status === 'rejected') return { color: '#b91c1c', fontWeight: 'normal' }
-  return { color: '#6b7280', fontWeight: 'normal' }
+  if (status === 'rejected') return { color: 'var(--text-red-700)', fontWeight: 'normal' }
+  return { color: 'var(--text-muted)', fontWeight: 'normal' }
 }
 
 type PersonContactInfo = {
@@ -162,7 +162,7 @@ function PersonDisplayWithContact({
           padding: 0,
           background: 'transparent',
           border: 'none',
-          color: '#2563eb',
+          color: 'var(--text-link)',
           textDecoration: 'underline',
           cursor: 'pointer',
           font: 'inherit',
@@ -171,7 +171,7 @@ function PersonDisplayWithContact({
       >
         {trimmedName}
       </button>
-      {!isUser && <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginLeft: '0.25rem' }}>(not a user)</span>}
+      {!isUser && <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>(not a user)</span>}
     </span>
   )
 }
@@ -2301,7 +2301,7 @@ export default function Workflow() {
   }
 
   if (loading) return <p>Loading...</p>
-  if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
+  if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
   if (!project || !workflow) return <p>Project or workflow not found.</p>
 
   return (
@@ -2321,8 +2321,8 @@ export default function Workflow() {
           style={{
             fontSize: '0.875rem',
             padding: '0.25rem 0.5rem',
-            background: '#eff6ff',
-            color: '#1d4ed8',
+            background: 'var(--bg-blue-tint)',
+            color: 'var(--text-blue-700)',
             borderRadius: 4,
             textDecoration: 'none',
             fontWeight: 500,
@@ -2342,15 +2342,15 @@ export default function Workflow() {
           <div>
             <h1 style={{ marginBottom: '0.5rem' }}>{project.name}{" \u2013 "}Workflow</h1>
             {projectMaster && (
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 500 }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 500 }}>
                 Project Master: {projectMaster.name || projectMaster.email || 'Unknown'}
               </div>
             )}
             {canAssignSuperintendents && (
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.375rem', flexWrap: 'wrap' }}>
                 <span style={{ fontWeight: 500 }}>Superintendents:</span>
                 {projectSuperintendents.length === 0 && (
-                  <span style={{ color: '#9ca3af' }}>None</span>
+                  <span style={{ color: 'var(--text-faint)' }}>None</span>
                 )}
                 {projectSuperintendents.map((s) => (
                   <span
@@ -2388,7 +2388,7 @@ export default function Workflow() {
                     }
                   }}
                   disabled={projectSuperintendentSaving}
-                  style={{ padding: '0.15rem 0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white', minWidth: 140 }}
+                  style={{ padding: '0.15rem 0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'var(--surface)', minWidth: 140 }}
                 >
                   <option value="">Add superintendent...</option>
                   {allSuperintendents
@@ -2404,8 +2404,8 @@ export default function Workflow() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', justifyContent: 'flex-end' }}>
-              <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Jobs:</span>
-              {projectJobs.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>None</span>}
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Jobs:</span>
+              {projectJobs.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>None</span>}
               {projectJobs.map((j) => {
                 const expanded = expandedWorkflowJobThreadId === j.id
                 const stat = workflowJobThreadStatsByJobId[j.id]
@@ -2415,7 +2415,7 @@ export default function Workflow() {
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                       <Link
                         to={`/jobs?edit=${j.id}&tab=stages`}
-                        style={{ padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#374151' }}
+                        style={{ padding: '0.15rem 0.4rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
                       >
                         {j.hcp_number || j.job_name || 'Job'}
                       </Link>
@@ -2427,16 +2427,16 @@ export default function Workflow() {
                         style={{
                           padding: '0.1rem 0.25rem',
                           fontSize: '0.7rem',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 4,
-                          background: 'white',
+                          background: 'var(--surface)',
                           cursor: 'pointer',
-                          color: '#374151',
+                          color: 'var(--text-700)',
                           lineHeight: 1,
                         }}
                       >
                         {expanded ? '\u25BC' : '\u25B6'}
-                        {n > 0 ? <span style={{ color: '#2563eb', marginLeft: 2 }}>{n}</span> : null}
+                        {n > 0 ? <span style={{ color: 'var(--text-link)', marginLeft: 2 }}>{n}</span> : null}
                       </button>
                     </span>
                   </Fragment>
@@ -2486,7 +2486,7 @@ export default function Workflow() {
           <div
             style={{
               fontSize: '0.875rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               marginTop: '0.5rem',
               overflowWrap: 'break-word',
               paddingBottom: '0.25rem',
@@ -2523,23 +2523,23 @@ export default function Workflow() {
       {(isDevOrMaster || canManageStages) && (
         <div style={{ marginBottom: '1rem' }}>
           {/* Collapsible summary bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 8 }}>
             {isDevOrMaster && (
               <>
-                <span style={{ fontSize: '0.875rem', color: calculateProjectionsTotal() < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                <span style={{ fontSize: '0.875rem', color: calculateProjectionsTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
                   Projections: {formatAmount(calculateProjectionsTotal())}
                 </span>
-                <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>|</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>|</span>
               </>
             )}
             {canManageStages && (
-              <span style={{ fontSize: '0.875rem', color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+              <span style={{ fontSize: '0.875rem', color: calculateLedgerTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
                 Ledger: {formatAmount(calculateLedgerTotal())}
               </span>
             )}
             {isDevOrMaster && (
               <>
-                <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>|</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-faint)' }}>|</span>
                 <span
                   style={{
                     fontSize: '0.875rem',
@@ -2583,7 +2583,7 @@ export default function Workflow() {
 
             if (!hasAnyData) {
               return (
-                <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   No projections or ledger items.
                   {isDevOrMaster && (
                     <button
@@ -2600,7 +2600,7 @@ export default function Workflow() {
             }
 
             return (
-              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8 }}>
+              <div style={{ marginTop: '0.75rem', padding: '0.5rem 0.75rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 8 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #bae6fd' }}>
@@ -2614,8 +2614,8 @@ export default function Workflow() {
                   <tbody>
                     {unifiedRows.map((row, idx) => (
                       <tr key={row.projection?.id ?? row.ledgerItem?.id ?? `row-${idx}`} style={{ borderBottom: '1px solid #e0f2fe' }}>
-                        <td style={{ padding: '0.35rem 0.5rem', color: '#111827', fontWeight: row.stageName ? 500 : 'normal' }}>{row.stageName || '\u00a0'}</td>
-                        <td style={{ padding: '0.35rem 0.5rem', color: '#374151' }}>
+                        <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-strong)', fontWeight: row.stageName ? 500 : 'normal' }}>{row.stageName || '\u00a0'}</td>
+                        <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-700)' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <span>{row.memo}</span>
                             {row.ledgerItem?.link && (
@@ -2623,7 +2623,7 @@ export default function Workflow() {
                                 href={normalizeUrl(row.ledgerItem.link)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ color: '#3b82f6', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
+                                style={{ color: 'var(--text-blue-500)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
                                 title={row.ledgerItem.link}
                                 onClick={(e) => {
                                   e.preventDefault()
@@ -2642,11 +2642,11 @@ export default function Workflow() {
                           </div>
                         </td>
                         {isDevOrMaster && (
-                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.projectionAmount ?? 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                          <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.projectionAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
                             {row.projectionAmount != null ? formatAmount(row.projectionAmount) : '\u2014'}
                           </td>
                         )}
-                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.ledgerAmount ?? 0) < 0 ? '#b91c1c' : '#111827', fontWeight: 500 }}>
+                        <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: (row.ledgerAmount ?? 0) < 0 ? 'var(--text-red-700)' : 'var(--text-strong)', fontWeight: 500 }}>
                           {row.ledgerAmount != null ? formatAmount(row.ledgerAmount) : '\u2014'}
                         </td>
                         {isDevOrMaster && (
@@ -2682,11 +2682,11 @@ export default function Workflow() {
                         Total
                       </td>
                       {isDevOrMaster && (
-                        <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateProjectionsTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                        <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateProjectionsTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
                           {formatAmount(calculateProjectionsTotal())}
                         </td>
                       )}
-                      <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateLedgerTotal() < 0 ? '#b91c1c' : '#111827' }}>
+                      <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', fontWeight: 700, color: calculateLedgerTotal() < 0 ? 'var(--text-red-700)' : 'var(--text-strong)' }}>
                         {formatAmount(calculateLedgerTotal())}
                       </td>
                       {isDevOrMaster && <td style={{ padding: '0.5rem 0.5rem' }} />}
@@ -2706,7 +2706,7 @@ export default function Workflow() {
               <>
                 <p style={{ marginBottom: '1rem' }}>No steps yet. Add a step or create from a template.</p>
                 {templates.length > 0 && (
-                  <div style={{ padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, marginBottom: '1rem', maxWidth: 400 }}>
+                  <div style={{ padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, marginBottom: '1rem', maxWidth: 400 }}>
                     <strong style={{ display: 'block', marginBottom: 8 }}>Create from template</strong>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <select
@@ -2780,7 +2780,7 @@ export default function Workflow() {
                       padding: '0.5rem 0',
                       marginBottom: '0.25rem',
                       fontSize: '0.8125rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       cursor: 'pointer',
                       textAlign: 'center',
                     }}
@@ -2810,7 +2810,7 @@ export default function Workflow() {
                   borderRadius: 8,
                   padding: '0.5rem 0.75rem',
                   marginBottom: '0.25rem',
-                  background: 'white',
+                  background: 'var(--surface)',
                   ...(isCollapsed && { display: 'inline-block', width: 'fit-content', maxWidth: 'min(100%, 520px)', borderLeft: `9px solid ${getStepStatusStyle(s.status).color}` }),
                   ...(!isCollapsed && s.status === 'in_progress' && { background: '#fff7ed', borderLeft: '4px solid #E87600' }),
                 }}
@@ -2828,16 +2828,16 @@ export default function Workflow() {
                       style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: 4, fontSize: '0.8125rem', cursor: 'pointer', ...(isCollapsed && { minWidth: 0 }) }}
                     >
                       <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{isCollapsed ? '\u25B6' : '\u25BC'}</span>
-                      <span style={{ fontWeight: isCollapsed ? getStepStatusStyle(s.status).fontWeight : 600, color: isCollapsed ? getStepStatusStyle(s.status).color : '#111827' }}>{s.name}</span>
-                      <span style={{ color: '#9ca3af' }}>·</span>
-                      <span style={{ color: s.status === 'rejected' ? '#b91c1c' : s.status === 'skipped' ? '#6b7280' : '#374151', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
+                      <span style={{ fontWeight: isCollapsed ? getStepStatusStyle(s.status).fontWeight : 600, color: isCollapsed ? getStepStatusStyle(s.status).color : 'var(--text-strong)' }}>{s.name}</span>
+                      <span style={{ color: 'var(--text-faint)' }}>·</span>
+                      <span style={{ color: s.status === 'rejected' ? '#b91c1c' : s.status === 'skipped' ? 'var(--text-muted)' : 'var(--text-700)', fontWeight: s.status === 'rejected' ? 500 : 'normal' }}>
                         {s.status === 'rejected' ? 'Previous work incomplete' : s.status === 'skipped' ? 'Skipped' : s.status}{s.status === 'rejected' && s.rejection_reason ? ` - ${s.rejection_reason}` : ''}{s.status === 'skipped' && s.skipped_reason ? ` - ${s.skipped_reason}` : ''}{s.status === 'in_progress' && (() => {
                           const d = daysOpen(s.started_at, s.ended_at)
                           return d != null ? ` · ${d === 1 ? '1 day' : `${d} days`} open` : null
                         })()}
                       </span>
-                      <span style={{ color: '#9ca3af' }}>·</span>
-                      <span style={{ color: '#374151' }}>
+                      <span style={{ color: 'var(--text-faint)' }}>·</span>
+                      <span style={{ color: 'var(--text-700)' }}>
                         <PersonDisplayWithContact name={s.assigned_to_name} contacts={personContacts} userNames={userNames} onOpenContact={setPersonContactModal} />
                       </span>
                       {canManageStages && !isCollapsed && (
@@ -2856,7 +2856,7 @@ export default function Workflow() {
                                 data-stop
                                 onClick={(e) => { e.stopPropagation(); setSectionExpanded((p) => ({ ...p, [key]: !isExpanded })) }}
                                 onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: '#6b7280' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: 'var(--text-muted)' }}
                               >
                                 <span style={{ fontSize: '0.75rem', minWidth: 14 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
                                 <span>Notify</span>
@@ -2874,7 +2874,7 @@ export default function Workflow() {
                                 data-stop
                                 onClick={(e) => { e.stopPropagation(); setSectionExpanded((p) => ({ ...p, [key]: !isExpanded })) }}
                                 onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
-                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: '#6b7280' }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500, cursor: 'pointer', color: 'var(--text-muted)' }}
                               >
                                 <span style={{ fontSize: '0.75rem', minWidth: 14 }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
                                 <span>Action Ledger ({count})</span>
@@ -2884,8 +2884,8 @@ export default function Workflow() {
                         </span>
                       )}
                       {isCollapsed && (() => {
-                        const pillStyle = { display: 'inline-flex' as const, alignItems: 'center' as const, padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.7rem', color: '#6b7280', background: '#f3f4f6' }
-                        const expectedPillStyle = { ...pillStyle, background: '#eff6ff', color: '#1e3a8a' }
+                        const pillStyle = { display: 'inline-flex' as const, alignItems: 'center' as const, padding: '0.15rem 0.4rem', borderRadius: 4, fontSize: '0.7rem', color: 'var(--text-muted)', background: 'var(--bg-muted)' }
+                        const expectedPillStyle = { ...pillStyle, background: 'var(--bg-blue-tint)', color: '#1e3a8a' }
                         const items = lineItems[s.id] || []
                         const count = items.length
                         const total = items.reduce((sum, item) => sum + (item.amount || 0), 0)
@@ -2924,7 +2924,7 @@ export default function Workflow() {
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
                     {(s.status === 'pending' || s.status === 'in_progress') && (
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Technician:</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Technician:</span>
                         {s.status === 'pending' && (
                           <button type="button" onClick={() => setSetStartStep({ step: s, startDateTime: toDatetimeLocal(new Date().toISOString()) })} className="wf-btn-info">
                             Set Start
@@ -2936,21 +2936,21 @@ export default function Workflow() {
                       </span>
                     )}
                     {canSeePrivateNotesAndApprove && (s.status === 'pending' || s.status === 'in_progress') && (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid #e5e7eb' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500 }}>Office:</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 12, paddingLeft: 12, borderLeft: '1px solid var(--border)' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 500 }}>Office:</span>
                         <button type="button" onClick={() => markApproved(s)} className="wf-btn-info">
                           Approve
                         </button>
                         <button type="button" onClick={() => setRejectStep({ step: s, reason: '' })} className="wf-btn-danger">
                           Send Back: Previous Work Incomplete
                         </button>
-                        <button type="button" onClick={() => setSkipStep({ step: s, reason: '' })} className="wf-btn-secondary" style={{ color: '#92400e' }}>
+                        <button type="button" onClick={() => setSkipStep({ step: s, reason: '' })} className="wf-btn-secondary" style={{ color: 'var(--text-amber-800)' }}>
                           Skip
                         </button>
                       </span>
                     )}
                     {!isCollapsed && (
-                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#6b7280' }}>
+                      <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                         Start: {formatDateShort(s.started_at)}{' \u00B7 '}End: {formatDateShort(s.ended_at)}
                         {s.status === 'in_progress' ? null : (() => {
                           const d = daysBetween(s.started_at, s.ended_at)
@@ -2975,7 +2975,7 @@ export default function Workflow() {
                     padding: 0,
                     background: 'transparent',
                     border: 'none',
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     textDecoration: 'underline',
                     cursor: 'pointer',
                     font: 'inherit',
@@ -3012,7 +3012,7 @@ export default function Workflow() {
                     )
                   }
                   return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: '#6b7280' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       <span style={{ marginLeft: 'auto' }}>
                         Expected: Start {renderField(startYmd, 'start')}
                         {' \u00B7 '}
@@ -3030,7 +3030,7 @@ export default function Workflow() {
                   const canEditPct = canManageStages || s.assigned_to_name === currentUserName
                   const pct = s.percent_complete ?? null
                   return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: '#6b7280' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         Complete:{' '}
                         {canEditPct ? (
@@ -3063,16 +3063,16 @@ export default function Workflow() {
                                 fontSize: '0.75rem',
                                 textAlign: 'right',
                                 border: 'none',
-                                borderBottom: '1px solid #d1d5db',
+                                borderBottom: '1px solid var(--border-strong)',
                                 borderRadius: 0,
                                 background: 'transparent',
-                                color: '#0f172a',
+                                color: 'var(--text-slate-900)',
                               }}
                             />
-                            <span style={{ color: '#6b7280' }}>%</span>
+                            <span style={{ color: 'var(--text-muted)' }}>%</span>
                           </>
                         ) : (
-                          <span style={{ color: pct == null ? '#94a3b8' : '#0f172a' }}>
+                          <span style={{ color: pct == null ? 'var(--text-slate-400)' : 'var(--text-slate-900)' }}>
                             {pct == null ? '\u2014' : `${pct}%`}
                           </span>
                         )}
@@ -3185,7 +3185,7 @@ export default function Workflow() {
                         </tbody>
                       </table>
                       {canManageStages && (
-                        <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                        <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                             <input
                               type="checkbox"
@@ -3210,7 +3210,7 @@ export default function Workflow() {
                     ) : null
                   })()}
                 {s.status === 'approved' && s.approved_by && s.approved_at && (
-                  <div style={{ fontSize: '0.8125rem', color: '#059669', marginBottom: 4, fontWeight: 500 }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-green-600)', marginBottom: 4, fontWeight: 500 }}>
                     Approved by {s.approved_by} on {formatDatetime(s.approved_at)}
                   </div>
                 )}
@@ -3218,16 +3218,16 @@ export default function Workflow() {
                   const key = `${s.id}-actionLedger`
                   const isExpanded = sectionExpanded[key] ?? false
                   return isExpanded ? (
-                    <div style={{ marginBottom: 4, padding: '0.5rem 0.6rem', background: '#f9fafb', borderRadius: 4, border: '1px solid #e5e7eb' }}>
+                    <div style={{ marginBottom: 4, padding: '0.5rem 0.6rem', background: 'var(--bg-subtle)', borderRadius: 4, border: '1px solid var(--border)' }}>
                       {stepActions[s.id]!.map((action) => (
-                        <div key={action.id} style={{ marginBottom: '0.25rem', fontSize: '0.8125rem', color: '#6b7280' }}>
-                          <span style={{ fontWeight: 500, textTransform: 'capitalize', color: '#374151' }}>{action.action_type === 'rejected' ? 'Previous work incomplete' : action.action_type === 'skipped' ? 'Skipped' : action.action_type}</span>
+                        <div key={action.id} style={{ marginBottom: '0.25rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+                          <span style={{ fontWeight: 500, textTransform: 'capitalize', color: 'var(--text-700)' }}>{action.action_type === 'rejected' ? 'Previous work incomplete' : action.action_type === 'skipped' ? 'Skipped' : action.action_type}</span>
                           {' by '}
                           <span style={{ fontWeight: 500 }}>{action.performed_by}</span>
                           {' on '}
                           <span>{formatDatetime(action.performed_at)}</span>
                           {action.notes && (
-                            <div style={{ marginTop: 2, marginLeft: '1rem', fontStyle: 'italic', color: '#9ca3af' }}>
+                            <div style={{ marginTop: 2, marginLeft: '1rem', fontStyle: 'italic', color: 'var(--text-faint)' }}>
                               {action.notes}
                             </div>
                           )}
@@ -3262,7 +3262,7 @@ export default function Workflow() {
                             onBlur={(e) => updateNotes(s, e.target.value)}
                             placeholder="Add notes (visible to everyone who can see this stage, including the assigned technician)"
                             rows={2}
-                            style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid #e5e7eb', borderRadius: 4 }}
+                            style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border)', borderRadius: 4 }}
                           />
                         )}
                       </>
@@ -3285,7 +3285,7 @@ export default function Workflow() {
                             onKeyDown={(e) => e.key === 'Enter' && setSectionExpanded((p) => ({ ...p, [key]: !isExpanded }))}
                             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2, fontWeight: 500, color: '#0369a1', cursor: 'pointer', fontSize: '0.8125rem' }}
                           >
-                            <span style={{ fontSize: '0.75rem', minWidth: 16, color: '#111827' }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
+                            <span style={{ fontSize: '0.75rem', minWidth: 16, color: 'var(--text-strong)' }}>{isExpanded ? '\u25BC' : '\u25B6'}</span>
                             <span>Notes for Office ({(s.private_notes ?? '').trim().split(/\s+/).filter(Boolean).length} words)</span>
                           </div>
                           {isExpanded && (
@@ -3296,7 +3296,7 @@ export default function Workflow() {
                               onBlur={(e) => updatePrivateNotes(s, e.target.value)}
                               placeholder="Add private notes visible to masters, assistants, and superintendents..."
                               rows={2}
-                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'white' }}
+                              style={{ width: '100%', padding: '0.35rem', fontSize: '0.8125rem', border: '1px solid #bae6fd', borderRadius: 4, background: 'var(--surface)' }}
                             />
                           )}
                         </>
@@ -3336,7 +3336,7 @@ export default function Workflow() {
                             <>
                     {(lineItems[s.id] && lineItems[s.id]!.length > 0 ? (
                       <div style={{ display: 'flex', justifyContent: 'center' }}>
-                        <div style={{ fontSize: '0.8125rem', background: 'white', border: '1px solid #bae6fd', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ fontSize: '0.8125rem', background: 'var(--surface)', border: '1px solid #bae6fd', borderRadius: 4, overflow: 'hidden', width: 'fit-content' }} onClick={(e) => e.stopPropagation()}>
                         <table style={{ borderCollapse: 'collapse' }}>
                           <thead>
                             <tr>
@@ -3359,7 +3359,7 @@ export default function Workflow() {
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       onClick={(e) => e.stopPropagation()}
-                                      style={{ color: '#2563eb', textDecoration: 'underline' }}
+                                      style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
                                       title={item.link}
                                     >
                                       {item.memo}
@@ -3368,10 +3368,10 @@ export default function Workflow() {
                                     <span>{item.memo}</span>
                                   )}
                                 </td>
-                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, verticalAlign: 'middle', fontSize: '0.8125rem', color: '#4b5563', whiteSpace: 'nowrap' }}>
+                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, verticalAlign: 'middle', fontSize: '0.8125rem', color: 'var(--text-600)', whiteSpace: 'nowrap' }}>
                                   {formatLineItemDate(item.item_date)}
                                 </td>
-                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, textAlign: 'right', color: (item.amount || 0) < 0 ? '#b91c1c' : '#374151', fontWeight: 500, verticalAlign: 'middle' }}>
+                                <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, textAlign: 'right', color: (item.amount || 0) < 0 ? 'var(--text-red-700)' : 'var(--text-700)', fontWeight: 500, verticalAlign: 'middle' }}>
                                   {formatAmount(item.amount)}
                                 </td>
                                 <td style={{ padding: '0.35rem 0.5rem', borderBottom: rowBorder, whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
@@ -3399,7 +3399,7 @@ export default function Workflow() {
                                       onClick={(e) => { e.stopPropagation(); openEditLineItem(s.id, item) }}
                                       title="Edit"
                                       aria-label="Edit"
-                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                         <path d="M535.6 85.7C513.7 63.8 478.3 63.8 456.4 85.7L432 110.1L529.9 208L554.3 183.6C576.2 161.7 576.2 126.3 554.3 104.4L535.6 85.7zM236.4 305.7C230.3 311.8 225.6 319.3 222.9 327.6L193.3 416.4C190.4 425 192.7 434.5 199.1 441C205.5 447.5 215 449.7 223.7 446.8L312.5 417.2C320.7 414.5 328.2 409.8 334.4 403.7L496 241.9L398.1 144L236.4 305.7zM160 128C107 128 64 171 64 224L64 480C64 533 107 576 160 576L416 576C469 576 512 533 512 480L512 384C512 366.3 497.7 352 480 352C462.3 352 448 366.3 448 384L448 480C448 497.7 433.7 512 416 512L160 512C142.3 512 128 497.7 128 480L128 224C128 206.3 142.3 192 160 192L256 192C273.7 192 288 177.7 288 160C288 142.3 273.7 128 256 128L160 128z"/>
@@ -3410,7 +3410,7 @@ export default function Workflow() {
                                       onClick={(e) => { e.stopPropagation(); setConfirmDeleteLineItem({ item, stepName: s.name }) }}
                                       title="Delete"
                                       aria-label="Delete"
-                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      style={{ padding: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-800)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                         <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z"/>
@@ -3425,7 +3425,7 @@ export default function Workflow() {
                         </div>
                       </div>
                     ) : (
-                      <p style={{ fontSize: '0.8125rem', color: '#92400e', margin: 0, fontStyle: 'italic', textAlign: 'center' }}>No line items yet. Click "Add Line Item" to add one.</p>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-800)', margin: 0, fontStyle: 'italic', textAlign: 'center' }}>No line items yet. Click "Add Line Item" to add one.</p>
                     ))}
                               <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.5rem' }} onClick={(e) => e.stopPropagation()}>
                                 <button
@@ -3480,7 +3480,7 @@ export default function Workflow() {
                   )
                 })()}
               </div>
-              {index < displayItems.length - 1 && <div style={{ textAlign: 'center', marginBottom: '0.15rem', color: '#9ca3af' }}>{"\u2193"}</div>}
+              {index < displayItems.length - 1 && <div style={{ textAlign: 'center', marginBottom: '0.15rem', color: 'var(--text-faint)' }}>{"\u2193"}</div>}
             </div>
             )
           })
@@ -3505,9 +3505,9 @@ export default function Workflow() {
 
       {confirmDeleteLineItem && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Delete line item?</h3>
-            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {confirmDeleteLineItem.item.memo}
               {confirmDeleteLineItem.item.amount != null && (
                 <span> — {formatAmount(confirmDeleteLineItem.item.amount)}</span>
@@ -3539,13 +3539,13 @@ export default function Workflow() {
 
       {confirmDeleteStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Delete step: {confirmDeleteStep.name}?</h3>
             {isStepEmpty(confirmDeleteStep) ? (
-              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>This step has no assignee, notes, or line items.</p>
+              <p style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>This step has no assignee, notes, or line items.</p>
             ) : (
               <>
-                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                <p style={{ marginBottom: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   This step has content (assignee, notes, line items, or has been started). Deleting will permanently remove it and related data.
                 </p>
                 <p style={{ marginBottom: 8, fontSize: '0.875rem' }}>Type &quot;{confirmDeleteStep.name}&quot; to confirm:</p>
@@ -3580,7 +3580,7 @@ export default function Workflow() {
 
       {rejectStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Previous work incomplete: {rejectStep.step.name}</h3>
             <label style={{ display: 'block', marginBottom: 4 }}>Reason and Proposed Remedy</label>
             <textarea
@@ -3600,7 +3600,7 @@ export default function Workflow() {
 
       {skipStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Skip stage: {skipStep.step.name}</h3>
             <label style={{ display: 'block', marginBottom: 4 }}>Why is this stage being skipped?</label>
             <textarea
@@ -3627,7 +3627,7 @@ export default function Workflow() {
 
       {setStartStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Set Start Time: {setStartStep.step.name}</h3>
             <label htmlFor="start-datetime" style={{ display: 'block', marginBottom: 4 }}>Start Date & Time</label>
             <input
@@ -3700,36 +3700,36 @@ export default function Workflow() {
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 340, maxWidth: '95%' }}
+              style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 340, maxWidth: '95%' }}
             >
               <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>Expected dates: {current.step.name}</h3>
-              <p style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ marginTop: 0, marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Plan the expected start and end. Type a length in days to auto-compute the end from the start.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: '0.8125rem', color: '#374151' }}>Expected start</span>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>Expected start</span>
                   <input
                     type="date"
                     value={current.expectedStart}
                     onChange={(e) => handleStartChange(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
                   />
                 </label>
                 <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: '0.8125rem', color: '#374151' }}>Expected end</span>
+                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>Expected end</span>
                   <input
                     type="date"
                     value={current.expectedEnd}
                     onChange={(e) => handleEndChange(e.target.value)}
-                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                    style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
                   />
                 </label>
               </div>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: '0.75rem' }}>
-                <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                   Length (days){' '}
-                  <span style={{ color: '#6b7280', fontWeight: 400 }}>· auto-computes end from start</span>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· auto-computes end from start</span>
                 </span>
                 <input
                   type="number"
@@ -3739,7 +3739,7 @@ export default function Workflow() {
                   placeholder="e.g. 5"
                   value={current.lengthDays}
                   onChange={(e) => handleLengthChange(e.target.value)}
-                  style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db', maxWidth: 160 }}
+                  style={{ padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', maxWidth: 160 }}
                 />
               </label>
               {current.seededFromPrior && (
@@ -3748,17 +3748,17 @@ export default function Workflow() {
                 </p>
               )}
               {lengthInvalid && (
-                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#b91c1c' }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
                   Length must be a non-negative number.
                 </p>
               )}
               {endBeforeStart && (
-                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: '#b91c1c' }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
                   Expected end is before expected start.
                 </p>
               )}
               {current.hasNextStage && (
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', fontSize: '0.8125rem', color: '#374151' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                   <input
                     type="checkbox"
                     checked={current.updateNextStage}
@@ -3795,11 +3795,11 @@ export default function Workflow() {
           onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }}
         >
           <div
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280, maxWidth: 400, maxHeight: '80vh', display: 'flex', flexDirection: 'column', color: '#111827' }}
+            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280, maxWidth: 400, maxHeight: '80vh', display: 'flex', flexDirection: 'column', color: 'var(--text-strong)' }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 style={{ marginTop: 0, color: '#111827', flexShrink: 0 }}>Add person to: {assignPersonStep.name}</h3>
-            <p style={{ fontSize: '0.875rem', color: '#111827', marginBottom: '0.75rem', flexShrink: 0 }}>Choose from your roster.</p>
+            <h3 style={{ marginTop: 0, color: 'var(--text-strong)', flexShrink: 0 }}>Add person to: {assignPersonStep.name}</h3>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-strong)', marginBottom: '0.75rem', flexShrink: 0 }}>Choose from your roster.</p>
             {(roster.length > 5 || currentUserName) && (
               <input
                 type="search"
@@ -3807,12 +3807,12 @@ export default function Workflow() {
                 value={assignPersonFilter}
                 onChange={(e) => setAssignPersonFilter(e.target.value)}
                 autoFocus
-                style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid #e5e7eb', flexShrink: 0 }}
+                style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid var(--border)', flexShrink: 0 }}
               />
             )}
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', marginBottom: '1rem' }}>
               {roster.length === 0 && !currentUserName ? (
-                <p style={{ color: '#111827' }}>No people in your roster yet. Add them on the People page.</p>
+                <p style={{ color: 'var(--text-strong)' }}>No people in your roster yet. Add them on the People page.</p>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {(() => {
@@ -3826,7 +3826,7 @@ export default function Workflow() {
                       key="current-user"
                       type="button"
                       onClick={() => assignPerson(assignPersonStep, currentUserName)}
-                      style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#eff6ff', border: '1px solid #2563eb', borderRadius: 6, cursor: 'pointer', color: '#111827', fontWeight: 500 }}
+                      style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: 'var(--bg-blue-tint)', border: '1px solid #2563eb', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)', fontWeight: 500 }}
                     >
                       {currentUserName} (You)
                     </button>
@@ -3839,7 +3839,7 @@ export default function Workflow() {
                         key={`${r.name}-${i}`}
                         type="button"
                         onClick={() => assignPerson(assignPersonStep, r.name)}
-                        style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, cursor: 'pointer', color: '#111827' }}
+                        style={{ padding: '0.5rem 0.75rem', textAlign: 'left', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', color: 'var(--text-strong)' }}
                       >
                         {r.name}
                       </button>
@@ -3850,7 +3850,7 @@ export default function Workflow() {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0, paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
               <button type="button" onClick={() => assignPerson(assignPersonStep, null)} className="wf-btn-modal-secondary">Clear</button>
               <button type="button" onClick={() => { setAssignPersonStep(null); setAssignPersonFilter('') }} className="wf-btn-modal-secondary">Cancel</button>
             </div>
@@ -3860,7 +3860,7 @@ export default function Workflow() {
 
       {editingLineItem && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, flex: 1 }}>{editingLineItem.item ? 'Edit' : 'Add'} Line Item</h3>
               {!editingLineItem.item && (
@@ -3921,7 +3921,7 @@ export default function Workflow() {
                   style={{ width: '100%', padding: '0.5rem' }}
                 />
                 {editingLineItem.link && editingLineItem.link.trim() && !editingLineItem.link.trim().match(/^https?:\/\//i) && (
-                  <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', marginTop: '0.25rem' }}>
                     Link should start with http:// or https://
                   </div>
                 )}
@@ -3962,7 +3962,7 @@ export default function Workflow() {
 
       {editingProjection && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>{editingProjection.item ? 'Edit' : 'Add'} Projection</h3>
             <form
               onSubmit={(e) => {
@@ -4019,28 +4019,28 @@ export default function Workflow() {
       {/* Add Purchase Order to Step Modal */}
       {addingPOToStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Add Purchase Order to Step</h3>
             {availablePOs.length === 0 ? (
-              <p style={{ color: '#6b7280' }}>No finalized purchase orders available. Go to Materials page to create and finalize purchase orders.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No finalized purchase orders available. Go to Materials page to create and finalize purchase orders.</p>
             ) : (
               <div style={{ marginTop: '1rem' }}>
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
                   {availablePOs.map(po => (
                     <div
                       key={po.id}
                       onClick={() => addPOToStep(addingPOToStep, po.id)}
                       style={{
                         padding: '1rem',
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border)',
                         cursor: 'pointer',
-                        background: 'white',
+                        background: 'var(--surface)',
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
                     >
                       <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{po.name}</div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>${po.total.toFixed(2)}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>${po.total.toFixed(2)}</div>
                     </div>
                   ))}
                 </div>
@@ -4062,10 +4062,10 @@ export default function Workflow() {
       {/* Add Supply House Invoice to Step Modal */}
       {addingInvoiceToStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Add Supply House Invoice to Step</h3>
             {availableInvoices.length === 0 ? (
-              <p style={{ color: '#6b7280' }}>No supply house invoices available. Add invoices in Materials → Supply Houses.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No supply house invoices available. Add invoices in Materials → Supply Houses.</p>
             ) : (
               <div style={{ marginTop: '1rem' }}>
                 <input
@@ -4073,9 +4073,9 @@ export default function Workflow() {
                   placeholder="Search by invoice #, supply house, amount, date, PO #, paid/unpaid..."
                   value={invoiceSearchText}
                   onChange={(e) => setInvoiceSearchText(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+                  style={{ width: '100%', padding: '0.5rem', marginBottom: '0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
                 />
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, maxHeight: '400px', overflow: 'auto' }}>
                   {(() => {
                     const q = invoiceSearchText.trim().toLowerCase()
                     const filtered = q
@@ -4090,7 +4090,7 @@ export default function Workflow() {
                         )
                       : availableInvoices
                     if (filtered.length === 0) {
-                      return <p style={{ padding: '1rem', color: '#6b7280' }}>No matching invoices.</p>
+                      return <p style={{ padding: '1rem', color: 'var(--text-muted)' }}>No matching invoices.</p>
                     }
                     return filtered.map(inv => (
                       <div
@@ -4098,24 +4098,24 @@ export default function Workflow() {
                         onClick={() => addInvoiceToStep(addingInvoiceToStep, inv.id)}
                         style={{
                           padding: '1rem',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           cursor: 'pointer',
-                          background: 'white',
+                          background: 'var(--surface)',
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = '#f9fafb'}
-                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                        onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'var(--surface)'}
                       >
                         {/* Primary: supply house, date, amount, PO */}
                         <div style={{ fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.875rem' }}>
                           {inv.supply_house_name}
-                          <span style={{ color: '#6b7280', fontWeight: 400 }}> · {formatDateShort(inv.invoice_date)} · ${inv.amount.toFixed(2)}</span>
-                          {inv.purchase_order_number && <span style={{ color: '#6b7280', fontWeight: 400 }}> · {inv.purchase_order_number}</span>}
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {formatDateShort(inv.invoice_date)} · ${inv.amount.toFixed(2)}</span>
+                          {inv.purchase_order_number && <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> · {inv.purchase_order_number}</span>}
                         </div>
                         {/* Secondary: invoice #, due, paid */}
-                        <div style={{ fontSize: '0.8125rem', color: '#9ca3af', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem' }}>
                           <span>#{inv.invoice_number}</span>
                           {inv.due_date && <span>Due {formatDateShort(inv.due_date)}</span>}
-                          {inv.is_paid && <span style={{ color: '#059669', fontWeight: 500 }}>Paid</span>}
+                          {inv.is_paid && <span style={{ color: 'var(--text-green-600)', fontWeight: 500 }}>Paid</span>}
                         </div>
                       </div>
                     ))
@@ -4139,22 +4139,22 @@ export default function Workflow() {
       {/* View Purchase Order Details Modal */}
       {viewingPO && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '800px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ marginBottom: '1rem' }}>{viewingPO.name}</h2>
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '1rem' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Quantity</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {viewingPO.items.map((item, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.75rem' }}>{item.part.name}</td>
                       <td style={{ padding: '0.75rem' }}>{item.quantity}</td>
                       <td style={{ padding: '0.75rem' }}>{item.supply_house?.name || '-'}</td>
@@ -4163,7 +4163,7 @@ export default function Workflow() {
                     </tr>
                   ))}
                 </tbody>
-                <tfoot style={{ background: '#f9fafb' }}>
+                <tfoot style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
                     <td colSpan={4} style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600 }}>Grand Total:</td>
                     <td style={{ padding: '0.75rem', fontWeight: 600 }}>
@@ -4189,14 +4189,14 @@ export default function Workflow() {
       {/* View Supply House Invoice Details Modal */}
       {viewingInvoice && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}>
+          <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}>
             <h2 style={{ marginBottom: '1rem' }}>Invoice #{viewingInvoice.invoice_number}</h2>
             <div style={{ marginBottom: '1rem', fontSize: '0.9375rem' }}>
               <div style={{ marginBottom: '0.5rem' }}><strong>Supply House:</strong> {viewingInvoice.supply_house_name}</div>
               <div style={{ marginBottom: '0.5rem' }}><strong>Amount:</strong> {formatAmount(viewingInvoice.amount)}</div>
               {viewingInvoice.link && (
                 <div>
-                  <a href={normalizeUrl(viewingInvoice.link)} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6' }}>
+                  <a href={normalizeUrl(viewingInvoice.link)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-blue-500)' }}>
                     View invoice link
                   </a>
                 </div>
@@ -4226,35 +4226,35 @@ export default function Workflow() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}
+            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}
           >
             <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>{personContactModal.name}</h3>
             {!personContactModal.isUser && (
-              <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>Not a user</div>
+              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Not a user</div>
             )}
             <div style={{ fontSize: '0.9375rem', display: 'grid', gap: '0.5rem', marginBottom: '1rem' }}>
               <div>
-                <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Email:</span>
+                <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Email:</span>
                 {personContactModal.email ? (
-                  <a href={`mailto:${personContactModal.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                  <a href={`mailto:${personContactModal.email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                     {personContactModal.email}
                   </a>
                 ) : (
-                  <span style={{ color: '#9ca3af' }}>—</span>
+                  <span style={{ color: 'var(--text-faint)' }}>—</span>
                 )}
               </div>
               <div>
-                <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Phone:</span>
+                <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Phone:</span>
                 {personContactModal.phone ? (
-                  <a href={`tel:${personContactModal.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                  <a href={`tel:${personContactModal.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                     {personContactModal.phone}
                   </a>
                 ) : (
-                  <span style={{ color: '#9ca3af' }}>—</span>
+                  <span style={{ color: 'var(--text-faint)' }}>—</span>
                 )}
               </div>
               {!personContactModal.email && !personContactModal.phone && (
-                <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   No contact information on file.
                 </div>
               )}
@@ -4501,7 +4501,7 @@ function StepFormModal({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360 }}>
         <h2 style={{ marginTop: 0 }}>{step ? 'Edit step' : 'Add step'}</h2>
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1rem' }}>
@@ -4584,8 +4584,8 @@ function StepFormModal({
                   top: '100%',
                   left: 0,
                   right: 0,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
                   borderRadius: '4px',
                   marginTop: '2px',
                   maxHeight: '200px',
@@ -4606,21 +4606,21 @@ function StepFormModal({
                       width: '100%',
                       padding: '0.5rem',
                       textAlign: 'left',
-                      background: 'white',
+                      background: 'var(--surface)',
                       border: 'none',
-                      borderBottom: idx < filteredMastersSubs.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      borderBottom: idx < filteredMastersSubs.length - 1 ? '1px solid var(--border)' : 'none',
                       cursor: 'pointer',
-                      color: '#111827'
+                      color: 'var(--text-strong)'
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#f9fafb'
+                      e.currentTarget.style.background = 'var(--bg-subtle)'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'white'
+                      e.currentTarget.style.background = 'var(--surface)'
                     }}
                   >
                     {item.name}
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                       ({item.source === 'user' ? 'user' : 'not user'})
                     </span>
                   </button>
@@ -4636,10 +4636,10 @@ function StepFormModal({
                       width: '100%',
                       padding: '0.5rem',
                       textAlign: 'left',
-                      background: '#eff6ff',
+                      background: 'var(--bg-blue-tint)',
                       border: 'none',
                       cursor: 'pointer',
-                      color: '#2563eb',
+                      color: 'var(--text-link)',
                       fontWeight: 500
                     }}
                     onMouseEnter={(e) => {
@@ -4705,10 +4705,10 @@ function StepFormModal({
 
       {showAddPerson && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 20 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Add Person</h3>
             {addPersonError && (
-              <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{addPersonError}</p>
+              <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>{addPersonError}</p>
             )}
             <form onSubmit={handleSaveNewPerson}>
               <div style={{ marginBottom: '1rem' }}>

@@ -37,10 +37,10 @@ const chevronStyle: CSSProperties = {
   minHeight: 24,
   padding: 0,
   fontSize: '0.75rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: '#fff',
-  color: '#374151',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
   cursor: 'pointer',
   boxSizing: 'border-box',
   flexShrink: 0,
@@ -208,7 +208,7 @@ export function UserWeekScheduleSection({
         margin: 0,
         fontSize: '1.05rem',
         fontWeight: 600,
-        color: '#111827',
+        color: 'var(--text-strong)',
         minWidth: 0,
         overflow: 'hidden',
         textOverflow: 'ellipsis',
@@ -235,7 +235,7 @@ export function UserWeekScheduleSection({
         >
           {displayName}
           {canSwitchUser ? (
-            <span aria-hidden style={{ marginLeft: '0.35rem', color: '#9ca3af', fontWeight: 400 }}>
+            <span aria-hidden style={{ marginLeft: '0.35rem', color: 'var(--text-faint)', fontWeight: 400 }}>
               ▾
             </span>
           ) : null}
@@ -256,8 +256,8 @@ export function UserWeekScheduleSection({
         fontSize: '0.8125rem',
         border: '1px solid #2563eb',
         borderRadius: 4,
-        background: '#eff6ff',
-        color: '#1d4ed8',
+        background: 'var(--bg-blue-tint)',
+        color: 'var(--text-blue-700)',
         cursor: 'pointer',
       }}
     >
@@ -273,7 +273,7 @@ export function UserWeekScheduleSection({
           flexDirection: 'column',
           gap: '0.4rem',
           padding: '0.75rem 1rem',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border)',
           flexShrink: 0,
         }}
       >
@@ -297,10 +297,10 @@ export function UserWeekScheduleSection({
             >
               <ChevronLeft size={14} strokeWidth={2.25} aria-hidden />
             </button>
-            <span style={{ fontSize: '0.875rem', color: '#374151', whiteSpace: 'nowrap' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-700)', whiteSpace: 'nowrap' }}>
               <span style={{ fontWeight: 600 }}>Week of</span>{' '}
               <span
-                style={{ color: '#111827', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}
+                style={{ color: 'var(--text-strong)', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}
               >
                 {weekRangeLabelCompact}
               </span>
@@ -337,7 +337,7 @@ export function UserWeekScheduleSection({
         />
 
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
         ) : (
           <div style={{ display: 'grid', gap: '0.25rem' }}>
             {daysYmd.map((dayYmd) => (
@@ -368,7 +368,7 @@ export function UserWeekScheduleSection({
       <div
         style={{
           flexShrink: 0,
-          borderTop: '1px solid #e5e7eb',
+          borderTop: '1px solid var(--border)',
           padding: '0.5rem 1rem 0.75rem',
           display: 'grid',
           gridTemplateColumns: '1fr auto 1fr',
@@ -385,8 +385,8 @@ export function UserWeekScheduleSection({
               fontSize: '0.8125rem',
               border: '1px solid #2563eb',
               borderRadius: 4,
-              background: '#eff6ff',
-              color: '#1d4ed8',
+              background: 'var(--bg-blue-tint)',
+              color: 'var(--text-blue-700)',
               textDecoration: 'none',
               cursor: 'pointer',
             }}
@@ -394,7 +394,7 @@ export function UserWeekScheduleSection({
             Dispatch
           </Link>
         </div>
-        <div style={{ justifySelf: 'center', color: '#9ca3af', fontSize: '0.75rem' }}>
+        <div style={{ justifySelf: 'center', color: 'var(--text-faint)', fontSize: '0.75rem' }}>
           {/* Week mode reserves no "+ Add block" button — staff add per-day from Dispatch. */}
         </div>
         <div style={{ justifySelf: 'end' }}>
@@ -404,11 +404,11 @@ export function UserWeekScheduleSection({
             style={{
               padding: '0.35rem 0.6rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
             aria-label="Close"
           >

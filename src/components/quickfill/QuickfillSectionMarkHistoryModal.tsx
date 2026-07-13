@@ -174,7 +174,7 @@ export function QuickfillSectionMarkHistoryModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 560,
           width: '100%',
@@ -189,7 +189,7 @@ export function QuickfillSectionMarkHistoryModal({
         <div
           style={{
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -205,8 +205,8 @@ export function QuickfillSectionMarkHistoryModal({
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#f9fafb',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--bg-subtle)',
               cursor: 'pointer',
               fontSize: '0.875rem',
             }}
@@ -215,8 +215,8 @@ export function QuickfillSectionMarkHistoryModal({
           </button>
         </div>
         <div style={{ padding: '1rem 1.25rem', overflow: 'auto', flex: 1 }}>
-          {loading && <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>}
-          {error && !loading && <p style={{ margin: 0, color: '#b91c1c' }}>{error}</p>}
+          {loading && <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p>}
+          {error && !loading && <p style={{ margin: 0, color: 'var(--text-red-700)' }}>{error}</p>}
           {!loading && !error && (
             <>
               <HistoryTable title="Last 7 days" rows={recentRows} emptyCopy="No marks in the last 7 days." />
@@ -243,18 +243,18 @@ export function QuickfillSectionMarkHistoryModal({
                     cursor: 'pointer',
                     fontSize: '0.9375rem',
                     fontWeight: 600,
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     textAlign: 'left',
                     fontFamily: 'inherit',
                     ...(loading ? { opacity: 0.55, cursor: 'not-allowed' } : {}),
                   }}
                 >
-                  <span aria-hidden="true" style={{ fontSize: '0.75rem', width: '1rem', flexShrink: 0, color: '#6b7280' }}>
+                  <span aria-hidden="true" style={{ fontSize: '0.75rem', width: '1rem', flexShrink: 0, color: 'var(--text-muted)' }}>
                     {olderExpanded ? '▼' : '▶'}
                   </span>
                   Earlier (all time)
                   {olderFetched && olderRows != null && !olderLoading && (
-                    <span style={{ fontWeight: 500, color: '#64748b', fontSize: '0.8125rem' }}>
+                    <span style={{ fontWeight: 500, color: 'var(--text-slate-500)', fontSize: '0.8125rem' }}>
                       ({olderRows.length} loaded)
                     </span>
                   )}
@@ -266,9 +266,9 @@ export function QuickfillSectionMarkHistoryModal({
                     aria-labelledby={`${olderPanelId}-trigger`}
                     style={{ marginTop: '0.65rem' }}
                   >
-                    {olderLoading && <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>}
+                    {olderLoading && <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>}
                     {olderError && !olderLoading && (
-                      <p style={{ margin: 0, fontSize: '0.875rem', color: '#b91c1c' }}>{olderError}</p>
+                      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{olderError}</p>
                     )}
                     {!olderLoading && !olderError && olderRows != null && (
                       <HistoryTable title="" rows={olderRows} emptyCopy="No older marks in this history window." />
@@ -296,15 +296,15 @@ function HistoryTable({
   return (
     <div style={{ marginBottom: '1.25rem' }}>
       {title !== '' && (
-        <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem', fontWeight: 600, color: '#374151' }}>{title}</h3>
+        <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-700)' }}>{title}</h3>
       )}
       {rows.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>{emptyCopy}</p>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>{emptyCopy}</p>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ textAlign: 'left', padding: '0.5rem 0.65rem', fontWeight: 600 }}>When</th>
                 <th style={{ textAlign: 'left', padding: '0.5rem 0.65rem', fontWeight: 600 }}>By</th>
                 <th style={{ textAlign: 'right', padding: '0.5rem 0.65rem', fontWeight: 600 }}>Open items</th>
@@ -326,7 +326,7 @@ function HistoryTable({
                       wordBreak: 'break-word',
                       whiteSpace: 'pre-wrap',
                       verticalAlign: 'top',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                     }}
                   >
                     {r.note_text == null || r.note_text === '' ? '—' : r.note_text}

@@ -40,9 +40,9 @@ const SEG_BTN = (active: boolean) =>
     padding: '0.3rem 0.7rem',
     fontSize: '0.8125rem',
     fontWeight: 600,
-    border: '1px solid #d1d5db',
-    background: active ? '#2563eb' : '#fff',
-    color: active ? '#fff' : '#374151',
+    border: '1px solid var(--border-strong)',
+    background: active ? '#2563eb' : 'var(--surface)',
+    color: active ? '#fff' : 'var(--text-700)',
     cursor: 'pointer',
   }) as const
 
@@ -105,7 +105,7 @@ export function BankingMercuryUserReviewPieView({
       {/* Controls */}
       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem' }}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}>
-          <span style={{ color: '#6b7280' }}>By</span>
+          <span style={{ color: 'var(--text-muted)' }}>By</span>
           <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden' }}>
             <button type="button" onClick={() => setPrimary('person')} style={{ ...SEG_BTN(primary === 'person'), borderRadius: '6px 0 0 6px' }}>
               Person
@@ -116,7 +116,7 @@ export function BankingMercuryUserReviewPieView({
           </div>
         </div>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem' }}>
-          <span style={{ color: '#6b7280' }}>Show</span>
+          <span style={{ color: 'var(--text-muted)' }}>Show</span>
           <div style={{ display: 'inline-flex', borderRadius: 6, overflow: 'hidden' }}>
             <button type="button" onClick={() => setDirection('out')} style={{ ...SEG_BTN(direction === 'out'), borderRadius: '6px 0 0 6px' }}>
               Spending
@@ -129,30 +129,30 @@ export function BankingMercuryUserReviewPieView({
       </div>
 
       {/* Breadcrumb */}
-      <div style={{ fontSize: '0.85rem', marginBottom: '0.5rem', color: '#374151' }}>
+      <div style={{ fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--text-700)' }}>
         {drillKey == null ? (
           <span style={{ fontWeight: 600 }}>
             All {primary === 'person' ? 'people' : 'categories'} · {formatUsd(total)}
-            <span style={{ fontWeight: 400, color: '#9ca3af' }}> · excludes internal transfers</span>
+            <span style={{ fontWeight: 400, color: 'var(--text-faint)' }}> · excludes internal transfers</span>
           </span>
         ) : (
           <span>
             <button
               type="button"
               onClick={() => setDrillKey(null)}
-              style={{ all: 'unset', cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
+              style={{ all: 'unset', cursor: 'pointer', color: 'var(--text-link)', fontWeight: 600 }}
             >
               ← All {primary === 'person' ? 'people' : 'categories'}
             </button>
-            <span style={{ color: '#9ca3af' }}> › </span>
+            <span style={{ color: 'var(--text-faint)' }}> › </span>
             <span style={{ fontWeight: 700 }}>{drillName}</span>
-            <span style={{ color: '#6b7280' }}> — by {otherDimLabel} · {formatUsd(total)}</span>
+            <span style={{ color: 'var(--text-muted)' }}> — by {otherDimLabel} · {formatUsd(total)}</span>
           </span>
         )}
       </div>
 
       {slices.length === 0 ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280', fontSize: '0.9rem', border: '1px dashed #d1d5db', borderRadius: 6 }}>
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
           No {direction === 'out' ? 'spending' : 'income'} in this period{drillName ? ` for ${drillName}` : ''}.
         </div>
       ) : (
@@ -191,7 +191,7 @@ export function BankingMercuryUserReviewPieView({
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '0.25rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-faint)', marginTop: '0.25rem', textAlign: 'center' }}>
             {drillKey == null
               ? `Click a ${primary} slice to break it down by ${otherDimLabel}.`
               : 'Click a slice to see its transactions.'}

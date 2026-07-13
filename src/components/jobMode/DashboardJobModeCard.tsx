@@ -54,8 +54,8 @@ type CurrentClockBidInfo = {
 const cardWrap: CSSProperties = {
   width: '100%',
   margin: '0 auto 0.75rem',
-  background: 'white',
-  border: '1px solid #d1d5db',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 12,
   padding: '1rem',
   boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
@@ -88,13 +88,13 @@ const headerName: CSSProperties = {
 
 const headerAddr: CSSProperties = {
   fontSize: '0.875rem',
-  color: '#4b5563',
+  color: 'var(--text-600)',
   lineHeight: 1.2,
 }
 
 const headerStatusLine: CSSProperties = {
   fontSize: '0.8125rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   marginTop: '0.15rem',
 }
 
@@ -151,7 +151,7 @@ const disabledBtnOverlay: CSSProperties = {
 
 const errorRow: CSSProperties = {
   fontSize: '0.8125rem',
-  color: '#b91c1c',
+  color: 'var(--text-red-700)',
   textAlign: 'center',
 }
 

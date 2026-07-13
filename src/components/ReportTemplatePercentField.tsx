@@ -42,7 +42,7 @@ export function ReportTemplatePercentField({ id, label, value, onChange }: Props
             minWidth: '3.25rem',
             fontSize: '0.875rem',
             fontWeight: 600,
-            color: '#374151',
+            color: 'var(--text-700)',
             textAlign: 'right',
           }}
         >

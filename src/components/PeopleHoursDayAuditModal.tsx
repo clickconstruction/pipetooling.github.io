@@ -551,10 +551,10 @@ export function PeopleHoursDayAuditModal({
         style={{
           padding: '0.5rem 0.65rem',
           border: '1px solid #fde68a',
-          background: '#fffbeb',
+          background: 'var(--bg-amber-tint)',
           borderRadius: 6,
           fontSize: '0.8125rem',
-          color: '#92400e',
+          color: 'var(--text-amber-800)',
           marginBottom: '0.75rem',
           display: 'flex',
           flexWrap: 'wrap',
@@ -579,7 +579,7 @@ export function PeopleHoursDayAuditModal({
               fontSize: '0.75rem',
               border: '1px solid #16a34a',
               borderRadius: 4,
-              background: '#f0fdf4',
+              background: 'var(--bg-green-tint)',
               color: '#15803d',
               cursor: 'pointer',
             }}
@@ -659,7 +659,7 @@ export function PeopleHoursDayAuditModal({
         />
       )}
       <div
-        style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%', maxHeight: '90vh', overflow: 'auto' }}
         role="dialog"
         aria-labelledby="hours-day-audit-title"
       >
@@ -672,7 +672,7 @@ export function PeopleHoursDayAuditModal({
               <button
                 type="button"
                 onClick={handleHeaderEditToggle}
-                style={{ padding: '0.35rem 0.65rem', border: '1px solid #2563eb', borderRadius: 4, background: '#eff6ff', color: '#1d4ed8', cursor: 'pointer', fontSize: '0.8125rem' }}
+                style={{ padding: '0.35rem 0.65rem', border: '1px solid #2563eb', borderRadius: 4, background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.8125rem' }}
               >
                 {isEditMode ? 'Done' : 'Edit'}
               </button>
@@ -683,14 +683,14 @@ export function PeopleHoursDayAuditModal({
                 exitEditMode()
                 onClose()
               }}
-              style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.8125rem' }}
+              style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.8125rem' }}
               aria-label="Close day audit"
             >
               Close
             </button>
           </div>
         </div>
-        <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 1rem 0' }}>
+        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
           {isEditMode && canEditCrewJobs
             ? 'Editing — save crew assignments with Save; clock changes apply when you confirm in the clock dialog.'
             : canEditCrewJobs
@@ -701,10 +701,10 @@ export function PeopleHoursDayAuditModal({
         <div
           style={{
             marginBottom: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '0.75rem',
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
           <div
@@ -716,7 +716,7 @@ export function PeopleHoursDayAuditModal({
               marginBottom: '0.5rem',
             }}
           >
-            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>Dispatch</span>
+            <span style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-strong)' }}>Dispatch</span>
             <Link
               to={scheduleDispatchHref}
               onClick={() => {
@@ -728,8 +728,8 @@ export function PeopleHoursDayAuditModal({
                 fontSize: '0.75rem',
                 border: '1px solid #2563eb',
                 borderRadius: 4,
-                background: '#eff6ff',
-                color: '#1d4ed8',
+                background: 'var(--bg-blue-tint)',
+                color: 'var(--text-blue-700)',
                 textDecoration: 'none',
                 whiteSpace: 'nowrap',
               }}
@@ -740,14 +740,14 @@ export function PeopleHoursDayAuditModal({
             </Link>
           </div>
           {sessionsUserMissing ? (
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
               No login account linked to this name in Users — dispatch cannot be shown.
             </p>
           ) : !resolvedClockUserId || dispatchData.loading ? (
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>Loading…</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>Loading…</p>
           ) : (
             <>
-              <div style={{ background: 'white', borderRadius: 6, border: '1px solid #e5e7eb', padding: '0.25rem 0.5rem', marginBottom: dispatchData.blocks.length > 0 ? '0.5rem' : 0 }}>
+              <div style={{ background: 'var(--surface)', borderRadius: 6, border: '1px solid var(--border)', padding: '0.25rem 0.5rem', marginBottom: dispatchData.blocks.length > 0 ? '0.5rem' : 0 }}>
                 <QuickfillScheduleUserRow
                   userId={resolvedClockUserId}
                   displayName={personName}
@@ -758,11 +758,11 @@ export function PeopleHoursDayAuditModal({
                 />
               </div>
               {dispatchData.blocks.length === 0 ? (
-                <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
                   No dispatch blocks for this day.
                 </p>
               ) : (
-                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#374151', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                   {dispatchData.blocks.map((b) => {
                     const jobLabel =
                       dispatchData.jobTitleById.get(b.job_id) ??
@@ -770,14 +770,14 @@ export function PeopleHoursDayAuditModal({
                     const note = (b.note ?? '').trim()
                     return (
                       <li key={b.id} style={{ lineHeight: 1.35 }}>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', color: '#111827', fontWeight: 500 }}>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-strong)', fontWeight: 500 }}>
                           {scheduleFormatWindow(b.time_start, b.time_end)}
                         </span>
-                        <span style={{ color: '#1d4ed8', marginLeft: '0.4rem' }} title={jobLabel}>
+                        <span style={{ color: 'var(--text-blue-700)', marginLeft: '0.4rem' }} title={jobLabel}>
                           {jobLabel}
                         </span>
                         {note ? (
-                          <span style={{ color: '#4b5563', marginLeft: '0.4rem' }} title={note}>
+                          <span style={{ color: 'var(--text-600)', marginLeft: '0.4rem' }} title={note}>
                             — {note}
                           </span>
                         ) : null}
@@ -793,24 +793,24 @@ export function PeopleHoursDayAuditModal({
         <div
           style={{
             marginBottom: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '0.75rem',
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
-          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#111827' }}>Clock sessions</div>
+          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--text-strong)' }}>Clock sessions</div>
           {sessionsUserMissing && (
-            <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0 }}>
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }}>
               No login account linked to this name in Users — clock sessions cannot be shown.
               {isEditMode ? ' Clock editing is unavailable.' : ''}
             </p>
           )}
-          {sessionsFetchError && <p style={{ fontSize: '0.8125rem', color: '#b91c1c', margin: 0 }}>{sessionsFetchError}</p>}
-          {sessionsLoading && <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>Loading…</p>}
+          {sessionsFetchError && <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: 0 }}>{sessionsFetchError}</p>}
+          {sessionsLoading && <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>Loading…</p>}
           {!sessionsLoading && !sessionsUserMissing && !sessionsFetchError && sessions.length === 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.5rem' }}>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No clock sessions for this day.</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No clock sessions for this day.</p>
               {isEditMode && canEditCrewJobs && resolvedClockUserId ? (
                 <button
                   type="button"
@@ -821,9 +821,9 @@ export function PeopleHoursDayAuditModal({
                   style={{
                     padding: '0.35rem 0.65rem',
                     fontSize: '0.8125rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: '#fff',
+                    background: 'var(--surface)',
                     cursor: 'pointer',
                   }}
                 >
@@ -880,21 +880,21 @@ export function PeopleHoursDayAuditModal({
                     style={{
                       fontSize: '0.8125rem',
                       padding: '0.45rem 0.5rem',
-                      background: 'white',
-                      border: '1px solid #e5e7eb',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       fontVariantNumeric: 'tabular-nums',
                     }}
                   >
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center', marginBottom: notesRaw ? '0.25rem' : 0 }}>
-                      <span style={{ color: '#374151' }}>
+                      <span style={{ color: 'var(--text-700)' }}>
                         {tIn.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
                         {' → '}
                         {tOut ? tOut.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : 'Open'}
                       </span>
-                      <span style={{ color: '#6b7280' }}>({formatHmsTotal(durSec)})</span>
+                      <span style={{ color: 'var(--text-muted)' }}>({formatHmsTotal(durSec)})</span>
                       {linkLabel && (
-                        <span style={{ color: '#1d4ed8', fontWeight: 500 }} title={linkLabel}>
+                        <span style={{ color: 'var(--text-blue-700)', fontWeight: 500 }} title={linkLabel}>
                           {linkLabel}
                         </span>
                       )}
@@ -914,8 +914,8 @@ export function PeopleHoursDayAuditModal({
                           textTransform: 'uppercase',
                           borderRadius: 4,
                           border: `1px solid ${isApproved ? '#16a34a' : isClosed ? '#d97706' : '#6b7280'}`,
-                          background: isApproved ? '#f0fdf4' : isClosed ? '#fffbeb' : '#f3f4f6',
-                          color: isApproved ? '#166534' : isClosed ? '#b45309' : '#374151',
+                          background: isApproved ? '#f0fdf4' : isClosed ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
+                          color: isApproved ? '#166534' : isClosed ? 'var(--text-amber-700)' : 'var(--text-700)',
                         }}
                       >
                         {isApproved ? 'Approved' : isClosed ? 'Pending' : 'Open'}
@@ -951,8 +951,8 @@ export function PeopleHoursDayAuditModal({
                                 fontSize: '0.75rem',
                                 border: `1px solid ${isApproving ? '#9ca3af' : '#16a34a'}`,
                                 borderRadius: 4,
-                                background: isApproving ? '#f3f4f6' : '#f0fdf4',
-                                color: isApproving ? '#6b7280' : '#15803d',
+                                background: isApproving ? 'var(--bg-muted)' : 'var(--bg-green-tint)',
+                                color: isApproving ? 'var(--text-muted)' : '#15803d',
                                 cursor: isApproving ? 'not-allowed' : 'pointer',
                               }}
                             >
@@ -963,7 +963,7 @@ export function PeopleHoursDayAuditModal({
                             <button
                               type="button"
                               onClick={() => setClockEditSession(s)}
-                              style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                              style={{ padding: '0.15rem 0.45rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                             >
                               Edit
                             </button>
@@ -972,7 +972,7 @@ export function PeopleHoursDayAuditModal({
                       ) : null}
                     </div>
                     {notesRaw ? (
-                      <div style={{ color: '#4b5563' }} title={notesRaw}>
+                      <div style={{ color: 'var(--text-600)' }} title={notesRaw}>
                         {notesDisplay || '—'}
                       </div>
                     ) : null}
@@ -986,19 +986,19 @@ export function PeopleHoursDayAuditModal({
         <div
           style={{
             marginBottom: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '0.75rem',
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
-          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#111827' }}>Job / bid assignments</div>
+          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: 'var(--text-strong)' }}>Job / bid assignments</div>
 
           {pendingApproveBanner}
 
           {isEditMode && canEditCrewJobs ? (
             <>
-              {crewSaveError ? <p style={{ fontSize: '0.8125rem', color: '#b91c1c', margin: '0 0 0.5rem 0' }}>{crewSaveError}</p> : null}
+              {crewSaveError ? <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: '0 0 0.5rem 0' }}>{crewSaveError}</p> : null}
               <div style={{ marginBottom: '1rem' }}>
                     <div style={{ marginBottom: '0.35rem' }}>
                       <label style={{ fontSize: '0.875rem' }}>Assignments</label>
@@ -1010,7 +1010,7 @@ export function PeopleHoursDayAuditModal({
                         return (
                           <span
                             key={getAssignmentKey(a)}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.8125rem' }}
                           >
                             <span>{label}</span>
                             <input
@@ -1036,7 +1036,7 @@ export function PeopleHoursDayAuditModal({
                                 setDraft({ ...draftRow, unifiedAssignments: newAssignments })
                                 setCrewDirty(true)
                               }}
-                              style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                              style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                             />
                             %
                             <button
@@ -1057,7 +1057,7 @@ export function PeopleHoursDayAuditModal({
                                 setDraft({ ...draftRow, unifiedAssignments: newAssignments })
                                 setCrewDirty(true)
                               }}
-                              style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1 }}
+                              style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1 }}
                               title="Remove"
                             >
                               ×
@@ -1073,7 +1073,7 @@ export function PeopleHoursDayAuditModal({
                             setJobSearchText('')
                             setJobSearchResults([])
                           }}
-                          style={{ padding: '0.2rem 0.5rem', border: '1px dashed #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.8125rem' }}
+                          style={{ padding: '0.2rem 0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.8125rem' }}
                         >
                           +
                         </button>
@@ -1085,7 +1085,7 @@ export function PeopleHoursDayAuditModal({
                             value={jobSearchText}
                             onChange={(e) => setJobSearchText(e.target.value)}
                             autoFocus
-                            style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                            style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                           />
                           <div style={{ maxHeight: 200, overflow: 'auto', marginBottom: '0.5rem' }}>
                             {jobSearchResults.map((item) => (
@@ -1116,7 +1116,7 @@ export function PeopleHoursDayAuditModal({
                                   setJobSearchText('')
                                   setJobSearchResults([])
                                 }}
-                                style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                                style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                               >
                                 <div style={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                   {(() => {
@@ -1132,7 +1132,7 @@ export function PeopleHoursDayAuditModal({
                                     : formatBidLedgerShortLine(prefixMap, item.service_type_id ?? null, item.bid_number, item.project_name)}
                                 </div>
                                 {(item.type === 'job' ? item.job_address : item.address) ? (
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{item.type === 'job' ? item.job_address : item.address}</div>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{item.type === 'job' ? item.job_address : item.address}</div>
                                 ) : null}
                               </button>
                             ))}
@@ -1175,7 +1175,7 @@ export function PeopleHoursDayAuditModal({
             <>
               {!initialCrewRow || (initialCrewRow.unifiedAssignments?.length ?? 0) === 0 ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No job or bid assignments for this day.</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No job or bid assignments for this day.</p>
                   {canEditCrewJobs ? (
                     <button
                       type="button"
@@ -1190,8 +1190,8 @@ export function PeopleHoursDayAuditModal({
                         fontSize: '0.8125rem',
                         border: '1px solid #2563eb',
                         borderRadius: 4,
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        background: 'var(--bg-blue-tint)',
+                        color: 'var(--text-blue-700)',
                         cursor: 'pointer',
                       }}
                       title="Open the search and add a job or bid for this day."
@@ -1201,7 +1201,7 @@ export function PeopleHoursDayAuditModal({
                   ) : null}
                 </div>
               ) : (
-                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: '#374151' }}>
+                <ul style={{ margin: 0, paddingLeft: '1.25rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                   {initialCrewRow.unifiedAssignments.map((a) => {
                     const details = a.type === 'job' ? jobDetailsMap[a.id] : bidDetailsMap[a.id]
                     const label = formatAssignmentLabel(a.type, details, prefixMap)

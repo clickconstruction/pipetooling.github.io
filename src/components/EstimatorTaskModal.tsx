@@ -244,7 +244,7 @@ export default function EstimatorTaskModal() {
         <h3 id="estimator-task-modal-title" style={{ marginTop: 0, marginBottom: 0 }}>
           Send to Estimator Inbox
         </h3>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.9375rem', color: '#64748b', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.9375rem', color: 'var(--text-slate-500)', lineHeight: 1.5 }}>
           Describe what you need for estimating and the inbox group will see it.
         </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -264,13 +264,13 @@ export default function EstimatorTaskModal() {
               }}
             />
           </label>
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '1rem', background: '#f8fafc' }}>
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: '1rem', background: 'var(--bg-slate-tint)' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ marginBottom: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.25rem' }}>
                   <span>Reference Job or Bid</span>
               {serviceTypes.length === 1 ? (
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Filtering by: {serviceTypes[0]!.name}</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Filtering by: {serviceTypes[0]!.name}</span>
               ) : serviceTypes.length > 1 ? (
                 <BidServiceTypeSearchToggles
                   serviceTypes={serviceTypes}
@@ -298,7 +298,7 @@ export default function EstimatorTaskModal() {
                   style={{
                     flex: 1,
                     padding: '0.5rem',
-                    background: '#f3f4f6',
+                    background: 'var(--bg-muted)',
                     borderRadius: 4,
                     fontSize: '0.875rem',
                     display: 'flex',
@@ -328,7 +328,7 @@ export default function EstimatorTaskModal() {
                     fontSize: '0.875rem',
                     border: '1px solid #e2e8f0',
                     borderRadius: 8,
-                    background: 'white',
+                    background: 'var(--surface)',
                     cursor: sending ? 'not-allowed' : 'pointer',
                   }}
                 >
@@ -337,7 +337,7 @@ export default function EstimatorTaskModal() {
               </div>
             )}
             {referenceNoHits ? (
-              <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>No matches.</p>
+              <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No matches.</p>
             ) : null}
             {unifiedSearchResults.length > 0 && (
               <div
@@ -372,7 +372,7 @@ export default function EstimatorTaskModal() {
                           ? '#eff6ff'
                           : 'white',
                       cursor: sending ? 'not-allowed' : 'pointer',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       fontSize: '0.875rem',
                     }}
                   >
@@ -456,11 +456,11 @@ export default function EstimatorTaskModal() {
                     alignItems: 'center',
                     gap: '0.35rem',
                     padding: '0.4rem 0.75rem',
-                    background: '#eff6ff',
+                    background: 'var(--bg-blue-tint)',
                     border: '1px solid #bfdbfe',
                     borderRadius: 9999,
                     cursor: sending || locationLoading ? 'not-allowed' : 'pointer',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                     fontSize: '0.875rem',
                     fontWeight: 500,
                   }}
@@ -475,7 +475,7 @@ export default function EstimatorTaskModal() {
                       alignItems: 'center',
                       gap: '0.35rem',
                       padding: '0.2rem 0.5rem',
-                      background: '#dcfce7',
+                      background: 'var(--bg-green-100)',
                       borderRadius: 4,
                       fontSize: '0.8125rem',
                       color: '#166534',
@@ -495,7 +495,7 @@ export default function EstimatorTaskModal() {
                         background: 'none',
                         border: 'none',
                         cursor: sending ? 'not-allowed' : 'pointer',
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                         fontSize: '1rem',
                         lineHeight: 1,
                       }}
@@ -506,7 +506,7 @@ export default function EstimatorTaskModal() {
                   </span>
                 )}
               </div>
-              <span style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'left' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'left' }}>
                 Helps the crew find you faster
               </span>
             </div>
@@ -526,11 +526,11 @@ export default function EstimatorTaskModal() {
                     alignItems: 'center',
                     gap: '0.35rem',
                     padding: '0.35rem 0.65rem',
-                    background: '#eff6ff',
+                    background: 'var(--bg-blue-tint)',
                     border: '1px solid #bfdbfe',
                     borderRadius: 9999,
                     cursor: 'pointer',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                     fontSize: '0.875rem',
                     fontWeight: 500,
                   }}
@@ -569,7 +569,7 @@ export default function EstimatorTaskModal() {
                         style={{
                           flexShrink: 0,
                           padding: '0.25rem 0.5rem',
-                          background: '#f3f4f6',
+                          background: 'var(--bg-muted)',
                           border: '1px solid #e2e8f0',
                           borderRadius: 8,
                           cursor: 'pointer',
@@ -595,7 +595,7 @@ export default function EstimatorTaskModal() {
                           background: 'none',
                           border: 'none',
                           cursor: 'pointer',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           fontSize: '1.25rem',
                           lineHeight: 1,
                         }}
@@ -606,14 +606,14 @@ export default function EstimatorTaskModal() {
                     </div>
                   ))}
                 </div>
-                <p style={{ margin: '0.5rem 0 0', color: '#6b7280', fontSize: '0.8125rem', textAlign: 'center' }}>
+                <p style={{ margin: '0.5rem 0 0', color: 'var(--text-muted)', fontSize: '0.8125rem', textAlign: 'center' }}>
                   Use [1], [2] in the title for link placeholders.
                 </p>
               </div>
             ) : null}
             </div>
           </div>
-          {formError && <p style={{ color: '#b91c1c', margin: 0, fontSize: '0.875rem' }}>{formError}</p>}
+          {formError && <p style={{ color: 'var(--text-red-700)', margin: 0, fontSize: '0.875rem' }}>{formError}</p>}
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -637,8 +637,8 @@ export default function EstimatorTaskModal() {
               disabled={sending}
               style={{
                 padding: '0.6rem 1.25rem',
-                background: '#f1f5f9',
-                color: '#475569',
+                background: 'var(--bg-slate-100)',
+                color: 'var(--text-slate-600)',
                 border: 'none',
                 borderRadius: 8,
                 cursor: sending ? 'not-allowed' : 'pointer',

@@ -185,7 +185,7 @@ export default function Customers() {
   }, [location.state?.openEditCustomer, editCustomerModal, navigate])
 
   if (loading) return <p>Loading customers…</p>
-  if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
+  if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
 
   const defaultTypeCount = customers.filter(isCustomerCommercialDefaultType).length
   const typeFromUrl = parseCustomerTypeFilter(searchParams.get('type'))
@@ -248,10 +248,10 @@ export default function Customers() {
               }
               style={{
                 padding: '0.35rem 0.75rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: typeFilter === t ? '#2563eb' : 'white',
-                color: typeFilter === t ? 'white' : '#374151',
+                background: typeFilter === t ? '#2563eb' : 'var(--surface)',
+                color: typeFilter === t ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -271,10 +271,10 @@ export default function Customers() {
               }
               style={{
                 padding: '0.35rem 0.75rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: typeFilter === 'commercial_default' ? '#2563eb' : 'white',
-                color: typeFilter === 'commercial_default' ? 'white' : '#374151',
+                background: typeFilter === 'commercial_default' ? '#2563eb' : 'var(--surface)',
+                color: typeFilter === 'commercial_default' ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -293,7 +293,7 @@ export default function Customers() {
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
-            style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
         </div>
         </>
@@ -303,7 +303,7 @@ export default function Customers() {
           <button
             type="button"
             onClick={() => newCustomerModal?.openNewCustomerModal({ onCreated: fetchCustomers })}
-            style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline' }}
           >
             Add one
           </button>
@@ -317,7 +317,7 @@ export default function Customers() {
               key={c.id}
               style={{
                 padding: '0.75rem 0',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'stretch',
@@ -368,16 +368,16 @@ export default function Customers() {
                         fontWeight: 500,
                         padding: '0.1rem 0.4rem',
                         borderRadius: 4,
-                        background: '#f3f4f6',
-                        color: '#4b5563',
-                        border: '1px solid #e5e7eb',
+                        background: 'var(--bg-muted)',
+                        color: 'var(--text-600)',
+                        border: '1px solid var(--border)',
                       }}
                     >
                       {customerTypeTagLabel(c)}
                     </span>
                   ) : null}
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   {c.address && <span>{c.address}</span>}
                   {c.address && (
                     <a
@@ -388,7 +388,7 @@ export default function Customers() {
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
-                        color: '#2563eb',
+                        color: 'var(--text-link)',
                         textDecoration: 'none',
                         cursor: 'pointer',
                       }}
@@ -416,7 +416,7 @@ export default function Customers() {
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: '#2563eb',
+                              color: 'var(--text-link)',
                               textDecoration: 'none',
                               cursor: 'pointer',
                             }}
@@ -438,7 +438,7 @@ export default function Customers() {
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
-                              color: '#2563eb',
+                              color: 'var(--text-link)',
                               textDecoration: 'none',
                               cursor: 'pointer',
                             }}
@@ -474,7 +474,7 @@ export default function Customers() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           cursor: 'pointer',
                           padding: 0,
                           font: 'inherit',
@@ -492,7 +492,7 @@ export default function Customers() {
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           cursor: 'pointer',
                           padding: 0,
                           font: 'inherit',
@@ -510,10 +510,10 @@ export default function Customers() {
                   style={{
                     width: '100%',
                     boxSizing: 'border-box',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                     marginTop: '0.75rem',
                     paddingTop: '0.75rem',
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     maxHeight: 'min(70vh, 480px)',
                     overflow: 'auto',
                   }}
@@ -549,7 +549,7 @@ export default function Customers() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: '800px',
@@ -584,7 +584,7 @@ export default function Customers() {
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)' }}>
                     <th style={{ textAlign: 'left', padding: '0.5rem' }}>Project Name</th>
                     <th style={{ textAlign: 'left', padding: '0.5rem' }}>Status</th>
                     <th style={{ textAlign: 'left', padding: '0.5rem' }}>Bid Due Date</th>
@@ -593,7 +593,7 @@ export default function Customers() {
                 </thead>
                 <tbody>
                   {bidsForCustomer.map((bid) => (
-                    <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr key={bid.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.5rem' }}>{bid.project_name || '—'}</td>
                       <td style={{ padding: '0.5rem' }}>
                         <span

@@ -277,7 +277,7 @@ export function ProjectsForecastAllStagesTab({
             )}
           </div>
           {searchMatchStatus && (
-            <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} aria-live="polite">
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} aria-live="polite">
               {searchMatchStatus}
             </span>
           )}
@@ -313,7 +313,7 @@ export function ProjectsForecastAllStagesTab({
             />
           </label>
           {rangeInvalid && (
-            <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
               Pick both dates to set the range.
             </span>
           )}
@@ -336,7 +336,7 @@ export function ProjectsForecastAllStagesTab({
             alignItems: 'center',
             gap: '0.4rem',
             fontSize: '0.875rem',
-            color: '#374151',
+            color: 'var(--text-700)',
             cursor: 'pointer',
           }}
         >
@@ -408,7 +408,7 @@ function JobGutterLabel({
       <span
         style={{
           fontWeight: 600,
-          color: '#0f172a',
+          color: 'var(--text-slate-900)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           whiteSpace: 'nowrap',
@@ -420,7 +420,7 @@ function JobGutterLabel({
         <span
           style={{
             fontSize: '0.6875rem',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',

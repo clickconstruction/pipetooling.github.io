@@ -213,7 +213,7 @@ export function MapGeocodeReviewModal({
         aria-modal="true"
         aria-labelledby="map-geocode-review-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           color: '#111',
           maxWidth: 640,
           width: '100%',
@@ -231,7 +231,7 @@ export function MapGeocodeReviewModal({
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '0.75rem 1rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <h2 id="map-geocode-review-title" style={{ margin: 0, fontSize: '1.1rem' }}>
@@ -247,15 +247,15 @@ export function MapGeocodeReviewModal({
             Close
           </button>
         </div>
-        <p style={{ margin: 0, padding: '0.5rem 1rem 0', fontSize: '0.875rem', color: '#4b5563' }}>
+        <p style={{ margin: 0, padding: '0.5rem 1rem 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>
           Select addresses, then <strong>Rerun Google</strong> to refresh coordinates from Google only (ignores Nominatim and the cache
           for that request). Use this if a pin is wrong or the address text was updated elsewhere.
         </p>
         {batchError ? (
-          <p style={{ color: '#b91c1c', margin: '0.25rem 1rem 0', fontSize: '0.875rem' }}>{batchError}</p>
+          <p style={{ color: 'var(--text-red-700)', margin: '0.25rem 1rem 0', fontSize: '0.875rem' }}>{batchError}</p>
         ) : null}
         {loadingMeta ? (
-          <p style={{ margin: '0.5rem 1rem', color: '#6b7280', fontSize: '0.875rem' }}>Loading times…</p>
+          <p style={{ margin: '0.5rem 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading times…</p>
         ) : null}
         <div
           style={{
@@ -278,16 +278,16 @@ export function MapGeocodeReviewModal({
             flex: 1,
             overflow: 'auto',
             margin: '0.5rem 0',
-            borderTop: '1px solid #e5e7eb',
-            borderBottom: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           {groups.length === 0 ? (
-            <p style={{ padding: '1rem', color: '#6b7280', margin: 0, fontSize: '0.875rem' }}>No geocoded addresses in the current layer view.</p>
+            <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0, fontSize: '0.875rem' }}>No geocoded addresses in the current layer view.</p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ background: '#f9fafb' }}>
+                <tr style={{ background: 'var(--bg-subtle)' }}>
                   <th style={{ width: 32, textAlign: 'left', padding: '0.35rem 0.5rem' }}> </th>
                   <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Address</th>
                   <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>References</th>
@@ -302,7 +302,7 @@ export function MapGeocodeReviewModal({
                   const statusText =
                     st === 'pending' ? '…' : st === 'ok' ? 'OK' : st === 'err' ? (stMsg ?? 'Error') : '—'
                   return (
-                    <tr key={g.addressKey} style={{ borderTop: '1px solid #e5e7eb' }}>
+                    <tr key={g.addressKey} style={{ borderTop: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.35rem 0.5rem' }}>
                         <input
                           type="checkbox"
@@ -313,12 +313,12 @@ export function MapGeocodeReviewModal({
                         />
                       </td>
                       <td style={{ padding: '0.35rem 0.5rem', wordBreak: 'break-word' }}>{g.addressLabel}</td>
-                      <td style={{ padding: '0.35rem 0.5rem', color: '#4b5563' }}>{g.refSummary}</td>
-                      <td style={{ padding: '0.35rem 0.5rem', color: '#4b5563' }}>{formatGeocodedAt(geocodedAtByKey[g.addressKey] ?? null)}</td>
+                      <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-600)' }}>{g.refSummary}</td>
+                      <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-600)' }}>{formatGeocodedAt(geocodedAtByKey[g.addressKey] ?? null)}</td>
                       <td
                         style={{
                           padding: '0.35rem 0.5rem',
-                          color: st === 'err' ? '#b91c1c' : st === 'ok' ? '#15803d' : '#6b7280',
+                          color: st === 'err' ? '#b91c1c' : st === 'ok' ? '#15803d' : 'var(--text-muted)',
                         }}
                       >
                         {statusText}

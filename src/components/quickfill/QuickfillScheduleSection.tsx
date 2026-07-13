@@ -309,7 +309,7 @@ export function QuickfillScheduleSection({
   const quickfillAssignJobPickerSubtitle = useMemo((): ReactNode => {
     if (!cellAddContext) return null
     return (
-      <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563' }}>
+      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-600)' }}>
         Pick a job to add a block for <strong>{quickfillCellChoiceSubtitle}</strong>.
       </p>
     )
@@ -624,7 +624,7 @@ export function QuickfillScheduleSection({
             minWidth: 0,
             padding: '0.4rem 0.5rem',
             fontSize: '0.875rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
           }}
         />
@@ -635,11 +635,11 @@ export function QuickfillScheduleSection({
             style={{
               padding: '0.4rem 0.6rem',
               fontSize: '0.8125rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
           >
             Clear
@@ -657,10 +657,10 @@ export function QuickfillScheduleSection({
           style={{
             padding: '0.4rem 0.6rem',
             fontSize: '0.8125rem',
-            border: hideAssistantsEstimators ? '1px solid #2563eb' : '1px solid #d1d5db',
+            border: hideAssistantsEstimators ? '1px solid #2563eb' : '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: hideAssistantsEstimators ? '#eff6ff' : '#fff',
-            color: hideAssistantsEstimators ? '#1d4ed8' : '#374151',
+            background: hideAssistantsEstimators ? 'var(--bg-blue-tint)' : 'var(--surface)',
+            color: hideAssistantsEstimators ? 'var(--text-blue-700)' : 'var(--text-700)',
             cursor: 'pointer',
             fontWeight: hideAssistantsEstimators ? 600 : 400,
           }}
@@ -678,16 +678,16 @@ export function QuickfillScheduleSection({
           fontSize: '0.875rem',
         }}
       >
-        <span style={{ color: '#374151', fontWeight: 600 }}>{dayLabel}</span>
+        <span style={{ color: 'var(--text-700)', fontWeight: 600 }}>{dayLabel}</span>
         <button
           type="button"
           onClick={() => setWorkDate((d) => ymdAddDays(d, -1))}
           style={{
             padding: '0.25rem 0.5rem',
             fontSize: '0.8125rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: '#fff',
+            background: 'var(--surface)',
             cursor: 'pointer',
           }}
         >
@@ -699,9 +699,9 @@ export function QuickfillScheduleSection({
           style={{
             padding: '0.25rem 0.5rem',
             fontSize: '0.8125rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: '#fff',
+            background: 'var(--surface)',
             cursor: 'pointer',
           }}
         >
@@ -713,10 +713,10 @@ export function QuickfillScheduleSection({
           style={{
             padding: '0.25rem 0.5rem',
             fontSize: '0.8125rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: '#fff',
-            color: '#374151',
+            background: 'var(--surface)',
+            color: 'var(--text-700)',
             cursor: 'pointer',
             textDecoration: 'none',
             display: 'inline-block',
@@ -733,8 +733,8 @@ export function QuickfillScheduleSection({
               fontSize: '0.8125rem',
               border: '1px solid #2563eb',
               borderRadius: 4,
-              background: '#eff6ff',
-              color: '#1d4ed8',
+              background: 'var(--bg-blue-tint)',
+              color: 'var(--text-blue-700)',
               cursor: 'pointer',
             }}
           >
@@ -743,15 +743,15 @@ export function QuickfillScheduleSection({
         ) : null}
       </div>
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : sortedUsers.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No users in the Schedule Dispatch roster.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No users in the Schedule Dispatch roster.</p>
       ) : rosterFilteredUsers.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
           No one to show with assistants and estimators hidden. Turn off “Hide assistants and estimators” to see them.
         </p>
       ) : filteredSortedUsers.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No people match this search.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No people match this search.</p>
       ) : (
         <div>
           <div
@@ -783,7 +783,7 @@ export function QuickfillScheduleSection({
                     left: dispatchAddBlockTrackThumbLeftPct(slotIndex, DISPATCH_ADD_BLOCK_SLOT_COUNT),
                     transform: 'translateX(-50%)',
                     fontSize: '0.65rem',
-                    color: '#9ca3af',
+                    color: 'var(--text-faint)',
                     lineHeight: 1.2,
                     whiteSpace: 'nowrap',
                   }}
@@ -810,7 +810,7 @@ export function QuickfillScheduleSection({
                     margin: '0 0 0.5rem 0',
                     fontSize: '1rem',
                     fontWeight: 600,
-                    color: '#111827',
+                    color: 'var(--text-strong)',
                     textAlign: 'center',
                   }}
                 >

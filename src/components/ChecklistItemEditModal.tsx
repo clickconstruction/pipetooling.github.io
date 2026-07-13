@@ -214,7 +214,7 @@ export function ChecklistItemEditModal({
       onClick={onClose}
     >
       <div
-        style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 id="checklist-edit-modal-title" style={{ marginTop: 0 }}>Edit checklist item</h3>
@@ -296,8 +296,8 @@ export function ChecklistItemEditModal({
                     style={{
                       flexShrink: 0,
                       padding: '0.25rem 0.5rem',
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
+                      background: 'var(--bg-muted)',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
                       cursor: 'pointer',
                       fontSize: '0.875rem',
@@ -330,7 +330,7 @@ export function ChecklistItemEditModal({
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       fontSize: '1.25rem',
                       lineHeight: 1,
                     }}
@@ -349,7 +349,7 @@ export function ChecklistItemEditModal({
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
-                  color: '#2563eb',
+                  color: 'var(--text-link)',
                   textDecoration: 'underline',
                   fontSize: '0.875rem',
                 }}
@@ -383,7 +383,7 @@ export function ChecklistItemEditModal({
                   cursor: 'pointer',
                   fontWeight: 500,
                   fontSize: '1rem',
-                  color: '#9ca3af',
+                  color: 'var(--text-faint)',
                   flexShrink: 0,
                 }}
               >
@@ -506,7 +506,7 @@ export function ChecklistItemEditModal({
                               background: 'none',
                               border: 'none',
                               cursor: 'pointer',
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                             }}
                             title="What each option means"
                           >
@@ -563,7 +563,7 @@ export function ChecklistItemEditModal({
           >
             <div
               style={{
-                background: 'white',
+                background: 'var(--surface)',
                 padding: '1.5rem',
                 borderRadius: 8,
                 maxWidth: 420,
@@ -576,13 +576,13 @@ export function ChecklistItemEditModal({
               <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
                 <strong>Due date</strong> – Remind only when there is an incomplete instance due today.
               </p>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 Example: &quot;Call client&quot; is due Monday. You get a reminder Monday at 9am if it&apos;s not done. You do not get a reminder Tuesday, Wednesday, etc., even if it&apos;s still incomplete.
               </p>
               <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9375rem', lineHeight: 1.5 }}>
                 <strong>Due date + daily until done</strong> – Remind when there is an incomplete instance due today or earlier.
               </p>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 Example: &quot;Call client&quot; was due Monday. If it&apos;s still incomplete, you get a reminder every day at 9am (Tuesday, Wednesday, etc.) until it&apos;s completed.
               </p>
               <button
@@ -606,7 +606,7 @@ export function ChecklistItemEditModal({
             boxSizing: 'border-box',
           }}
         >
-          <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>
+          <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
             Cancel
           </button>
           <button type="button" onClick={handleSave} disabled={saving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}>

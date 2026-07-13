@@ -154,16 +154,16 @@ export function BilledAwaitingPaymentSection() {
           fontWeight: 600,
           marginBottom: '0.75rem',
           textAlign: 'left',
-          color: '#374151',
+          color: 'var(--text-700)',
         }}
       >
         {rows.length} line{rows.length !== 1 ? 's' : ''} · ${formatCurrency(total)} remaining
       </div>
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
-            <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+            <tr style={{ borderBottom: '1px solid var(--border)' }}>
               <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left' }}>HCP</th>
               <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left' }}>Job</th>
               <th style={{ padding: '0.75rem 0.5rem', textAlign: 'left' }}>Assigned</th>
@@ -172,7 +172,7 @@ export function BilledAwaitingPaymentSection() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <tr key={r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '0.75rem 0.5rem' }}>{effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'}</td>
                 <td style={{ padding: '0.75rem 0.5rem' }}>{r.job.job_name || '—'}</td>
                 <td style={{ padding: '0.75rem 0.5rem' }}>{r.assigned.join(', ') || '—'}</td>

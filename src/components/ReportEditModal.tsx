@@ -113,7 +113,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 400,
@@ -127,14 +127,14 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Edit report</h2>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {displayReportTemplateName(report?.template_name ?? 'Report', viewerRole)} · {report?.job_display_name ?? 'Unknown job'}
             </p>
           </div>
           <button
             type="button"
             onClick={handleClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#6b7280', lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)', lineHeight: 1 }}
             aria-label="Close"
           >
             ×
@@ -158,7 +158,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
                         onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
                       />
                       {showLegacy ? (
-                        <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4, marginBottom: 0 }}>
+                        <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4, marginBottom: 0 }}>
                           Previous answer: {rawVal}
                         </p>
                       ) : null}
@@ -185,20 +185,20 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
                       value={fieldValues[f.label] ?? ''}
                       onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
                       rows={3}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
                 )
               })}
             </div>
           ) : (
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No fields to edit.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>No fields to edit.</p>
           )}
 
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>
+            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
               Cancel
             </button>
             <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', background: saving ? '#9ca3af' : '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}>

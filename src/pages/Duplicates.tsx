@@ -178,18 +178,18 @@ export default function Duplicates() {
     <div style={{ padding: '2rem', maxWidth: 900 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
         <h1 style={{ margin: 0 }}>Duplicate Materials</h1>
-        <Link to="/materials" style={{ fontSize: '0.875rem', color: '#3b82f6' }}>
+        <Link to="/materials" style={{ fontSize: '0.875rem', color: 'var(--text-blue-500)' }}>
           ← Back to Materials
         </Link>
       </div>
 
-      <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
         Parts with matching names or 80%+ name similarity are grouped below. Delete duplicates to clean up the Parts Book.
       </p>
 
       {!loading && duplicateGroups.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
             <input
               type="checkbox"
               checked={onlyExactMatch}
@@ -197,7 +197,7 @@ export default function Duplicates() {
             />
             Only show 100% name match
           </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: '#374151' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
             <span>Only show service types:</span>
             {serviceTypes.map((st) => (
               <label key={st.id} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
@@ -221,15 +221,15 @@ export default function Duplicates() {
       )}
 
       {error && (
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
           {error}
         </div>
       )}
 
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : duplicateGroups.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No duplicate materials found.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No duplicate materials found.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {(() => {
@@ -243,25 +243,25 @@ export default function Duplicates() {
             <div
               key={idx}
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 overflow: 'hidden',
-                background: '#fff',
+                background: 'var(--surface)',
               }}
             >
-              <div style={{ padding: '0.75rem 1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontWeight: 500 }}>
+              <div style={{ padding: '0.75rem 1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>
                 {group.length} duplicates
               </div>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f3f4f6' }}>
+                <thead style={{ background: 'var(--bg-muted)' }}>
                   <tr>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Manufacturer</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part Type</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Service Type</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Best Price</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
-                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}></th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Manufacturer</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part Type</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Service Type</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Best Price</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
+                    <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -283,7 +283,7 @@ export default function Duplicates() {
                             setDeleteConfirmName('')
                             setError(null)
                           }}
-                          style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                          style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
                         >
                           Delete
                         </button>
@@ -300,9 +300,9 @@ export default function Duplicates() {
 
       {deleteConfirmPart && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
-            <h3 style={{ margin: '0 0 1rem', color: '#b91c1c' }}>Delete material</h3>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%' }}>
+            <h3 style={{ margin: '0 0 1rem', color: 'var(--text-red-700)' }}>Delete material</h3>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
               Type <strong>{deleteConfirmPart.name}</strong> to confirm. All prices for this part will also be removed.
             </p>
             <input
@@ -313,7 +313,7 @@ export default function Duplicates() {
                 setError(null)
               }}
               placeholder={deleteConfirmPart.name}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem' }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem' }}
               autoFocus
             />
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -324,7 +324,7 @@ export default function Duplicates() {
                   setDeleteConfirmName('')
                   setError(null)
                 }}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>

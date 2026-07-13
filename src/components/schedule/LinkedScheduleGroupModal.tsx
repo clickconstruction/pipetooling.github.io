@@ -99,7 +99,7 @@ export function LinkedScheduleGroupModal({
         aria-modal
         aria-labelledby="linked-group-modal-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 720,
@@ -113,30 +113,30 @@ export function LinkedScheduleGroupModal({
         <h3 id="linked-group-modal-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
           Linked schedule blocks
         </h3>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
           Mirrored crew blocks share time and note. This list includes every block in the group you can read, even
           outside the week shown in the hub grid.
         </p>
 
-        {loading ? <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p> : null}
+        {loading ? <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p> : null}
         {error && !loading ? (
-          <p style={{ color: '#b91c1c', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{error}</p>
+          <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{error}</p>
         ) : null}
 
         {!loading && !error && rows.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No blocks found for this group.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No blocks found for this group.</p>
         ) : null}
 
         {!loading && !error && rows.length > 0 ? (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ background: '#f9fafb' }}>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid #e5e7eb' }}>Work date</th>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid #e5e7eb' }}>Time</th>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid #e5e7eb' }}>Person</th>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid #e5e7eb' }}>Job</th>
-                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid #e5e7eb' }}>Hub week</th>
+                <tr style={{ background: 'var(--bg-subtle)' }}>
+                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Work date</th>
+                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Time</th>
+                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Person</th>
+                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Job</th>
+                  <th style={{ textAlign: 'left', padding: '0.45rem', border: '1px solid var(--border)' }}>Hub week</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,19 +144,19 @@ export function LinkedScheduleGroupModal({
                   const inWeek = rowInHubWeek(r.work_date, weekStart, weekEnd)
                   return (
                     <tr key={r.id}>
-                      <td style={{ padding: '0.45rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                         {r.work_date}
                       </td>
-                      <td style={{ padding: '0.45rem', border: '1px solid #e5e7eb', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
                         {scheduleFormatWindow(r.time_start, r.time_end)}
                       </td>
-                      <td style={{ padding: '0.45rem', border: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)' }}>
                         {nameByUserId.get(r.assignee_user_id) ?? '…'}
                       </td>
-                      <td style={{ padding: '0.45rem', border: '1px solid #e5e7eb', wordBreak: 'break-word' }}>
+                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)', wordBreak: 'break-word' }}>
                         {getJobDisplayTitle(r.job_id)}
                       </td>
-                      <td style={{ padding: '0.45rem', border: '1px solid #e5e7eb' }}>
+                      <td style={{ padding: '0.45rem', border: '1px solid var(--border)' }}>
                         {inWeek ? 'In view' : 'Outside week'}
                       </td>
                     </tr>
@@ -168,7 +168,7 @@ export function LinkedScheduleGroupModal({
         ) : null}
 
         {hasOutsideWeek && !loading && !error ? (
-          <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem', color: '#92400e' }}>
+          <p style={{ margin: '1rem 0 0', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
             Some peers are outside the week shown in the grid.
           </p>
         ) : null}
@@ -181,8 +181,8 @@ export function LinkedScheduleGroupModal({
               padding: '0.4rem 0.85rem',
               fontSize: '0.875rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               cursor: 'pointer',
             }}
           >

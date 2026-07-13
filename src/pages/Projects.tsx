@@ -386,7 +386,7 @@ export default function Projects() {
   const stagesContent = loading ? (
     <p>Loading projects…</p>
   ) : error ? (
-    <p style={{ color: '#b91c1c' }}>{error}</p>
+    <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
   ) : (
     <>
       {(() => {
@@ -433,7 +433,7 @@ export default function Projects() {
                   flex: '1 1 240px',
                   minWidth: 200,
                   padding: '0.35rem 0.75rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   boxSizing: 'border-box',
                 }}
@@ -487,9 +487,9 @@ export default function Projects() {
                           borderRadius: 999,
                           fontSize: '0.75rem',
                           fontWeight: 500,
-                          background: '#fff',
-                          color: '#374151',
-                          border: '1px solid #d1d5db',
+                          background: 'var(--surface)',
+                          color: 'var(--text-700)',
+                          border: '1px solid var(--border-strong)',
                           cursor: 'pointer',
                           font: 'inherit',
                         }
@@ -513,7 +513,7 @@ export default function Projects() {
               </button>
             )}
             {hasActiveFilter && (
-              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#6b7280' }}>
+              <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 Showing {visibleProjects.length} of {projects.length} projects
               </span>
             )}
@@ -544,7 +544,7 @@ export default function Projects() {
           .
         </p>
       ) : visibleProjects.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-muted)' }}>
           No projects match this search or filter.{' '}
           <button
             type="button"
@@ -562,7 +562,7 @@ export default function Projects() {
               key={p.id}
               style={{
                 padding: '0.75rem 0',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 flexDirection: narrow ? 'column' : 'row',
                 justifyContent: narrow ? 'flex-start' : 'space-between',
@@ -573,11 +573,11 @@ export default function Projects() {
               <div>
                 <Link to={`/workflows/${p.id}`} style={{ fontWeight: 500 }}>{p.name}</Link>
                 {formatProjectNumberLabel(p.project_number) && (
-                  <span style={{ marginLeft: 8, fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <span style={{ marginLeft: 8, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     {formatProjectNumberLabel(p.project_number)}
                   </span>
                 )}
-                <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {p.customers?.name ?? '—'}{' '}·{' '}
                   <span style={projectStatusPillStyle(p.status)}>{projectStatusLabel(p.status)}</span>
                   {projectStepInfo[p.id]?.current && (
@@ -592,7 +592,7 @@ export default function Projects() {
                 </div>
                 {p.description && <div style={{ fontSize: '0.875rem', marginTop: 2 }}>{p.description}</div>}
                 {projectStepInfo[p.id] && projectStepInfo[p.id]!.steps.length > 0 && (
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                     {projectStepInfo[p.id]!.steps.map((step, i) => {
                       let color = '#6b7280'
                       let fontWeight: 'normal' | 'bold' = 'normal'
@@ -618,12 +618,12 @@ export default function Projects() {
                   </div>
                 )}
                 {(p.housecallpro_number || p.plans_link || p.address) && (
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4, display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     {p.housecallpro_number && <span>HouseCallPro #: {p.housecallpro_number}</span>}
                     {p.housecallpro_number && (p.plans_link || p.address) && <span> · </span>}
                     {p.plans_link && (
                       <span>
-                        <a href={p.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb' }}>
+                        <a href={p.plans_link} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
                           Link to plans
                         </a>
                       </span>
@@ -670,7 +670,7 @@ export default function Projects() {
                   flexShrink: 0,
                   paddingLeft: narrow ? 0 : '1rem',
                   marginLeft: narrow ? 0 : '1rem',
-                  borderLeft: narrow ? 'none' : '1px solid #e5e7eb',
+                  borderLeft: narrow ? 'none' : '1px solid var(--border)',
                   width: narrow ? '100%' : undefined,
                 }}
               >
@@ -685,7 +685,7 @@ export default function Projects() {
                   style={{
                     background: 'none',
                     border: 'none',
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     cursor: 'pointer',
                     textDecoration: 'underline',
                     padding: 0,
@@ -695,15 +695,15 @@ export default function Projects() {
                   Edit
                 </button>
                 {p.master_user && (
-                  <span style={{ padding: '0.2rem 0.5rem', background: '#eff6ff', borderRadius: 4, fontSize: '0.8125rem', fontWeight: 500 }}>
+                  <span style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-blue-tint)', borderRadius: 4, fontSize: '0.8125rem', fontWeight: 500 }}>
                     Master: {p.master_user.name || p.master_user.email || 'Unknown'}
                   </span>
                 )}
                 {canAssignSuperintendents && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Superintendents:</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Superintendents:</span>
                     {(superintendentsByProject[p.id] ?? []).length === 0 && (
-                      <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>None</span>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.8125rem' }}>None</span>
                     )}
                     {(superintendentsByProject[p.id] ?? []).map((s) => (
                       <span
@@ -759,7 +759,7 @@ export default function Projects() {
                             padding: 0,
                             border: '1px solid #bae6fd',
                             borderRadius: 4,
-                            background: 'white',
+                            background: 'var(--surface)',
                             color: '#0369a1',
                             fontSize: '1.125rem',
                             lineHeight: 1,
@@ -774,9 +774,9 @@ export default function Projects() {
                 )}
                 {!canAssignSuperintendents && (superintendentsByProject[p.id]?.length ?? 0) > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
-                    <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Superintendents:</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Superintendents:</span>
                     {(superintendentsByProject[p.id] ?? []).map((s) => (
-                      <span key={s.id} style={{ padding: '0.2rem 0.5rem', background: '#f0fdf4', borderRadius: 4, fontSize: '0.8125rem' }}>
+                      <span key={s.id} style={{ padding: '0.2rem 0.5rem', background: 'var(--bg-green-tint)', borderRadius: 4, fontSize: '0.8125rem' }}>
                         {s.name || s.email || 'Unknown'}
                       </span>
                     ))}
@@ -784,12 +784,12 @@ export default function Projects() {
                 )}
                 {(jobsByProject[p.id]?.length ?? 0) > 0 ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', justifyContent: narrow ? 'flex-start' : 'flex-end' }}>
-                    <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Jobs:</span>
+                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>Jobs:</span>
                     {(jobsByProject[p.id] ?? []).map((j) => (
                       <Link
                         key={j.id}
                         to={`/jobs?edit=${j.id}&tab=stages`}
-                        style={{ padding: '0.2rem 0.5rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: '#374151' }}
+                        style={{ padding: '0.2rem 0.5rem', background: '#f5f5f5', borderRadius: 4, fontSize: '0.8125rem', textDecoration: 'none', color: 'var(--text-700)' }}
                       >
                         {j.hcp_number || j.job_name || 'Job'}
                       </Link>
@@ -874,7 +874,7 @@ export default function Projects() {
             aria-modal="true"
             aria-labelledby="add-superintendent-title"
             style={{
-              background: '#fff',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.25rem',
               maxWidth: 440,
@@ -901,10 +901,10 @@ export default function Projects() {
                     width: '100%',
                     padding: '0.5rem',
                     marginBottom: '1rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.875rem',
-                    background: '#fff',
+                    background: 'var(--surface)',
                   }}
                   aria-label="Choose superintendent"
                 >
@@ -916,7 +916,7 @@ export default function Projects() {
                   ))}
                 </select>
               ) : (
-                <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No superintendents available</p>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>No superintendents available</p>
               )
             })()}
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -930,8 +930,8 @@ export default function Projects() {
                 style={{
                   padding: '0.45rem 1rem',
                   fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: projectSuperintendentSaving ? 'not-allowed' : 'pointer',
                 }}
@@ -951,8 +951,8 @@ export default function Projects() {
                 style={{
                   padding: '0.45rem 1rem',
                   fontSize: '0.875rem',
-                  background: !selectedSuperintendentId || projectSuperintendentSaving ? '#e5e7eb' : '#2563eb',
-                  color: !selectedSuperintendentId || projectSuperintendentSaving ? '#6b7280' : '#fff',
+                  background: !selectedSuperintendentId || projectSuperintendentSaving ? 'var(--bg-200)' : '#2563eb',
+                  color: !selectedSuperintendentId || projectSuperintendentSaving ? 'var(--text-muted)' : '#fff',
                   border: 'none',
                   borderRadius: 4,
                   cursor: !selectedSuperintendentId || projectSuperintendentSaving ? 'not-allowed' : 'pointer',

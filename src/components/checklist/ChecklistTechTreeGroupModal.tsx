@@ -109,7 +109,7 @@ export function ChecklistTechTreeGroupModal({
         aria-modal="true"
         aria-labelledby="tech-tree-group-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: 20,
           maxWidth: 420,
@@ -121,7 +121,7 @@ export function ChecklistTechTreeGroupModal({
         <h2 id="tech-tree-group-modal-title" style={{ margin: '0 0 1rem', fontSize: '1.125rem' }}>
           Edit group
         </h2>
-        <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }} htmlFor="tech-tree-group-title">
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }} htmlFor="tech-tree-group-title">
           Group title
         </label>
         <input
@@ -132,7 +132,7 @@ export function ChecklistTechTreeGroupModal({
           disabled={saving || deleting}
         />
         {showDeleteConfirm ? (
-          <p style={{ color: '#b91c1c', fontSize: 14, margin: '0 0 1rem' }}>
+          <p style={{ color: 'var(--text-red-700)', fontSize: 14, margin: '0 0 1rem' }}>
             Delete this group and all of its tasks and related links? This cannot be undone.
           </p>
         ) : null}
@@ -170,7 +170,7 @@ export function ChecklistTechTreeGroupModal({
               type="button"
               onClick={() => setShowDeleteConfirm(true)}
               disabled={saving || deleting}
-              style={{ color: '#b91c1c' }}
+              style={{ color: 'var(--text-red-700)' }}
             >
               Delete group…
             </button>

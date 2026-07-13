@@ -88,8 +88,8 @@ export function MoneyDecimalAmountInput({
           ? {
               ...style,
               cursor: 'not-allowed',
-              background: '#f3f4f6',
-              color: '#374151',
+              background: 'var(--bg-muted)',
+              color: 'var(--text-700)',
             }
           : style
       }

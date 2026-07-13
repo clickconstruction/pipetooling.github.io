@@ -268,7 +268,7 @@ export function QuickfillDifficultPeopleSection() {
   }
 
   if (loading && items.length === 0) {
-    return <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Loading…</p>
+    return <p style={{ color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>Loading…</p>
   }
 
   return (
@@ -281,14 +281,14 @@ export function QuickfillDifficultPeopleSection() {
             flexDirection: 'column',
             gap: '0.75rem',
             padding: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#fafafa',
+            background: 'var(--bg-page)',
           }}
         >
           <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>Add item</div>
           <div>
-            <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', color: '#374151' }}>Person</div>
+            <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>Person</div>
             <SearchableSelect
               value={addPersonId}
               onChange={(v) => setAddPersonId(v)}
@@ -299,23 +299,23 @@ export function QuickfillDifficultPeopleSection() {
             />
           </div>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: '#374151' }}>Action</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>Action</span>
             <textarea
               value={addAction}
               onChange={(ev) => setAddAction(ev.target.value)}
               rows={2}
               disabled={addSaving}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
             />
           </label>
           <label style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-            <span style={{ fontSize: '0.8125rem', color: '#374151' }}>Reason</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>Reason</span>
             <textarea
               value={addReason}
               onChange={(ev) => setAddReason(ev.target.value)}
               rows={2}
               disabled={addSaving}
-              style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
             />
           </label>
           <button
@@ -339,7 +339,7 @@ export function QuickfillDifficultPeopleSection() {
 
       <div>
         {items.length === 0 ? (
-          <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+          <p style={{ margin: 0, color: 'var(--text-slate-500)', fontSize: '0.875rem' }}>
             {isDev ? 'No items yet. Add one above.' : 'No items yet. A dev can add checklist lines.'}
           </p>
         ) : (
@@ -348,10 +348,10 @@ export function QuickfillDifficultPeopleSection() {
               <li
                 key={row.id}
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '0.6rem 0.85rem',
-                  background: '#fff',
+                  background: 'var(--surface)',
                 }}
               >
                 {isDev && editRowId === row.id ? (
@@ -369,14 +369,14 @@ export function QuickfillDifficultPeopleSection() {
                       onChange={(ev) => setEditAction(ev.target.value)}
                       rows={2}
                       disabled={editSaving}
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
                     />
                     <textarea
                       value={editReason}
                       onChange={(ev) => setEditReason(ev.target.value)}
                       rows={2}
                       disabled={editSaving}
-                      style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
                     />
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                       <button
@@ -422,9 +422,9 @@ export function QuickfillDifficultPeopleSection() {
                         title={row.reason_text}
                       >
                         <span style={{ fontWeight: 600 }}>{row.people?.name?.trim() ? row.people.name : 'Person'}</span>
-                        <span style={{ color: '#64748b' }}> — </span>
+                        <span style={{ color: 'var(--text-slate-500)' }}> — </span>
                         {row.action_text}
-                        <div style={{ fontSize: '0.8125rem', color: '#64748b', marginTop: '0.2rem' }}>Reason: {row.reason_text}</div>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)', marginTop: '0.2rem' }}>Reason: {row.reason_text}</div>
                       </label>
                     </div>
                     {isDev && (
@@ -433,7 +433,7 @@ export function QuickfillDifficultPeopleSection() {
                           type="button"
                           onClick={() => startEdit(row)}
                           disabled={savingCheckId != null || deletingId != null}
-                          style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid #cbd5e1', background: '#f8fafc' }}
+                          style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid #cbd5e1', background: 'var(--bg-slate-tint)' }}
                         >
                           Edit
                         </button>
@@ -445,8 +445,8 @@ export function QuickfillDifficultPeopleSection() {
                             padding: '0.35rem 0.75rem',
                             borderRadius: 6,
                             border: deleteConfirmId === row.id ? '2px solid #b91c1c' : '1px solid #fecaca',
-                            background: '#fef2f2',
-                            color: '#b91c1c',
+                            background: 'var(--bg-red-tint)',
+                            color: 'var(--text-red-700)',
                           }}
                         >
                           {deletingId === row.id ? 'Deleting…' : deleteConfirmId === row.id ? 'Confirm delete' : 'Delete'}
@@ -455,7 +455,7 @@ export function QuickfillDifficultPeopleSection() {
                           <button
                             type="button"
                             onClick={() => setDeleteConfirmId(null)}
-                            style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+                            style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid var(--border)' }}
                           >
                             Cancel delete
                           </button>

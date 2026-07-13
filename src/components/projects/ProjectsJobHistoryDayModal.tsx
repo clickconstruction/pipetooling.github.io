@@ -490,7 +490,7 @@ export function ProjectsJobHistoryDayModal({
         aria-labelledby="projects-job-history-day-modal-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: '100%',
           maxWidth: 720,
@@ -509,7 +509,7 @@ export function ProjectsJobHistoryDayModal({
             padding: '1rem 1.25rem 0.75rem',
             gap: '0.75rem',
             flexShrink: 0,
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             flexWrap: 'wrap',
           }}
         >
@@ -520,13 +520,13 @@ export function ProjectsJobHistoryDayModal({
                 margin: 0,
                 fontSize: '1.0625rem',
                 fontWeight: 600,
-                color: '#0f172a',
+                color: 'var(--text-slate-900)',
                 wordBreak: 'break-word',
               }}
             >
               {jobTitle}
             </h2>
-            <div style={{ fontSize: '0.875rem', color: '#475569', marginTop: 2 }}>{headingDate}</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-slate-600)', marginTop: 2 }}>{headingDate}</div>
           </div>
           <div
             style={{
@@ -559,7 +559,7 @@ export function ProjectsJobHistoryDayModal({
               style={{
                 padding: '0.45rem 0.85rem',
                 fontSize: '0.875rem',
-                background: 'white',
+                background: 'var(--surface)',
                 color: '#0369a1',
                 border: '1px solid #2563eb',
                 borderRadius: 6,
@@ -576,11 +576,11 @@ export function ProjectsJobHistoryDayModal({
               style={{
                 padding: '0.4rem 0.75rem',
                 fontSize: '0.875rem',
-                background: 'white',
-                border: '1px solid #d1d5db',
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: 'pointer',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               Close
@@ -590,7 +590,7 @@ export function ProjectsJobHistoryDayModal({
 
         <div style={{ flex: 1, overflow: 'auto', padding: '1rem 1.25rem 1.25rem' }}>
           {error && (
-            <p role="alert" style={{ color: '#b91c1c', margin: '0 0 0.75rem' }}>
+            <p role="alert" style={{ color: 'var(--text-red-700)', margin: '0 0 0.75rem' }}>
               {error}
             </p>
           )}
@@ -624,23 +624,23 @@ export function ProjectsJobHistoryDayModal({
                     textAlign: 'center',
                     padding: '0.5rem 0.75rem',
                     marginBottom: '0.6rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
-                    background: '#f8fafc',
+                    background: 'var(--bg-slate-tint)',
                     fontSize: '0.875rem',
-                    color: '#0f172a',
+                    color: 'var(--text-slate-900)',
                   }}
                 >
                   <span>
-                    <span style={{ color: '#475569', marginRight: 4 }}>Man hours:</span>
+                    <span style={{ color: 'var(--text-slate-600)', marginRight: 4 }}>Man hours:</span>
                     <strong>{peopleAndSessionsSummary.manHoursLabel}</strong>
                   </span>
                   <span>
-                    <span style={{ color: '#475569', marginRight: 4 }}>People:</span>
+                    <span style={{ color: 'var(--text-slate-600)', marginRight: 4 }}>People:</span>
                     <strong>{peopleAndSessionsSummary.personCount}</strong>
                   </span>
                   <span>
-                    <span style={{ color: '#475569', marginRight: 4 }}>Sessions:</span>
+                    <span style={{ color: 'var(--text-slate-600)', marginRight: 4 }}>Sessions:</span>
                     <strong>{peopleAndSessionsSummary.sessionCount}</strong>
                   </span>
                 </div>
@@ -649,17 +649,17 @@ export function ProjectsJobHistoryDayModal({
                   <li
                     key={g.userId}
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       padding: '0.75rem 0.85rem',
                       marginBottom: '0.5rem',
-                      background: '#fff',
+                      background: 'var(--surface)',
                     }}
                   >
                     <div
                       style={{
                         fontWeight: 600,
-                        color: '#0f172a',
+                        color: 'var(--text-slate-900)',
                         fontSize: '0.9375rem',
                         marginBottom: '0.35rem',
                       }}
@@ -678,7 +678,7 @@ export function ProjectsJobHistoryDayModal({
                               padding: '0.3rem 0',
                               borderTop: sessionIdx === 0 ? undefined : '1px dashed #f1f5f9',
                               fontSize: '0.875rem',
-                              color: '#0f172a',
+                              color: 'var(--text-slate-900)',
                               display: 'flex',
                               flexWrap: 'wrap',
                               alignItems: 'baseline',
@@ -686,7 +686,7 @@ export function ProjectsJobHistoryDayModal({
                             }}
                           >
                             {dur && (
-                              <span style={{ color: '#475569' }}>[{dur}]</span>
+                              <span style={{ color: 'var(--text-slate-600)' }}>[{dur}]</span>
                             )}
                             <span>{span}</span>
                             {note && (
@@ -694,7 +694,7 @@ export function ProjectsJobHistoryDayModal({
                                 <span aria-hidden style={{ color: '#cbd5e1' }}>|</span>
                                 <span
                                   style={{
-                                    color: '#475569',
+                                    color: 'var(--text-slate-600)',
                                     whiteSpace: 'pre-wrap',
                                     fontSize: '0.8125rem',
                                   }}
@@ -721,9 +721,9 @@ export function ProjectsJobHistoryDayModal({
             ) : (
               <div
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   overflow: 'hidden',
                 }}
               >
@@ -770,11 +770,11 @@ export function ProjectsJobHistoryDayModal({
                     justifyContent: 'space-between',
                     gap: '0.75rem',
                     padding: '0.6rem 0.85rem',
-                    borderTop: '1px solid #e5e7eb',
-                    background: '#f8fafc',
+                    borderTop: '1px solid var(--border)',
+                    background: 'var(--bg-slate-tint)',
                   }}
                 >
-                  <span style={{ fontWeight: 600, color: '#0f172a' }}>Total</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-slate-900)' }}>Total</span>
                   <strong style={{ fontVariantNumeric: 'tabular-nums', fontSize: '1rem' }}>
                     {dayCosts.laborIncomplete ? '≥ ' : ''}
                     {formatUsd(dayCosts.totalUsd)}
@@ -804,9 +804,9 @@ export function ProjectsJobHistoryDayModal({
                       key={r.id}
                       style={{
                         marginBottom: '0.5rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
-                        background: '#fff',
+                        background: 'var(--surface)',
                         overflow: 'hidden',
                       }}
                     >
@@ -831,7 +831,7 @@ export function ProjectsJobHistoryDayModal({
                           <div style={{ fontWeight: 600 }}>
                             {displayReportTemplateName(r.template_name, userRole)}
                           </div>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                             {r.created_by_name} ·{' '}
                             {new Date(r.created_at).toLocaleString(undefined, {
                               dateStyle: 'medium',
@@ -871,12 +871,12 @@ export function ProjectsJobHistoryDayModal({
 const sectionHeadingStyle: CSSProperties = {
   fontSize: '0.9375rem',
   fontWeight: 600,
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
   margin: '0 0 0.5rem',
 }
 
 const mutedStyle: CSSProperties = {
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.875rem',
   margin: 0,
 }
@@ -886,13 +886,13 @@ const reportToggleStyle: CSSProperties = {
   width: 28,
   height: 28,
   padding: 0,
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 4,
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
   cursor: 'pointer',
   fontSize: '0.75rem',
   lineHeight: 1,
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 /* ------------------------------------------------------------------------------------------------
@@ -979,7 +979,7 @@ function DayCostRow({
             style={{
               display: 'inline-block',
               width: 10,
-              color: '#64748b',
+              color: 'var(--text-slate-500)',
               fontSize: '0.75rem',
               transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
               transition: 'transform 100ms ease-out',
@@ -988,17 +988,17 @@ function DayCostRow({
           >
             ▶
           </span>
-          <span style={{ color: '#0f172a', fontSize: '0.875rem' }}>
+          <span style={{ color: 'var(--text-slate-900)', fontSize: '0.875rem' }}>
             {label}
             {detailCount > 0 && (
-              <span style={{ color: '#64748b', fontWeight: 400, marginLeft: 6 }}>
+              <span style={{ color: 'var(--text-slate-500)', fontWeight: 400, marginLeft: 6 }}>
                 ({detailCount})
               </span>
             )}
           </span>
         </div>
         {note && (
-          <div style={{ color: '#b45309', fontSize: '0.75rem', flex: '0 1 auto', textAlign: 'right' }}>
+          <div style={{ color: 'var(--text-amber-700)', fontSize: '0.75rem', flex: '0 1 auto', textAlign: 'right' }}>
             {note}
           </div>
         )}
@@ -1006,7 +1006,7 @@ function DayCostRow({
           style={{
             fontVariantNumeric: 'tabular-nums',
             fontSize: '0.9375rem',
-            color: '#0f172a',
+            color: 'var(--text-slate-900)',
             fontWeight: 500,
             whiteSpace: 'nowrap',
           }}
@@ -1020,8 +1020,8 @@ function DayCostRow({
         <div
           style={{
             padding: '0.4rem 0.85rem 0.7rem 1.4rem',
-            background: '#f8fafc',
-            borderTop: '1px dashed #e5e7eb',
+            background: 'var(--bg-slate-tint)',
+            borderTop: '1px dashed var(--border)',
           }}
         >
           {detailCount === 0 ? (
@@ -1039,7 +1039,7 @@ const detailTableStyle: CSSProperties = {
   width: '100%',
   borderCollapse: 'collapse',
   fontSize: '0.8125rem',
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
 }
 const detailTdStyle: CSSProperties = {
   padding: '0.25rem 0.4rem 0.25rem 0',
@@ -1071,20 +1071,20 @@ function DayLaborDetail({ lines }: { lines: readonly DayLaborLine[] }) {
             <td style={detailTdStyle}>
               {l.userName}
               {l.hasOpenSession && (
-                <span style={{ color: '#b45309', fontSize: '0.75rem', marginLeft: 6 }}>
+                <span style={{ color: 'var(--text-amber-700)', fontSize: '0.75rem', marginLeft: 6 }}>
                   (open session)
                 </span>
               )}
             </td>
             <td style={detailTdStyle}>
-              <span style={{ color: '#475569' }}>
+              <span style={{ color: 'var(--text-slate-600)' }}>
                 {formatHoursDecimal(l.hours)}
                 {l.hourlyWage != null ? ` × ${formatUsd(l.hourlyWage)}/h` : ''}
               </span>
             </td>
             <td style={detailTdRightStyle}>
               {l.hourlyWage == null ? (
-                <span style={{ color: '#b45309' }}>No wage configured</span>
+                <span style={{ color: 'var(--text-amber-700)' }}>No wage configured</span>
               ) : (
                 formatUsd(l.usd)
               )}
@@ -1104,14 +1104,14 @@ function DayMercuryDetail({ lines }: { lines: readonly DayMercuryLine[] }) {
           <tr key={`${l.postedAt ?? ''}-${i}`}>
             <td style={detailTdStyle}>
               {(l.counterpartyName ?? '').trim() || (
-                <span style={{ color: '#94a3b8' }}>(no counterparty)</span>
+                <span style={{ color: 'var(--text-slate-400)' }}>(no counterparty)</span>
               )}
               {l.note && (
-                <div style={{ color: '#475569', fontSize: '0.75rem', marginTop: 2 }}>{l.note}</div>
+                <div style={{ color: 'var(--text-slate-600)', fontSize: '0.75rem', marginTop: 2 }}>{l.note}</div>
               )}
             </td>
             <td style={detailTdStyle}>
-              <span style={{ color: '#475569' }}>
+              <span style={{ color: 'var(--text-slate-600)' }}>
                 {l.postedAt ? formatChicagoTime(l.postedAt) : ''}
               </span>
             </td>
@@ -1135,11 +1135,11 @@ function DaySupplyDetail({ lines }: { lines: readonly DaySupplyLine[] }) {
               <td style={detailTdStyle}>
                 {supply}
                 {invLabel && (
-                  <span style={{ color: '#475569', marginLeft: 6 }}>· #{invLabel}</span>
+                  <span style={{ color: 'var(--text-slate-600)', marginLeft: 6 }}>· #{invLabel}</span>
                 )}
               </td>
               <td style={detailTdStyle}>
-                <span style={{ color: '#475569' }}>
+                <span style={{ color: 'var(--text-slate-600)' }}>
                   {l.pct}% of {formatUsd(l.invoiceTotalUsd)}
                 </span>
               </td>
@@ -1317,7 +1317,7 @@ function DayContextMiniGantt({
             gridTemplateColumns,
             marginBottom: 4,
             fontSize: '0.6875rem',
-            color: '#475569',
+            color: 'var(--text-slate-600)',
           }}
         >
           {dayKeys.map((ymd) => {
@@ -1344,7 +1344,7 @@ function DayContextMiniGantt({
                   alignItems: 'center',
                   lineHeight: 1.1,
                   fontWeight: isSelected ? 700 : 500,
-                  color: isSelected ? '#9a3412' : isWeekend ? '#94a3b8' : '#475569',
+                  color: isSelected ? '#9a3412' : isWeekend ? 'var(--text-slate-400)' : 'var(--text-slate-600)',
                 }}
               >
                 <span style={{ fontSize: '0.625rem' }}>{wd}</span>
@@ -1358,7 +1358,7 @@ function DayContextMiniGantt({
                   {dayDigit}
                 </span>
                 {monthLabel && (
-                  <span style={{ fontSize: '0.625rem', color: '#94a3b8' }}>{monthLabel}</span>
+                  <span style={{ fontSize: '0.625rem', color: 'var(--text-slate-400)' }}>{monthLabel}</span>
                 )}
               </div>
             )
@@ -1385,7 +1385,7 @@ function DayContextMiniGantt({
                 style={{
                   gridColumn: `${i + 1} / ${i + 2}`,
                   gridRow: 1,
-                  background: '#f8fafc',
+                  background: 'var(--bg-slate-tint)',
                 }}
               />
             ) : null
@@ -1400,7 +1400,7 @@ function DayContextMiniGantt({
                 alignSelf: 'center',
                 position: 'relative',
                 height: MINI_BAR_H,
-                background: '#f1f5f9',
+                background: 'var(--bg-slate-100)',
                 borderTop: '1px solid #cbd5e1',
                 borderBottom: '1px solid #cbd5e1',
                 borderLeft: clipLeft ? '2px dashed #94a3b8' : '2px solid #94a3b8',
@@ -1575,11 +1575,11 @@ const miniExtendButtonStyle: CSSProperties = {
   justifyContent: 'center',
   gap: 2,
   padding: '0.4rem 0.6rem',
-  background: 'white',
+  background: 'var(--surface)',
   border: '1px solid #cbd5e1',
   borderRadius: 6,
   cursor: 'pointer',
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
   fontWeight: 600,
   alignSelf: 'center',
   height: 56,

@@ -67,10 +67,10 @@ export default function DevLogin() {
     return (
       <div style={{ maxWidth: 400, margin: '4rem auto', padding: '1.5rem' }}>
         <h2 style={{ marginTop: 0 }}>Dev Login</h2>
-        <p style={{ color: '#b91c1c' }}>
+        <p style={{ color: 'var(--text-red-700)' }}>
           Set <code>VITE_DEV_LOGIN_SECRET</code> in <code>.env.local</code> to use dev login.
         </p>
-        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Also set <code>DEV_LOGIN_SECRET</code> for the Edge Function (e.g. <code>supabase secrets set DEV_LOGIN_SECRET=your-secret</code>).
         </p>
       </div>
@@ -111,7 +111,7 @@ export default function DevLogin() {
   return (
     <div style={{ maxWidth: 360, margin: '4rem auto', padding: '1.5rem' }}>
       <h2 style={{ marginTop: 0 }}>Dev Login</h2>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
         Sign in as any user by email. Only available in development.
       </p>
       <form onSubmit={handleSubmit}>
@@ -126,7 +126,7 @@ export default function DevLogin() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="user@example.com"
             disabled={!!asParam}
-            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
           />
         </div>
         <div style={{ marginBottom: '1rem' }}>
@@ -140,11 +140,11 @@ export default function DevLogin() {
             onChange={(e) => setRedirectTo(e.target.value)}
             placeholder="/dashboard"
             disabled={!!asParam}
-            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
           />
         </div>
         {error && (
-          <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>
+          <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>
         )}
         <button
           type="submit"
@@ -161,7 +161,7 @@ export default function DevLogin() {
           {loading ? 'Signing in…' : 'Dev Login'}
         </button>
       </form>
-      <p style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+      <p style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         Or use <code>?as=user@example.com</code> in the URL.
       </p>
     </div>

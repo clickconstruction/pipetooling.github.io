@@ -16,9 +16,9 @@ import { HelpGuideFeedbackForm } from '../components/HelpGuideFeedbackForm'
 const GUIDE_PARAM = 'g'
 
 const cardStyle: React.CSSProperties = {
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 8,
-  background: 'white',
+  background: 'var(--surface)',
   padding: '1rem',
 }
 
@@ -27,9 +27,9 @@ const guideRowStyle: React.CSSProperties = {
   width: '100%',
   textAlign: 'left',
   padding: '0.6rem 0.75rem',
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 6,
-  background: 'white',
+  background: 'var(--surface)',
   cursor: 'pointer',
   marginBottom: '0.5rem',
 }
@@ -38,9 +38,9 @@ const categoryChipStyle: React.CSSProperties = {
   display: 'inline-block',
   fontSize: '0.75rem',
   fontWeight: 600,
-  color: '#4b5563',
-  background: '#f3f4f6',
-  border: '1px solid #e5e7eb',
+  color: 'var(--text-600)',
+  background: 'var(--bg-muted)',
+  border: '1px solid var(--border)',
   borderRadius: 999,
   padding: '0.15rem 0.6rem',
 }
@@ -92,11 +92,11 @@ export default function Help() {
     return (
       <button key={guide.slug} type="button" style={guideRowStyle} onClick={() => openGuide(guide.slug)}>
         <span style={{ fontWeight: 600 }}>
-          <span style={{ color: '#9ca3af', fontWeight: 400 }}>…</span>
+          <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>…</span>
           {guide.title.trim()}?
         </span>
         {guide.roles !== 'all' && (
-          <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+          <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             {guide.roles.map((r) => displayLabelForUserRole(r)).join(', ')}
           </span>
         )}
@@ -110,7 +110,7 @@ export default function Help() {
         <button
           type="button"
           onClick={backToList}
-          style={{ background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', padding: 0, marginBottom: '0.75rem', fontSize: '0.875rem' }}
+          style={{ background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, marginBottom: '0.75rem', fontSize: '0.875rem' }}
         >
           ← Back to guides
         </button>
@@ -121,7 +121,7 @@ export default function Help() {
           </div>
           <div
             className="help-guide-body"
-            style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: '#374151' }}
+            style={{ fontSize: '0.9375rem', lineHeight: 1.6, color: 'var(--text-700)' }}
             dangerouslySetInnerHTML={{ __html: articleHtml }}
           />
           <HelpGuideFeedbackForm guideSlug={selectedGuide.slug} />
@@ -133,11 +133,11 @@ export default function Help() {
   return (
     <div style={{ maxWidth: 720, margin: '0 auto' }}>
       <h1 style={{ margin: '0 0 0.35rem', fontSize: '1.6rem' }}>How do I…</h1>
-      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
         Type what you want to do and the guide pulls up.
       </p>
       {selectedSlug && !selectedGuide && (
-        <p style={{ fontSize: '0.875rem', color: '#b45309', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem' }}>
           That guide wasn't found — it may have been renamed. Browse or search below.
         </p>
       )}
@@ -148,10 +148,10 @@ export default function Help() {
         placeholder="…clock in on a job? bill a customer? file a report?"
         aria-label="How do I…"
         autoFocus
-        style={{ width: '100%', padding: '0.7rem 0.85rem', border: '1px solid #d1d5db', borderRadius: 8, marginBottom: '0.75rem', boxSizing: 'border-box', fontSize: '1rem' }}
+        style={{ width: '100%', padding: '0.7rem 0.85rem', border: '1px solid var(--border-strong)', borderRadius: 8, marginBottom: '0.75rem', boxSizing: 'border-box', fontSize: '1rem' }}
       />
       {!seesAllByDefault && (
-        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', cursor: 'pointer' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem', cursor: 'pointer' }}>
           <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} />
           Show guides for all roles
         </label>
@@ -159,7 +159,7 @@ export default function Help() {
 
       {searchResult.normalizedQuery ? (
         <div>
-          <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0 0 0.5rem' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>
             {searchResult.matches.length === 0
               ? 'No guides match your search.'
               : `${searchResult.matches.length} matching guide${searchResult.matches.length === 1 ? '' : 's'}`}
@@ -172,7 +172,7 @@ export default function Help() {
       ) : (
         grouped.map((section) => (
           <div key={section.category} style={{ marginBottom: '1.25rem' }}>
-            <h2 style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.5rem' }}>
+            <h2 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.5rem' }}>
               {section.category}
             </h2>
             {section.guides.map(renderGuideRow)}

@@ -61,14 +61,14 @@ export default function EditProjectModal() {
         aria-modal="true"
         aria-label="Edit project"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.25rem 1.5rem',
           borderRadius: 8,
           width: 'min(640px, 96vw)',
           maxHeight: '92vh',
           overflow: 'auto',
           boxSizing: 'border-box',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           boxShadow: '0 20px 40px rgba(0,0,0,0.18)',
         }}
         onMouseDown={(e) => e.stopPropagation()}

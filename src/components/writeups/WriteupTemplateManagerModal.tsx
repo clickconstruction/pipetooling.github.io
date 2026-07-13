@@ -220,7 +220,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 440,
@@ -234,13 +234,13 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
           <button
             type="button"
             onClick={onClose}
-            style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }}
+            style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)' }}
             aria-label="Close"
           >
             ×
           </button>
         </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
 
         {formMode !== 'none' ? (
           <div style={{ marginBottom: '1rem' }}>
@@ -252,7 +252,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div>
@@ -261,7 +261,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                   type="text"
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem' }}>
@@ -280,9 +280,9 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                       style={{
                         padding: '0.35rem 0.6rem',
                         fontSize: '0.75rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: '#fff',
+                        background: 'var(--surface)',
                         cursor: 'pointer',
                       }}
                     >
@@ -295,15 +295,15 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                     <li
                       key={b.id}
                       style={{
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 6,
                         padding: '0.65rem',
                         marginBottom: '0.5rem',
-                        background: '#fafafa',
+                        background: 'var(--bg-page)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280' }}>{b.type}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>{b.type}</span>
                         <div style={{ display: 'flex', gap: '0.25rem' }}>
                           <button type="button" onClick={() => moveBlock(i, -1)} style={{ fontSize: '0.7rem', padding: '0.15rem 0.35rem' }}>
                             Up
@@ -314,7 +314,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                           <button
                             type="button"
                             onClick={() => removeBlock(i)}
-                            style={{ fontSize: '0.7rem', padding: '0.15rem 0.35rem', color: '#b91c1c' }}
+                            style={{ fontSize: '0.7rem', padding: '0.15rem 0.35rem', color: 'var(--text-red-700)' }}
                           >
                             Remove
                           </button>
@@ -431,7 +431,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
 
               <div>
                 <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.35rem' }}>Preview</div>
-                <div style={{ border: '1px dashed #d1d5db', borderRadius: 6, padding: '0.75rem' }}>
+                <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 6, padding: '0.75rem' }}>
                   <WriteupFormFields schema={blocks} answers={previewAnswers} onChange={setPreviewAnswers} />
                 </div>
               </div>
@@ -455,7 +455,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                 <button
                   type="button"
                   onClick={closeForm}
-                  style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -484,7 +484,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
             </button>
           </div>
           {templates.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No writeup templates yet.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No writeup templates yet.</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>
               {templates.map((t) => (
@@ -493,7 +493,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                   style={{
                     marginBottom: '0.5rem',
                     padding: '0.5rem',
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     borderRadius: 4,
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -502,20 +502,20 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                 >
                   <div>
                     <strong>{t.name}</strong>
-                    {!t.is_active && <span style={{ marginLeft: '0.5rem', fontSize: '0.72rem', color: '#6b7280' }}>(inactive)</span>}
+                    {!t.is_active && <span style={{ marginLeft: '0.5rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>(inactive)</span>}
                   </div>
                   <div style={{ display: 'flex', gap: '0.35rem' }}>
                     <button
                       type="button"
                       onClick={() => openEdit(t)}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                     >
                       Edit
                     </button>
                     <button
                       type="button"
                       onClick={() => deleteTemplate(t)}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                     >
                       Delete
                     </button>
