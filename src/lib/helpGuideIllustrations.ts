@@ -28,7 +28,7 @@ const BUTTON_STYLES: Record<string, string> = {
   red: 'background:#dc2626;color:white;border:none;',
   purple: 'background:#7c3aed;color:white;border:none;',
   gray: 'background:#9ca3af;color:white;border:none;',
-  outline: 'background:white;color:#1f2937;border:1px solid #d1d5db;',
+  outline: 'background:white;color:#1f2937;border:1px solid var(--border-strong);',
   'outline-blue': 'background:white;color:#1d4ed8;border:1px solid #93c5fd;',
   'outline-amber': 'background:white;color:#b45309;border:1px solid #fcd34d;',
 }

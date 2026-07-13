@@ -7,9 +7,9 @@ export type LinkedGroupCardAccent = {
 const LINKED_GROUP_ACCENT_PALETTE: readonly LinkedGroupCardAccent[] = [
   { borderColor: '#1d4ed8', background: '#eef2ff' },
   { borderColor: '#047857', background: '#ecfdf5' },
-  { borderColor: '#b45309', background: '#fffbeb' },
+  { borderColor: '#b45309', background: 'var(--bg-amber-tint)' },
   { borderColor: '#6d28d9', background: '#f5f3ff' },
-  { borderColor: '#b91c1c', background: '#fef2f2' },
+  { borderColor: '#b91c1c', background: 'var(--bg-red-tint)' },
   { borderColor: '#0e7490', background: '#ecfeff' },
   { borderColor: '#a21caf', background: '#fdf4ff' },
   { borderColor: '#4d7c0f', background: '#f7fee7' },
