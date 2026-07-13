@@ -30,6 +30,9 @@ export function mapGeocodeErrorMessage(errorCode: string, detail?: string) {
     case 'google_unconfigured':
       base = 'Google Geocoding is not configured (set GOOGLE_MAPS_API_KEY for Edge Functions)'
       break
+    case 'census_upstream':
+      base = 'US Census geocoding service error'
+      break
     default:
       base = errorCode
   }

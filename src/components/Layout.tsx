@@ -70,7 +70,7 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally', '/help']
-const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/documents', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help']
+const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help']
 const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally', '/help']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
@@ -1006,7 +1006,6 @@ export default function Layout() {
                   </button>
                 )}
                 {(role === 'estimator' ||
-                  role === 'primary' ||
                   role === null ||
                   role === 'dev' ||
                   role === 'master_technician' ||

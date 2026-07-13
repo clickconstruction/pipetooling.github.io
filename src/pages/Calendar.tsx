@@ -21,7 +21,7 @@ import {
   isCalendarClockSessionActive,
   type CalendarClockSessionRaw,
 } from '../lib/calendarClockSessionDisplay'
-import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../lib/resolveCalendarWorkday'
+import { resolveCalendarWorkday, timeOffKindLabel } from '../lib/resolveCalendarWorkday'
 import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { scheduleFormatTimeHm, scheduleFormatWindow } from '../lib/jobScheduleChicago'
@@ -1933,7 +1933,7 @@ export default function Calendar() {
                           {formatUpcomingDate(item.timeOff.start_date)} – {formatUpcomingDate(item.timeOff.end_date)}
                         </span>
                         <span style={{ fontWeight: 500 }}>
-                          {UNPAID_TIME_OFF_LABEL}
+                          {timeOffKindLabel(item.timeOff.kind)}
                           {item.timeOff.note ? ` — ${item.timeOff.note}` : ''}
                         </span>
                       </Link>

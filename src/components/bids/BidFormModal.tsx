@@ -79,11 +79,13 @@ export function BidFormModal(props: BidFormModalProps) {
   const jobFormModal = useJobFormModal()
   const [serviceTypeSwitchOpen, setServiceTypeSwitchOpen] = useState(false)
   const [duplicatingToServiceTypeId, setDuplicatingToServiceTypeId] = useState<string | null>(null)
+  const [dueTimeOpen, setDueTimeOpen] = useState(false)
 
   useEffect(() => {
     if (!props.open) {
       setServiceTypeSwitchOpen(false)
       setDuplicatingToServiceTypeId(null)
+      setDueTimeOpen(false)
     }
   }, [props.open])
 
@@ -147,6 +149,7 @@ export function BidFormModal(props: BidFormModalProps) {
     accountManagerId,
     formServiceTypeId,
     bidDueDate,
+    bidDueTime,
     estimatedJobStartDate,
     designDrawingPlanDate,
     planPages,
@@ -178,6 +181,7 @@ export function BidFormModal(props: BidFormModalProps) {
     setAccountManagerId,
     setFormServiceTypeId,
     setBidDueDate,
+    setBidDueTime,
     setEstimatedJobStartDate,
     setDesignDrawingPlanDate,
     setPlanPages,
@@ -335,7 +339,69 @@ export function BidFormModal(props: BidFormModalProps) {
                 </div>
                 <div style={{ gridArea: 'bd' }}>
                   <label htmlFor="bid-form-bid-due-date" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Due Date</label>
-                  <input id="bid-form-bid-due-date" type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                  <input
+                    id="bid-form-bid-due-date"
+                    type="date"
+                    value={bidDueDate}
+                    onChange={(e) => {
+                      setBidDueDate(e.target.value)
+                      if (!e.target.value) {
+                        setBidDueTime('')
+                        setDueTimeOpen(false)
+                      }
+                    }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                  />
+                  {bidDueTime === '' && !dueTimeOpen ? (
+                    <button
+                      type="button"
+                      onClick={() => setDueTimeOpen(true)}
+                      disabled={!bidDueDate}
+                      title={bidDueDate ? 'Add the time of day this bid is due' : 'Pick a due date first'}
+                      style={{
+                        marginTop: '0.35rem',
+                        padding: 0,
+                        background: 'none',
+                        border: 'none',
+                        fontSize: '0.8125rem',
+                        color: bidDueDate ? 'var(--text-link)' : 'var(--text-faint)',
+                        cursor: bidDueDate ? 'pointer' : 'default',
+                      }}
+                    >
+                      + Add due time
+                    </button>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.35rem' }}>
+                      <input
+                        id="bid-form-bid-due-time"
+                        type="time"
+                        aria-label="Bid due time"
+                        value={bidDueTime}
+                        onChange={(e) => setBidDueTime(e.target.value)}
+                        style={{ flex: 1, minWidth: 0, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+                      />
+                      <button
+                        type="button"
+                        aria-label="Remove due time"
+                        title="Remove due time"
+                        onClick={() => {
+                          setBidDueTime('')
+                          setDueTimeOpen(false)
+                        }}
+                        style={{
+                          padding: '0.2rem 0.45rem',
+                          background: 'none',
+                          border: '1px solid var(--border)',
+                          borderRadius: 4,
+                          color: 'var(--text-muted)',
+                          cursor: 'pointer',
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div style={{ gridArea: 'bidnum' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>

@@ -679,6 +679,7 @@ export type Database = {
           bid_date_sent_attested_at: string | null
           bid_date_sent_attested_by: string | null
           bid_due_date: string | null
+          bid_due_time: string | null
           bid_number: string | null
           bid_submission_link: string | null
           bid_value: number | null
@@ -731,6 +732,7 @@ export type Database = {
           bid_date_sent_attested_at?: string | null
           bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
+          bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
@@ -783,6 +785,7 @@ export type Database = {
           bid_date_sent_attested_at?: string | null
           bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
+          bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
@@ -6269,12 +6272,14 @@ export type Database = {
           archived_at: string | null
           created_at: string | null
           email: string | null
+          end_date: string | null
           id: string
           kind: string
           master_user_id: string
           name: string
           notes: string | null
           phone: string | null
+          start_date: string | null
           updated_at: string | null
         }
         Insert: {
@@ -6282,12 +6287,14 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
+          end_date?: string | null
           id?: string
           kind: string
           master_user_id: string
           name: string
           notes?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -6295,12 +6302,14 @@ export type Database = {
           archived_at?: string | null
           created_at?: string | null
           email?: string | null
+          end_date?: string | null
           id?: string
           kind?: string
           master_user_id?: string
           name?: string
           notes?: string | null
           phone?: string | null
+          start_date?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -10458,6 +10467,7 @@ export type Database = {
         }
         Returns: Json
       }
+      apply_read_only_write_blocks: { Args: never; Returns: number }
       approve_clock_sessions: {
         Args: { p_session_ids: string[] }
         Returns: {
@@ -11060,6 +11070,7 @@ export type Database = {
       is_estimator_group_member: { Args: never; Returns: boolean }
       is_master_or_dev: { Args: never; Returns: boolean }
       is_pay_approved_master: { Args: never; Returns: boolean }
+      is_read_only: { Args: never; Returns: boolean }
       is_team_lead_for_member: {
         Args: { p_leader: string; p_member: string }
         Returns: boolean

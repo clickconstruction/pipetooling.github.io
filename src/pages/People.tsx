@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { type TeamSummaryInlineHandle } from '../components/people/teamSummary/TeamSummaryInline'
 import type { TeamSummaryRow } from '../components/people/teamSummary/types'
 import { WriteupsContractsSubTab } from '../components/writeups/WriteupsContractsSubTab'
+import PeopleEmploymentTab from '../components/people/PeopleEmploymentTab'
 import PeopleVehiclesTab from '../components/people/PeopleVehiclesTab'
 import PeopleHousingTab from '../components/people/PeopleHousingTab'
 import PeopleLicensesTab from '../components/people/PeopleLicensesTab'
@@ -109,6 +110,12 @@ import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
 import { buildPeopleHoursManualDraftSession, isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
 import {
+  EMPTY_SALARIED_PAYROLL_WINDOW,
+  fetchSalariedPayrollWindows,
+  salariedHoursForDay,
+  type SalariedPayrollWindow,
+} from '../lib/salariedPayrollDays'
+import {
   buildJobBidLabelMapsFromClockRows,
   collectPeopleHoursDaySessionsForScale,
   scaleClosedSessionsToTargetHours,
@@ -206,6 +213,7 @@ type PeopleTab =
   | 'users'
   | 'teams'
   | 'overhead'
+  | 'employment'
   | 'pay_stubs'
   | 'hours'
   | 'offsets'
@@ -713,6 +721,7 @@ export default function People() {
       tab === 'users' ||
       tab === 'teams' ||
       tab === 'overhead' ||
+      tab === 'employment' ||
       tab === 'pay_stubs' ||
       tab === 'hours' ||
       tab === 'vehicles' ||
@@ -752,6 +761,15 @@ export default function People() {
         setActiveTab('users')
         return
       }
+      if (tab === 'employment' && !canAccessPay) {
+        setSearchParams((p) => {
+          const next = new URLSearchParams(p)
+          next.set('tab', 'users')
+          return next
+        }, { replace: true })
+        setActiveTab('users')
+        return
+      }
       if (tab === 'writeups' && !canAccessContracts) {
         setSearchParams((p) => {
           const next = new URLSearchParams(p)
@@ -769,7 +787,7 @@ export default function People() {
         return next
       }, { replace: true })
     }
-  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, setSearchParams])
+  }, [searchParams, activityAccessResolved, canSeeActivityTab, canAccessContracts, canAccessTeamsTab, canAccessOverheadTab, canAccessPay, setSearchParams])
 
   useEffect(() => {
     if (searchParams.get('tab') !== 'contracts') return
@@ -1517,6 +1535,11 @@ export default function People() {
       }
     }
 
+    // Salaried: unpaid time off + employment window adjust the flat 8/0 credit.
+    const salaryWindow = isSalary
+      ? (await fetchSalariedPayrollWindows(supabase, [personName], start, end))[personName] ?? EMPTY_SALARIED_PAYROLL_WINDOW
+      : null
+
     const dayRows: Array<{
       work_date: string
       hours: number
@@ -1528,11 +1551,8 @@ export default function People() {
       job_rate: number | null
     }> = []
     for (const d of daysInRange) {
-      const hrs = isSalary
-        ? (() => {
-            const day = new Date(d + 'T12:00:00').getDay()
-            return day >= 1 && day <= 5 ? 8 : 0
-          })()
+      const hrs = salaryWindow
+        ? salariedHoursForDay(d, salaryWindow)
         : hoursRows.find((r) => r.date === d)?.hours ?? 0
       const sp = splitByDate?.get(d) ?? null
       if (sp) {
@@ -2281,6 +2301,17 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, canOpenHoursTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
 
+  // Employment tab reads payConfig + template indicators; load them here since the
+  // hours-tab load cycle (the usual owner) may never have run this session.
+  useEffect(() => {
+    if (activeTab !== 'employment' || !canAccessPay) return
+    const t = setTimeout(() => {
+      void loadPayConfig()
+      void loadPayConfigSalaryTemplateIndicators()
+    }, 80)
+    return () => clearTimeout(t)
+  }, [activeTab, canAccessPay])
+
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay && payStubPeriodStart <= payStubPeriodEnd) {
       const t = setTimeout(() => {
@@ -2621,6 +2652,46 @@ export default function People() {
     const wage = cfg?.hourly_wage ?? 0
     const hrs = getEffectiveHours(personName, workDate)
     return wage * hrs
+  }
+
+  // Draft Payroll preview must match generatePayStub: salaried hours are the flat 8/0
+  // adjusted for unpaid time off + employment window (cost matrix / grids stay flat 8/0).
+  const [draftPayrollSalaryWindows, setDraftPayrollSalaryWindows] = useState<Record<string, SalariedPayrollWindow>>({})
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen || !canAccessPay) return
+    const salariedNames = Object.keys(payConfig).filter((n) => payConfig[n]?.is_salary)
+    if (salariedNames.length === 0) {
+      setDraftPayrollSalaryWindows({})
+      return
+    }
+    let cancelled = false
+    void fetchSalariedPayrollWindows(supabase, salariedNames, payStubPeriodStart, payStubPeriodEnd)
+      .then((map) => {
+        if (!cancelled) setDraftPayrollSalaryWindows(map)
+      })
+      .catch(() => {
+        if (!cancelled) setDraftPayrollSalaryWindows({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, payConfig])
+
+  function getPayrollEffectiveHours(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    if (cfg?.is_salary) {
+      return salariedHoursForDay(
+        workDate,
+        draftPayrollSalaryWindows[personName.trim()] ?? EMPTY_SALARIED_PAYROLL_WINDOW,
+      )
+    }
+    return getHoursForPersonDate(personName, workDate)
+  }
+
+  function getPayrollCostForPersonDate(personName: string, workDate: string): number {
+    const wage = payConfig[personName]?.hourly_wage ?? 0
+    return wage * getPayrollEffectiveHours(personName, workDate)
   }
 
   function getCostForPersonDateMatrix(personName: string, workDate: string): number {
@@ -2999,6 +3070,22 @@ export default function People() {
             |
           </span>
         ) : null}
+        {canAccessPay && (
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('employment')
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p)
+                next.set('tab', 'employment')
+                return next
+              })
+            }}
+            style={tabStyle(activeTab === 'employment')}
+          >
+            Employment
+          </button>
+        )}
         {canOpenHoursTab && (
           <button
             type="button"
@@ -3471,8 +3558,8 @@ export default function People() {
           payStubPaymentsByStubId={payStubPaymentsByStubId}
           payStubDeductionsByStubId={payStubDeductionsByStubId}
           payStubAdditionalByStubId={payStubAdditionalByStubId}
-          getCostForPersonDate={getCostForPersonDate}
-          getEffectiveHours={getEffectiveHours}
+          getCostForPersonDate={getPayrollCostForPersonDate}
+          getEffectiveHours={getPayrollEffectiveHours}
           getRunPayrollReviewDayItems={getRunPayrollReviewDayItems}
           onBulkGenerateRemaining={bulkGenerateMissingPayStubsInModal}
           onGenerateReport={async (person) => {
@@ -3910,6 +3997,21 @@ export default function People() {
           />
         ) : null}
         </>
+      )}
+
+      {activeTab === 'employment' && canAccessPay && (
+        <PeopleEmploymentTab
+          users={users}
+          payConfig={payConfig}
+          payConfigDraft={payConfigDraft}
+          payConfigOfficeWageDraft={payConfigOfficeWageDraft}
+          payConfigSaving={payConfigSaving}
+          isDev={isDev}
+          salaryTemplateByPersonName={salaryTemplateByPersonName}
+          onUpsertPayConfig={upsertPayConfig}
+          onHourlyWageChange={updatePayConfigHourlyWage}
+          onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
+        />
       )}
 
       {activeTab === 'vehicles' && canAccessPay && (
