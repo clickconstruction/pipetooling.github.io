@@ -1709,7 +1709,7 @@ function QuickfillSectionWrapper({
           }}
         >
           <span>
-            {label} — Marked up to date at {mark ? formatTime(mark.marked_at) : ''}{mark?.marked_by_name ? ` by ${mark.marked_by_name}` : ''}. Expands automatically in {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}.
+            Marked at {mark ? formatTime(mark.marked_at) : ''}{mark?.marked_by_name ? ` by ${mark.marked_by_name}` : ''}. Reloads in {mark ? `${hoursUntilExpand(mark.marked_at)}h` : '12h'}.
           </span>
           <button
             type="button"
