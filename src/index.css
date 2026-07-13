@@ -106,10 +106,29 @@ button {
   --page-wrap-pad: 2rem;
 }
 
+/* Theme tokens. <html data-theme="dark"> is stamped by ThemeContext (schedule:
+   dark 8pm–4am, gear-menu override). Surfaces adopt these incrementally —
+   anything still on raw hex simply stays light in dark mode until migrated. */
+:root {
+  --chrome-bg: #fafafa;
+  --menu-bg: #ffffff;
+  --chrome-text: #1a1a1a;
+  --chrome-border: #e5e7eb;
+}
+
+:root[data-theme='dark'] {
+  --chrome-bg: #111827;
+  --menu-bg: #1f2937;
+  --chrome-text: #f3f4f6;
+  --chrome-border: #374151;
+}
+
 .appNavChrome {
   position: relative;
   z-index: 50;
   overflow: visible;
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
 }
 
 .appNav {

@@ -42,6 +42,7 @@ import ContractBookPreview from './pages/ContractBookPreview'
 import TaskShortcut from './pages/TaskShortcut'
 import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
 import { registerSW } from 'virtual:pwa-register'
@@ -292,12 +293,14 @@ function DispatchNoteRequirementsBridge({ children }: { children: React.ReactNod
 
 export default function App() {
   return (
-    <ToastProvider>
-      <LedgerDisplayPrefixBridge>
-        <DispatchNoteRequirementsBridge>
-          <AppContent />
-        </DispatchNoteRequirementsBridge>
-      </LedgerDisplayPrefixBridge>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <LedgerDisplayPrefixBridge>
+          <DispatchNoteRequirementsBridge>
+            <AppContent />
+          </DispatchNoteRequirementsBridge>
+        </LedgerDisplayPrefixBridge>
+      </ToastProvider>
+    </ThemeProvider>
   )
 }
