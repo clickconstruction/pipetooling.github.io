@@ -44,7 +44,7 @@ function badgeStyle(detail: TeamFeedbackEligibilityDetail): CSSProperties {
   if (detail.reason === 'disabled') {
     return { background: 'var(--bg-muted)', color: 'var(--text-600)', border: '1px solid var(--border-strong)' }
   }
-  return { background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }
+  return { background: 'var(--bg-orange-tint)', color: 'var(--text-orange-700)', border: '1px solid #fed7aa' }
 }
 
 export default function TeamFeedbackEligibilityOverview() {

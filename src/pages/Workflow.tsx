@@ -2812,7 +2812,7 @@ export default function Workflow() {
                   marginBottom: '0.25rem',
                   background: 'var(--surface)',
                   ...(isCollapsed && { display: 'inline-block', width: 'fit-content', maxWidth: 'min(100%, 520px)', borderLeft: `9px solid ${getStepStatusStyle(s.status).color}` }),
-                  ...(!isCollapsed && s.status === 'in_progress' && { background: '#fff7ed', borderLeft: '4px solid #E87600' }),
+                  ...(!isCollapsed && s.status === 'in_progress' && { background: 'var(--bg-orange-tint)', borderLeft: '4px solid #E87600' }),
                 }}
               >
                 {(() => {

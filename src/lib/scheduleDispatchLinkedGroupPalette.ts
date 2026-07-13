@@ -13,7 +13,7 @@ const LINKED_GROUP_ACCENT_PALETTE: readonly LinkedGroupCardAccent[] = [
   { borderColor: '#0e7490', background: '#ecfeff' },
   { borderColor: '#a21caf', background: '#fdf4ff' },
   { borderColor: '#4d7c0f', background: '#f7fee7' },
-  { borderColor: '#c2410c', background: '#fff7ed' },
+  { borderColor: '#c2410c', background: 'var(--bg-orange-tint)' },
   { borderColor: '#3730a3', background: '#eef2ff' },
 ]
 
