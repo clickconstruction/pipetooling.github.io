@@ -1,17 +1,27 @@
-import { useCallback, useEffect, useState } from 'react'
-import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
-import { pickActiveDashboardSection } from '../../lib/dashboardSectionDock'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { pickActiveDashboardSection, clampedCenterScrollLeft } from '../lib/dashboardSectionDock'
 
-export type DashboardDockSection = { id: string; label: string }
+export type SectionDockSection = { id: string; label: string }
 
 /**
- * Desktop-only floating dock at the bottom of the Dashboard: one chip per
- * major section, the section currently in view ringed (scrollspy), click to
- * jump. Parent passes only the sections that actually rendered for this role.
+ * Desktop-only floating dock at the bottom of a long page: one chip per major
+ * section, the section currently in view ringed (scrollspy), click to jump.
+ * When the chip list overflows, the dock auto-scrolls so the active chip sits
+ * centered — clamped at both ends, so once the list's tail is on screen the
+ * highlight walks to the edge instead of over-scrolling.
+ * Parent passes only the sections that actually rendered.
  */
-export function DashboardSectionDock({ sections }: { sections: DashboardDockSection[] }) {
+export function SectionDock({
+  sections,
+  ariaLabel = 'Page sections',
+}: {
+  sections: SectionDockSection[]
+  ariaLabel?: string
+}) {
   const narrow = useNarrowViewport640()
   const [activeId, setActiveId] = useState<string | null>(null)
+  const navRef = useRef<HTMLElement | null>(null)
 
   const recompute = useCallback(() => {
     const anchors = sections
@@ -44,11 +54,26 @@ export function DashboardSectionDock({ sections }: { sections: DashboardDockSect
     }
   }, [narrow, recompute])
 
+  // Keep the active chip centered while the chip list overflows the dock.
+  useEffect(() => {
+    const nav = navRef.current
+    if (!nav || !activeId) return
+    const chip = nav.querySelector<HTMLElement>(`[data-dock-chip="${CSS.escape(activeId)}"]`)
+    if (!chip) return
+    nav.scrollTo({
+      left: clampedCenterScrollLeft(chip.offsetLeft, chip.offsetWidth, nav.clientWidth, nav.scrollWidth),
+      behavior: 'smooth',
+    })
+  }, [activeId])
+
   if (narrow || sections.length < 2) return null
 
   return (
     <nav
-      aria-label="Dashboard sections"
+      ref={(el) => {
+        navRef.current = el
+      }}
+      aria-label={ariaLabel}
       style={{
         position: 'fixed',
         bottom: 12,
@@ -73,6 +98,7 @@ export function DashboardSectionDock({ sections }: { sections: DashboardDockSect
           <button
             key={s.id}
             type="button"
+            data-dock-chip={s.id}
             aria-current={active ? 'true' : undefined}
             onClick={() => {
               setActiveId(s.id)

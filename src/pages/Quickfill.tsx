@@ -4,6 +4,7 @@ import { DndContext, type DragEndEvent, PointerSensor, useSensor, useSensors } f
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import DashboardArBankUnallocatedBanner from '../components/DashboardArBankUnallocatedBanner'
+import { SectionDock } from '../components/SectionDock'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
@@ -1388,8 +1389,13 @@ function QuickfillPage() {
     }
   }
 
+  const dockSections = orderedSections
+    .filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId))
+    .map(({ id, label }) => ({ id, label }))
+
   return (
-    <div style={{ padding: '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: '1.5rem', paddingBottom: dockSections.length > 1 ? '4.5rem' : '1.5rem', maxWidth: 1200, margin: '0 auto' }}>
+      {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Quickfill sections" /> : null}
       <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '1.5rem', textAlign: 'center' }}>Quickfill</h1>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'center', marginBottom: '1.5rem' }}>
         {orderedSections.filter(({ sectionId }) => sectionWouldRenderOnPage(sectionId)).map(({ id, sectionId, label }) => {

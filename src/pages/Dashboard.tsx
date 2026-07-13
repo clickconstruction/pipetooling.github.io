@@ -52,7 +52,7 @@ import {
 } from '../lib/dashboardClockStripScopeStorage'
 import DashboardFieldCollectPaymentQueue from '../components/dashboard/DashboardFieldCollectPaymentQueue'
 import { BillingPipelineCard, BillingPipelineStage } from '../components/dashboard/BillingPipelineCard'
-import { DashboardSectionDock } from '../components/dashboard/DashboardSectionDock'
+import { SectionDock } from '../components/SectionDock'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import {
@@ -4654,7 +4654,7 @@ export default function Dashboard() {
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
   return (
     <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
-      {dockSections.length > 1 ? <DashboardSectionDock sections={dockSections} /> : null}
+      {dockSections.length > 1 ? <SectionDock sections={dockSections} ariaLabel="Dashboard sections" /> : null}
       {showFinancials && <div id="dash-notifications" aria-hidden="true" style={dockAnchorStyle} />}
       {showFinancials && <DashboardFinancialsSection />}
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (

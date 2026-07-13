@@ -18,3 +18,19 @@ export function pickActiveDashboardSection(
   }
   return active
 }
+
+/**
+ * Scroll offset that centers a chip inside the dock's scrollable bar, clamped
+ * to [0, contentWidth - viewWidth] — near the list's ends the bar pins flush
+ * instead of over-scrolling (the highlight walks to the edge).
+ */
+export function clampedCenterScrollLeft(
+  itemLeft: number,
+  itemWidth: number,
+  viewWidth: number,
+  contentWidth: number,
+): number {
+  const maxScroll = Math.max(0, contentWidth - viewWidth)
+  const ideal = itemLeft + itemWidth / 2 - viewWidth / 2
+  return Math.min(maxScroll, Math.max(0, ideal))
+}
