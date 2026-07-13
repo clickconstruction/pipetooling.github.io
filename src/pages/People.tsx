@@ -2293,6 +2293,17 @@ export default function People() {
     return () => clearTimeout(t)
   }, [activeTab, canOpenHoursTab, canAccessHours, canAccessPay, canViewCostMatrixShared, hoursDateStart, hoursDateEnd])
 
+  // Employment tab reads payConfig + template indicators; load them here since the
+  // hours-tab load cycle (the usual owner) may never have run this session.
+  useEffect(() => {
+    if (activeTab !== 'employment' || !canAccessPay) return
+    const t = setTimeout(() => {
+      void loadPayConfig()
+      void loadPayConfigSalaryTemplateIndicators()
+    }, 80)
+    return () => clearTimeout(t)
+  }, [activeTab, canAccessPay])
+
   useEffect(() => {
     if (activeTab === 'pay_stubs' && canAccessPay && payStubPeriodStart <= payStubPeriodEnd) {
       const t = setTimeout(() => {
@@ -3941,7 +3952,18 @@ export default function People() {
       )}
 
       {activeTab === 'employment' && canAccessPay && (
-        <PeopleEmploymentTab users={users} payConfig={payConfig} salaryTemplateByPersonName={salaryTemplateByPersonName} />
+        <PeopleEmploymentTab
+          users={users}
+          payConfig={payConfig}
+          payConfigDraft={payConfigDraft}
+          payConfigOfficeWageDraft={payConfigOfficeWageDraft}
+          payConfigSaving={payConfigSaving}
+          isDev={isDev}
+          salaryTemplateByPersonName={salaryTemplateByPersonName}
+          onUpsertPayConfig={upsertPayConfig}
+          onHourlyWageChange={updatePayConfigHourlyWage}
+          onOfficeHourlyWageChange={updatePayConfigOfficeHourlyWage}
+        />
       )}
 
       {activeTab === 'vehicles' && canAccessPay && (
