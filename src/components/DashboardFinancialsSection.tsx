@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/format'
+import { formatMoneyShortK } from '../lib/formatMoneyShortK'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { useAuth } from '../hooks/useAuth'
@@ -902,8 +903,11 @@ export default function DashboardFinancialsSection() {
             >
               <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 0 }}>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>{CARD_META[key].title}</span>
-                <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                  ${roundDollars(bucket.total)}
+                <span
+                  title={`$${formatCurrency(bucket.total)}`}
+                  style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}
+                >
+                  {formatMoneyShortK(bucket.total)}
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
                   {bucket.count} item{bucket.count === 1 ? '' : 's'}
