@@ -9,6 +9,7 @@ import { SELECT_BIDS_SUBMISSION_ENTRIES_WITH_CREATOR, noteByLineFromEmbed } from
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { effectiveSubmissionBidLastNoteIso, isSubmissionBidStaleForThreshold } from '../../lib/submissionFollowupStale'
 import { submissionFollowupBidShareUrl } from '../../lib/submissionFollowupBidShareUrl'
+import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { buildFollowupSheetHtml, type FollowupGroups, type FollowupProject } from '../../lib/bidDocuments/followupSheet'
 import { printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import { bidEligibleForWorkingBoardArchive } from '../../lib/workingBoardArchiveEligibility'
@@ -1560,7 +1561,12 @@ export function BidSubmissionFollowupTab({
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>{bid.plan_pages?.trim() ?? '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
-                    <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                    <td style={{ padding: '0.75rem' }}>
+                      {formatDateYYMMDD(bid.bid_due_date)}
+                      {formatBidDueTime(bid.bid_due_time) ? (
+                        <span style={{ color: 'var(--text-muted)' }}>{` ${formatBidDueTime(bid.bid_due_time)}`}</span>
+                      ) : null}
+                    </td>
                     <td style={{ padding: '0.75rem' }}>
                       {(() => {
                         const am = bid.account_manager as EstimatorUser | null
@@ -2025,7 +2031,12 @@ export function BidSubmissionFollowupTab({
                   }}
                 >
                   <td style={{ padding: '0.75rem' }}>{bidDisplayName(bid) || bid.customers?.name || bid.bids_gc_builders?.name || bid.id.slice(0, 8)}</td>
-                  <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
+                  <td style={{ padding: '0.75rem' }}>
+                    {formatDateYYMMDD(bid.bid_due_date)}
+                    {formatBidDueTime(bid.bid_due_time) ? (
+                      <span style={{ color: 'var(--text-muted)' }}>{` ${formatBidDueTime(bid.bid_due_time)}`}</span>
+                    ) : null}
+                  </td>
                   <td style={{ padding: '0.75rem' }}>{(bid as { loss_reason?: string | null }).loss_reason?.trim() || '—'}</td>
                   <td style={{ padding: '0.75rem', width: 44 }}>
                     {selectedBid?.id === bid.id && (
