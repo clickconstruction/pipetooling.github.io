@@ -108,12 +108,58 @@ button {
 
 /* Theme tokens. <html data-theme="dark"> is stamped by ThemeContext (schedule:
    dark 8pm–4am, gear-menu override). Surfaces adopt these incrementally —
-   anything still on raw hex simply stays light in dark mode until migrated. */
+   anything still on raw hex simply stays light in dark mode until migrated.
+   Light values are EXACTLY the hexes they replace (light mode stays
+   pixel-identical); dark values invert the neutral ramp and lighten text
+   accents. scripts/theme-tokenize.mjs rewrites inline styles onto these. */
 :root {
   --chrome-bg: #fafafa;
   --menu-bg: #ffffff;
   --chrome-text: #1a1a1a;
   --chrome-border: #e5e7eb;
+
+  /* text (color:) */
+  --text-strong: #111827;
+  --text-base: #1a1a1a;
+  --text-700: #374151;
+  --text-600: #4b5563;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+  --text-faint-300: #d1d5db;
+  --text-slate-900: #0f172a;
+  --text-slate-600: #475569;
+  --text-slate-500: #64748b;
+  --text-slate-400: #94a3b8;
+  --text-link: #2563eb;
+  --text-blue-500: #3b82f6;
+  --text-blue-700: #1d4ed8;
+  --text-red-600: #dc2626;
+  --text-red-700: #b91c1c;
+  --text-red-800: #991b1b;
+  --text-green-600: #059669;
+  --text-amber-700: #b45309;
+  --text-amber-800: #92400e;
+
+  /* surfaces (background:) */
+  --bg-page: #fafafa;
+  --surface: #ffffff;
+  --bg-subtle: #f9fafb;
+  --bg-muted: #f3f4f6;
+  --bg-blue-tint: #eff6ff;
+  --bg-red-tint: #fef2f2;
+  --bg-red-100: #fee2e2;
+  --bg-red-200: #fecaca;
+  --bg-amber-tint: #fffbeb;
+  --bg-amber-100: #fef3c7;
+  --bg-green-tint: #f0fdf4;
+  --bg-green-100: #dcfce7;
+  --bg-slate-tint: #f8fafc;
+  --bg-slate-100: #f1f5f9;
+
+  /* borders (border*/outline) */
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --border-400: #9ca3af;
 }
 
 :root[data-theme='dark'] {
@@ -121,6 +167,46 @@ button {
   --menu-bg: #1f2937;
   --chrome-text: #f3f4f6;
   --chrome-border: #374151;
+
+  --text-strong: #f9fafb;
+  --text-base: #f3f4f6;
+  --text-700: #d1d5db;
+  --text-600: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-faint: #6b7280;
+  --text-faint-300: #4b5563;
+  --text-slate-900: #f1f5f9;
+  --text-slate-600: #cbd5e1;
+  --text-slate-500: #94a3b8;
+  --text-slate-400: #64748b;
+  --text-link: #60a5fa;
+  --text-blue-500: #60a5fa;
+  --text-blue-700: #93c5fd;
+  --text-red-600: #f87171;
+  --text-red-700: #f87171;
+  --text-red-800: #fca5a5;
+  --text-green-600: #34d399;
+  --text-amber-700: #fbbf24;
+  --text-amber-800: #fcd34d;
+
+  --bg-page: #111827;
+  --surface: #1f2937;
+  --bg-subtle: #18212f;
+  --bg-muted: #374151;
+  --bg-blue-tint: #1e3358;
+  --bg-red-tint: #3b1a1a;
+  --bg-red-100: #4c1d1d;
+  --bg-red-200: #5f2626;
+  --bg-amber-tint: #3a2f11;
+  --bg-amber-100: #45390f;
+  --bg-green-tint: #12301f;
+  --bg-green-100: #14532d;
+  --bg-slate-tint: #18212f;
+  --bg-slate-100: #334155;
+
+  --border: #374151;
+  --border-strong: #4b5563;
+  --border-400: #6b7280;
 }
 
 .appNavChrome {

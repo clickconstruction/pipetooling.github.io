@@ -201,17 +201,17 @@ export function PartFormModal({
   // at z 1100 and its pickers at 1200) — zIndex must stack above every host.
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1300 }}>
-      <div style={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: '500px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
         <h2 style={{ margin: '0 0 1rem' }}>{editingPart ? 'Edit Part' : 'Add Part'}</h2>
         {!editingPart && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f3f4f6', borderRadius: 4 }}>
-            <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Service Type: <strong>{serviceTypes.find(st => st.id === selectedServiceTypeId)?.name}</strong>
             </span>
           </div>
         )}
         {error && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
             {error}
           </div>
         )}
@@ -223,7 +223,7 @@ export function PartFormModal({
               value={partName}
               onChange={(e) => setPartName(e.target.value)}
               required
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
@@ -232,15 +232,15 @@ export function PartFormModal({
               type="text"
               value={partManufacturer}
               onChange={(e) => setPartManufacturer(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
           <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type <span style={{ fontWeight: 400, color: '#6b7280' }}>(optional)</span></label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Part Type <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional)</span></label>
             <select
               value={partPartTypeId}
               onChange={(e) => setPartPartTypeId(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             >
               <option value="">No part type</option>
               {partTypes.map((ft) => (
@@ -250,7 +250,7 @@ export function PartFormModal({
               ))}
             </select>
             {partTypes.length === 0 && (
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem', marginBottom: 0 }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', marginBottom: 0 }}>
                 No part types available. Devs can add them in Settings.
               </p>
             )}
@@ -268,7 +268,7 @@ export function PartFormModal({
                     const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`
                     window.open(url, '_blank', 'noopener,noreferrer')
                   }}
-                  style={{ flexShrink: 0, padding: '0.5rem 0.75rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  style={{ flexShrink: 0, padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
                 >
                   Open ↗
                 </button>
@@ -279,7 +279,7 @@ export function PartFormModal({
                 value={partLink}
                 onChange={(e) => setPartLink(e.target.value)}
                 placeholder="grainger.com/product/… or https://…"
-                style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
           </div>
@@ -289,20 +289,20 @@ export function PartFormModal({
               value={partNotes}
               onChange={(e) => setPartNotes(e.target.value)}
               rows={3}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
 
           {/* Optional Prices Section - only show when adding new part */}
           {!editingPart && (
-            <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
               <button
                 type="button"
                 onClick={() => setPricesSectionExpanded(!pricesSectionExpanded)}
                 style={{
                   width: '100%',
                   padding: '0.75rem 1rem',
-                  background: '#f9fafb',
+                  background: 'var(--bg-subtle)',
                   border: 'none',
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -328,7 +328,7 @@ export function PartFormModal({
                             updated[idx] = { ...updated[idx]!, supply_house_id: e.target.value }
                             setPartPrices(updated)
                           }}
-                          style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                          style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                         >
                           <option value="">Select supply house...</option>
                           {supplyHouses.map(sh => (
@@ -347,7 +347,7 @@ export function PartFormModal({
                             updated[idx] = { ...updated[idx]!, price: e.target.value }
                             setPartPrices(updated)
                           }}
-                          style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                          style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                         />
 
                         <button
@@ -355,7 +355,7 @@ export function PartFormModal({
                           onClick={() => {
                             setPartPrices(partPrices.filter((_, i) => i !== idx))
                           }}
-                          style={{ padding: '0.5rem 0.75rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
                         >
                           ×
                         </button>
@@ -372,7 +372,7 @@ export function PartFormModal({
                           updated[idx] = { ...updated[idx]!, effective_date: e.target.value }
                           setPartPrices(updated)
                         }}
-                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                       />
                     </div>
                   ))}
@@ -388,7 +388,7 @@ export function PartFormModal({
                   </button>
 
                   {supplyHouses.length === 0 && (
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.75rem', marginBottom: 0 }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.75rem', marginBottom: 0 }}>
                       No supply houses available. Add supply houses first to set prices.
                     </p>
                   )}
@@ -402,14 +402,14 @@ export function PartFormModal({
               <button
                 type="button"
                 onClick={() => setDeleteConfirmOpen(true)}
-                style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
               >
                 Delete
               </button>
             )}
             {editingPart && deleteConfirmOpen && (
-              <div style={{ flex: '1 1 100%', padding: '0.75rem', background: '#fef2f2', borderRadius: 4, marginBottom: '0.5rem', border: '1px solid #fecaca' }}>
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#991b1b' }}>
+              <div style={{ flex: '1 1 100%', padding: '0.75rem', background: 'var(--bg-red-tint)', borderRadius: 4, marginBottom: '0.5rem', border: '1px solid #fecaca' }}>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-red-800)' }}>
                   Type <strong>{editingPart.name}</strong> to confirm deletion. All prices will also be removed.
                 </p>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -418,7 +418,7 @@ export function PartFormModal({
                     value={deleteConfirmName}
                     onChange={(e) => { setDeleteConfirmName(e.target.value); setError(null) }}
                     placeholder={editingPart.name}
-                    style={{ flex: 1, minWidth: 160, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ flex: 1, minWidth: 160, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     autoFocus
                   />
                   <button
@@ -432,7 +432,7 @@ export function PartFormModal({
                   <button
                     type="button"
                     onClick={() => { setDeleteConfirmOpen(false); setDeleteConfirmName(''); setError(null) }}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Cancel
                   </button>
@@ -443,7 +443,7 @@ export function PartFormModal({
               <button
                 type="button"
                 onClick={onClose}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
