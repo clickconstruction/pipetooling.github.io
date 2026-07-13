@@ -87,8 +87,8 @@ describe('peopleCountColor', () => {
 
   it('returns light blue with dark fg for 1', () => {
     const c = peopleCountColor(1)
-    expect(c.background).toBe('#dbeafe')
-    expect(c.foreground).toBe('#1e3a8a')
+    expect(c.background).toBe('var(--bg-blue-200)')
+    expect(c.foreground).toBe('var(--text-blue-900)')
   })
 
   it('walks the palette through 2 / 3 with dark fg', () => {

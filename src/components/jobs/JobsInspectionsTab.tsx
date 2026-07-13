@@ -389,7 +389,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                         <div style={{ fontSize: '0.875rem', color: isCurrentMonth ? 'var(--text-strong)' : 'var(--text-faint)', fontWeight: isToday ? 600 : 400, marginBottom: '0.25rem' }}>{day.getDate()}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'auto', flex: 1, minHeight: 0 }}>
                           {dayInspections.slice(0, 3).map((i) => (
-                            <div key={i.id} style={{ fontSize: '0.7rem', padding: '2px 4px', background: '#dbeafe', color: '#1e40af', borderRadius: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${i.address} - ${i.inspection_type}`}>
+                            <div key={i.id} style={{ fontSize: '0.7rem', padding: '2px 4px', background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)', borderRadius: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${i.address} - ${i.inspection_type}`}>
                               {i.address} - {i.inspection_type}
                             </div>
                           ))}

@@ -653,7 +653,7 @@ export function ContractBookModal({
                     <strong style={{ fontSize: '0.9375rem' }}>{row.document_name}</strong>
                     <span style={badgeStyle}>{tname}</span>
                     {(row.tags ?? []).map((tag) => (
-                      <span key={tag} style={{ ...badgeStyle, backgroundColor: '#dbeafe', color: '#1e40af' }}>
+                      <span key={tag} style={{ ...badgeStyle, backgroundColor: 'var(--bg-blue-200)', color: 'var(--text-blue-800)' }}>
                         {tag}
                       </span>
                     ))}

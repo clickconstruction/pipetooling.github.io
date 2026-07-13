@@ -775,7 +775,7 @@ export default function CollectPaymentModal({
         borderRadius: 6,
         border: '1px solid var(--border-strong)',
         background: stripeDashOpenEnabled ? 'var(--bg-slate-tint)' : 'var(--bg-muted)',
-        color: stripeDashOpenEnabled ? '#1e40af' : 'var(--text-faint)',
+        color: stripeDashOpenEnabled ? 'var(--text-blue-800)' : 'var(--text-faint)',
         cursor: stripeDashOpenEnabled ? 'pointer' : 'not-allowed',
         flexShrink: 0,
       } as const)
@@ -1480,7 +1480,7 @@ export default function CollectPaymentModal({
                 borderRadius: 6,
                 border: '1px solid #15803d',
                 background: 'var(--bg-green-tint)',
-                color: '#166534',
+                color: 'var(--text-green-800)',
                 textDecoration: 'none',
                 fontSize: '0.75rem',
                 fontWeight: 600,

@@ -35,7 +35,7 @@ const stickyCorner: CSSProperties = {
   position: 'sticky',
   left: 0,
   zIndex: 3,
-  background: '#fdfaf3',
+  background: 'var(--bg-cream)',
   boxShadow: '1px 0 0 #d6c089',
 }
 
@@ -176,7 +176,7 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
         padding: '0.85rem',
         border: '2px dashed #ca8a04',
         borderRadius: 6,
-        background: '#fdfaf3',
+        background: 'var(--bg-cream)',
       }}
       aria-label="Development only — internal estimator labor cost per weekly bid sends. Not payroll or billing."
     >
@@ -188,7 +188,7 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
             fontWeight: 700,
             letterSpacing: '0.04em',
             textTransform: 'uppercase',
-            color: '#854d0e',
+            color: 'var(--text-yellow-800)',
             border: '1px solid #ca8a04',
             padding: '0.15rem 0.35rem',
             borderRadius: 3,
@@ -234,7 +234,7 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
               minWidth: Math.max(480, 160 + pivot.weeks.length * 120),
             }}
           >
-            <thead style={{ background: '#fdfaf3' }}>
+            <thead style={{ background: 'var(--bg-cream)' }}>
               <tr>
                 <th scope="col" style={stickyCorner}>
                   Estimator
@@ -242,7 +242,7 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
                 {pivot.weeks.map((w) => (
                   <th key={w.weekStart} scope="col" style={thWeek} id={`${headingId}-wk-${w.weekStart}`}>
                     <div>{formatScheduleDispatchWeekNavLabel(w.weekStart, w.weekEnd)}</div>
-                    <div style={{ marginTop: 4, fontSize: '0.68rem', fontWeight: 500, color: '#78350f' }}>
+                    <div style={{ marginTop: 4, fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-amber-900)' }}>
                       Labor $ / estimate
                       <br />
                       cents / $ bid value
@@ -281,7 +281,7 @@ export function BidBoardWeeklyEstimatorLaborDevSection({ weeks }: { weeks: BidBo
                         }}
                       >
                         <div style={{ whiteSpace: 'nowrap' }}>{dollarLine}</div>
-                        <div style={{ whiteSpace: 'nowrap', color: '#78350f' }}>{centsLine}</div>
+                        <div style={{ whiteSpace: 'nowrap', color: 'var(--text-amber-900)' }}>{centsLine}</div>
                       </td>
                     )
                   })}

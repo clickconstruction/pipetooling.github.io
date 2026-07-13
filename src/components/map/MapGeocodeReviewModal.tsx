@@ -214,7 +214,7 @@ export function MapGeocodeReviewModal({
         aria-labelledby="map-geocode-review-title"
         style={{
           background: 'var(--surface)',
-          color: '#111',
+          color: 'var(--text-strong)',
           maxWidth: 640,
           width: '100%',
           maxHeight: 'min(90vh, 640px)',

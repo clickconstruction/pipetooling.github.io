@@ -637,8 +637,8 @@ export function BidsCoverLetterTab({
                       style={{
                         fontSize: '0.75rem',
                         fontWeight: 600,
-                        color: '#1e40af',
-                        background: '#dbeafe',
+                        color: 'var(--text-blue-800)',
+                        background: 'var(--bg-blue-200)',
                         border: '1px solid #bfdbfe',
                         borderRadius: 9999,
                         padding: '0.1rem 0.5rem',
@@ -891,7 +891,7 @@ export function BidsCoverLetterTab({
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                 Combined document (copy to send)
                 {bundlePricings.length > 1 && (
-                  <span style={{ marginLeft: '0.5rem', fontWeight: 400, fontSize: '0.8125rem', color: '#1e40af' }}>
+                  <span style={{ marginLeft: '0.5rem', fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-blue-800)' }}>
                     · bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')}
                   </span>
                 )}

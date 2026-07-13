@@ -172,9 +172,9 @@ export type PeopleCountColors = {
  */
 export function peopleCountColor(count: number): PeopleCountColors {
   if (count <= 0) {
-    return { background: 'transparent', foreground: '#1e3a8a' }
+    return { background: 'transparent', foreground: 'var(--text-blue-900)' }
   }
-  if (count === 1) return { background: '#dbeafe', foreground: '#1e3a8a' }
+  if (count === 1) return { background: 'var(--bg-blue-200)', foreground: 'var(--text-blue-900)' }
   if (count === 2) return { background: '#bfdbfe', foreground: '#1e3a8a' }
   if (count === 3) return { background: '#93c5fd', foreground: '#1e3a8a' }
   if (count === 4) return { background: '#60a5fa', foreground: '#ffffff' }

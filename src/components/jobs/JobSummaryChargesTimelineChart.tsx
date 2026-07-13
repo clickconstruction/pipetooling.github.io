@@ -177,7 +177,7 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         {row.dateLabel}
       </div>
       {row.chargeEvents.map((e, i) => (
-        <div key={`c-${i}`} style={{ color: '#7f1d1d' }}>
+        <div key={`c-${i}`} style={{ color: 'var(--text-red-900)' }}>
           {JOB_CHARGE_SOURCE_META[e.source].icon} {e.label} — ${formatCurrency(e.amount)}
         </div>
       ))}
@@ -187,7 +187,7 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         </div>
       ))}
       {row.valueEvents.map((e, i) => (
-        <div key={`v-${i}`} style={{ color: '#1e40af' }}>
+        <div key={`v-${i}`} style={{ color: 'var(--text-blue-800)' }}>
           🚩 {e.label}
           {e.percent != null ? ` — ${e.percent}% complete` : ' — no completion %'}
         </div>

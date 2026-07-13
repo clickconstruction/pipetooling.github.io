@@ -147,9 +147,9 @@ function formatTimestamp(value: string | null | undefined): string {
 function describeStatus(status: string | null): { label: string; bg: string; color: string; border: string } {
   switch (status) {
     case 'completed':
-      return { label: 'Completed', bg: '#dcfce7', color: '#166534', border: '#86efac' }
+      return { label: 'Completed', bg: '#dcfce7', color: 'var(--text-green-800)', border: '#86efac' }
     case 'approved':
-      return { label: 'Approved', bg: '#dcfce7', color: '#166534', border: '#86efac' }
+      return { label: 'Approved', bg: '#dcfce7', color: 'var(--text-green-800)', border: '#86efac' }
     case 'in_progress':
       return { label: 'In progress', bg: '#fef3c7', color: 'var(--text-amber-800)', border: '#fcd34d' }
     case 'rejected':
@@ -966,7 +966,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                         alignItems: 'center',
                         gap: 8,
                         fontSize: '0.8125rem',
-                        color: '#1f2937',
+                        color: 'var(--text-gray-800)',
                       }}
                     >
                       <input
@@ -1337,7 +1337,7 @@ function ReasonBlock({ title, body }: { title: string; body: string }) {
       <div style={{ fontSize: '0.6875rem', color: 'var(--text-red-800)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
         {title}
       </div>
-      <div style={{ fontSize: '0.8125rem', color: '#7f1d1d', whiteSpace: 'pre-wrap' }}>{body}</div>
+      <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-900)', whiteSpace: 'pre-wrap' }}>{body}</div>
     </div>
   )
 }
@@ -1356,7 +1356,7 @@ const chipBtnStyle = {
   borderRadius: 999,
   border: '1px solid #cbd5e1',
   background: 'var(--surface)',
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   fontSize: '0.6875rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -1374,7 +1374,7 @@ const footerSecondaryStyle = {
   borderRadius: 6,
   border: '1px solid #cbd5e1',
   background: 'var(--surface)',
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',
   fontWeight: 600,
   cursor: 'pointer',

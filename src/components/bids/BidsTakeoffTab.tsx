@@ -3720,7 +3720,7 @@ export function BidsTakeoffTab({
                       alignItems: 'center',
                       gap: '0.25rem',
                       padding: '0.35rem 0.5rem',
-                      background: takeoffBookEntriesVersionId === v.id ? '#dbeafe' : 'var(--bg-muted)',
+                      background: takeoffBookEntriesVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
                       border: takeoffBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                       borderRadius: 4,
                     }}

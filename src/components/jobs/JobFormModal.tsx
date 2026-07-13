@@ -3125,7 +3125,7 @@ export default function JobFormModal({
                 justifyContent: 'center',
                 borderRadius: '50%',
                 border: '1px solid #bfdbfe',
-                background: hcpHelpOpen ? '#dbeafe' : 'var(--bg-blue-tint)',
+                background: hcpHelpOpen ? 'var(--bg-blue-200)' : 'var(--bg-blue-tint)',
                 color: 'var(--text-blue-700)',
                 fontSize: '0.8125rem',
                 fontWeight: 700,
@@ -5105,11 +5105,11 @@ export default function JobFormModal({
                               marginLeft: 8,
                               padding: '0.15rem 0.35rem',
                               fontSize: '0.75rem',
-                              background: '#dbeafe',
+                              background: 'var(--bg-blue-200)',
                               border: '1px solid #93c5fd',
                               borderRadius: 4,
                               cursor: 'pointer',
-                              color: '#1e40af',
+                              color: 'var(--text-blue-800)',
                             }}
                           >
                             Preview / Stripe bill…

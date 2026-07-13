@@ -379,7 +379,7 @@ function TechTreeDndTaskRow({
 
   let style: CSSProperties = {
     marginBottom: 4,
-    color: task.completedAt ? 'var(--text-slate-500)' : '#111',
+    color: task.completedAt ? 'var(--text-slate-500)' : 'var(--text-strong)',
     textDecoration: task.completedAt ? 'line-through' : undefined,
     transform: CSS.Transform.toString(transform),
     transition,
@@ -637,7 +637,7 @@ function GroupNode({ data }: NodeProps) {
                 key={t.id}
                 style={{
                   marginBottom: 4,
-                  color: t.completedAt ? 'var(--text-slate-500)' : '#111',
+                  color: t.completedAt ? 'var(--text-slate-500)' : 'var(--text-strong)',
                   textDecoration: t.completedAt ? 'line-through' : undefined,
                   borderRadius: 4,
                   padding: d.searchIsActive && taskMatch(t.id) ? '2px 4px' : 0,

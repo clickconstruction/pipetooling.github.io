@@ -90,7 +90,7 @@ const skipBtnStyle: CSSProperties = {
   borderRadius: 8,
   border: '1px solid #cbd5e1',
   background: 'var(--bg-slate-tint)',
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   fontSize: '0.875rem',
   fontWeight: 600,
   cursor: 'pointer',

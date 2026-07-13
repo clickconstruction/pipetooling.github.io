@@ -117,6 +117,8 @@ button {
    contracts) that must never render dark. */
 :root,
 [data-theme='light'] {
+  color-scheme: light;
+
   --chrome-bg: #fafafa;
   --menu-bg: #ffffff;
   --chrome-text: #1a1a1a;
@@ -143,7 +145,17 @@ button {
   --text-green-600: #059669;
   --text-amber-700: #b45309;
   --text-amber-800: #92400e;
+  --text-amber-900: #78350f;
+  --text-yellow-800: #854d0e;
   --text-orange-700: #c2410c;
+  --text-orange-800: #9a3412;
+  --text-gray-800: #1f2937;
+  --text-blue-800: #1e40af;
+  --text-green-800: #166534;
+  --text-emerald-800: #065f46;
+  --text-red-900: #7f1d1d;
+  --text-sky-700: #0369a1;
+  --text-blue-900: #1e3a8a;
 
   /* surfaces (background:) */
   --bg-page: #fafafa;
@@ -163,6 +175,13 @@ button {
   --bg-green-100: #dcfce7;
   --bg-slate-tint: #f8fafc;
   --bg-slate-100: #f1f5f9;
+  --bg-neutral-100: #f5f5f5;
+  --bg-cream: #fdfaf3;
+  --bg-yellow-tint: #fefce8;
+  --bg-orange-100: #ffedd5;
+  --bg-emerald-tint: #ecfdf5;
+  --bg-blue-200: #dbeafe;
+  --bg-sky-100: #e0f2fe;
 
   /* borders (border*/outline) */
   --border: #e5e7eb;
@@ -172,6 +191,11 @@ button {
 }
 
 :root[data-theme='dark'] {
+  /* Native controls (buttons, inputs, scrollbars) render dark: unstyled button
+     text is ButtonText (light) instead of black, bare buttons get dark UA
+     backgrounds. Pinned-light subtrees reset this below. */
+  color-scheme: dark;
+
   --chrome-bg: #111827;
   --menu-bg: #1f2937;
   --chrome-text: #f3f4f6;
@@ -197,7 +221,17 @@ button {
   --text-green-600: #34d399;
   --text-amber-700: #fbbf24;
   --text-amber-800: #fcd34d;
+  --text-amber-900: #fcd34d;
+  --text-yellow-800: #fde047;
   --text-orange-700: #fdba74;
+  --text-orange-800: #fdba74;
+  --text-gray-800: #e5e7eb;
+  --text-blue-800: #93c5fd;
+  --text-green-800: #86efac;
+  --text-emerald-800: #6ee7b7;
+  --text-red-900: #fca5a5;
+  --text-sky-700: #7dd3fc;
+  --text-blue-900: #bfdbfe;
 
   --bg-page: #111827;
   --surface: #1f2937;
@@ -216,6 +250,13 @@ button {
   --bg-green-100: #14532d;
   --bg-slate-tint: #18212f;
   --bg-slate-100: #334155;
+  --bg-neutral-100: #374151;
+  --bg-cream: #273040;
+  --bg-yellow-tint: #3f3a12;
+  --bg-orange-100: #4a2c11;
+  --bg-emerald-tint: #0c2f22;
+  --bg-blue-200: #24407a;
+  --bg-sky-100: #173e54;
 
   --border: #374151;
   --border-strong: #4b5563;

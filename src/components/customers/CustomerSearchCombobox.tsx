@@ -395,7 +395,7 @@ export default function CustomerSearchCombobox({
               style={{
                 ...footerCreateStyle,
                 ...(highlightIndex === optionCount && optionCount >= 0 ?
-                  { background: '#ffedd5' }
+                  { background: 'var(--bg-orange-100)' }
                 : {}),
               }}
             >

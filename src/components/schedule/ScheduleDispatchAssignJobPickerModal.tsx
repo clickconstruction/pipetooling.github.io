@@ -169,8 +169,8 @@ export function ScheduleDispatchAssignJobPickerModal({
                           flexShrink: 0,
                           fontSize: '0.75rem',
                           fontWeight: 500,
-                          color: '#1e40af',
-                          background: '#dbeafe',
+                          color: 'var(--text-blue-800)',
+                          background: 'var(--bg-blue-200)',
                           padding: '0.12rem 0.4rem',
                           borderRadius: 4,
                         }}
@@ -196,7 +196,7 @@ export function ScheduleDispatchAssignJobPickerModal({
               marginTop: '0.75rem',
             }}
           >
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#7f1d1d', lineHeight: 1.4 }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-red-900)', lineHeight: 1.4 }}>
               Mark <strong>{notComingIn.personLabel}</strong> as not coming in
               {notComingIn.workDateLabel ? (
                 <>

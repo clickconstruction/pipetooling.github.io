@@ -427,7 +427,7 @@ export function CustomerNotesTable({
             display: 'flex',
             alignItems: 'center',
             gap: '0.35rem',
-            ...(useBidBoardCustomerChrome ? { color: '#166534' } : {}),
+            ...(useBidBoardCustomerChrome ? { color: 'var(--text-green-800)' } : {}),
           }}
         >
           {headingLabel}

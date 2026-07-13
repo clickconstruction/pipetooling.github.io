@@ -4600,7 +4600,7 @@ export default function Dashboard() {
               borderRadius: 8,
               border: '1px solid var(--border-strong)',
               background: 'var(--surface)',
-              color: '#1f2937',
+              color: 'var(--text-gray-800)',
               fontSize: '0.875rem',
               fontWeight: 600,
               cursor: 'pointer',
@@ -4899,7 +4899,7 @@ export default function Dashboard() {
                             )}
                           </div>
                           {bundleInv != null ? (
-                            <div style={{ fontSize: '0.75rem', color: '#1e40af', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
                               Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </div>
                           ) : (
@@ -5379,7 +5379,7 @@ export default function Dashboard() {
                           )}
                         </div>
                         {bundleInv != null ? (
-                          <div style={{ fontSize: '0.75rem', color: '#1e40af', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
                             Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </div>
                         ) : (
@@ -6120,9 +6120,9 @@ export default function Dashboard() {
                   borderRadius: 4,
                   lineHeight: 1.2,
                   whiteSpace: 'nowrap',
-                  background: '#dbeafe',
+                  background: 'var(--bg-blue-200)',
                   border: '1px solid #93c5fd',
-                  color: '#1e40af',
+                  color: 'var(--text-blue-800)',
                 }
                 const myBidPillAccountManager: CSSProperties = {
                   fontSize: '0.6875rem',
@@ -6305,7 +6305,7 @@ export default function Dashboard() {
                                 border: '1px solid #d97706',
                                 borderRadius: 4,
                                 background: 'var(--surface)',
-                                color: '#78350f',
+                                color: 'var(--text-amber-900)',
                                 cursor: 'pointer',
                                 fontWeight: 500,
                               }}
@@ -6416,7 +6416,7 @@ export default function Dashboard() {
                                             style={{
                                               cursor: 'pointer',
                                               fontSize: '0.8125rem',
-                                              color: '#78350f',
+                                              color: 'var(--text-amber-900)',
                                               listStyle: 'none',
                                             }}
                                           >
@@ -6565,7 +6565,7 @@ export default function Dashboard() {
                                             style={{
                                               cursor: 'pointer',
                                               fontSize: '0.8125rem',
-                                              color: '#78350f',
+                                              color: 'var(--text-amber-900)',
                                               listStyle: 'none',
                                             }}
                                           >
@@ -6620,8 +6620,8 @@ export default function Dashboard() {
                     </li>
                   )
                 }
-                const unsentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
-                const sentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
+                const unsentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
+                const sentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
                 const hiddenBidCardStyle: CSSProperties = {
                   background: 'var(--bg-subtle)',
                   border: '1px solid var(--border)',
@@ -8005,7 +8005,7 @@ export default function Dashboard() {
                         background: 'var(--bg-blue-tint)',
                         border: '1px solid #bfdbfe',
                         borderRadius: 4,
-                        color: '#1e40af',
+                        color: 'var(--text-blue-800)',
                         textDecoration: 'none',
                         fontSize: '0.875rem',
                       }}

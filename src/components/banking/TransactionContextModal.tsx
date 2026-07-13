@@ -258,4 +258,4 @@ export function TransactionContextModal({ open, onClose, anchor, nicknameByAccou
   )
 }
 
-const td: CSSProperties = { padding: '0.4rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: '#1f2937' }
+const td: CSSProperties = { padding: '0.4rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: 'var(--text-gray-800)' }

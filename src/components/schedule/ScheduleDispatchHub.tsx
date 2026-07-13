@@ -241,7 +241,7 @@ function HubJobsPanel({
                     textAlign: 'center',
                     padding: '0.35rem',
                     border: '1px solid var(--border)',
-                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, '#f3f4f6'),
+                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, 'var(--bg-muted)'),
                     fontSize: '0.75rem',
                     minWidth: 88,
                   }}
@@ -551,7 +551,7 @@ function HubPeopleBlockCard({
         >
           <div
             style={{
-              color: '#1e40af',
+              color: 'var(--text-blue-800)',
               display: 'flex',
               alignItems: 'center',
               flexWrap: 'wrap',
@@ -816,7 +816,7 @@ function HubPeopleDayCell({
   if (assignJobPickingActive) {
     cellBg = isOver ? '#a7f3d0' : '#d1fae5'
   } else if (placementPickingActive && linkedWrongDay) {
-    cellBg = '#f3f4f6'
+    cellBg = 'var(--bg-muted)'
   } else if (placementPickingActive && !linkedWrongDay) {
     cellBg = isOver ? '#c7d2fe' : '#eef2ff'
   }
@@ -824,7 +824,7 @@ function HubPeopleDayCell({
   // flows: gray them out the same way the existing "linked wrong day" cells
   // do, so they read as "not a target".
   if (cellHasTimeOff && (assignJobPickingActive || placementPickingActive)) {
-    cellBg = '#f3f4f6'
+    cellBg = 'var(--bg-muted)'
   }
 
   const cellClickable =
@@ -1422,7 +1422,7 @@ function HubPeoplePanel({
                     textAlign: 'center',
                     padding: '0.35rem',
                     border: '1px solid var(--border)',
-                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, '#f3f4f6'),
+                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, 'var(--bg-muted)'),
                     fontSize: '0.75rem',
                     minWidth: 104,
                   }}
@@ -1599,8 +1599,8 @@ function HubPeoplePanel({
               const background = isToday
                 ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG
                 : selected
-                  ? '#eff6ff'
-                  : '#fff'
+                  ? 'var(--bg-blue-tint)'
+                  : 'var(--surface)'
               return (
                 <button
                   key={dk}
@@ -1643,8 +1643,8 @@ function HubPeoplePanel({
                     fontSize: '0.75rem',
                     borderRadius: 6,
                     border: allWeekSelected ? '2px solid #059669' : '1px solid #34d399',
-                    background: allWeekSelected ? '#d1fae5' : '#ecfdf5',
-                    color: allWeekSelected ? '#047857' : '#065f46',
+                    background: allWeekSelected ? '#d1fae5' : 'var(--bg-emerald-tint)',
+                    color: allWeekSelected ? '#047857' : 'var(--text-emerald-800)',
                     fontWeight: allWeekSelected ? 600 : 500,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',

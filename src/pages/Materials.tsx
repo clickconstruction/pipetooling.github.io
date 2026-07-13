@@ -5436,7 +5436,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                 <>
                   {selectedPO.notes ? (
                     <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
-                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#0369a1' }}>Notes</div>
+                      <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-sky-700)' }}>Notes</div>
                       <div style={{ marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>{selectedPO.notes}</div>
                       {selectedPO.notes_added_by && (
                         <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
@@ -5791,7 +5791,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                                     setEditingPOItemSupplyHouseView(item.id)
                                     await loadAvailablePricesForPart(item.part.id)
                                   }}
-                                  style={{ padding: '0.25rem 0.5rem', background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
+                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
                                 >
                                   Update
                                 </button>
@@ -5986,7 +5986,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             fontSize: '0.875rem',
                             fontWeight: 500,
                             background: po.status === 'finalized' ? '#d1fae5' : 'var(--bg-amber-100)',
-                            color: po.status === 'finalized' ? '#065f46' : 'var(--text-amber-800)',
+                            color: po.status === 'finalized' ? 'var(--text-emerald-800)' : 'var(--text-amber-800)',
                           }}>
                             {po.status}
                           </span>
@@ -6009,7 +6009,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
                             <button
                               type="button"
                               onClick={() => finalizePO(po.id)}
-                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#d1fae5', color: '#065f46', border: '1px solid #86efac', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#d1fae5', color: 'var(--text-emerald-800)', border: '1px solid #86efac', borderRadius: 4, cursor: 'pointer' }}
                             >
                               Finalize
                             </button>
@@ -6882,7 +6882,7 @@ function PartPricesManager({
                           <button
                             type="button"
                             onClick={() => loadPriceHistory(p.supply_house_id || '')}
-                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#dbeafe', color: '#1e40af', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: 'var(--bg-blue-200)', color: 'var(--text-blue-800)', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer' }}
                           >
                             History
                           </button>

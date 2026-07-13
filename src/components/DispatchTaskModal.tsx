@@ -480,7 +480,7 @@ export default function DispatchTaskModal() {
                       background: 'var(--bg-green-100)',
                       borderRadius: 4,
                       fontSize: '0.8125rem',
-                      color: '#166534',
+                      color: 'var(--text-green-800)',
                     }}
                   >
                     <Check size={12} aria-hidden />

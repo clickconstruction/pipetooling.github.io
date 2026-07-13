@@ -1624,7 +1624,7 @@ export default function Prospects() {
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface)', padding: '0.25rem', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0 0.5rem', color: 'var(--text-muted)' }}>Warmth</span>
-                      <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 600, fontSize: '1rem', color: '#1f2937' }}>
+                      <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 600, fontSize: '1rem', color: 'var(--text-gray-800)' }}>
                         {currentProspect.warmth_count ?? 0}
                       </span>
                       <button

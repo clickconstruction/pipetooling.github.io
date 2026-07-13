@@ -551,7 +551,7 @@ export default function SettingsCatalogsTab({
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
                                 background: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
-                                color: (partTypePartCounts[pt.id] ?? 0) > 0 ? '#065f46' : 'var(--text-muted)',
+                                color: (partTypePartCounts[pt.id] ?? 0) > 0 ? 'var(--text-emerald-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -760,7 +760,7 @@ export default function SettingsCatalogsTab({
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
                                 background: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
-                                color: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? '#065f46' : 'var(--text-muted)',
+                                color: (assemblyTypeAssemblyCounts[at.id] ?? 0) > 0 ? 'var(--text-emerald-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -965,8 +965,8 @@ export default function SettingsCatalogsTab({
                               style={{ 
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
-                                background: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#dbeafe' : 'var(--bg-muted)',
-                                color: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? '#1e40af' : 'var(--text-muted)',
+                                background: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
+                                color: (fixtureTypeLaborBookCounts[ft.id] ?? 0) > 0 ? 'var(--text-blue-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}
@@ -979,7 +979,7 @@ export default function SettingsCatalogsTab({
                                 padding: '0.125rem 0.5rem', 
                                 fontSize: '0.75rem', 
                                 background: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#d1fae5' : 'var(--bg-muted)',
-                                color: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? '#065f46' : 'var(--text-muted)',
+                                color: (fixtureTypePriceBookCounts[ft.id] ?? 0) > 0 ? 'var(--text-emerald-800)' : 'var(--text-muted)',
                                 borderRadius: 4,
                                 fontWeight: 500
                               }}

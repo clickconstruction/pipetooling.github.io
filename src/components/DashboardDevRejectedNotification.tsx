@@ -69,7 +69,7 @@ export default function DashboardDevRejectedNotification() {
           {count}
         </span>
         <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: '1rem', color: '#9a3412' }}>Rejected clock sessions</div>
+          <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-800)' }}>Rejected clock sessions</div>
           <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Org-wide for the current week. Return to pending, edit, or delete on People → Hours.
           </div>

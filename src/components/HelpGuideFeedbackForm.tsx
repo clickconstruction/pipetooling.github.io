@@ -43,12 +43,12 @@ export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
         Suggestions, confusion, or something the app should do differently — it goes straight to the devs.
       </p>
       {submitted ? (
-        <p style={{ fontSize: '0.875rem', color: '#166534', background: 'var(--bg-green-tint)', border: '1px solid #bbf7d0', borderRadius: 6, padding: '0.5rem 0.75rem', margin: 0 }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-green-800)', background: 'var(--bg-green-tint)', border: '1px solid #bbf7d0', borderRadius: 6, padding: '0.5rem 0.75rem', margin: 0 }}>
           Thanks — feedback sent.{' '}
           <button
             type="button"
             onClick={() => setSubmitted(false)}
-            style={{ background: 'none', border: 'none', color: '#166534', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-green-800)', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
           >
             Send more
           </button>
