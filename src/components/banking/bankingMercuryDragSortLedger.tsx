@@ -214,11 +214,11 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
   const ledgerPad = suppressBottomDivider ? '0.5rem 0.75rem 0 0.75rem' : '0.5rem 0.75rem'
   const ledgerHandlePad = suppressBottomDivider ? '0.35rem 0.2rem 0 0.2rem' : '0.35rem 0.2rem'
   return (
-    <tr style={{ borderBottom: suppressBottomDivider ? 'none' : '1px solid #e5e7eb' }}>
+    <tr style={{ borderBottom: suppressBottomDivider ? 'none' : '1px solid var(--border)' }}>
       <td style={{ padding: ledgerPad }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span>{formatBankingDate(row.posted_at)}</span>
-          <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{formatMercuryKind(row.kind)}</span>
+          <span style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)' }}>{formatMercuryKind(row.kind)}</span>
         </div>
       </td>
       <td style={{ padding: ledgerPad, verticalAlign: 'top' }}>
@@ -238,7 +238,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
               margin: 0,
               fontSize: '0.72rem',
               fontWeight: 600,
-              color: '#94a3b8',
+              color: 'var(--text-slate-400)',
               border: 'none',
               background: 'transparent',
               cursor: 'pointer',
@@ -255,7 +255,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
           <span>
             {row.counterparty_name ?? '—'}
             {counterpartyOccurrenceCount !== undefined ? (
-              <span style={{ color: '#64748b', fontSize: '0.92em' }}>{` (${counterpartyOccurrenceCount})`}</span>
+              <span style={{ color: 'var(--text-slate-500)', fontSize: '0.92em' }}>{` (${counterpartyOccurrenceCount})`}</span>
             ) : null}
           </span>
           {row.source === 'manual' ? (
@@ -265,8 +265,8 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
                 alignSelf: 'flex-start',
                 fontSize: '0.62rem',
                 fontWeight: 700,
-                color: '#92400e',
-                background: '#fef3c7',
+                color: 'var(--text-amber-800)',
+                background: 'var(--bg-amber-100)',
                 borderRadius: 999,
                 padding: '1px 6px',
               }}
@@ -275,7 +275,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
             </span>
           ) : null}
           {debitCardId ? (
-            <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)' }}>
               Card: {nicknameByDebitCard[debitCardId] ?? formatMercuryDebitCardIdCompact(debitCardId)}
             </span>
           ) : null}
@@ -302,7 +302,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
                 cursor: 'pointer',
                 font: 'inherit',
                 textAlign: 'left',
-                color: '#9ca3af',
+                color: 'var(--text-faint)',
                 fontWeight: 400,
                 textDecoration: 'none',
                 overflow: 'hidden',
@@ -315,7 +315,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
           ) : (
             <span
               style={{
-                color: jobLineMuted ? '#9ca3af' : '#0f172a',
+                color: jobLineMuted ? 'var(--text-faint)' : 'var(--text-slate-900)',
                 fontWeight: jobLineMuted ? 400 : 500,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -345,7 +345,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
                 font: 'inherit',
                 textAlign: 'left',
                 fontSize: '0.72rem',
-                color: '#94a3b8',
+                color: 'var(--text-slate-400)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -357,7 +357,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
             <span
               style={{
                 fontSize: '0.72rem',
-                color: personUnassigned ? '#94a3b8' : '#64748b',
+                color: personUnassigned ? 'var(--text-slate-400)' : 'var(--text-slate-500)',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
               }}
@@ -393,7 +393,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
                 fontSize: '0.85rem',
                 lineHeight: 1,
                 fontWeight: 600,
-                color: '#b91c1c',
+                color: 'var(--text-red-700)',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
@@ -422,8 +422,8 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
                 fontSize: '0.8rem',
                 lineHeight: 1,
                 fontWeight: 700,
-                color: quickAssignDisabled === true ? '#94a3b8' : '#2563eb',
-                background: '#fff',
+                color: quickAssignDisabled === true ? 'var(--text-slate-400)' : 'var(--text-link)',
+                background: 'var(--surface)',
                 border: `1px solid ${quickAssignDisabled === true ? '#e5e7eb' : '#bfdbfe'}`,
                 borderRadius: 6,
                 cursor: quickAssignDisabled === true ? 'not-allowed' : 'pointer',
@@ -438,7 +438,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
               flex: '1 1 auto',
               minWidth: 0,
               fontSize: '0.8125rem',
-              color: assignId ? '#0f172a' : '#9ca3af',
+              color: assignId ? 'var(--text-slate-900)' : 'var(--text-faint)',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
             }}
@@ -469,8 +469,8 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
               padding: '4px 8px',
               fontSize: '0.75rem',
               fontWeight: 600,
-              color: ruleShortcutDisabled === true ? '#94a3b8' : '#2563eb',
-              background: '#fff',
+              color: ruleShortcutDisabled === true ? 'var(--text-slate-400)' : 'var(--text-link)',
+              background: 'var(--surface)',
               border: `1px solid ${ruleShortcutDisabled === true ? '#e5e7eb' : '#bfdbfe'}`,
               borderRadius: 6,
               cursor: ruleShortcutDisabled === true ? 'not-allowed' : 'pointer',
@@ -490,7 +490,7 @@ export const BankingMercuryDragSortLedgerRow = memo(function BankingMercuryDragS
 })
 
 const ledgerThBaseStyle = {
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 } as const
 
 type SortableLedgerThProps = {
@@ -532,7 +532,7 @@ function SortableLedgerTh({ label, sortKey, currentKey, currentDir, onClick, ali
         }}
       >
         <span>{label}</span>
-        <span aria-hidden style={{ color: isActive ? '#374151' : 'transparent' }}>
+        <span aria-hidden style={{ color: isActive ? 'var(--text-700)' : 'transparent' }}>
           {isActive ? indicator : ' ▾'}
         </span>
       </button>
@@ -559,7 +559,7 @@ export function BankingMercuryDragSortLedgerThead({
 
   return (
     <thead>
-      <tr style={{ background: '#f9fafb' }}>
+      <tr style={{ background: 'var(--bg-subtle)' }}>
         {sortable ? (
           <SortableLedgerTh
             label="Posted"
@@ -620,7 +620,7 @@ export function BankingMercuryDragSortLedgerThead({
                 <span
                   aria-hidden
                   style={{
-                    color: sortState.key === 'counterparty_name' ? '#374151' : 'transparent',
+                    color: sortState.key === 'counterparty_name' ? 'var(--text-700)' : 'transparent',
                   }}
                 >
                   {sortState.key === 'counterparty_name'
@@ -644,7 +644,7 @@ export function BankingMercuryDragSortLedgerThead({
                     font: 'inherit',
                     fontSize: '0.8125rem',
                     fontWeight: 600,
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     background: 'transparent',
                     border: 'none',
                     cursor: 'pointer',
@@ -668,7 +668,7 @@ export function BankingMercuryDragSortLedgerThead({
                 padding: '0.5rem 0.75rem',
                 font: 'inherit',
                 fontWeight: 600,
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 background: 'transparent',
                 border: 'none',
                 cursor: 'pointer',

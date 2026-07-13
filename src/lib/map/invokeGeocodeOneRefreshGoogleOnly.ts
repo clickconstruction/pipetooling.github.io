@@ -10,7 +10,7 @@ export type GeocodeOneOk = {
   lat: number
   lng: number
   fromCache: boolean
-  source?: 'cache' | 'nominatim' | 'google'
+  source?: 'cache' | 'nominatim' | 'google' | 'census'
   refreshed?: true
 }
 export type GeocodeOneFail = { ok: false; address_normalized: string; error: string; detail?: string }

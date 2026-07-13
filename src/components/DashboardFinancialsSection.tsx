@@ -67,7 +67,7 @@ function ApBillModal({
 
   const factRow = (label: string, value: React.ReactNode) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', padding: '0.3rem 0', borderBottom: '1px solid #f3f4f6', fontSize: '0.875rem' }}>
-      <span style={{ color: '#6b7280' }}>{label}</span>
+      <span style={{ color: 'var(--text-muted)' }}>{label}</span>
       <span style={{ textAlign: 'right' }}>{value}</span>
     </div>
   )
@@ -99,7 +99,7 @@ function ApBillModal({
           if (e.key === 'Escape') onClose()
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: expanded ? 'min(1100px, 96vw)' : 'min(520px, 96vw)',
           maxHeight: '92vh',
@@ -109,7 +109,7 @@ function ApBillModal({
           overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+        <div style={{ padding: '1rem 1.25rem 0.75rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
           <h3 id="dashboard-financials-bill-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1 }}>
             {bill.houseName} — ${formatCurrency(bill.amount)}
           </h3>
@@ -118,7 +118,7 @@ function ApBillModal({
             onClick={onClose}
             title="Close"
             aria-label="Close"
-            style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
           >
             ×
           </button>
@@ -139,8 +139,8 @@ function ApBillModal({
                     borderRadius: 999,
                     fontSize: '0.7rem',
                     fontWeight: 600,
-                    background: pastDue >= 60 ? '#fee2e2' : '#ffedd5',
-                    color: pastDue >= 60 ? '#991b1b' : '#9a3412',
+                    background: pastDue >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
+                    color: pastDue >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
                   }}
                 >
                   {pastDue}d past due
@@ -152,7 +152,7 @@ function ApBillModal({
           {factRow(
             bill.jobs.length === 1 ? 'Job' : 'Jobs',
             bill.jobs.length === 0 ? (
-              <span style={{ color: '#9ca3af' }}>—</span>
+              <span style={{ color: 'var(--text-faint)' }}>—</span>
             ) : (
               <span style={{ display: 'inline-flex', flexDirection: 'column', gap: '0.15rem', alignItems: 'flex-end' }}>
                 {bill.jobs.map((j) => (
@@ -168,7 +168,7 @@ function ApBillModal({
                           padding: 0,
                           margin: 0,
                           font: 'inherit',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           textDecoration: 'underline dotted',
                           textUnderlineOffset: '2px',
                           cursor: 'pointer',
@@ -179,7 +179,7 @@ function ApBillModal({
                     ) : (
                       j.label
                     )}
-                    <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> ({j.pct}%)</span>
+                    <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> ({j.pct}%)</span>
                   </span>
                 ))}
               </span>
@@ -192,13 +192,13 @@ function ApBillModal({
                 <button
                   type="button"
                   onClick={() => setExpanded((x) => !x)}
-                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   {expanded ? 'Shrink' : 'Expand'}
                 </button>
               ) : null}
               {bill.link ? (
-                <a href={bill.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: '#2563eb', marginLeft: 'auto' }}>
+                <a href={bill.link} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.75rem', color: 'var(--text-link)', marginLeft: 'auto' }}>
                   Open in Drive ↗
                 </a>
               ) : null}
@@ -211,7 +211,7 @@ function ApBillModal({
                 }}
                 title={expanded ? undefined : 'Click to expand'}
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   overflow: 'hidden',
                   cursor: expanded ? undefined : 'zoom-in',
@@ -226,11 +226,11 @@ function ApBillModal({
                 />
               </div>
             ) : bill.link ? (
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Preview not available for this link — use "Open in Drive ↗".
               </p>
             ) : (
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>No file attached to this bill.</p>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No file attached to this bill.</p>
             )}
           </div>
         </div>
@@ -299,7 +299,7 @@ function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: 
           if (e.key === 'Escape' && !busy) onClose()
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 440,
           width: '100%',
@@ -310,7 +310,7 @@ function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: 
         <h3 id="dashboard-financials-dispatch-title" style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>
           Send to Dispatch
         </h3>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Not billed out: <strong>{item.label}</strong> — ${formatCurrency(item.amount)}
         </p>
         <label htmlFor="dashboard-financials-dispatch-note" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.25rem' }}>
@@ -327,7 +327,7 @@ function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: 
           style={{
             width: '100%',
             boxSizing: 'border-box',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
             padding: '0.5rem 0.65rem',
             font: 'inherit',
@@ -340,7 +340,7 @@ function SendToDispatchModal({ item, onClose }: { item: FinancialItem; onClose: 
             type="button"
             onClick={onClose}
             disabled={busy}
-            style={{ padding: '0.45rem 0.85rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 6, cursor: busy ? 'default' : 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.45rem 0.85rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: busy ? 'default' : 'pointer', fontSize: '0.875rem' }}
           >
             Cancel
           </button>
@@ -455,7 +455,9 @@ function ItemsModal({
     setArSort((prev) => ({ key, dir: prev?.key === key && prev.dir === 'desc' ? 'asc' : 'desc' }))
   const arSortIndicator = (key: 'date' | 'amount') =>
     arSort?.key === key ? (arSort.dir === 'desc' ? ' ▼' : ' ▲') : ''
-  const columnCount = onSendToDispatch ? 4 : 3
+  // Unbilled rows carry the Stages % complete (jobs_ledger.pct_complete) — its own column.
+  const showPctComplete = cardKey === 'unbilled'
+  const columnCount = 3 + (showPctComplete ? 1 : 0) + (onSendToDispatch ? 1 : 0)
   // AP sections (Payroll due / Upcoming payroll / Supplies) and the AR Collections section are
   // collapsible; expanded on open.
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({})
@@ -464,7 +466,7 @@ function ItemsModal({
   const toggleSection = (title: string) =>
     setCollapsedSections((prev) => ({ ...prev, [title]: !(prev[title] ?? false) }))
   const sectionChevron = (title: string) => (
-    <span aria-hidden style={{ display: 'inline-block', width: '1rem', fontSize: '0.7rem', color: '#6b7280' }}>
+    <span aria-hidden style={{ display: 'inline-block', width: '1rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
       {isCollapsed(title) ? '▶' : '▼'}
     </span>
   )
@@ -472,14 +474,14 @@ function ItemsModal({
   const upcomingPayrollRows = upcomingSection && upcomingSection.count > 0 ? (
                 <Fragment>
                   <tr
-                    style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', cursor: collapsible ? 'pointer' : undefined }}
+                    style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)', cursor: collapsible ? 'pointer' : undefined }}
                     onClick={collapsible ? () => toggleSection('Upcoming payroll (estimate)') : undefined}
                     aria-expanded={collapsible ? !isCollapsed('Upcoming payroll (estimate)') : undefined}
                   >
                     <td colSpan={columnCount} style={{ padding: '0.45rem 0.65rem' }}>
                       {collapsible ? sectionChevron('Upcoming payroll (estimate)') : null}
                       <span style={{ fontWeight: 600 }}>Upcoming payroll (estimate)</span>
-                      <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
+                      <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
                         {upcomingSection.count} person-week{upcomingSection.count === 1 ? '' : 's'} · $
                         {formatCurrency(upcomingSection.total)}
                       </span>
@@ -490,7 +492,7 @@ function ItemsModal({
                       <td style={{ padding: '0.45rem 0.65rem' }}>
                         {item.label}
                         {item.sublabel ? (
-                          <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
+                          <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> · {item.sublabel}</span>
                         ) : null}
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>{shortDate(item.dateYmd)}</td>
@@ -528,7 +530,7 @@ function ItemsModal({
           if (e.key === 'Escape') onClose()
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 640,
           width: '100%',
@@ -537,15 +539,15 @@ function ItemsModal({
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
             <h3 id="dashboard-financials-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1, minWidth: 200 }}>
               {meta.title} — ${formatCurrency(bucket.total)}{' '}
-              <span style={{ fontWeight: 400, color: '#6b7280' }}>
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>
                 ({bucket.count} item{bucket.count === 1 ? '' : 's'})
               </span>
             </h3>
-            <Link to={meta.linkTo} style={{ fontSize: '0.8125rem', color: '#2563eb', whiteSpace: 'nowrap' }}>
+            <Link to={meta.linkTo} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
               {meta.linkLabel} →
             </Link>
             <button
@@ -553,18 +555,26 @@ function ItemsModal({
               onClick={onClose}
               title="Close"
               aria-label="Close"
-              style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
               ×
             </button>
           </div>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>{meta.hint}</p>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{meta.hint}</p>
         </div>
         <div style={{ padding: '0.75rem 1.25rem 1rem' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Item</th>
+                {showPctComplete ? (
+                  <th
+                    title="% complete from Jobs → Stages"
+                    style={{ padding: '0.5rem 0.65rem', textAlign: 'center', whiteSpace: 'nowrap' }}
+                  >
+                    % Complete
+                  </th>
+                ) : null}
                 <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>
                   {cardKey === 'ar' ? (
                     <button
@@ -603,7 +613,7 @@ function ItemsModal({
                 <Fragment key={section.title ?? 'all'}>
                   {section.title ? (
                     <tr
-                      style={{ background: '#f3f4f6', borderBottom: '1px solid #e5e7eb', cursor: collapsible ? 'pointer' : undefined }}
+                      style={{ background: 'var(--bg-muted)', borderBottom: '1px solid var(--border)', cursor: collapsible ? 'pointer' : undefined }}
                       onClick={collapsible ? () => toggleSection(section.title!) : undefined}
                       aria-expanded={collapsible ? !isCollapsed(section.title) : undefined}
                     >
@@ -615,7 +625,7 @@ function ItemsModal({
                             title={`Open Jobs Stages at ${section.title}`}
                             style={{
                               fontWeight: 600,
-                              color: '#1d4ed8',
+                              color: 'var(--text-blue-700)',
                               textDecoration: 'underline',
                               textUnderlineOffset: '2px',
                             }}
@@ -625,7 +635,7 @@ function ItemsModal({
                         ) : (
                           <span style={{ fontWeight: 600 }}>{section.title}</span>
                         )}
-                        <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: '#374151' }}>
+                        <span style={{ float: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-700)' }}>
                           {section.items.length} {section.noun ?? 'item'}
                           {section.items.length === 1 ? '' : 's'} · $
                           {formatCurrency(section.items.reduce((s, i) => s + i.amount, 0))}
@@ -648,7 +658,7 @@ function ItemsModal({
                           padding: 0,
                           margin: 0,
                           font: 'inherit',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           textDecoration: 'underline dotted',
                           textUnderlineOffset: '2px',
                           cursor: 'pointer',
@@ -669,7 +679,7 @@ function ItemsModal({
                           padding: 0,
                           margin: 0,
                           font: 'inherit',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           textDecoration: 'underline dotted',
                           textUnderlineOffset: '2px',
                           cursor: 'pointer',
@@ -682,21 +692,34 @@ function ItemsModal({
                       item.label
                     )}
                     {item.sublabel && !section.hideSublabels ? (
-                      <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}> · {item.sublabel}</span>
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }}> · {item.sublabel}</span>
                     ) : null}
                     {item.address ? (
-                      <div style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>{item.address}</div>
                     ) : null}
                     {(() => {
                       const bill = apBills?.[item.key]
                       if (!bill || bill.jobs.length === 0) return null
                       return (
-                        <div style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: 2 }}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 2 }}>
                           {bill.jobs.map((j) => `${j.label} (${j.pct}%)`).join(', ')}
                         </div>
                       )
                     })()}
                   </td>
+                  {showPctComplete ? (
+                    <td
+                      style={{
+                        padding: '0.45rem 0.65rem',
+                        textAlign: 'center',
+                        fontVariantNumeric: 'tabular-nums',
+                        whiteSpace: 'nowrap',
+                        color: item.pctComplete != null ? undefined : 'var(--text-faint)',
+                      }}
+                    >
+                      {item.pctComplete != null ? `${item.pctComplete}%` : '—'}
+                    </td>
+                  ) : null}
                   <td style={{ padding: '0.45rem 0.65rem', whiteSpace: 'nowrap' }}>
                     {(() => {
                       const bill = apBills?.[item.key]
@@ -708,7 +731,7 @@ function ItemsModal({
                             <>
                               {shortDate(item.dateYmd)}
                               {age !== null && age > 0 ? (
-                                <span style={{ color: '#6b7280' }}> (+{age})</span>
+                                <span style={{ color: 'var(--text-muted)' }}> (+{age})</span>
                               ) : null}
                             </>
                           )
@@ -729,8 +752,8 @@ function ItemsModal({
                                 borderRadius: 999,
                                 fontSize: '0.7rem',
                                 fontWeight: 600,
-                                background: days >= 60 ? '#fee2e2' : '#ffedd5',
-                                color: days >= 60 ? '#991b1b' : '#9a3412',
+                                background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
+                                color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
                               }}
                             >
                               {days}d
@@ -753,12 +776,12 @@ function ItemsModal({
                           aria-label={`Send ${item.label} to Dispatch`}
                           style={{
                             padding: '0.15rem 0.5rem',
-                            background: 'white',
-                            border: '1px solid #d1d5db',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
                             cursor: 'pointer',
                             fontSize: '0.875rem',
-                            color: '#2563eb',
+                            color: 'var(--text-link)',
                             lineHeight: 1.2,
                           }}
                         >
@@ -775,8 +798,8 @@ function ItemsModal({
               {sortedSections.some((sec) => sec.title === 'Payroll due') ? null : upcomingPayrollRows}
             </tbody>
             <tfoot>
-              <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
-                <td style={{ padding: '0.5rem 0.65rem' }} colSpan={2}>
+              <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
+                <td style={{ padding: '0.5rem 0.65rem' }} colSpan={showPctComplete ? 3 : 2}>
                   {upcomingSection && upcomingSection.count > 0
                     ? 'Total due'
                     : sections.some((s) => s.title === 'Collections')
@@ -829,9 +852,9 @@ export default function DashboardFinancialsSection() {
   return (
     <div style={{ margin: '0 0 0.5rem' }}>
       {error ? (
-        <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.875rem' }}>{error}</p>
+        <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{error}</p>
       ) : loading || !data ? (
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
           {cards.map(({ key, bucket, extra }) => (
@@ -842,25 +865,28 @@ export default function DashboardFinancialsSection() {
               title={`${CARD_META[key].hint} Click for the item list.`}
               style={{
                 textAlign: 'left',
-                background: 'white',
-                border: '1px solid #e5e7eb',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '0.85rem 1rem',
                 cursor: 'pointer',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '0.25rem',
+                // Buttons don't inherit text color; without this the unstyled
+                // amount renders UA-black on the dark surface.
+                color: 'inherit',
               }}
             >
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280' }}>{CARD_META[key].title}</span>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>{CARD_META[key].title}</span>
               <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
                 ${formatCurrency(bucket.total)}
               </span>
-              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
                 {bucket.count} item{bucket.count === 1 ? '' : 's'}
                 {bucket.oldestDateYmd ? ` · oldest ${shortDate(bucket.oldestDateYmd)}` : ''}
               </span>
-              {extra ? <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{extra}</span> : null}
+              {extra ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{extra}</span> : null}
             </button>
           ))}
         </div>

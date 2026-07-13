@@ -95,7 +95,7 @@ export function useDashboardFinancials(enabled: boolean, refreshKey?: number): {
             async () =>
               await supabase
                 .from('jobs_ledger')
-                .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, last_bill_date, last_work_date, collections_at')
+                .select('id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, last_bill_date, last_work_date, collections_at, pct_complete')
                 .in('status', ['billed', 'ready_to_bill', 'working']),
             'dashboard financials jobs',
           ),

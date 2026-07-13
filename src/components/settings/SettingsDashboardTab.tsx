@@ -193,9 +193,9 @@ function SortablePinRow({ item, removing, onRemove }: { item: PinnedItem; removi
         justifyContent: 'space-between',
         gap: '0.5rem',
         padding: '0.5rem 0.75rem',
-        background: '#f9fafb',
+        background: 'var(--bg-subtle)',
         borderRadius: 6,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
       }}
     >
       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
@@ -205,7 +205,7 @@ function SortablePinRow({ item, removing, onRemove }: { item: PinnedItem; removi
           {...listeners}
           title="Drag to reorder"
           aria-label="Drag to reorder"
-          style={{ cursor: 'grab', background: 'none', border: 'none', color: '#9ca3af', padding: 0, fontSize: '1rem', touchAction: 'none' }}
+          style={{ cursor: 'grab', background: 'none', border: 'none', color: 'var(--text-faint)', padding: 0, fontSize: '1rem', touchAction: 'none' }}
         >
           ⠿
         </button>
@@ -218,9 +218,9 @@ function SortablePinRow({ item, removing, onRemove }: { item: PinnedItem; removi
         style={{
           padding: '0.25rem 0.5rem',
           fontSize: '0.75rem',
-          background: removing ? '#e5e7eb' : '#fef2f2',
-          color: removing ? '#9ca3af' : '#b91c1c',
-          border: '1px solid #e5e7eb',
+          background: removing ? 'var(--bg-200)' : 'var(--bg-red-tint)',
+          color: removing ? 'var(--text-faint)' : 'var(--text-red-700)',
+          border: '1px solid var(--border)',
           borderRadius: 4,
           cursor: removing ? 'not-allowed' : 'pointer',
         }}
@@ -386,7 +386,7 @@ export default function SettingsDashboardTab({
     <>
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+        <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
           <button
             type="button"
             aria-expanded={dashboardButtonsSectionOpen}
@@ -410,8 +410,8 @@ export default function SettingsDashboardTab({
             Dashboard buttons
           </button>
           {dashboardButtonsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: 0 }}>
                 Choose which quick-action buttons appear on your Dashboard.
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.5rem' }}>
@@ -441,9 +441,9 @@ export default function SettingsDashboardTab({
                   )
                 })}
               </div>
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Placement</p>
-                <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', marginTop: 0 }}>
+              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-700)' }}>Placement</p>
+                <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem', marginTop: 0 }}>
                   Show quick-action buttons at the top of the Dashboard (above Clock In/Out), or in the same row as your pinned page tabs.
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -507,7 +507,7 @@ export default function SettingsDashboardTab({
               padding: '1rem',
               width: '100%',
               background: 'none',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               cursor: 'pointer',
               fontSize: '1rem',
@@ -520,13 +520,13 @@ export default function SettingsDashboardTab({
           </button>
           {financialPinsSectionOpen && (
             <div style={{ padding: '1rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                 <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Page pins</h2>
-                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   Pinned pages appear as shortcut links at the top of your Dashboard.
                 </p>
                 {pinsClearSuccess && (
-                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                     Page pins cleared.
                   </p>
                 )}
@@ -541,9 +541,9 @@ export default function SettingsDashboardTab({
                   style={{
                     padding: '0.5rem 1rem',
                     fontSize: '0.875rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-700)',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                     cursor: 'pointer',
                   }}
@@ -552,7 +552,7 @@ export default function SettingsDashboardTab({
                 </button>
                 {!pinsLoading && orderedPins.length > 0 && (
                   <>
-                    <p style={{ margin: '0.75rem 0 0.25rem', fontSize: '0.75rem', color: '#6b7280' }}>Drag ⠿ to reorder how they appear on the dashboard.</p>
+                    <p style={{ margin: '0.75rem 0 0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Drag ⠿ to reorder how they appear on the dashboard.</p>
                     <DndContext sensors={pinDragSensors} collisionDetection={closestCenter} onDragEnd={handlePinDragEnd}>
                       <SortableContext items={orderedPins.map(pinKeyOf)} strategy={verticalListSortingStrategy}>
                         <ul style={{ margin: '0.25rem 0 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -580,9 +580,9 @@ export default function SettingsDashboardTab({
 
               {myRole === 'dev' && (
               <>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
                 <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Billed to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Pin Billed count and total to a master or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinBilledMasterIds.size > 0 && (
@@ -671,9 +671,9 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                color: 'var(--text-700)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: pinBilledSaving || pinBilledUnpinSaving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
@@ -683,15 +683,15 @@ export default function SettingsDashboardTab({
             </button>
           </div>
           {pinBilledMessage && (
-            <p style={{ color: pinBilledMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+            <p style={{ color: pinBilledMessage.type === 'success' ? 'var(--text-green-600)' : 'var(--text-red-700)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
               {pinBilledMessage.text}
             </p>
           )}
         </div>
 
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Cost matrix to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Pin Cost matrix to a master or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinCostMatrixMasterIds.size > 0 && (
@@ -778,9 +778,9 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                color: 'var(--text-700)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: pinCostMatrixSaving || pinCostMatrixUnpinSaving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
@@ -790,15 +790,15 @@ export default function SettingsDashboardTab({
             </button>
           </div>
           {pinCostMatrixMessage && (
-            <p style={{ color: pinCostMatrixMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+            <p style={{ color: pinCostMatrixMessage.type === 'success' ? 'var(--text-green-600)' : 'var(--text-red-700)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
               {pinCostMatrixMessage.text}
             </p>
           )}
         </div>
 
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Supply Houses AP to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Pin Supply Houses AP total to a master or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinAPMasterIds.size > 0 && (
@@ -885,9 +885,9 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                color: 'var(--text-700)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: pinAPSaving || pinAPUnpinSaving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
@@ -897,15 +897,15 @@ export default function SettingsDashboardTab({
             </button>
           </div>
           {pinAPMessage && (
-            <p style={{ color: pinAPMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+            <p style={{ color: pinAPMessage.type === 'success' ? 'var(--text-green-600)' : 'var(--text-red-700)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
               {pinAPMessage.text}
             </p>
           )}
         </div>
 
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
           <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Pin Sub Labor Due to Dashboard</h2>
-          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Pin Sub Labor Due (unpaid sub labor balances) to a master or dev&apos;s dashboard so it appears on their Dashboard.
           </p>
           {pinExternalTeamMasterIds.size > 0 && (
@@ -998,9 +998,9 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                color: 'var(--text-700)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: pinExternalTeamSaving || pinExternalTeamUnpinSaving ? 'not-allowed' : 'pointer',
                 fontWeight: 500,
@@ -1010,7 +1010,7 @@ export default function SettingsDashboardTab({
             </button>
           </div>
           {pinExternalTeamMessage && (
-            <p style={{ color: pinExternalTeamMessage.type === 'success' ? '#059669' : '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+            <p style={{ color: pinExternalTeamMessage.type === 'success' ? 'var(--text-green-600)' : 'var(--text-red-700)', fontSize: '0.875rem', marginTop: '0.5rem' }}>
               {pinExternalTeamMessage.text}
             </p>
           )}
@@ -1024,7 +1024,7 @@ export default function SettingsDashboardTab({
       )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+        <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
           <button
             type="button"
             aria-expanded={dailyGoalsSectionOpen}
@@ -1048,8 +1048,8 @@ export default function SettingsDashboardTab({
             Daily goals (clock-in gate)
           </button>
           {dailyGoalsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: 0 }}>
                 After a user&apos;s first clock-in each calendar day, they must check off these goals before using the app. Leave empty to disable the gate for that user.
               </p>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>User</label>
@@ -1067,7 +1067,7 @@ export default function SettingsDashboardTab({
               </select>
               {dailyGoalsTargetUserId &&
                 (dailyGoalsLoading ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
                 ) : (
                   <>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -1096,7 +1096,7 @@ export default function SettingsDashboardTab({
                               if (err) setError(err.message)
                               else setDailyGoalsRows((prev) => prev.filter((r) => r.id !== row.id))
                             }}
-                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}
                           >
                             Delete
                           </button>
@@ -1134,7 +1134,7 @@ export default function SettingsDashboardTab({
       )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+        <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
           <button
             type="button"
             aria-expanded={teamLeadAssignmentsSectionOpen}
@@ -1158,8 +1158,8 @@ export default function SettingsDashboardTab({
             Team Hours Sharing
           </button>
           {teamLeadAssignmentsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: 0 }}>
             Link a leader to a member for team hours sharing—the leader can approve that member&apos;s hours from Dashboard → My Team. Any account role can be leader or member. A member can have more than one leader (with a different leader each time). The member list skips people already linked to the leader you pick.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
@@ -1171,7 +1171,7 @@ export default function SettingsDashboardTab({
                   setTeamAssignLeaderId(e.target.value)
                   setTeamAssignMemberId('')
                 }}
-                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200, border: '1px solid #d1d5db' }}
+                style={{ padding: '0.35rem 0.5rem', maxWidth: 320, width: '100%', minWidth: 200, border: '1px solid var(--border-strong)' }}
               >
                 <option value="">Select user…</option>
                 {goalPickerUsers.map((u) => (
@@ -1194,16 +1194,16 @@ export default function SettingsDashboardTab({
                   minWidth: 200,
                   ...(teamHoursMemberPickerDisabled
                     ? {
-                        background: '#f3f4f6',
-                        color: '#9ca3af',
+                        background: 'var(--bg-muted)',
+                        color: 'var(--text-faint)',
                         cursor: 'not-allowed',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                       }
                     : {
-                        background: 'white',
+                        background: 'var(--surface)',
                         color: 'inherit',
                         cursor: 'pointer',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                       }),
                 }}
               >
@@ -1282,7 +1282,7 @@ export default function SettingsDashboardTab({
             </button>
           </div>
           {teamLeaderAssignments.length === 0 ? (
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments yet.</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No assignments yet.</p>
           ) : (
             <React.Fragment>
               <div style={{ marginBottom: '0.75rem' }}>
@@ -1297,19 +1297,19 @@ export default function SettingsDashboardTab({
                     maxWidth: 420,
                     padding: '0.5rem 0.75rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     boxSizing: 'border-box',
                   }}
                 />
               </div>
               {filteredTeamLeaderAssignments.length === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>No assignments match your search.</p>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>No assignments match your search.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ background: '#f3f4f6', textAlign: 'left' }}>
+                  <tr style={{ background: 'var(--bg-muted)', textAlign: 'left' }}>
                     <th
                       scope="col"
                       aria-sort={
@@ -1319,7 +1319,7 @@ export default function SettingsDashboardTab({
                             : 'descending'
                           : 'none'
                       }
-                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}
                     >
                       <button
                         type="button"
@@ -1350,7 +1350,7 @@ export default function SettingsDashboardTab({
                       >
                         Leader
                         {teamLeaderSortColumn === 'leader' && (
-                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                          <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
                           </span>
                         )}
@@ -1365,7 +1365,7 @@ export default function SettingsDashboardTab({
                             : 'descending'
                           : 'none'
                       }
-                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                      style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}
                     >
                       <button
                         type="button"
@@ -1396,16 +1396,16 @@ export default function SettingsDashboardTab({
                       >
                         Member
                         {teamLeaderSortColumn === 'member' && (
-                          <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                          <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             {teamLeaderSortDir === 'asc' ? '\u25B2' : '\u25BC'}
                           </span>
                         )}
                       </button>
                     </th>
-                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                       Leader dashboard
                     </th>
-                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb', width: 100 }} />
+                    <th scope="col" style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', width: 100 }} />
                   </tr>
                 </thead>
                 <tbody>
@@ -1454,9 +1454,9 @@ export default function SettingsDashboardTab({
                               maxWidth: 200,
                               padding: '0.35rem 0.5rem',
                               fontSize: '0.8125rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: myRole !== 'dev' ? '#f3f4f6' : 'white',
+                              background: myRole !== 'dev' ? 'var(--bg-muted)' : 'var(--surface)',
                               cursor: myRole !== 'dev' ? 'not-allowed' : 'pointer',
                             }}
                           >
@@ -1464,7 +1464,7 @@ export default function SettingsDashboardTab({
                             <option value="strip_only">Clock strip only</option>
                           </select>
                           {myRole !== 'dev' ? (
-                            <div style={{ fontSize: '0.7rem', color: '#9ca3af', marginTop: 4 }}>Dev only</div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-faint)', marginTop: 4 }}>Dev only</div>
                           ) : null}
                         </td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -1489,10 +1489,10 @@ export default function SettingsDashboardTab({
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.8125rem',
-                              color: '#b91c1c',
+                              color: 'var(--text-red-700)',
                               border: '1px solid #fecaca',
                               borderRadius: 4,
-                              background: '#fef2f2',
+                              background: 'var(--bg-red-tint)',
                               cursor: teamAssignSaving ? 'wait' : 'pointer',
                             }}
                           >
@@ -1514,7 +1514,7 @@ export default function SettingsDashboardTab({
       )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || myRole === 'assistant') && (
-        <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+        <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
           <button
             type="button"
             aria-expanded={reportNotificationsSectionOpen}
@@ -1538,8 +1538,8 @@ export default function SettingsDashboardTab({
             Report notifications
           </button>
           {reportNotificationsSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+              <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Get a push notification when someone submits these report types. Enable push notifications above first.
               </p>
               <form onSubmit={saveReportNotificationPreferences}>
@@ -1555,7 +1555,7 @@ export default function SettingsDashboardTab({
                     </label>
                   ))}
                   {reportTemplates.length === 0 && (
-                    <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No report templates.</p>
+                    <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No report templates.</p>
                   )}
                 </div>
                 <button
@@ -1577,9 +1577,9 @@ export default function SettingsDashboardTab({
           style={{
             marginBottom: '2rem',
             marginTop: 0,
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
             <button
@@ -1611,16 +1611,16 @@ export default function SettingsDashboardTab({
             <button
               type="button"
                 onClick={(e) => { e.stopPropagation(); setMyReportsModalOpen(true) }}
-                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: '#2563eb', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', padding: 0, fontSize: '0.875rem', color: 'var(--text-link)', cursor: 'pointer' }}
             >
                 Show more →
             </button>
             )}
             </button>
           {myReportsExpanded && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
               {myReportsLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading reports…</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading reports…</p>
               ) : myReports.length > 0 ? (
                 (() => {
                   const r = myReports[0]!
@@ -1630,9 +1630,9 @@ export default function SettingsDashboardTab({
                     <div
                       style={{
                         padding: '0.5rem 0.75rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
-                        background: '#fff',
+                        background: 'var(--surface)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1647,8 +1647,8 @@ export default function SettingsDashboardTab({
                         }}
                       >
                         <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                        <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {displayReportTemplateName(r.template_name, myRole)}</span>
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {displayReportTemplateName(r.template_name, myRole)}</span>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                           {new Date(r.created_at).toLocaleString()}
                         </div>
                       </div>
@@ -1669,7 +1669,7 @@ export default function SettingsDashboardTab({
                   )
                 })()
               ) : (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No reports yet. Create one from a job.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No reports yet. Create one from a job.</p>
               )}
             </div>
           )}
@@ -1680,9 +1680,9 @@ export default function SettingsDashboardTab({
       <div
         style={{
           marginBottom: '2rem',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           borderRadius: 8,
-          background: '#f9fafb',
+          background: 'var(--bg-subtle)',
         }}
       >
             <button
@@ -1709,13 +1709,13 @@ export default function SettingsDashboardTab({
           My Notification History
             </button>
         {notificationHistoryOpen && (
-          <div id="notification-history-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <div id="notification-history-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
             {notificationHistoryLoading ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
             ) : notificationHistoryError ? (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: 0 }}>{notificationHistoryError}</p>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0 }}>{notificationHistoryError}</p>
             ) : notificationHistory.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No notifications yet.</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {notificationHistory.map((row) => {
@@ -1734,13 +1734,13 @@ export default function SettingsDashboardTab({
                         alignItems: 'center',
                         gap: '0.75rem',
                         padding: '0.5rem 0.75rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
                         marginBottom: '0.5rem',
-                        background: '#fff',
+                        background: 'var(--surface)',
                       }}
                     >
-                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: 140 }}>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 140 }}>
                         {formatNotificationDatetime(row.sent_at)}
                       </span>
                       <span style={{ flex: 1, fontWeight: 500 }}>{row.title}</span>
@@ -1749,14 +1749,14 @@ export default function SettingsDashboardTab({
                           fontSize: '0.75rem',
                           padding: '2px 6px',
                           borderRadius: 4,
-                          background: '#f3f4f6',
-                          color: '#374151',
+                          background: 'var(--bg-muted)',
+                          color: 'var(--text-700)',
                         }}
                       >
                         {channelLabel}
                       </span>
                       {link && (
-                        <Link to={link} style={{ fontSize: '0.875rem', color: '#2563eb' }}>
+                        <Link to={link} style={{ fontSize: '0.875rem', color: 'var(--text-link)' }}>
                           View →
                         </Link>
                       )}
@@ -1774,9 +1774,9 @@ export default function SettingsDashboardTab({
         <div
           style={{
             marginBottom: '2rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
             <button
@@ -1803,11 +1803,11 @@ export default function SettingsDashboardTab({
             Muted Tasks
             </button>
           {mutedTasksOpen && (
-            <div id="muted-tasks-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+            <div id="muted-tasks-content" style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
               {mutedTasksLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
               ) : mutedTasks.length === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
                   You are not muting any task notifications. Use the mute icon on a task (Checklist or Dashboard) to mute it.
                 </p>
               ) : (
@@ -1825,14 +1825,14 @@ export default function SettingsDashboardTab({
                           justifyContent: 'space-between',
                           gap: '0.75rem',
                           padding: '0.5rem 0.75rem',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
-                          background: '#f9fafb',
+                          background: 'var(--bg-subtle)',
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{m.task_title}</div>
-                          <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Muted until: {expiryText}</div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Muted until: {expiryText}</div>
                   </div>
                         <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                   <button
@@ -1853,7 +1853,7 @@ export default function SettingsDashboardTab({
                                 .eq('checklist_item_id', m.checklist_item_id)
                               loadMutedTasks()
                             }}
-                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Unmute
                           </button>
@@ -1872,9 +1872,9 @@ export default function SettingsDashboardTab({
         <div
           style={{
             marginBottom: '2rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
             <button
@@ -1900,15 +1900,15 @@ export default function SettingsDashboardTab({
             Ignored task types (Dashboard)
             </button>
           {ignoredTaskTypesOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: '0 0 0.75rem 0' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: '0 0 0.75rem 0' }}>
                 These affect which task types appear in Recently Completed Tasks on the Dashboard. They are not the same as
                 Muted Tasks (notifications).
               </p>
               {ignoredTaskTypesLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
               ) : ignoredTaskTypes.length === 0 ? (
-                <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0 }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0 }}>
                   No ignored task types. On the Dashboard, use Ignore in Recently Completed Tasks to move a type here.
                 </p>
               ) : (
@@ -1922,14 +1922,14 @@ export default function SettingsDashboardTab({
                         justifyContent: 'space-between',
                         gap: '0.75rem',
                         padding: '0.5rem 0.75rem',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                         borderRadius: 6,
-                        background: '#fff',
+                        background: 'var(--surface)',
                       }}
                     >
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{row.task_title}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           Ignored {new Date(row.ignored_at).toLocaleString()}
                   </div>
               </div>
@@ -1960,9 +1960,9 @@ export default function SettingsDashboardTab({
                         style={{
                           padding: '0.35rem 0.6rem',
                           fontSize: '0.8125rem',
-                          background: 'white',
-                          color: '#374151',
-                          border: '1px solid #d1d5db',
+                          background: 'var(--surface)',
+                          color: 'var(--text-700)',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           cursor: ignoredTaskTypesUnignoringId != null ? 'wait' : 'pointer',
                           flexShrink: 0,

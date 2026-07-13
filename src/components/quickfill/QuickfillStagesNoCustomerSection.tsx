@@ -58,7 +58,7 @@ export function QuickfillStagesNoCustomerSection({
 
   return (
     <>
-      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
         Same data as Jobs → Stages with an empty search: jobs missing a <strong>linked customer</strong>, and{' '}
         <strong>working</strong> jobs with no <strong>Customer Pictures</strong> link. Open a job to fix either.
       </p>
@@ -74,8 +74,8 @@ export function QuickfillStagesNoCustomerSection({
             style={{
               ...btnStyleBase,
               border: `1px solid ${noCustomerBtnHover ? '#f87171' : '#fecaca'}`,
-              background: '#fef2f2',
-              color: noCustomerBtnHover ? '#991b1b' : '#b91c1c',
+              background: 'var(--bg-red-tint)',
+              color: noCustomerBtnHover ? 'var(--text-red-800)' : 'var(--text-red-700)',
             }}
           >
             Open list ({jobsWithoutCustomer.length})
@@ -92,8 +92,8 @@ export function QuickfillStagesNoCustomerSection({
             style={{
               ...btnStyleBase,
               border: `1px solid ${picturesBtnHover ? '#f87171' : '#fecaca'}`,
-              background: '#fef2f2',
-              color: picturesBtnHover ? '#991b1b' : '#b91c1c',
+              background: 'var(--bg-red-tint)',
+              color: picturesBtnHover ? 'var(--text-red-800)' : 'var(--text-red-700)',
             }}
           >
             No customer pictures ({workingJobsWithoutPictures.length})

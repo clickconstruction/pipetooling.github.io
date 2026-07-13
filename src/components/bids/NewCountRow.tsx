@@ -95,23 +95,23 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
 
   return (
     <>
-      <tr style={{ borderBottom: hasFixtureGroups ? 'none' : '1px solid #e5e7eb' }}>
-        {showDragHandleColumn && <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: 32, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }} />}
-        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: calcWidth, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+      <tr style={{ borderBottom: hasFixtureGroups ? 'none' : '1px solid var(--border)' }}>
+        {showDragHandleColumn && <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: 32, verticalAlign: 'top', borderBottom: '1px solid var(--border)' }} />}
+        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', width: calcWidth, verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: calcWidth }}>
-            <input ref={countInputRef} type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+            <input ref={countInputRef} type="number" step="any" value={count} onChange={(e) => setCount(e.target.value)} placeholder="Count*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
             <div style={{ marginTop: hasFixtureGroups ? '1.75rem' : undefined }}>
               <NumericEntryPad widthPx={calcWidth} value={count} onChange={setCount} />
             </div>
           </div>
         </td>
-        <td style={{ padding: '0.75rem', width: '50%', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+        <td style={{ padding: '0.75rem', width: '50%', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
+          <input type="text" value={fixture} onChange={(e) => setFixture(e.target.value)} placeholder="Fixture or Tie-in*" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
         </td>
-        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-          <input type="text" value={groupTag} onChange={(e) => setGroupTag(e.target.value)} placeholder="Group/Tag" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
+          <input type="text" value={groupTag} onChange={(e) => setGroupTag(e.target.value)} placeholder="Group/Tag" style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
         </td>
-        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+        <td style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
           <input
             type="text"
             value={page}
@@ -122,14 +122,14 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
               void submitAndAddThenFocusCount()
             }}
             placeholder="Plan Page"
-            style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
           />
         </td>
-        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
+        <td rowSpan={hasFixtureGroups ? 2 : 1} style={{ padding: '0.75rem', verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: '0.25rem' }}>
               <button type="button" onClick={submit} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Save</button>
-              <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={onCancel} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
               <button type="button" onClick={() => void submitAndAddThenFocusCount()} disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', alignSelf: 'center' }}>Save<br />& Add</button>
@@ -146,14 +146,14 @@ export function NewCountRow({ bidId, serviceTypeId, onSaved, onCancel, onSavedAn
         </td>
       </tr>
       {hasFixtureGroups && (
-        <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+        <tr style={{ borderBottom: '1px solid var(--border)' }}>
           <td colSpan={3} style={{ padding: '0.75rem', verticalAlign: 'top' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
               {countsFixtureGroups.map((group) => (
                 <div key={group.label} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.25rem' }}>
                   <span style={{ fontSize: '0.875rem', fontWeight: 500, marginRight: '0.25rem', flexShrink: 0 }}>{group.label}</span>
                   {group.fixtures.map((name) => (
-                    <button key={name} type="button" tabIndex={-1} onClick={() => setFixture(name)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{name}</button>
+                    <button key={name} type="button" tabIndex={-1} onClick={() => setFixture(name)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>{name}</button>
                   ))}
                 </div>
               ))}

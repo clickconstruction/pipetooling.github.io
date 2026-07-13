@@ -15,6 +15,7 @@ const ProjectEditGate = lazy(() => import('./pages/ProjectEditGate'))
 const ProjectNewGate = lazy(() => import('./pages/ProjectNewGate'))
 const Workflow = lazy(() => import('./pages/Workflow'))
 const Settings = lazy(() => import('./pages/Settings'))
+const Help = lazy(() => import('./pages/Help'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const Map = lazy(() => import('./pages/Map'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
@@ -41,6 +42,7 @@ import ContractBookPreview from './pages/ContractBookPreview'
 import TaskShortcut from './pages/TaskShortcut'
 import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
 import { ToastProvider, useToastContext } from './contexts/ToastContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import { LedgerDisplayPrefixProvider } from './contexts/LedgerDisplayPrefixContext'
 import { DispatchNoteRequirementsProvider } from './contexts/DispatchNoteRequirementsContext'
 import { registerSW } from 'virtual:pwa-register'
@@ -54,6 +56,7 @@ import { NewProjectModalProvider } from './contexts/NewProjectModalContext'
 import { EditCustomerModalProvider } from './contexts/EditCustomerModalContext'
 import { EditProjectModalProvider } from './contexts/EditProjectModalContext'
 import { BillCustomerModalProvider } from './contexts/BillCustomerModalContext'
+import { JobDetailOpenerBridgeProvider } from './contexts/JobDetailOpenerBridgeContext'
 import { JobFormModalProvider } from './contexts/JobFormModalContext'
 import { BidPreviewModalProvider } from './contexts/BidPreviewModalContext'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -206,6 +209,7 @@ function AppContent() {
                             <EditCustomerModalProvider>
                               <EditProjectModalProvider>
                                 <BillCustomerModalProvider>
+                                  <JobDetailOpenerBridgeProvider>
                                   <JobFormModalProvider>
                                     <BidPreviewModalProvider>
                                       <DailyGoalsGateProvider>
@@ -223,6 +227,7 @@ function AppContent() {
                                       </DailyGoalsGateProvider>
                                     </BidPreviewModalProvider>
                                   </JobFormModalProvider>
+                                  </JobDetailOpenerBridgeProvider>
                                 </BillCustomerModalProvider>
                               </EditProjectModalProvider>
                             </EditCustomerModalProvider>
@@ -264,6 +269,7 @@ function AppContent() {
           <Route path="checklist" element={<Checklist />} />
           <Route path="tally" element={<JobTally />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="help" element={<Help />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -287,12 +293,14 @@ function DispatchNoteRequirementsBridge({ children }: { children: React.ReactNod
 
 export default function App() {
   return (
-    <ToastProvider>
-      <LedgerDisplayPrefixBridge>
-        <DispatchNoteRequirementsBridge>
-          <AppContent />
-        </DispatchNoteRequirementsBridge>
-      </LedgerDisplayPrefixBridge>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <LedgerDisplayPrefixBridge>
+          <DispatchNoteRequirementsBridge>
+            <AppContent />
+          </DispatchNoteRequirementsBridge>
+        </LedgerDisplayPrefixBridge>
+      </ToastProvider>
+    </ThemeProvider>
   )
 }

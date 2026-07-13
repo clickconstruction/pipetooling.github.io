@@ -55,6 +55,7 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { laborItemsSubtotal, lineLaborCost } from '../lib/peopleLaborJobItemLineCost'
 import { laborJobSubCost } from '../lib/jobs/subLaborCost'
 import { buildClickToolingUrl, formatAddressTwoLines, resolvedLaborInvoiceLink } from '../lib/jobs/jobAddressUrls'
+import JobsCrewPnlTab from '../components/jobs/JobsCrewPnlTab'
 import JobsSubLaborTab from '../components/jobs/JobsSubLaborTab'
 import type { LaborJob, LaborJobPayment, SubLaborBackchargeTarget, SubLaborPaymentTarget } from '../types/laborJob'
 import { getDispatchNoteDisplayMeta } from '../utils/dispatchNoteDisplay'
@@ -90,7 +91,7 @@ import { ScheduleJobModal } from '../components/jobs/ScheduleJobModal'
 import { useJobThreadNotes } from '../hooks/useJobThreadNotes'
 import { CrewJobsBlock } from '../components/CrewJobsBlock'
 import type { Database } from '../types/database'
-import type { JobSummaryClockSessionRow, JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow } from '../types/jobSummary'
+import type { JobSummaryClockSessionRow, JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow, JobSummaryReportRow } from '../types/jobSummary'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
@@ -638,6 +639,47 @@ export default function Jobs() {
     }
   }, [])
 
+  /** Latest field-report completion % per job (Job Summary "%" column; report wins over pct_complete). */
+  const jobSummaryReportPctRequestedRef = useRef<Set<string>>(new Set())
+  const [jobSummaryReportPctByJobId, setJobSummaryReportPctByJobId] = useState<Map<string, number>>(
+    () => new Map(),
+  )
+
+  const jobSummaryReportsLoadedRef = useRef<Set<string>>(new Set())
+  const [jobSummaryReportsByJobId, setJobSummaryReportsByJobId] = useState<Map<string, JobSummaryReportRow[]>>(
+    () => new Map(),
+  )
+
+  /** Field reports for the expanded-row Charges & Value timeline (lazy per expanded job). */
+  const loadJobSummaryReportsForJob = useCallback(async (jobId: string) => {
+    if (jobSummaryReportsLoadedRef.current.has(jobId)) return
+    try {
+      const data = await withSupabaseRetry(
+        async () =>
+          await supabase
+            .from('reports')
+            .select('id, created_at, field_values, users!reports_created_by_user_id_fkey(name)')
+            .eq('job_ledger_id', jobId)
+            .order('created_at', { ascending: true }),
+        'job summary reports',
+      )
+      const rows = (data ?? []) as unknown as JobSummaryReportRow[]
+      setJobSummaryReportsByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, rows)
+        return next
+      })
+    } catch {
+      setJobSummaryReportsByJobId((prev) => {
+        const next = new Map(prev)
+        next.set(jobId, [])
+        return next
+      })
+    } finally {
+      jobSummaryReportsLoadedRef.current.add(jobId)
+    }
+  }, [])
+
   const [mercuryCardChargesByJobId, setMercuryCardChargesByJobId] = useState<Map<string, number>>(() => new Map())
   const partsTabMercuryLoadedRef = useRef<Set<string>>(new Set())
   const partsTabMercuryInFlightRef = useRef<Set<string>>(new Set())
@@ -797,7 +839,7 @@ export default function Jobs() {
           cursor: 'pointer',
           font: 'inherit',
           textAlign: 'left',
-          color: '#1d4ed8',
+          color: 'var(--text-blue-700)',
           textDecoration: 'underline',
           textUnderlineOffset: '2px',
           width: '100%',
@@ -1009,6 +1051,12 @@ export default function Jobs() {
     }, THREAD_STATS_STAGES_DEBOUNCE_MS)
     return () => window.clearTimeout(t)
   }, [authUser?.id, activeTab, stagesFilteredJobs, refreshJobThreadStatsForJobIds])
+
+  // Job Summary expanded rows show the Stages-style Last activity header — stats for expanded ids only.
+  useEffect(() => {
+    if (!authUser?.id || activeTab !== 'job-summary' || expandedJobSummaryJobIds.size === 0) return
+    void refreshJobThreadStatsForJobIds([...expandedJobSummaryJobIds])
+  }, [authUser?.id, activeTab, expandedJobSummaryJobIds, refreshJobThreadStatsForJobIds])
 
   /** True when loaded customers include exactly one row matching name (prefer same master_user_id as the job). */
   function customerListImpliesLinkedRow(customersList: CustomerRow[], jobMasterUserId: string, customerNameTrimmed: string): boolean {
@@ -3678,6 +3726,40 @@ ${totalsHtml}
   }, [activeTab, expandedJobSummaryJobIds, invoiceAmountByJob, loadJobSummaryInvoiceLinesForJob])
 
   useEffect(() => {
+    if (activeTab !== 'job-summary') return
+    for (const jobId of expandedJobSummaryJobIds) {
+      void loadJobSummaryReportsForJob(jobId)
+    }
+  }, [activeTab, expandedJobSummaryJobIds, loadJobSummaryReportsForJob])
+
+  useEffect(() => {
+    if (activeTab !== 'job-summary' || !jobSummaryLedgerJobs) return
+    const missing = jobSummaryLedgerJobs
+      .map((j) => j.id)
+      .filter((id) => !jobSummaryReportPctRequestedRef.current.has(id))
+    if (missing.length === 0) return
+    for (const id of missing) jobSummaryReportPctRequestedRef.current.add(id)
+    void (async () => {
+      try {
+        const data = await withSupabaseRetry(
+          async () => await supabase.rpc('list_latest_report_completion_pct', { p_job_ids: missing }),
+          'job summary report completion pct',
+        )
+        const rows = (data ?? []) as Array<{ job_ledger_id: string; pct: number }>
+        if (rows.length === 0) return
+        setJobSummaryReportPctByJobId((prev) => {
+          const next = new Map(prev)
+          for (const r of rows) next.set(r.job_ledger_id, r.pct)
+          return next
+        })
+      } catch {
+        // Column falls back to jobs_ledger.pct_complete; un-mark so a later visit retries.
+        for (const id of missing) jobSummaryReportPctRequestedRef.current.delete(id)
+      }
+    })()
+  }, [activeTab, jobSummaryLedgerJobs])
+
+  useEffect(() => {
     if (activeTab !== 'job-summary' || !authUser?.id) return
     const t = setTimeout(() => {
       void loadJobSummaryLedger()
@@ -4119,85 +4201,7 @@ ${totalsHtml}
     return arr
   }, [filteredJobs, billingSortAsc])
 
-  const teamsSummaryData = useMemo(() => {
-    const laborCostByName = new Map<string, number>()
-    const billingByName = new Map<string, number>()
-
-    for (const job of jobs) {
-      const rev = job.revenue != null ? Number(job.revenue) : 0
-      if (rev <= 0 || job.team_members.length === 0) continue
-      const share = rev / job.team_members.length
-      for (const tm of job.team_members) {
-        const name = tm.users?.name ?? 'Unknown'
-        billingByName.set(name, (billingByName.get(name) ?? 0) + share)
-      }
-    }
-
-    for (const job of laborJobs) {
-      const laborCost = laborJobSubCost(job, driveMileageCost ?? 0.70, driveTimePerMile ?? 0.02)
-      const names = (job.assigned_to_name ?? '')
-        .split(LABOR_ASSIGNED_DELIMITER)
-        .map((n) => n.trim())
-        .filter(Boolean)
-      if (names.length === 0 || laborCost <= 0) continue
-      const share = laborCost / names.length
-      for (const name of names) {
-        laborCostByName.set(name, (laborCostByName.get(name) ?? 0) + share)
-      }
-    }
-
-    for (const row of teamLaborData) {
-      for (const p of row.breakdown) {
-        laborCostByName.set(p.personName, (laborCostByName.get(p.personName) ?? 0) + p.cost)
-      }
-    }
-
-    const allNames = new Set<string>()
-    for (const [name] of billingByName) allNames.add(name)
-    for (const [name] of laborCostByName) allNames.add(name)
-    const rows = [...allNames].sort((a, b) => a.localeCompare(b)).map((name) => ({
-      name,
-      laborCost: laborCostByName.get(name) ?? 0,
-      billing: billingByName.get(name) ?? 0,
-    }))
-
-    const billingHcps = new Set(
-      jobs.filter((j) => j.revenue != null && Number(j.revenue) > 0).map((j) => (j.hcp_number ?? '').trim().toLowerCase())
-    )
-    const laborHcps = new Set(
-      laborJobs
-        .filter((job) => laborItemsSubtotal(job.items, job.labor_rate ?? 0) > 0)
-        .map((j) => (j.job_number ?? '').trim().toLowerCase())
-    )
-    const matchedHcps = new Set([...billingHcps].filter((h) => h && laborHcps.has(h)))
-
-    const hcpByJobId = new Map<string, string>()
-    for (const j of jobs) {
-      const hcp = (j.hcp_number ?? '').trim().toLowerCase()
-      if (hcp) hcpByJobId.set(j.id, hcp)
-    }
-
-    let matchedLaborTotal = 0
-    let matchedBillingTotal = 0
-    const mileageCost = driveMileageCost ?? 0.70
-    const timePerMile = driveTimePerMile ?? 0.02
-    for (const job of laborJobs) {
-      const hcp = (job.job_number ?? '').trim().toLowerCase()
-      if (!hcp || !matchedHcps.has(hcp)) continue
-      matchedLaborTotal += laborJobSubCost(job, mileageCost, timePerMile)
-    }
-    for (const row of teamLaborData) {
-      const hcp = hcpByJobId.get(row.jobId)
-      if (hcp && matchedHcps.has(hcp)) matchedLaborTotal += row.jobCost
-    }
-    for (const job of jobs) {
-      const hcp = (job.hcp_number ?? '').trim().toLowerCase()
-      if (!hcp || !matchedHcps.has(hcp) || job.revenue == null) continue
-      matchedBillingTotal += Number(job.revenue)
-    }
-
-    return { rows, matchedLaborTotal, matchedBillingTotal }
-  }, [jobs, laborJobs, teamLaborData, driveMileageCost, driveTimePerMile])
+  // Crew P&L math lives in src/lib/crewPnlSummary.ts; the tab component owns its own state.
 
   const jobSummaryData = useMemo(() => {
     const sourceJobs =
@@ -4567,7 +4571,7 @@ ${totalsHtml}
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', marginBottom: '1.5rem', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 0, width: 'max-content' }}>
         {showTeamsTab && (
@@ -4583,7 +4587,7 @@ ${totalsHtml}
             }}
             style={pageUnderlineTabStyle(activeTab === 'teams-summary')}
           >
-            Teams
+            Crew P&L
           </button>
         )}
         <button
@@ -4620,7 +4624,7 @@ ${totalsHtml}
           <>
           {showStagesAndBillingTabs && (
             <>
-            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
             <button
               type="button"
               onClick={() => {
@@ -4703,7 +4707,7 @@ ${totalsHtml}
         )}
         {showPrimaryRestrictedTabs && showSuperintendentExtraTabs && (
           <>
-          <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+          <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
           <button
             type="button"
             onClick={() => {
@@ -4722,16 +4726,16 @@ ${totalsHtml}
         )}
           </div>
         </div>
-        <h1 style={{ margin: 0, marginLeft: '1rem', flexShrink: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Jobs</h1>
+        <h1 style={{ margin: 0, marginLeft: '1rem', flexShrink: 0, fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>Jobs</h1>
       </div>
 
       {searchParams.get('customer') && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.875rem' }}>
-          <span style={{ color: '#1e40af' }}>Filtered by customer</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.875rem' }}>
+          <span style={{ color: 'var(--text-blue-800)' }}>Filtered by customer</span>
           <button
             type="button"
             onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('customer'); return n })}
-            style={{ padding: '0.25rem 0.5rem', background: 'white', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer', color: '#1e40af', fontSize: '0.8125rem' }}
+            style={{ padding: '0.25rem 0.5rem', background: 'var(--surface)', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer', color: 'var(--text-blue-800)', fontSize: '0.8125rem' }}
           >
             Clear filter
           </button>
@@ -4760,7 +4764,7 @@ ${totalsHtml}
       {activeTab === 'stages' && (
         <div>
           {(error || jobsListError) && (
-            <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error || jobsListError}</p>
+            <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
           <div style={{ marginBottom: '1rem' }}>
             <span
@@ -4811,7 +4815,7 @@ ${totalsHtml}
               aria-describedby={
                 stagesIncludeScheduleTimeInSearch ? 'stages-search-supplemental-desc' : undefined
               }
-              style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+              style={{ flex: 1, padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
             />
             {(['dev', 'master_technician', 'assistant'] as const).some(
               (r) => r === authRole || r === myRole,
@@ -4829,11 +4833,11 @@ ${totalsHtml}
                   height: 36,
                   flexShrink: 0,
                   padding: 0,
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                 }}
               >
                 <JobBookIcon size={20} />
@@ -4861,11 +4865,11 @@ ${totalsHtml}
                 height: 36,
                 flexShrink: 0,
                 padding: 0,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: stagesIncludeScheduleTimeInSearch ? '#eff6ff' : 'white',
+                background: stagesIncludeScheduleTimeInSearch ? 'var(--bg-blue-tint)' : 'var(--surface)',
                 cursor: 'pointer',
-                color: stagesIncludeScheduleTimeInSearch ? '#2563eb' : '#6b7280',
+                color: stagesIncludeScheduleTimeInSearch ? 'var(--text-link)' : 'var(--text-muted)',
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
@@ -4878,7 +4882,7 @@ ${totalsHtml}
                   display: 'flex',
                   flexDirection: 'column',
                   fontSize: '0.8125rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   lineHeight: 1.25,
                   textAlign: 'left',
                 }}
@@ -4900,11 +4904,11 @@ ${totalsHtml}
                   width: 36,
                   height: 36,
                   padding: 0,
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: stagesHamMode ? '#eff6ff' : 'white',
+                  background: stagesHamMode ? 'var(--bg-blue-tint)' : 'var(--surface)',
                   cursor: 'pointer',
-                  color: stagesHamMode ? '#2563eb' : '#6b7280',
+                  color: stagesHamMode ? 'var(--text-link)' : 'var(--text-muted)',
                 }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} fill="currentColor" aria-hidden>
@@ -4933,11 +4937,11 @@ ${totalsHtml}
                 gap: '0.35rem',
                 height: 36,
                 padding: '0 0.7rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: stagesFollowMoves ? '#eff6ff' : 'white',
+                background: stagesFollowMoves ? 'var(--bg-blue-tint)' : 'var(--surface)',
                 cursor: 'pointer',
-                color: stagesFollowMoves ? '#2563eb' : '#6b7280',
+                color: stagesFollowMoves ? 'var(--text-link)' : 'var(--text-muted)',
                 fontSize: '0.8125rem',
                 whiteSpace: 'nowrap',
               }}
@@ -4956,11 +4960,11 @@ ${totalsHtml}
                 width: 36,
                 height: 36,
                 padding: 0,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={20} height={20} aria-hidden>
@@ -4980,9 +4984,9 @@ ${totalsHtml}
                 aria-label="Combine or separate jobs"
                 style={{
                   padding: '0.5rem 1rem',
-                  background: 'white',
-                  color: '#1f2937',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--surface)',
+                  color: 'var(--text-gray-800)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                   fontWeight: 500,
@@ -5000,7 +5004,7 @@ ${totalsHtml}
               marginBottom: '0.75rem',
               fontSize: '0.9375rem',
               lineHeight: 1.5,
-              color: '#374151',
+              color: 'var(--text-700)',
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
@@ -5031,7 +5035,7 @@ ${totalsHtml}
                     background: 'none',
                     cursor: 'pointer',
                     font: 'inherit',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                     textDecoration: 'underline',
                     textUnderlineOffset: '2px',
                   }}
@@ -5040,7 +5044,7 @@ ${totalsHtml}
                 </button>
                 <span>({stagesBoardLists.waiting.length})</span>
               </span>
-              <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+              <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                 →
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
@@ -5054,7 +5058,7 @@ ${totalsHtml}
                     background: 'none',
                     cursor: 'pointer',
                     font: 'inherit',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                     textDecoration: 'underline',
                     textUnderlineOffset: '2px',
                   }}
@@ -5063,7 +5067,7 @@ ${totalsHtml}
                 </button>
                 <span>({stagesBoardLists.working.length})</span>
               </span>
-              <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+              <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                 →
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
@@ -5077,7 +5081,7 @@ ${totalsHtml}
                     background: 'none',
                     cursor: 'pointer',
                     font: 'inherit',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                     textDecoration: 'underline',
                     textUnderlineOffset: '2px',
                   }}
@@ -5086,7 +5090,7 @@ ${totalsHtml}
                 </button>
                 <span>({stagesBoardLists.readyToBillRows.length})</span>
               </span>
-              <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+              <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                 →
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
@@ -5100,7 +5104,7 @@ ${totalsHtml}
                     background: 'none',
                     cursor: 'pointer',
                     font: 'inherit',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                     textDecoration: 'underline',
                     textUnderlineOffset: '2px',
                   }}
@@ -5111,7 +5115,7 @@ ${totalsHtml}
               </span>
               {stagesBoardLists.collectionsRows.length > 0 ? (
                 <>
-                  <span style={{ color: '#9ca3af', userSelect: 'none' }} aria-hidden>
+                  <span style={{ color: 'var(--text-faint)', userSelect: 'none' }} aria-hidden>
                     →
                   </span>
                   <span style={{ display: 'inline-flex', alignItems: 'baseline', flexWrap: 'wrap', columnGap: '0.35em', rowGap: 0 }}>
@@ -5125,7 +5129,7 @@ ${totalsHtml}
                         background: 'none',
                         cursor: 'pointer',
                         font: 'inherit',
-                        color: '#b91c1c',
+                        color: 'var(--text-red-700)',
                         textDecoration: 'underline',
                         textUnderlineOffset: '2px',
                       }}
@@ -5162,8 +5166,8 @@ ${totalsHtml}
                       fontWeight: 500,
                       border: `1px solid ${stagesNoCustomerBtnHover ? '#f87171' : '#fecaca'}`,
                       borderRadius: 4,
-                      background: '#fef2f2',
-                      color: stagesNoCustomerBtnHover ? '#991b1b' : '#b91c1c',
+                      background: 'var(--bg-red-tint)',
+                      color: stagesNoCustomerBtnHover ? 'var(--text-red-800)' : 'var(--text-red-700)',
                       cursor: 'pointer',
                     }}
                   >
@@ -5184,8 +5188,8 @@ ${totalsHtml}
                       fontWeight: 500,
                       border: `1px solid ${stagesNoJobPicturesBtnHover ? '#f87171' : '#fecaca'}`,
                       borderRadius: 4,
-                      background: '#fef2f2',
-                      color: stagesNoJobPicturesBtnHover ? '#991b1b' : '#b91c1c',
+                      background: 'var(--bg-red-tint)',
+                      color: stagesNoJobPicturesBtnHover ? 'var(--text-red-800)' : 'var(--text-red-700)',
                       cursor: 'pointer',
                     }}
                   >
@@ -5217,7 +5221,7 @@ ${totalsHtml}
               style={{ textAlign: 'center', marginTop: '0.35rem', marginBottom: '0.75rem' }}
             >
               {jobsListLoading && (
-                <p style={{ color: '#6b7280', margin: 0 }}>
+                <p style={{ color: 'var(--text-muted)', margin: 0 }}>
                   Loading jobs…
                   {(searchParams.get('openBankPayments') === 'true' || searchParams.get('openBankPayments') === '1') && (
                     <>
@@ -5228,7 +5232,7 @@ ${totalsHtml}
                 </p>
               )}
               {jobsListRefreshing && !jobsListLoading && (
-                <p style={{ color: '#9ca3af', fontSize: '0.8125rem', margin: 0 }}>Updating jobs…</p>
+                <p style={{ color: 'var(--text-faint)', fontSize: '0.8125rem', margin: 0 }}>Updating jobs…</p>
               )}
             </div>
           )}
@@ -5268,8 +5272,8 @@ ${totalsHtml}
                       marginTop: '0.15rem',
                       letterSpacing: '0.02em',
                       border: `1px solid ${borderColor}`,
-                      background: tagInfo ? borderColor : '#f3f4f6',
-                      color: tagInfo ? '#fff' : '#374151',
+                      background: tagInfo ? borderColor : 'var(--bg-muted)',
+                      color: tagInfo ? '#fff' : 'var(--text-700)',
                     }
                   : null
                 return (
@@ -5280,7 +5284,7 @@ ${totalsHtml}
                 )
               }
               return (
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', ...extraWrap }}>—</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...extraWrap }}>—</div>
               )
             }
 
@@ -5303,7 +5307,7 @@ ${totalsHtml}
               })
               const lineStyle = {
                 fontSize: '0.75rem',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 marginTop: '0.15rem',
               } as const
               const jbLineButtonStyle: CSSProperties = {
@@ -5394,7 +5398,7 @@ ${totalsHtml}
                 <div
                   style={{
                     fontSize: '0.75rem',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     marginTop: '0.15rem',
                     display: 'flex',
                     flexDirection: 'column',
@@ -5416,8 +5420,8 @@ ${totalsHtml}
                         fontSize: '0.6875rem',
                         fontWeight: 500,
                         fontFamily: 'inherit',
-                        background: '#fef3c7',
-                        color: '#92400e',
+                        background: 'var(--bg-amber-100)',
+                        color: 'var(--text-amber-800)',
                         border: 'none',
                         borderRadius: 4,
                         cursor: 'pointer',
@@ -5460,7 +5464,7 @@ ${totalsHtml}
                     border: 'none',
                     background: 'none',
                     cursor: 'pointer',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     fontSize: '0.75rem',
                     lineHeight: 1.1,
                     flexShrink: 0,
@@ -5469,7 +5473,7 @@ ${totalsHtml}
                 >
                   <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
                   {count > 0 ? (
-                    <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 600 }}>{count}</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
                   ) : null}
                 </button>
               )
@@ -5538,7 +5542,7 @@ ${totalsHtml}
                       style={{
                         fontSize: '0.6875rem',
                         fontWeight: 500,
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         lineHeight: 1.2,
                         flexShrink: 0,
                       }}
@@ -5615,7 +5619,7 @@ ${totalsHtml}
                           border: 'none',
                           background: 'none',
                           cursor: scheduleNoTeam ? 'not-allowed' : 'pointer',
-                          color: scheduleNoTeam ? '#9ca3af' : '#16a34a',
+                          color: scheduleNoTeam ? 'var(--text-faint)' : '#16a34a',
                           flexShrink: 0,
                           alignSelf: 'flex-start',
                         }}
@@ -5685,7 +5689,7 @@ ${totalsHtml}
                       gap: '0.2rem',
                       width: '100%',
                       fontSize: '0.6875rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       lineHeight: 1.2,
                       textAlign: 'center',
                     }}
@@ -5725,7 +5729,7 @@ ${totalsHtml}
                     {renderStagesLastActivityLeadingControls()}
                     <div style={lastActivityMainColumnStyle}>
                       <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
-                        <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
                       </div>
                       {renderStagesStripeEmailedCustomerHint()}
                       {renderStagesInvoiceJumpChips(job)}
@@ -5741,7 +5745,7 @@ ${totalsHtml}
                     {renderStagesLastActivityLeadingControls()}
                     <div style={lastActivityMainColumnStyle}>
                       <div {...lastActivityBodyInteractiveProps(titleForEmpty)}>
-                        <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
                       </div>
                       {renderStagesStripeEmailedCustomerHint()}
                       {renderStagesInvoiceJumpChips(job)}
@@ -5767,7 +5771,7 @@ ${totalsHtml}
                   {renderStagesLastActivityLeadingControls()}
                   <div style={lastActivityMainColumnStyle}>
                     <div {...lastActivityBodyInteractiveProps(titleWithNotes)}>
-                      <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+                      <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
                         {author ? <span>{author}</span> : null}
                         {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
                         <span>{meta.weekdayTimeChicago}</span>
@@ -5776,7 +5780,7 @@ ${totalsHtml}
                       <div
                         style={{
                           fontSize: '0.8125rem',
-                          color: '#374151',
+                          color: 'var(--text-700)',
                           lineHeight: 1.35,
                           wordBreak: 'break-word',
                           whiteSpace: 'pre-wrap',
@@ -5808,16 +5812,16 @@ ${totalsHtml}
             ): React.ReactElement | null {
               if (!projectId || !project) return null
               return (
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   <td
                     colSpan={colSpan}
                     style={{
                       padding: '0.5rem 0.75rem',
-                      background: '#eff6ff',
+                      background: 'var(--bg-blue-tint)',
                       fontSize: '0.8125rem',
                     }}
                   >
-                    <Link to={`/workflows/${projectId}`} style={{ color: '#1d4ed8', textDecoration: 'none', fontWeight: 500 }}>
+                    <Link to={`/workflows/${projectId}`} style={{ color: 'var(--text-blue-700)', textDecoration: 'none', fontWeight: 500 }}>
                       Project: {project.name}
                     </Link>
                   </td>
@@ -5834,7 +5838,7 @@ ${totalsHtml}
                   ? `${raw.slice(0, STAGES_JOB_COLUMN_ESTIMATE_TITLE_MAX)}…`
                   : raw
               return (
-                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#6b7280' }}>
+                <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   <Link
                     to={`/estimates/${linked.estimate_number}`}
                     style={{ color: '#15803d', textDecoration: 'none', fontWeight: 500 }}
@@ -5849,28 +5853,28 @@ ${totalsHtml}
             function renderStagesTable(jobList: JobWithDetails[], actionLabel: React.ReactNode | null, onAction: (j: JobWithDetails) => void, showTimeOpen?: boolean, onSendBack?: (j: JobWithDetails) => void, onSendBackSimple?: (j: JobWithDetails) => void, showRemaining?: boolean, showFinalBill?: boolean, showPctComplete?: boolean) {
               const stagesTableColCount = 6 + (showPctComplete ? 1 : 0)
               return (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
                         <th
                           style={{
                             padding: '0.75rem',
                             textAlign: 'left',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             minWidth: '6.75rem',
                           }}
                         >
                           {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
                         </th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Last activity</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
                         {showPctComplete && (
                           <th
                             style={{
                               padding: '0.75rem',
                               textAlign: 'center',
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                               minWidth: '8.5rem',
                             }}
                           >
@@ -5881,7 +5885,7 @@ ${totalsHtml}
                           style={{
                             padding: '0.75rem',
                             textAlign: 'center',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             ...(showRemaining ? { minWidth: '7rem' } : {}),
                           }}
                         >
@@ -5891,14 +5895,14 @@ ${totalsHtml}
                               ? 'Final Bill'
                               : 'Revenue'}
                         </th>
-                        <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
-                        <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
+                        <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
+                        <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid var(--border)' }}>View<br />Reports</th>
                       </tr>
                     </thead>
                     <tbody>
                       {jobList.length === 0 ? (
                         <tr>
-                          <td colSpan={stagesTableColCount} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <td colSpan={stagesTableColCount} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                             No jobs in this group
                           </td>
                         </tr>
@@ -5910,7 +5914,7 @@ ${totalsHtml}
                             style={{
                               borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
                               ...(stagesJobFlashId === j.id
-                                ? { backgroundColor: '#fef3c7', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
+                                ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
                                 : {}),
                             }}
                             onClick={(e) => {
@@ -5947,7 +5951,7 @@ ${totalsHtml}
                                         borderRadius: 4,
                                         background: 'none',
                                         cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                                        color: '#6b7280',
+                                        color: 'var(--text-muted)',
                                       }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
@@ -5962,8 +5966,8 @@ ${totalsHtml}
                                           left: 0,
                                           marginTop: 4,
                                           zIndex: 50,
-                                          background: 'white',
-                                          border: '1px solid #d1d5db',
+                                          background: 'var(--surface)',
+                                          border: '1px solid var(--border-strong)',
                                           borderRadius: 4,
                                           boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                                           padding: '0.5rem',
@@ -6014,8 +6018,8 @@ ${totalsHtml}
                                               padding: '0.35rem 0.75rem',
                                               fontSize: '0.8125rem',
                                               background: 'none',
-                                              color: '#6b7280',
-                                              border: '1px solid #d1d5db',
+                                              color: 'var(--text-muted)',
+                                              border: '1px solid var(--border-strong)',
                                               borderRadius: 4,
                                               cursor: 'pointer',
                                             }}
@@ -6043,7 +6047,7 @@ ${totalsHtml}
                                 const fmt = formatAddressTwoLines(j.job_address)
                                 if (!fmt) return null
                                 return (
-                                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                                     <div>{fmt.line1}</div>
                                     {fmt.line2 && <div>{fmt.line2}</div>}
                                   </div>
@@ -6087,12 +6091,12 @@ ${totalsHtml}
                                         fontSize: '0.8125rem',
                                         textAlign: 'center',
                                         border: 'none',
-                                        borderBottom: '1px solid #d1d5db',
+                                        borderBottom: '1px solid var(--border-strong)',
                                         borderRadius: 0,
                                         background: 'transparent',
                                       }}
                                     />
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>%</span>
+                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>%</span>
                                   </div>
                                   <div style={{ fontSize: '0.8125rem' }}>
                                     {j.pct_complete != null
@@ -6105,7 +6109,7 @@ ${totalsHtml}
                                     const remaining = Math.max(0, totalBill - Number(j.payments_made ?? 0))
                                     const toBill = valueCreated - (totalBill - remaining)
                                     return (
-                                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                                         {valueCreated === 0 || toBill === 0 ? '—' : `${formatUsdNoCents(toBill)} to bill`}
                                       </div>
                                     )
@@ -6120,9 +6124,9 @@ ${totalsHtml}
                                     const pm = j.payments_made != null ? Number(j.payments_made) : 0
                                     return (
                                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
                                         <span>{rev > 0 || pm > 0 ? `${formatUsdNoCents(rev - pm)} left` : '—'}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
                                       </div>
                                     )
                                   })()
@@ -6132,7 +6136,7 @@ ${totalsHtml}
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
                                   {showTimeOpen && (
-                                      <span style={{ fontSize: '0.8125rem', color: '#6b7280', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
+                                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
                                         Open {formatTimeSince(j.created_at ?? null)}
                                       </span>
                                     )}
@@ -6145,8 +6149,8 @@ ${totalsHtml}
                                           padding: '0.35rem 0.75rem',
                                           fontSize: '0.8125rem',
                                           background: 'none',
-                                          color: '#6b7280',
-                                          border: '1px solid #d1d5db',
+                                          color: 'var(--text-muted)',
+                                          border: '1px solid var(--border-strong)',
                                           borderRadius: 4,
                                           cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                                         }}
@@ -6163,8 +6167,8 @@ ${totalsHtml}
                                           padding: '0.35rem 0.75rem',
                                           fontSize: '0.8125rem',
                                           background: 'none',
-                                          color: '#6b7280',
-                                          border: '1px solid #d1d5db',
+                                          color: 'var(--text-muted)',
+                                          border: '1px solid var(--border-strong)',
                                           borderRadius: 4,
                                           cursor: stagesStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
                                         }}
@@ -6212,7 +6216,7 @@ ${totalsHtml}
                                           disabled={rem <= 0}
                                           title={rem <= 0 ? 'No remaining amount' : 'Create partial invoice'}
                                           aria-label="Create partial invoice"
-                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: rem <= 0 ? 'not-allowed' : 'pointer', color: rem <= 0 ? '#9ca3af' : '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                          style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: rem <= 0 ? 'not-allowed' : 'pointer', color: rem <= 0 ? 'var(--text-faint)' : '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                         >
                                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                             <path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
@@ -6245,7 +6249,7 @@ ${totalsHtml}
                                       onClick={() => openEdit(j)}
                                       title="Edit"
                                       aria-label="Edit"
-                                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                         <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
@@ -6256,7 +6260,7 @@ ${totalsHtml}
                                       onClick={() => openStagesDetailJobModal(j)}
                                       title="Job detail"
                                       aria-label={`Open job detail for ${(j.job_name ?? '').trim() || 'Job'}`}
-                                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                     >
                                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                         <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
@@ -6269,7 +6273,7 @@ ${totalsHtml}
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                 <span style={{
                                   fontSize: '0.8125rem',
-                                  color: ((j.report_count ?? 0) > 0) ? '#111' : '#6b7280',
+                                  color: ((j.report_count ?? 0) > 0) ? 'var(--text-strong)' : 'var(--text-muted)',
                                   fontWeight: ((j.report_count ?? 0) > 0) ? 600 : 400,
                                   textAlign: 'center',
                                 }}>
@@ -6278,7 +6282,7 @@ ${totalsHtml}
                                 <button
                                   type="button"
                                   onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                                 >
                                   View<br />Reports
                                 </button>
@@ -6291,8 +6295,8 @@ ${totalsHtml}
                                 colSpan={stagesTableColCount}
                                 style={{
                                   padding: '0.5rem 0.75rem',
-                                  background: '#f9fafb',
-                                  borderBottom: '1px solid #e5e7eb',
+                                  background: 'var(--bg-subtle)',
+                                  borderBottom: '1px solid var(--border)',
                                 }}
                               >
                                 <JobThreadNotesPanel
@@ -6396,7 +6400,7 @@ ${totalsHtml}
                     title={note}
                     style={{
                       fontSize: '0.75rem',
-                      color: '#b91c1c',
+                      color: 'var(--text-red-700)',
                       fontStyle: 'italic',
                       maxWidth: '11rem',
                       overflow: 'hidden',
@@ -6412,7 +6416,7 @@ ${totalsHtml}
               const flashRowStyle = (invoiceId: string): CSSProperties =>
                 flashInvoiceId === invoiceId
                   ? {
-                      backgroundColor: '#fef3c7',
+                      backgroundColor: 'var(--bg-amber-100)',
                       outline: '2px solid #f59e0b',
                       outlineOffset: -2,
                       transition: 'background-color 0.35s ease',
@@ -6424,8 +6428,8 @@ ${totalsHtml}
                 lineHeight: 1.2,
                 textAlign: 'center',
                 background: 'none',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
+                color: 'var(--text-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 width: 'fit-content',
                 maxWidth: '100%',
@@ -6444,40 +6448,40 @@ ${totalsHtml}
                 fontFamily: 'inherit',
               }
               return (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflowX: 'auto', WebkitOverflowScrolling: 'touch', minWidth: 0 }}>
                   <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
                         <th
                           style={{
                             padding: '0.75rem',
                             textAlign: 'left',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             minWidth: '6.75rem',
                           }}
                         >
                           {renderStagesThreeLineHeader('Assigned', 'HCP', 'Last-Activity')}
                         </th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', minWidth: 200 }}>Last activity</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', minWidth: 200 }}>Last activity</th>
                         <th
                           style={{
                             padding: '0.75rem',
                             textAlign: 'center',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             minWidth: '7rem',
                           }}
                         >
                           {renderStagesThreeLineHeader('Paid', 'Left', 'Total Bill')}
                         </th>
-                        <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid #e5e7eb' }} />
-                        <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid #e5e7eb' }}>View<br />Reports</th>
+                        <th style={{ padding: '0.75rem', width: 140, borderBottom: '1px solid var(--border)' }} />
+                        <th style={{ padding: '0.75rem', width: 120, borderBottom: '1px solid var(--border)' }}>View<br />Reports</th>
                       </tr>
                     </thead>
                     <tbody>
                       {rows.length === 0 ? (
                         <tr>
-                          <td colSpan={unifiedStagesColCount} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                          <td colSpan={unifiedStagesColCount} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                             No jobs or invoices in this group
                           </td>
                         </tr>
@@ -6510,7 +6514,7 @@ ${totalsHtml}
                                   borderBottom: stagesRowHasProjectBanner(j.project_id, j.project) ? 'none' : '1px solid #e5e7eb',
                                   ...(bundleInv != null ? flashRowStyle(bundleInv.id) : {}),
                                   ...(stagesJobFlashId === j.id
-                                    ? { backgroundColor: '#fef3c7', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
+                                    ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
                                     : {}),
                                 }}
                                 onClick={(e) => {
@@ -6547,7 +6551,7 @@ ${totalsHtml}
                                           borderRadius: 4,
                                           background: 'none',
                                           cursor: assignedEditSavingId === j.id ? 'not-allowed' : 'pointer',
-                                          color: '#6b7280',
+                                          color: 'var(--text-muted)',
                                         }}
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden>
@@ -6562,8 +6566,8 @@ ${totalsHtml}
                                             left: 0,
                                             marginTop: 4,
                                             zIndex: 50,
-                                            background: 'white',
-                                            border: '1px solid #d1d5db',
+                                            background: 'var(--surface)',
+                                            border: '1px solid var(--border-strong)',
                                             borderRadius: 4,
                                             boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                                             padding: '0.5rem',
@@ -6614,8 +6618,8 @@ ${totalsHtml}
                                                 padding: '0.35rem 0.75rem',
                                                 fontSize: '0.8125rem',
                                                 background: 'none',
-                                                color: '#6b7280',
-                                                border: '1px solid #d1d5db',
+                                                color: 'var(--text-muted)',
+                                                border: '1px solid var(--border-strong)',
                                                 borderRadius: 4,
                                                 cursor: 'pointer',
                                               }}
@@ -6643,7 +6647,7 @@ ${totalsHtml}
                                     const fmt = formatAddressTwoLines(j.job_address)
                                     if (!fmt) return null
                                     return (
-                                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                                         <div>{fmt.line1}</div>
                                         {fmt.line2 && <div>{fmt.line2}</div>}
                                       </div>
@@ -6652,7 +6656,7 @@ ${totalsHtml}
                                   {renderJobCustomerLine(j)}
                                   {bundleInv != null ? (
                                     <div
-                                      style={{ fontSize: '0.75rem', color: '#1e40af', marginTop: '0.25rem' }}
+                                      style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: '0.25rem' }}
                                       title="Single billing line for this job (Stripe or external send)"
                                     >
                                       {row.kind === 'job_with_merged_billed' ? (
@@ -6673,7 +6677,7 @@ ${totalsHtml}
                                       <>
                                         {showRemaining && (() => {
                                           const pm = j.payments_made != null ? Number(j.payments_made) : 0
-                                          return <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
+                                          return <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{pm > 0 ? `${formatUsdNoCents(pm)} paid` : '—'}</span>
                                         })()}
                                         <span>
                                           {showRemaining
@@ -6691,7 +6695,7 @@ ${totalsHtml}
                                               })()
                                             : (j.revenue != null ? formatCurrencyNoCents(Number(j.revenue)) : '—')}
                                         </span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
                                         {sendBackBelowRemaining && onJobSendBack && (
                                           <button
                                             type="button"
@@ -6719,7 +6723,7 @@ ${totalsHtml}
                                       </>
                                     ) : (
                                       <>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                                           {row.kind === 'job_with_merged_billed'
                                             ? (() => {
                                                 const ap = sumInvoiceAppliedFromJobPayments(j, bundleInv.id)
@@ -6734,7 +6738,7 @@ ${totalsHtml}
                                             ? `${formatUsdNoCents(invoiceOpenRemainingOnJob(bundleInv, j))} left`
                                             : `${formatUsdNoCents(Number(bundleInv.amount))} remainder`}
                                         </span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{j.revenue != null ? `${formatUsdNoCents(Number(j.revenue))} bid` : '—'}</span>
                                         {sendBackBelowRemaining && onInvoiceSendBack && bundleInvWithJob != null && (
                                           <button
                                             type="button"
@@ -6773,8 +6777,8 @@ ${totalsHtml}
                                         style={{
                                           padding: '0.35rem 0.75rem',
                                           fontSize: '0.8125rem',
-                                          background: 'white',
-                                          color: '#2563eb',
+                                          background: 'var(--surface)',
+                                          color: 'var(--text-link)',
                                           border: '1px solid #2563eb',
                                           borderRadius: 4,
                                           cursor: 'pointer',
@@ -6794,8 +6798,8 @@ ${totalsHtml}
                                         style={{
                                           padding: '0.35rem 0.75rem',
                                           fontSize: '0.8125rem',
-                                          background: 'white',
-                                          color: '#2563eb',
+                                          background: 'var(--surface)',
+                                          color: 'var(--text-link)',
                                           border: '1px solid #2563eb',
                                           borderRadius: 4,
                                           cursor: 'pointer',
@@ -6855,7 +6859,7 @@ ${totalsHtml}
                                         </button>
                                       ) : null}
                                       {showTimeOpen && (
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'block', textAlign: 'center', minWidth: '5rem' }} title="Time since job created">
                                           Open {formatTimeSince(j.created_at ?? null)}
                                         </span>
                                       )}
@@ -6940,7 +6944,7 @@ ${totalsHtml}
                                             disabled={rem <= 0}
                                             title={rem <= 0 ? 'No remaining amount' : 'Create partial invoice'}
                                             aria-label="Create partial invoice"
-                                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: rem <= 0 ? 'not-allowed' : 'pointer', color: rem <= 0 ? '#9ca3af' : '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: rem <= 0 ? 'not-allowed' : 'pointer', color: rem <= 0 ? 'var(--text-faint)' : '#16a34a', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                           >
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                               <path d="M128 128C128 92.7 156.7 64 192 64L341.5 64C358.5 64 374.8 70.7 386.8 82.7L493.3 189.3C505.3 201.3 512 217.6 512 234.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM336 122.5L336 216C336 229.3 346.7 240 360 240L453.5 240L336 122.5zM248 320C234.7 320 224 330.7 224 344C224 357.3 234.7 368 248 368L392 368C405.3 368 416 357.3 416 344C416 330.7 405.3 320 392 320L248 320zM248 416C234.7 416 224 426.7 224 440C224 453.3 234.7 464 248 464L392 464C405.3 464 416 453.3 416 440C416 426.7 405.3 416 392 416L248 416z" />
@@ -6973,7 +6977,7 @@ ${totalsHtml}
                                         onClick={() => openEdit(j)}
                                         title="Edit"
                                         aria-label="Edit"
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                           <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
@@ -6984,7 +6988,7 @@ ${totalsHtml}
                                         onClick={() => openStagesDetailJobModal(j)}
                                         title="Job detail"
                                         aria-label={`Open job detail for ${(j.job_name ?? '').trim() || 'Job'}`}
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                           <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
@@ -6997,7 +7001,7 @@ ${totalsHtml}
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span style={{
                                       fontSize: '0.8125rem',
-                                      color: ((j.report_count ?? 0) > 0) ? '#111' : '#6b7280',
+                                      color: ((j.report_count ?? 0) > 0) ? 'var(--text-strong)' : 'var(--text-muted)',
                                       fontWeight: ((j.report_count ?? 0) > 0) ? 600 : 400,
                                       textAlign: 'center',
                                     }}>
@@ -7006,7 +7010,7 @@ ${totalsHtml}
                                     <button
                                       type="button"
                                       onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                                     >
                                       View<br />Reports
                                     </button>
@@ -7019,8 +7023,8 @@ ${totalsHtml}
                                     colSpan={unifiedStagesColCount}
                                     style={{
                                       padding: '0.5rem 0.75rem',
-                                      background: '#f9fafb',
-                                      borderBottom: '1px solid #e5e7eb',
+                                      background: 'var(--bg-subtle)',
+                                      borderBottom: '1px solid var(--border)',
                                     }}
                                   >
                                     <JobThreadNotesPanel
@@ -7076,7 +7080,7 @@ ${totalsHtml}
                                   borderBottom: stagesRowHasProjectBanner(job.project_id, job.project) ? 'none' : '1px solid #e5e7eb',
                                   ...flashRowStyle(inv.id),
                                   ...(stagesJobFlashId === job.id
-                                    ? { backgroundColor: '#fef3c7', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
+                                    ? { backgroundColor: 'var(--bg-amber-100)', outline: '2px solid #f59e0b', outlineOffset: -2, transition: 'background-color 0.35s ease' }
                                     : {}),
                                 }}
                                 onClick={(e) => {
@@ -7091,7 +7095,7 @@ ${totalsHtml}
                                       <span style={stagesInvoiceHcpBadgeStyle}>{stagesInvoiceRowHcpLabel}</span>
                                     </div>
                                   ) : (
-                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                                       {stagesInvoiceRowHcpLabel}
                                     </div>
                                   )}
@@ -7102,7 +7106,7 @@ ${totalsHtml}
                                     return (
                                       <>
                                         {display ? (
-                                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{display}</div>
+                                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{display}</div>
                                         ) : null}
                                         {stagesHamMode ? (
                                           <div
@@ -7122,11 +7126,11 @@ ${totalsHtml}
                                               style={{
                                                 padding: '0.25rem 0.5rem',
                                                 fontSize: '0.75rem',
-                                                border: '1px solid #d1d5db',
+                                                border: '1px solid var(--border-strong)',
                                                 borderRadius: 4,
                                                 background: 'none',
                                                 cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
-                                                color: '#6b7280',
+                                                color: 'var(--text-muted)',
                                               }}
                                             >
                                               -1
@@ -7140,11 +7144,11 @@ ${totalsHtml}
                                               style={{
                                                 padding: '0.25rem 0.5rem',
                                                 fontSize: '0.75rem',
-                                                border: '1px solid #d1d5db',
+                                                border: '1px solid var(--border-strong)',
                                                 borderRadius: 4,
                                                 background: 'none',
                                                 cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
-                                                color: '#6b7280',
+                                                color: 'var(--text-muted)',
                                               }}
                                             >
                                               +1
@@ -7172,7 +7176,7 @@ ${totalsHtml}
                                                 background: 'none',
                                                 border: 'none',
                                                 cursor: invoiceEstimatedBillDateSavingId === inv.id ? 'not-allowed' : 'pointer',
-                                                color: '#374151',
+                                                color: 'var(--text-700)',
                                                 display: 'inline-flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
@@ -7195,7 +7199,7 @@ ${totalsHtml}
                                     return (
                                       <>
                                         <div>{fmt.line1}</div>
-                                        {fmt.line2 && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>{fmt.line2}</div>}
+                                        {fmt.line2 && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{fmt.line2}</div>}
                                       </>
                                     )
                                   })()}
@@ -7203,7 +7207,7 @@ ${totalsHtml}
                                     const fmt = formatAddressTwoLines(job.job_address)
                                     if (!fmt) return null
                                     return (
-                                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                                         <div>{fmt.line1}</div>
                                         {fmt.line2 && <div>{fmt.line2}</div>}
                                       </div>
@@ -7215,19 +7219,19 @@ ${totalsHtml}
                                 {renderStagesLastActivityCell(job, inv)}
                                 <td style={{ padding: '0.75rem', textAlign: 'center', verticalAlign: 'middle' }}>
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                                       {Number(job.payments_made ?? 0) > 0 ? `${formatUsdNoCents(Number(job.payments_made ?? 0))} paid` : '—'}
                                     </span>
                                     <span title="Amount on this draft billing line">{`${formatUsdNoCents(Number(inv.amount))} draft`}</span>
                                     {showRemaining ? (() => {
                                       const u = jobBillingUnallocatedDollars(job)
                                       return u > 0 ? (
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} title="Left on the job after all draft and billed lines">
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Left on the job after all draft and billed lines">
                                           {`${formatUsdNoCents(u)} left`}
                                         </span>
                                       ) : null
                                     })() : null}
-                                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{job.revenue != null ? `${formatUsdNoCents(Number(job.revenue))} bid` : '—'}</span>
+                                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{job.revenue != null ? `${formatUsdNoCents(Number(job.revenue))} bid` : '—'}</span>
                                     {sendBackBelowRemaining && (
                                       <button
                                         type="button"
@@ -7263,8 +7267,8 @@ ${totalsHtml}
                                         style={{
                                           padding: '0.35rem 0.75rem',
                                           fontSize: '0.8125rem',
-                                          background: 'white',
-                                          color: '#2563eb',
+                                          background: 'var(--surface)',
+                                          color: 'var(--text-link)',
                                           border: '1px solid #2563eb',
                                           borderRadius: 4,
                                           cursor: 'pointer',
@@ -7368,7 +7372,7 @@ ${totalsHtml}
                                         onClick={() => openEdit(job)}
                                         title="Edit"
                                         aria-label="Edit"
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                           <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
@@ -7379,7 +7383,7 @@ ${totalsHtml}
                                         onClick={() => openStagesDetailJobModal(job)}
                                         title="Job detail"
                                         aria-label={`Open job detail for ${(job.job_name ?? '').trim() || 'Job'}`}
-                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                        style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                       >
                                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                           <path d="M264 112L376 112C380.4 112 384 115.6 384 120L384 160L256 160L256 120C256 115.6 259.6 112 264 112zM208 120L208 160L128 160C92.7 160 64 188.7 64 224L64 320L576 320L576 224C576 188.7 547.3 160 512 160L432 160L432 120C432 89.1 406.9 64 376 64L264 64C233.1 64 208 89.1 208 120zM576 368L384 368L384 384C384 401.7 369.7 416 352 416L288 416C270.3 416 256 401.7 256 384L256 368L64 368L64 480C64 515.3 92.7 544 128 544L512 544C547.3 544 576 515.3 576 480L576 368z" />
@@ -7392,7 +7396,7 @@ ${totalsHtml}
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span style={{
                                       fontSize: '0.8125rem',
-                                      color: ((job.report_count ?? 0) > 0) ? '#111' : '#6b7280',
+                                      color: ((job.report_count ?? 0) > 0) ? 'var(--text-strong)' : 'var(--text-muted)',
                                       fontWeight: ((job.report_count ?? 0) > 0) ? 600 : 400,
                                       textAlign: 'center',
                                     }}>
@@ -7401,7 +7405,7 @@ ${totalsHtml}
                                     <button
                                       type="button"
                                       onClick={() => setViewReportsJob({ id: job.id, hcpNumber: job.hcp_number ?? '—', jobName: job.job_name ?? '—', jobAddress: job.job_address ?? '—' })}
-                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                                     >
                                       View<br />Reports
                                     </button>
@@ -7414,8 +7418,8 @@ ${totalsHtml}
                                     colSpan={unifiedStagesColCount}
                                     style={{
                                       padding: '0.5rem 0.75rem',
-                                      background: '#f9fafb',
-                                      borderBottom: '1px solid #e5e7eb',
+                                      background: 'var(--bg-subtle)',
+                                      borderBottom: '1px solid var(--border)',
                                     }}
                                   >
                                     <JobThreadNotesPanel
@@ -7512,7 +7516,7 @@ ${totalsHtml}
                   <button
                     type="button"
                     onClick={() => setCapableToBillModalOpen(true)}
-                    style={{ fontSize: '0.9375rem', color: '#6b7280', fontWeight: 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                    style={{ fontSize: '0.9375rem', color: 'var(--text-muted)', fontWeight: 400, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                   >
                     Capable of Being Billed: <span style={{ fontWeight: 600 }}>${formatCurrencyNoCents(capableToBillTotal)}</span>
                   </button>
@@ -7619,7 +7623,7 @@ ${totalsHtml}
                       <span aria-hidden>{stagesSectionOpen.billed ? '\u25BC' : '\u25B6'}</span>
                       Billed Awaiting Payment ({billedActiveRows.length}) - ${formatCurrency(billedTotal)}
                     </button>
-                    <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#6b7280' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                       {`30+ days: ${billedAgingBuckets.count30_90} | $${formatCurrency(billedAgingBuckets.sum30_90)} — 90+ days: ${billedAgingBuckets.count90} | $${formatCurrency(billedAgingBuckets.sum90)} · est. bill date`}
                     </span>
                   </div>
@@ -7644,7 +7648,7 @@ ${totalsHtml}
                         gap: 6,
                         height: 36,
                         padding: '0 0.75rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         background:
                           !(
@@ -7653,8 +7657,8 @@ ${totalsHtml}
                             authRole === 'assistant' ||
                             authRole === 'primary'
                           )
-                            ? '#f3f4f6'
-                            : 'white',
+                            ? 'var(--bg-muted)'
+                            : 'var(--surface)',
                         cursor:
                           !(
                             authRole === 'dev' ||
@@ -7664,7 +7668,7 @@ ${totalsHtml}
                           )
                             ? 'not-allowed'
                             : 'pointer',
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         fontSize: '0.8125rem',
                         fontWeight: 500,
                       }}
@@ -7713,11 +7717,11 @@ ${totalsHtml}
                       flexShrink: 0,
                       height: 36,
                       padding: '0 0.75rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: billedActiveRows.length === 0 ? '#f3f4f6' : 'white',
+                      background: billedActiveRows.length === 0 ? 'var(--bg-muted)' : 'var(--surface)',
                       cursor: billedActiveRows.length === 0 ? 'not-allowed' : 'pointer',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       fontSize: '0.8125rem',
                       fontWeight: 500,
                     }}
@@ -7778,12 +7782,12 @@ ${totalsHtml}
                     <span aria-hidden>{stagesSectionOpen.collections ? '▼' : '▶'}</span>
                     Collections ({collectionsRows.length}) - ${formatCurrency(collectionsTotal)}
                   </button>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 400, color: '#6b7280' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-muted)' }}>
                     Billed jobs flagged difficult to collect — still awaiting payment
                   </span>
                 </div>
                 {stagesSectionOpen.collections && (collectionsRows.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
                     No jobs in Collections. Use “Move to Collections” on a Billed Awaiting Payment row to park a hard-to-collect job here.
                   </p>
                 ) : renderUnifiedStagesTable(collectionsRows, {
@@ -7833,7 +7837,7 @@ ${totalsHtml}
                       return (
                         <>
                           Paid in Full (
-                          <span style={{ color: '#dc2626' }}>Expand to load</span>)
+                          <span style={{ color: 'var(--text-red-600)' }}>Expand to load</span>)
                           {suffix}
                         </>
                       )
@@ -7844,7 +7848,7 @@ ${totalsHtml}
                 {stagesSectionOpen.paid ? (
                   <>
                     {paidJobsLoading ? (
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem' }} role="status">
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem' }} role="status">
                         Loading paid jobs…
                       </p>
                     ) : null}
@@ -7880,7 +7884,7 @@ ${totalsHtml}
                     .sort((a, b) => b.total - a.total)
                   return (
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 560, maxHeight: '80vh', overflow: 'auto' }}>
+                      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 560, maxHeight: '80vh', overflow: 'auto' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem' }}>
                           <h2 style={{ margin: 0, fontSize: '1.25rem', flex: 1, minWidth: 0 }}>Billed Awaiting Payment by Job Name</h2>
                           <button
@@ -7897,11 +7901,11 @@ ${totalsHtml}
                               flexShrink: 0,
                               height: 36,
                               padding: '0 0.75rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: billedActiveRows.length === 0 ? '#f3f4f6' : 'white',
+                              background: billedActiveRows.length === 0 ? 'var(--bg-muted)' : 'var(--surface)',
                               cursor: billedActiveRows.length === 0 ? 'not-allowed' : 'pointer',
-                              color: '#374151',
+                              color: 'var(--text-700)',
                               fontSize: '0.8125rem',
                               fontWeight: 500,
                             }}
@@ -7917,7 +7921,7 @@ ${totalsHtml}
                         </div>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                           <thead>
-                            <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <tr style={{ borderBottom: '1px solid var(--border)' }}>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Job Name</th>
                               <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Total</th>
                             </tr>
@@ -7929,7 +7933,7 @@ ${totalsHtml}
                               const detailRows = sortStageRowsForTotalByNameDetail(rows)
                               return (
                                 <Fragment key={name}>
-                                  <tr style={{ borderBottom: expanded ? 'none' : '1px solid #e5e7eb' }}>
+                                  <tr style={{ borderBottom: expanded ? 'none' : '1px solid var(--border)' }}>
                                     <td style={{ padding: '0.5rem 0.75rem' }}>
                                       <button
                                         type="button"
@@ -7947,13 +7951,13 @@ ${totalsHtml}
                                           border: 'none',
                                           background: 'none',
                                           cursor: 'pointer',
-                                          color: '#111827',
+                                          color: 'var(--text-strong)',
                                           fontSize: 'inherit',
                                           textAlign: 'left',
                                           maxWidth: '100%',
                                         }}
                                       >
-                                        <span aria-hidden style={{ fontSize: '0.65rem', color: '#6b7280' }}>
+                                        <span aria-hidden style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                                           {expanded ? '\u25BC' : '\u25B6'}
                                         </span>
                                         {name}
@@ -7968,17 +7972,17 @@ ${totalsHtml}
                                         style={{
                                           padding: 0,
                                           borderBottom:
-                                            idx === entries.length - 1 ? 'none' : '1px solid #e5e7eb',
-                                          background: '#f9fafb',
+                                            idx === entries.length - 1 ? 'none' : '1px solid var(--border)',
+                                          background: 'var(--bg-subtle)',
                                         }}
                                       >
                                         <div id={panelId} role="region" aria-labelledby={`total-by-name-toggle-${idx}`} style={{ padding: '0.5rem 0.75rem 0.75rem' }}>
                                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                             <thead>
                                               <tr>
-                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left', fontWeight: 600, color: '#6b7280' }}>Line</th>
-                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: '#6b7280' }}>Amount</th>
-                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: '#6b7280' }}>Age</th>
+                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'left', fontWeight: 600, color: 'var(--text-muted)' }}>Line</th>
+                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>Amount</th>
+                                                <th style={{ padding: '0.25rem 0.5rem', textAlign: 'right', fontWeight: 600, color: 'var(--text-muted)' }}>Age</th>
                                               </tr>
                                             </thead>
                                             <tbody>
@@ -7995,11 +7999,11 @@ ${totalsHtml}
                                                     <tr style={{ borderBottom: 'none' }}>
                                                       <td style={{ padding: '0.35rem 0.5rem' }}>{stageRowBilledLineLabel(r)}</td>
                                                       <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>${formatCurrency(amt)}</td>
-                                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: '#6b7280' }}>{ageLabel}</td>
+                                                      <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', color: 'var(--text-muted)' }}>{ageLabel}</td>
                                                     </tr>
                                                     <tr
                                                       style={{
-                                                        borderBottom: isLastBillInGroup ? 'none' : '1px solid #e5e7eb',
+                                                        borderBottom: isLastBillInGroup ? 'none' : '1px solid var(--border)',
                                                       }}
                                                     >
                                                       <td
@@ -8007,7 +8011,7 @@ ${totalsHtml}
                                                         style={{
                                                           padding: '0 0.5rem 0.35rem',
                                                           fontSize: '0.75rem',
-                                                          color: '#6b7280',
+                                                          color: 'var(--text-muted)',
                                                         }}
                                                       >
                                                         {addr}
@@ -8035,11 +8039,11 @@ ${totalsHtml}
                               setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
                               setTimeout(() => document.getElementById('stages-billed')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
                             }}
-                            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
                           >
                             take me to Job: Stages: Billed
                           </button>
-                          <button type="button" onClick={() => setBilledTotalByNameModalOpen(false)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                          <button type="button" onClick={() => setBilledTotalByNameModalOpen(false)} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Close</button>
                         </div>
                       </div>
                     </div>
@@ -8058,17 +8062,17 @@ ${totalsHtml}
                     .sort((a, b) => b.toBill - a.toBill)
                   return (
                     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
+                      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: 720, maxHeight: '80vh', overflow: 'auto' }}>
                         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Capable of Being Billed — Breakdown</h2>
-                        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           Jobs in Working with billable value. Sorted by amount.
                         </p>
                         {rows.length === 0 ? (
-                          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>No jobs with billable amount</p>
+                          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs with billable amount</p>
                         ) : (
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                             <thead>
-                              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Job</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>%</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Done</th>
@@ -8079,10 +8083,10 @@ ${totalsHtml}
                             </thead>
                             <tbody>
                               {rows.map(({ job, toBill, valueCreated }) => (
-                                <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     <div>{job.job_name || '—'}</div>
-                                    <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{job.hcp_number || '—'}</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{job.hcp_number || '—'}</div>
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{job.pct_complete != null ? `${job.pct_complete}%` : '—'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(valueCreated)}</td>
@@ -8101,7 +8105,7 @@ ${totalsHtml}
                                         })
                                         setCapableToBillModalOpen(false)
                                       }}
-                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                                     >
                                       View
                                     </button>
@@ -8110,7 +8114,7 @@ ${totalsHtml}
                               ))}
                             </tbody>
                             <tfoot>
-                              <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                              <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
                                 <td colSpan={4} style={{ padding: '0.5rem 0.75rem' }}>Total</td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{formatCurrency(capableToBillTotal)}</td>
                                 <td />
@@ -8126,11 +8130,11 @@ ${totalsHtml}
                               setStagesSectionOpen((prev) => ({ ...prev, working: true }))
                               setTimeout(() => document.getElementById('stages-working')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
                             }}
-                            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', color: '#2563eb', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                            style={{ padding: '0.5rem 1rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
                           >
                             take me to Job: Stages: Working
                           </button>
-                          <button type="button" onClick={() => setCapableToBillModalOpen(false)} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+                          <button type="button" onClick={() => setCapableToBillModalOpen(false)} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Close</button>
                         </div>
                       </div>
                     </div>
@@ -8138,9 +8142,9 @@ ${totalsHtml}
                 })()}
                 {whenInvoiceBillModal && (
                   <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-                    <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
+                    <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480 }}>
                       <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Est. bill date for partial invoice</h2>
-                      <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                      <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                         {whenInvoiceBillModal.jobName} ({whenInvoiceBillModal.hcpNumber})
                       </p>
                       <label style={{ display: 'block', marginBottom: '1rem' }}>
@@ -8149,7 +8153,7 @@ ${totalsHtml}
                           type="date"
                           value={whenInvoiceBillModalDate}
                           onChange={(e) => setWhenInvoiceBillModalDate(e.target.value)}
-                          style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                          style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
                         />
                       </label>
                       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
@@ -8159,7 +8163,7 @@ ${totalsHtml}
                             setWhenInvoiceBillModal(null)
                             setWhenInvoiceBillModalDate('')
                           }}
-                          style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                         >
                           Cancel
                         </button>
@@ -8227,7 +8231,7 @@ ${totalsHtml}
 
       {activeTab === 'combined-labor' && (
         <div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
           <CrewJobsBlock
             showCrewJobsSection
             showTeamLabor
@@ -8269,7 +8273,7 @@ ${totalsHtml}
                 flex: '1 1 200px',
                 minWidth: 200,
                 padding: '0.5rem 0.75rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 fontSize: '0.875rem',
               }}
@@ -8298,11 +8302,11 @@ ${totalsHtml}
                 width: 36,
                 height: 36,
                 padding: 0,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
               }}
             >
               {billingSortAsc ? (
@@ -8316,37 +8320,37 @@ ${totalsHtml}
               )}
             </button>
           </div>
-          <p style={{ color: '#6b7280', fontSize: '0.8125rem', marginBottom: '1rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '1rem' }}>
             Assistants see jobs from their master and from other assistants adopted by the same master. If you don&apos;t see a colleague&apos;s jobs, the master must adopt both of you in Settings → Adopt Assistants.
           </p>
           {(error || jobsListError) && (
-            <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error || jobsListError}</p>
+            <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error || jobsListError}</p>
           )}
           {jobsListLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : null}
           {jobsListRefreshing && !jobsListLoading && (
-            <p style={{ color: '#9ca3af', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>Updating…</p>
+            <p style={{ color: 'var(--text-faint)', fontSize: '0.8125rem', marginBottom: '0.75rem' }}>Updating…</p>
           )}
           {!jobsListLoading && (sortedBillingJobs.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No HCP jobs yet. Click New Job to add one.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No HCP jobs yet. Click New Job to add one.</p>
           ) : (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Specific Work</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Other job charges</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contractors</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
-                    <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid #e5e7eb' }} />
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>HCP</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Specific Work</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Other job charges</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contractors</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total Bill</th>
+                    <th style={{ padding: '0.75rem', width: 100, borderBottom: '1px solid var(--border)' }} />
                   </tr>
                 </thead>
                 <tbody>
                   {sortedBillingJobs.map((job) => (
-                    <tr key={job.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr key={job.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                         {job.hcp_number || '—'}
                         {job.hcp_number && authRole !== 'primary' && !laborJobHcps.has((job.hcp_number ?? '').trim().toLowerCase()) && (
@@ -8378,7 +8382,7 @@ ${totalsHtml}
                           const fmt = formatAddressTwoLines(job.job_address)
                           if (!fmt) return null
                           return (
-                            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                               <div>{fmt.line1}</div>
                               {fmt.line2 && <div>{fmt.line2}</div>}
                             </div>
@@ -8432,7 +8436,7 @@ ${totalsHtml}
                                   rel="noopener noreferrer"
                                   onClick={(e) => { e.preventDefault(); openInExternalBrowser(job.google_drive_link!.trim()) }}
                                   title="Google Drive"
-                                  style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.25rem' }}
+                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.25rem' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                     <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
@@ -8446,7 +8450,7 @@ ${totalsHtml}
                                   rel="noopener noreferrer"
                                   onClick={(e) => { e.preventDefault(); openInExternalBrowser(job.job_plans_link!.trim()) }}
                                   title="Job Plans"
-                                  style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.25rem' }}
+                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.25rem' }}
                                 >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                                 <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
@@ -8460,7 +8464,7 @@ ${totalsHtml}
                             onClick={() => openEdit(job)}
                             title="Edit"
                             aria-label="Edit"
-                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                               <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
@@ -8478,37 +8482,15 @@ ${totalsHtml}
       )}
 
       {activeTab === 'teams-summary' && (
-        <div>
-          {teamsSummaryData.rows.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No jobs yet. Add billing jobs and labor jobs to see the summary.</p>
-          ) : (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
-                  <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>User</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Labor Cost</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Billing</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {teamsSummaryData.rows.map((row) => (
-                    <tr key={row.name} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '0.75rem' }}>{row.name}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.laborCost)}</td>
-                      <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(row.billing)}</td>
-                    </tr>
-                  ))}
-                  <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600, background: '#f9fafb' }}>
-                    <td style={{ padding: '0.75rem' }}>Total (matched jobs only)</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedLaborTotal)}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(teamsSummaryData.matchedBillingTotal)}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+        <JobsCrewPnlTab
+          jobs={jobs}
+          laborJobs={laborJobs}
+          teamLaborData={teamLaborData}
+          loading={laborJobsLoading || teamLaborLoading}
+          driveMileageCost={driveMileageCost}
+          driveTimePerMile={driveTimePerMile}
+          onOpenJobDetail={(jobId) => jobDetailModal?.openJobDetail({ jobId })}
+        />
       )}
 
       {activeTab === 'parts' && (
@@ -8562,6 +8544,13 @@ ${totalsHtml}
           jobSummaryClockSessionsByJobId={jobSummaryClockSessionsByJobId}
           jobSummaryInvoiceLinesByJobId={jobSummaryInvoiceLinesByJobId}
           jobSummaryMercuryAllocationsByJobId={jobSummaryMercuryAllocationsByJobId}
+          jobSummaryReportsByJobId={jobSummaryReportsByJobId}
+          jobSummaryReportPctByJobId={jobSummaryReportPctByJobId}
+          jobThreadStatsByJobId={jobThreadStatsByJobId}
+          onOpenJobDetail={(jobId) =>
+            jobDetailModal?.openJobDetail({ jobId, onEditJobSaved: () => void loadJobSummaryLedger() })
+          }
+          onOpenEditJob={(jobId) => tryOpenEditJob(jobId, { onSaved: () => void loadJobSummaryLedger() })}
           setJobSummaryCostDrilldown={setJobSummaryCostDrilldown}
           printCostBreakdownJobId={printCostBreakdownJobId}
           setPrintCostBreakdownJobId={setPrintCostBreakdownJobId}
@@ -8584,7 +8573,7 @@ ${totalsHtml}
 
       {(laborModalOpen || editingLaborJob) && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90vw', maxHeight: '90vh', overflow: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>{editingLaborJob ? 'Edit Sub Labor' : 'New Sub Labor'}</h2>
             <form
               onSubmit={(e) => {
@@ -8593,8 +8582,8 @@ ${totalsHtml}
                 else saveLaborJob()
               }}
             >
-              {error && <p style={{ color: '#b91c1c', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
-              <p style={{ color: '#6b7280', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
+              {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', whiteSpace: 'pre-line' }}>{error}</p>}
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', margin: 0, marginBottom: '0.5rem' }}>
                 {laborFixtureEntryMode === 'simple'
                   ? 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one line item with a description and cost greater than 0.'
                   : 'Required: Address, Distance (mi), at least one contractor (External Subs, Internal Subs, or Office Team), and at least one fixture with a name and count > 0 (or hrs/unit for fixed items).'}
@@ -8615,7 +8604,7 @@ ${totalsHtml}
                           padding: 0,
                           cursor: laborJobNumber.trim() ? 'pointer' : 'default',
                           fontSize: '0.8125rem',
-                          color: laborJobNumber.trim() ? '#2563eb' : '#9ca3af',
+                          color: laborJobNumber.trim() ? 'var(--text-link)' : 'var(--text-faint)',
                         }}
                       >
                         fill
@@ -8628,21 +8617,21 @@ ${totalsHtml}
                     onChange={(e) => setLaborJobNumber(e.target.value)}
                     maxLength={10}
                     placeholder="Optional"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Address <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
                   <input
                     type="text"
                     value={laborAddress}
                     onChange={(e) => setLaborAddress(e.target.value)}
                     placeholder="Job address"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '0 0 110px', minWidth: 110 }}>
-                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, whiteSpace: 'nowrap' }}>Distance (mi) <span style={{ color: '#b91c1c' }}>*</span></label>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500, whiteSpace: 'nowrap' }}>Distance (mi) <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
                   <input
                     type="number"
                     min={0}
@@ -8651,7 +8640,7 @@ ${totalsHtml}
                     value={laborDistance}
                     onChange={(e) => setLaborDistance(e.target.value)}
                     placeholder="0"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
                 <div style={{ flex: '0 0 auto' }}>
@@ -8660,7 +8649,7 @@ ${totalsHtml}
                     type="date"
                     value={laborDate}
                     onChange={(e) => setLaborDate(e.target.value)}
-                    style={{ width: '11ch', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                    style={{ width: '11ch', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                   />
                 </div>
                 {serviceTypes.length > 1 && (
@@ -8669,7 +8658,7 @@ ${totalsHtml}
                     <select
                       value={selectedServiceTypeId}
                       onChange={(e) => setSelectedServiceTypeId(e.target.value)}
-                      style={{ width: 'max-content', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
+                      style={{ width: 'max-content', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, height: 38, boxSizing: 'border-box' }}
                     >
                       {serviceTypes.map((st) => (
                         <option key={st.id} value={st.id}>{st.name}</option>
@@ -8681,7 +8670,7 @@ ${totalsHtml}
               <div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem' }}>Subcontractors <span style={{ color: '#b91c1c' }}>*</span></div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Subcontractors <span style={{ color: 'var(--text-red-700)' }}>*</span></div>
                     <input
                       id="labor-crew-search"
                       type="search"
@@ -8699,7 +8688,7 @@ ${totalsHtml}
                         marginRight: 'auto',
                         marginBottom: '0.5rem',
                         padding: '0.4rem 0.5rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         fontSize: '0.875rem',
                         boxSizing: 'border-box',
@@ -8709,13 +8698,13 @@ ${totalsHtml}
                       laborModalExternalSubsShown.length === 0 &&
                       laborModalInternalSubsShown.length === 0 &&
                       laborModalOfficeTeamShown.length === 0 && (
-                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#9ca3af', textAlign: 'center' }}>No crew match this search</p>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-faint)', textAlign: 'center' }}>No crew match this search</p>
                     )}
                     {(!laborCrewSearchActive || laborModalExternalSubsShown.length > 0) && (
                       <>
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.25rem', marginTop: '0.5rem' }}>External Subs</div>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.25rem', marginTop: '0.5rem' }}>External Subs</div>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto', flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 100, overflowY: 'auto', flex: 1, minWidth: 0 }}>
                             {laborModalExternalSubsShown.map((n) => (
                               <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 <input
@@ -8727,7 +8716,7 @@ ${totalsHtml}
                                 <span>{n}</span>
                               </label>
                             ))}
-                            {laborModalExternalSubsAll.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                            {laborModalExternalSubsAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
                           </div>
                           <button
                             type="button"
@@ -8759,14 +8748,14 @@ ${totalsHtml}
                             cursor: 'pointer',
                             fontSize: '0.8125rem',
                             fontWeight: 600,
-                            color: '#6b7280',
+                            color: 'var(--text-muted)',
                           }}
                         >
                           <span style={{ fontSize: '0.75rem' }}>{laborModalInternalSubsOpen ? '▼' : '▶'}</span>
                           Internal Subs
                         </button>
                         {laborModalInternalSubsOpen && (
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
                             {laborModalInternalSubsShown.map((n) => (
                               <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                                 <input
@@ -8778,7 +8767,7 @@ ${totalsHtml}
                                 <span>{n}</span>
                               </label>
                             ))}
-                            {laborModalInternalSubsAll.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                            {laborModalInternalSubsAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
                           </div>
                         )}
                       </>
@@ -8802,14 +8791,14 @@ ${totalsHtml}
                           cursor: 'pointer',
                           fontSize: '0.8125rem',
                           fontWeight: 600,
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                         }}
                       >
                         <span style={{ fontSize: '0.75rem' }}>{laborModalOfficeTeamOpen ? '▼' : '▶'}</span>
                         Office Team
                       </button>
                       {laborModalOfficeTeamOpen && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, maxHeight: 100, overflowY: 'auto' }}>
                           {laborModalOfficeTeamShown.map((n) => (
                             <label key={n} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                               <input
@@ -8821,7 +8810,7 @@ ${totalsHtml}
                               <span>{n}</span>
                             </label>
                           ))}
-                          {laborModalOfficeTeamAll.length === 0 && <span style={{ color: '#9ca3af', fontSize: '0.875rem' }}>None</span>}
+                          {laborModalOfficeTeamAll.length === 0 && <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</span>}
                         </div>
                       )}
                     </div>
@@ -8847,7 +8836,7 @@ ${totalsHtml}
                           alignItems: 'center',
                           gap: '0.5rem',
                           fontSize: '0.875rem',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           cursor: 'pointer',
                           userSelect: 'none',
                           margin: 0,
@@ -8866,30 +8855,30 @@ ${totalsHtml}
                   )
                   return (
                     <>
-                      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                         {laborFixtureEntryMode === 'simple' ? (
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead style={{ background: '#f9fafb' }}>
+                            <thead style={{ background: 'var(--bg-subtle)' }}>
                               <tr>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
-                                  Specific Work (Line Items) <span style={{ color: '#b91c1c' }}>*</span>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                                  Specific Work (Line Items) <span style={{ color: 'var(--text-red-700)' }}>*</span>
                                 </th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>
-                                  Cost ($) <span style={{ color: '#b91c1c' }}>*</span>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>
+                                  Cost ($) <span style={{ color: 'var(--text-red-700)' }}>*</span>
                                 </th>
-                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                               </tr>
                             </thead>
                             <tbody>
                               {laborFixtureRows.map((row) => (
-                                <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     <input
                                       type="text"
                                       value={row.fixture}
                                       onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
                                       placeholder="e.g. Toilet, Sink"
-                                      style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                      style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                     />
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -8906,7 +8895,7 @@ ${totalsHtml}
                                       }}
                                       onWheel={(e) => e.currentTarget.blur()}
                                       placeholder="0"
-                                      style={{ width: '6rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                      style={{ width: '6rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                                     />
                                   </td>
                                   <td style={{ padding: '0.5rem' }}>
@@ -8916,7 +8905,7 @@ ${totalsHtml}
                                       disabled={laborFixtureRows.length <= 1}
                                       style={{
                                         padding: '0.25rem',
-                                        background: '#fee2e2',
+                                        background: 'var(--bg-red-100)',
                                         color: '#991b1c',
                                         border: 'none',
                                         borderRadius: 4,
@@ -8929,7 +8918,7 @@ ${totalsHtml}
                                   </td>
                                 </tr>
                               ))}
-                              <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                              <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                                 {itemizeTotalsFirstCell}
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${formatCurrency(laborModalLinesSubtotal)}</td>
                                 <td style={{ padding: '0.5rem' }} />
@@ -8938,16 +8927,16 @@ ${totalsHtml}
                           </table>
                         ) : (
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead style={{ background: '#f9fafb' }}>
+                            <thead style={{ background: 'var(--bg-subtle)' }}>
                               <tr>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Specific Work (Line Items) <span style={{ color: '#b91c1c' }}>*</span></th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Count</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>hrs/unit</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>_</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Labor Hours</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Rate ($/hr)</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
-                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Specific Work (Line Items) <span style={{ color: 'var(--text-red-700)' }}>*</span></th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Count</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>hrs/unit</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>_</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Labor Hours</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Rate ($/hr)</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Cost</th>
+                                <th style={{ padding: '0.5rem 0.75rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                               </tr>
                             </thead>
                             <tbody>
@@ -8955,14 +8944,14 @@ ${totalsHtml}
                                 const hrsPerUnit = Number(row.hrs_per_unit) || 0
                                 const laborHrs = (row.is_fixed ?? false) ? hrsPerUnit : (Number(row.count) || 0) * hrsPerUnit
                                 return (
-                                  <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '0.5rem 0.75rem' }}>
                                       <input
                                         type="text"
                                         value={row.fixture}
                                         onChange={(e) => updateLaborFixtureRow(row.id, { fixture: e.target.value })}
                                         placeholder="e.g. Toilet, Sink"
-                                        style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                        style={{ width: '100%', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                       />
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -8973,7 +8962,7 @@ ${totalsHtml}
                                         value={row.count || ''}
                                         onChange={(e) => updateLaborFixtureRow(row.id, { count: parseFloat(e.target.value) || 0 })}
                                         onWheel={(e) => e.currentTarget.blur()}
-                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                                       />
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -8984,7 +8973,7 @@ ${totalsHtml}
                                         value={row.hrs_per_unit || ''}
                                         onChange={(e) => updateLaborFixtureRow(row.id, { hrs_per_unit: parseFloat(e.target.value) || 0 })}
                                         onWheel={(e) => e.currentTarget.blur()}
-                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                        style={{ width: '4rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                                       />
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>
@@ -8995,7 +8984,7 @@ ${totalsHtml}
                                           onChange={(e) => updateLaborFixtureRow(row.id, { is_fixed: e.target.checked })}
                                           style={{ width: '0.875rem', height: '0.875rem', margin: 0 }}
                                         />
-                                        <span style={{ color: '#6b7280' }}>fixed</span>
+                                        <span style={{ color: 'var(--text-muted)' }}>fixed</span>
                                       </label>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 500 }}>{laborHrs.toFixed(2)}</td>
@@ -9008,21 +8997,21 @@ ${totalsHtml}
                                         onChange={(e) => updateLaborFixtureRow(row.id, { labor_rate: parseFloat(e.target.value) || 0 })}
                                         onWheel={(e) => e.currentTarget.blur()}
                                         placeholder="0"
-                                        style={{ width: '5rem', padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                        style={{ width: '5rem', padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                                       />
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 500 }}>
                                       ${formatCurrency(lineLaborCost(row, laborModalLineFallbackRate))}
                                     </td>
                                     <td style={{ padding: '0.5rem' }}>
-                                      <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
+                                      <button type="button" onClick={() => removeLaborFixtureRow(row.id)} disabled={laborFixtureRows.length <= 1} style={{ padding: '0.25rem', background: 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: laborFixtureRows.length <= 1 ? 'not-allowed' : 'pointer', fontSize: '0.8125rem' }}>
                                         Remove
                                       </button>
                                     </td>
                                   </tr>
                                 )
                               })}
-                              <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+                              <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                                 {itemizeTotalsFirstCell}
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }} />
@@ -9064,9 +9053,9 @@ ${totalsHtml}
                             }}
                             style={{
                               padding: '0.5rem 1.25rem',
-                              background: laborInvoiceLinkExpanded ? '#e5e7eb' : '#fff',
-                              color: '#374151',
-                              border: '1px solid #d1d5db',
+                              background: laborInvoiceLinkExpanded ? 'var(--bg-200)' : 'var(--surface)',
+                              color: 'var(--text-700)',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 6,
                               fontSize: '0.875rem',
                               fontWeight: 500,
@@ -9078,7 +9067,7 @@ ${totalsHtml}
                           </button>
                           {!laborInvoiceLinkExpanded && laborInvoiceLinkCommitted.trim() ? (
                             <span
-                              style={{ fontSize: '0.8125rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'min(100%, 280px)' }}
+                              style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 'min(100%, 280px)' }}
                               title={laborInvoiceLinkCommitted}
                             >
                               Linked
@@ -9090,9 +9079,9 @@ ${totalsHtml}
                           onClick={addLaborFixtureRow}
                           style={{
                             padding: '0.5rem 1.25rem',
-                            background: '#fff',
-                            color: '#374151',
-                            border: '1px solid #d1d5db',
+                            background: 'var(--surface)',
+                            color: 'var(--text-700)',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 6,
                             fontSize: '0.875rem',
                             fontWeight: 500,
@@ -9108,9 +9097,9 @@ ${totalsHtml}
                           style={{
                             marginTop: '0.75rem',
                             padding: '0.75rem',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 6,
-                            background: '#f9fafb',
+                            background: 'var(--bg-subtle)',
                           }}
                         >
                           <label htmlFor="labor-invoice-link" style={{ display: 'block', marginBottom: 4, fontWeight: 500, fontSize: '0.875rem' }}>
@@ -9122,7 +9111,7 @@ ${totalsHtml}
                             value={laborInvoiceLinkDraft}
                             onChange={(e) => setLaborInvoiceLinkDraft(e.target.value)}
                             placeholder="https://..."
-                            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.75rem' }}
+                            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.75rem' }}
                           />
                           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
                             <button
@@ -9131,9 +9120,9 @@ ${totalsHtml}
                               disabled={laborInvoiceLinkSaving}
                               style={{
                                 padding: '0.35rem 0.75rem',
-                                background: '#f3f4f6',
-                                color: '#374151',
-                                border: '1px solid #d1d5db',
+                                background: 'var(--bg-muted)',
+                                color: 'var(--text-700)',
+                                border: '1px solid var(--border-strong)',
                                 borderRadius: 4,
                                 cursor: laborInvoiceLinkSaving ? 'not-allowed' : 'pointer',
                                 fontSize: '0.875rem',
@@ -9164,7 +9153,7 @@ ${totalsHtml}
                   )
                 })()}
                 {laborFixtureRows.some((r) => (r.fixture ?? '').trim()) && (
-                  <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Total labor cost: ${formatCurrency(
                       laborItemsSubtotal(
                         laborFixtureRows,
@@ -9177,7 +9166,7 @@ ${totalsHtml}
                 )}
               </div>
               {editingLaborJob && (
-                <div style={{ marginTop: '1.5rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+                <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Payments</h4>
                   {(() => {
                     const laborModalPayFallback =
@@ -9196,31 +9185,31 @@ ${totalsHtml}
                     return (
                       <>
                         <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem' }}>Total cost: ${formatCurrency(totalCost)} · Paid: ${formatCurrency(paid)} · Backcharges: ${formatCurrency(backcharges)} · {balance > 0 ? `$${formatCurrency(balance)} due` : balance < 0 ? `Over $${formatCurrency(-balance)}` : '$0.00 due'}</p>
-                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', marginBottom: '0.5rem' }}>
+                        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', marginBottom: '0.5rem' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                            <thead style={{ background: '#f9fafb' }}>
+                            <thead style={{ background: 'var(--bg-subtle)' }}>
                               <tr>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Memo</th>
-                                <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Amount</th>
+                                <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Memo</th>
+                                <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                               </tr>
                             </thead>
                             <tbody>
                               {(editingLaborJob.payments ?? []).map((p) => (
-                                <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(p.created_at).toLocaleDateString()}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>{Number(p.amount) < 0 ? 'Backcharge' : 'Payment'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: Number(p.amount) < 0 ? '#dc2626' : undefined }}>${formatCurrency(Number(p.amount))}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{p.memo || '—'}</td>
                                   <td style={{ padding: '0.5rem' }}>
-                                    <button type="button" onClick={() => { setEditPaymentAmount(String(Math.abs(Number(p.amount)))); setEditPaymentMemo(p.memo ?? ''); setEditingPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0 }) }} style={{ padding: '0.25rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
+                                    <button type="button" onClick={() => { setEditPaymentAmount(String(Math.abs(Number(p.amount)))); setEditPaymentMemo(p.memo ?? ''); setEditingPayment({ id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0 }) }} style={{ padding: '0.25rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>Edit</button>
                                   </td>
                                 </tr>
                               ))}
                               {(editingLaborJob.payments ?? []).length === 0 && (
-                                <tr><td colSpan={5} style={{ padding: '0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>No payments yet</td></tr>
+                                <tr><td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>No payments yet</td></tr>
                               )}
                             </tbody>
                           </table>
@@ -9263,7 +9252,7 @@ ${totalsHtml}
                         <select
                           value={selectedLaborBookVersionId ?? ''}
                           onChange={(e) => setSelectedLaborBookVersionId(e.target.value || null)}
-                          style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                          style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '12rem' }}
                         >
                           {laborBookVersions.map((v) => (
                             <option key={v.id} value={v.id}>{v.name}</option>
@@ -9305,7 +9294,7 @@ ${totalsHtml}
                         {applyingLaborBookHours ? 'Applying…' : 'Apply matching Labor Hours'}
                       </button>
                       {laborBookApplyMessage && (
-                        <span style={{ color: '#059669', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
+                        <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{laborBookApplyMessage}</span>
                       )}
                     </div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
@@ -9317,8 +9306,8 @@ ${totalsHtml}
                             alignItems: 'center',
                             gap: '0.25rem',
                             padding: '0.35rem 0.5rem',
-                            background: laborBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
-                            border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                            background: laborBookEntriesVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
+                            border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                             borderRadius: 4,
                           }}
                         >
@@ -9350,24 +9339,24 @@ ${totalsHtml}
                     {laborBookEntriesVersionId && (
                       <>
                         <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries (hrs per stage)</h4>
-                        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead style={{ background: '#f9fafb' }}>
+                            <thead style={{ background: 'var(--bg-subtle)' }}>
                               <tr>
-                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Rough In (hrs)</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Top Out (hrs)</th>
-                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Trim Set (hrs)</th>
-                                <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                                <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Rough In (hrs)</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Top Out (hrs)</th>
+                                <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Trim Set (hrs)</th>
+                                <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                               </tr>
                             </thead>
                             <tbody>
                               {laborBookEntries.map((entry) => (
-                                <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem' }}>
                                     {entry.fixture_types?.name ?? ''}
                                     {entry.alias_names?.length ? (
-                                      <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
+                                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
                                     ) : null}
                                   </td>
                                   <td style={{ padding: '0.5rem', textAlign: 'right' }}>{Number(entry.rough_in_hrs)}</td>
@@ -9409,9 +9398,9 @@ ${totalsHtml}
                   disabled={laborSaving}
                   style={{
                     padding: '0.5rem 1.25rem',
-                    background: '#fff',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--surface)',
+                    color: 'var(--text-700)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     fontSize: '0.875rem',
                     fontWeight: 500,
@@ -9471,8 +9460,8 @@ ${totalsHtml}
                     disabled={laborJobDeletingId === editingLaborJob.id}
                     style={{
                       padding: '0.5rem 1.25rem',
-                      background: laborJobDeletingId === editingLaborJob.id ? '#fecaca' : '#fee2e2',
-                      color: '#991b1b',
+                      background: laborJobDeletingId === editingLaborJob.id ? 'var(--bg-red-200)' : 'var(--bg-red-100)',
+                      color: 'var(--text-red-800)',
                       border: '1px solid #fca5a5',
                       borderRadius: 6,
                       fontSize: '0.875rem',
@@ -9491,14 +9480,14 @@ ${totalsHtml}
 
       {showAddSubcontractorModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Add Sub</h3>
             {addSubcontractorError && (
-              <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{addSubcontractorError}</p>
+              <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>{addSubcontractorError}</p>
             )}
             <form onSubmit={handleSaveAddSubcontractor}>
               <div style={{ marginBottom: '1rem' }}>
-                <label htmlFor="new-sub-name" style={{ display: 'block', marginBottom: 4 }}>Name <span style={{ color: '#b91c1c' }}>*</span></label>
+                <label htmlFor="new-sub-name" style={{ display: 'block', marginBottom: 4 }}>Name <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
                 <input
                   id="new-sub-name"
                   type="text"
@@ -9506,7 +9495,7 @@ ${totalsHtml}
                   onChange={(e) => setNewSubcontractor((p) => ({ ...p, name: e.target.value }))}
                   required
                   disabled={savingAddSubcontractor}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
@@ -9517,7 +9506,7 @@ ${totalsHtml}
                   value={newSubcontractor.email}
                   onChange={(e) => setNewSubcontractor((p) => ({ ...p, email: e.target.value }))}
                   disabled={savingAddSubcontractor}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
@@ -9528,7 +9517,7 @@ ${totalsHtml}
                   value={newSubcontractor.phone}
                   onChange={(e) => setNewSubcontractor((p) => ({ ...p, phone: e.target.value }))}
                   disabled={savingAddSubcontractor}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ marginBottom: '1rem' }}>
@@ -9539,7 +9528,7 @@ ${totalsHtml}
                   onChange={(e) => setNewSubcontractor((p) => ({ ...p, notes: e.target.value }))}
                   disabled={savingAddSubcontractor}
                   rows={2}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
@@ -9566,9 +9555,9 @@ ${totalsHtml}
 
       {defaultLaborRateModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Default Labor Rate</h2>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
               This rate is pre-filled when adding a new job. Leave empty for no default.
             </p>
             <form onSubmit={saveDefaultLaborRate}>
@@ -9581,7 +9570,7 @@ ${totalsHtml}
                   value={defaultLaborRateValue}
                   onChange={(e) => setDefaultLaborRateValue(e.target.value)}
                   placeholder="e.g. 75.00"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -9599,7 +9588,7 @@ ${totalsHtml}
 
       {driveSettingsOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Drive Settings</h2>
             <form onSubmit={saveDriveSettings}>
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
@@ -9612,7 +9601,7 @@ ${totalsHtml}
                     value={driveMileageCost ?? ''}
                     onChange={(e) => setDriveMileageCost(e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
                     placeholder="0.70"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>
                 <div style={{ flex: '1 1 140px', minWidth: 0 }}>
@@ -9624,11 +9613,11 @@ ${totalsHtml}
                     value={driveTimePerMile ?? ''}
                     onChange={(e) => setDriveTimePerMile(e.target.value === '' ? null : parseFloat(e.target.value) || 0)}
                     placeholder="0.02"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>
               </div>
-              <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1rem' }}>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                 Drive cost = (miles × mileage cost) + (miles × time per mile × labor rate). Defaults: $0.70/mi, 0.02 hrs/mi (~1.2 min/mi).
               </p>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -9646,7 +9635,7 @@ ${totalsHtml}
 
       {laborVersionFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={closeLaborVersionForm}>
-          <div style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 1rem' }}>{editingLaborVersion ? 'Edit version' : 'New version'}</h3>
             <form onSubmit={saveLaborVersion}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name</label>
@@ -9654,7 +9643,7 @@ ${totalsHtml}
                 type="text"
                 value={laborVersionNameInput}
                 onChange={(e) => setLaborVersionNameInput(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                 placeholder="e.g. Default"
               />
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -9663,14 +9652,14 @@ ${totalsHtml}
                     <button
                       type="button"
                       onClick={() => deleteLaborVersion(editingLaborVersion)}
-                      style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Delete version
                     </button>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={closeLaborVersionForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                   <button type="submit" disabled={savingLaborVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborVersion ? 'Saving…' : 'Save'}</button>
                 </div>
               </div>
@@ -9681,10 +9670,10 @@ ${totalsHtml}
 
       {laborEntryFormOpen && laborBookEntriesVersionId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }} onClick={closeLaborEntryForm}>
-          <div style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 1rem' }}>{editingLaborEntry ? 'Edit entry' : 'New entry'}</h3>
             {error && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>{error}</div>
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>{error}</div>
             )}
             <form onSubmit={saveLaborEntry}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Fixture or Tie-in *</label>
@@ -9693,7 +9682,7 @@ ${totalsHtml}
                 list="jobs-labor-fixture-types"
                 value={laborEntryFixtureName}
                 onChange={(e) => setLaborEntryFixtureName(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                 placeholder="e.g. Toilet"
               />
               <datalist id="jobs-labor-fixture-types">
@@ -9706,21 +9695,21 @@ ${totalsHtml}
                 type="text"
                 value={laborEntryAliasNames}
                 onChange={(e) => setLaborEntryAliasNames(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                 placeholder="e.g. WC, toilet"
               />
               <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
                 <div style={{ flex: '1 1 80px', minWidth: 0 }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Rough In (hrs)</label>
-                  <input type="number" min={0} step={0.25} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.25} value={laborEntryRoughIn} onChange={(e) => setLaborEntryRoughIn(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ flex: '1 1 80px', minWidth: 0 }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Top Out (hrs)</label>
-                  <input type="number" min={0} step={0.25} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.25} value={laborEntryTopOut} onChange={(e) => setLaborEntryTopOut(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
                 <div style={{ flex: '1 1 80px', minWidth: 0 }}>
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Trim Set (hrs)</label>
-                  <input type="number" min={0} step={0.25} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }} />
+                  <input type="number" min={0} step={0.25} value={laborEntryTrimSet} onChange={(e) => setLaborEntryTrimSet(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -9728,12 +9717,12 @@ ${totalsHtml}
                   <button
                     type="button"
                     onClick={() => editingLaborEntry && deleteLaborEntry(editingLaborEntry)}
-                    style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer', marginRight: 'auto' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer', marginRight: 'auto' }}
                   >
                     Delete entry
                   </button>
                 )}
-                <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
               </div>
             </form>
@@ -9755,9 +9744,9 @@ ${totalsHtml}
       )}
       {readyForBillingJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Ready to Bill</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {readyForBillingJob.hcpNumber} · {readyForBillingJob.jobName}
             </p>
             <div style={{ marginBottom: '1rem' }}>
@@ -9771,7 +9760,7 @@ ${totalsHtml}
               </label>
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               <button type="button" disabled={!readyForBillingChecked1 || !readyForBillingChecked2 || stagesStatusUpdatingId === readyForBillingJob.id} onClick={async () => { if (!readyForBillingJob) return; const ok = await moveJobToReadyToBillWithStripePrep(readyForBillingJob.id); if (!ok) return; setReadyForBillingJob(null); setReadyForBillingChecked1(false); setReadyForBillingChecked2(false) }} style={{ padding: '0.5rem 1rem', background: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: readyForBillingChecked1 && readyForBillingChecked2 && stagesStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed' }}>{stagesStatusUpdatingId === readyForBillingJob.id ? '…' : 'Confirm'}</button>
             </div>
           </div>
@@ -9779,9 +9768,9 @@ ${totalsHtml}
       )}
       {createPartialInvoiceJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Create partial invoice</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{createPartialInvoiceJob.hcp_number ?? '—'} · {createPartialInvoiceJob.job_name ?? '—'}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{createPartialInvoiceJob.hcp_number ?? '—'} · {createPartialInvoiceJob.job_name ?? '—'}</p>
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ marginBottom: '0.5rem', fontSize: '0.875rem' }}>Remaining: ${formatCurrency(Math.max(0, (Number(createPartialInvoiceJob.revenue ?? 0) - Number(createPartialInvoiceJob.payments_made ?? 0))))}</div>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem' }}>
@@ -9808,13 +9797,13 @@ ${totalsHtml}
                     }
                   }}
                   placeholder="0"
-                  style={{ width: '100%', marginTop: 4, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ width: '100%', marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 />
               </label>
-              {error && <p style={{ color: '#b91c1c', fontSize: '0.8125rem', marginTop: '0.5rem' }}>{error}</p>}
+              {error && <p style={{ color: 'var(--text-red-700)', fontSize: '0.8125rem', marginTop: '0.5rem' }}>{error}</p>}
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setCreatePartialInvoiceJob(null); setCreatePartialInvoiceAmount(''); setError(null) }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setCreatePartialInvoiceJob(null); setCreatePartialInvoiceAmount(''); setError(null) }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               <button type="button" disabled={creatingPartialInvoiceFromModal || !(parseFloat(createPartialInvoiceAmount) > 0)} onClick={createInvoiceFromModal} style={{ padding: '0.5rem 1rem', background: creatingPartialInvoiceFromModal || !(parseFloat(createPartialInvoiceAmount) > 0) ? '#9ca3af' : '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: creatingPartialInvoiceFromModal || !(parseFloat(createPartialInvoiceAmount) > 0) ? 'not-allowed' : 'pointer' }}>{creatingPartialInvoiceFromModal ? '…' : 'Create invoice'}</button>
             </div>
           </div>
@@ -9912,9 +9901,9 @@ ${totalsHtml}
       />
       {makePaymentLaborJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Make Payment</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{makePaymentLaborJob.contractor} · {makePaymentLaborJob.hcp}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{makePaymentLaborJob.contractor} · {makePaymentLaborJob.hcp}</p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>Total: ${formatCurrency(makePaymentLaborJob.totalCost)} · Paid: ${formatCurrency(makePaymentLaborJob.paid)} · Outstanding: ${formatCurrency(makePaymentLaborJob.outstanding)}</p>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
@@ -9925,7 +9914,7 @@ ${totalsHtml}
                 value={makePaymentAmount}
                 onChange={(e) => setMakePaymentAmount(e.target.value)}
                 placeholder="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -9935,11 +9924,11 @@ ${totalsHtml}
                 onChange={(e) => setMakePaymentMemo(e.target.value)}
                 placeholder="Optional note"
                 rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               <button type="button" disabled={makePaymentSaving || !(parseFloat(makePaymentAmount) > 0)} onClick={async () => { if (!makePaymentLaborJob) return; const amt = parseFloat(makePaymentAmount); if (!(amt > 0)) return; setMakePaymentSaving(true); await recordLaborJobPayment(makePaymentLaborJob.id, amt, makePaymentMemo || null); setMakePaymentLaborJob(null); setMakePaymentAmount(''); setMakePaymentMemo(''); setMakePaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: makePaymentSaving || !(parseFloat(makePaymentAmount) > 0) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: makePaymentSaving || !(parseFloat(makePaymentAmount) > 0) ? 'not-allowed' : 'pointer' }}>{makePaymentSaving ? '…' : 'Record Payment'}</button>
             </div>
           </div>
@@ -9947,9 +9936,9 @@ ${totalsHtml}
       )}
       {backchargeLaborJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Backcharge</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>{backchargeLaborJob.contractor} · {backchargeLaborJob.hcp}</p>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>{backchargeLaborJob.contractor} · {backchargeLaborJob.hcp}</p>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>Total: ${formatCurrency(backchargeLaborJob.totalCost)} · Paid: ${formatCurrency(backchargeLaborJob.paid)}</p>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
@@ -9960,21 +9949,21 @@ ${totalsHtml}
                 value={backchargeAmount}
                 onChange={(e) => setBackchargeAmount(e.target.value)}
                 placeholder="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo <span style={{ color: '#b91c1c' }}>*</span></label>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo <span style={{ color: 'var(--text-red-700)' }}>*</span></label>
               <textarea
                 value={backchargeMemo}
                 onChange={(e) => setBackchargeMemo(e.target.value)}
                 placeholder="Required for backcharges"
                 rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => { setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={() => { setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               <button type="button" disabled={backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim()} onClick={async () => { if (!backchargeLaborJob) return; const amt = parseFloat(backchargeAmount); if (!(amt > 0) || !backchargeMemo.trim()) return; setBackchargeSaving(true); await recordLaborJobBackcharge(backchargeLaborJob.id, amt, backchargeMemo); setBackchargeLaborJob(null); setBackchargeAmount(''); setBackchargeMemo(''); setBackchargeSaving(false) }} style={{ padding: '0.5rem 1rem', background: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? '#9ca3af' : '#dc2626', color: 'white', border: 'none', borderRadius: 4, cursor: backchargeSaving || !(parseFloat(backchargeAmount) > 0) || !backchargeMemo.trim() ? 'not-allowed' : 'pointer' }}>{backchargeSaving ? '…' : 'Record Backcharge'}</button>
             </div>
           </div>
@@ -9982,7 +9971,7 @@ ${totalsHtml}
       )}
       {editingPayment && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{editingPayment.isBackcharge ? 'Edit Backcharge' : 'Edit Payment'}</h2>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Amount ($)</label>
@@ -9993,23 +9982,23 @@ ${totalsHtml}
                 value={editPaymentAmount}
                 onChange={(e) => setEditPaymentAmount(e.target.value)}
                 placeholder="0"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo {editingPayment.isBackcharge ? <span style={{ color: '#b91c1c' }}>*</span> : '(optional)'}</label>
+              <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Memo {editingPayment.isBackcharge ? <span style={{ color: 'var(--text-red-700)' }}>*</span> : '(optional)'}</label>
               <textarea
                 value={editPaymentMemo}
                 onChange={(e) => setEditPaymentMemo(e.target.value)}
                 placeholder={editingPayment.isBackcharge ? 'Required for backcharges' : 'Optional note'}
                 rows={2}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !confirm('Remove this payment?')) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : '#fee2e2', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
+              <button type="button" disabled={editPaymentSaving} onClick={async () => { if (!editingPayment || !confirm('Remove this payment?')) return; setEditPaymentSaving(true); await deleteLaborJobPayment(editingPayment.id); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving ? '#9ca3af' : 'var(--bg-red-100)', color: '#991b1c', border: 'none', borderRadius: 4, cursor: editPaymentSaving ? 'not-allowed' : 'pointer' }}>Remove</button>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={() => { setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo('') }} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                 <button type="button" disabled={editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim())} onClick={async () => { if (!editingPayment) return; const amt = parseFloat(editPaymentAmount); if (!(amt > 0)) return; if (editingPayment.isBackcharge && !editPaymentMemo.trim()) return; setEditPaymentSaving(true); await updateLaborJobPayment(editingPayment.id, amt, editPaymentMemo || null, editingPayment.isBackcharge); setEditingPayment(null); setEditPaymentAmount(''); setEditPaymentMemo(''); setEditPaymentSaving(false) }} style={{ padding: '0.5rem 1rem', background: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: editPaymentSaving || !(parseFloat(editPaymentAmount) > 0) || (editingPayment.isBackcharge && !editPaymentMemo.trim()) ? 'not-allowed' : 'pointer' }}>{editPaymentSaving ? '…' : 'Save'}</button>
               </div>
             </div>
@@ -10018,9 +10007,9 @@ ${totalsHtml}
       )}
       {sendBackInvoice && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {`Job ${sendBackInvoice.inv.job.hcp_number || '—'} · ${sendBackInvoice.inv.job.job_name || '—'} · $${Number(sendBackInvoice.inv.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
             </p>
             {sendBackInvoice.action === 'delete' && (
@@ -10029,7 +10018,7 @@ ${totalsHtml}
             {sendBackInvoice.action === 'revert' &&
               invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) &&
               sendBackInvoiceStripeExplainerAfterFailure && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
                 This bill was sent via Stripe. We will void or remove the Stripe invoice so the customer cannot pay an unpaid bill. If it is already paid in Stripe, send back will fail until you resolve it there.
               </p>
             )}
@@ -10047,7 +10036,7 @@ ${totalsHtml}
                   setSendBackChecked(false)
                   setSendBackInvoiceStripeExplainerAfterFailure(false)
                 }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -10091,7 +10080,7 @@ ${totalsHtml}
       )}
       {sendBackJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackJob.toStatus === 'working' ? 'Send Job Back' : 'Send back'}</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
               {sendBackJob.toStatus === 'ready_to_bill'
@@ -10104,19 +10093,19 @@ ${totalsHtml}
                     }`
                   : 'This will move the job back to Assigned Jobs (Working).'}
             </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {sendBackJob.hcpNumber} · {sendBackJob.jobName}
             </p>
             {sendBackJob.toStatus === 'working' && sendBackCollectPaymentNotice != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>{sendBackCollectPaymentNotice}</p>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>{sendBackCollectPaymentNotice}</p>
             )}
             {sendBackStatusEventLine != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {sendBackStatusEventLine}
               </p>
             )}
             {sendBackJob.toStatus === 'ready_to_bill' && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
                 Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
               </p>
             )}
@@ -10138,7 +10127,7 @@ ${totalsHtml}
                   setSendBackJob(null)
                   setSendBackChecked(false)
                 }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -10185,16 +10174,16 @@ ${totalsHtml}
       )}
       {confirmJobStatusJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {confirmJobStatusJob.message}
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setConfirmJobStatusJob(null)}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -10224,9 +10213,9 @@ ${totalsHtml}
       )}
       {sendBackConfirmJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Are you sure?</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {sendBackConfirmJob.toStatus === 'waiting'
                 ? 'This will move the job back to Waiting.'
                 : sendBackConfirmJob.toStatus === 'ready_to_bill'
@@ -10237,7 +10226,7 @@ ${totalsHtml}
               <button
                 type="button"
                 onClick={() => setSendBackConfirmJob(null)}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -10267,28 +10256,28 @@ ${totalsHtml}
       )}
       {collectionsConfirm && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 420 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
               {collectionsConfirm.direction === 'to' ? 'Move to Collections?' : 'Send back to Billed?'}
             </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {collectionsConfirm.direction === 'to'
                 ? `Flag ${(collectionsConfirm.job.hcp_number ?? '').trim() || (collectionsConfirm.job.click_number ?? '').trim() || '—'} · ${(collectionsConfirm.job.job_name ?? '').trim() || 'Job'} as difficult to collect? It stays Billed — this only moves it to the Collections section.`
                 : `Return ${(collectionsConfirm.job.hcp_number ?? '').trim() || (collectionsConfirm.job.click_number ?? '').trim() || '—'} · ${(collectionsConfirm.job.job_name ?? '').trim() || 'Job'} to Billed Awaiting Payment?`}
             </p>
             {collectionsConfirm.direction === 'to' ? (
-              <label style={{ display: 'block', margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151' }}>
+              <label style={{ display: 'block', margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                 Note (optional)
                 <textarea
                   value={collectionsNoteDraft}
                   onChange={(e) => setCollectionsNoteDraft(e.target.value)}
                   placeholder="e.g. customer disputing invoice, no response in 60 days"
                   rows={3}
-                  style={{ display: 'block', width: '100%', marginTop: '0.35rem', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, font: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
+                  style={{ display: 'block', width: '100%', marginTop: '0.35rem', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, font: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', resize: 'vertical' }}
                 />
               </label>
             ) : collectionsConfirm.job.collections_note ? (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#b91c1c', fontStyle: 'italic' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-red-700)', fontStyle: 'italic' }}>
                 Collections note: {collectionsConfirm.job.collections_note}
               </p>
             ) : null}
@@ -10299,7 +10288,7 @@ ${totalsHtml}
                   setCollectionsConfirm(null)
                   setCollectionsNoteDraft('')
                 }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>

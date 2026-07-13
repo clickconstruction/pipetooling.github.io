@@ -124,7 +124,7 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
       style={{
         marginTop: isStandalone ? 0 : '2rem',
         marginBottom: isStandalone ? '1.5rem' : '2rem',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 8,
       }}
     >
@@ -142,7 +142,7 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
             style={{
               fontSize: '1rem',
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--text-strong)',
               flex: '0 0 auto',
             }}
           >
@@ -166,7 +166,7 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
               fontSize: '1rem',
               fontWeight: 600,
               textAlign: 'left',
-              color: '#111827',
+              color: 'var(--text-strong)',
             }}
           >
             <span style={{ fontSize: '0.75rem' }}>{settingsSectionOpen ? '\u25bc' : '\u25b6'}</span>
@@ -208,7 +208,7 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
             <span
               style={{
                 fontSize: '0.8125rem',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 textAlign: 'right',
               }}
               title={lastCreatedAt ?? undefined}
@@ -227,11 +227,11 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
                   flexShrink: 0,
                   padding: '0.35rem 0.75rem',
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   fontSize: '0.875rem',
                   fontWeight: 600,
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   cursor: 'pointer',
                 }}
               >
@@ -242,7 +242,7 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
         )}
       </div>
       {sectionVisible && (
-        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           {!isStandalone && (
             <TeamFeedbackSettingsSection
               hideEnabled
@@ -290,9 +290,9 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
                 maxHeight: 'min(90vh, 900px)',
                 display: 'flex',
                 flexDirection: 'column',
-                background: '#fff',
+                background: 'var(--surface)',
                 borderRadius: 10,
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                 overflow: 'hidden',
               }}
@@ -305,13 +305,13 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
                   justifyContent: 'space-between',
                   gap: '0.75rem',
                   padding: '0.85rem 1rem',
-                  borderBottom: '1px solid #e5e7eb',
-                  background: '#f9fafb',
+                  borderBottom: '1px solid var(--border)',
+                  background: 'var(--bg-subtle)',
                 }}
               >
                 <h2
                   id="team-feedback-settings-modal-title"
-                  style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}
+                  style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)' }}
                 >
                   Settings
                 </h2>
@@ -321,11 +321,11 @@ export default function TeamFeedbackDevSettingsBlock({ layout = 'settings' }: Te
                   style={{
                     padding: '0.35rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
-                    background: '#fff',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
                     fontSize: '0.875rem',
                     fontWeight: 500,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     cursor: 'pointer',
                   }}
                 >

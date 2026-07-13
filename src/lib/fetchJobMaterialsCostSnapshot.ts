@@ -27,6 +27,9 @@ export type JobTallyPartLine = {
   quantity: number
   partName: string | null
   lineTotal: number
+  /** For the charges timeline: when the tally line was entered and by whom. */
+  createdAt: string | null
+  createdByName: string | null
 }
 
 export type JobMaterialsCostSnapshot = {
@@ -164,6 +167,8 @@ export async function fetchJobMaterialsCostSnapshot(jobId: string): Promise<JobM
         quantity: qty,
         partName: row.part_name?.trim() ? row.part_name : null,
         lineTotal,
+        createdAt: row.created_at ?? null,
+        createdByName: row.created_by_name?.trim() ? row.created_by_name : null,
       })
     }
   } catch {

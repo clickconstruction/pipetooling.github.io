@@ -46,10 +46,10 @@ export default function IpAddressMapButton({ ip, disabled }: Props) {
             fontSize: '0.85em',
             padding: '0.1rem 0.4rem',
             cursor: disabled || loading ? 'not-allowed' : 'pointer',
-            background: '#f3f4f6',
-            border: '1px solid #d1d5db',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            color: '#2563eb',
+            color: 'var(--text-link)',
           }}
         >
           {loading ? '…' : 'Map'}

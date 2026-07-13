@@ -161,7 +161,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
               flex: '1 1 220px',
               minWidth: 160,
               padding: '0.35rem 0.5rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               fontSize: '0.875rem',
             }}
@@ -172,9 +172,9 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
               onClick={() => setOffsetsTabSearch('')}
               style={{
                 padding: '0.35rem 0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -183,25 +183,25 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
             </button>
           ) : null}
         </div>
-        {offsetsError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{offsetsError}</p>}
+        {offsetsError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{offsetsError}</p>}
         {offsetsLoading ? (
-          <p style={{ color: '#6b7280' }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <>
             {offsetsTabSearching && offsets.length > 0 && filteredOffsets.length === 0 ? (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No offsets match this search.</p>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No offsets match this search.</p>
             ) : null}
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Description</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Status</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Amount</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Description</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Status</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -210,7 +210,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                   const offsetTypeLabel =
                     o.type === 'backcharge' ? 'Backcharge' : o.type === 'damage' ? 'Damage' : o.type === 'employee_credit' ? 'Employee credit' : o.type
                   return (
-                    <tr key={o.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr key={o.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.75rem' }}>{o.person_name}</td>
                       <td style={{ padding: '0.75rem' }}>{offsetTypeLabel}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(o.amount)}</td>
@@ -231,7 +231,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                               onClick={() => unapplyOffset(o)}
                               title="Unapply"
                               aria-label="Unapply from pay stub"
-                              style={{ padding: '0.35rem', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#6b7280' }}
+                              style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <path d="M9 15 3 9m0 0 6-6M3 9h12a6 6 0 0 1 0 12h-3" />
@@ -246,13 +246,13 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                               style={{
                                 padding: '0.35rem',
                                 cursor: 'not-allowed',
-                                background: '#f3f4f6',
-                                border: '1px solid #e5e7eb',
+                                background: 'var(--bg-muted)',
+                                border: '1px solid var(--border)',
                                 borderRadius: 6,
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                color: '#9ca3af',
+                                color: 'var(--text-faint)',
                               }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -265,7 +265,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                               onClick={() => { setOffsetToApply(o); setOffsetApplyPayStubId(''); setOffsetApplyModalOpen(true) }}
                               title="Apply to pay stub"
                               aria-label="Apply to pay stub"
-                              style={{ padding: '0.35rem', cursor: 'pointer', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}
+                              style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-link)' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                                 <path d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
@@ -277,7 +277,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                             onClick={() => openOffsetForm(o)}
                             title="Edit"
                             aria-label="Edit"
-                            style={{ padding: '0.35rem', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#374151' }}
+                            style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-700)' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={16} height={16} fill="currentColor" aria-hidden="true">
                               <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
@@ -288,7 +288,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
                             onClick={() => deleteOffset(o)}
                             title="Delete"
                             aria-label="Delete"
-                            style={{ padding: '0.35rem', cursor: 'pointer', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#dc2626' }}
+                            style={{ padding: '0.35rem', cursor: 'pointer', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-red-600)' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden="true">
                               <path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" />
@@ -302,7 +302,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
               </tbody>
             </table>
             {offsets.length === 0 && (
-              <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>
+              <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0 }}>
                 No offsets yet. Add backcharges, damages, or employee credits (e.g. from Record payment) to get started.
               </p>
             )}
@@ -328,7 +328,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, loadPayStubs
 
       {offsetApplyModalOpen && offsetToApply && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Apply offset to pay stub</h3>
             <p style={{ marginBottom: '1rem', fontSize: '0.875rem' }}>Apply {offsetToApply.type} ${formatCurrency(offsetToApply.amount)} for {offsetToApply.person_name} to a pay stub:</p>
             <div style={{ marginBottom: '1rem' }}>

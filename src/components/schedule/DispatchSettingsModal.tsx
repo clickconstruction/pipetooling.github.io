@@ -184,7 +184,7 @@ export function DispatchSettingsModal({
         aria-modal="true"
         aria-labelledby="dispatch-settings-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 560,
@@ -201,7 +201,7 @@ export function DispatchSettingsModal({
         <h2 id="dispatch-settings-modal-title" style={{ margin: 0, fontSize: '1.05rem' }}>
           Dispatch settings
         </h2>
-        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#4b5563' }}>
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
           Configure note requirements for schedule blocks. A person can appear in at most one of the
           two people lists; jobs are an independent list.
         </p>
@@ -209,13 +209,13 @@ export function DispatchSettingsModal({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label
             htmlFor="dispatch-settings-require-search"
-            style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}
+            style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}
           >
             Require a note
           </label>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             When the assignee is in this list, the edit-note icon turns{' '}
-            <span style={{ color: '#dc2626', fontWeight: 600 }}>red</span> for blocks that have no
+            <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>red</span> for blocks that have no
             note.
           </p>
           <ChipsWithSearchPicker
@@ -234,15 +234,15 @@ export function DispatchSettingsModal({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label
             htmlFor="dispatch-settings-skip-search"
-            style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}
+            style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}
           >
             Don&apos;t require a note
           </label>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             When the assignee is in this list, the edit-note icon and the surrounding chains,{' '}
             <span style={{ fontFamily: 'monospace' }}>−</span>, and{' '}
             <span style={{ fontFamily: 'monospace' }}>+</span> icons all render{' '}
-            <span style={{ color: '#6b7280', fontWeight: 600 }}>grey</span>. Click handlers still
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>grey</span>. Click handlers still
             work.
           </p>
           <ChipsWithSearchPicker
@@ -261,13 +261,13 @@ export function DispatchSettingsModal({
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <label
             htmlFor="dispatch-settings-skip-jobs-search"
-            style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}
+            style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}
           >
             Jobs that don&apos;t require a note
           </label>
-          <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             When a schedule block is for one of these jobs, the icon cluster renders{' '}
-            <span style={{ color: '#6b7280', fontWeight: 600 }}>grey</span>. The{' '}
+            <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>grey</span>. The{' '}
             <span style={{ fontWeight: 600 }}>Require a note</span> list above still wins for users
             on it.
           </p>
@@ -287,7 +287,7 @@ export function DispatchSettingsModal({
         </div>
 
         {error ? (
-          <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>
+          <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>
             {error}
           </p>
         ) : null}
@@ -310,8 +310,8 @@ export function DispatchSettingsModal({
               style={{
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: busy ? 'not-allowed' : 'pointer',
               }}
@@ -327,8 +327,8 @@ export function DispatchSettingsModal({
               style={{
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
-                background: busy ? '#e5e7eb' : '#2563eb',
-                color: busy ? '#6b7280' : '#fff',
+                background: busy ? 'var(--bg-200)' : '#2563eb',
+                color: busy ? 'var(--text-muted)' : '#fff',
                 border: 'none',
                 borderRadius: 4,
                 cursor: busy ? 'not-allowed' : 'pointer',

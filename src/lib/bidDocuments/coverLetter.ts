@@ -27,11 +27,17 @@ export function numberToWords(amount: number): string {
   }
   function toWords(n: number): string {
     if (n === 0) return 'Zero'
-    const thousands = Math.floor(n / 1000)
-    const rest = n % 1000
-    const th = thousands ? toHundreds(thousands) + ' Thousand' : ''
-    const r = rest ? toHundreds(rest) : ''
-    return (th + (th && r ? ' ' : '') + r).trim()
+    // Groups of three digits with scale words — the old thousands-only split fed
+    // toHundreds values ≥ 1000 for amounts over $1M and produced garbage.
+    const SCALES = ['', ' Thousand', ' Million', ' Billion', ' Trillion']
+    const parts: string[] = []
+    let remaining = n
+    for (let idx = 0; remaining > 0 && idx < SCALES.length; idx++) {
+      const group = remaining % 1000
+      if (group) parts.unshift(toHundreds(group) + SCALES[idx])
+      remaining = Math.floor(remaining / 1000)
+    }
+    return parts.join(' ').trim()
   }
   const words = toWords(whole)
   return `${words} ${centsStr}/100 Dollars`
@@ -44,6 +50,15 @@ export const DEFAULT_EXCLUSIONS = `Concrete cutting, removal, and/or pour back i
 This proposal excludes all impact fees.
 This proposal excludes any work not specifically described within.
 This proposal excludes any electrical, fire protection, fire alarm, drywall, framing, or architectural finishes of any type.`
+
+/** Closing paragraph lines (before "Respectfully submitted…"); overridable per-org via app_settings. */
+export const DEFAULT_COVER_LETTER_CLOSING =
+  'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.\nWork will not commence until building permit is issued and sent to Click Plumbing.'
+
+function closingLinesFrom(closingParagraph: string | null): string[] {
+  const src = closingParagraph?.trim() ? closingParagraph : DEFAULT_COVER_LETTER_CLOSING
+  return src.split(/\n/).map((l) => l.trim()).filter(Boolean)
+}
 
 /** Service-type word for cover letter (plumbing/electrical/HVAC). "Click Plumbing and Electrical" is never changed. */
 export function serviceTypeWordForCoverLetter(serviceTypeName: string): string {
@@ -68,7 +83,8 @@ export function buildCoverLetterHtml(
   serviceTypeName: string,
   includeSignature = true,
   includeFixturesPerPlan = true,
-  paymentSchedule: CoverLetterPaymentSchedule | null = null
+  paymentSchedule: CoverLetterPaymentSchedule | null = null,
+  closingParagraph: string | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -107,7 +123,7 @@ export function buildCoverLetterHtml(
   if (scheduleLines.length > 0) {
     html += br2 + '<strong>' + escapeHtml(scheduleLines[0] ?? '') + '</strong>' + br + scheduleLines.slice(1).map((l) => escapeHtml(l)).join(br)
   }
-  html += br2 + escapeHtml('No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.')
+  html += br2 + closingLinesFrom(closingParagraph).map((l) => escapeHtml(l)).join(br)
   html += br + escapeHtml('Respectfully submitted by Click Plumbing and Electrical')
   if (includeSignature) {
     html += br2 + escapeHtml('_______________________________')
@@ -135,7 +151,8 @@ export function buildCoverLetterText(
   serviceTypeName: string,
   includeSignature = true,
   includeFixturesPerPlan = true,
-  paymentSchedule: CoverLetterPaymentSchedule | null = null
+  paymentSchedule: CoverLetterPaymentSchedule | null = null,
+  closingParagraph: string | null = null
 ): string {
   const inclusionIndent = '     ' // 5 preceding spaces for Additional Inclusions (same as fixture header)
   const inclusionLines = inclusions.trim().split(/\n/).filter(Boolean).map((l) => inclusionIndent + '• ' + l.trim())
@@ -170,7 +187,7 @@ export function buildCoverLetterText(
       ? ['', ...buildPaymentScheduleSectionLines(paymentSchedule.rows, paymentSchedule.amountDollars)]
       : []),
     '',
-    'No work shall commence until Click Plumbing and Electrical has received acceptance of the estimate.',
+    ...closingLinesFrom(closingParagraph),
     'Respectfully submitted by Click Plumbing and Electrical',
     '',
     ...(includeSignature ? [

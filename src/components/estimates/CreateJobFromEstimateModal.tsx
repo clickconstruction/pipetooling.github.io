@@ -33,7 +33,7 @@ function textInputStyle(disabled: boolean): CSSProperties {
   return {
     width: '100%',
     padding: '0.5rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 6,
     fontSize: '0.875rem',
     boxSizing: 'border-box',
@@ -45,10 +45,10 @@ function textInputStyle(disabled: boolean): CSSProperties {
 function secondaryButtonStyle(disabled: boolean): CSSProperties {
   return {
     padding: '0.5rem 1rem',
-    background: '#f3f4f6',
-    border: '1px solid #d1d5db',
+    background: 'var(--bg-muted)',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
-    color: '#374151',
+    color: 'var(--text-700)',
     fontWeight: 500,
     fontSize: '0.875rem',
     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -357,9 +357,9 @@ export default function CreateJobFromEstimateModal({
         aria-modal="true"
         aria-labelledby="create-job-from-estimate-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           maxWidth: 600,
           width: '100%',
           padding: '1.25rem',
@@ -391,7 +391,7 @@ export default function CreateJobFromEstimateModal({
               minWidth: 0,
               fontSize: '1.1rem',
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--text-strong)',
               lineHeight: 1.3,
             }}
           >
@@ -406,7 +406,7 @@ export default function CreateJobFromEstimateModal({
             Cancel
           </button>
         </div>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.45 }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
           Create a new job (HCP # required), or link an existing Jobs row using the search below.
         </p>
         {hasLinkedCustomer ? (
@@ -422,7 +422,7 @@ export default function CreateJobFromEstimateModal({
           </div>
         ) : null}
         {!estimate.customer_id && customersLoading ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading customers…</p>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading customers…</p>
         ) : null}
         <div
           style={{
@@ -481,14 +481,14 @@ export default function CreateJobFromEstimateModal({
             style={{
               ...textInputStyle(true),
               marginTop: 4,
-              background: '#f9fafb',
-              color: '#111827',
+              background: 'var(--bg-subtle)',
+              color: 'var(--text-strong)',
               fontWeight: 600,
             }}
           >
             {formatCurrency(bidDisplayDollars)}
           </div>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: '#6b7280', lineHeight: 1.4 }}>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
             {fixtureRowsForSubmit.length > 0
               ? 'Total from line items above; carried into the job as Specific Work.'
               : 'No line items to copy; job total matches the estimate total.'}
@@ -514,11 +514,11 @@ export default function CreateJobFromEstimateModal({
               style={{
                 margin: '0.75rem 0',
                 fontSize: '0.85rem',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 textAlign: 'center',
               }}
             >
-              <strong style={{ color: '#111827' }}>or</strong>
+              <strong style={{ color: 'var(--text-strong)' }}>or</strong>
             </p>
             <label htmlFor="create-job-from-estimate-link-search" style={{ ...labelStyle, marginTop: '0.25rem' }}>
               Link existing job
@@ -549,17 +549,17 @@ export default function CreateJobFromEstimateModal({
                     maxHeight: 220,
                     overflowY: 'auto',
                     overflowX: 'hidden',
-                    borderTop: '1px solid #e5e7eb',
-                    borderLeft: '1px solid #e5e7eb',
-                    borderRight: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
+                    borderLeft: '1px solid var(--border)',
+                    borderRight: '1px solid var(--border)',
                     borderRadius: '6px 6px 0 0',
                     marginBottom: '0.75rem',
                   }}
                 >
                   {jobLinkSearchLoading ? (
-                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</p>
+                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Searching…</p>
                   ) : jobLinkResults.length === 0 && jobLinkSearchQuery.trim() ? (
-                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No jobs found.</p>
+                    <p style={{ margin: '0.5rem 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No jobs found.</p>
                   ) : (
                     jobLinkResults.map((row, index) => {
                       const isSelected = row.id === linkJobLedgerId.trim()
@@ -581,7 +581,7 @@ export default function CreateJobFromEstimateModal({
                             padding: '0.5rem 0.75rem',
                             border: 'none',
                             borderTop: index === 0 ? 'none' : '1px solid #f3f4f6',
-                            background: isSelected ? '#eff6ff' : 'white',
+                            background: isSelected ? 'var(--bg-blue-tint)' : 'var(--surface)',
                             cursor: linkFieldsBusy ? 'not-allowed' : 'pointer',
                             opacity: linkFieldsBusy ? 0.65 : 1,
                             font: 'inherit',
@@ -592,7 +592,7 @@ export default function CreateJobFromEstimateModal({
                           <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
                             J{hcp || '—'} · {row.job_name?.trim() || '—'}
                           </div>
-                          <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                             {row.job_address?.trim() || '—'}
                           </div>
                         </button>

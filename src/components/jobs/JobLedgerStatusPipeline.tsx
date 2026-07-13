@@ -39,8 +39,8 @@ export function JobLedgerStatusPipeline({ status }: Props) {
               aria-current={isActive ? 'step' : undefined}
               style={{
                 fontWeight: isActive ? 600 : 400,
-                color: isActive ? '#111827' : '#9ca3af',
-                background: isActive ? '#f3f4f6' : 'transparent',
+                color: isActive ? 'var(--text-strong)' : 'var(--text-faint)',
+                background: isActive ? 'var(--bg-muted)' : 'transparent',
                 padding: isActive ? '0.12rem 0.45rem' : 0,
                 borderRadius: isActive ? 4 : 0,
                 whiteSpace: 'nowrap',
@@ -49,7 +49,7 @@ export function JobLedgerStatusPipeline({ status }: Props) {
               {labelJobsLedgerStatus(key)}
             </span>
             {!isLast ? (
-              <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0 }}>
+              <span aria-hidden style={{ color: 'var(--text-faint-300)', flexShrink: 0 }}>
                 →
               </span>
             ) : null}

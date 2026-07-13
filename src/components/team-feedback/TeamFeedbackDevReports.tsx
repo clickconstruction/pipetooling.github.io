@@ -62,17 +62,17 @@ function peerDisplayLabel(p: PeerRatingRowWithJoin): string {
 function QaLine({ question, answer }: { question: string; answer: ReactNode }) {
   return (
     <div style={{ marginBottom: '0.85rem' }}>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem', lineHeight: 1.4 }}>
+      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem', lineHeight: 1.4 }}>
         {question}
       </div>
-      <div style={{ fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}>{answer}</div>
+      <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', lineHeight: 1.45 }}>{answer}</div>
     </div>
   )
 }
 
 function LongFormAnswer({ value }: { value: string | null | undefined }) {
   const t = value?.trim()
-  if (!t) return <span style={{ color: '#9ca3af' }}>—</span>
+  if (!t) return <span style={{ color: 'var(--text-faint)' }}>—</span>
   return <span style={{ whiteSpace: 'pre-wrap' }}>{t}</span>
 }
 
@@ -153,9 +153,9 @@ function TeamFeedbackSubmissionDetailModal({
           maxHeight: 'min(92vh, 880px)',
           display: 'flex',
           flexDirection: 'column',
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 10,
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           overflow: 'hidden',
         }}
@@ -168,11 +168,11 @@ function TeamFeedbackSubmissionDetailModal({
             justifyContent: 'space-between',
             gap: '0.75rem',
             padding: '0.85rem 1rem',
-            borderBottom: '1px solid #e5e7eb',
-            background: '#f9fafb',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-subtle)',
           }}
         >
-          <h2 id="team-feedback-submission-detail-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
+          <h2 id="team-feedback-submission-detail-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)' }}>
             Submission detail
           </h2>
           <button
@@ -181,11 +181,11 @@ function TeamFeedbackSubmissionDetailModal({
             style={{
               padding: '0.35rem 0.65rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               fontSize: '0.875rem',
               fontWeight: 500,
-              color: '#374151',
+              color: 'var(--text-700)',
               cursor: 'pointer',
             }}
           >
@@ -194,7 +194,7 @@ function TeamFeedbackSubmissionDetailModal({
         </div>
         <div style={{ overflow: 'auto', padding: '1rem', flex: '1 1 auto', minHeight: 0 }}>
           {loading ? (
-            <p style={{ margin: 0, color: '#6b7280' }}>Loading detail…</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading detail…</p>
           ) : (
             <>
               <div
@@ -202,9 +202,9 @@ function TeamFeedbackSubmissionDetailModal({
                   marginBottom: '1rem',
                   padding: '0.75rem',
                   borderRadius: 8,
-                  background: '#f9fafb',
+                  background: 'var(--bg-subtle)',
                   fontSize: '0.8125rem',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   lineHeight: 1.5,
                 }}
               >
@@ -219,7 +219,7 @@ function TeamFeedbackSubmissionDetailModal({
                 </div>
                 <div>
                   <strong>Reviewer:</strong> {userDisplayLabel(s.reviewer, s.reviewer_user_id)}{' '}
-                  <span style={{ fontFamily: 'monospace', color: '#6b7280' }}>({s.reviewer_user_id.slice(0, 8)}…)</span>
+                  <span style={{ fontFamily: 'monospace', color: 'var(--text-muted)' }}>({s.reviewer_user_id.slice(0, 8)}…)</span>
                 </div>
                 <div>
                   <strong>Manager (at submit):</strong>{' '}
@@ -231,7 +231,7 @@ function TeamFeedbackSubmissionDetailModal({
 
               {hasManager && (
                 <section style={{ marginBottom: '1.25rem' }}>
-                  <h3 style={{ margin: '0 0 0.65rem', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>{mgrHeading}</h3>
+                  <h3 style={{ margin: '0 0 0.65rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }}>{mgrHeading}</h3>
                   {mgrPrompts.map((q, i) => (
                     <QaLine key={`mgr-${i}`} question={q} answer={mgrLikerts[i] != null ? String(mgrLikerts[i]) : '—'} />
                   ))}
@@ -241,7 +241,7 @@ function TeamFeedbackSubmissionDetailModal({
 
               {peers.length > 0 && (
                 <section style={{ marginBottom: '1.25rem' }}>
-                  <h3 style={{ margin: '0 0 0.65rem', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>{peerHeading}</h3>
+                  <h3 style={{ margin: '0 0 0.65rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }}>{peerHeading}</h3>
                   {peers.map((p) => {
                     const vals = peerLikert(p)
                     return (
@@ -251,11 +251,11 @@ function TeamFeedbackSubmissionDetailModal({
                           marginBottom: '1rem',
                           padding: '0.75rem',
                           borderRadius: 8,
-                          border: '1px solid #e5e7eb',
-                          background: '#fafafa',
+                          border: '1px solid var(--border)',
+                          background: 'var(--bg-page)',
                         }}
                       >
-                        <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#111827' }}>{peerDisplayLabel(p)}</div>
+                        <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-strong)' }}>{peerDisplayLabel(p)}</div>
                         {peerPrompts.map((q, i) => (
                           <QaLine key={`${p.id}-p-${i}`} question={q} answer={vals[i] != null ? String(vals[i]) : '—'} />
                         ))}
@@ -269,7 +269,7 @@ function TeamFeedbackSubmissionDetailModal({
               )}
 
               <section style={{ marginBottom: '1rem' }}>
-                <h3 style={{ margin: '0 0 0.65rem', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
+                <h3 style={{ margin: '0 0 0.65rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }}>
                   {hasManager || peers.length > 0 ? 'Anything else?' : 'Your comments'}
                 </h3>
                 {OPEN_COMMENT_LABELS.map(([label, key]) => (
@@ -277,7 +277,7 @@ function TeamFeedbackSubmissionDetailModal({
                 ))}
               </section>
 
-              <p style={{ margin: '1rem 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.4 }}>
+              <p style={{ margin: '1rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)', lineHeight: 1.4 }}>
                 Likert questions use today’s team feedback settings (defaults if unset). Wording may have differed when this was submitted.
               </p>
             </>
@@ -467,7 +467,7 @@ export default function TeamFeedbackDevReports() {
   }
 
   if (loading) {
-    return <p style={{ color: '#6b7280' }}>Loading submissions…</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Loading submissions…</p>
   }
 
   return (
@@ -488,7 +488,7 @@ export default function TeamFeedbackDevReports() {
           cursor: 'pointer',
           fontSize: '1.125rem',
           fontWeight: 600,
-          color: '#111827',
+          color: 'var(--text-strong)',
         }}
       >
         <span style={{ fontSize: '0.75rem' }}>{rawSubmissionsOpen ? '▼' : '▶'}</span>
@@ -506,7 +506,7 @@ export default function TeamFeedbackDevReports() {
               marginBottom: '0.75rem',
             }}
           >
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', margin: 0, flex: '1 1 12rem', minWidth: 0 }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0, flex: '1 1 12rem', minWidth: 0 }}>
               Exports for managers should omit reviewer id. Use the checkbox only for audit. Name columns are dev-only.
             </p>
             <button
@@ -516,18 +516,18 @@ export default function TeamFeedbackDevReports() {
                 flexShrink: 0,
                 padding: '0.35rem 0.75rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: 'white',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 cursor: 'pointer',
               }}
             >
               Refresh
             </button>
           </div>
-          <div style={{ overflowX: 'auto', maxHeight: 320, border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ overflowX: 'auto', maxHeight: 320, border: '1px solid var(--border)', borderRadius: 8 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
+                <tr style={{ background: 'var(--bg-subtle)', textAlign: 'left' }}>
                   <th style={{ padding: '0.35rem 0.5rem' }}>When</th>
                   <th style={{ padding: '0.35rem 0.5rem' }}>Source</th>
                   <th style={{ padding: '0.35rem 0.5rem' }}>Reviewer</th>
@@ -540,20 +540,20 @@ export default function TeamFeedbackDevReports() {
                 {rows.map((r) => (
                   <tr
                     key={r.id}
-                    style={{ borderTop: '1px solid #e5e7eb', cursor: 'pointer' }}
+                    style={{ borderTop: '1px solid var(--border)', cursor: 'pointer' }}
                     title="View questions and answers"
                     onClick={() => setDetailSubmission(r)}
                   >
                     <td style={{ padding: '0.35rem 0.5rem', whiteSpace: 'nowrap' }}>{new Date(r.created_at).toLocaleString()}</td>
                     <td style={{ padding: '0.35rem 0.5rem' }}>{r.source}</td>
                     <td
-                      style={{ padding: '0.35rem 0.5rem', color: '#111827' }}
+                      style={{ padding: '0.35rem 0.5rem', color: 'var(--text-strong)' }}
                       title={`${r.reviewer_user_id}${r.reviewer?.email ? ` · ${r.reviewer.email}` : ''}`}
                     >
                       {userDisplayLabel(r.reviewer, r.reviewer_user_id)}
                     </td>
                     <td
-                      style={{ padding: '0.35rem 0.5rem', color: '#111827' }}
+                      style={{ padding: '0.35rem 0.5rem', color: 'var(--text-strong)' }}
                       title={
                         r.manager_user_id
                           ? `${r.manager_user_id}${r.manager?.email ? ` · ${r.manager.email}` : ''}`
@@ -589,7 +589,7 @@ export default function TeamFeedbackDevReports() {
                         }}
                       >
                         {deletingId === r.id ? (
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>…</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>…</span>
                         ) : (
                           <PayStubDeleteIcon color="#b91c1c" size={18} />
                         )}
@@ -599,7 +599,7 @@ export default function TeamFeedbackDevReports() {
                 ))}
               </tbody>
             </table>
-            {rows.length === 0 && <p style={{ padding: '1rem', margin: 0, color: '#9ca3af' }}>No submissions yet.</p>}
+            {rows.length === 0 && <p style={{ padding: '1rem', margin: 0, color: 'var(--text-faint)' }}>No submissions yet.</p>}
           </div>
           <div
             style={{
@@ -618,7 +618,7 @@ export default function TeamFeedbackDevReports() {
             <button
               type="button"
               onClick={downloadCsv}
-              style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer' }}
+              style={{ padding: '0.35rem 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer' }}
             >
               Download CSV
             </button>
@@ -627,10 +627,10 @@ export default function TeamFeedbackDevReports() {
       )}
 
       <h3 style={{ marginTop: '1.5rem' }}>Aggregates by cycle (all managers)</h3>
-      <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+      <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
           <thead>
-            <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
+            <tr style={{ background: 'var(--bg-subtle)', textAlign: 'left' }}>
               <th style={{ padding: '0.35rem 0.5rem' }}>Period</th>
               <th style={{ padding: '0.35rem 0.5rem' }}>Manager</th>
               <th style={{ padding: '0.35rem 0.5rem' }}>N</th>
@@ -640,7 +640,7 @@ export default function TeamFeedbackDevReports() {
           </thead>
           <tbody>
             {aggRows.map((a, i) => (
-              <tr key={`${a.cycle_period_start}-${a.manager_user_id ?? 'null'}-${i}`} style={{ borderTop: '1px solid #e5e7eb' }}>
+              <tr key={`${a.cycle_period_start}-${a.manager_user_id ?? 'null'}-${i}`} style={{ borderTop: '1px solid var(--border)' }}>
                 <td style={{ padding: '0.35rem 0.5rem' }}>{a.cycle_period_start}</td>
                 <td style={{ padding: '0.35rem 0.5rem', fontFamily: 'monospace', fontSize: '0.75rem' }}>
                   {a.manager_user_id ? `${a.manager_user_id.slice(0, 8)}…` : '—'}
@@ -654,7 +654,7 @@ export default function TeamFeedbackDevReports() {
             ))}
           </tbody>
         </table>
-        {aggRows.length === 0 && <p style={{ padding: '1rem', margin: 0, color: '#9ca3af' }}>No aggregate rows (need rated submissions with cycle).</p>}
+        {aggRows.length === 0 && <p style={{ padding: '1rem', margin: 0, color: 'var(--text-faint)' }}>No aggregate rows (need rated submissions with cycle).</p>}
       </div>
 
       {detailSubmission && (

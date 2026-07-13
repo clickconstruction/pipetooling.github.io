@@ -130,13 +130,13 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
         flex: narrowViewport ? '0 0 auto' : '0 0 220px',
         maxHeight: narrowViewport ? 'min(40vh, 280px)' : 'none',
         overflow: 'auto',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 6,
-        background: '#fafafa',
+        background: 'var(--bg-page)',
       }}
     >
       {rows.length === 0 ? (
-        <p style={{ margin: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           No salaried people in pay config yet. Use the <strong>Pay</strong> tab to mark someone as Salary.
         </p>
       ) : (
@@ -181,8 +181,8 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
                       padding: '0.45rem 0.65rem',
                       border: 'none',
                       borderBottom: '1px solid #f3f4f6',
-                      background: active ? '#eff6ff' : 'transparent',
-                      color: selectable ? (active ? '#1d4ed8' : '#111827') : '#9ca3af',
+                      background: active ? 'var(--bg-blue-tint)' : 'transparent',
+                      color: selectable ? (active ? 'var(--text-blue-700)' : 'var(--text-strong)') : '#9ca3af',
                       cursor: selectable ? 'pointer' : 'not-allowed',
                       fontSize: '0.875rem',
                       fontWeight: active ? 600 : 400,
@@ -191,7 +191,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
                     {r.personName}
                     {!selectable ? (
                       <span
-                        style={{ display: 'block', fontSize: '0.72rem', fontWeight: 400, color: '#9ca3af', marginTop: 2 }}
+                        style={{ display: 'block', fontSize: '0.72rem', fontWeight: 400, color: 'var(--text-faint)', marginTop: 2 }}
                       >
                         No matching user
                       </span>
@@ -213,10 +213,10 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
         minWidth: 0,
         minHeight: 200,
         overflow: 'auto',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 6,
         padding: '0.75rem 1rem',
-        background: 'white',
+        background: 'var(--surface)',
       }}
     >
       {rows.length === 0 ? null : selectedUserId && selectedPayName ? (
@@ -227,7 +227,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
           canEditPastDayOverrides
         />
       ) : (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Select someone with a matching login user to edit their salaried workday.
         </p>
       )}
@@ -259,7 +259,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
         aria-describedby="salaried-workdays-bulk-modal-desc"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(1100px, 100%)',
           maxHeight: 'min(90vh, 900px)',
@@ -287,8 +287,8 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -297,23 +297,23 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
             Close
           </button>
         </div>
-        <p id="salaried-workdays-bulk-modal-desc" style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
+        <p id="salaried-workdays-bulk-modal-desc" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
           Edit default schedule and day overrides for each salaried person. Saving matches Settings (including salary session sync).
         </p>
         <details
           style={{
             flexShrink: 0,
             marginBottom: '0.75rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             padding: '0.5rem 0.75rem',
-            background: '#fafafa',
+            background: 'var(--bg-page)',
           }}
         >
-          <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', color: '#374151' }}>
+          <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)' }}>
             Bulk unpaid time off (multiple people)
           </summary>
-          <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: '0.5rem 0 0.75rem' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0.5rem 0 0.75rem' }}>
             Company-wide calendar dates (Central). Check names in the list, set the range, then apply. Uses the same rules as Settings time off; salary sync runs for today when today falls in the range.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'flex-end', marginBottom: '0.5rem' }}>
@@ -339,7 +339,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
               type="button"
               onClick={selectAllBulk}
               disabled={rowsWithLogin.length === 0}
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
             >
               Select all with login
             </button>
@@ -347,7 +347,7 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
               type="button"
               onClick={clearBulkSelection}
               disabled={bulkCheckedIds.length === 0}
-              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+              style={{ padding: '0.35rem 0.65rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
             >
               Clear selection
             </button>
@@ -382,8 +382,8 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
             <div style={{ marginTop: '0.75rem', fontSize: '0.8125rem' }}>
               {lastBulkResult.failed.length > 0 ? (
                 <div style={{ marginBottom: '0.5rem' }}>
-                  <strong style={{ color: '#b91c1c' }}>Not saved</strong>
-                  <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', color: '#374151' }}>
+                  <strong style={{ color: 'var(--text-red-700)' }}>Not saved</strong>
+                  <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', color: 'var(--text-700)' }}>
                     {lastBulkResult.failed.map((f) => (
                       <li key={`f-${f.user_id}-${f.message}`}>
                         {userNameById(f.user_id)}: {f.message}
@@ -394,8 +394,8 @@ export function SalariedWorkdaysBulkModal({ open, onClose, payConfig, users }: S
               ) : null}
               {lastBulkResult.sync_failed.length > 0 ? (
                 <div>
-                  <strong style={{ color: '#b45309' }}>Saved; salary sync warning</strong>
-                  <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', color: '#374151' }}>
+                  <strong style={{ color: 'var(--text-amber-700)' }}>Saved; salary sync warning</strong>
+                  <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.25rem', color: 'var(--text-700)' }}>
                     {lastBulkResult.sync_failed.map((f) => (
                       <li key={`s-${f.user_id}-${f.message}`}>
                         {userNameById(f.user_id)}: {f.message}

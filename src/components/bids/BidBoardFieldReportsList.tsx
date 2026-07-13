@@ -50,12 +50,12 @@ export function BidBoardFieldReportsList({ bidId, onLoadError }: Props) {
   }, [bidId])
 
   if (loading) {
-    return <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading field reports…</p>
+    return <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading field reports…</p>
   }
 
   if (rows.length === 0) {
     return (
-      <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No field reports for this bid yet.</p>
+      <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No field reports for this bid yet.</p>
     )
   }
 
@@ -68,8 +68,8 @@ export function BidBoardFieldReportsList({ bidId, onLoadError }: Props) {
             key={r.id}
             style={{
               padding: '0.75rem',
-              borderBottom: i < rows.length - 1 ? '1px solid #e5e7eb' : 'none',
-              background: '#fafafa',
+              borderBottom: i < rows.length - 1 ? '1px solid var(--border)' : 'none',
+              background: 'var(--bg-page)',
             }}
           >
             <div style={{ marginBottom: '0.5rem' }}>
@@ -79,7 +79,7 @@ export function BidBoardFieldReportsList({ bidId, onLoadError }: Props) {
                   marginLeft: '0.5rem',
                   fontSize: '0.875rem',
                   fontWeight: 600,
-                  color: '#374151',
+                  color: 'var(--text-700)',
                 }}
               >
                 {r.template_name}

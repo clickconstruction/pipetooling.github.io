@@ -42,19 +42,19 @@ export default function SettingsAdvancedTab({
           fontSize: '0.9375rem',
           fontWeight: 500,
           textAlign: 'left',
-          color: '#6b7280',
+          color: 'var(--text-muted)',
         }}
       >
-        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{advancedSectionOpen ? '▼' : '▶'}</span>
+        <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{advancedSectionOpen ? '▼' : '▶'}</span>
         Advanced
       </button>
       {advancedSectionOpen && (
         <div style={{ padding: '1rem 0 0 0' }}>
-          <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem' }}>
+          <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
             <h2 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Fix app</h2>
-            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               If the app shows a white screen after an update (e.g. phone was open during deploy), open{' '}
-              <a href="/fix-cache.html" style={{ color: '#2563eb', fontWeight: 500 }}>
+              <a href="/fix-cache.html" style={{ color: 'var(--text-link)', fontWeight: 500 }}>
                 Fix app
               </a>{' '}
               to clear cached files and reload. Bookmark this link to use when the app won&apos;t load.
@@ -77,7 +77,7 @@ export default function SettingsAdvancedTab({
                 {codeSubmitting ? 'Checking…' : 'Submit'}
               </button>
             </div>
-            {codeError && <p style={{ color: '#b91c1c', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
+            {codeError && <p style={{ color: 'var(--text-red-700)', marginTop: 4, marginBottom: 0 }}>{codeError}</p>}
           </form>
         </div>
       )}

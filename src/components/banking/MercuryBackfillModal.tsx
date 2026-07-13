@@ -106,7 +106,7 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
         aria-labelledby="mercury-backfill-modal-title"
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 460,
           width: '100%',
@@ -123,7 +123,7 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
         >
           Backfill from Mercury
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#475569', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-slate-600)', lineHeight: 1.5 }}>
           Pull a custom date range from Mercury into <code>mercury_transactions</code>. Idempotent — already-synced rows are
           upserted, not duplicated. A 1-year window typically pulls ~10,000 transactions and takes ~20–30 seconds.
         </p>
@@ -140,7 +140,7 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
                   max={endYmd && endYmd <= todayYmd ? endYmd : todayYmd}
                   onChange={(e) => setStartYmd(e.target.value)}
                   disabled={submitting}
-                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)' }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem' }}>
@@ -152,11 +152,11 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
                   max={todayYmd}
                   onChange={(e) => setEndYmd(e.target.value)}
                   disabled={submitting}
-                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+                  style={{ padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border)' }}
                 />
               </label>
             </div>
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--text-slate-500)' }}>
               Default is the last {DEFAULT_BACKFILL_DAYS} days. Maximum range is {MAX_RANGE_DAYS} days.
             </p>
           </fieldset>
@@ -168,9 +168,9 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
                 margin: 0,
                 padding: '0.5rem 0.75rem',
                 borderRadius: 6,
-                background: '#fef3c7',
+                background: 'var(--bg-amber-100)',
                 border: '1px solid #fde68a',
-                color: '#92400e',
+                color: 'var(--text-amber-800)',
                 fontSize: '0.8rem',
               }}
             >
@@ -185,9 +185,9 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
                 margin: 0,
                 padding: '0.5rem 0.75rem',
                 borderRadius: 6,
-                background: '#fef2f2',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
                 fontSize: '0.8rem',
               }}
             >
@@ -203,9 +203,9 @@ export function MercuryBackfillModal({ open, onClose, onSubmit }: MercuryBackfil
             disabled={submitting}
             style={{
               padding: '0.5rem 1rem',
-              background: 'white',
-              color: '#111827',
-              border: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              color: 'var(--text-strong)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               cursor: submitting ? 'not-allowed' : 'pointer',
               fontWeight: 500,

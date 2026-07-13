@@ -206,7 +206,7 @@ export function ClockSessionStripActionsModal({
         aria-modal="true"
         aria-labelledby={titleId}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 320,
@@ -222,12 +222,12 @@ export function ClockSessionStripActionsModal({
           <h2 id={titleId} style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>
             Session actions
           </h2>
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
-            <strong style={{ color: '#374151' }}>{p.personName}</strong>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            <strong style={{ color: 'var(--text-700)' }}>{p.personName}</strong>
             {' · '}
             {p.timeRangeLabel}
             {' · '}
-            <span style={{ color: p.stripStatus === 'approved' ? '#16a34a' : '#6b7280' }}>
+            <span style={{ color: p.stripStatus === 'approved' ? '#16a34a' : 'var(--text-muted)' }}>
               {p.stripStatus === 'approved' ? 'Approved' : 'Pending'}
             </span>
           </p>
@@ -235,11 +235,11 @@ export function ClockSessionStripActionsModal({
 
         <div
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '0.75rem',
             marginBottom: '1rem',
-            background: '#fafafa',
+            background: 'var(--bg-page)',
           }}
         >
           {hasJobOrBid ? (
@@ -253,7 +253,7 @@ export function ClockSessionStripActionsModal({
                   <div
                     style={{
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       marginBottom: 4,
                       lineHeight: 1.35,
                       wordBreak: 'break-word' as const,
@@ -264,7 +264,7 @@ export function ClockSessionStripActionsModal({
                   <div
                     style={{
                       fontSize: '0.875rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                       marginBottom: 8,
                       lineHeight: 1.35,
                       wordBreak: 'break-word' as const,
@@ -277,7 +277,7 @@ export function ClockSessionStripActionsModal({
                 <div
                   style={{
                     fontSize: '0.875rem',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     marginBottom: 8,
                     lineHeight: 1.35,
                     wordBreak: 'break-word' as const,
@@ -290,7 +290,7 @@ export function ClockSessionStripActionsModal({
                 {p.jobEditHref ? (
                   <Link
                     to={p.jobEditHref}
-                    style={{ fontSize: '0.8125rem', color: '#2563eb' }}
+                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)' }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     Open job
@@ -299,7 +299,7 @@ export function ClockSessionStripActionsModal({
                 {p.bidEditHref ? (
                   <Link
                     to={p.bidEditHref}
-                    style={{ fontSize: '0.8125rem', color: '#2563eb' }}
+                    style={{ fontSize: '0.8125rem', color: 'var(--text-link)' }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     Open bid
@@ -315,11 +315,11 @@ export function ClockSessionStripActionsModal({
                   style={{
                     padding: '0.25rem 0.5rem',
                     fontSize: '0.8125rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: 'white',
+                    background: 'var(--surface)',
                     cursor: footerBusy ? 'not-allowed' : 'pointer',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                   }}
                 >
                   Change assignment
@@ -332,11 +332,11 @@ export function ClockSessionStripActionsModal({
                   style={{
                     padding: '0.25rem 0.5rem',
                     fontSize: '0.8125rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
-                    background: 'white',
+                    background: 'var(--surface)',
                     cursor: footerBusy ? 'not-allowed' : 'pointer',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   Clear
@@ -356,7 +356,7 @@ export function ClockSessionStripActionsModal({
               width: '100%',
               boxSizing: 'border-box',
               padding: '0.5rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               fontSize: '0.875rem',
               marginBottom: '0.5rem',
@@ -370,9 +370,9 @@ export function ClockSessionStripActionsModal({
             style={{
               padding: '0.35rem 0.65rem',
               fontSize: '0.8125rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: footerBusy ? 'not-allowed' : 'pointer',
               marginBottom: '0.75rem',
             }}
@@ -382,7 +382,7 @@ export function ClockSessionStripActionsModal({
 
           {showAssignmentSearch ? (
             <>
-              <label htmlFor={`${titleId}-assign-search`} style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: 4 }}>
+              <label htmlFor={`${titleId}-assign-search`} style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
                 {hasJobOrBid && assignmentSearchExpanded ? 'Replace assignment' : 'Search for a job or bid'}
               </label>
               <input
@@ -398,7 +398,7 @@ export function ClockSessionStripActionsModal({
                   width: '100%',
                   padding: '0.5rem',
                   marginBottom: '0.5rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   boxSizing: 'border-box',
                 }}
@@ -408,14 +408,14 @@ export function ClockSessionStripActionsModal({
                   maxHeight: 160,
                   overflowY: 'auto',
                   marginBottom: '0.5rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                 }}
               >
                 {searchText.trim() ? (
                   searchResults.length === 0 ? (
-                    <div style={{ padding: '0.5rem', color: '#6b7280', fontSize: '0.8125rem' }}>No results</div>
+                    <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No results</div>
                   ) : (
                     searchResults.map((item) => (
                       <button
@@ -459,7 +459,7 @@ export function ClockSessionStripActionsModal({
                     ))
                   )
                 ) : (
-                  <div style={{ padding: '0.5rem', color: '#6b7280', fontSize: '0.8125rem' }}>Type to search</div>
+                  <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Type to search</div>
                 )}
               </div>
             </>
@@ -487,8 +487,8 @@ export function ClockSessionStripActionsModal({
                 style={{
                   padding: '0.5rem 1rem',
                   border: '1px solid #dc2626',
-                  background: '#fef2f2',
-                  color: '#b91c1c',
+                  background: 'var(--bg-red-tint)',
+                  color: 'var(--text-red-700)',
                   borderRadius: 4,
                   cursor: footerBusy ? 'not-allowed' : 'pointer',
                   fontWeight: 600,
@@ -505,8 +505,8 @@ export function ClockSessionStripActionsModal({
               onClick={onClose}
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
-                background: 'white',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 borderRadius: 4,
                 cursor: footerBusy ? 'not-allowed' : 'pointer',
               }}
@@ -521,7 +521,7 @@ export function ClockSessionStripActionsModal({
                 style={{
                   padding: '0.5rem 1rem',
                   border: '1px solid #22c55e',
-                  background: '#f0fdf4',
+                  background: 'var(--bg-green-tint)',
                   color: '#15803d',
                   borderRadius: 4,
                   cursor: footerBusy ? 'not-allowed' : 'pointer',
@@ -542,8 +542,8 @@ export function ClockSessionStripActionsModal({
                 style={{
                   padding: '0.5rem 1rem',
                   border: '1px solid #d97706',
-                  background: '#fffbeb',
-                  color: '#b45309',
+                  background: 'var(--bg-amber-tint)',
+                  color: 'var(--text-amber-700)',
                   borderRadius: 4,
                   cursor: footerBusy ? 'not-allowed' : 'pointer',
                   fontWeight: 600,

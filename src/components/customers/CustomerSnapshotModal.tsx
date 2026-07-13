@@ -214,7 +214,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
   }
 
   const panelStyle: CSSProperties = {
-    background: 'white',
+    background: 'var(--surface)',
     borderRadius: 8,
     padding: '1.25rem 1.5rem',
     maxWidth: 720,
@@ -239,7 +239,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
           key="projects"
           to={`/projects?customer=${customerId}`}
           onClick={onClose}
-          style={{ color: '#2563eb', fontWeight: 500 }}
+          style={{ color: 'var(--text-link)', fontWeight: 500 }}
         >
           Projects ({c.projects})
         </Link>,
@@ -247,7 +247,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
     }
     if (showJobs) {
       navLinks.push(
-        <Link key="jobs" to={`/jobs?customer=${customerId}`} onClick={onClose} style={{ color: '#2563eb', fontWeight: 500 }}>
+        <Link key="jobs" to={`/jobs?customer=${customerId}`} onClick={onClose} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
           Jobs ({c.jobs})
         </Link>,
       )
@@ -258,7 +258,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
           key="estimates"
           to={`/estimates?customer=${customerId}`}
           onClick={onClose}
-          style={{ color: '#2563eb', fontWeight: 500 }}
+          style={{ color: 'var(--text-link)', fontWeight: 500 }}
         >
           Estimates ({c.estimates})
         </Link>,
@@ -266,7 +266,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
     }
     if (showCustomers) {
       navLinks.push(
-        <Link key="customers" to="/customers" onClick={onClose} style={{ color: '#2563eb', fontWeight: 500 }}>
+        <Link key="customers" to="/customers" onClick={onClose} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
           Customers page
         </Link>,
       )
@@ -308,24 +308,24 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
               <button
                 type="button"
                 onClick={onClose}
-                style={{ padding: '0.35rem 0.65rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.35rem 0.65rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Close
               </button>
             </div>
           </div>
 
-          {error ? <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, marginBottom: '1rem' }}>{error}</div> : null}
+          {error ? <div style={{ padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, marginBottom: '1rem' }}>{error}</div> : null}
 
           {customer ? (
             <>
               {customer.address?.trim() ? (
-                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>{customer.address}</div>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.5rem' }}>{customer.address}</div>
               ) : null}
-              <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 {phone.trim() ? <div>Phone: {phone}</div> : null}
                 {email.trim() ? <div>Email: {email}</div> : null}
-                {!phone.trim() && !email.trim() ? <div style={{ color: '#6b7280' }}>No phone or email on file</div> : null}
+                {!phone.trim() && !email.trim() ? <div style={{ color: 'var(--text-muted)' }}>No phone or email on file</div> : null}
               </div>
 
               {navLinks.length > 0 ? (
@@ -339,16 +339,16 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                   }}
                 >
                   {navLinks.flatMap((el, i) =>
-                    i === 0 ? [el] : [<span key={`sep-${i}`} style={{ color: '#d1d5db' }}>|</span>, el],
+                    i === 0 ? [el] : [<span key={`sep-${i}`} style={{ color: 'var(--text-faint-300)' }}>|</span>, el],
                   )}
                 </div>
               ) : null}
 
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem' }}>Estimates ({c.estimates})</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Estimates ({c.estimates})</div>
               {loadingEstimates ? (
-                <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>Loading estimates…</p>
+                <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)' }}>Loading estimates…</p>
               ) : !estimates || estimates.length === 0 ? (
-                <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>No estimates for this customer.</p>
+                <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)' }}>No estimates for this customer.</p>
               ) : (
                 <table
                   style={{
@@ -359,7 +359,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                   }}
                 >
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
                       <th style={{ textAlign: 'left', padding: '0.5rem' }}>#</th>
                       <th style={{ textAlign: 'left', padding: '0.5rem' }}>Title</th>
                       <th style={{ textAlign: 'left', padding: '0.5rem' }}>Status</th>
@@ -369,12 +369,12 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                   </thead>
                   <tbody>
                     {estimates.map((est) => (
-                      <tr key={est.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={est.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem', fontVariantNumeric: 'tabular-nums' }}>
                           <Link
                             to={`/estimates/${est.estimate_number}`}
                             onClick={onClose}
-                            style={{ color: '#2563eb', fontWeight: 500 }}
+                            style={{ color: 'var(--text-link)', fontWeight: 500 }}
                           >
                             {est.estimate_number}
                           </Link>
@@ -383,14 +383,14 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                           <Link
                             to={`/estimates/${est.estimate_number}`}
                             onClick={onClose}
-                            style={{ color: '#111827', wordBreak: 'break-word' }}
+                            style={{ color: 'var(--text-strong)', wordBreak: 'break-word' }}
                           >
                             {est.title?.trim() || '—'}
                           </Link>
                         </td>
                         <td style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>{estimateSnapshotStatusLabel(est.status)}</td>
                         <td style={{ padding: '0.5rem', textAlign: 'right' }}>{formatUsdFromCents(est.total_cents)}</td>
-                        <td style={{ padding: '0.5rem', color: '#6b7280' }}>
+                        <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                           {est.updated_at ? String(est.updated_at).slice(0, 10) : '—'}
                         </td>
                       </tr>
@@ -399,15 +399,15 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                 </table>
               )}
 
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem' }}>Bids ({c.bids})</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Bids ({c.bids})</div>
               {loadingBids ? (
-                <p style={{ margin: 0, color: '#6b7280' }}>Loading bids…</p>
+                <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading bids…</p>
               ) : !bids || bids.length === 0 ? (
-                <p style={{ margin: 0, color: '#6b7280' }}>No bids for this customer.</p>
+                <p style={{ margin: 0, color: 'var(--text-muted)' }}>No bids for this customer.</p>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
+                    <tr style={{ borderBottom: '2px solid var(--border)' }}>
                       <th style={{ textAlign: 'left', padding: '0.5rem' }}>Project</th>
                       <th style={{ textAlign: 'left', padding: '0.5rem' }}>Status</th>
                       <th style={{ textAlign: 'left', padding: '0.5rem' }}>Due</th>
@@ -416,7 +416,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                   </thead>
                   <tbody>
                     {bids.map((bid) => (
-                      <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                      <tr key={bid.id} style={{ borderBottom: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.5rem' }}>{bid.project_name || '—'}</td>
                         <td style={{ padding: '0.5rem' }}>{getBidStatus(bid)}</td>
                         <td style={{ padding: '0.5rem' }}>
@@ -434,7 +434,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
               )}
             </>
           ) : !loadingCustomer ? (
-            <p style={{ color: '#6b7280' }}>Customer not found.</p>
+            <p style={{ color: 'var(--text-muted)' }}>Customer not found.</p>
           ) : null}
         </div>
       </div>
@@ -452,12 +452,12 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
             <button
               type="button"
               onClick={onClose}
-              style={{ padding: '0.35rem 0.65rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.35rem 0.65rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
             >
               Close
             </button>
           </div>
-          <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 0, marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 0, marginBottom: '1rem' }}>
             This builder is stored on the bid only (not linked to a company customer). Projects and jobs are tied to customer
             records, so there is no account-wide list here.
           </p>

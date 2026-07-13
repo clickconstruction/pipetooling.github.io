@@ -41,19 +41,19 @@ export default function TeamFeedbackMasterAggregates() {
   }, [load])
 
   if (loading) {
-    return <p style={{ color: '#6b7280' }}>Loading team feedback trends…</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Loading team feedback trends…</p>
   }
 
   return (
-    <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#fafafa' }}>
+    <div style={{ marginTop: '1.5rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)' }}>
       <h3 style={{ marginTop: 0 }}>Team feedback trends (your leadership)</h3>
-      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
         Anonymous aggregated scores for feedback about your lead role. Individual responses are not shown.
       </p>
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>
+            <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border)' }}>
               <th style={{ padding: '0.5rem' }}>Cycle start</th>
               <th style={{ padding: '0.5rem' }}>Responses</th>
               <th style={{ padding: '0.5rem' }}>Avg L1–L5</th>
@@ -62,7 +62,7 @@ export default function TeamFeedbackMasterAggregates() {
           </thead>
           <tbody>
             {rows.map((a) => (
-              <tr key={a.cycle_period_start} style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <tr key={a.cycle_period_start} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '0.5rem' }}>{a.cycle_period_start}</td>
                 <td style={{ padding: '0.5rem' }}>{a.submission_count}</td>
                 <td style={{ padding: '0.5rem' }}>
@@ -74,7 +74,7 @@ export default function TeamFeedbackMasterAggregates() {
           </tbody>
         </table>
       </div>
-      {rows.length === 0 && <p style={{ color: '#9ca3af', marginBottom: 0 }}>No aggregate data yet.</p>}
+      {rows.length === 0 && <p style={{ color: 'var(--text-faint)', marginBottom: 0 }}>No aggregate data yet.</p>}
     </div>
   )
 }

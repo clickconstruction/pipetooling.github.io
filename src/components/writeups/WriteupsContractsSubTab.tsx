@@ -204,7 +204,7 @@ export function WriteupsContractsSubTab({
 
   const selectStyle: CSSProperties = {
     padding: '0.35rem 0.5rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
     fontSize: '0.875rem',
   }
@@ -214,7 +214,7 @@ export function WriteupsContractsSubTab({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Writeups</h2>
-          <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+          <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Template writeups and no-call, no-show (NCNS) records share this list when filters allow.
           </p>
         </div>
@@ -222,7 +222,7 @@ export function WriteupsContractsSubTab({
           <button
             type="button"
             onClick={() => setTplModalOpen(true)}
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
           >
             Manage templates
           </button>
@@ -240,7 +240,7 @@ export function WriteupsContractsSubTab({
         </div>
       </div>
 
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
       <div
         style={{
@@ -252,17 +252,17 @@ export function WriteupsContractsSubTab({
         }}
       >
         <div>
-          <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.2rem' }}>Subject search</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Subject search</label>
           <input
             type="search"
             value={filterSubject}
             onChange={(e) => setFilterSubject(e.target.value)}
             placeholder="Name…"
-            style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+            style={{ width: '100%', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           />
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.2rem' }}>Template</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Template</label>
           <select value={filterTemplateId} onChange={(e) => setFilterTemplateId(e.target.value)} style={{ ...selectStyle, width: '100%' }}>
             <option value="">All</option>
             {templates.map((t) => (
@@ -273,7 +273,7 @@ export function WriteupsContractsSubTab({
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.2rem' }}>Status</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Status</label>
           <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)} style={{ ...selectStyle, width: '100%' }}>
             <option value="all">All</option>
             <option value="draft">Draft</option>
@@ -281,7 +281,7 @@ export function WriteupsContractsSubTab({
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.2rem' }}>Disclosure</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Disclosure</label>
           <select
             value={filterDisclosure}
             onChange={(e) => setFilterDisclosure(e.target.value as typeof filterDisclosure)}
@@ -293,7 +293,7 @@ export function WriteupsContractsSubTab({
           </select>
         </div>
         <div>
-          <label style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.2rem' }}>Sort</label>
+          <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>Sort</label>
           <select value={sortKey} onChange={(e) => setSortKey(e.target.value as typeof sortKey)} style={{ ...selectStyle, width: '100%' }}>
             <option value="created_at">Date</option>
             <option value="subject">Subject</option>
@@ -303,11 +303,11 @@ export function WriteupsContractsSubTab({
       </div>
 
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
                 <th style={th}>Type</th>
                 <th style={th}>Subject</th>
@@ -322,14 +322,14 @@ export function WriteupsContractsSubTab({
             <tbody>
               {filteredSorted.length === 0 ? (
                 <tr>
-                  <td colSpan={8} style={{ padding: '1rem', color: '#6b7280' }}>
+                  <td colSpan={8} style={{ padding: '1rem', color: 'var(--text-muted)' }}>
                     No items match filters.
                   </td>
                 </tr>
               ) : (
                 filteredSorted.map((row) =>
                   row.kind === 'writeup' ? (
-                    <tr key={`writeup-${row.writeup.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr key={`writeup-${row.writeup.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={td}>Writeup</td>
                       <td style={td}>{row.writeup.subject_name}</td>
                       <td style={td}>{row.writeup.template_name}</td>
@@ -351,7 +351,7 @@ export function WriteupsContractsSubTab({
                             setEditorMode(row.writeup.status === 'draft' ? 'edit_draft' : 'view_submitted')
                             setEditorOpen(true)
                           }}
-                          style={{ fontSize: '0.75rem', marginRight: '0.35rem', padding: '0.2rem 0.45rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                          style={{ fontSize: '0.75rem', marginRight: '0.35rem', padding: '0.2rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                         >
                           {row.writeup.status === 'draft' ? 'Edit' : 'View'}
                         </button>
@@ -359,7 +359,7 @@ export function WriteupsContractsSubTab({
                           <button
                             type="button"
                             onClick={() => deleteWriteup(row.writeup)}
-                            style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem', border: '1px solid #fecaca', borderRadius: 4, background: '#fff', color: '#b91c1c', cursor: 'pointer' }}
+                            style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem', border: '1px solid #fecaca', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-700)', cursor: 'pointer' }}
                           >
                             Delete
                           </button>
@@ -367,13 +367,13 @@ export function WriteupsContractsSubTab({
                       </td>
                     </tr>
                   ) : (
-                    <tr key={`ncns-${row.ncns.id}`} style={{ borderBottom: '1px solid #e5e7eb', background: '#fffbeb' }}>
+                    <tr key={`ncns-${row.ncns.id}`} style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-amber-tint)' }}>
                       <td style={td}>
                         <span
                           style={{
                             fontSize: '0.7rem',
                             fontWeight: 600,
-                            color: '#b45309',
+                            color: 'var(--text-amber-700)',
                             textTransform: 'uppercase',
                             letterSpacing: '0.02em',
                           }}
@@ -384,7 +384,7 @@ export function WriteupsContractsSubTab({
                       <td style={td}>{row.ncns.subject_name}</td>
                       <td style={td}>
                         <div>{NCNS_TEMPLATE_SORT_KEY}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Work date: {formatNcnsWorkDateCell(row.ncns.work_date)}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Work date: {formatNcnsWorkDateCell(row.ncns.work_date)}</div>
                       </td>
                       <td style={td}>{row.ncns.author_name}</td>
                       <td style={td}>{new Date(row.ncns.created_at).toLocaleString()}</td>
@@ -394,7 +394,7 @@ export function WriteupsContractsSubTab({
                         <button
                           type="button"
                           onClick={() => setNcnsDetailRow(row.ncns)}
-                          style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer' }}
+                          style={{ fontSize: '0.75rem', padding: '0.2rem 0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
                         >
                           View
                         </button>
@@ -436,7 +436,7 @@ export function WriteupsContractsSubTab({
 const th: CSSProperties = {
   padding: '0.75rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   fontWeight: 600,
 }
 const td: CSSProperties = { padding: '0.65rem 0.75rem' }

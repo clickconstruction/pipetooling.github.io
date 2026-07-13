@@ -51,7 +51,7 @@ export function MarkJobReadyToBillPrompt({ job, onClose }: Props) {
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 320,
@@ -61,7 +61,7 @@ export function MarkJobReadyToBillPrompt({ job, onClose }: Props) {
         }}
       >
         <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.25rem' }}>Move to Ready to Bill?</h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           You marked this job 100% complete.
           <br />
           {job.hcpNumber} · {job.jobName}
@@ -95,8 +95,8 @@ export function MarkJobReadyToBillPrompt({ job, onClose }: Props) {
             disabled={busy}
             style={{
               padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}

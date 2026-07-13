@@ -4,16 +4,16 @@ import { getScheduleDispatchWeekNavParts, ymdAddDays } from '../../utils/dateUti
 
 const btnNeutral: CSSProperties = {
   padding: '0.4rem 0.75rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: '#fff',
+  background: 'var(--surface)',
   cursor: 'pointer',
 }
 
 const btnPrimary: CSSProperties = {
   ...btnNeutral,
   border: '1px solid #2563eb',
-  color: '#2563eb',
+  color: 'var(--text-link)',
 }
 
 type ScheduleDispatchWeekNavProps = {
@@ -65,7 +65,7 @@ export function ScheduleDispatchWeekNav({
           alignItems: 'center',
           textAlign: 'center',
           fontSize: '0.875rem',
-          color: '#374151',
+          color: 'var(--text-700)',
           padding: '0 0.25rem',
           lineHeight: 1.25,
         }}
@@ -73,7 +73,7 @@ export function ScheduleDispatchWeekNav({
         {weekTitle !== null ? (
           <>
             <span style={{ fontWeight: 600 }}>{weekTitle}</span>
-            <span style={{ fontWeight: 500, color: '#6b7280' }}>{displayDateRange}</span>
+            <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>{displayDateRange}</span>
           </>
         ) : (
           <span style={{ fontWeight: 600 }}>{displayDateRange}</span>
@@ -89,7 +89,7 @@ export function ScheduleDispatchWeekNav({
         <label
           style={{
             fontSize: '0.8125rem',
-            color: '#374151',
+            color: 'var(--text-700)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle, type GoogleGeocodeErrorCode } from '../_shared/googleGeocode.ts'
+import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -30,7 +31,7 @@ type OkGeocode = {
   lat: number
   lng: number
   fromCache: false
-  source: 'nominatim' | 'google'
+  source: 'nominatim' | 'google' | 'census'
   /** Present when `refresh_google_only` was used. */
   refreshed?: true
 }
@@ -209,6 +210,7 @@ serve(async (req) => {
     }
   }
 
+  let googleFail: Fail | null = null
   if (googleKey.length > 0) {
     const g = await geocodeWithGoogle(display, googleKey)
     if (g.ok) {
@@ -226,19 +228,45 @@ serve(async (req) => {
       }
       return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
-    const out: Fail = {
+    googleFail = {
       ok: false,
       address_normalized: key,
       error: googleErrorToClientCode(g.error),
       ...(g.detail ? { detail: g.detail } : {}),
     }
-    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
 
-  if (!r.ok) {
-    const out: Fail = { ok: false, address_normalized: key, error: 'upstream' }
+  // Third-tier fallback: US Census geocoder (free, no key, US addresses only).
+  const c = await geocodeWithCensus(display)
+  if (c.ok) {
+    const { error: upErr } = await upsertGeocode(supabase, key, c.lat, c.lng)
+    if (upErr) {
+      return jsonResponse(500, { error: upErr.message })
+    }
+    const out: OkGeocode = {
+      ok: true,
+      address_normalized: key,
+      lat: c.lat,
+      lng: c.lng,
+      fromCache: false,
+      source: 'census',
+    }
     return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   }
-  const out: Fail = { ok: false, address_normalized: key, error: 'not_found' }
+  const censusNote = c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : 'no match from US Census'
+
+  // Keep the more actionable Google failure as the primary error; note the Census outcome in the detail.
+  if (googleFail) {
+    const out: Fail = {
+      ...googleFail,
+      detail: googleFail.detail ? `${googleFail.detail}; ${censusNote}` : censusNote,
+    }
+    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  }
+  if (!r.ok) {
+    const out: Fail = { ok: false, address_normalized: key, error: 'upstream', detail: censusNote }
+    return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  }
+  const out: Fail = { ok: false, address_normalized: key, error: 'not_found', detail: censusNote }
   return new Response(JSON.stringify(out), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 })

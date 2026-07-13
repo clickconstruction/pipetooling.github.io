@@ -295,14 +295,14 @@ export default function Templates() {
   }
 
   if (loading) return <p>Loading...</p>
-  if (error && !myRole) return <p style={{ color: '#b91c1c' }}>{error}</p>
+  if (error && !myRole) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
   if (myRole !== 'dev')
     return <p style={{ marginBottom: '1.5rem' }}>Only owners can edit templates.</p>
 
   return (
     <div>
       <h1 style={{ marginBottom: '1rem' }}>Templates</h1>
-      <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
         Workflow templates are used when creating project workflows from a template. Only owners can add, edit, and delete templates.
       </p>
       <div style={{ marginBottom: '1rem' }}>
@@ -310,7 +310,7 @@ export default function Templates() {
           Add template
         </button>
       </div>
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       {templates.length === 0 ? (
         <p>No templates yet. Add one to use when creating workflows from a template.</p>
       ) : (
@@ -320,7 +320,7 @@ export default function Templates() {
               key={t.id}
               style={{
                 padding: '0.75rem 0',
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -328,7 +328,7 @@ export default function Templates() {
             >
               <div>
                 <div style={{ fontWeight: 500 }}>{t.name}</div>
-                {t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{t.description}</div>}
+                {t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>{t.description}</div>}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button type="button" onClick={() => openWorkflow(t)} style={{ padding: '4px 8px', fontSize: '0.875rem' }}>
@@ -341,7 +341,7 @@ export default function Templates() {
                   type="button"
                   onClick={() => deleteTemplate(t.id)}
                   disabled={deletingId === t.id}
-                  style={{ padding: '4px 8px', fontSize: '0.875rem', color: '#b91c1c' }}
+                  style={{ padding: '4px 8px', fontSize: '0.875rem', color: 'var(--text-red-700)' }}
                 >
                   {deletingId === t.id ? 'Deleting...' : 'Delete'}
                 </button>
@@ -353,7 +353,7 @@ export default function Templates() {
 
       {formOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>{editingId ? 'Edit template' : 'Add template'}</h2>
             <form onSubmit={handleSave}>
               <div style={{ marginBottom: '1rem' }}>
@@ -395,9 +395,9 @@ export default function Templates() {
 
       {workflowModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '80vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 360, maxWidth: 480, maxHeight: '80vh', overflow: 'auto' }}>
             <h2 style={{ marginTop: 0 }}>Workflow: {workflowModal.templateName}</h2>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem' }}>These steps are copied when a project uses &quot;Add workflow from template&quot; on the New project form.</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>These steps are copied when a project uses &quot;Add workflow from template&quot; on the New project form.</p>
             <form onSubmit={addWorkflowStep} style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
               <input
                 type="text"
@@ -409,11 +409,11 @@ export default function Templates() {
               />
               <button type="submit" disabled={addingStep || !newStepName.trim()}>{addingStep ? 'Adding...' : 'Add step'}</button>
             </form>
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             {workflowStepsLoading ? (
               <p>Loading steps...</p>
             ) : workflowSteps.length === 0 ? (
-              <p style={{ color: '#6b7280' }}>No steps yet. Add steps above.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No steps yet. Add steps above.</p>
             ) : (
               <ol style={{ margin: 0, paddingLeft: '1.25rem' }}>
                 {workflowSteps.map((s) => (
@@ -484,7 +484,7 @@ export default function Templates() {
                             type="button"
                             onClick={() => deleteWorkflowStep(s.id)}
                             disabled={deletingStepId === s.id}
-                            style={{ padding: '2px 6px', fontSize: '0.75rem', color: '#b91c1c' }}
+                            style={{ padding: '2px 6px', fontSize: '0.75rem', color: 'var(--text-red-700)' }}
                           >
                             {deletingStepId === s.id ? '...' : 'Remove'}
                           </button>

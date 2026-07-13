@@ -48,7 +48,7 @@ const tabStyle = (active: boolean) => ({
   border: 'none' as const,
   background: 'none' as const,
   borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? '#3b82f6' : '#6b7280',
+  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer' as const,
 })
@@ -129,7 +129,7 @@ export default function Checklist() {
           : {}),
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid #e5e7eb', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 0, borderBottom: '1px solid var(--border)', marginBottom: '1.5rem' }}>
         <button
           type="button"
           onClick={() => {
@@ -204,7 +204,7 @@ export default function Checklist() {
         >
           Roadmap
         </button>
-        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Checklist</h1>
+        <h1 style={{ margin: 0, marginLeft: 'auto', fontSize: '1.5rem', fontWeight: 700, color: 'var(--text-strong)' }}>Checklist</h1>
       </div>
 
       {activeTab === 'today' && (
@@ -247,7 +247,7 @@ export default function Checklist() {
         />
       )}
 
-      {error && <p style={{ color: '#b91c1c', marginTop: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginTop: '1rem' }}>{error}</p>}
     </div>
   )
 }
@@ -595,7 +595,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
       <section style={{ marginBottom: '2rem' }}>
         <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Today</h2>
         {todayInstances.length === 0 ? (
-          <p style={{ color: '#6b7280' }}>No checklist items due today.</p>
+          <p style={{ color: 'var(--text-muted)' }}>No checklist items due today.</p>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {todayInstances.map((inst) => {
@@ -610,7 +610,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                     alignItems: 'flex-start',
                     gap: '0.75rem',
                     padding: '0.75rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     marginBottom: '0.5rem',
                   }}
@@ -629,10 +629,10 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                       onBlur={() => saveNotes(inst)}
                       placeholder="Notes (optional)"
                       rows={2}
-                      style={{ width: '100%', fontSize: '0.875rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', fontSize: '0.875rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                     {inst.completed_at && (
-                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                         Completed {new Date(inst.completed_at).toLocaleString()}
                       </div>
                     )}
@@ -644,9 +644,9 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                         onClick={() => openMuteModal(inst)}
                         style={{
                           padding: '0.35rem',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
-                          background: 'white',
+                          background: 'var(--surface)',
                           cursor: 'pointer',
                           fontSize: '1rem',
                           lineHeight: 1,
@@ -705,7 +705,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         {upcomingExpanded && (
           <div style={{ marginTop: '0.5rem' }}>
             {upcomingInstances.length === 0 ? (
-              <p style={{ color: '#6b7280', margin: 0 }}>No upcoming items.</p>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>No upcoming items.</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {upcomingInstances.map((inst) => {
@@ -722,7 +722,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>{inst.scheduled_date}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{inst.scheduled_date}</span>
                       <span style={{ flex: 1 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
                       <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
                         {isNotificationRecipient(inst) && (
@@ -731,9 +731,9 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                             onClick={() => openMuteModal(inst)}
                             style={{
                               padding: '0.25rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: 'white',
+                              background: 'var(--surface)',
                               cursor: 'pointer',
                               fontSize: '0.875rem',
                               lineHeight: 1,
@@ -789,7 +789,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               minWidth: 320,
@@ -805,7 +805,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                   type="text"
                   value={fwdTitle}
                   onChange={(e) => setFwdTitle(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 />
               </div>
               <div>
@@ -813,7 +813,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
                 <select
                   value={fwdAssigneeId}
                   onChange={(e) => setFwdAssigneeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 >
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -852,7 +852,7 @@ function ChecklistTodayTab({ authUserId, isDev, setError }: { authUserId: string
               <button
                 type="button"
                 onClick={() => setFwdInstance(null)}
-                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -1066,7 +1066,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
             <span style={{ fontSize: '0.875rem' }}>Edit mode</span>
           </label>
         )}
-        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Green = completed by you, Yellow = completed by someone else, Red = incomplete, White = not due
         </span>
       </div>
@@ -1074,13 +1074,13 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
         <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <thead>
             <tr>
-              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Item</th>
+              <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Item</th>
               {sortedDates.slice(-60).map((d) => {
                 const parts = d.slice(5).split('-')
                 const month = parts[0] ?? ''
                 const day = parts[1] ?? ''
                 return (
-                  <th key={d} style={{ padding: '0.15rem', borderBottom: '1px solid #e5e7eb', minWidth: 12, maxWidth: 12, fontSize: '0.625rem', lineHeight: 1.1 }} title={d}>
+                  <th key={d} style={{ padding: '0.15rem', borderBottom: '1px solid var(--border)', minWidth: 12, maxWidth: 12, fontSize: '0.625rem', lineHeight: 1.1 }} title={d}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0 }}><span>{month}</span><span>{day}</span></div>
                   </th>
                 )
@@ -1125,7 +1125,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
           </tbody>
         </table>
       </div>
-      {byItem.size === 0 && <p style={{ color: '#6b7280' }}>No checklist history in this range.</p>}
+      {byItem.size === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist history in this range.</p>}
     </div>
   )
 }
@@ -1197,7 +1197,7 @@ function OutstandingByPersonSortableRow({
             background: 'none',
             border: 'none',
             cursor: dragDisabled ? 'not-allowed' : 'grab',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             display: 'inline-flex',
             alignItems: 'center',
             touchAction: 'none',
@@ -1247,7 +1247,7 @@ function OutstandingByPersonSortableRow({
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: '#374151',
+              color: 'var(--text-700)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1270,7 +1270,7 @@ function OutstandingByPersonSortableRow({
               background: 'none',
               border: 'none',
               cursor: deletingInstanceId === inst.id ? 'not-allowed' : 'pointer',
-              color: '#b91c1c',
+              color: 'var(--text-red-700)',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -1295,7 +1295,7 @@ function OutstandingByPersonSortableRow({
               border: 'none',
               borderRadius: 4,
               background: 'transparent',
-              color: '#3b82f6',
+              color: 'var(--text-blue-500)',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -1310,7 +1310,7 @@ function OutstandingByPersonSortableRow({
       )}
       <span style={{ flex: 1 }}>
         <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} />{' '}
-        <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
       </span>
     </li>
   )
@@ -1352,7 +1352,7 @@ function OutstandingByPersonSortableList({
         {instances.map((inst) => (
           <li key={inst.id} style={{ marginBottom: '0.25rem' }}>
             <ChecklistTitleWithLinks title={inst.checklist_items?.title ?? '—'} links={inst.checklist_items?.links} />{' '}
-            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>({inst.scheduled_date})</span>
           </li>
         ))}
       </ul>
@@ -1758,9 +1758,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
               style={{
                 padding: '0.25rem 0.5rem',
                 fontSize: '0.875rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: '0.25rem',
-                background: dateRange === 'non_repeating' ? '#e5e7eb' : 'transparent',
+                background: dateRange === 'non_repeating' ? 'var(--bg-200)' : 'transparent',
                 cursor: 'pointer',
               }}
             >
@@ -1772,9 +1772,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
               style={{
                 padding: '0.25rem 0.5rem',
                 fontSize: '0.875rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: '0.25rem',
-                background: dateRange === 'next_day' ? '#e5e7eb' : 'transparent',
+                background: dateRange === 'next_day' ? 'var(--bg-200)' : 'transparent',
                 cursor: 'pointer',
               }}
             >
@@ -1786,9 +1786,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
               style={{
                 padding: '0.25rem 0.5rem',
                 fontSize: '0.875rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: '0.25rem',
-                background: dateRange === 'next_week' ? '#e5e7eb' : 'transparent',
+                background: dateRange === 'next_week' ? 'var(--bg-200)' : 'transparent',
                 cursor: 'pointer',
               }}
             >
@@ -1800,9 +1800,9 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
               style={{
                 padding: '0.25rem 0.5rem',
                 fontSize: '0.875rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: '0.25rem',
-                background: dateRange === 'missed' ? '#e5e7eb' : 'transparent',
+                background: dateRange === 'missed' ? 'var(--bg-200)' : 'transparent',
                 cursor: 'pointer',
               }}
             >
@@ -1813,11 +1813,11 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
         {loading ? (
           <p>Loading…</p>
         ) : byUser.length === 0 ? (
-          <p style={{ color: '#6b7280' }}>No outstanding checklist items.</p>
+          <p style={{ color: 'var(--text-muted)' }}>No outstanding checklist items.</p>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Name</th>
                 <th style={{ textAlign: 'right', padding: '0.5rem 0.75rem' }}>Outstanding</th>
                 <th style={{ padding: '0.5rem 0.75rem', width: 40 }}></th>
@@ -1866,7 +1866,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                         style={{
                           padding: '0.25rem 0.5rem',
                           fontSize: '0.875rem',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: '0.25rem',
                           background: 'transparent',
                           cursor: remindingUserId === userId ? 'not-allowed' : 'pointer',
@@ -1878,7 +1878,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                   </tr>
                   {expandedUserId === userId && (
                     <tr key={`${userId}-detail`}>
-                      <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                      <td colSpan={4} style={{ padding: '0 0.75rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                         <OutstandingByPersonSortableList
                           userId={userId}
                           instances={instances}
@@ -1925,7 +1925,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
             aria-modal="true"
             aria-labelledby="checklist-outstanding-delete-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               minWidth: 320,
@@ -1935,15 +1935,15 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
           >
             <h2
               id="checklist-outstanding-delete-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
             >
               Delete outstanding task?
             </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
               <strong>{outstandingDeletePending.checklist_items?.title ?? '—'}</strong>
-              <span style={{ color: '#6b7280' }}> ({outstandingDeletePending.scheduled_date})</span>
+              <span style={{ color: 'var(--text-muted)' }}> ({outstandingDeletePending.scheduled_date})</span>
             </p>
-            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               This cannot be undone.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1953,8 +1953,8 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                 disabled={deletingInstanceId === outstandingDeletePending.id}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#e5e7eb',
-                  color: '#374151',
+                  background: 'var(--bg-200)',
+                  color: 'var(--text-700)',
                   border: 'none',
                   borderRadius: 4,
                   cursor: deletingInstanceId ? 'not-allowed' : 'pointer',
@@ -1998,7 +1998,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               minWidth: 320,
@@ -2014,7 +2014,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                   type="text"
                   value={fwdTitle}
                   onChange={(e) => setFwdTitle(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 />
               </div>
               <div>
@@ -2022,7 +2022,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
                 <select
                   value={fwdAssigneeId}
                   onChange={(e) => setFwdAssigneeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 >
                   {users.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -2061,7 +2061,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canManageChecklists, setEr
               <button
                 type="button"
                 onClick={() => setFwdInstance(null)}
-                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -2230,11 +2230,11 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
 
   const orderedEntries: ManageRowEntry[] = []
   if (filteredItems.length > 0) {
-    orderedEntries.push({ kind: 'header', key: 'sec-incomplete', title: 'Incomplete', count: incompleteItems.length, collapsible: false, color: '#b45309' })
+    orderedEntries.push({ kind: 'header', key: 'sec-incomplete', title: 'Incomplete', count: incompleteItems.length, collapsible: false, color: 'var(--text-amber-700)' })
     if (incompleteItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-incomplete' })
     else for (const item of incompleteItems) orderedEntries.push({ kind: 'item', item })
 
-    orderedEntries.push({ kind: 'header', key: 'sec-repeating', title: 'Repeating', count: repeatingItems.length, collapsible: false, color: '#1d4ed8' })
+    orderedEntries.push({ kind: 'header', key: 'sec-repeating', title: 'Repeating', count: repeatingItems.length, collapsible: false, color: 'var(--text-blue-700)' })
     if (repeatingItems.length === 0) orderedEntries.push({ kind: 'none', key: 'none-repeating' })
     else for (const item of repeatingItems) orderedEntries.push({ kind: 'item', item })
 
@@ -2249,14 +2249,14 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
     const label = (
       <>
         {entry.collapsible && <span aria-hidden style={{ marginRight: 6 }}>{completedOpen ? '▼' : '▶'}</span>}
-        {entry.title} <span style={{ color: '#9ca3af', fontWeight: 400 }}>({entry.count})</span>
+        {entry.title} <span style={{ color: 'var(--text-faint)', fontWeight: 400 }}>({entry.count})</span>
       </>
     )
     const cellStyle = {
       padding: '0.5rem 0.75rem',
-      background: '#f9fafb',
-      borderTop: '1px solid #e5e7eb',
-      borderBottom: '1px solid #e5e7eb',
+      background: 'var(--bg-subtle)',
+      borderTop: '1px solid var(--border)',
+      borderBottom: '1px solid var(--border)',
       fontWeight: 700,
       fontSize: '0.8125rem',
       color: entry.color,
@@ -2285,7 +2285,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
 
   const renderNoneRow = (key: string) => (
     <tr key={key}>
-      <td colSpan={colCount} style={{ padding: '0.5rem 0.75rem', color: '#9ca3af', fontSize: '0.875rem' }}>None</td>
+      <td colSpan={colCount} style={{ padding: '0.5rem 0.75rem', color: 'var(--text-faint)', fontSize: '0.875rem' }}>None</td>
     </tr>
   )
 
@@ -2305,7 +2305,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
             width: '100%',
             boxSizing: 'border-box',
             padding: '0.5rem 0.75rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             fontSize: '1rem',
           }}
@@ -2332,7 +2332,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
 
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
-          <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+          <tr style={{ borderBottom: '1px solid var(--border)' }}>
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem', width: '1%' }}></th>
             <th style={{ textAlign: 'left', padding: '0.5rem 0.75rem' }}>Title</th>
             <th style={{ textAlign: 'center', padding: '0.5rem 0.75rem' }}>Assigned to</th>
@@ -2374,7 +2374,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                       onClick={() => { setMuteModalItemId(item.id); setMuteModalTitle(item.title) }}
                       title="Mute notifications for this task"
                       aria-label="Mute notifications for this task"
-                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}
+                      style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}
                     >
                       🔕
                     </button>
@@ -2383,7 +2383,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                     type="button"
                     onClick={() => setEditItemId(item.id)}
                     title="Edit"
-                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#374151', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                       <path d="M128.1 64C92.8 64 64.1 92.7 64.1 128L64.1 512C64.1 547.3 92.8 576 128.1 576L274.3 576L285.2 521.5C289.5 499.8 300.2 479.9 315.8 464.3L448 332.1L448 234.6C448 217.6 441.3 201.3 429.3 189.3L322.8 82.7C310.8 70.7 294.5 64 277.6 64L128.1 64zM389.6 240L296.1 240C282.8 240 272.1 229.3 272.1 216L272.1 122.5L389.6 240zM332.3 530.9L320.4 590.5C320.2 591.4 320.1 592.4 320.1 593.4C320.1 601.4 326.6 608 334.7 608C335.7 608 336.6 607.9 337.6 607.7L397.2 595.8C409.6 593.3 421 587.2 429.9 578.3L548.8 459.4L468.8 379.4L349.9 498.3C341 507.2 334.9 518.6 332.4 531zM600.1 407.9C622.2 385.8 622.2 350 600.1 327.9C578 305.8 542.2 305.8 520.1 327.9L491.3 356.7L571.3 436.7L600.1 407.9z" />
@@ -2393,7 +2393,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                     type="button"
                     onClick={() => setManageDeletePending({ id: item.id, title: item.title?.trim() || 'Untitled' })}
                     title="Delete"
-                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ padding: '0.25rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-700)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="16" height="16" fill="currentColor" aria-hidden="true">
                       <path d="M232.7 69.9C237.1 56.8 249.3 48 263.1 48L377 48C390.8 48 403 56.8 407.4 69.9L416 96L512 96C529.7 96 544 110.3 544 128C544 145.7 529.7 160 512 160L128 160C110.3 160 96 145.7 96 128C96 110.3 110.3 96 128 96L224 96L232.7 69.9zM128 208L512 208L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 208zM216 272C202.7 272 192 282.7 192 296L192 488C192 501.3 202.7 512 216 512C229.3 512 240 501.3 240 488L240 296C240 282.7 229.3 272 216 272zM320 272C306.7 272 296 282.7 296 296L296 488C296 501.3 306.7 512 320 512C333.3 512 344 501.3 344 488L344 296C344 282.7 333.3 272 320 272zM424 272C410.7 272 400 282.7 400 296L400 488C400 501.3 410.7 512 424 512C437.3 512 448 501.3 448 488L448 296C448 282.7 437.3 272 424 272z" />
@@ -2424,7 +2424,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                     : String(d.getFullYear())
                 })()}
               </td>
-              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.875rem', color: '#6b7280' }}>
+              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center', whiteSpace: 'nowrap', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {item.created_at ? compactTimeAgo(item.created_at) : '—'}
               </td>
               <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', textAlign: 'center' }}>
@@ -2443,9 +2443,9 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
           })}
         </tbody>
       </table>
-      {items.length === 0 && <p style={{ color: '#6b7280' }}>No checklist items yet.</p>}
+      {items.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No checklist items yet.</p>}
       {items.length > 0 && filteredItems.length === 0 && (
-        <p style={{ color: '#6b7280' }}>No items match your search.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No items match your search.</p>
       )}
 
       {manageDeletePending && (
@@ -2469,7 +2469,7 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
             aria-modal="true"
             aria-labelledby="checklist-manage-delete-title"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               minWidth: 320,
@@ -2479,14 +2479,14 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
           >
             <h2
               id="checklist-manage-delete-title"
-              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}
+              style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}
             >
               Delete checklist item?
             </h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
               <strong>{manageDeletePending.title}</strong>
             </p>
-            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               This removes the item and its instances. This cannot be undone.
             </p>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -2496,8 +2496,8 @@ function ChecklistManageTab({ authUserId, role, setError, setEditItemId }: { aut
                 disabled={manageDeleteSubmitting}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#e5e7eb',
-                  color: '#374151',
+                  background: 'var(--bg-200)',
+                  color: 'var(--text-700)',
                   border: 'none',
                   borderRadius: 4,
                   cursor: manageDeleteSubmitting ? 'not-allowed' : 'pointer',

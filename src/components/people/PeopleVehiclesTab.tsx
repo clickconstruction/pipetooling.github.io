@@ -272,22 +272,22 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             + Add Vehicle
           </button>
         </div>
-        {vehiclesError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{vehiclesError}</p>}
+        {vehiclesError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{vehiclesError}</p>}
         {vehiclesLoading ? (
-          <p style={{ color: '#6b7280' }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Year</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Make</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Model</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>VIN</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Ins/wk</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Reg/wk</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assigned to</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Year</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Make</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Model</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>VIN</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Ins/wk</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Reg/wk</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assigned to</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -295,7 +295,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   <Fragment key={v.id}>
                     <tr
                       key={v.id}
-                      style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer', background: selectedVehicleId === v.id ? '#f0f9ff' : undefined }}
+                      style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedVehicleId === v.id ? 'var(--bg-sky-tint)' : undefined }}
                       onClick={() => setSelectedVehicleId((prev) => (prev === v.id ? null : v.id))}
                     >
                       <td style={{ padding: '0.75rem' }}>{v.year ?? '—'}</td>
@@ -307,12 +307,12 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       <td style={{ padding: '0.75rem' }}>{vehicleAssignees[v.id] || '—'}</td>
                       <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
                         <button type="button" onClick={() => openVehicleForm(v)} style={{ marginRight: '0.5rem', padding: '0.25rem 0.5rem', fontSize: '0.8125rem' }}>Edit</button>
-                        <button type="button" onClick={() => deleteVehicle(v)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}>Delete</button>
+                        <button type="button" onClick={() => deleteVehicle(v)} style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>Delete</button>
                       </td>
                     </tr>
                     {selectedVehicleId === v.id && (
                       <tr key={`${v.id}-detail`}>
-                        <td colSpan={8} style={{ padding: '1rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                        <td colSpan={8} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div>
                               <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9375rem' }}>Odometer entries</h4>
@@ -321,10 +321,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                 <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
                                 <tbody>
                                   {odometerEntries.map((e) => (
-                                    <tr key={e.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                    <tr key={e.id} style={{ borderTop: '1px solid var(--border)' }}>
                                       <td style={{ padding: '0.5rem' }}>{e.read_date}</td>
                                       <td style={{ padding: '0.5rem', textAlign: 'right' }}>{e.odometer_value.toLocaleString()}</td>
-                                      <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteOdometerEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
+                                      <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteOdometerEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -337,10 +337,10 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                 <thead><tr><th style={{ padding: '0.5rem', textAlign: 'left' }}>Date</th><th style={{ padding: '0.5rem', textAlign: 'right' }}>Value</th><th></th></tr></thead>
                                 <tbody>
                                   {replacementValueEntries.map((e) => (
-                                    <tr key={e.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                    <tr key={e.id} style={{ borderTop: '1px solid var(--border)' }}>
                                       <td style={{ padding: '0.5rem' }}>{e.read_date}</td>
                                       <td style={{ padding: '0.5rem', textAlign: 'right' }}>${formatCurrency(e.replacement_value)}</td>
-                                      <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteReplacementValueEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
+                                      <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deleteReplacementValueEntry(e)} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -355,11 +355,11 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                                   {possessions.map((p) => {
                                     const u = users.find((x) => x.id === p.user_id)
                                     return (
-                                      <tr key={p.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                      <tr key={p.id} style={{ borderTop: '1px solid var(--border)' }}>
                                         <td style={{ padding: '0.5rem' }}>{u?.name ?? p.user_id.slice(0, 8)}</td>
                                         <td style={{ padding: '0.5rem' }}>{p.start_date}</td>
                                         <td style={{ padding: '0.5rem' }}>{p.end_date ?? '—'}</td>
-                                        <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deletePossession(p)} style={{ padding: 0, background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
+                                        <td style={{ padding: '0.5rem' }}><button type="button" onClick={() => deletePossession(p)} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer', fontSize: '0.75rem' }}>×</button></td>
                                       </tr>
                                     )
                                   })}
@@ -374,24 +374,24 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 ))}
               </tbody>
               {vehicles.length > 0 && (
-                <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
+                <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                   <tr>
-                    <td colSpan={4} style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }}>Total</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_insurance_cost ?? 0), 0))}</td>
-                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_registration_cost ?? 0), 0))}</td>
-                    <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb' }} />
+                    <td colSpan={4} style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }}>Total</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_insurance_cost ?? 0), 0))}</td>
+                    <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>${formatCurrency(vehicles.reduce((s, v) => s + (v.weekly_registration_cost ?? 0), 0))}</td>
+                    <td colSpan={2} style={{ padding: '0.75rem', borderTop: '1px solid var(--border)' }} />
                   </tr>
                 </tfoot>
               )}
             </table>
-            {vehicles.length === 0 && <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>No vehicles yet. Add one to get started.</p>}
+            {vehicles.length === 0 && <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0 }}>No vehicles yet. Add one to get started.</p>}
           </div>
         )}
       </div>
 
       {vehicleFormOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>{editingVehicle ? 'Edit vehicle' : 'Add vehicle'}</h2>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Year *</label>
@@ -427,7 +427,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
       {odometerFormOpen && selectedVehicleId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
             <h3 style={{ marginTop: 0 }}>Add odometer entry</h3>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
@@ -447,7 +447,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
       {replacementValueFormOpen && selectedVehicleId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
             <h3 style={{ marginTop: 0 }}>Add replacement value</h3>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>Date</label>
@@ -467,7 +467,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
 
       {possessionFormOpen && selectedVehicleId && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 280 }}>
             <h3 style={{ marginTop: 0 }}>Assign to user</h3>
             <div style={{ marginBottom: '1rem' }}>
               <label style={{ display: 'block', marginBottom: 4 }}>User *</label>

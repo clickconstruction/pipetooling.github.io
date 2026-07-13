@@ -40,6 +40,9 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Theme token check
+        run: node scripts/theme-tokenize.mjs --check src
+
       - name: Test
         run: npm test
         env:

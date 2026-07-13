@@ -197,7 +197,7 @@ export default function EstimateAccept() {
     return (
       <PublicEstimateShell>
         <h1>{experience.docTitleFallback}</h1>
-        <p style={{ color: '#b91c1c' }}>{error}</p>
+        <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
       </PublicEstimateShell>
     )
   }

@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 
 export const contactMethodFieldInputStyle: CSSProperties = {
   padding: '0.5rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   fontSize: '0.875rem',
 }
@@ -33,14 +33,14 @@ const CONTACT_METHOD_QUICK_PICKS = [
 export function ContactMethodQuickPicks({ onPick }: { onPick: (value: string) => void }) {
   const btnStyle: CSSProperties = {
     padding: '0.25rem',
-    background: '#f3f4f6',
-    border: '1px solid #d1d5db',
+    background: 'var(--bg-muted)',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
     cursor: 'pointer',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    color: '#374151',
+    color: 'var(--text-700)',
   }
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>

@@ -76,7 +76,7 @@ function ShareConfigFields({
   idPrefix: string
 }) {
   return (
-    <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.65rem', margin: 0 }}>
+    <fieldset style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.65rem', margin: 0 }}>
       <legend style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0 4px' }}>Include</legend>
       <label htmlFor={`${idPrefix}-cur`} style={{ ...checkboxRow, marginBottom: 4 }}>
         <input
@@ -103,7 +103,7 @@ function ShareConfigFields({
           checked={scope === 'rest_of_week'}
           onChange={(e) => onChange({ includeCurrentDay, scope: e.target.checked ? 'rest_of_week' : 'none' })}
         />
-        Rest of week <span style={{ color: '#6b7280', fontSize: '0.72rem' }}>(through Sunday)</span>
+        Rest of week <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>(through Sunday)</span>
       </label>
     </fieldset>
   )
@@ -364,7 +364,7 @@ export function ScheduleShareModal({
         aria-modal
         aria-labelledby="schedule-share-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
@@ -391,9 +391,9 @@ export function ScheduleShareModal({
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.85rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: tab === t ? '#2563eb' : '#fff',
-                color: tab === t ? '#fff' : '#374151',
+                border: '1px solid var(--border-strong)',
+                background: tab === t ? '#2563eb' : 'var(--surface)',
+                color: tab === t ? '#fff' : 'var(--text-700)',
                 fontWeight: tab === t ? 600 : 400,
                 cursor: 'pointer',
               }}
@@ -404,12 +404,12 @@ export function ScheduleShareModal({
         </div>
 
         {usersError ? (
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#b91c1c' }}>{usersError}</p>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{usersError}</p>
         ) : null}
 
         {tab === 'now' ? (
           <div>
-            <p style={{ margin: '0 0 0.6rem', fontSize: '0.85rem', color: '#4b5563', lineHeight: 1.4 }}>
+            <p style={{ margin: '0 0 0.6rem', fontSize: '0.85rem', color: 'var(--text-600)', lineHeight: 1.4 }}>
               Email an immediate copy of the full dispatch board (grouped by person) to the people you pick.
               Times are <strong>{APP_CALENDAR_TZ.replace(/_/g, ' ')}</strong>.
             </p>
@@ -439,7 +439,7 @@ export function ScheduleShareModal({
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 6,
-                          background: '#eff6ff',
+                          background: 'var(--bg-blue-tint)',
                           border: '1px solid #bfdbfe',
                           borderRadius: 999,
                           padding: '2px 8px',
@@ -451,7 +451,7 @@ export function ScheduleShareModal({
                           type="button"
                           aria-label="Remove recipient"
                           onClick={() => setSelectedIds((prev) => prev.filter((x) => x !== id))}
-                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#1d4ed8', fontSize: '0.9rem', lineHeight: 1 }}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-blue-700)', fontSize: '0.9rem', lineHeight: 1 }}
                         >
                           ×
                         </button>
@@ -472,13 +472,13 @@ export function ScheduleShareModal({
                   setNowScope(scope)
                 }}
               />
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                 Covers: {formatDatePreview(nowDates)}
               </p>
             </div>
 
             {nowError ? (
-              <p style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: '#b91c1c' }}>{nowError}</p>
+              <p style={{ margin: '0 0 0.6rem', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{nowError}</p>
             ) : null}
 
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -486,7 +486,7 @@ export function ScheduleShareModal({
                 type="button"
                 disabled={sending}
                 onClick={onClose}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: sending ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: sending ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>
@@ -502,7 +502,7 @@ export function ScheduleShareModal({
           </div>
         ) : (
           <div>
-            <p style={{ margin: '0 0 0.6rem', fontSize: '0.85rem', color: '#4b5563', lineHeight: 1.4 }}>
+            <p style={{ margin: '0 0 0.6rem', fontSize: '0.85rem', color: 'var(--text-600)', lineHeight: 1.4 }}>
               Standing emails of the dispatch board. Everyone with dispatch access can see and manage these.
               Times are <strong>{APP_CALENDAR_TZ.replace(/_/g, ' ')}</strong>.
             </p>
@@ -511,11 +511,11 @@ export function ScheduleShareModal({
             <div style={{ marginBottom: '0.85rem' }}>
               <span style={labelStyle}>Active &amp; paused shares</span>
               {recurringLoading ? (
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>Loading…</p>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Loading…</p>
               ) : recurringError ? (
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#b91c1c' }}>{recurringError}</p>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{recurringError}</p>
               ) : recurring.length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>None yet.</p>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>None yet.</p>
               ) : (
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {recurring.map((row) => {
@@ -529,10 +529,10 @@ export function ScheduleShareModal({
                       <li
                         key={row.id}
                         style={{
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
                           padding: '0.5rem 0.6rem',
-                          background: row.enabled ? '#fff' : '#f9fafb',
+                          background: row.enabled ? 'var(--surface)' : 'var(--bg-subtle)',
                           display: 'flex',
                           alignItems: 'flex-start',
                           justifyContent: 'space-between',
@@ -541,7 +541,7 @@ export function ScheduleShareModal({
                       >
                         <div style={{ fontSize: '0.8rem', lineHeight: 1.35 }}>
                           <strong>{u ? u.name.trim() || u.email : row.recipient_user_id.slice(-8)}</strong>
-                          <div style={{ color: '#6b7280' }}>
+                          <div style={{ color: 'var(--text-muted)' }}>
                             {dayStr} · {formatTimeLocal12(row.time_local)} · {covers}
                             {row.enabled ? '' : ' · paused'}
                           </div>
@@ -551,7 +551,7 @@ export function ScheduleShareModal({
                             type="button"
                             disabled={busyRowId === row.id}
                             onClick={() => void toggleEnabled(row)}
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 5, background: '#fff', cursor: 'pointer' }}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', cursor: 'pointer' }}
                           >
                             {row.enabled ? 'Pause' : 'Resume'}
                           </button>
@@ -559,7 +559,7 @@ export function ScheduleShareModal({
                             type="button"
                             disabled={busyRowId === row.id}
                             onClick={() => void deleteRow(row)}
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: '1px solid #fca5a5', borderRadius: 5, background: '#fff', color: '#b91c1c', cursor: 'pointer' }}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', border: '1px solid #fca5a5', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-red-700)', cursor: 'pointer' }}
                           >
                             Delete
                           </button>
@@ -572,7 +572,7 @@ export function ScheduleShareModal({
             </div>
 
             {/* Create new recurring share */}
-            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem' }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
               <span style={labelStyle}>New recurring share</span>
 
               <div style={{ marginBottom: '0.5rem' }}>
@@ -607,9 +607,9 @@ export function ScheduleShareModal({
                           padding: '0.25rem 0.5rem',
                           fontSize: '0.78rem',
                           borderRadius: 5,
-                          border: on ? '1px solid #2563eb' : '1px solid #d1d5db',
-                          background: on ? '#eff6ff' : '#fff',
-                          color: on ? '#1d4ed8' : '#374151',
+                          border: on ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                          background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                          color: on ? 'var(--text-blue-700)' : 'var(--text-700)',
                           cursor: 'pointer',
                           minWidth: 40,
                         }}
@@ -633,7 +633,7 @@ export function ScheduleShareModal({
                     value={formTime}
                     onChange={(e) => setFormTime(e.target.value)}
                     disabled={savingForm}
-                    style={{ fontSize: '0.95rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6 }}
+                    style={{ fontSize: '0.95rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6 }}
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 180 }}>
@@ -650,7 +650,7 @@ export function ScheduleShareModal({
               </div>
 
               {formError ? (
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#b91c1c' }}>{formError}</p>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{formError}</p>
               ) : null}
 
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -669,7 +669,7 @@ export function ScheduleShareModal({
               <button
                 type="button"
                 onClick={onClose}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff', cursor: 'pointer' }}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
               >
                 Close
               </button>

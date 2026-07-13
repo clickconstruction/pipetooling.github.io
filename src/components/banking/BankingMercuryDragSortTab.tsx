@@ -156,14 +156,14 @@ const DragSortTransactionPreview = memo(function DragSortTransactionPreview({ ro
         minWidth: 220,
         maxWidth: 320,
         padding: '0.65rem 0.85rem',
-        background: '#fff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.06)',
         fontSize: '0.8125rem',
       }}
     >
-      <div style={{ fontWeight: 700, color: '#0f172a' }}>{formatUsd(Number(row.amount))}</div>
+      <div style={{ fontWeight: 700, color: 'var(--text-slate-900)' }}>{formatUsd(Number(row.amount))}</div>
       <div
         style={{
           marginTop: 4,
@@ -178,7 +178,7 @@ const DragSortTransactionPreview = memo(function DragSortTransactionPreview({ ro
       </div>
       <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
         <span style={{ color: '#334155' }}>{formatBankingDate(row.posted_at)}</span>
-        <span style={{ fontSize: '0.72rem', color: '#64748b' }}>{formatMercuryKind(row.kind)}</span>
+        <span style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)' }}>{formatMercuryKind(row.kind)}</span>
       </div>
     </div>
   )
@@ -237,12 +237,12 @@ function InboxDropZone({ count, amountSum }: { count: number; amountSum: number 
         padding: '0.75rem',
         borderRadius: 8,
         border: `2px dashed ${isOver ? '#059669' : '#d1d5db'}`,
-        background: isOver ? '#ecfdf5' : '#fff',
+        background: isOver ? 'var(--bg-emerald-tint)' : 'var(--surface)',
         marginBottom: '0.65rem',
       }}
     >
-      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#0f172a' }}>Unlabeled</div>
-      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 4 }}>
+      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-slate-900)' }}>Unlabeled</div>
+      <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', marginTop: 4 }}>
         Drop here to clear Accounting Label · {count} tx · {formatUsd(amountSum)}
       </div>
     </div>
@@ -712,10 +712,10 @@ export function BankingMercuryDragSortTab({
           style={{
             marginBottom: '1rem',
             padding: '0.75rem 1rem',
-            background: '#fef2f2',
+            background: 'var(--bg-red-tint)',
             border: '1px solid #fecaca',
             borderRadius: 4,
-            color: '#991b1b',
+            color: 'var(--text-red-800)',
           }}
         >
           {loadError}
@@ -758,7 +758,7 @@ export function BankingMercuryDragSortTab({
                   autoComplete="off"
                   placeholder="Search for counterparty, memo, id, job, person…"
                   aria-label="Search transactions"
-                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <button
@@ -798,9 +798,9 @@ export function BankingMercuryDragSortTab({
                 maxWidth: 200,
                 padding: '3px 6px',
                 fontSize: '0.8125rem',
-                color: '#64748b',
-                backgroundColor: '#f9fafb',
-                border: '1px solid #e5e7eb',
+                color: 'var(--text-slate-500)',
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
                 borderRadius: 4,
               }}
             >
@@ -820,9 +820,9 @@ export function BankingMercuryDragSortTab({
                 maxWidth: 156,
                 padding: '3px 6px',
                 fontSize: '0.8125rem',
-                color: '#64748b',
-                backgroundColor: '#f9fafb',
-                border: '1px solid #e5e7eb',
+                color: 'var(--text-slate-500)',
+                backgroundColor: 'var(--bg-subtle)',
+                border: '1px solid var(--border)',
                 borderRadius: 4,
               }}
             >
@@ -862,7 +862,7 @@ export function BankingMercuryDragSortTab({
                     writeDragSortHideLabeledTransactions(userId, v)
                   }}
                 />
-                <span style={{ fontSize: '0.875rem', color: '#374151', userSelect: 'none' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-700)', userSelect: 'none' }}>
                   Hide labeled transactions
                 </span>
               </label>
@@ -876,7 +876,7 @@ export function BankingMercuryDragSortTab({
                   marginLeft: 'auto',
                   padding: '2px 6px',
                   fontSize: '0.7rem',
-                  color: '#2563eb',
+                  color: 'var(--text-link)',
                   border: 'none',
                   background: 'transparent',
                   cursor: 'pointer',
@@ -895,7 +895,7 @@ export function BankingMercuryDragSortTab({
               role="region"
               aria-labelledby="drag-sort-help-toggle"
             >
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 Drag{' '}
                 <span
                   aria-hidden
@@ -936,7 +936,7 @@ export function BankingMercuryDragSortTab({
           {loading || assignmentsLoading ? (
             <div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>
           ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                 <BankingMercuryDragSortLedgerThead
                   showDragHandle
@@ -1020,9 +1020,9 @@ export function BankingMercuryDragSortTab({
                 </tbody>
               </table>
               {filteredTransactions.length === 0 ? (
-                <div style={{ padding: '1.5rem', color: '#6b7280' }}>No transactions match the current filters.</div>
+                <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>No transactions match the current filters.</div>
               ) : hideLabeledTransactions && displayTransactions.length === 0 ? (
-                <div style={{ padding: '1.5rem', color: '#6b7280' }}>
+                <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>
                   All matching transactions have an Accounting Label. Turn off{' '}
                   <strong>Hide labeled transactions</strong> to see them.
                 </div>
@@ -1042,9 +1042,9 @@ export function BankingMercuryDragSortTab({
             maxHeight: 'calc(100vh - 6rem)',
             overflowY: 'auto',
             padding: '0.5rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#fafafa',
+            background: 'var(--bg-page)',
           }}
         >
           <div
@@ -1072,7 +1072,7 @@ export function BankingMercuryDragSortTab({
                 flexShrink: 0,
                 padding: '2px 6px',
                 fontSize: '0.7rem',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
@@ -1101,7 +1101,7 @@ export function BankingMercuryDragSortTab({
               style={{
                 width: '100%',
                 padding: '6px 8px',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 boxSizing: 'border-box',
                 fontSize: '0.875rem',
@@ -1110,9 +1110,9 @@ export function BankingMercuryDragSortTab({
           </label>
           <div id="drag-sort-label-cards-region">
             {labelsLoading ? (
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading Accounting labels…</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading Accounting labels…</div>
             ) : filteredLabelsForSidebar.length === 0 ? (
-              <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {labelsSidebarSearchNorm === '' ? 'No Accounting labels.' : 'No labels match this search.'}
               </div>
             ) : (
@@ -1165,7 +1165,7 @@ export function BankingMercuryDragSortTab({
               style={{
                 padding: '2px 4px',
                 fontSize: '0.75rem',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
@@ -1212,13 +1212,13 @@ export function BankingMercuryDragSortTab({
             aria-labelledby="drag-sort-add-label-title"
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               maxWidth: 480,
               width: '100%',
               padding: '1.25rem',
               boxShadow: '0 20px 40px rgba(0,0,0,0.12)',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               boxSizing: 'border-box',
             }}
           >
@@ -1231,7 +1231,7 @@ export function BankingMercuryDragSortTab({
                 marginBottom: '1rem',
               }}
             >
-              <h2 id="drag-sort-add-label-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>
+              <h2 id="drag-sort-add-label-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>
                 Add Accounting Label
               </h2>
               <button
@@ -1240,11 +1240,11 @@ export function BankingMercuryDragSortTab({
                 style={{
                   padding: '0.35rem 0.65rem',
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   cursor: 'pointer',
                 }}
               >
@@ -1259,7 +1259,7 @@ export function BankingMercuryDragSortTab({
               }}
             >
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Name</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Name</span>
                 <input
                   type="text"
                   value={newLabelName}
@@ -1268,11 +1268,11 @@ export function BankingMercuryDragSortTab({
                   aria-label="New Accounting Label name"
                   autoComplete="off"
                   maxLength={DRAG_SORT_LABEL_NAME_MAX}
-                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Schedule C line (optional)</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Schedule C line (optional)</span>
                 <input
                   type="text"
                   value={newLabelScheduleCLine}
@@ -1281,11 +1281,11 @@ export function BankingMercuryDragSortTab({
                   aria-label="Schedule C line"
                   autoComplete="off"
                   maxLength={DRAG_SORT_SCHEDULE_C_LINE_MAX}
-                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', minWidth: 0, padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Description (optional)</span>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Description (optional)</span>
                 <textarea
                   value={newLabelDescription}
                   onChange={(e) => setNewLabelDescription(e.target.value)}
@@ -1297,7 +1297,7 @@ export function BankingMercuryDragSortTab({
                     width: '100%',
                     minWidth: 0,
                     padding: '6px 8px',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     resize: 'vertical',
                     fontFamily: 'inherit',
@@ -1321,9 +1321,9 @@ export function BankingMercuryDragSortTab({
                 style={{
                   padding: '6px 12px',
                   borderRadius: 4,
-                  border: '1px solid #d1d5db',
-                  background: '#fff',
-                  color: '#374151',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}

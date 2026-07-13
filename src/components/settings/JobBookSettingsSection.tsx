@@ -9,7 +9,7 @@ export default function JobBookSettingsSection({ onDbError }: Props) {
   const [open, setOpen] = useState(false)
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
       <button
         type="button"
         aria-expanded={open}
@@ -33,7 +33,7 @@ export default function JobBookSettingsSection({ onDbError }: Props) {
         Job Book (Collect Payment line items)
       </button>
       {open ? (
-        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <JobBookEditorPanel active={open} onDbError={onDbError} showIntro />
         </div>
       ) : null}

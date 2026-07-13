@@ -104,7 +104,7 @@ export function DispatchDismissedItemsModal({
           if (e.key === 'Escape' && !loading) onClose()
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 560,
@@ -127,8 +127,8 @@ export function DispatchDismissedItemsModal({
               flexShrink: 0,
               padding: '0.25rem 0.5rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
@@ -136,11 +136,11 @@ export function DispatchDismissedItemsModal({
             Close
           </button>
         </div>
-        <p style={{ margin: '0.5rem 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0.5rem 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Items you dismissed from your inbox (read-only). Search by task text, reference, sender, links, or closed note.
         </p>
         <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
+          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem' }}>
             Search
           </span>
           <input
@@ -152,7 +152,7 @@ export function DispatchDismissedItemsModal({
             autoComplete="off"
             style={{
               padding: '0.45rem 0.6rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               fontSize: '0.875rem',
               width: '100%',
@@ -165,17 +165,17 @@ export function DispatchDismissedItemsModal({
             flex: 1,
             minHeight: 0,
             overflowY: 'auto',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             padding: '0.5rem',
           }}
         >
           {loading ? (
-            <p style={{ margin: '0.5rem', color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ margin: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ margin: '0.5rem', color: '#6b7280', fontSize: '0.875rem' }}>No dismissed items.</p>
+            <p style={{ margin: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No dismissed items.</p>
           ) : filtered.length === 0 ? (
-            <p style={{ margin: '0.5rem', color: '#6b7280', fontSize: '0.875rem' }}>No matches for this search.</p>
+            <p style={{ margin: '0.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matches for this search.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {filtered.map((req) => {
@@ -192,10 +192,10 @@ export function DispatchDismissedItemsModal({
                       fontSize: '0.875rem',
                     }}
                   >
-                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: 4 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
                       Dismissed {formatDismissedWhen(req.dismissed_at)} · {noteLabel}
                     </div>
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 4 }}>
                       From {fromLabel}
                       {req.created_at ? (
                         <span style={{ marginLeft: '0.35rem' }}>
@@ -207,7 +207,7 @@ export function DispatchDismissedItemsModal({
                       <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
                     </div>
                     {req.reference_summary?.trim() ? (
-                      <div style={{ marginTop: 6, fontSize: '0.8125rem', color: '#4b5563' }}>
+                      <div style={{ marginTop: 6, fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                         Ref: {req.reference_summary.trim()}
                       </div>
                     ) : null}
@@ -217,7 +217,7 @@ export function DispatchDismissedItemsModal({
                           href={`https://www.google.com/maps?q=${req.location_lat},${req.location_lng}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ color: '#2563eb', textDecoration: 'none' }}
+                          style={{ color: 'var(--text-link)', textDecoration: 'none' }}
                         >
                           View location
                         </a>
@@ -229,7 +229,7 @@ export function DispatchDismissedItemsModal({
                           marginTop: 8,
                           fontSize: '0.8125rem',
                           color: '#14532d',
-                          background: '#f0fdf4',
+                          background: 'var(--bg-green-tint)',
                           padding: '0.45rem 0.5rem',
                           borderRadius: 4,
                           border: '1px solid #bbf7d0',

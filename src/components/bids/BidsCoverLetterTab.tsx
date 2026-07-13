@@ -6,6 +6,11 @@ import { bidDetailCloseXStyle, bidDetailCloseFloatMobileStyle } from '../../lib/
 import { BidProjectCell } from './BidProjectCell'
 import { MyBidsToggle } from './MyBidsToggle'
 import { bidNumberMatchesQuery, type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import {
+  APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
+  APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
+  APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
+} from '../../lib/appSettingsKeys'
 import { addressLines, printHtmlInNewWindow } from '../../lib/bidDocuments/htmlDoc'
 import {
   buildCoverLetterHtml,
@@ -146,6 +151,41 @@ export function BidsCoverLetterTab({
   const [paymentScheduleEnabled, setPaymentScheduleEnabled] = useState(false)
   // Per-row editing buffer so percent typing doesn't write on every keystroke (commit on blur/Enter)
   const [paymentSchedulePercentDrafts, setPaymentSchedulePercentDrafts] = useState<Record<string, string>>({})
+  // Org-editable cover letter text (Settings → Templates & testing → Bid Cover Letter
+  // Defaults); null = use the built-in constants.
+  const [orgCoverLetterDefaults, setOrgCoverLetterDefaults] = useState<{
+    terms: string | null
+    exclusions: string | null
+    closing: string | null
+  }>({ terms: null, exclusions: null, closing: null })
+
+  useEffect(() => {
+    let cancelled = false
+    void supabase
+      .from('app_settings')
+      .select('key, value_text')
+      .in('key', [
+        APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT,
+        APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT,
+        APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING,
+      ])
+      .then(({ data }) => {
+        if (cancelled) return
+        const byKey = new Map((data ?? []).map((r) => [r.key, r.value_text]))
+        const pick = (key: string) => {
+          const v = (byKey.get(key) ?? '')?.trim()
+          return v ? v : null
+        }
+        setOrgCoverLetterDefaults({
+          terms: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_TERMS_DEFAULT),
+          exclusions: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_EXCLUSIONS_DEFAULT),
+          closing: pick(APP_SETTINGS_KEY_BID_COVER_LETTER_CLOSING),
+        })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     const bid = selectedBidForPricing
@@ -368,18 +408,18 @@ export function BidsCoverLetterTab({
             placeholder="Search bids (bid #, project name, or GC/Builder)..."
             value={coverLetterSearchQuery}
             onChange={(e) => setCoverLetterSearchQuery(e.target.value)}
-            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
           <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
         </div>
       )}
       {!selectedBidForPricing ? (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
               </tr>
             </thead>
             <tbody>
@@ -390,10 +430,10 @@ export function BidsCoverLetterTab({
                     onClick={() => onSelectBid(bid)}
                     style={{
                       cursor: 'pointer',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#f9fafb' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-subtle)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--surface)' }}
                   >
                     <td style={{ padding: '0.75rem' }}><BidProjectCell bid={bid} ledgerPrefixMap={ledgerPrefixMap} /></td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.bid_due_date)}</td>
@@ -401,7 +441,7 @@ export function BidsCoverLetterTab({
                 ))}
               {coverLetterVisibleBids.length === 0 && (
                 <tr>
-                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+                  <td colSpan={2} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                     {bids.length === 0
                       ? 'No bids yet.'
                       : onlyMyBids
@@ -435,10 +475,10 @@ export function BidsCoverLetterTab({
         const revenueNumber = `$${formatCurrency(effectiveRevenue)}`
         const inclusions = coverLetterInclusionsByBid[bid.id] ?? ''
         const inclusionsDisplay = coverLetterInclusionsByBid[bid.id] ?? ''
-        const exclusions = coverLetterExclusionsByBid[bid.id] ?? ''
-        const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? DEFAULT_EXCLUSIONS
-        const terms = coverLetterTermsByBid[bid.id] ?? ''
-        const termsDisplay = coverLetterTermsByBid[bid.id] ?? DEFAULT_TERMS_AND_WARRANTY
+        const exclusions = coverLetterExclusionsByBid[bid.id] ?? orgCoverLetterDefaults.exclusions ?? ''
+        const exclusionsDisplay = coverLetterExclusionsByBid[bid.id] ?? orgCoverLetterDefaults.exclusions ?? DEFAULT_EXCLUSIONS
+        const terms = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? ''
+        const termsDisplay = coverLetterTermsByBid[bid.id] ?? orgCoverLetterDefaults.terms ?? DEFAULT_TERMS_AND_WARRANTY
         const designDrawingPlanDateFormatted = (coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false && bid.design_drawing_plan_date) ? formatDesignDrawingPlanDate(bid.design_drawing_plan_date) : null
         // The Design Drawings Plan Date and Fixtures-per-plan toggles are independent:
         // each is included strictly per its own checkbox (one, the other, both, or none).
@@ -450,21 +490,21 @@ export function BidsCoverLetterTab({
         const paymentScheduleInputs = paymentScheduleSorted.map((r) => ({ timing: r.timing, percent: Number(r.percent) }))
         const paymentSchedulePercentSum = paymentSchedulePercentTotal(paymentScheduleInputs)
         const paymentScheduleActive = paymentScheduleEnabled && paymentScheduleInputs.length > 0
-        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null)
-        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null)
+        const combinedText = buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
+        const combinedHtml = buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, revenueWords, revenueNumber, fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: effectiveRevenue } : null, orgCoverLetterDefaults.closing)
         // When 2+ Pricings are included in submission, the deliverable is one cover letter per
         // Pricing (each with its own amount + fixtures, shared prose), concatenated. With 0–1
         // included Pricings this stays the single letter above (no behavior change).
         const finalCoverLetterHtml = bundlePricings.length > 1
           ? buildCombinedCoverLetterDocument(bundlePricings.map((s) => ({
               label: `Pricing: ${s.name}`,
-              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null),
+              html: buildCoverLetterHtml(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing),
             })))
           : combinedHtml
         const finalCoverLetterText = bundlePricings.length > 1
           ? buildCombinedCoverLetterText(bundlePricings.map((s) => ({
               label: `Pricing: ${s.name}`,
-              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null),
+              text: buildCoverLetterText(customerName, customerAddress, projectNameVal, projectAddressVal, numberToWords(s.revenueSum).toUpperCase(), `$${formatCurrency(s.revenueSum)}`, s.fixtureRows, inclusions, exclusions, terms, designDrawingPlanDateFormatted, serviceTypeName, includeSignature, effectiveIncludeFixtures, paymentScheduleActive ? { rows: paymentScheduleInputs, amountDollars: s.revenueSum } : null, orgCoverLetterDefaults.closing),
             })))
           : combinedText
         const now = new Date()
@@ -489,10 +529,10 @@ export function BidsCoverLetterTab({
         return (
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '1.5rem 2rem',
-              background: 'white',
+              background: 'var(--surface)',
               marginBottom: '1.5rem',
               ...(narrowViewport640 ? { position: 'relative' } : {}),
             }}
@@ -535,7 +575,7 @@ export function BidsCoverLetterTab({
                   type="button"
                   onClick={() => onEditBid(bid)}
                   title="Edit bid"
-                  style={{ padding: '0.5rem 1rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 4, color: 'var(--text-blue-700)', cursor: 'pointer' }}
                 >
                   Edit bid
                 </button>
@@ -561,44 +601,44 @@ export function BidsCoverLetterTab({
               </div>
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Customer</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Customer</div>
               <div>{customerName}</div>
               {addressLines(customerAddress).map((line, i) => (
-                <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                <div key={i} style={{ color: 'var(--text-muted)' }}>{line}</div>
               ))}
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.25rem' }}>Project</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>Project</div>
               <div>{projectNameVal}</div>
               {addressLines(projectAddressVal).map((line, i) => (
-                <div key={i} style={{ color: '#6b7280' }}>{line}</div>
+                <div key={i} style={{ color: 'var(--text-muted)' }}>{line}</div>
               ))}
             </div>
             {bidPricings.length > 1 && (
-              <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.75rem' }}>
+              <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 6, padding: '0.75rem' }}>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.5rem' }}>Versions in this submission</div>
                 {[...bidPricings].sort((a, b) => a.sort_order - b.sort_order).map((p, i, arr) => (
                   <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0' }}>
                     <input type="checkbox" checked={p.include_in_submission} onChange={() => void toggleSubmissionInclude(p)} style={{ cursor: 'pointer', margin: 0 }} />
-                    <span style={{ flex: 1, color: p.include_in_submission ? '#111827' : '#9ca3af' }}>{p.name}</span>
-                    <button type="button" onClick={() => void reorderSubmission(p, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#d1d5db' : '#6b7280' }}>▲</button>
-                    <button type="button" onClick={() => void reorderSubmission(p, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? '#d1d5db' : '#6b7280' }}>▼</button>
+                    <span style={{ flex: 1, color: p.include_in_submission ? 'var(--text-strong)' : 'var(--text-faint)' }}>{p.name}</span>
+                    <button type="button" onClick={() => void reorderSubmission(p, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)' }}>▲</button>
+                    <button type="button" onClick={() => void reorderSubmission(p, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)' }}>▼</button>
                   </div>
                 ))}
-                <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>Checked versions are bundled into the submission — one cover letter each, in this order.</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Checked versions are bundled into the submission — one cover letter each, in this order.</div>
               </div>
             )}
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Proposed amount (from Pricing)</span>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Proposed amount (from Pricing)</span>
                   {activePricingName && (
                     <span
                       style={{
                         fontSize: '0.75rem',
                         fontWeight: 600,
-                        color: '#1e40af',
-                        background: '#dbeafe',
+                        color: 'var(--text-blue-800)',
+                        background: 'var(--bg-blue-200)',
                         border: '1px solid #bfdbfe',
                         borderRadius: 9999,
                         padding: '0.1rem 0.5rem',
@@ -631,7 +671,7 @@ export function BidsCoverLetterTab({
                         {applyingBidValue ? 'Applying...' : 'Apply Proposed amount to Bid Value'}
                       </button>
                       {bidValueAppliedSuccess && (
-                        <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                           ✓ Applied successfully
                         </span>
                       )}
@@ -679,18 +719,18 @@ export function BidsCoverLetterTab({
                     value={coverLetterCustomAmountByBid[bid.id] ?? ''}
                     onChange={(e) => setCoverLetterCustomAmountByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                     placeholder="e.g. 1359800"
-                    style={{ width: '8rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
+                    style={{ width: '8rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', boxSizing: 'border-box' }}
                   />
                 )}
               </div>
               {bid.bid_value != null && bid.bid_value !== coverLetterRevenue && (
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                   Current Bid Value: ${formatCurrency(bid.bid_value)}
                 </div>
               )}
             </div>
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem', fontWeight: 500 }}>Include in combined document</div>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 500 }}>Include in combined document</div>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
@@ -727,7 +767,7 @@ export function BidsCoverLetterTab({
                 Include Schedule of Values (payment schedule) in document
               </label>
               {paymentScheduleEnabled && (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.75rem', marginTop: '0.5rem' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.75rem', marginTop: '0.5rem' }}>
                   {paymentScheduleSorted.map((row, i, arr) => {
                     const knownTiming = (PAYMENT_SCHEDULE_TIMINGS as string[]).includes(row.timing)
                     const rowPercent = paymentSchedulePercentDrafts[row.id] != null
@@ -740,7 +780,7 @@ export function BidsCoverLetterTab({
                           value={row.timing}
                           onChange={(e) => void updatePaymentScheduleTiming(bid.id, row.id, e.target.value)}
                           aria-label="Payment timing"
-                          style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                          style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                         >
                           {!knownTiming && <option value={row.timing}>{row.timing}</option>}
                           {PAYMENT_SCHEDULE_TIMINGS.map((t: PaymentScheduleTiming) => (
@@ -762,15 +802,15 @@ export function BidsCoverLetterTab({
                             }
                           }}
                           aria-label="Percent of contract amount"
-                          style={{ width: '4.5rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', boxSizing: 'border-box' }}
+                          style={{ width: '4.5rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', textAlign: 'right', boxSizing: 'border-box' }}
                         />
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>%</span>
-                        <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: '6.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>%</span>
+                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: '6.5rem' }}>
                           {rowDollars != null ? `= $${formatCurrency(rowDollars)}` : ''}
                         </span>
-                        <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? '#d1d5db' : '#6b7280' }}>▲</button>
-                        <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? '#d1d5db' : '#6b7280' }}>▼</button>
-                        <button type="button" onClick={() => void removePaymentScheduleRow(bid.id, row.id)} title="Remove row" aria-label="Remove row" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', fontSize: '1rem' }}>×</button>
+                        <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, -1)} disabled={i === 0} title="Move earlier" style={{ background: 'none', border: 'none', cursor: i === 0 ? 'default' : 'pointer', color: i === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)' }}>▲</button>
+                        <button type="button" onClick={() => void reorderPaymentScheduleRow(bid.id, row, 1)} disabled={i === arr.length - 1} title="Move later" style={{ background: 'none', border: 'none', cursor: i === arr.length - 1 ? 'default' : 'pointer', color: i === arr.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)' }}>▼</button>
+                        <button type="button" onClick={() => void removePaymentScheduleRow(bid.id, row.id)} title="Remove row" aria-label="Remove row" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-600)', fontSize: '1rem' }}>×</button>
                       </div>
                     )
                   })}
@@ -778,7 +818,7 @@ export function BidsCoverLetterTab({
                     <button
                       type="button"
                       onClick={() => void addPaymentScheduleRow(bid.id)}
-                      style={{ padding: '0.25rem 0.75rem', background: '#eff6ff', border: '1px solid #3b82f6', borderRadius: 4, color: '#1d4ed8', cursor: 'pointer', fontSize: '0.875rem' }}
+                      style={{ padding: '0.25rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #3b82f6', borderRadius: 4, color: 'var(--text-blue-700)', cursor: 'pointer', fontSize: '0.875rem' }}
                     >
                       + Add row
                     </button>
@@ -787,7 +827,7 @@ export function BidsCoverLetterTab({
                     </span>
                   </div>
                   {paymentScheduleSorted.length > 0 && Math.abs(paymentSchedulePercentSum - 100) > 0.001 && (
-                    <div style={{ marginTop: '0.5rem', padding: '0.35rem 0.5rem', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 4, color: '#b45309', fontSize: '0.8125rem' }}>
+                    <div style={{ marginTop: '0.5rem', padding: '0.35rem 0.5rem', background: 'var(--bg-amber-100)', border: '1px solid #fcd34d', borderRadius: 4, color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
                       ⚠ Percents sum to {formatPaymentSchedulePercent(paymentSchedulePercentSum)}, not 100%.
                     </div>
                   )}
@@ -801,7 +841,7 @@ export function BidsCoverLetterTab({
                 onChange={(e) => setCoverLetterInclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                 rows={4}
                 placeholder={COVER_LETTER_INCLUSIONS_PLACEHOLDER}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -811,7 +851,7 @@ export function BidsCoverLetterTab({
                 onChange={(e) => setCoverLetterExclusionsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                 rows={4}
                 placeholder="e.g. Owner-supplied fixtures"
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ marginBottom: '1rem' }}>
@@ -828,7 +868,7 @@ export function BidsCoverLetterTab({
                   onChange={(e) => setCoverLetterTermsByBid((prev) => ({ ...prev, [bid.id]: e.target.value }))}
                   rows={4}
                   placeholder="e.g. 1-year warranty on labor"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', marginTop: '0.5rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginTop: '0.5rem' }}
                 />
               )}
             </div>
@@ -851,14 +891,14 @@ export function BidsCoverLetterTab({
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                 Combined document (copy to send)
                 {bundlePricings.length > 1 && (
-                  <span style={{ marginLeft: '0.5rem', fontWeight: 400, fontSize: '0.8125rem', color: '#1e40af' }}>
+                  <span style={{ marginLeft: '0.5rem', fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-blue-800)' }}>
                     · bundling {bundlePricings.length} pricings: {bundlePricings.map((p) => p.name).join(', ')}
                   </span>
                 )}
               </label>
               <div
                 key={`combined-preview-${bid.id}-${coverLetterIncludeDesignDrawingPlanDateByBid[bid.id] !== false}-${coverLetterIncludeSignatureByBid[bid.id] === true}-${coverLetterIncludeFixturesPerPlanByBid[bid.id] !== false}-${coverLetterUseCustomAmountByBid[bid.id] === true ? coverLetterCustomAmountByBid[bid.id] ?? '' : ''}-${paymentScheduleEnabled}-${paymentScheduleSorted.map((r) => `${r.timing}:${r.percent}`).join(',')}`}
-                style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
+                style={{ width: '100%', minHeight: 360, padding: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontFamily: 'inherit', fontSize: '0.875rem', boxSizing: 'border-box', whiteSpace: 'pre-wrap' }}
                 // eslint-disable-next-line react/no-danger -- app-generated document HTML; user-entered fields are escaped by the tested coverLetter builder
                 dangerouslySetInnerHTML={{ __html: finalCoverLetterHtml }}
               />
@@ -888,7 +928,7 @@ export function BidsCoverLetterTab({
                           void handleSaveBidSubmissionQuickAdd(bid.id, coverLetterBidSubmissionQuickAddValue)
                         }
                       }}
-                      style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                      style={{ flex: 1, minWidth: 200, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                     />
                     <button
                       type="button"
@@ -900,7 +940,7 @@ export function BidsCoverLetterTab({
                   </>
                 )}
                 {bidSubmissionQuickAddSuccess === bid.id && (
-                  <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                  <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                     ✓ Link added successfully
                   </span>
                 )}

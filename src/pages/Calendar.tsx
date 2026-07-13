@@ -21,7 +21,7 @@ import {
   isCalendarClockSessionActive,
   type CalendarClockSessionRaw,
 } from '../lib/calendarClockSessionDisplay'
-import { resolveCalendarWorkday, UNPAID_TIME_OFF_LABEL } from '../lib/resolveCalendarWorkday'
+import { resolveCalendarWorkday, timeOffKindLabel } from '../lib/resolveCalendarWorkday'
 import type { ClockSessionRow } from '../types/clockSessions'
 import { PreviewJobModal } from '../components/calendar/PreviewJobModal'
 import { scheduleFormatTimeHm, scheduleFormatWindow } from '../lib/jobScheduleChicago'
@@ -96,7 +96,7 @@ function getBidSubmissionStatus(bid: CalendarBid): 'on time' | 'early' | 'not se
 }
 
 function getBidSubmissionStatusColor(status: 'on time' | 'early' | 'not sent'): string {
-  return status === 'not sent' ? '#dc2626' : '#16a34a'
+  return status === 'not sent' ? 'var(--text-red-600)' : '#16a34a'
 }
 
 const CALENDAR_DAY_ACCENT = '#2563eb'
@@ -871,7 +871,7 @@ export default function Calendar() {
   function renderPlannedWorkChips(planned: PlannedBlockRow[], opts?: { onChipClick?: () => void }) {
     if (planned.length === 0) {
       return (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>No planned work.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>No planned work.</p>
       )
     }
     return (
@@ -958,7 +958,7 @@ export default function Calendar() {
   }
 
   if (loading) return <p>Loading...</p>
-  if (error) return <p style={{ color: '#b91c1c' }}>{error}</p>
+  if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
 
   const days = getDaysInMonth(currentMonth)
   const visibleDays = showWeekends
@@ -980,7 +980,7 @@ export default function Calendar() {
   return (
     <div>
       {!userName && (
-        <p style={{ color: '#6b7280', marginBottom: '1rem' }}>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>
           No stages assigned. Stages are assigned by name in workflow steps.
         </p>
       )}
@@ -991,11 +991,11 @@ export default function Calendar() {
             <div
               aria-label="My day planned work"
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '0.75rem',
                 marginBottom: '1rem',
-                background: '#fff',
+                background: 'var(--surface)',
               }}
             >
               <div
@@ -1056,9 +1056,9 @@ export default function Calendar() {
             </div>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: gridColumns, gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: gridColumns, gap: '1px', background: 'var(--bg-200)', border: '1px solid var(--border)' }}>
             {dayHeaders.map((day) => (
-              <div key={day} style={{ background: 'white', padding: '0.5rem', textAlign: 'center', fontWeight: 500, fontSize: '0.875rem' }}>
+              <div key={day} style={{ background: 'var(--surface)', padding: '0.5rem', textAlign: 'center', fontWeight: 500, fontSize: '0.875rem' }}>
                 {day}
               </div>
             ))}
@@ -1137,7 +1137,7 @@ export default function Calendar() {
                                 : step.status === 'rejected'
                                   ? '#fef2f2'
                                   : CALENDAR_DAY_HOVER_BG,
-                          color: '#111827',
+                          color: 'var(--text-strong)',
                           borderRadius: 3,
                           overflow: 'hidden',
                           display: 'flex',
@@ -1149,7 +1149,7 @@ export default function Calendar() {
                         <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {step.name}
                         </div>
-                        <div style={{ fontSize: '0.6875rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {step.project_name}
                         </div>
                         <Link
@@ -1157,7 +1157,7 @@ export default function Calendar() {
                           onClick={(e) => e.stopPropagation()}
                           style={{
                             fontSize: '0.625rem',
-                            color: '#2563eb',
+                            color: 'var(--text-link)',
                             marginTop: 2,
                             textDecoration: 'underline',
                           }}
@@ -1176,8 +1176,8 @@ export default function Calendar() {
                         style={{
                           fontSize: '0.75rem',
                           padding: '2px 4px',
-                          background: '#fef3c7',
-                          color: '#92400e',
+                          background: 'var(--bg-amber-100)',
+                          color: 'var(--text-amber-800)',
                           textDecoration: 'none',
                           borderRadius: 3,
                           overflow: 'hidden',
@@ -1189,7 +1189,7 @@ export default function Calendar() {
                         <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           Bid due: {bid.project_name}
                         </div>
-                        <div style={{ fontSize: '0.6875rem', color: '#b45309', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
+                        <div style={{ fontSize: '0.6875rem', color: 'var(--text-amber-700)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 4 }}>
                           {bid.service_type_name ? (
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{bid.service_type_name}</span>
                           ) : (
@@ -1273,8 +1273,8 @@ export default function Calendar() {
                             style={{
                               fontSize: '0.75rem',
                               padding: '2px 4px',
-                              background: '#ecfdf5',
-                              color: '#065f46',
+                              background: 'var(--bg-emerald-tint)',
+                              color: 'var(--text-emerald-800)',
                               textDecoration: 'none',
                               borderRadius: 3,
                               overflow: 'hidden',
@@ -1297,11 +1297,11 @@ export default function Calendar() {
                           style={{
                             fontSize: '0.75rem',
                             padding: '2px 4px',
-                            background: '#fff7ed',
-                            color: '#9a3412',
+                            background: 'var(--bg-orange-tint)',
+                            color: 'var(--text-orange-800)',
                             borderRadius: 3,
                             fontWeight: 600,
-                            border: '1px solid #fdba74',
+                            border: '1px solid var(--border-orange)',
                           }}
                           title={ncnsCalendarChipTitle(ncns)}
                         >
@@ -1322,7 +1322,7 @@ export default function Calendar() {
                               style={{
                                 fontSize: '0.6875rem',
                                 padding: '2px 4px',
-                                color: '#4b5563',
+                                color: 'var(--text-600)',
                                 borderRadius: 3,
                                 fontWeight: 500,
                               }}
@@ -1352,10 +1352,10 @@ export default function Calendar() {
                                   style={{
                                     fontSize: '0.625rem',
                                     padding: '2px 4px',
-                                    background: '#f3f4f6',
-                                    color: '#374151',
+                                    background: 'var(--bg-muted)',
+                                    color: 'var(--text-700)',
                                     borderRadius: 3,
-                                    border: '1px solid #e5e7eb',
+                                    border: '1px solid var(--border)',
                                     lineHeight: 1.25,
                                     display: 'block',
                                     overflow: 'hidden',
@@ -1376,7 +1376,7 @@ export default function Calendar() {
                                   <span
                                     style={{
                                       display: 'block',
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                       overflow: 'hidden',
                                       textOverflow: 'ellipsis',
                                       whiteSpace: 'nowrap',
@@ -1393,7 +1393,7 @@ export default function Calendar() {
                                   style={{
                                     fontSize: '0.6875rem',
                                     padding: '2px 4px',
-                                    color: '#4b5563',
+                                    color: 'var(--text-600)',
                                     fontWeight: 600,
                                   }}
                                   title={`${more} more clock session(s) — open day for full list`}
@@ -1545,7 +1545,7 @@ export default function Calendar() {
               >
                 <div
                   style={{
-                    background: 'white',
+                    background: 'var(--surface)',
                     borderRadius: 8,
                     padding: '1.5rem',
                     maxWidth: 480,
@@ -1561,13 +1561,13 @@ export default function Calendar() {
                     <button
                       type="button"
                       onClick={() => setSelectedDayForModal(null)}
-                      style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                     >
                       Close
                     </button>
                   </div>
                   {!hasItems ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No items on this day.</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No items on this day.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {modalWorkday.kind === 'time_off' && (
@@ -1599,8 +1599,8 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: '#ecfdf5',
-                              color: '#065f46',
+                              background: 'var(--bg-emerald-tint)',
+                              color: 'var(--text-emerald-800)',
                               textDecoration: 'none',
                               borderRadius: 4,
                               border: '1px solid #a7f3d0',
@@ -1619,10 +1619,10 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: '#fff7ed',
-                              color: '#9a3412',
+                              background: 'var(--bg-orange-tint)',
+                              color: 'var(--text-orange-800)',
                               borderRadius: 4,
-                              border: '1px solid #fdba74',
+                              border: '1px solid var(--border-orange)',
                             }}
                           >
                             <div style={{ fontWeight: 600 }}>No-call, no-show</div>
@@ -1659,20 +1659,20 @@ export default function Calendar() {
                                 <li
                                   key={s.id}
                                   style={{
-                                    border: '1px solid #e5e7eb',
+                                    border: '1px solid var(--border)',
                                     borderRadius: 4,
                                     padding: '0.5rem 0.75rem',
-                                    background: '#fafafa',
+                                    background: 'var(--bg-page)',
                                   }}
                                 >
                                   <div style={{ fontWeight: 600, fontSize: '0.875rem' }}>{calendarSessionChipLabel(s, prefixMap)}</div>
-                                  <div style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: 4 }}>
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-600)', marginTop: 4 }}>
                                     {formatSessionRangeCentral(s.clocked_in_at, s.clocked_out_at)}
                                     {' · '}
                                     {formatCalendarSessionDurationCompact(s, nowMs)}
                                   </div>
                                   {s.origin === 'salary_schedule' ? (
-                                    <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4 }}>Scheduled</div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 4 }}>Scheduled</div>
                                   ) : null}
                                   <div
                                     style={{
@@ -1680,7 +1680,7 @@ export default function Calendar() {
                                       marginTop: 8,
                                       whiteSpace: 'pre-wrap',
                                       wordBreak: 'break-word',
-                                      color: '#374151',
+                                      color: 'var(--text-700)',
                                     }}
                                   >
                                     {(s.notes ?? '').trim() || '—'}
@@ -1697,10 +1697,10 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: '#f9fafb',
-                              color: '#374151',
+                              background: 'var(--bg-subtle)',
+                              color: 'var(--text-700)',
                               borderRadius: 4,
-                              border: '1px solid #e5e7eb',
+                              border: '1px solid var(--border)',
                             }}
                             title={modalRecordedFmt.title}
                           >
@@ -1722,13 +1722,13 @@ export default function Calendar() {
                                     : step.status === 'rejected'
                                       ? '#fef2f2'
                                       : CALENDAR_DAY_HOVER_BG,
-                              color: '#111827',
+                              color: 'var(--text-strong)',
                               borderRadius: 4,
-                              border: '1px solid #e5e7eb',
+                              border: '1px solid var(--border)',
                             }}
                           >
                             <div style={{ fontWeight: 500 }}>{step.name}</div>
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{step.project_name}</div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{step.project_name}</div>
                             <div style={{ display: 'flex', gap: '0.5rem', marginTop: 8, flexWrap: 'wrap' }}>
                               <button
                                 type="button"
@@ -1742,7 +1742,7 @@ export default function Calendar() {
                                 style={{
                                   padding: '0.25rem 0.5rem',
                                   fontSize: '0.8125rem',
-                                  background: '#fff',
+                                  background: 'var(--surface)',
                                   border: '1px solid #c7d2fe',
                                   borderRadius: 4,
                                   cursor: 'pointer',
@@ -1757,10 +1757,10 @@ export default function Calendar() {
                                 style={{
                                   padding: '0.25rem 0.5rem',
                                   fontSize: '0.8125rem',
-                                  background: '#fff',
-                                  border: '1px solid #e5e7eb',
+                                  background: 'var(--surface)',
+                                  border: '1px solid var(--border)',
                                   borderRadius: 4,
-                                  color: '#2563eb',
+                                  color: 'var(--text-link)',
                                   textDecoration: 'none',
                                   display: 'inline-block',
                                 }}
@@ -1781,15 +1781,15 @@ export default function Calendar() {
                             style={{
                               display: 'block',
                               padding: '0.5rem 0.75rem',
-                              background: '#fef3c7',
-                              color: '#92400e',
+                              background: 'var(--bg-amber-100)',
+                              color: 'var(--text-amber-800)',
                               textDecoration: 'none',
                               borderRadius: 4,
                               border: '1px solid #fde68a',
                             }}
                           >
                             <div style={{ fontWeight: 500 }}>Bid due: {bid.project_name}</div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', color: '#b45309' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem', color: 'var(--text-amber-700)' }}>
                               {bid.service_type_name ? <span>{bid.service_type_name}</span> : <span />}
                               <span style={{ fontStyle: 'italic', color: getBidSubmissionStatusColor(status) }}>[{status}]</span>
                             </div>
@@ -1828,7 +1828,7 @@ export default function Calendar() {
             {(() => {
               const upcomingItems = buildUpcomingList()
               return upcomingItems.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No upcoming items.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming items.</p>
               ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {upcomingItems.map((item) => (
@@ -1855,17 +1855,17 @@ export default function Calendar() {
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
                           background: item.step.status === 'completed' || item.step.status === 'approved' ? '#f0fdf4' : item.step.status === 'skipped' ? '#f3f4f6' : item.step.status === 'rejected' ? '#fef2f2' : CALENDAR_DAY_HOVER_BG,
-                          color: '#111827',
+                          color: 'var(--text-strong)',
                           textDecoration: 'none',
                           borderRadius: 4,
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                         }}
                       >
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', minWidth: 120 }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', minWidth: 120 }}>
                           {formatUpcomingDate(item.dateKey)}
                         </span>
                         <span style={{ fontWeight: 500 }}>{item.step.name}</span>
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>— {item.step.project_name}</span>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>— {item.step.project_name}</span>
                       </Link>
                     ) : item.type === 'bid' && item.bid ? (
                       <Link
@@ -1875,19 +1875,19 @@ export default function Calendar() {
                           alignItems: 'center',
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
-                          background: '#fef3c7',
-                          color: '#92400e',
+                          background: 'var(--bg-amber-100)',
+                          color: 'var(--text-amber-800)',
                           textDecoration: 'none',
                           borderRadius: 4,
                           border: '1px solid #fde68a',
                         }}
                       >
-                        <span style={{ fontSize: '0.875rem', color: '#b45309', minWidth: 120 }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)', minWidth: 120 }}>
                           {formatUpcomingDate(item.dateKey)}
                         </span>
                         <span style={{ fontWeight: 500 }}>Bid due: {item.bid.project_name}</span>
                         {item.bid.service_type_name && (
-                          <span style={{ fontSize: '0.875rem', color: '#b45309' }}>({item.bid.service_type_name})</span>
+                          <span style={{ fontSize: '0.875rem', color: 'var(--text-amber-700)' }}>({item.bid.service_type_name})</span>
                         )}
                         <span style={{ fontSize: '0.875rem', fontStyle: 'italic', marginLeft: 'auto', color: getBidSubmissionStatusColor(getBidSubmissionStatus(item.bid)) }}>
                           [{getBidSubmissionStatus(item.bid)}]
@@ -1933,7 +1933,7 @@ export default function Calendar() {
                           {formatUpcomingDate(item.timeOff.start_date)} – {formatUpcomingDate(item.timeOff.end_date)}
                         </span>
                         <span style={{ fontWeight: 500 }}>
-                          {UNPAID_TIME_OFF_LABEL}
+                          {timeOffKindLabel(item.timeOff.kind)}
                           {item.timeOff.note ? ` — ${item.timeOff.note}` : ''}
                         </span>
                       </Link>
@@ -1945,8 +1945,8 @@ export default function Calendar() {
                           alignItems: 'center',
                           gap: '1rem',
                           padding: '0.5rem 0.75rem',
-                          background: '#ecfdf5',
-                          color: '#065f46',
+                          background: 'var(--bg-emerald-tint)',
+                          color: 'var(--text-emerald-800)',
                           textDecoration: 'none',
                           borderRadius: 4,
                           border: '1px solid #a7f3d0',

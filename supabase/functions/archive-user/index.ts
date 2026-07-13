@@ -120,6 +120,50 @@ serve(async (req) => {
     }
 
     if (!userToArchive) {
+      // The active-only lookups above can't see archived accounts — check for one so the
+      // error says "already archived" instead of the misleading "User not found".
+      let archivedMatch: { email: string | null; name: string | null; archived_at: string | null } | null = null
+      if (email) {
+        const { data } = await supabase
+          .from('users')
+          .select('email, name, archived_at')
+          .eq('email', email.trim())
+          .not('archived_at', 'is', null)
+          .order('archived_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (data) archivedMatch = data
+      }
+      if (!archivedMatch && name) {
+        const { data } = await supabase
+          .from('users')
+          .select('email, name, archived_at')
+          .eq('name', name.trim())
+          .not('archived_at', 'is', null)
+          .order('archived_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+        if (data) archivedMatch = data
+      }
+      if (archivedMatch) {
+        let archivedOn = ''
+        if (archivedMatch.archived_at) {
+          try {
+            archivedOn = ` (${new Date(archivedMatch.archived_at).toLocaleDateString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+              timeZone: 'America/Chicago',
+            })})`
+          } catch {
+            archivedOn = ''
+          }
+        }
+        return new Response(
+          JSON.stringify({ error: `That user is already archived${archivedOn}.` }),
+          { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
       return new Response(
         JSON.stringify({ error: 'User not found' }),
         { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

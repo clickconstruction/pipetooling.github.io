@@ -26,6 +26,8 @@ type Props = {
   userId: string
   /** Mounts AdditionalReportModal in Dashboard. */
   onLeaveReport: (job: LeaveReportJobPick) => void
+  /** Mounts TurnawayModal in Dashboard (client not home / site not ready). */
+  onTurnaway: (job: LeaveReportJobPick) => void
 }
 
 type OpenSessionState = {
@@ -52,8 +54,8 @@ type CurrentClockBidInfo = {
 const cardWrap: CSSProperties = {
   width: '100%',
   margin: '0 auto 0.75rem',
-  background: 'white',
-  border: '1px solid #d1d5db',
+  background: 'var(--surface)',
+  border: '1px solid var(--border-strong)',
   borderRadius: 12,
   padding: '1rem',
   boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
@@ -73,26 +75,26 @@ const headerWrap: CSSProperties = {
 const headerNum: CSSProperties = {
   fontSize: '1.4rem',
   fontWeight: 800,
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   lineHeight: 1.1,
 }
 
 const headerName: CSSProperties = {
   fontSize: '1.05rem',
   fontWeight: 600,
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   lineHeight: 1.2,
 }
 
 const headerAddr: CSSProperties = {
   fontSize: '0.875rem',
-  color: '#4b5563',
+  color: 'var(--text-600)',
   lineHeight: 1.2,
 }
 
 const headerStatusLine: CSSProperties = {
   fontSize: '0.8125rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   marginTop: '0.15rem',
 }
 
@@ -132,6 +134,15 @@ const nextJobBtn: CSSProperties = {
   color: 'white',
 }
 
+const turnawayBtn: CSSProperties = {
+  ...bigButtonBase,
+  gridColumn: '1 / -1',
+  minHeight: 56,
+  fontSize: '0.95rem',
+  background: '#d97706',
+  color: 'white',
+}
+
 const disabledBtnOverlay: CSSProperties = {
   background: '#9ca3af',
   color: 'white',
@@ -140,7 +151,7 @@ const disabledBtnOverlay: CSSProperties = {
 
 const errorRow: CSSProperties = {
   fontSize: '0.8125rem',
-  color: '#b91c1c',
+  color: 'var(--text-red-700)',
   textAlign: 'center',
 }
 
@@ -148,7 +159,7 @@ function safeTrim(s: string | null | undefined): string {
   return (s ?? '').trim()
 }
 
-export default function DashboardJobModeCard({ userId, onLeaveReport }: Props) {
+export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { requestOpenUpdateFocus, applyUpdateFocusDirect } = useUpdateFocusOpenerBridge()
 
@@ -577,6 +588,19 @@ export default function DashboardJobModeCard({ userId, onLeaveReport }: Props) {
           onClick={() => void handleRightButton()}
         >
           {rightButton.label}
+        </button>
+        <button
+          type="button"
+          style={leaveDisabled ? { ...turnawayBtn, ...disabledBtnOverlay } : turnawayBtn}
+          disabled={leaveDisabled}
+          title={leaveDisabledReason ?? undefined}
+          aria-label="Turnaway — client not home or site not ready"
+          onClick={() => {
+            if (!leaveReportTarget) return
+            onTurnaway(leaveReportTarget)
+          }}
+        >
+          Turnaway — not ready / not home
         </button>
       </div>
       <JobModeAdvanceNotesModal

@@ -84,12 +84,12 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
 
   /** Badge fill + label color per RPC `kind` (stronger than pastels for contrast on light cards). */
   const BADGE_BY_KIND: Record<string, { bg: string; color: string }> = {
-    thread_note: { bg: '#bfdbfe', color: '#1e40af' },
-    field_report: { bg: '#bbf7d0', color: '#166534' },
+    thread_note: { bg: '#bfdbfe', color: 'var(--text-blue-800)' },
+    field_report: { bg: '#bbf7d0', color: 'var(--text-green-800)' },
     clock: { bg: '#ddd6fe', color: '#6d28d9' },
-    schedule: { bg: '#fde68a', color: '#92400e' },
+    schedule: { bg: '#fde68a', color: 'var(--text-amber-800)' },
   }
-  const DEFAULT_BADGE = { bg: '#e5e7eb', color: '#374151' }
+  const DEFAULT_BADGE = { bg: 'var(--bg-200)', color: 'var(--text-700)' }
 
   return (
     <div
@@ -112,7 +112,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
         aria-labelledby="sub-job-activity-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 520,
           width: '100%',
@@ -129,7 +129,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
             alignItems: 'flex-start',
             gap: '0.75rem',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}
         >
@@ -137,7 +137,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
             <h2 id="sub-job-activity-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
               Activity on this job
             </h2>
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>{subtitle}</p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{subtitle}</p>
           </div>
           <button
             type="button"
@@ -145,9 +145,9 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
             style={{
               padding: '0.35rem 0.65rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: 'pointer',
               flexShrink: 0,
             }}
@@ -164,7 +164,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
                 margin: '0 0 0.5rem',
                 fontSize: '0.8125rem',
                 fontWeight: 600,
-                color: '#374151',
+                color: 'var(--text-700)',
                 textAlign: 'center',
               }}
             >
@@ -184,7 +184,7 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
                     marginBottom: '0.65rem',
                     paddingBottom: '0.65rem',
                     borderBottom: '1px solid #f3f4f6',
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     lineHeight: 1.45,
                   }}
                 >
@@ -197,19 +197,19 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
           </section>
 
           <section>
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
               Recent activity
               {!loading && rows != null ? ` (${rows.length})` : null}
             </h3>
 
-            {loading && <p style={{ color: '#6b7280' }}>Loading…</p>}
+            {loading && <p style={{ color: 'var(--text-muted)' }}>Loading…</p>}
             {!loading && errorMessage && (
-              <p role="alert" style={{ color: '#b91c1c', margin: 0 }}>
+              <p role="alert" style={{ color: 'var(--text-red-700)', margin: 0 }}>
                 {errorMessage}
               </p>
             )}
             {!loading && !errorMessage && rows && rows.length === 0 && (
-              <p style={{ color: '#6b7280', margin: 0 }}>No activity of these types appears for you yet on this job.</p>
+              <p style={{ color: 'var(--text-muted)', margin: 0 }}>No activity of these types appears for you yet on this job.</p>
             )}
             {!loading && rows != null && rows.length > 0 && (
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
@@ -221,9 +221,9 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
                       style={{
                         marginBottom: '0.75rem',
                         padding: '0.65rem 0.75rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 6,
-                        background: '#fafafa',
+                        background: 'var(--bg-page)',
                       }}
                     >
                       <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.35rem', marginBottom: '0.35rem' }}>
@@ -241,11 +241,11 @@ export default function SubcontractorJobActivityModal({ open, onClose, jobId, hc
                         >
                           {subcontractorActivityLabelForRpcKind(row.kind)}
                         </span>
-                        <time dateTime={row.activity_at} style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#6b7280' }}>
+                        <time dateTime={row.activity_at} style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                           {formatActivityInstant(row.activity_at)}
                         </time>
                       </div>
-                      <div style={{ color: '#1f2937', lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                      <div style={{ color: 'var(--text-gray-800)', lineHeight: 1.4, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
                         {row.summary}
                       </div>
                     </li>

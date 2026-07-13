@@ -34,7 +34,7 @@ export type StripeBillPreSubmitPreviewProps = {
 const metaLabel: CSSProperties = {
   padding: '0.15rem 0.75rem 0.15rem 0',
   verticalAlign: 'top',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.72rem',
   fontWeight: 500,
   whiteSpace: 'nowrap',
@@ -44,14 +44,14 @@ const metaValue: CSSProperties = {
   padding: '0.15rem 0',
   verticalAlign: 'top',
   fontSize: '0.875rem',
-  color: '#111827',
+  color: 'var(--text-strong)',
   wordBreak: 'break-word',
 }
 
 const stripeHeroAmountText: CSSProperties = {
   fontSize: '1.35rem',
   fontWeight: 700,
-  color: '#111827',
+  color: 'var(--text-strong)',
 }
 
 function displayLineQuantity(q: number | null | undefined): number {
@@ -139,7 +139,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
     {
       marginTop: '0.35rem',
       fontSize: '0.72rem',
-      color: '#6b7280',
+      color: 'var(--text-muted)',
       ...(draftLineDescriptionIssue ? { padding: '0.35rem 0.45rem' } : {}),
     },
     draftLineDescriptionIssue
@@ -152,7 +152,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
           fontWeight: 600,
           marginBottom: '0.5rem',
           fontSize: '0.875rem',
-          color: '#111827',
+          color: 'var(--text-strong)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -164,28 +164,28 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
       >
         What the customer will see:
         {p.stripePreviewLoading && sp ? (
-          <span style={{ fontWeight: 400, fontSize: '0.75rem', color: '#6b7280' }}>Updating…</span>
+          <span style={{ fontWeight: 400, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Updating…</span>
         ) : null}
       </div>
 
       {p.stripePreviewLoading && !sp ? (
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>Loading invoice preview…</p>
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading invoice preview…</p>
       ) : null}
 
       {!p.stripePreviewLoading && p.stripePreviewError && (
-        <p style={{ margin: '0 0 0.35rem', color: '#b45309', fontSize: '0.8125rem' }}>
+        <p style={{ margin: '0 0 0.35rem', color: 'var(--text-amber-700)', fontSize: '0.8125rem' }}>
           Preview unavailable ({p.stripePreviewError}). Showing draft line below.
         </p>
       )}
 
       {!p.stripePreviewLoading && !p.stripePreviewError && !sp && (
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           {p.previewIdleHint?.trim() || 'Preview loads when billing is ready.'}
         </p>
       )}
 
       {p.onEditDueDate && p.dueDateYmd.trim() && !sp && !p.stripePreviewLoading ? (
-        <div style={{ margin: '0.35rem 0 0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+        <div style={{ margin: '0.35rem 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
           <button
             type="button"
             onClick={p.onEditDueDate}
@@ -203,9 +203,9 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
             style={{
               marginBottom: '0.75rem',
               padding: '0.75rem',
-              background: '#fafafa',
+              background: 'var(--bg-page)',
               borderRadius: 6,
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               fontSize: '0.875rem',
               opacity: p.stripePreviewLoading ? 0.72 : 1,
               transition: 'opacity 0.15s ease',
@@ -214,7 +214,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
             <div style={{ ...stripeHeroAmountText, marginBottom: '0.25rem' }}>
               {formatStripeCents(amountRemaining, sp.currency)}
             </div>
-            <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.65rem' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.65rem' }}>
               {p.onEditDueDate ? (
                 <button
                   type="button"
@@ -237,7 +237,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                     {toEmail ? (
                       <>
                         <br />
-                        <span style={{ color: '#4b5563', fontSize: '0.75rem' }}>{toEmail}</span>
+                        <span style={{ color: 'var(--text-600)', fontSize: '0.75rem' }}>{toEmail}</span>
                       </>
                     ) : null}
                   </td>
@@ -273,15 +273,15 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
               marginBottom: showDraftLine ? '0.35rem' : 0,
               padding: '0.75rem',
               borderRadius: 6,
-              border: '1px solid #e5e7eb',
-              background: '#fafafa',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-page)',
               fontSize: '0.875rem',
               opacity: p.stripePreviewLoading ? 0.72 : 1,
               transition: 'opacity 0.15s ease',
             }}
           >
             {sp.lines.length === 0 ? (
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 No line items returned from Stripe.
               </p>
             ) : (
@@ -306,7 +306,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                     gap: '0.75rem',
                     marginBottom: i < sp.lines.length - 1 ? '0.65rem' : 0,
                     paddingBottom: i < sp.lines.length - 1 ? '0.65rem' : 0,
-                    borderBottom: i < sp.lines.length - 1 ? '1px solid #e5e7eb' : 'none',
+                    borderBottom: i < sp.lines.length - 1 ? '1px solid var(--border)' : 'none',
                   }}
                 >
                   <div style={leftColumnStyle}>
@@ -319,16 +319,16 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                         }
                         style={stripeLineDescriptionClickableStyle}
                       >
-                        <span style={{ color: '#111827', marginBottom: '0.2rem', display: 'block' }}>
+                        <span style={{ color: 'var(--text-strong)', marginBottom: '0.2rem', display: 'block' }}>
                           {line.description.trim() || '—'}
                         </span>
                       </button>
                     ) : (
-                      <div style={{ color: '#111827', marginBottom: '0.2rem', whiteSpace: 'pre-wrap' }}>
+                      <div style={{ color: 'var(--text-strong)', marginBottom: '0.2rem', whiteSpace: 'pre-wrap' }}>
                         {line.description.trim() || '—'}
                       </div>
                     )}
-                    <div style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                       Qty {displayLineQuantity(line.quantity ?? null)}
                     </div>
                   </div>
@@ -338,7 +338,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                       textAlign: 'right',
                       whiteSpace: 'nowrap',
                       fontSize: '0.875rem',
-                      color: '#111827',
+                      color: 'var(--text-strong)',
                     }}
                   >
                     {formatStripeCents(line.amount, sp.currency)}
@@ -351,7 +351,7 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
               style={{
                 marginTop: sp.lines.length > 0 ? '0.65rem' : 0,
                 paddingTop: '0.65rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid var(--border)',
               }}
             >
               <div
@@ -360,20 +360,20 @@ export function StripeBillPreSubmitPreview(p: StripeBillPreSubmitPreviewProps) {
                   justifyContent: 'space-between',
                   alignItems: 'baseline',
                   paddingBottom: '0.65rem',
-                  borderBottom: '1px solid #e5e7eb',
+                  borderBottom: '1px solid var(--border)',
                   marginBottom: '0.65rem',
                 }}
               >
-                <span style={{ color: '#374151' }}>Total due</span>
+                <span style={{ color: 'var(--text-700)' }}>Total due</span>
                 <span style={{ fontWeight: 600 }}>{formatStripeCents(sp.total, sp.currency)}</span>
               </div>
               <div style={{ display: 'grid', gap: '0.35rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ color: '#374151' }}>Amount paid</span>
+                  <span style={{ color: 'var(--text-700)' }}>Amount paid</span>
                   <span style={{ fontWeight: 600 }}>{formatStripeCents(amountPaid, sp.currency)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span style={{ color: '#374151' }}>Amount remaining</span>
+                  <span style={{ color: 'var(--text-700)' }}>Amount remaining</span>
                   <span style={{ fontWeight: 600 }}>{formatStripeCents(amountRemaining, sp.currency)}</span>
                 </div>
               </div>

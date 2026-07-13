@@ -475,6 +475,18 @@ Remaining budget after subtracting ledger total from projections.
 
 **Visibility**: Masters and dev only (hidden from assistants)
 
+### Charges & Value timeline (Jobs — Job Summary / Job Detail / Edit Job)
+Profit step chart for one job: the main line is **payments received − charges** (charges step DOWN in red with per-source icons 👷🔧💳🧾📦🧱; payments step UP in green with 💵; dashed **$0** line; above it = money made; bold signed end-of-line labels). A **blue** line steps to (latest report completion % × job total) per field report (🚩 = report). Renders in Job Summary expanded rows and at the bottom of **Parts cost** in the Job Detail / Edit Job modals ([`JobChargesTimelineStandalone.tsx`](../src/components/jobs/JobChargesTimelineStandalone.tsx)); scrolls horizontally on busy jobs. Kernel: [`jobChargesTimeline.ts`](../src/lib/jobChargesTimeline.ts). See `RECENT_FEATURES.md` v2.646–v2.655.
+
+### Job Summary % column
+Last column on Jobs → Job Summary: **100%** when every invoice is paid with a positive total (fully collected = done) → else the **latest field-report completion %** (RPC `list_latest_report_completion_pct`, server-side parse) → else Edit Job `pct_complete` → "—". Kernel: [`jobSummaryPercentComplete.ts`](../src/lib/jobSummaryPercentComplete.ts). The Quickfill **Complete, no Total Bill** section uses the same resolution.
+
+### Crew P&L (Jobs tab; formerly "Teams")
+Dev-only per-person profit rollup (tab key `teams-summary`): **billing credit weighted by clocked crew hours** (job total × person's share of the job's hours; ≈ = equal-split estimate for revenue jobs with no clocked hours), roster-keyed identity, Hours / Labor Cost / Billing / Profit / $-per-hr with date-range presets and per-job drill-down. Kernel: [`crewPnlSummary.ts`](../src/lib/crewPnlSummary.ts). Not related to People → Teams (leader/member structures). See `RECENT_FEATURES.md` v2.656.
+
+### Merge users (Active Accounts)
+Dev-only: absorb one user account into another. Rules — same role; the merged-away account must be **archived or never signed in**; when one is live it must survive. **Preview merge** runs `merge_user_accounts` with `p_dry_run` (full merge, rolled back, per-table counts); commit reassigns every FK reference (dynamic sweep + zero-leftover assert) and bans the absorbed login (Edge `merge-users`). Absorbed account keeps its email as an archived tombstone. Cannot be undone. See `RECENT_FEATURES.md` v2.652.
+
 ### Accounts Receivable Sorting (Jobs Stages → Bank payments)
 Org-wide Mercury transaction filter for applying customer bank deposits to billed work (**Jobs** → **Stages** → **Bank payments**). The active filter shape is **`BankingSortingConfigV1`**: kinds, accounts, debit cards, Chicago **start date**, and optional counterparty/note substring exclusions. Canonical storage is **`app_settings`** key **`bank_payments_sorting_config_v1`** (**`value_text`** JSON); only **dev** can upsert (RLS). All authenticated roles that can open Bank Payments read the same row; **`list_mercury_transactions_for_bank_payments`** and **`count_mercury_transactions_for_bank_payments`** use the same **`p_filter`**. If no server row exists yet, the client may fall back to legacy per-user **`localStorage`** or Banking/Quickfill **`banking_sorting_config_v1_<userId>`** until a dev publishes settings. A global browser cache key **`bank_payments_sorting_config_v1__cache`** mirrors the server after fetch/save. Distinct from per-user **Banking** page sorting (**`banking_sorting_config_v1_<userId>`**).
 

@@ -181,7 +181,7 @@ export default function MercuryTransactionInvoiceLinkModal({
         aria-labelledby="mercury-invoice-link-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(640px, calc(100vw - 2rem))',
           maxHeight: '90vh',
@@ -196,7 +196,7 @@ export default function MercuryTransactionInvoiceLinkModal({
         >
           Link invoices
         </h2>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45 }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
           This card charge of <strong>{formatCurrency(txAmount)}</strong>
           {transaction.counterparty_name ? (
             <>
@@ -224,15 +224,15 @@ export default function MercuryTransactionInvoiceLinkModal({
         />
 
         {loading ? (
-          <div style={{ fontSize: '0.8125rem', color: '#6b7280', padding: '0.5rem 0' }}>Loading…</div>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>Loading…</div>
         ) : rows.length === 0 ? (
-          <div style={{ fontSize: '0.8125rem', color: '#6b7280', padding: '0.5rem 0' }}>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', padding: '0.5rem 0' }}>
             No invoices found.
           </div>
         ) : (
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               overflow: 'hidden',
               marginBottom: '0.75rem',
@@ -249,7 +249,7 @@ export default function MercuryTransactionInvoiceLinkModal({
                     gap: '0.6rem',
                     padding: '0.55rem 0.65rem',
                     borderBottom: '1px solid #f3f4f6',
-                    background: isSel ? '#eff6ff' : 'white',
+                    background: isSel ? 'var(--bg-blue-tint)' : 'var(--surface)',
                     cursor: 'pointer',
                   }}
                 >
@@ -269,8 +269,8 @@ export default function MercuryTransactionInvoiceLinkModal({
                               marginLeft: 6,
                               fontSize: '0.6875rem',
                               fontWeight: 600,
-                              color: '#1d4ed8',
-                              background: '#dbeafe',
+                              color: 'var(--text-blue-700)',
+                              background: 'var(--bg-blue-200)',
                               borderRadius: 4,
                               padding: '1px 5px',
                             }}
@@ -283,18 +283,18 @@ export default function MercuryTransactionInvoiceLinkModal({
                         {formatCurrency(Number(r.amount))}
                       </span>
                     </span>
-                    <span style={{ display: 'block', color: '#6b7280', marginTop: 2 }}>
+                    <span style={{ display: 'block', color: 'var(--text-muted)', marginTop: 2 }}>
                       {formatInvoiceDate(r.invoice_date)}
                       {' · '}
                       {r.is_paid ? 'Paid' : 'Unpaid'}
                       {r.purchase_order_number ? ` · PO ${r.purchase_order_number}` : ''}
                     </span>
                     {r.job_allocation_summary ? (
-                      <span style={{ display: 'block', color: '#9ca3af', marginTop: 2 }}>
+                      <span style={{ display: 'block', color: 'var(--text-faint)', marginTop: 2 }}>
                         Jobs: {r.job_allocation_summary}
                       </span>
                     ) : (
-                      <span style={{ display: 'block', color: '#b45309', marginTop: 2 }}>
+                      <span style={{ display: 'block', color: 'var(--text-amber-700)', marginTop: 2 }}>
                         No job allocation on this invoice yet.
                       </span>
                     )}
@@ -308,7 +308,7 @@ export default function MercuryTransactionInvoiceLinkModal({
         <div
           style={{
             fontSize: '0.8125rem',
-            color: '#374151',
+            color: 'var(--text-700)',
             marginBottom: '0.75rem',
           }}
         >
@@ -323,8 +323,8 @@ export default function MercuryTransactionInvoiceLinkModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
             }}

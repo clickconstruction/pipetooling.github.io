@@ -473,10 +473,10 @@ export function BankingMercuryCategoryReviewTab({
         style={{
           margin: '1rem 0',
           padding: '0.75rem 1rem',
-          background: '#fef2f2',
+          background: 'var(--bg-red-tint)',
           border: '1px solid #fecaca',
           borderRadius: 4,
-          color: '#991b1b',
+          color: 'var(--text-red-800)',
           fontSize: '0.875rem',
         }}
       >
@@ -498,15 +498,15 @@ export function BankingMercuryCategoryReviewTab({
         }}
       >
         <div>
-          <div style={{ fontSize: '0.875rem', color: '#374151' }}>
+          <div style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
             Each row is an accounting label from the Drag Sort / Accounting tabs.
           </div>
-          <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: '#6b7280' }}>
+          <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
             Click any category to open a searchable, sortable ledger below.
           </div>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
-          <div role="tablist" aria-label="Category review view" style={{ display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 6, overflow: 'hidden' }}>
+          <div role="tablist" aria-label="Category review view" style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
             {([['activity', 'Activity'], ['pnl', 'P&L'], ['balance_sheet', 'Balance Sheet']] as const).map(([v, lbl]) => (
               <button
                 key={v}
@@ -520,8 +520,8 @@ export function BankingMercuryCategoryReviewTab({
                   cursor: 'pointer',
                   fontSize: '0.8125rem',
                   fontWeight: 600,
-                  background: viewMode === v ? '#2563eb' : '#fff',
-                  color: viewMode === v ? '#fff' : '#374151',
+                  background: viewMode === v ? '#2563eb' : 'var(--surface)',
+                  color: viewMode === v ? '#fff' : 'var(--text-700)',
                 }}
               >
                 {lbl}
@@ -534,10 +534,10 @@ export function BankingMercuryCategoryReviewTab({
               alignItems: 'center',
               gap: '0.4rem',
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
           >
-            <span style={{ color: '#6b7280' }}>Period</span>
+            <span style={{ color: 'var(--text-muted)' }}>Period</span>
             <select
               value={timeWindow}
               onChange={(e) => {
@@ -554,7 +554,7 @@ export function BankingMercuryCategoryReviewTab({
               ))}
             </select>
             {windowedRangeLabel ? (
-              <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>{windowedRangeLabel}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{windowedRangeLabel}</span>
             ) : null}
           </label>
           <label
@@ -563,10 +563,10 @@ export function BankingMercuryCategoryReviewTab({
               alignItems: 'center',
               gap: '0.4rem',
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
           >
-            <span style={{ color: '#6b7280' }}>Sort</span>
+            <span style={{ color: 'var(--text-muted)' }}>Sort</span>
             <select
               value={ledgerSort}
               onChange={(e) => {
@@ -589,7 +589,7 @@ export function BankingMercuryCategoryReviewTab({
               alignItems: 'center',
               gap: '0.4rem',
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
               cursor: 'pointer',
             }}
           >
@@ -612,10 +612,10 @@ export function BankingMercuryCategoryReviewTab({
         <div
           style={{
             padding: '0.5rem 0.75rem',
-            background: '#f3f4f6',
-            border: '1px solid #e5e7eb',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border)',
             borderRadius: 4,
-            color: '#374151',
+            color: 'var(--text-700)',
             fontSize: '0.8125rem',
             marginBottom: '0.5rem',
           }}
@@ -639,10 +639,10 @@ export function BankingMercuryCategoryReviewTab({
         <div
           style={{
             padding: '1.5rem',
-            border: '1px dashed #d1d5db',
+            border: '1px dashed var(--border-strong)',
             borderRadius: 6,
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             fontSize: '0.875rem',
           }}
         >
@@ -651,10 +651,10 @@ export function BankingMercuryCategoryReviewTab({
             : `No transactions in ${windowedRangeLabel ?? 'this period'}. Try a longer Period.`}
         </div>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
           <table style={{ borderCollapse: 'collapse', width: '100%', minWidth: 520, fontSize: '0.8125rem' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                 <th style={{ ...ledgerThStyle, textAlign: 'left' }}>Category</th>
                 <th style={{ ...ledgerThStyle, textAlign: 'right' }}>Transactions</th>
                 <th style={{ ...ledgerThStyle, textAlign: 'right' }}>Total</th>
@@ -690,7 +690,7 @@ export function BankingMercuryCategoryReviewTab({
                           style={{
                             all: 'unset',
                             cursor: 'pointer',
-                            color: entry.isUnlabeled ? '#9ca3af' : '#111827',
+                            color: entry.isUnlabeled ? 'var(--text-faint)' : 'var(--text-strong)',
                             fontStyle: entry.isUnlabeled ? 'italic' : 'normal',
                             fontWeight: 500,
                           }}
@@ -713,8 +713,8 @@ export function BankingMercuryCategoryReviewTab({
                                   fontWeight: 600,
                                   padding: '1px 8px',
                                   borderRadius: 999,
-                                  background: unclassified ? '#fffbeb' : '#f1f5f9',
-                                  color: unclassified ? '#b45309' : '#475569',
+                                  background: unclassified ? 'var(--bg-amber-tint)' : 'var(--bg-slate-100)',
+                                  color: unclassified ? 'var(--text-amber-700)' : 'var(--text-slate-600)',
                                 }}
                               >
                                 {accountTypeLabel(at)}
@@ -730,7 +730,7 @@ export function BankingMercuryCategoryReviewTab({
                         background: rowBg,
                         textAlign: 'right',
                         fontVariantNumeric: 'tabular-nums',
-                        color: entry.count === 0 ? '#d1d5db' : '#374151',
+                        color: entry.count === 0 ? 'var(--text-faint-300)' : 'var(--text-700)',
                       }}
                     >
                       {entry.count.toLocaleString()}
@@ -753,15 +753,15 @@ export function BankingMercuryCategoryReviewTab({
               })}
             </tbody>
             <tfoot>
-              <tr style={{ borderTop: '2px solid #d1d5db', background: '#f3f4f6' }}>
-                <td style={{ ...ledgerTdStyle, fontWeight: 600, color: '#111827' }}>Total</td>
+              <tr style={{ borderTop: '2px solid var(--border-strong)', background: 'var(--bg-muted)' }}>
+                <td style={{ ...ledgerTdStyle, fontWeight: 600, color: 'var(--text-strong)' }}>Total</td>
                 <td
                   style={{
                     ...ledgerTdStyle,
                     textAlign: 'right',
                     fontVariantNumeric: 'tabular-nums',
                     fontWeight: 600,
-                    color: '#111827',
+                    color: 'var(--text-strong)',
                   }}
                 >
                   {ledgerTotals.count.toLocaleString()}
@@ -788,9 +788,9 @@ export function BankingMercuryCategoryReviewTab({
         <div
           style={{
             marginTop: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#fff',
+            background: 'var(--surface)',
             boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
           }}
         >
@@ -810,13 +810,13 @@ export function BankingMercuryCategoryReviewTab({
                 style={{
                   fontSize: '0.95rem',
                   fontWeight: 600,
-                  color: selectedEntry.isUnlabeled ? '#9ca3af' : '#111827',
+                  color: selectedEntry.isUnlabeled ? 'var(--text-faint)' : 'var(--text-strong)',
                   fontStyle: selectedEntry.isUnlabeled ? 'italic' : 'normal',
                 }}
               >
                 {selectedEntry.displayName}
               </div>
-              <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: '#6b7280' }}>
+              <div style={{ marginTop: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 {selectedEntry.count.toLocaleString()} transactions ·{' '}
                 <span style={{ color: amountColor(selectedEntry.totalAmount), fontWeight: 500 }}>
                   {formatUsd(selectedEntry.totalAmount)}
@@ -834,11 +834,11 @@ export function BankingMercuryCategoryReviewTab({
               style={{
                 padding: '0.35rem 0.65rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#fff',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
                 fontSize: '0.8125rem',
                 fontWeight: 500,
-                color: '#374151',
+                color: 'var(--text-700)',
                 cursor: 'pointer',
               }}
             >
@@ -857,14 +857,14 @@ export function BankingMercuryCategoryReviewTab({
                 width: '100%',
                 padding: '0.45rem 0.65rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 fontSize: '0.875rem',
-                color: '#111827',
+                color: 'var(--text-strong)',
                 boxSizing: 'border-box',
               }}
             />
             {search.trim() !== '' ? (
-              <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: '#6b7280' }}>
+              <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 Filtered: {selectedFilteredRows.length.toLocaleString()} of {selectedTxRows.length.toLocaleString()}
                 {' · '}
                 <span style={{ color: amountColor(selectedFilteredTotalAmount), fontWeight: 500 }}>
@@ -876,16 +876,16 @@ export function BankingMercuryCategoryReviewTab({
 
           <div style={{ padding: '0.75rem 1rem 1rem 1rem' }}>
             {selectedSortedRows.length === 0 ? (
-              <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 {selectedTxRows.length === 0
                   ? 'No transactions for this category in the current period.'
                   : 'No transactions match this search.'}
               </div>
             ) : (
-              <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+              <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
                 <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.8125rem' }}>
                   <thead>
-                    <tr style={{ background: '#f9fafb' }}>
+                    <tr style={{ background: 'var(--bg-subtle)' }}>
                       <SortableTh
                         label="Posted"
                         sortKey="posted_at"
@@ -924,7 +924,7 @@ export function BankingMercuryCategoryReviewTab({
                               background: 'none',
                               border: 'none',
                               padding: 0,
-                              color: '#1d4ed8',
+                              color: 'var(--text-blue-700)',
                               textDecoration: 'underline',
                               cursor: 'pointer',
                               font: 'inherit',
@@ -935,7 +935,7 @@ export function BankingMercuryCategoryReviewTab({
                           </button>
                         </td>
                         <td style={detailTdStyle}>
-                          {r.counterparty_name?.trim() || <span style={{ color: '#9ca3af' }}>—</span>}
+                          {r.counterparty_name?.trim() || <span style={{ color: 'var(--text-faint)' }}>—</span>}
                         </td>
                         <td
                           style={{
@@ -1025,7 +1025,7 @@ function SortableTh({ label, sortKey, currentKey, currentDir, onClick, align }: 
         }}
       >
         <span>{label}</span>
-        <span aria-hidden style={{ color: isActive ? '#374151' : 'transparent' }}>
+        <span aria-hidden style={{ color: isActive ? 'var(--text-700)' : 'transparent' }}>
           {isActive ? indicator : ' ▾'}
         </span>
       </button>
@@ -1036,10 +1036,10 @@ function SortableTh({ label, sortKey, currentKey, currentDir, onClick, align }: 
 const selectStyle: CSSProperties = {
   padding: '0.35rem 0.5rem',
   borderRadius: 6,
-  border: '1px solid #d1d5db',
-  background: '#fff',
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface)',
   fontSize: '0.8125rem',
-  color: '#111827',
+  color: 'var(--text-strong)',
   cursor: 'pointer',
 }
 
@@ -1049,8 +1049,8 @@ const ledgerThStyle: CSSProperties = {
   fontSize: '0.75rem',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  color: '#374151',
-  borderBottom: '1px solid #e5e7eb',
+  color: 'var(--text-700)',
+  borderBottom: '1px solid var(--border)',
 }
 
 const ledgerTdStyle: CSSProperties = {
@@ -1061,10 +1061,10 @@ const ledgerTdStyle: CSSProperties = {
 const detailThStyle: CSSProperties = {
   fontWeight: 600,
   fontSize: '0.7rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
 
 const detailTdStyle: CSSProperties = {

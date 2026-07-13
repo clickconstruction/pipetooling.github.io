@@ -57,7 +57,7 @@ export function RemoveScheduleBlockConfirmModal({
         aria-modal="true"
         aria-labelledby="schedule-dispatch-remove-block-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 400,
@@ -77,8 +77,8 @@ export function RemoveScheduleBlockConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
@@ -92,8 +92,8 @@ export function RemoveScheduleBlockConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: busy ? '#e5e7eb' : '#b91c1c',
-              color: busy ? '#6b7280' : '#fff',
+              background: busy ? 'var(--bg-200)' : '#b91c1c',
+              color: busy ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',

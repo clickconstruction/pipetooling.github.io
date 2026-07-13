@@ -65,7 +65,7 @@ export function ChecklistTitleWithLinks({ title, links }: Props) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
-          style={{ color: '#2563eb', textDecoration: 'underline' }}
+          style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
         >
           {anchorChildren}
         </a>

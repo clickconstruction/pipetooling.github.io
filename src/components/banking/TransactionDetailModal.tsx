@@ -86,8 +86,8 @@ function formatDate(iso: string | null): string {
 
 const sectionStyle = { marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' } as const
 const sectionTitleStyle = { margin: '0 0 0.5rem', fontSize: '0.8125rem', fontWeight: 700, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' } as const
-const factLabel = { fontSize: '0.7rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.03em' } as const
-const factValue = { fontSize: '0.875rem', color: '#111827', fontWeight: 500 } as const
+const factLabel = { fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em' } as const
+const factValue = { fontSize: '0.875rem', color: 'var(--text-strong)', fontWeight: 500 } as const
 
 export function TransactionDetailModal({
   open,
@@ -452,11 +452,11 @@ export function TransactionDetailModal({
         aria-modal="true"
         aria-label="Transaction detail"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ background: 'white', borderRadius: 8, width: 'min(680px, 100%)', maxHeight: 'min(90vh, 52rem)', overflowY: 'auto', padding: '1.25rem', boxSizing: 'border-box', boxShadow: '0 24px 48px rgba(0,0,0,0.18)' }}
+        style={{ background: 'var(--surface)', borderRadius: 8, width: 'min(680px, 100%)', maxHeight: 'min(90vh, 52rem)', overflowY: 'auto', padding: '1.25rem', boxSizing: 'border-box', boxShadow: '0 24px 48px rgba(0,0,0,0.18)' }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>Transaction detail</h2>
-          <button type="button" onClick={onClose} style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid #d1d5db', background: '#fff', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>Close</button>
+          <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Transaction detail</h2>
+          <button type="button" onClick={onClose} style={{ padding: '0.35rem 0.65rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', fontSize: '0.875rem', fontWeight: 500, cursor: 'pointer' }}>Close</button>
         </div>
 
         {/* Read-only facts */}
@@ -468,7 +468,7 @@ export function TransactionDetailModal({
               type="button"
               onClick={() => setContextOpen(true)}
               title="See ledger transactions around this date"
-              style={{ all: 'unset', cursor: 'pointer', color: '#1d4ed8', fontWeight: 500, fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2 }}
+              style={{ all: 'unset', cursor: 'pointer', color: 'var(--text-blue-700)', fontWeight: 500, fontSize: '0.875rem', textDecoration: 'underline', textUnderlineOffset: 2 }}
             >
               {formatDate(transaction.posted_at)}
             </button>
@@ -483,7 +483,7 @@ export function TransactionDetailModal({
           </div>
         </div>
 
-        {loading ? <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>Loading…</div> : null}
+        {loading ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Loading…</div> : null}
 
         {/* Assigned Person */}
         <div style={sectionStyle}>
@@ -503,7 +503,7 @@ export function TransactionDetailModal({
         <div style={sectionStyle}>
           <h3 style={sectionTitleStyle}>Jobs</h3>
           {internalTransfersLocked ? (
-            <div style={{ fontSize: '0.8125rem', color: '#334155', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 6, padding: '0.6rem 0.8rem' }}>
+            <div style={{ fontSize: '0.8125rem', color: '#334155', background: 'var(--bg-slate-tint)', border: '1px solid #cbd5e1', borderRadius: 6, padding: '0.6rem 0.8rem' }}>
               Labeled <strong>Internal Transfers</strong> — cannot be split onto jobs. Change the label to edit jobs.
             </div>
           ) : (
@@ -513,15 +513,15 @@ export function TransactionDetailModal({
                 value={jobSearch}
                 onChange={(e) => setJobSearch(e.target.value)}
                 placeholder="Search jobs (3+ characters)…"
-                style={{ width: '100%', padding: '8px 10px', marginBottom: '0.4rem', fontSize: '0.875rem', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 6 }}
+                style={{ width: '100%', padding: '8px 10px', marginBottom: '0.4rem', fontSize: '0.875rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 6 }}
               />
-              {jobSearch.trim().length > 2 && jobSearchLoading ? <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Searching…</div> : null}
+              {jobSearch.trim().length > 2 && jobSearchLoading ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Searching…</div> : null}
               {jobSearch.trim().length > 2 && jobResults.length > 0 ? (
-                <div style={{ maxHeight: 140, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
+                <div style={{ maxHeight: 140, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4, marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
                   {jobResults.map((r) => (
-                    <button key={r.id} type="button" onClick={() => addJobLine(r)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.45rem 0.65rem', border: 'none', borderBottom: '1px solid #f3f4f6', background: 'white', cursor: 'pointer' }}>
+                    <button key={r.id} type="button" onClick={() => addJobLine(r)} style={{ display: 'block', width: '100%', textAlign: 'left', padding: '0.45rem 0.65rem', border: 'none', borderBottom: '1px solid #f3f4f6', background: 'var(--surface)', cursor: 'pointer' }}>
                       <span style={{ fontWeight: 600 }}>{formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name)}</span>
-                      <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
+                      <span style={{ color: 'var(--text-muted)' }}> · {r.job_address}</span>
                     </button>
                   ))}
                 </div>
@@ -529,23 +529,23 @@ export function TransactionDetailModal({
               {lines.map((ln) => {
                 const dd = lineDisplayDollars(ln, displayTotal)
                 return (
-                  <div key={ln.jobId} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #f1f5f9', background: '#fafafa' }}>
+                  <div key={ln.jobId} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.6rem', borderRadius: 8, border: '1px solid #f1f5f9', background: 'var(--bg-page)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ flex: '1 1 130px', minWidth: 0, fontSize: '0.8125rem', fontWeight: 500 }} title={ln.jobLabel}>{ln.jobLabel}</span>
-                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'dollars' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: ln.mode === 'dollars' ? '#2563eb' : '#fff', color: ln.mode === 'dollars' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>$</button>
-                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'percent' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: ln.mode === 'percent' ? '#2563eb' : '#fff', color: ln.mode === 'percent' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>%</button>
+                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'dollars' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: ln.mode === 'dollars' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'dollars' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>$</button>
+                      <button type="button" onClick={() => updateLine(ln.jobId, { mode: 'percent' })} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #cbd5e1', background: ln.mode === 'percent' ? '#2563eb' : 'var(--surface)', color: ln.mode === 'percent' ? '#fff' : '#334155', cursor: 'pointer', fontSize: '0.8125rem' }}>%</button>
                       <input type="text" inputMode="decimal" value={ln.valueStr} onChange={(e) => updateLine(ln.jobId, { valueStr: e.target.value })} placeholder={ln.mode === 'dollars' ? '0.00' : '0'} style={{ width: 90, padding: '6px 10px', fontSize: '0.875rem', border: '1px solid #e2e8f0', borderRadius: 8, boxSizing: 'border-box', fontVariantNumeric: 'tabular-nums' }} />
                       <button type="button" onClick={() => removeLine(ln.jobId)} style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #fecdd3', background: '#fff1f2', color: '#e11d48', cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>Remove</button>
                     </div>
                     {ln.mode === 'percent' && displayTotal > 0 && dd !== null && ln.valueStr.trim() !== '' ? (
-                      <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.3rem' }}>≈ {formatCurrency(dd)} of {formatCurrency(displayTotal)}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.3rem' }}>≈ {formatCurrency(dd)} of {formatCurrency(displayTotal)}</div>
                     ) : null}
                     <input type="text" value={ln.note} onChange={(e) => updateLine(ln.jobId, { note: e.target.value })} placeholder="Note (optional)" style={{ width: '100%', marginTop: '0.4rem', padding: '6px 10px', fontSize: '0.8125rem', boxSizing: 'border-box', border: '1px solid #e2e8f0', borderRadius: 8 }} />
                   </div>
                 )
               })}
               {lines.length > 0 ? (
-                <div style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', color: displayTotal <= 0 ? '#6b7280' : canSaveSplits ? '#059669' : '#b45309' }}>
+                <div style={{ fontSize: '0.8125rem', marginBottom: '0.5rem', color: displayTotal <= 0 ? '#6b7280' : canSaveSplits ? 'var(--text-green-600)' : 'var(--text-amber-700)' }}>
                   {displayTotal <= 0 ? 'Zero charge — cannot split.' : <>Allocated: {allocationSum.ok ? formatCurrency(allocationSum.sum) : '—'} · Remainder: {allocationSum.ok ? formatCurrency(remainder) : '—'}</>}
                 </div>
               ) : null}
@@ -580,21 +580,21 @@ export function TransactionDetailModal({
         <div style={sectionStyle}>
           <h3 style={sectionTitleStyle}>Applicable rules</h3>
           {matchingRules.length === 0 ? (
-            <div style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>No accounting rules match this transaction.</div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>No accounting rules match this transaction.</div>
           ) : (
-            <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: '#374151' }}>
+            <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
               {matchingRules.map((r) => (
                 <li key={r.id} style={{ marginBottom: '0.2rem' }}>
                   <button
                     type="button"
                     onClick={() => openEditRule(r.id)}
                     title="Edit this rule"
-                    style={{ all: 'unset', cursor: 'pointer', color: '#1d4ed8', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                    style={{ all: 'unset', cursor: 'pointer', color: 'var(--text-blue-700)', fontWeight: 700, textDecoration: 'underline', textUnderlineOffset: 2 }}
                   >
                     {r.name}
                   </button>{' '}
                   → {labelById.get(r.labelId)?.name ?? '—'}
-                  {r.isFirstMatch ? <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#2563eb', fontWeight: 600 }}>(would apply)</span> : null}
+                  {r.isFirstMatch ? <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: 'var(--text-link)', fontWeight: 600 }}>(would apply)</span> : null}
                 </li>
               ))}
             </ul>
@@ -609,11 +609,11 @@ export function TransactionDetailModal({
             onChange={(e) => setNoteDraft(e.target.value.slice(0, NOTE_MAX))}
             placeholder="Org-wide note for this transaction…"
             rows={3}
-            style={{ width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.875rem', boxSizing: 'border-box', border: '1px solid #d1d5db', borderRadius: 6, resize: 'vertical', fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.875rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 6, resize: 'vertical', fontFamily: 'inherit' }}
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem' }}>
             <button type="button" onClick={() => void handleSaveNote()} disabled={savingNote || !noteDirty} style={{ padding: '0.4rem 0.85rem', borderRadius: 6, border: '1px solid #1d4ed8', background: savingNote || !noteDirty ? '#93c5fd' : '#2563eb', color: '#fff', cursor: savingNote || !noteDirty ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>{savingNote ? 'Saving…' : 'Save note'}</button>
-            <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{noteDraft.length}/{NOTE_MAX}</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-faint)' }}>{noteDraft.length}/{NOTE_MAX}</span>
           </div>
         </div>
 
@@ -628,8 +628,8 @@ export function TransactionDetailModal({
               overflow: 'auto',
               fontSize: '0.75rem',
               lineHeight: 1.4,
-              background: '#fff',
-              border: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: 4,
               fontFamily: 'monospace',
               wordBreak: 'break-all',

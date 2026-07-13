@@ -167,9 +167,9 @@ export function BidVersionPicker({
   return (
     <div style={{ marginBottom: '1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Version:</span>
+        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>Version:</span>
         {isUnsplit ? (
-          <span style={{ ...chipBase, background: '#dbeafe', border: '1px solid #3b82f6', cursor: 'default', fontWeight: 600 }}>
+          <span style={{ ...chipBase, background: 'var(--bg-blue-200)', border: '1px solid #3b82f6', cursor: 'default', fontWeight: 600 }}>
             Current
           </span>
         ) : (
@@ -180,8 +180,8 @@ export function BidVersionPicker({
                 key={v.id}
                 style={{
                   ...chipBase,
-                  background: active ? '#dbeafe' : '#f3f4f6',
-                  border: active ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                  background: active ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
+                  border: active ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                 }}
               >
                 <button
@@ -212,7 +212,7 @@ export function BidVersionPicker({
         </button>
       </div>
       {isExactMaterials && !isUnsplit && (
-        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
+        <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid #fde68a', borderRadius: 4, padding: '0.35rem 0.5rem' }}>
           This bid uses By-Stage materials — material totals come from shared purchase orders and aren’t versioned.
         </div>
       )}
@@ -221,7 +221,7 @@ export function BidVersionPicker({
         <Overlay onClose={() => !busy && setModalOpen(false)}>
           <h3 style={{ margin: '0 0 1rem' }}>{isUnsplit ? 'Split into versions' : 'New version'}</h3>
           {isUnsplit && (
-            <p style={{ margin: '0 0 0.75rem', color: '#4b5563', fontSize: '0.875rem' }}>
+            <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>
               Name your current takeoff + pricing, then the new variant. Both become named versions.
             </p>
           )}
@@ -259,7 +259,7 @@ export function BidVersionPicker({
           </label>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
             <button type="button" onClick={() => deleteVersion(renaming)} disabled={busy}
-              style={{ ...btnGhost, color: '#b91c1c', borderColor: '#fecaca' }}>Delete</button>
+              style={{ ...btnGhost, color: 'var(--text-red-700)', borderColor: '#fecaca' }}>Delete</button>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={() => setRenaming(null)} disabled={busy} style={btnGhost}>Cancel</button>
               <button type="button" onClick={submitRename} disabled={busy || !renameValue.trim()} style={btnPrimary}>Save</button>
@@ -271,14 +271,14 @@ export function BidVersionPicker({
   )
 }
 
-const inputStyle: React.CSSProperties = { width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }
-const btnGhost: React.CSSProperties = { padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }
+const inputStyle: React.CSSProperties = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }
+const btnGhost: React.CSSProperties = { padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }
 const btnPrimary: React.CSSProperties = { padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
 
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={onClose}>
-      <div style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, maxWidth: '90vw', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>

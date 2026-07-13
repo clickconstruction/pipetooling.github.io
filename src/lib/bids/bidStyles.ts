@@ -12,7 +12,7 @@ export const tabStyle = (active: boolean) => ({
   border: 'none',
   background: 'none',
   borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? '#3b82f6' : '#6b7280',
+  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer' as const,
   fontSize: '0.9375rem',
@@ -32,7 +32,7 @@ export const bidDetailCloseXStyle: CSSProperties = {
   border: 'none',
   borderRadius: 4,
   cursor: 'pointer',
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   fontSize: '1.35rem',
   lineHeight: 1,
 }
@@ -43,6 +43,6 @@ export const bidDetailCloseFloatMobileStyle: CSSProperties = {
   top: '0.75rem',
   right: '0.75rem',
   zIndex: 2,
-  background: 'white',
+  background: 'var(--surface)',
   boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
 }

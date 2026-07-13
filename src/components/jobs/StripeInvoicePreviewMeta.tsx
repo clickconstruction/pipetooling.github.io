@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react'
 const labelCell: CSSProperties = {
   padding: '0.15rem 0.75rem 0.15rem 0',
   verticalAlign: 'top',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.72rem',
   fontWeight: 500,
   whiteSpace: 'nowrap',
@@ -13,7 +13,7 @@ const valueCell: CSSProperties = {
   padding: '0.15rem 0',
   verticalAlign: 'top',
   fontSize: '0.75rem',
-  color: '#111827',
+  color: 'var(--text-strong)',
   wordBreak: 'break-word',
 }
 
@@ -46,7 +46,7 @@ export function StripeInvoicePreviewMeta(p: StripeInvoicePreviewMetaProps) {
             {email ? (
               <>
                 <br />
-                <span style={{ color: '#4b5563', fontSize: '0.72rem' }}>{email}</span>
+                <span style={{ color: 'var(--text-600)', fontSize: '0.72rem' }}>{email}</span>
               </>
             ) : null}
           </td>

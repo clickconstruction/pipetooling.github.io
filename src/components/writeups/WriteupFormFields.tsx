@@ -24,7 +24,7 @@ export function WriteupFormFields({ schema, answers, onChange, readOnly = false,
               key={b.id}
               style={{
                 padding: '0.75rem',
-                background: '#f3f4f6',
+                background: 'var(--bg-muted)',
                 borderRadius: 6,
                 fontSize: '0.875rem',
                 whiteSpace: 'pre-wrap',
@@ -40,7 +40,7 @@ export function WriteupFormFields({ schema, answers, onChange, readOnly = false,
             <div key={b.id}>
               <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                 {b.label}
-                {b.required ? <span style={{ color: '#b91c1c' }}> *</span> : null}
+                {b.required ? <span style={{ color: 'var(--text-red-700)' }}> *</span> : null}
               </label>
               <input
                 type="text"
@@ -48,7 +48,7 @@ export function WriteupFormFields({ schema, answers, onChange, readOnly = false,
                 onChange={(e) => setField(b.id, e.target.value)}
                 readOnly={ro}
                 disabled={disabled}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </div>
           )
@@ -59,7 +59,7 @@ export function WriteupFormFields({ schema, answers, onChange, readOnly = false,
             <div key={b.id}>
               <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.25rem', fontWeight: 500 }}>
                 {b.label}
-                {b.required ? <span style={{ color: '#b91c1c' }}> *</span> : null}
+                {b.required ? <span style={{ color: 'var(--text-red-700)' }}> *</span> : null}
               </label>
               <textarea
                 value={v}
@@ -67,7 +67,7 @@ export function WriteupFormFields({ schema, answers, onChange, readOnly = false,
                 readOnly={ro}
                 disabled={disabled}
                 rows={4}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', resize: 'vertical' }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', resize: 'vertical' }}
               />
             </div>
           )
@@ -80,11 +80,11 @@ export function WriteupFormFields({ schema, answers, onChange, readOnly = false,
               {b.label ? (
                 <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', fontWeight: 500 }}>
                   {b.label}
-                  {b.required ? <span style={{ color: '#b91c1c' }}> *</span> : null}
+                  {b.required ? <span style={{ color: 'var(--text-red-700)' }}> *</span> : null}
                 </div>
               ) : b.required ? (
-                <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', color: '#374151' }}>
-                  Select at least one <span style={{ color: '#b91c1c' }}>*</span>
+                <div style={{ fontSize: '0.8125rem', marginBottom: '0.35rem', color: 'var(--text-700)' }}>
+                  Select at least one <span style={{ color: 'var(--text-red-700)' }}>*</span>
                 </div>
               ) : null}
               <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none' }}>

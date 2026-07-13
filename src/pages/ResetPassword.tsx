@@ -32,10 +32,10 @@ export default function ResetPassword() {
     return (
       <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
         <h1 style={{ marginBottom: '1rem' }}>Check your email</h1>
-        <p style={{ marginBottom: '1rem', color: '#374151' }}>
+        <p style={{ marginBottom: '1rem', color: 'var(--text-700)' }}>
           We've sent a password reset link to <strong>{email}</strong>. Click the link in the email to reset your password.
         </p>
-        <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ marginTop: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Didn't receive the email? Check your spam folder or{' '}
           <button
             type="button"
@@ -46,7 +46,7 @@ export default function ResetPassword() {
             style={{
               background: 'none',
               border: 'none',
-              color: '#2563eb',
+              color: 'var(--text-link)',
               textDecoration: 'underline',
               cursor: 'pointer',
               padding: 0,
@@ -66,7 +66,7 @@ export default function ResetPassword() {
   return (
     <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
       <h1 style={{ marginBottom: '1rem' }}>Reset password</h1>
-      <p style={{ marginBottom: '1rem', color: '#374151' }}>
+      <p style={{ marginBottom: '1rem', color: 'var(--text-700)' }}>
         Enter your email address and we'll send you a link to reset your password.
       </p>
       <form onSubmit={handleSubmit}>
@@ -85,7 +85,7 @@ export default function ResetPassword() {
             style={{ width: '100%', padding: '0.5rem' }}
           />
         </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.5rem 1rem' }}>
           {loading ? 'Sending…' : 'Send reset link'}
         </button>

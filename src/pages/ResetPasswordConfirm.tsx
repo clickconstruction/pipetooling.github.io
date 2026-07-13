@@ -97,7 +97,7 @@ export default function ResetPasswordConfirm() {
   return (
     <div style={{ maxWidth: 360, margin: '4rem auto', padding: '0 1rem' }}>
       <h1 style={{ marginBottom: '1rem' }}>Set new password</h1>
-      <p style={{ marginBottom: '1rem', color: '#374151' }}>
+      <p style={{ marginBottom: '1rem', color: 'var(--text-700)' }}>
         Enter your new password below.
       </p>
       <form onSubmit={handleSubmit}>
@@ -129,7 +129,7 @@ export default function ResetPasswordConfirm() {
             minLength={6}
           />
         </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.5rem 1rem' }}>
           {loading ? 'Updating password…' : 'Update password'}
         </button>

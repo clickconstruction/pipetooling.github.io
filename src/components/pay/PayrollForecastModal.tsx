@@ -193,7 +193,7 @@ export function PayrollForecastModal(props: {
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.25rem 1.5rem',
           borderRadius: 8,
           width: 'min(960px, 95vw)',
@@ -208,7 +208,7 @@ export function PayrollForecastModal(props: {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Payroll forecast</h2>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Add bars for upcoming allowances, then check the unpaid balances you plan to pay from each bar.
               Bars fill as you check rows.
               <span style={{ display: 'inline-block', marginLeft: '0.4rem', fontStyle: 'italic' }}>
@@ -226,7 +226,7 @@ export function PayrollForecastModal(props: {
               cursor: 'pointer',
               fontSize: '1.25rem',
               lineHeight: 1,
-              color: '#6b7280',
+              color: 'var(--text-muted)',
             }}
             aria-label="Close"
           >
@@ -240,9 +240,9 @@ export function PayrollForecastModal(props: {
           style={{
             position: 'sticky',
             top: 0,
-            background: 'white',
+            background: 'var(--surface)',
             padding: '0.75rem 0',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             zIndex: 1,
           }}
         >
@@ -268,7 +268,7 @@ export function PayrollForecastModal(props: {
               Add bar
             </button>
             {bars.length > 0 && (
-              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Allocated ${formatCurrency(totalAllocated)} of $
                 {formatCurrency(bars.reduce((s, b) => s + b.allowance, 0))} across {bars.length} bar
                 {bars.length === 1 ? '' : 's'}
@@ -277,7 +277,7 @@ export function PayrollForecastModal(props: {
           </div>
 
           {sortedBars.length === 0 ? (
-            <p style={{ margin: 0, padding: '1rem', color: '#6b7280', fontSize: '0.875rem', background: '#f9fafb', borderRadius: 6, textAlign: 'center' }}>
+            <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem', background: 'var(--bg-subtle)', borderRadius: 6, textAlign: 'center' }}>
               No bars yet — click <strong>+ Add bar</strong> to start forecasting.
             </p>
           ) : (
@@ -314,8 +314,8 @@ export function PayrollForecastModal(props: {
                         position: 'relative',
                         width: '100%',
                         height: 140,
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 6,
                         overflow: 'hidden',
                       }}
@@ -364,7 +364,7 @@ export function PayrollForecastModal(props: {
                       style={{
                         width: '100%',
                         padding: '0.25rem 0.35rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         fontSize: '0.75rem',
                       }}
@@ -378,7 +378,7 @@ export function PayrollForecastModal(props: {
                           left: 6,
                           top: '50%',
                           transform: 'translateY(-50%)',
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           fontSize: '0.75rem',
                           pointerEvents: 'none',
                         }}
@@ -397,24 +397,24 @@ export function PayrollForecastModal(props: {
                           width: '100%',
                           boxSizing: 'border-box',
                           padding: '0.25rem 0.35rem 0.25rem 16px',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           fontSize: '0.75rem',
                         }}
                       />
                     </div>
                     {/* Filled-to-date summary + remove */}
-                    <div style={{ fontSize: '0.72rem', color: over ? '#b91c1c' : '#374151', textAlign: 'center', lineHeight: 1.25 }}>
+                    <div style={{ fontSize: '0.72rem', color: over ? 'var(--text-red-700)' : 'var(--text-700)', textAlign: 'center', lineHeight: 1.25 }}>
                       <div>
                         <strong>${formatCurrency(filled)}</strong>
                         {allowance > 0 && (
-                          <span style={{ color: '#6b7280' }}> / ${formatCurrency(allowance)}</span>
+                          <span style={{ color: 'var(--text-muted)' }}> / ${formatCurrency(allowance)}</span>
                         )}
                       </div>
                       {bar.dateYmd ? (
-                        <div style={{ color: '#6b7280' }}>{formatShortDayMonth(bar.dateYmd)}</div>
+                        <div style={{ color: 'var(--text-muted)' }}>{formatShortDayMonth(bar.dateYmd)}</div>
                       ) : (
-                        <div style={{ color: '#9ca3af' }}>pick a date</div>
+                        <div style={{ color: 'var(--text-faint)' }}>pick a date</div>
                       )}
                     </div>
                     <button
@@ -427,7 +427,7 @@ export function PayrollForecastModal(props: {
                         padding: '0.15rem 0.5rem',
                         fontSize: '0.7rem',
                         background: 'none',
-                        color: '#b91c1c',
+                        color: 'var(--text-red-700)',
                         border: '1px solid #fecaca',
                         borderRadius: 4,
                         cursor: 'pointer',
@@ -447,7 +447,7 @@ export function PayrollForecastModal(props: {
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <h3 style={{ margin: 0, fontSize: '1rem' }}>
               Unpaid balances
-              <span style={{ marginLeft: '0.4rem', fontWeight: 400, color: '#6b7280', fontSize: '0.85rem' }}>
+              <span style={{ marginLeft: '0.4rem', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                 ({unpaidRows.length} row{unpaidRows.length === 1 ? '' : 's'} · ${formatCurrency(totalUnpaid)} owed)
               </span>
             </h3>
@@ -458,9 +458,9 @@ export function PayrollForecastModal(props: {
                 style={{
                   padding: '0.2rem 0.6rem',
                   fontSize: '0.8125rem',
-                  background: 'white',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--surface)',
+                  color: 'var(--text-700)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                 }}
@@ -471,13 +471,13 @@ export function PayrollForecastModal(props: {
             )}
           </div>
           {unpaidRows.length === 0 ? (
-            <p style={{ margin: 0, padding: '1rem', color: '#6b7280', fontSize: '0.875rem', background: '#f9fafb', borderRadius: 6 }}>
+            <p style={{ margin: 0, padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem', background: 'var(--bg-subtle)', borderRadius: 6 }}>
               No unpaid balances — everyone's caught up.
             </p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                <thead style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                   <tr>
                     <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left' }}>Person</th>
                     <th style={{ padding: '0.4rem 0.6rem', textAlign: 'left' }} title="Pay period end — when the balance came into existence">
@@ -487,10 +487,10 @@ export function PayrollForecastModal(props: {
                     {sortedBars.map((bar) => (
                       <th
                         key={bar.id}
-                        style={{ padding: '0.4rem 0.6rem', textAlign: 'center', fontSize: '0.78rem', color: '#374151' }}
+                        style={{ padding: '0.4rem 0.6rem', textAlign: 'center', fontSize: '0.78rem', color: 'var(--text-700)' }}
                       >
                         <div>{bar.dateYmd ? formatShortDayMonth(bar.dateYmd) : '—'}</div>
-                        <div style={{ color: '#6b7280', fontWeight: 400 }}>
+                        <div style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
                           {bar.allowance > 0 ? `$${formatCurrency(bar.allowance)}` : '—'}
                         </div>
                       </th>
@@ -503,7 +503,7 @@ export function PayrollForecastModal(props: {
                     return (
                       <tr key={row.stubId} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '0.4rem 0.6rem' }}>{row.personName}</td>
-                        <td style={{ padding: '0.4rem 0.6rem', color: '#374151' }}>
+                        <td style={{ padding: '0.4rem 0.6rem', color: 'var(--text-700)' }}>
                           {formatShortDayMonth(row.balanceCreatedYmd)}
                         </td>
                         <td style={{ padding: '0.4rem 0.6rem', textAlign: 'right' }}>
@@ -528,7 +528,7 @@ export function PayrollForecastModal(props: {
                 </tbody>
                 {sortedBars.length > 0 && (
                   <tfoot>
-                    <tr style={{ borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                    <tr style={{ borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
                       <td style={{ padding: '0.4rem 0.6rem', fontWeight: 600 }} colSpan={2}>
                         Filled
                       </td>
@@ -546,7 +546,7 @@ export function PayrollForecastModal(props: {
                               padding: '0.4rem 0.6rem',
                               textAlign: 'center',
                               fontWeight: 600,
-                              color: over ? '#b91c1c' : '#374151',
+                              color: over ? 'var(--text-red-700)' : 'var(--text-700)',
                             }}
                           >
                             ${formatCurrency(filled)}

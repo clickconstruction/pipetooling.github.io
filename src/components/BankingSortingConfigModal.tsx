@@ -216,11 +216,11 @@ export function BankingSortingConfigModal({
   const listBoxStyle: CSSProperties = {
     maxHeight: 'min(28vh, 220px)',
     overflow: 'auto',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--border)',
     borderRadius: 4,
     padding: '0.5rem 0.65rem',
     fontSize: '0.8125rem',
-    background: '#fafafa',
+    background: 'var(--bg-page)',
   }
 
   const tabIds = {
@@ -260,7 +260,7 @@ export function BankingSortingConfigModal({
         aria-describedby={describedBy}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width:
             enableKindBadgeEditor || enableTextExclusionEditor
@@ -291,8 +291,8 @@ export function BankingSortingConfigModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -301,12 +301,12 @@ export function BankingSortingConfigModal({
             Cancel
           </button>
         </div>
-        <p id={descId} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p id={descId} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Empty <strong>Kinds</strong>, <strong>Accounts</strong>, or <strong>Debit cards</strong> lists mean <strong>all</strong>. Start date uses the
           transaction <strong>posted</strong> day (America/Chicago); oldest row must be on or after that day.
         </p>
         {contextNote && contextNoteId ? (
-          <p id={contextNoteId} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+          <p id={contextNoteId} style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {contextNote}
           </p>
         ) : null}
@@ -320,7 +320,7 @@ export function BankingSortingConfigModal({
           onChange={(e) => setStartDateYmd(e.target.value)}
           style={{ marginBottom: '0.85rem', padding: '6px 8px', fontSize: '0.875rem', maxWidth: '12rem' }}
         />
-        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.85rem' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.85rem' }}>
           {startDateYmd ? formatWorkDateYmdFriendly(startDateYmd) : '—'}
         </div>
 
@@ -333,7 +333,7 @@ export function BankingSortingConfigModal({
             flexWrap: 'wrap',
             gap: 0,
             marginBottom: '0.5rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <button
@@ -414,7 +414,7 @@ export function BankingSortingConfigModal({
               }
             >
               {(enableKindBadgeEditor ? mergedKindChoices : kindChoices).length === 0 ? (
-                <span style={{ color: '#6b7280' }}>No kinds loaded yet — open Ledger or reload transactions.</span>
+                <span style={{ color: 'var(--text-muted)' }}>No kinds loaded yet — open Ledger or reload transactions.</span>
               ) : enableKindBadgeEditor ? (
                 mergedKindChoices.map((k) => {
                   const inSample = kindChoices.includes(k)
@@ -437,7 +437,7 @@ export function BankingSortingConfigModal({
                             </span>
                           </label>
                         ) : (
-                          <div style={{ flex: '1 1 12rem', minWidth: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                          <div style={{ flex: '1 1 12rem', minWidth: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             <span style={{ fontFamily: 'ui-monospace, monospace', wordBreak: 'break-all' }} title={k}>
                               {formatMercuryKind(k)}
                             </span>
@@ -455,7 +455,7 @@ export function BankingSortingConfigModal({
                           gap: '0.5rem',
                         }}
                       >
-                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           Badge label
                           <input
                             type="text"
@@ -470,7 +470,7 @@ export function BankingSortingConfigModal({
                             style={{ padding: '4px 6px', fontSize: '0.8125rem', width: 'min(220px, 100%)' }}
                           />
                         </label>
-                        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                           Color
                           <input
                             type="color"
@@ -483,7 +483,7 @@ export function BankingSortingConfigModal({
                               }))
                             }}
                             aria-label={`Badge color for ${k}`}
-                            style={{ width: 36, height: 28, padding: 0, border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ width: 36, height: 28, padding: 0, border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                           />
                         </label>
                       </div>
@@ -522,7 +522,7 @@ export function BankingSortingConfigModal({
             </div>
             <div style={listBoxStyle}>
               {accountChoices.length === 0 ? (
-                <span style={{ color: '#6b7280' }}>No accounts loaded yet — open Ledger or reload transactions.</span>
+                <span style={{ color: 'var(--text-muted)' }}>No accounts loaded yet — open Ledger or reload transactions.</span>
               ) : (
                 accountChoices.map((id) => (
                   <label
@@ -559,7 +559,7 @@ export function BankingSortingConfigModal({
             </div>
             <div style={listBoxStyle}>
               {debitCardChoices.length === 0 ? (
-                <span style={{ color: '#6b7280' }}>No debit cards loaded yet — sync from Mercury or add nicknames.</span>
+                <span style={{ color: 'var(--text-muted)' }}>No debit cards loaded yet — sync from Mercury or add nicknames.</span>
               ) : (
                 debitCardChoices.map((id) => {
                   const key = id.trim().toLowerCase()
@@ -588,7 +588,7 @@ export function BankingSortingConfigModal({
             aria-labelledby={tabIds.exclusions}
             style={{ display: 'flex', flexDirection: 'column', minHeight: 0, marginBottom: '0.85rem', gap: '0.75rem' }}
           >
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Hide transactions when Mercury <strong>Counterparty name</strong> or internal <strong>Note</strong> contains any of these
               substrings (case-insensitive). One pattern per line. Max {BANKING_SORTING_MAX_EXCLUSION_PATTERNS} patterns per list, up to{' '}
               {BANKING_SORTING_MAX_EXCLUSION_STRING_LEN} characters each.
@@ -613,11 +613,11 @@ export function BankingSortingConfigModal({
                   fontSize: '0.8125rem',
                   padding: '0.5rem 0.65rem',
                   borderRadius: 4,
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   fontFamily: 'inherit',
                   resize: 'vertical',
                   minHeight: '4.5rem',
-                  background: '#fafafa',
+                  background: 'var(--bg-page)',
                 }}
               />
             </div>
@@ -641,11 +641,11 @@ export function BankingSortingConfigModal({
                   fontSize: '0.8125rem',
                   padding: '0.5rem 0.65rem',
                   borderRadius: 4,
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   fontFamily: 'inherit',
                   resize: 'vertical',
                   minHeight: '4.5rem',
-                  background: '#fafafa',
+                  background: 'var(--bg-page)',
                 }}
               />
             </div>
@@ -653,7 +653,7 @@ export function BankingSortingConfigModal({
         ) : null}
 
         {saveError ? (
-          <p role="alert" style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#b91c1c' }}>
+          <p role="alert" style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
             {saveError}
           </p>
         ) : null}

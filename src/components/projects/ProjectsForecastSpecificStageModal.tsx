@@ -147,19 +147,19 @@ function formatTimestamp(value: string | null | undefined): string {
 function describeStatus(status: string | null): { label: string; bg: string; color: string; border: string } {
   switch (status) {
     case 'completed':
-      return { label: 'Completed', bg: '#dcfce7', color: '#166534', border: '#86efac' }
+      return { label: 'Completed', bg: '#dcfce7', color: 'var(--text-green-800)', border: '#86efac' }
     case 'approved':
-      return { label: 'Approved', bg: '#dcfce7', color: '#166534', border: '#86efac' }
+      return { label: 'Approved', bg: '#dcfce7', color: 'var(--text-green-800)', border: '#86efac' }
     case 'in_progress':
-      return { label: 'In progress', bg: '#fef3c7', color: '#92400e', border: '#fcd34d' }
+      return { label: 'In progress', bg: '#fef3c7', color: 'var(--text-amber-800)', border: '#fcd34d' }
     case 'rejected':
-      return { label: 'Previous work incomplete', bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' }
+      return { label: 'Previous work incomplete', bg: '#fee2e2', color: 'var(--text-red-800)', border: '#fca5a5' }
     case 'skipped':
-      return { label: 'Skipped', bg: '#f3f4f6', color: '#4b5563', border: '#d1d5db' }
+      return { label: 'Skipped', bg: '#f3f4f6', color: 'var(--text-600)', border: 'var(--border-strong)' }
     case 'pending':
       return { label: 'Pending', bg: '#e0e7ff', color: '#3730a3', border: '#a5b4fc' }
     default:
-      return { label: status ?? '—', bg: '#f3f4f6', color: '#4b5563', border: '#d1d5db' }
+      return { label: status ?? '—', bg: '#f3f4f6', color: 'var(--text-600)', border: 'var(--border-strong)' }
   }
 }
 
@@ -596,7 +596,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
           borderRadius: 10,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           width: '100%',
@@ -614,7 +614,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
             alignItems: 'flex-start',
             gap: 10,
             padding: '1rem 1.25rem 0.75rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}
         >
@@ -644,7 +644,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
               style={{
                 margin: 0,
                 fontSize: '1.125rem',
-                color: '#0f172a',
+                color: 'var(--text-slate-900)',
                 lineHeight: 1.3,
                 overflowWrap: 'break-word',
               }}
@@ -671,9 +671,9 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                 <span
                   style={{
                     fontSize: '0.6875rem',
-                    color: '#6b7280',
-                    background: '#f3f4f6',
-                    border: '1px solid #e5e7eb',
+                    color: 'var(--text-muted)',
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border)',
                     borderRadius: 4,
                     padding: '0.125rem 0.5rem',
                   }}
@@ -683,11 +683,11 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                 </span>
               ) : null}
               {step?.assigned_to_name && step.assigned_to_name.trim() ? (
-                <span style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                   · {step.assigned_to_name}
                 </span>
               ) : (
-                <span style={{ fontSize: '0.8125rem', color: '#9ca3af', fontStyle: 'italic' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', fontStyle: 'italic' }}>
                   · unassigned
                 </span>
               )}
@@ -721,7 +721,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
               all: 'unset',
               cursor: saving ? 'not-allowed' : 'pointer',
               fontSize: '1.25rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               padding: '0.25rem 0.5rem',
               borderRadius: 4,
               flexShrink: 0,
@@ -739,17 +739,17 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
               role="alert"
               style={{
                 padding: '0.5rem 0.75rem',
-                background: '#fef2f2',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 6,
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
                 fontSize: '0.8125rem',
               }}
             >
               {loadError}
             </div>
           ) : loading ? (
-            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading stage details…</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading stage details…</div>
           ) : null}
 
           {step ? (
@@ -808,10 +808,10 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
 
               {step.inspection_notes && step.inspection_notes.trim() ? (
                 <section aria-label="Inspection notes" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
                     Inspection notes
                   </div>
-                  <div style={{ fontSize: '0.875rem', color: '#111827', whiteSpace: 'pre-wrap' }}>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', whiteSpace: 'pre-wrap' }}>
                     {step.inspection_notes}
                   </div>
                 </section>
@@ -826,17 +826,17 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                     flexDirection: 'column',
                     gap: '0.75rem',
                     padding: '0.875rem 1rem',
-                    background: '#f8fafc',
+                    background: 'var(--bg-slate-tint)',
                     border: '1px solid #e2e8f0',
                     borderRadius: 8,
                   }}
                 >
-                  <div style={{ fontSize: '0.6875rem', color: '#475569', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+                  <div style={{ fontSize: '0.6875rem', color: 'var(--text-slate-600)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
                     Adjust stage
                   </div>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#374151', fontWeight: 600 }}>
-                      Step (plain text) <span style={{ color: '#b91c1c' }}>*</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-700)', fontWeight: 600 }}>
+                      Step (plain text) <span style={{ color: 'var(--text-red-700)' }}>*</span>
                     </span>
                     <input
                       type="text"
@@ -852,9 +852,9 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                     />
                   </label>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#374151', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-700)', fontWeight: 600 }}>
                       Assigned to{' '}
-                      <span style={{ color: '#6b7280', fontWeight: 400 }}>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
                         · plain text (the Workflow page has a fuller picker)
                       </span>
                     </span>
@@ -872,7 +872,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontSize: '0.75rem', color: '#374151', fontWeight: 600 }}>Expected start</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-700)', fontWeight: 600 }}>Expected start</span>
                       <input
                         type="date"
                         value={startVal}
@@ -893,7 +893,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                       </div>
                     </label>
                     <label style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontSize: '0.75rem', color: '#374151', fontWeight: 600 }}>Expected end</span>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-700)', fontWeight: 600 }}>Expected end</span>
                       <input
                         type="date"
                         value={endVal}
@@ -942,9 +942,9 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                     </label>
                   </div>
                   <label style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 200 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#374151', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-700)', fontWeight: 600 }}>
                       Length (days){' '}
-                      <span style={{ color: '#6b7280', fontWeight: 400 }}>· auto-sets end from start</span>
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· auto-sets end from start</span>
                     </span>
                     <input
                       type="number"
@@ -966,7 +966,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                         alignItems: 'center',
                         gap: 8,
                         fontSize: '0.8125rem',
-                        color: '#1f2937',
+                        color: 'var(--text-gray-800)',
                       }}
                     >
                       <input
@@ -983,28 +983,28 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
                   ) : null}
 
                   {nameInvalid ? (
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#b91c1c' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
                       Step name is required.
                     </p>
                   ) : null}
                   {lengthInvalid ? (
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#b91c1c' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
                       Length must be a non-negative number.
                     </p>
                   ) : null}
                   {endBeforeStart ? (
-                    <p style={{ margin: 0, fontSize: '0.75rem', color: '#b91c1c' }}>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
                       Expected end is before expected start.
                     </p>
                   ) : null}
                   {saveError ? (
-                    <p role="alert" style={{ margin: 0, fontSize: '0.75rem', color: '#b91c1c' }}>
+                    <p role="alert" style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
                       {saveError}
                     </p>
                   ) : null}
                 </section>
               ) : (
-                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   You don’t have permission to edit this stage. Use the Workflow page link below
                   if you need to make changes.
                 </p>
@@ -1073,8 +1073,8 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
             justifyContent: 'space-between',
             gap: 8,
             padding: '0.75rem 1.25rem',
-            borderTop: '1px solid #e5e7eb',
-            background: '#f9fafb',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-subtle)',
             flexWrap: 'wrap',
             flexShrink: 0,
           }}
@@ -1085,7 +1085,7 @@ export function ProjectsForecastSpecificStageModal({ stage, projectId, myRole, o
             style={{
               all: 'unset',
               fontSize: '0.8125rem',
-              color: '#2563eb',
+              color: 'var(--text-link)',
               textDecoration: 'underline',
               cursor: 'pointer',
             }}
@@ -1195,12 +1195,12 @@ function NotesCollapsible({
           color: toneColor,
         }}
       >
-        <span style={{ fontSize: '0.75rem', minWidth: 16, color: '#111827' }}>
+        <span style={{ fontSize: '0.75rem', minWidth: 16, color: 'var(--text-strong)' }}>
           {expanded ? '\u25BC' : '\u25B6'}
         </span>
         <span>
           {title} ({words} {words === 1 ? 'word' : 'words'})
-          {saving ? <span style={{ color: '#6b7280', marginLeft: 6, fontWeight: 400 }}>· saving…</span> : null}
+          {saving ? <span style={{ color: 'var(--text-muted)', marginLeft: 6, fontWeight: 400 }}>· saving…</span> : null}
         </span>
       </button>
       {expanded ? (
@@ -1316,10 +1316,10 @@ function HeaderPercentCompleteEditor({
 function DetailField({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-      <span style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+      <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
         {label}
       </span>
-      <span style={{ fontSize: '0.8125rem', color: '#0f172a', overflowWrap: 'break-word' }}>{value}</span>
+      <span style={{ fontSize: '0.8125rem', color: 'var(--text-slate-900)', overflowWrap: 'break-word' }}>{value}</span>
     </div>
   )
 }
@@ -1329,15 +1329,15 @@ function ReasonBlock({ title, body }: { title: string; body: string }) {
     <div
       style={{
         padding: '0.5rem 0.75rem',
-        background: '#fef2f2',
+        background: 'var(--bg-red-tint)',
         border: '1px solid #fecaca',
         borderRadius: 6,
       }}
     >
-      <div style={{ fontSize: '0.6875rem', color: '#991b1b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
+      <div style={{ fontSize: '0.6875rem', color: 'var(--text-red-800)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
         {title}
       </div>
-      <div style={{ fontSize: '0.8125rem', color: '#7f1d1d', whiteSpace: 'pre-wrap' }}>{body}</div>
+      <div style={{ fontSize: '0.8125rem', color: 'var(--text-red-900)', whiteSpace: 'pre-wrap' }}>{body}</div>
     </div>
   )
 }
@@ -1347,16 +1347,16 @@ const dateInputStyle = {
   borderRadius: 6,
   border: '1px solid #cbd5e1',
   fontSize: '0.875rem',
-  color: '#0f172a',
-  background: '#ffffff',
+  color: 'var(--text-slate-900)',
+  background: 'var(--surface)',
 } as const
 
 const chipBtnStyle = {
   padding: '0.25rem 0.55rem',
   borderRadius: 999,
   border: '1px solid #cbd5e1',
-  background: '#ffffff',
-  color: '#1f2937',
+  background: 'var(--surface)',
+  color: 'var(--text-gray-800)',
   fontSize: '0.6875rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -1364,17 +1364,17 @@ const chipBtnStyle = {
 
 const chipBtnPrimaryStyle = {
   ...chipBtnStyle,
-  background: '#eff6ff',
+  background: 'var(--bg-blue-tint)',
   borderColor: '#bfdbfe',
-  color: '#1d4ed8',
+  color: 'var(--text-blue-700)',
 } as const
 
 const footerSecondaryStyle = {
   padding: '0.5rem 0.85rem',
   borderRadius: 6,
   border: '1px solid #cbd5e1',
-  background: '#ffffff',
-  color: '#1f2937',
+  background: 'var(--surface)',
+  color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -1407,14 +1407,14 @@ const headerPercentEditorStyle = {
 
 const headerPercentLabelStyle = {
   fontSize: '0.625rem',
-  color: '#475569',
+  color: 'var(--text-slate-600)',
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
 } as const
 
 const headerPercentSavingStyle = {
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   fontWeight: 400,
   textTransform: 'none',
   letterSpacing: 0,
@@ -1424,7 +1424,7 @@ const headerPercentInputRowStyle = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: 2,
-  background: '#ffffff',
+  background: 'var(--surface)',
   border: '1px solid #cbd5e1',
   borderRadius: 4,
   padding: '0.1rem 0.35rem',
@@ -1437,14 +1437,14 @@ const headerPercentInputStyle = {
   textAlign: 'right',
   border: 'none',
   background: 'transparent',
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
   outline: 'none',
   fontWeight: 600,
 } as const
 
 const headerPercentSuffixStyle = {
   fontSize: '0.875rem',
-  color: '#475569',
+  color: 'var(--text-slate-600)',
   fontWeight: 600,
 } as const
 
@@ -1459,6 +1459,6 @@ const headerPercentReadOnlyStyle = {
 
 const headerPercentReadOnlyValueStyle = {
   fontSize: '0.875rem',
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
   fontWeight: 600,
 } as const

@@ -61,7 +61,7 @@ export function BankingMercuryAccountingApplyRulesConfirmModal({
         aria-labelledby="banking-accounting-apply-rules-confirm-title"
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 480,
           width: '100%',
@@ -79,26 +79,26 @@ export function BankingMercuryAccountingApplyRulesConfirmModal({
           {title}
         </h2>
 
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: '#0f172a' }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.95rem', color: 'var(--text-slate-900)' }}>
           <strong>{totalMatches.toLocaleString()}</strong>{' '}
           {totalMatches === 1 ? 'transaction matches' : 'transactions match'} your rules.
         </p>
 
         {exceedsCap ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#475569', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-slate-600)', lineHeight: 1.5 }}>
             The first <strong>{capPerClick.toLocaleString()}</strong> will be created as pending suggestions for review.
             The remaining <strong>{remaining.toLocaleString()}</strong>{' '}
             {remaining === 1 ? 'stays unmatched' : 'stay unmatched'} until you approve some and click{' '}
             <strong>Apply rules</strong> again.
           </p>
         ) : (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#475569', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-slate-600)', lineHeight: 1.5 }}>
             <strong>{willInsert.toLocaleString()}</strong> pending{' '}
             {willInsert === 1 ? 'suggestion will be created' : 'suggestions will be created'} for review.
           </p>
         )}
 
-        <p style={{ margin: '0 0 1.25rem', fontSize: '0.8rem', color: '#64748b', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 1.25rem', fontSize: '0.8rem', color: 'var(--text-slate-500)', lineHeight: 1.5 }}>
           You can approve them one-by-one in the Approvals section, or use <strong>Approve all</strong> to apply the
           suggested label to every pending row at once.
         </p>
@@ -110,9 +110,9 @@ export function BankingMercuryAccountingApplyRulesConfirmModal({
             disabled={busy}
             style={{
               padding: '0.5rem 1rem',
-              background: 'white',
-              color: '#111827',
-              border: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              color: 'var(--text-strong)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               cursor: busy ? 'not-allowed' : 'pointer',
               fontWeight: 500,

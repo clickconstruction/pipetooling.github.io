@@ -90,7 +90,7 @@ export default function JobBidLinkChoiceModal({
         aria-modal="true"
         aria-labelledby="job-bid-link-choice-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.25rem 1.5rem',
           borderRadius: 8,
           width: '100%',
@@ -105,7 +105,7 @@ export default function JobBidLinkChoiceModal({
         <h2 id="job-bid-link-choice-title" style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', fontWeight: 600 }}>
           Link bid proposal
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Choose a bid to associate with this job. Create new bids from the Bids page.
         </p>
         {customerId ? (
@@ -127,7 +127,7 @@ export default function JobBidLinkChoiceModal({
             width: '100%',
             padding: '0.5rem 0.625rem',
             marginBottom: '0.75rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
             fontSize: '0.875rem',
             boxSizing: 'border-box',
@@ -135,7 +135,7 @@ export default function JobBidLinkChoiceModal({
         />
         <div
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             maxHeight: 240,
             overflowY: 'auto',
@@ -143,7 +143,7 @@ export default function JobBidLinkChoiceModal({
           }}
         >
           {filteredBids.length === 0 ? (
-            <div style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {scopedBids.length === 0 && customerId && !showAllBids ? (
                 <>
                   No bids for this customer yet. Try <strong>Show all bids</strong> or create a bid on the Bids page.
@@ -164,21 +164,21 @@ export default function JobBidLinkChoiceModal({
                   padding: '0.6rem 0.75rem',
                   border: 'none',
                   borderBottom: '1px solid #f3f4f6',
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                   textAlign: 'left',
                   fontSize: '0.875rem',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f9fafb'
+                  e.currentTarget.style.background = 'var(--bg-subtle)'
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'white'
+                  e.currentTarget.style.background = 'var(--surface)'
                 }}
               >
                 <div style={{ fontWeight: 500 }}>{bidRowTitle(b, prefixMap)}</div>
                 {b.customers?.name ? (
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>{b.customers.name}</div>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>{b.customers.name}</div>
                 ) : null}
               </button>
             ))
@@ -191,8 +191,8 @@ export default function JobBidLinkChoiceModal({
             marginTop: '1rem',
             padding: '0.5rem 0.75rem',
             alignSelf: 'flex-start',
-            background: '#f3f4f6',
-            border: '1px solid #d1d5db',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
             cursor: 'pointer',
             fontSize: '0.875rem',

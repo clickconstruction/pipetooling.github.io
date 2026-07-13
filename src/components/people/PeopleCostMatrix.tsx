@@ -104,16 +104,16 @@ export function PeopleCostMatrix({
           </>
         )}
       </div>
-      <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+      <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-          <thead style={{ background: '#f9fafb' }}>
+          <thead style={{ background: 'var(--bg-subtle)' }}>
             <tr>
               {canAccessPay && (
-                <th style={{ padding: '0.5rem 0.35rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: 0, top: 0, zIndex: 6, background: '#f9fafb', minWidth: 36 }} title="Hours reviewed (use Review Hours to mark)">
+                <th style={{ padding: '0.5rem 0.35rem', textAlign: 'center', borderBottom: '1px solid var(--border)', position: 'sticky', left: 0, top: 0, zIndex: 6, background: 'var(--bg-subtle)', minWidth: 36 }} title="Hours reviewed (use Review Hours to mark)">
                   ✓
                 </th>
               )}
-              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', position: 'sticky', left: canAccessPay ? 36 : 0, top: 0, zIndex: 6, background: '#f9fafb' }}>
+              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', position: 'sticky', left: canAccessPay ? 36 : 0, top: 0, zIndex: 6, background: 'var(--bg-subtle)' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                   Person
                   <button
@@ -122,9 +122,9 @@ export function PeopleCostMatrix({
                     title="Sort by cost (most expensive first)"
                     style={{
                       padding: '0.15rem 0.35rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: matrixSortBy === 'cost' ? '#e5e7eb' : 'white',
+                      background: matrixSortBy === 'cost' ? 'var(--bg-200)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: '0.75rem',
                       fontWeight: matrixSortBy === 'cost' ? 600 : 400,
@@ -138,9 +138,9 @@ export function PeopleCostMatrix({
                     title="Sort by first tag (A-Z)"
                     style={{
                       padding: '0.15rem 0.35rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: matrixSortBy === 'tag' ? '#e5e7eb' : 'white',
+                      background: matrixSortBy === 'tag' ? 'var(--bg-200)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: '0.75rem',
                       fontWeight: matrixSortBy === 'tag' ? 600 : 400,
@@ -154,9 +154,9 @@ export function PeopleCostMatrix({
                     title="Sort by name (A-Z)"
                     style={{
                       padding: '0.15rem 0.35rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: matrixSortBy === 'name' ? '#e5e7eb' : 'white',
+                      background: matrixSortBy === 'name' ? 'var(--bg-200)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: '0.75rem',
                       fontWeight: matrixSortBy === 'name' ? 600 : 400,
@@ -171,7 +171,7 @@ export function PeopleCostMatrix({
                 const weekday = dt.toLocaleDateString(undefined, { weekday: 'short' })
                 const monthDay = dt.toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })
                 return (
-                  <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb', minWidth: 70, position: 'sticky', top: 0, zIndex: 5, background: '#f9fafb' }}>
+                  <th key={d} style={{ padding: '0.5rem 0.35rem', textAlign: 'right', borderBottom: '1px solid var(--border)', minWidth: 70, position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg-subtle)' }}>
                     <span className="cost-matrix-date-header">
                       <span>{weekday}</span>
                       <span> {monthDay}</span>
@@ -188,12 +188,12 @@ export function PeopleCostMatrix({
                     style={{
                       padding: '0.25rem 0.35rem',
                       textAlign: 'center',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       position: 'sticky',
                       left: 0,
                       top: '2.875rem',
                       zIndex: 6,
-                      background: '#f9fafb',
+                      background: 'var(--bg-subtle)',
                       minWidth: 36,
                     }}
                   />
@@ -203,15 +203,15 @@ export function PeopleCostMatrix({
                   style={{
                     padding: '0.25rem 0.75rem',
                     textAlign: 'left',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--border)',
                     position: 'sticky',
                     left: canAccessPay ? 36 : 0,
                     top: '2.875rem',
                     zIndex: 6,
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     fontSize: '0.75rem',
                     fontWeight: 500,
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   Unapproved
@@ -232,16 +232,16 @@ export function PeopleCostMatrix({
                       style={{
                         padding: '0.25rem 0.35rem',
                         textAlign: 'right',
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border)',
                         minWidth: 70,
                         fontSize: '0.75rem',
                         fontWeight: n > 0 ? 600 : 400,
-                        color: n > 0 ? '#b45309' : '#9ca3af',
+                        color: n > 0 ? 'var(--text-amber-700)' : 'var(--text-faint)',
                         whiteSpace: 'nowrap',
                         position: 'sticky',
                         top: '2.875rem',
                         zIndex: 4,
-                        background: '#f9fafb',
+                        background: 'var(--bg-subtle)',
                       }}
                       aria-label={`Unapproved sessions on ${longDate}: ${n}`}
                     >
@@ -258,17 +258,17 @@ export function PeopleCostMatrix({
               const wage = cfg?.hourly_wage ?? 0
               const periodTotal = matrixDays.reduce((s, d) => s + getCostForPersonDateMatrix(personName, d), 0)
               return (
-                <tr key={personName} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr key={personName} style={{ borderBottom: '1px solid var(--border)' }}>
                   {canAccessPay && (
-                    <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: 'white', minWidth: 36 }}>
+                    <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: 'var(--surface)', minWidth: 36 }}>
                       {hoursReviewedSet.has(personName) ? (
-                        <span style={{ color: '#059669' }}>✓</span>
+                        <span style={{ color: 'var(--text-green-600)' }}>✓</span>
                       ) : (
-                        <span style={{ color: '#d1d5db' }}>—</span>
+                        <span style={{ color: 'var(--text-faint-300)' }}>—</span>
                       )}
                     </td>
                   )}
-                  <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: 'white', minWidth: 200 }}>
+                  <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: 'var(--surface)', minWidth: 200 }}>
                     <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.2rem', flexWrap: 'wrap' }}>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                         {payEditArrangement && canAccessPay ? (
@@ -278,7 +278,7 @@ export function PeopleCostMatrix({
                               onClick={() => moveMatrixRow(personName, 'up')}
                               disabled={idx === 0}
                               title="Move up"
-                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', lineHeight: 1 }}
                             >
                               ▲
                             </button>
@@ -287,7 +287,7 @@ export function PeopleCostMatrix({
                               onClick={() => moveMatrixRow(personName, 'down')}
                               disabled={idx === showPeopleForMatrix.length - 1}
                               title="Move down"
-                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForMatrix.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForMatrix.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                              style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForMatrix.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForMatrix.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', lineHeight: 1 }}
                             >
                               ▼
                             </button>
@@ -301,7 +301,7 @@ export function PeopleCostMatrix({
                           title="View hours detail"
                           style={{ cursor: 'pointer' }}
                         >
-                          {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}{cfg?.is_salary && <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>(salary)</span>}
+                          {wage > 0 ? `$${Math.round(periodTotal).toLocaleString('en-US')}` : '—'} | {personName}{cfg?.is_salary && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>(salary)</span>}
                         </span>
                       </span>
                       {payEditTags && canAccessPay ? (
@@ -311,7 +311,7 @@ export function PeopleCostMatrix({
                           onChange={(e) => setCostMatrixTags((prev) => ({ ...prev, [personName]: e.target.value }))}
                           onBlur={(e) => saveCostMatrixTags(personName, e.target.value)}
                           placeholder="Tags (comma-separated)"
-                          style={{ padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
+                          style={{ padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.75rem', minWidth: 120, marginLeft: 'auto' }}
                         />
                       ) : (costMatrixTags[personName] ?? '').trim() ? (
                         <span style={{ display: 'flex', gap: '0.15rem', flexWrap: 'wrap', marginLeft: 'auto', justifyContent: 'flex-end' }}>
@@ -348,13 +348,13 @@ export function PeopleCostMatrix({
                 </tr>
               )
             })}
-            <tr style={{ background: '#f9fafb', fontWeight: 600 }}>
+            <tr style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
               {canAccessPay && (
-                <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: '#f9fafb', minWidth: 36 }}>
+                <td style={{ padding: '0.5rem 0.35rem', textAlign: 'center', position: 'sticky', left: 0, background: 'var(--bg-subtle)', minWidth: 36 }}>
                   {hoursReviewedSet.size} of {showPeopleForMatrix.length}
                 </td>
               )}
-              <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: '#f9fafb' }}>
+              <td style={{ padding: '0.5rem 0.75rem', position: 'sticky', left: canAccessPay ? 36 : 0, background: 'var(--bg-subtle)' }}>
                 Internal Team: ${Math.round(
                   matrixDays.reduce(
                     (daySum, d) => daySum + showPeopleForMatrix.reduce((s, p) => s + getCostForPersonDateMatrix(p, d), 0),

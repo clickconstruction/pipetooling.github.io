@@ -56,7 +56,7 @@ export default function StagesAlertJobListModal({
         aria-modal="true"
         aria-labelledby={titleId}
         style={{
-          background: '#fef2f2',
+          background: 'var(--bg-red-tint)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 320,
@@ -71,12 +71,12 @@ export default function StagesAlertJobListModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', color: '#b91c1c' }}>
+        <h2 id={titleId} style={{ margin: '0 0 0.5rem', fontSize: '1.125rem', color: 'var(--text-red-700)' }}>
           {title}
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#991b1b' }}>{description}</p>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-red-800)' }}>{description}</p>
         {jobs.length === 0 ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#991b1b' }}>{emptyMessage}</p>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-red-800)' }}>{emptyMessage}</p>
         ) : (
           <ul
             style={{
@@ -88,7 +88,7 @@ export default function StagesAlertJobListModal({
               minHeight: 0,
               border: '1px solid #fecaca',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
             }}
           >
             {jobs.map((j) => {
@@ -107,11 +107,11 @@ export default function StagesAlertJobListModal({
                       width: '100%',
                       padding: '0.65rem 0.75rem',
                       border: 'none',
-                      background: hovered ? '#fee2e2' : '#fff',
+                      background: hovered ? 'var(--bg-red-100)' : 'var(--surface)',
                       cursor: 'pointer',
                       textAlign: 'left',
                       font: 'inherit',
-                      color: '#111827',
+                      color: 'var(--text-strong)',
                       display: 'block',
                     }}
                   >
@@ -119,7 +119,7 @@ export default function StagesAlertJobListModal({
                       {hcp} · {name}
                     </div>
                     {addr ? (
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>{addr}</div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>{addr}</div>
                     ) : null}
                   </button>
                 </li>
@@ -133,8 +133,8 @@ export default function StagesAlertJobListModal({
             onClick={onClose}
             style={{
               padding: '0.5rem 1rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',

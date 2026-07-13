@@ -47,7 +47,7 @@ export function ApplyScheduleApprovedConfirmModal({
         aria-modal="true"
         aria-labelledby="apply-schedule-approved-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 460,
@@ -59,7 +59,7 @@ export function ApplyScheduleApprovedConfirmModal({
         <h2 id="apply-schedule-approved-title" style={{ margin: '0 0 0.5rem', fontSize: '1.05rem' }}>
           Split an approved session?
         </h2>
-        <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.875rem', lineHeight: 1.45 }}>
+        <p style={{ margin: '0 0 1rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.45 }}>
           This session was already approved. Splitting it across scheduled jobs will remove those
           hours from payroll until a lead re-approves the new segments.
         </p>
@@ -71,8 +71,8 @@ export function ApplyScheduleApprovedConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
@@ -86,8 +86,8 @@ export function ApplyScheduleApprovedConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: busy ? '#e5e7eb' : '#b45309',
-              color: busy ? '#6b7280' : '#fff',
+              background: busy ? 'var(--bg-200)' : '#b45309',
+              color: busy ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',

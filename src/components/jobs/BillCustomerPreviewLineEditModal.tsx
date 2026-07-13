@@ -41,7 +41,7 @@ function overlayStyle(z: number): CSSProperties {
 }
 
 const panelStyle: CSSProperties = {
-  background: 'white',
+  background: 'var(--surface)',
   borderRadius: 8,
   minWidth: 320,
   maxWidth: 480,
@@ -57,17 +57,17 @@ const labelStyle: CSSProperties = {
   marginBottom: 4,
   fontWeight: 500,
   fontSize: '0.875rem',
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 const controlStyle: CSSProperties = {
   width: '100%',
   padding: '0.5rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   fontSize: '0.875rem',
   boxSizing: 'border-box',
-  background: '#fff',
+  background: 'var(--surface)',
 }
 
 const textareaStyle: CSSProperties = {
@@ -312,7 +312,7 @@ export default function BillCustomerPreviewLineEditModal({
               style={{
                 margin: '0 0 0.35rem',
                 fontSize: '0.75rem',
-                color: fixtureStripeLineOverLimit ? '#d97706' : '#6b7280',
+                color: fixtureStripeLineOverLimit ? '#d97706' : 'var(--text-muted)',
                 textAlign: 'center',
               }}
             >
@@ -320,7 +320,7 @@ export default function BillCustomerPreviewLineEditModal({
             </div>
             <p
               id="bcf-stripe-hint"
-              style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280', textAlign: 'center' }}
+              style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'center' }}
             >
               Shown on Stripe as <strong>Name — Scope</strong>.
             </p>
@@ -329,7 +329,7 @@ export default function BillCustomerPreviewLineEditModal({
 
         {session.mode === 'material' ? (
           <>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Amount:{' '}
               {session.amountDollars.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}{' '}
               (edit in Edit Job)
@@ -345,7 +345,7 @@ export default function BillCustomerPreviewLineEditModal({
               disabled={materialEditDisabled}
             />
             {materialEditDisabled && materialEditDisabledReason ? (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b45309' }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
                 {materialEditDisabledReason}
               </p>
             ) : null}
@@ -364,7 +364,7 @@ export default function BillCustomerPreviewLineEditModal({
               style={{ ...textareaStyle, marginBottom: '0.5rem' }}
               maxLength={STRIPE_INVOICE_LINE_DESCRIPTION_MAX}
             />
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Max {STRIPE_INVOICE_LINE_DESCRIPTION_MAX} characters. Replaces multi-line Specific Work on the Stripe
               invoice.
             </p>
@@ -372,7 +372,7 @@ export default function BillCustomerPreviewLineEditModal({
         ) : null}
 
         {error ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#b91c1c' }}>{error}</p>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{error}</p>
         ) : null}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -382,8 +382,8 @@ export default function BillCustomerPreviewLineEditModal({
             disabled={saving}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: '#fff',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: saving ? 'default' : 'pointer',
             }}

@@ -30,7 +30,7 @@ export function MaterialsCostAccordionRow({
     alignItems: 'center' as const,
     justifyContent: 'space-between' as const,
     padding: '0.625rem 0.75rem',
-    background: expanded ? '#f3f4f6' : '#f9fafb',
+    background: expanded ? 'var(--bg-muted)' : 'var(--bg-subtle)',
     border: 'none',
     textAlign: 'left' as const,
     fontSize: '0.875rem',
@@ -39,7 +39,7 @@ export function MaterialsCostAccordionRow({
   }
 
   const titleRow = (
-    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#111827', fontWeight: 500 }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-strong)', fontWeight: 500 }}>
       {expandable ? (
         <span
           aria-hidden
@@ -47,7 +47,7 @@ export function MaterialsCostAccordionRow({
             display: 'inline-flex',
             transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
             transition: 'transform 0.15s ease',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
           }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -60,13 +60,13 @@ export function MaterialsCostAccordionRow({
   )
 
   const totalEl = (
-    <span style={{ color: '#374151', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
+    <span style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
       {busy ? '…' : totalDisplay}
     </span>
   )
 
   return (
-    <div style={{ borderBottom: '1px solid #e5e7eb' }}>
+    <div style={{ borderBottom: '1px solid var(--border)' }}>
       {expandable ? (
         <button
           type="button"
@@ -101,7 +101,7 @@ export function MaterialsCostAccordionRow({
         </div>
       )}
       {expandable && expanded && (
-        <div id={panelId} role="region" aria-labelledby={headerId} style={{ padding: '0.75rem', background: 'white', borderTop: '1px solid #e5e7eb' }}>
+        <div id={panelId} role="region" aria-labelledby={headerId} style={{ padding: '0.75rem', background: 'var(--surface)', borderTop: '1px solid var(--border)' }}>
           {children}
         </div>
       )}

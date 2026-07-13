@@ -18,10 +18,10 @@ const PROJECT_STATUS_PILL: Record<
   ProjectStatus,
   { background: string; color: string; border: string }
 > = {
-  awaiting_start: { background: '#f3f4f6', color: '#374151', border: '#d1d5db' },
-  active: { background: '#dcfce7', color: '#166534', border: '#bbf7d0' },
-  on_hold: { background: '#fef3c7', color: '#92400e', border: '#fde68a' },
-  completed: { background: '#e0f2fe', color: '#075985', border: '#bae6fd' },
+  awaiting_start: { background: 'var(--bg-muted)', color: 'var(--text-700)', border: 'var(--border-strong)' },
+  active: { background: 'var(--bg-green-100)', color: 'var(--text-green-800)', border: '#bbf7d0' },
+  on_hold: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '#fde68a' },
+  completed: { background: 'var(--bg-sky-100)', color: '#075985', border: '#bae6fd' },
 }
 
 export function projectStatusPillStyle(status: ProjectStatus): CSSProperties {

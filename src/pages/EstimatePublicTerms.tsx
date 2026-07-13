@@ -41,17 +41,17 @@ export default function EstimatePublicTerms() {
   }, [])
 
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
+    <div data-theme="light" style={{ fontFamily: 'system-ui, sans-serif', padding: '2rem', maxWidth: 640, margin: '0 auto' }}>
       <h1 style={{ marginTop: 0 }}>Terms and Conditions</h1>
       {loading ? <p>Loading…</p> : null}
-      {error ? <p style={{ color: '#b91c1c' }}>{error}</p> : null}
+      {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!loading && !error ? (
         <div
           style={{
             whiteSpace: 'pre-wrap',
             fontSize: '0.95rem',
             lineHeight: 1.55,
-            color: '#111827',
+            color: 'var(--text-strong)',
           }}
         >
           {body === '' || body == null ? 'No terms have been published yet.' : body}

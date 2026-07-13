@@ -61,7 +61,7 @@ export function ScheduleDispatchBlockNoteModal({
         aria-modal="true"
         aria-labelledby="schedule-dispatch-block-note-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 480,
@@ -90,18 +90,18 @@ export function ScheduleDispatchBlockNoteModal({
             padding: '0.5rem 0.6rem',
             fontSize: '0.875rem',
             lineHeight: 1.4,
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             resize: 'vertical',
             minHeight: 100,
             fontFamily: 'inherit',
           }}
         />
-        <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           {value.length} / {NOTE_MAX}
         </div>
         {error ? (
-          <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>{error}</p>
+          <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0, whiteSpace: 'pre-wrap' }}>{error}</p>
         ) : null}
         <div
           style={{
@@ -120,8 +120,8 @@ export function ScheduleDispatchBlockNoteModal({
               style={{
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: busy ? 'not-allowed' : 'pointer',
               }}
@@ -137,8 +137,8 @@ export function ScheduleDispatchBlockNoteModal({
               style={{
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
-                background: '#f9fafb',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-subtle)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: busy ? 'not-allowed' : 'pointer',
               }}
@@ -154,8 +154,8 @@ export function ScheduleDispatchBlockNoteModal({
               style={{
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
-                background: busy ? '#e5e7eb' : '#2563eb',
-                color: busy ? '#6b7280' : '#fff',
+                background: busy ? 'var(--bg-200)' : '#2563eb',
+                color: busy ? 'var(--text-muted)' : '#fff',
                 border: 'none',
                 borderRadius: 4,
                 cursor: busy ? 'not-allowed' : 'pointer',

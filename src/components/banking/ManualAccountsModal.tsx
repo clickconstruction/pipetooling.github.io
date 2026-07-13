@@ -128,27 +128,27 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
         aria-modal="true"
         aria-labelledby="manual-accounts-modal-title"
         onMouseDown={(e) => e.stopPropagation()}
-        style={{ background: '#fff', borderRadius: 10, maxWidth: 680, width: '100%', maxHeight: 'min(90vh, 680px)', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', padding: '1.25rem', boxSizing: 'border-box' }}
+        style={{ background: 'var(--surface)', borderRadius: 10, maxWidth: 680, width: '100%', maxHeight: 'min(90vh, 680px)', overflow: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', padding: '1.25rem', boxSizing: 'border-box' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem' }}>
           <h2 id="manual-accounts-modal-title" style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>
             Manual accounts
           </h2>
-          <button type="button" onClick={onClose} disabled={!!busyId} style={{ padding: '0.4rem 0.85rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 6, cursor: busyId ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}>
+          <button type="button" onClick={onClose} disabled={!!busyId} style={{ padding: '0.4rem 0.85rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 6, cursor: busyId ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}>
             Close
           </button>
         </div>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#475569', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-slate-600)', lineHeight: 1.5 }}>
           Accounts created by importing a CSV (closed / external accounts). Rename one, or delete it to remove the account
           and all of its imported transactions. Real Mercury accounts are not listed here.
         </p>
 
         {loading ? (
-          <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
         ) : error ? (
-          <p role="alert" style={{ padding: '0.5rem 0.75rem', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '0.8rem' }}>{error}</p>
+          <p role="alert" style={{ padding: '0.5rem 0.75rem', borderRadius: 6, background: 'var(--bg-red-tint)', border: '1px solid #fecaca', color: 'var(--text-red-800)', fontSize: '0.8rem' }}>{error}</p>
         ) : rows.length === 0 ? (
-          <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>No imported accounts yet. Use “Import transactions (CSV)…” in the Ledger Advanced menu.</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>No imported accounts yet. Use “Import transactions (CSV)…” in the Ledger Advanced menu.</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
             {rows.map((r) => {
@@ -156,7 +156,7 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
               const busy = busyId === id
               const confirming = confirmDeleteId === id
               return (
-                <div key={id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.7rem 0.85rem' }}>
+                <div key={id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.85rem' }}>
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
                     <input
                       value={drafts[id] ?? ''}
@@ -164,7 +164,7 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
                       maxLength={120}
                       placeholder="Account name"
                       disabled={busy}
-                      style={{ flex: '1 1 14rem', minWidth: 160, padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid #e5e7eb', fontSize: '0.9rem' }}
+                      style={{ flex: '1 1 14rem', minWidth: 160, padding: '0.4rem 0.55rem', borderRadius: 6, border: '1px solid var(--border)', fontSize: '0.9rem' }}
                     />
                     <button
                       type="button"
@@ -179,23 +179,23 @@ export function ManualAccountsModal({ open, onClose, onChanged }: ManualAccounts
                         <button type="button" onClick={() => void remove(id)} disabled={busy} style={{ padding: '0.4rem 0.7rem', borderRadius: 6, border: 'none', background: '#b91c1c', color: 'white', fontWeight: 600, fontSize: '0.8125rem', cursor: busy ? 'not-allowed' : 'pointer' }}>
                           {busy ? 'Deleting…' : 'Confirm delete'}
                         </button>
-                        <button type="button" onClick={() => setConfirmDeleteId(null)} disabled={busy} style={{ padding: '0.4rem 0.7rem', borderRadius: 6, border: '1px solid #e5e7eb', background: 'white', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                        <button type="button" onClick={() => setConfirmDeleteId(null)} disabled={busy} style={{ padding: '0.4rem 0.7rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', fontSize: '0.8125rem', cursor: 'pointer' }}>
                           Cancel
                         </button>
                       </>
                     ) : (
-                      <button type="button" onClick={() => setConfirmDeleteId(id)} disabled={busy} style={{ padding: '0.4rem 0.7rem', borderRadius: 6, border: '1px solid #fecaca', background: 'white', color: '#b91c1c', fontSize: '0.8125rem', cursor: 'pointer' }}>
+                      <button type="button" onClick={() => setConfirmDeleteId(id)} disabled={busy} style={{ padding: '0.4rem 0.7rem', borderRadius: 6, border: '1px solid #fecaca', background: 'var(--surface)', color: 'var(--text-red-700)', fontSize: '0.8125rem', cursor: 'pointer' }}>
                         Delete
                       </button>
                     )}
                   </div>
-                  <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 1rem' }}>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-slate-500)', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 1rem' }}>
                     <span><strong>{r.tx_count}</strong> tx</span>
-                    <span>Net <strong style={{ color: r.net_total < 0 ? '#b91c1c' : '#047857' }}>{usd(r.net_total)}</strong></span>
+                    <span>Net <strong style={{ color: r.net_total < 0 ? 'var(--text-red-700)' : '#047857' }}>{usd(r.net_total)}</strong></span>
                     <span>{ymd(r.oldest_posted)} → {ymd(r.newest_posted)}</span>
                   </div>
                   {confirming ? (
-                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: '#b91c1c' }}>
+                    <p style={{ margin: '0.4rem 0 0', fontSize: '0.75rem', color: 'var(--text-red-700)' }}>
                       This permanently deletes the account and its {r.tx_count} imported transaction(s).
                     </p>
                   ) : null}

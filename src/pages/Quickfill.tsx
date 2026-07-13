@@ -10,6 +10,7 @@ import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwai
 import { CantReachSection } from '../components/quickfill/CantReachSection'
 import { CrewJobsSection } from '../components/quickfill/CrewJobsSection'
 import { JobsBillingReminderSection } from '../components/quickfill/JobsBillingReminderSection'
+import { QuickfillCompleteNoBillSection } from '../components/quickfill/QuickfillCompleteNoBillSection'
 import { QuickfillStagesNoCustomerSection } from '../components/quickfill/QuickfillStagesNoCustomerSection'
 import { QuickfillSectionMarkHistoryModal } from '../components/quickfill/QuickfillSectionMarkHistoryModal'
 import { UnpricedFixturesSection } from '../components/quickfill/UnpricedFixturesSection'
@@ -28,6 +29,7 @@ import { QuickfillTomorrowsScheduleSection } from '../components/quickfill/Quick
 import { QuickfillProspectsSection } from '../components/quickfill/QuickfillProspectsSection'
 import { DispatchInboxSection } from '../components/DispatchInboxSection'
 import { DispatchDismissedItemsModal } from '../components/DispatchDismissedItemsModal'
+import CreateTripChargeModal, { type CreateTripChargeTarget } from '../components/CreateTripChargeModal'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import {
   QuickfillSectionMetricsProvider,
@@ -39,6 +41,7 @@ import { useToastContext } from '../contexts/ToastContext'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDispatchInbox } from '../hooks/useDispatchInbox'
+import { useQuickfillCompleteNoBillJobs } from '../hooks/useQuickfillCompleteNoBillJobs'
 import { useQuickfillStagesJobsWithoutCustomer } from '../hooks/useQuickfillStagesJobsWithoutCustomer'
 import { useUnpricedFixturesCount } from '../hooks/useUnpricedFixturesCount'
 import {
@@ -71,6 +74,7 @@ const SECTIONS: { id: string; sectionId: string; label: string }[] = [
   { id: 'quickfill-prospects', sectionId: 'prospects', label: 'Prospects' },
   { id: 'quickfill-supply-houses', sectionId: 'supply-houses', label: 'Supply Houses' },
   { id: 'quickfill-jobs-billing', sectionId: 'jobs-billing', label: 'Jobs Billing' },
+  { id: 'quickfill-complete-no-bill', sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' },
   { id: 'quickfill-no-customer-stages', sectionId: 'no-customer-stages', label: 'Stages: customer link & customer pictures' },
   { id: 'quickfill-dispatch-inbox', sectionId: 'dispatch-inbox', label: 'Dispatch inbox' },
   { id: 'quickfill-schedule', sectionId: 'schedule', label: 'Schedule' },
@@ -306,10 +310,10 @@ function QuickfillDevSectionSortableRow({
             cursor: 'grab',
             touchAction: 'none',
             padding: '0.25rem 0.45rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: '#fff',
-            color: '#64748b',
+            background: 'var(--surface)',
+            color: 'var(--text-slate-500)',
             fontSize: '0.75rem',
             lineHeight: 1,
             letterSpacing: '-0.05em',
@@ -325,7 +329,7 @@ function QuickfillDevSectionSortableRow({
           />
           <span>{meta.label}</span>
         </label>
-        <span style={{ color: '#94a3b8', userSelect: 'none', fontSize: '0.875rem' }} aria-hidden>
+        <span style={{ color: 'var(--text-slate-400)', userSelect: 'none', fontSize: '0.875rem' }} aria-hidden>
           –
         </span>
         <input
@@ -348,7 +352,7 @@ function QuickfillDevSectionSortableRow({
             maxWidth: '28rem',
             boxSizing: 'border-box',
             padding: '0.35rem 0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             fontSize: '0.8125rem',
           }}
@@ -360,7 +364,7 @@ function QuickfillDevSectionSortableRow({
               alignItems: 'center',
               gap: '0.35rem',
               fontSize: '0.8125rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
             }}
           >
             <span>Min HCP (inclusive)</span>
@@ -377,7 +381,7 @@ function QuickfillDevSectionSortableRow({
               style={{
                 width: '4.5rem',
                 padding: '0.2rem 0.35rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 fontSize: '0.8125rem',
               }}
@@ -447,11 +451,18 @@ function QuickfillPage() {
   const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => new Set())
   const [activeSectionsPanelOpen, setActiveSectionsPanelOpen] = useState(false)
   const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(DEFAULT_JOBS_BILLING_MIN_HCP)
+  const quickfillCompleteNoBill = useQuickfillCompleteNoBillJobs(jobsBillingMinHcp)
+  useReportQuickfillSectionMetric(
+    'complete-no-bill',
+    quickfillCompleteNoBill.fetchEnabled ? quickfillCompleteNoBill.completeNoBillJobs.length : null,
+    quickfillCompleteNoBill.fetchEnabled && quickfillCompleteNoBill.loading,
+  )
   const [markHistoryModal, setMarkHistoryModal] = useState<{ sectionId: string; label: string } | null>(null)
   const [sectionOrderIds, setSectionOrderIds] = useState<string[]>(() => [...DEFAULT_SECTION_ORDER_IDS])
   const [sectionBanners, setSectionBanners] = useState<Record<string, string>>({})
   const [sectionBannerDrafts, setSectionBannerDrafts] = useState<Record<string, string>>({})
   const [dispatchDismissedModalOpen, setDispatchDismissedModalOpen] = useState(false)
+  const [tripChargeTarget, setTripChargeTarget] = useState<CreateTripChargeTarget | null>(null)
 
   const persistHiddenSectionIds = useCallback(async (hidden: Set<string>) => {
     try {
@@ -624,6 +635,7 @@ function QuickfillPage() {
         return role === 'dev' || role === 'master_technician' || role === 'assistant'
       }
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
+      if (sectionId === 'complete-no-bill') return quickfillCompleteNoBill.fetchEnabled
       if (sectionId === 'dispatch-inbox') return dispatchInboxEligible
       if (sectionId === 'schedule' || sectionId === 'tomorrow-schedule') {
         return role != null && CAN_USE_SCHEDULE_DISPATCH_FOR_QUICKFILL_SCHEDULE.has(role)
@@ -644,6 +656,7 @@ function QuickfillPage() {
       role,
       canAccessProspects,
       quickfillNoCustomerStages.fetchEnabled,
+      quickfillCompleteNoBill.fetchEnabled,
     ],
   )
 
@@ -1088,6 +1101,30 @@ function QuickfillPage() {
             <JobsBillingReminderSection minHcpNumber={jobsBillingMinHcp} />
           </QuickfillSectionWrapper>
         )
+      case 'complete-no-bill':
+        return (
+          <QuickfillSectionWrapper
+            id={id}
+            sectionId={sectionId}
+            label={label}
+            bannerText={bannerText}
+            withTopDivider={withTopDivider}
+            color={getButtonColor(sectionMarks['complete-no-bill']?.marked_at ?? null)}
+            collapsed={isCollapsed('complete-no-bill') && !forceExpandedSections.has('complete-no-bill')}
+            mark={sectionMarks['complete-no-bill']}
+            onMarkUpToDate={() => void markSectionUpToDate('complete-no-bill')}
+            onOpenNow={() => setForceExpandedSections((s) => new Set([...s, 'complete-no-bill']))}
+            onOpenHistory={() =>
+              setMarkHistoryModal({ sectionId: 'complete-no-bill', label: 'Complete, no Total Bill' })
+            }
+          >
+            <QuickfillCompleteNoBillSection
+              completeNoBillJobs={quickfillCompleteNoBill.completeNoBillJobs}
+              clockSummaryByJobId={quickfillCompleteNoBill.clockSummaryByJobId}
+              jobsListBusy={quickfillCompleteNoBill.jobsListBusy}
+            />
+          </QuickfillSectionWrapper>
+        )
       case 'no-customer-stages':
         return (
           <QuickfillSectionWrapper
@@ -1158,6 +1195,11 @@ function QuickfillPage() {
               onLinkJobPictures={
                 jobFormModal
                   ? (jobId) => jobFormModal.openEditJob(jobId, { jobPicturesLinkHighlight: true })
+                  : undefined
+              }
+              onCreateTripCharge={
+                role === 'dev' || role === 'master_technician' || role === 'assistant'
+                  ? (args) => setTripChargeTarget(args)
                   : undefined
               }
             />
@@ -1378,7 +1420,7 @@ function QuickfillPage() {
               >
                 {label}
               </button>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{subline}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{subline}</span>
             </div>
           )
         })}
@@ -1387,13 +1429,13 @@ function QuickfillPage() {
         <p
           style={{
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             fontSize: '0.9375rem',
             marginBottom: '1.5rem',
             padding: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
           {role === 'dev' ? (
@@ -1439,7 +1481,7 @@ function QuickfillPage() {
         </button>
         {activeSectionsPanelOpen && (
           <div style={{ padding: '0 1rem 1rem 1rem' }}>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Uncheck a section to hide it from this page and from the jump buttons above for everyone. Drag the handle to
               reorder sections for everyone. Optional per-section banners (amber callout) appear when a section is expanded.
               Settings are stored in the database.
@@ -1481,6 +1523,13 @@ function QuickfillPage() {
           open={dispatchDismissedModalOpen}
           onClose={() => setDispatchDismissedModalOpen(false)}
           loadRows={fetchDismissedDispatchInboxRows}
+        />
+      )}
+      {tripChargeTarget && (
+        <CreateTripChargeModal
+          target={tripChargeTarget}
+          onClose={() => setTripChargeTarget(null)}
+          onCreated={() => setTripChargeTarget(null)}
         />
       )}
     </div>
@@ -1561,7 +1610,7 @@ function QuickfillSectionWrapper({
               aria-label={`Show pending approvals by day, ${metric.count} open`}
               style={{
                 fontSize: '0.875rem',
-                color: '#1d4ed8',
+                color: 'var(--text-blue-700)',
                 fontWeight: 500,
                 background: 'none',
                 border: 'none',
@@ -1574,12 +1623,12 @@ function QuickfillSectionWrapper({
               {outstandingLabel}
             </button>
           ) : (
-            <span style={{ fontSize: '0.875rem', color: '#475569', fontWeight: 500 }} title="Outstanding items (when tracked)">
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-slate-600)', fontWeight: 500 }} title="Outstanding items (when tracked)">
               {outstandingLabel}
             </span>
           )
         ) : null}
-        <span style={{ fontSize: '0.8125rem', color: '#64748b' }} title="Last time this section was marked up to date">
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)' }} title="Last time this section was marked up to date">
           Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
         </span>
         {showMarkHistoryButton ? (
@@ -1595,7 +1644,7 @@ function QuickfillSectionWrapper({
               padding: '0.35rem',
               borderRadius: 6,
               border: '1px solid #cbd5e1',
-              background: '#f8fafc',
+              background: 'var(--bg-slate-tint)',
               color: '#334155',
               cursor: 'pointer',
               lineHeight: 0,
@@ -1609,11 +1658,11 @@ function QuickfillSectionWrapper({
         <div
           style={{
             padding: '0.75rem 1rem',
-            background: '#f0fdf4',
+            background: 'var(--bg-green-tint)',
             border: '1px solid #bbf7d0',
             borderRadius: 6,
             fontSize: '0.875rem',
-            color: '#166534',
+            color: 'var(--text-green-800)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -1629,9 +1678,9 @@ function QuickfillSectionWrapper({
             style={{
               padding: '0.35rem 0.75rem',
               borderRadius: 6,
-              background: 'white',
+              background: 'var(--surface)',
               border: '1px solid #22c55e',
-              color: '#166534',
+              color: 'var(--text-green-800)',
               cursor: 'pointer',
               fontSize: '0.8125rem',
               fontWeight: 500,

@@ -38,13 +38,13 @@ function writeDownAmountInputStyle(inactive: boolean, omitTopMargin = false) {
     width: '100%',
     marginTop: omitTopMargin ? 0 : '0.35rem',
     padding: '0.5rem 0.65rem',
-    border: `1px solid ${inactive ? '#cbd5e1' : '#d1d5db'}`,
+    border: `1px solid ${inactive ? '#cbd5e1' : 'var(--border-strong)'}`,
     borderRadius: 6,
     fontSize: '0.9375rem',
     boxSizing: 'border-box' as const,
     opacity: inactive ? 0.38 : 1,
-    backgroundColor: inactive ? '#e5e7eb' : '#ffffff',
-    color: inactive ? '#64748b' : '#111827',
+    backgroundColor: inactive ? 'var(--bg-200)' : 'var(--surface)',
+    color: inactive ? 'var(--text-slate-500)' : 'var(--text-strong)',
     cursor: inactive ? 'not-allowed' : 'text',
   }
 }
@@ -207,7 +207,7 @@ export default function AgreedWriteDownModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 420,
           width: '100%',
@@ -218,29 +218,29 @@ export default function AgreedWriteDownModal({
         <h2 id="agreed-discount-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>
           Apply discount
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
           Lower the billed amount for this invoice to match an agreed discount. Payments already linked to this
           line must stay at or below the new total.
         </p>
         {isStripeHosted ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#1e40af', lineHeight: 1.4 }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-blue-800)', lineHeight: 1.4 }}>
             This invoice is hosted on Stripe: we will create a <strong>credit note</strong> for the difference so
             Stripe stays in sync with PipeTooling.
           </p>
         ) : null}
         <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}>
           <div>
-            <span style={{ color: '#6b7280' }}>Current billed: </span>
+            <span style={{ color: 'var(--text-muted)' }}>Current billed: </span>
             <strong>${formatUsd(currentAmount)}</strong>
           </div>
           <div>
-            <span style={{ color: '#6b7280' }}>Payments on this invoice: </span>
+            <span style={{ color: 'var(--text-muted)' }}>Payments on this invoice: </span>
             <strong>${formatUsd(paidOnInvoice)}</strong>
           </div>
         </div>
         <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem', fontWeight: 600 }}>
           Discount (amount off, USD)
-          <span style={{ display: 'block', marginTop: '0.35rem', fontWeight: 400, color: '#6b7280', fontSize: '0.8125rem' }}>
+          <span style={{ display: 'block', marginTop: '0.35rem', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
             {discountBounds.max > 0 ? (
               <>
                 Discount can be between ${formatUsd(discountBounds.min)} and ${formatUsd(discountBounds.max)}.
@@ -287,10 +287,10 @@ export default function AgreedWriteDownModal({
                 flexShrink: 0,
                 padding: '0.45rem 0.65rem',
                 fontSize: '0.875rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                background: submitting || discountBounds.max <= 0 ? '#f3f4f6' : '#ffffff',
-                color: submitting || discountBounds.max <= 0 ? '#9ca3af' : '#374151',
+                background: submitting || discountBounds.max <= 0 ? 'var(--bg-muted)' : 'var(--surface)',
+                color: submitting || discountBounds.max <= 0 ? 'var(--text-faint)' : 'var(--text-700)',
                 cursor: submitting || discountBounds.max <= 0 ? 'not-allowed' : 'pointer',
                 fontWeight: 600,
               }}
@@ -301,7 +301,7 @@ export default function AgreedWriteDownModal({
         </label>
         <label style={{ display: 'block', marginBottom: '0.75rem', fontSize: '0.875rem', fontWeight: 600 }}>
           New invoice total (USD)
-          <span style={{ display: 'block', marginTop: '0.35rem', fontWeight: 400, color: '#6b7280', fontSize: '0.8125rem' }}>
+          <span style={{ display: 'block', marginTop: '0.35rem', fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
             New total can be between ${formatUsd(bounds.min)} and ${formatUsd(displayMaxNewTotal)}
           </span>
           <input
@@ -332,7 +332,7 @@ export default function AgreedWriteDownModal({
               width: '100%',
               marginTop: '0.35rem',
               padding: '0.5rem 0.65rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
               fontSize: '0.875rem',
               resize: 'vertical',
@@ -341,7 +341,7 @@ export default function AgreedWriteDownModal({
           />
         </label>
         {error ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#b91c1c' }} role="alert">
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }} role="alert">
             {error}
           </p>
         ) : null}
@@ -353,9 +353,9 @@ export default function AgreedWriteDownModal({
             style={{
               padding: '0.45rem 0.85rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: submitting ? 'not-allowed' : 'pointer',
             }}
           >

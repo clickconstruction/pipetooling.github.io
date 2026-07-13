@@ -7,6 +7,7 @@ import {
   type AccountingLabelRuleCriteriaV1,
 } from '../../lib/accountingLabelRuleMatch'
 import type { TallyLinkedMercuryRow } from '../../lib/mercuryTxRowFromTally'
+import type { TallyPayrollRuleFormSeed } from '../../lib/tallyPayrollRuleSeed'
 import type { Json } from '../../types/database'
 
 type RuleRow = { id: string; name: string; criteria: Json; enabled: boolean; sort_order: number }
@@ -58,7 +59,7 @@ function criteriaSummary(criteria: Json): string {
 
 const inputStyle = {
   padding: '0.35rem 0.5rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   fontSize: '0.8125rem',
   width: '100%',
@@ -72,6 +73,8 @@ export function TallyPayrollRulesModal({
   onToggleAutoApply,
   onApplyNow,
   sampleTransactions,
+  initialForm,
+  onRuleSaved,
 }: {
   open: boolean
   onClose: () => void
@@ -79,6 +82,10 @@ export function TallyPayrollRulesModal({
   onToggleAutoApply: (next: boolean) => void
   onApplyNow: () => void | Promise<void>
   sampleTransactions: TallyLinkedMercuryRow[]
+  /** Pre-fills the New-rule form when opening ("Create rule…" from a transaction). Parent must hold this in state — an inline object would re-seed on every render and clobber edits. */
+  initialForm?: TallyPayrollRuleFormSeed | null
+  /** Fired after a rule insert/update succeeds (parent runs an apply pass so the new rule takes effect immediately). */
+  onRuleSaved?: () => void
 }) {
   const { showToast } = useToastContext()
   const [rules, setRules] = useState<RuleRow[]>([])
@@ -105,6 +112,13 @@ export function TallyPayrollRulesModal({
   useEffect(() => {
     if (open) void load()
   }, [open, load])
+
+  useEffect(() => {
+    if (open && initialForm) {
+      setEditingId(null)
+      setForm({ ...EMPTY_FORM, ...initialForm })
+    }
+  }, [open, initialForm])
 
   if (!open) return null
 
@@ -145,6 +159,7 @@ export function TallyPayrollRulesModal({
       resetForm()
       await load()
       showToast('Rule saved', 'success')
+      onRuleSaved?.()
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not save rule'), 'error')
     } finally {
@@ -199,13 +214,13 @@ export function TallyPayrollRulesModal({
       }}
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 1100, padding: '2rem 1rem', boxSizing: 'border-box', overflow: 'auto' }}
     >
-      <div role="dialog" aria-modal="true" aria-label="Payroll auto-mark rules" onClick={(e) => e.stopPropagation()} style={{ background: 'white', borderRadius: 8, maxWidth: 640, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div role="dialog" aria-modal="true" aria-label="Payroll auto-mark rules" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', borderRadius: 8, maxWidth: 640, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, flex: 1 }}>Payroll auto-mark rules</h3>
-          <button type="button" onClick={onClose} aria-label="Close" style={{ padding: '0.35rem 0.65rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>×</button>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ padding: '0.35rem 0.65rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>×</button>
         </div>
         <div style={{ padding: '1rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Rules auto-mark matching transactions as <strong>payroll</strong> — resolved without any job allocation, so job spend isn't double-counted. A manual mark/unmark always wins; transactions already split to jobs are skipped.
           </p>
 
@@ -220,7 +235,7 @@ export function TallyPayrollRulesModal({
           </div>
 
           {/* Rule form */}
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.85rem' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem' }}>
             <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem' }}>{editingId ? 'Edit rule' : 'New rule'}</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <input style={inputStyle} placeholder="Rule name (e.g. Gusto payroll)" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
@@ -239,17 +254,17 @@ export function TallyPayrollRulesModal({
                 <input style={inputStyle} placeholder="bank description text (optional)" value={form.bankValue} onChange={(e) => setForm((f) => ({ ...f, bankValue: e.target.value }))} />
               </div>
               <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Amount</span>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Amount</span>
                 <input style={inputStyle} placeholder="min" value={form.amountMin} onChange={(e) => setForm((f) => ({ ...f, amountMin: e.target.value }))} />
-                <span style={{ color: '#9ca3af' }}>…</span>
+                <span style={{ color: 'var(--text-faint)' }}>…</span>
                 <input style={inputStyle} placeholder="max" value={form.amountMax} onChange={(e) => setForm((f) => ({ ...f, amountMax: e.target.value }))} />
               </div>
-              <div style={{ fontSize: '0.75rem', color: hasCriteria ? '#059669' : '#9ca3af' }}>
+              <div style={{ fontSize: '0.75rem', color: hasCriteria ? 'var(--text-green-600)' : 'var(--text-faint)' }}>
                 {hasCriteria ? `Test: matches ${testMatches.length} of ${sampleTransactions.length} loaded transactions` : 'Add a criterion to test'}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                 {editingId ? (
-                  <button type="button" onClick={resetForm} style={{ padding: '0.35rem 0.8rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 6, cursor: 'pointer', fontSize: '0.8125rem' }}>Cancel edit</button>
+                  <button type="button" onClick={resetForm} style={{ padding: '0.35rem 0.8rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 6, cursor: 'pointer', fontSize: '0.8125rem' }}>Cancel edit</button>
                 ) : null}
                 <button type="button" onClick={() => void saveRule()} disabled={saving} style={{ padding: '0.35rem 0.8rem', background: saving ? '#93c5fd' : '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: saving ? 'default' : 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
                   {editingId ? 'Save changes' : 'Add rule'}
@@ -262,22 +277,22 @@ export function TallyPayrollRulesModal({
           <div>
             <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.4rem' }}>Rules</div>
             {loading ? (
-              <p style={{ color: '#6b7280', fontSize: '0.8125rem' }}>Loading…</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Loading…</p>
             ) : rules.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.8125rem' }}>No rules yet.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>No rules yet.</p>
             ) : (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                 {rules.map((r) => (
-                  <li key={r.id} style={{ border: '1px solid #e5e7eb', borderRadius: 6, padding: '0.5rem 0.65rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <li key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.65rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: r.enabled ? '#111827' : '#9ca3af' }}>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: r.enabled ? 'var(--text-strong)' : 'var(--text-faint)' }}>
                         {r.name}{r.enabled ? '' : ' (disabled)'}
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: '#6b7280' }}>{criteriaSummary(r.criteria)}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{criteriaSummary(r.criteria)}</div>
                     </div>
-                    <button type="button" onClick={() => void toggleEnabled(r)} title={r.enabled ? 'Disable' : 'Enable'} style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>{r.enabled ? 'Disable' : 'Enable'}</button>
-                    <button type="button" onClick={() => editRule(r)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', background: 'white', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
-                    <button type="button" onClick={() => void deleteRule(r)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', background: 'white', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: 4, cursor: 'pointer' }}>Delete</button>
+                    <button type="button" onClick={() => void toggleEnabled(r)} title={r.enabled ? 'Disable' : 'Enable'} style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>{r.enabled ? 'Disable' : 'Enable'}</button>
+                    <button type="button" onClick={() => editRule(r)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
+                    <button type="button" onClick={() => void deleteRule(r)} style={{ padding: '0.2rem 0.5rem', fontSize: '0.72rem', background: 'var(--surface)', border: '1px solid #fecaca', color: 'var(--text-red-700)', borderRadius: 4, cursor: 'pointer' }}>Delete</button>
                   </li>
                 ))}
               </ul>

@@ -172,7 +172,7 @@ export default function AiaG702G703Modal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
@@ -207,7 +207,7 @@ export default function AiaG702G703Modal({
             alignItems: 'center',
             gap: '0.5rem',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <FileSpreadsheet size={22} color="#16a34a" aria-hidden />
@@ -224,7 +224,7 @@ export default function AiaG702G703Modal({
               cursor: 'pointer',
               fontSize: '1.5rem',
               lineHeight: 1,
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               padding: '0.25rem',
             }}
           >
@@ -233,7 +233,7 @@ export default function AiaG702G703Modal({
         </div>
 
         <div style={{ padding: '1rem 1.25rem' }}>
-          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563' }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>
             Values are written into the Mission Hills G702/G703 template. Adjust fields, then generate the
             workbook.
           </p>
@@ -248,7 +248,7 @@ export default function AiaG702G703Modal({
                         margin: 0,
                         fontSize: '0.9375rem',
                         fontWeight: 700,
-                        color: '#111827',
+                        color: 'var(--text-strong)',
                         letterSpacing: '0.02em',
                         textAlign: 'center',
                       }}
@@ -261,10 +261,10 @@ export default function AiaG702G703Modal({
                       style={{
                         margin: 0,
                         paddingTop: '0.5rem',
-                        borderTop: '1px solid #e5e7eb',
+                        borderTop: '1px solid var(--border)',
                         fontSize: '0.9375rem',
                         fontWeight: 700,
-                        color: '#111827',
+                        color: 'var(--text-strong)',
                         letterSpacing: '0.02em',
                         textAlign: 'center',
                       }}
@@ -273,7 +273,7 @@ export default function AiaG702G703Modal({
                     </h3>
                   ) : null}
                   <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>{seg.def.label}</span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>{seg.def.label}</span>
                     {seg.def.kind === 'textarea' ? (
                       <textarea
                         value={form[seg.def.key]}
@@ -285,7 +285,7 @@ export default function AiaG702G703Modal({
                           fontSize: '0.875rem',
                           padding: '0.5rem',
                           borderRadius: 4,
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                         }}
                       />
                     ) : (
@@ -302,7 +302,7 @@ export default function AiaG702G703Modal({
                           fontSize: '0.875rem',
                           padding: '0.5rem',
                           borderRadius: 4,
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                         }}
                       />
                     )}
@@ -313,10 +313,10 @@ export default function AiaG702G703Modal({
                   key={seg.groupId}
                   className="aia-g702-details-wrap"
                   style={{
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                     padding: '0.5rem 0.75rem',
-                    background: '#fafafa',
+                    background: 'var(--bg-page)',
                     boxSizing: 'border-box',
                     overflow: 'hidden',
                   }}
@@ -327,7 +327,7 @@ export default function AiaG702G703Modal({
                       cursor: 'pointer',
                       fontSize: '0.8125rem',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -355,7 +355,7 @@ export default function AiaG702G703Modal({
                         key={def.key}
                         style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}
                       >
-                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+                        <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
                           {def.label}
                         </span>
                         <input
@@ -369,8 +369,8 @@ export default function AiaG702G703Modal({
                             fontSize: '0.875rem',
                             padding: '0.5rem',
                             borderRadius: 4,
-                            border: '1px solid #d1d5db',
-                            background: '#fff',
+                            border: '1px solid var(--border-strong)',
+                            background: 'var(--surface)',
                           }}
                         />
                       </label>
@@ -389,7 +389,7 @@ export default function AiaG702G703Modal({
             gap: '0.5rem',
             justifyContent: 'flex-end',
             padding: '1rem 1.25rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
           }}
         >
           <button
@@ -398,9 +398,9 @@ export default function AiaG702G703Modal({
             disabled={!job}
             style={{
               padding: '0.5rem 1rem',
-              background: '#f3f4f6',
-              color: '#374151',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              color: 'var(--text-700)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: job ? 'pointer' : 'not-allowed',
               fontSize: '0.875rem',

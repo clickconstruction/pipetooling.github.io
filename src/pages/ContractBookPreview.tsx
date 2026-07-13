@@ -29,8 +29,8 @@ const PREVIEW_STYLES = `
 
 const pageBgStyle: CSSProperties = {
   minHeight: '100vh',
-  background: '#f3f4f6',
-  color: '#111827',
+  background: 'var(--bg-muted)',
+  color: 'var(--text-strong)',
   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
 }
 
@@ -78,14 +78,14 @@ export default function ContractBookPreview() {
           style={{
             maxWidth: 520,
             margin: '0 auto',
-            background: '#fff',
-            border: '1px solid #e5e7eb',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '2rem',
           }}
         >
           <h1 style={{ marginTop: 0, fontSize: '1.25rem' }}>Preview unavailable</h1>
-          <p style={{ color: '#4b5563', lineHeight: 1.5, margin: 0 }}>
+          <p style={{ color: 'var(--text-600)', lineHeight: 1.5, margin: 0 }}>
             This preview link has expired. Reopen it from the Contract Book.
           </p>
           <p style={{ marginTop: '1rem', marginBottom: 0 }}>
@@ -99,7 +99,7 @@ export default function ContractBookPreview() {
   const bodyHtml = renderContractBodyToSafeHtml(entry.book_body_html, entry.book_body_format)
 
   return (
-    <div style={pageBgStyle}>
+    <div data-theme="light" style={pageBgStyle}>
       <style>{PREVIEW_STYLES}</style>
       <div
         className="cbp-toolbar"
@@ -112,7 +112,7 @@ export default function ContractBookPreview() {
           justifyContent: 'flex-end',
           padding: '0.75rem 1rem',
           background: 'rgba(243,244,246,0.95)',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border)',
           zIndex: 10,
         }}
       >
@@ -142,8 +142,8 @@ export default function ContractBookPreview() {
         style={{
           maxWidth: 800,
           margin: '4.5rem auto 3rem',
-          background: '#fff',
-          border: '1px solid #e5e7eb',
+          background: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: 8,
           padding: '2.5rem 3rem',
           boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
@@ -157,7 +157,7 @@ export default function ContractBookPreview() {
             dangerouslySetInnerHTML={{ __html: bodyHtml }}
           />
         ) : (
-          <p style={{ color: '#9ca3af', fontStyle: 'italic' }}>No library body yet.</p>
+          <p style={{ color: 'var(--text-faint)', fontStyle: 'italic' }}>No library body yet.</p>
         )}
       </main>
     </div>

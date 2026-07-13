@@ -199,7 +199,7 @@ export default function TeamFeedbackSettingsSection({
   }
 
   if (loading || !row) {
-    return <p style={{ color: '#6b7280' }}>Loading team feedback settings…</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Loading team feedback settings…</p>
   }
 
   return (
@@ -243,7 +243,7 @@ export default function TeamFeedbackSettingsSection({
           line-height: 1.25;
         }
       `}</style>
-      <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>
         Controls the post clock-out prompt and dashboard entry.
       </p>
       {!hideEnabled && (
@@ -272,7 +272,7 @@ export default function TeamFeedbackSettingsSection({
           max={365}
           value={row.cadence_days}
           onChange={(e) => setRow({ ...row, cadence_days: Math.max(1, Math.min(365, Number(e.target.value) || 28)) })}
-          style={{ width: 120, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+          style={{ width: 120, padding: '0.35rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
         />
       </label>
       <TeamFeedbackPreviewRow
@@ -362,7 +362,7 @@ export default function TeamFeedbackSettingsSection({
           value={row.intro_copy ?? ''}
           onChange={(e) => setRow({ ...row, intro_copy: e.target.value || null })}
           rows={3}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+          style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
         />
       </label>
       <label style={{ display: 'block', marginBottom: '1rem' }}>
@@ -371,7 +371,7 @@ export default function TeamFeedbackSettingsSection({
           value={row.thank_you_copy ?? ''}
           onChange={(e) => setRow({ ...row, thank_you_copy: e.target.value || null })}
           rows={2}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+          style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
         />
       </label>
       <div
@@ -379,8 +379,8 @@ export default function TeamFeedbackSettingsSection({
           marginBottom: '1rem',
           padding: '0.75rem',
           borderRadius: 8,
-          border: '1px solid #e5e7eb',
-          background: '#f9fafb',
+          border: '1px solid var(--border)',
+          background: 'var(--bg-subtle)',
         }}
       >
         <button
@@ -400,7 +400,7 @@ export default function TeamFeedbackSettingsSection({
             cursor: 'pointer',
             fontWeight: 600,
             fontSize: '0.875rem',
-            color: '#111827',
+            color: 'var(--text-strong)',
             textAlign: 'left',
           }}
         >
@@ -409,7 +409,7 @@ export default function TeamFeedbackSettingsSection({
         </button>
         {inclusionCopyOpen && (
           <>
-        <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Leave blank to use the default title, subtitle, and toggle labels on the “what to include” step.
         </p>
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
@@ -419,7 +419,7 @@ export default function TeamFeedbackSettingsSection({
             value={row.inclusion_title ?? ''}
             onChange={(e) => setRow({ ...row, inclusion_title: e.target.value || null })}
             placeholder={DEFAULT_INCLUSION_TITLE}
-            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
@@ -429,7 +429,7 @@ export default function TeamFeedbackSettingsSection({
             onChange={(e) => setRow({ ...row, inclusion_subtitle: e.target.value || null })}
             placeholder={DEFAULT_INCLUSION_SUBTITLE}
             rows={2}
-            style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
@@ -441,7 +441,7 @@ export default function TeamFeedbackSettingsSection({
             value={row.inclusion_label_manager ?? ''}
             onChange={(e) => setRow({ ...row, inclusion_label_manager: e.target.value || null })}
             placeholder={DEFAULT_INCLUSION_LABEL_MANAGER}
-            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
@@ -451,7 +451,7 @@ export default function TeamFeedbackSettingsSection({
             value={row.inclusion_label_peer ?? ''}
             onChange={(e) => setRow({ ...row, inclusion_label_peer: e.target.value || null })}
             placeholder={DEFAULT_INCLUSION_LABEL_PEER}
-            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
         <label style={{ display: 'block', marginBottom: 0 }}>
@@ -463,7 +463,7 @@ export default function TeamFeedbackSettingsSection({
             value={row.inclusion_label_open ?? ''}
             onChange={(e) => setRow({ ...row, inclusion_label_open: e.target.value || null })}
             placeholder={DEFAULT_INCLUSION_LABEL_OPEN}
-            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
           </>
@@ -474,8 +474,8 @@ export default function TeamFeedbackSettingsSection({
           marginBottom: '1rem',
           padding: '0.75rem',
           borderRadius: 8,
-          border: '1px solid #e5e7eb',
-          background: '#f9fafb',
+          border: '1px solid var(--border)',
+          background: 'var(--bg-subtle)',
         }}
       >
         <button
@@ -495,7 +495,7 @@ export default function TeamFeedbackSettingsSection({
             cursor: 'pointer',
             fontWeight: 600,
             fontSize: '0.875rem',
-            color: '#111827',
+            color: 'var(--text-strong)',
             textAlign: 'left',
           }}
         >
@@ -504,7 +504,7 @@ export default function TeamFeedbackSettingsSection({
         </button>
         {managerCopyOpen && (
           <>
-        <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Five Likert prompts, step heading, and overall 1–10 question. Leave blank or match defaults for built-in copy.
         </p>
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
@@ -514,12 +514,12 @@ export default function TeamFeedbackSettingsSection({
             value={row.manager_step_heading ?? ''}
             onChange={(e) => setRow({ ...row, manager_step_heading: e.target.value || null })}
             placeholder={DEFAULT_MANAGER_STEP_HEADING}
-            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
         {Array.from({ length: 5 }, (_, i) => (
           <label key={`mgr-likert-${i}`} style={{ display: 'block', marginBottom: '0.5rem' }}>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
               Likert {i + 1}
             </span>
             <textarea
@@ -537,7 +537,7 @@ export default function TeamFeedbackSettingsSection({
                 setMgrLikertDraft(next)
               }}
               rows={2}
-              style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+              style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
             />
           </label>
         ))}
@@ -550,7 +550,7 @@ export default function TeamFeedbackSettingsSection({
             value={row.manager_overall_prompt ?? ''}
             onChange={(e) => setRow({ ...row, manager_overall_prompt: e.target.value || null })}
             placeholder={DEFAULT_MANAGER_OVERALL_PROMPT}
-            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
           </>
@@ -561,8 +561,8 @@ export default function TeamFeedbackSettingsSection({
           marginBottom: '1rem',
           padding: '0.75rem',
           borderRadius: 8,
-          border: '1px solid #e5e7eb',
-          background: '#f9fafb',
+          border: '1px solid var(--border)',
+          background: 'var(--bg-subtle)',
         }}
       >
         <button
@@ -582,7 +582,7 @@ export default function TeamFeedbackSettingsSection({
             cursor: 'pointer',
             fontWeight: 600,
             fontSize: '0.875rem',
-            color: '#111827',
+            color: 'var(--text-strong)',
             textAlign: 'left',
           }}
         >
@@ -591,7 +591,7 @@ export default function TeamFeedbackSettingsSection({
         </button>
         {peerCopyOpen && (
           <>
-        <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Five Likert prompts and step heading. Leave blank or match defaults for built-in copy.
         </p>
         <label style={{ display: 'block', marginBottom: '0.5rem' }}>
@@ -601,12 +601,12 @@ export default function TeamFeedbackSettingsSection({
             value={row.peer_step_heading ?? ''}
             onChange={(e) => setRow({ ...row, peer_step_heading: e.target.value || null })}
             placeholder={DEFAULT_PEER_STEP_HEADING}
-            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+            style={{ width: '100%', padding: '0.45rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
           />
         </label>
         {Array.from({ length: 5 }, (_, i) => (
           <label key={`peer-likert-${i}`} style={{ display: 'block', marginBottom: i === 4 ? 0 : '0.5rem' }}>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
               Likert {i + 1}
             </span>
             <textarea
@@ -624,7 +624,7 @@ export default function TeamFeedbackSettingsSection({
                 setPeerLikertDraft(next)
               }}
               rows={2}
-              style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db' }}
+              style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)' }}
             />
           </label>
         ))}
@@ -636,12 +636,12 @@ export default function TeamFeedbackSettingsSection({
           marginBottom: '1rem',
           padding: '0.75rem',
           borderRadius: 8,
-          border: '1px dashed #d1d5db',
-          background: '#fafafa',
+          border: '1px dashed var(--border-strong)',
+          background: 'var(--bg-page)',
         }}
       >
         <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Try the flow</div>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Quick preview skips the post–clock-out intro. Full intro matches the prompt after clock-out (30s auto-dismiss,
           Start / Snooze / Not now).
         </p>
@@ -659,8 +659,8 @@ export default function TeamFeedbackSettingsSection({
               padding: '0.4rem 0.75rem',
               borderRadius: 6,
               border: '1px solid #ea580c',
-              background: 'white',
-              color: '#c2410c',
+              background: 'var(--surface)',
+              color: 'var(--text-orange-700)',
               fontWeight: 600,
               fontSize: '0.875rem',
               cursor: authUser?.id ? 'pointer' : 'not-allowed',
@@ -682,7 +682,7 @@ export default function TeamFeedbackSettingsSection({
               padding: '0.4rem 0.75rem',
               borderRadius: 6,
               border: '1px solid #64748b',
-              background: 'white',
+              background: 'var(--surface)',
               color: '#334155',
               fontWeight: 600,
               fontSize: '0.875rem',
@@ -694,7 +694,7 @@ export default function TeamFeedbackSettingsSection({
           </button>
         </div>
         {!authUser?.id && (
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>Sign in to test the wizard.</p>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--text-faint)' }}>Sign in to test the wizard.</p>
         )}
       </div>
       <button

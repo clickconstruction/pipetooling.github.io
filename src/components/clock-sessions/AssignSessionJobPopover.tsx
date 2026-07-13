@@ -83,18 +83,18 @@ const assignButtonStyle = {
   fontSize: '0.8125rem' as const,
   border: '1px solid #3b82f6',
   borderRadius: 4,
-  background: '#eff6ff',
-  color: '#2563eb',
+  background: 'var(--bg-blue-tint)',
+  color: 'var(--text-link)',
   cursor: 'pointer' as const,
 }
 
 const changeButtonStyle = {
   padding: '0.2rem 0.5rem',
   fontSize: '0.8125rem' as const,
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: 'white',
-  color: '#6b7280',
+  background: 'var(--surface)',
+  color: 'var(--text-muted)',
   cursor: 'pointer' as const,
 }
 
@@ -390,8 +390,8 @@ export function AssignSessionJobPopover({
           lineHeight: 1.2,
           border: '1px solid #f59e0b',
           borderRadius: 4,
-          background: '#fffbeb',
-          color: '#92400e',
+          background: 'var(--bg-amber-tint)',
+          color: 'var(--text-amber-800)',
           cursor: loading ? 'not-allowed' : 'pointer',
           opacity: loading ? 0.7 : 1,
           maxWidth: '100%',
@@ -409,7 +409,7 @@ export function AssignSessionJobPopover({
           }}
           aria-hidden
         />
-        <span style={{ color: '#b45309', fontWeight: 600, flexShrink: 0 }} aria-hidden>
+        <span style={{ color: 'var(--text-amber-700)', fontWeight: 600, flexShrink: 0 }} aria-hidden>
           Add
         </span>
       </button>
@@ -443,8 +443,8 @@ export function AssignSessionJobPopover({
               minWidth: 280,
               maxWidth: 360,
               padding: '0.75rem',
-              background: 'white',
-              border: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
             }}
@@ -462,7 +462,7 @@ export function AssignSessionJobPopover({
                     gap: '0.5rem',
                     fontSize: '0.72rem',
                     fontWeight: 600,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     marginBottom: '0.35rem',
                   }}
                 >
@@ -499,11 +499,11 @@ export function AssignSessionJobPopover({
                   ) : null}
                 </div>
                 {dispatchPicksLoading ? (
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>Loading schedule…</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading schedule…</div>
                 ) : dispatchPicksError ? (
-                  <div style={{ fontSize: '0.72rem', color: '#92400e' }}>{dispatchPicksError}</div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-800)' }}>{dispatchPicksError}</div>
                 ) : dispatchPicks.length === 0 ? (
-                  <div style={{ fontSize: '0.72rem', color: '#6b7280' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                     No Dispatch jobs for this person on this day.
                   </div>
                 ) : (
@@ -549,8 +549,8 @@ export function AssignSessionJobPopover({
                             lineHeight: 1.25,
                             border: `1px solid ${isCurrent ? '#86efac' : '#bfdbfe'}`,
                             borderRadius: 4,
-                            background: isCurrent ? '#f0fdf4' : '#eff6ff',
-                            color: isCurrent ? '#166534' : '#1d4ed8',
+                            background: isCurrent ? 'var(--bg-green-tint)' : 'var(--bg-blue-tint)',
+                            color: isCurrent ? 'var(--text-green-800)' : 'var(--text-blue-700)',
                             cursor: loading || isCurrent ? 'not-allowed' : 'pointer',
                             width: '100%',
                             maxWidth: '100%',
@@ -569,7 +569,7 @@ export function AssignSessionJobPopover({
                                 alignItems: 'flex-end',
                                 gap: '0.2rem',
                                 textAlign: 'right',
-                                color: isCurrent ? '#15803d' : '#1e40af',
+                                color: isCurrent ? '#15803d' : 'var(--text-blue-800)',
                                 fontVariantNumeric: 'tabular-nums',
                               }}
                             >
@@ -605,7 +605,7 @@ export function AssignSessionJobPopover({
                 width: '100%',
                 padding: '0.5rem 0.75rem',
                 marginBottom: '0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 boxSizing: 'border-box',
               }}
@@ -615,13 +615,13 @@ export function AssignSessionJobPopover({
                 maxHeight: 200,
                 overflowY: 'auto',
                 marginBottom: '0.5rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 4,
               }}
             >
               {searchText.trim() ? (
                 searchResults.length === 0 ? (
-                  <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                  <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                     No results
                   </div>
                 ) : (
@@ -687,7 +687,7 @@ export function AssignSessionJobPopover({
                   })
                 )
               ) : (
-                <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Type to search jobs and bids
                 </div>
               )}
@@ -700,11 +700,11 @@ export function AssignSessionJobPopover({
                 style={{
                   padding: '0.25rem 0.5rem',
                   fontSize: '0.8125rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: loading ? 'not-allowed' : 'pointer',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                 }}
               >
                 Clear assignment

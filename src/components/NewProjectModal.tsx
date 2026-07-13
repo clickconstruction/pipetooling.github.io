@@ -25,7 +25,7 @@ export default function NewProjectModal() {
         aria-modal="true"
         aria-labelledby="new-project-modal-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1rem 1.5rem 1.5rem',
           borderRadius: 8,
           width: 'min(960px, 96vw)',

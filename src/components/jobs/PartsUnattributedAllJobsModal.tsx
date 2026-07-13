@@ -21,7 +21,7 @@ const overlay: CSSProperties = {
 }
 
 const panel: CSSProperties = {
-  background: 'white',
+  background: 'var(--surface)',
   borderRadius: 8,
   maxWidth: 1024,
   width: '100%',
@@ -149,25 +149,25 @@ export function PartsUnattributedAllJobsModal({
         aria-modal="true"
         aria-label="Unattributed card lines for all jobs"
       >
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Unattributed card (all jobs)</h2>
           <button type="button" onClick={onRequestClose} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer' }} aria-label="Close">
             ×
           </button>
         </div>
         {loadError && (
-          <p style={{ margin: 0, padding: '0.5rem 1rem', color: '#b91c1c', fontSize: '0.875rem' }}>{loadError}</p>
+          <p style={{ margin: 0, padding: '0.5rem 1rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadError}</p>
         )}
         <div style={{ padding: '0.75rem 1rem', overflow: 'auto', flex: 1, minHeight: 0 }}>
           {loading ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : showEmpty ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No unattributed card lines in scope, or no jobs with card activity.</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No unattributed card lines in scope, or no jobs with card activity.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ background: '#f3f4f6' }}>
+                  <tr style={{ background: 'var(--bg-muted)' }}>
                     <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem' }}>Job</th>
                     <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem' }}>Posted</th>
                     <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem' }}>Card</th>
@@ -201,7 +201,7 @@ export function PartsUnattributedAllJobsModal({
                         : '—'
                       const rowBusy = allocLoadingKey === k || quickAddLoadingKey === k
                       return (
-                        <tr key={k} style={{ borderTop: '1px solid #e5e7eb' }}>
+                        <tr key={k} style={{ borderTop: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.4rem 0.5rem' }}>{jobLabel}</td>
                           <td style={{ padding: '0.4rem 0.5rem' }}>{posted}</td>
                           <td style={{ padding: '0.4rem 0.5rem' }}>{cardLabel}</td>
@@ -230,7 +230,7 @@ export function PartsUnattributedAllJobsModal({
                                     padding: '4px 10px',
                                     borderRadius: 6,
                                     border: '1px solid #047857',
-                                    background: '#ecfdf5',
+                                    background: 'var(--bg-emerald-tint)',
                                     color: '#047857',
                                     cursor: rowBusy ? 'wait' : 'pointer',
                                   }}
@@ -248,8 +248,8 @@ export function PartsUnattributedAllJobsModal({
                                   padding: '4px 10px',
                                   borderRadius: 6,
                                   border: '1px solid #e2e8f0',
-                                  background: '#fff',
-                                  color: '#2563eb',
+                                  background: 'var(--surface)',
+                                  color: 'var(--text-link)',
                                   cursor: rowBusy ? 'wait' : 'pointer',
                                 }}
                               >

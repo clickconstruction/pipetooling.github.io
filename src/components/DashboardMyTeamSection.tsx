@@ -23,7 +23,7 @@ function formatDecimalHours(hours: number): string {
 const teamHoursThStyle = {
   padding: '0.35rem 0.5rem',
   textAlign: 'left' as const,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
 const teamHoursTdStyle = { padding: '0.35rem 0.5rem' }
 const teamHoursTdNum = { ...teamHoursTdStyle, textAlign: 'right' as const }
@@ -31,9 +31,9 @@ const teamHoursTdNum = { ...teamHoursTdStyle, textAlign: 'right' as const }
 const peopleYouLeadThStyle = {
   padding: '0.35rem 0.5rem',
   textAlign: 'left' as const,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
-const peopleYouLeadMutedColor = { color: '#6b7280' as const }
+const peopleYouLeadMutedColor = { color: 'var(--text-muted)' as const }
 const peopleYouLeadThMutedLabel = {
   ...peopleYouLeadMutedColor,
   fontWeight: 500 as const,
@@ -182,14 +182,14 @@ export default function DashboardMyTeamSection({
         <span aria-hidden>{myTeamExpanded ? '▼' : '▶'}</span>
         <span>My Team</span>
         {!myTeamExpanded && (
-          <span style={{ fontWeight: 500, color: '#6b7280', fontSize: '0.875rem' }}>
+          <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             {loadingSessions ? ' — …' : ` — ${pendingApprovalCount} pending`}
           </span>
         )}
       </button>
       {myTeamExpanded && (
         <div id="dashboard-my-team-content">
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>}
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
             <label>
               <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
@@ -197,7 +197,7 @@ export default function DashboardMyTeamSection({
                 type="date"
                 value={dateStart}
                 onChange={(e) => setDateRange((r) => ({ ...r, start: e.target.value }))}
-                style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </label>
             <label>
@@ -206,7 +206,7 @@ export default function DashboardMyTeamSection({
                 type="date"
                 value={dateEnd}
                 onChange={(e) => setDateRange((r) => ({ ...r, end: e.target.value }))}
-                style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </label>
             <button
@@ -214,9 +214,9 @@ export default function DashboardMyTeamSection({
               onClick={() => shiftWeek(-1)}
               style={{
                 padding: '0.35rem 0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -228,9 +228,9 @@ export default function DashboardMyTeamSection({
               onClick={() => shiftWeek(1)}
               style={{
                 padding: '0.35rem 0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -249,7 +249,7 @@ export default function DashboardMyTeamSection({
                     fontSize: '0.875rem',
                   }}
                 >
-                  <thead style={{ background: '#f3f4f6' }}>
+                  <thead style={{ background: 'var(--bg-muted)' }}>
                     <tr>
                       <th scope="col" style={{ ...peopleYouLeadThStyle, textAlign: 'right' }}>
                         Total
@@ -346,7 +346,7 @@ export default function DashboardMyTeamSection({
             </div>
           )}
           {loadingSessions ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '1rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '1rem' }}>Loading…</p>
           ) : (
             <div id="dashboard-my-team-pending">
               <div style={{ marginBottom: '1rem' }}>
@@ -365,7 +365,7 @@ export default function DashboardMyTeamSection({
                     cursor: 'pointer',
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                   }}
                 >
                   <span aria-hidden>{clockActivityExpanded ? '▼' : '▶'}</span>
@@ -383,7 +383,7 @@ export default function DashboardMyTeamSection({
                         justifyContent: 'space-between',
                       }}
                     >
-                      <p style={{ fontSize: '0.8125rem', color: '#6b7280', margin: 0, flex: '1 1 12rem' }}>
+                      <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0, flex: '1 1 12rem' }}>
                         All clock sessions for people you lead in the date range above (same as pending week).
                       </p>
                       <div role="group" aria-label="Clock activity view" style={{ display: 'inline-flex', gap: '0.2rem' }}>
@@ -394,11 +394,11 @@ export default function DashboardMyTeamSection({
                           style={{
                             padding: '0.25rem 0.5rem',
                             fontSize: '0.8125rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
-                            background: !clockActivitySimpleView ? '#e5e7eb' : 'white',
+                            background: !clockActivitySimpleView ? 'var(--bg-200)' : 'var(--surface)',
                             cursor: 'pointer',
-                            color: '#374151',
+                            color: 'var(--text-700)',
                           }}
                         >
                           Detailed
@@ -410,11 +410,11 @@ export default function DashboardMyTeamSection({
                           style={{
                             padding: '0.25rem 0.5rem',
                             fontSize: '0.8125rem',
-                            border: '1px solid #d1d5db',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
-                            background: clockActivitySimpleView ? '#e5e7eb' : 'white',
+                            background: clockActivitySimpleView ? 'var(--bg-200)' : 'var(--surface)',
                             cursor: 'pointer',
-                            color: '#374151',
+                            color: 'var(--text-700)',
                           }}
                         >
                           Simple
@@ -439,11 +439,11 @@ export default function DashboardMyTeamSection({
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.8125rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: clockActivityListMode === 'chronological' ? '#e5e7eb' : 'white',
+                              background: clockActivityListMode === 'chronological' ? 'var(--bg-200)' : 'var(--surface)',
                               cursor: 'pointer',
-                              color: '#374151',
+                              color: 'var(--text-700)',
                             }}
                           >
                             Chronological
@@ -455,11 +455,11 @@ export default function DashboardMyTeamSection({
                             style={{
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.8125rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: clockActivityListMode === 'byPerson' ? '#e5e7eb' : 'white',
+                              background: clockActivityListMode === 'byPerson' ? 'var(--bg-200)' : 'var(--surface)',
                               cursor: 'pointer',
-                              color: '#374151',
+                              color: 'var(--text-700)',
                             }}
                           >
                             By person
@@ -478,7 +478,7 @@ export default function DashboardMyTeamSection({
                           <div
                             id="clock-activity-filter-label"
                             style={{
-                              color: '#374151',
+                              color: 'var(--text-700)',
                               fontWeight: 500,
                               flexShrink: 0,
                               whiteSpace: 'nowrap',
@@ -519,9 +519,9 @@ export default function DashboardMyTeamSection({
                       </div>
                     )}
                     {loadingLedger ? (
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
                     ) : clockActivitySimpleView ? (
-                      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                         <div style={{ overflowX: 'auto' }}>
                           <table
                             style={{
@@ -531,7 +531,7 @@ export default function DashboardMyTeamSection({
                               fontSize: '0.875rem',
                             }}
                           >
-                            <thead style={{ background: '#f3f4f6' }}>
+                            <thead style={{ background: 'var(--bg-muted)' }}>
                               <tr>
                                 <th scope="col" style={teamHoursThStyle}>
                                   Person
@@ -553,7 +553,7 @@ export default function DashboardMyTeamSection({
                             <tbody>
                               {orderedLedgerSessions.length === 0 ? (
                                 <tr>
-                                  <td colSpan={5} style={{ ...teamHoursTdStyle, color: '#6b7280', textAlign: 'center' }}>
+                                  <td colSpan={5} style={{ ...teamHoursTdStyle, color: 'var(--text-muted)', textAlign: 'center' }}>
                                     {ledgerSessions.length === 0
                                       ? 'No sessions in this date range'
                                       : 'No sessions for selected people'}
@@ -567,9 +567,9 @@ export default function DashboardMyTeamSection({
                                         colSpan={5}
                                         style={{
                                           ...teamHoursTdStyle,
-                                          background: '#f3f4f6',
+                                          background: 'var(--bg-muted)',
                                           fontWeight: 600,
-                                          color: '#374151',
+                                          color: 'var(--text-700)',
                                         }}
                                       >
                                         {g.name}
@@ -582,7 +582,7 @@ export default function DashboardMyTeamSection({
                                       const jobDisplay = jobFull ? truncateJobLabel(jobFull) : '—'
                                       const jobTruncated = Boolean(jobFull && jobFull.length > JOB_LABEL_DISPLAY_MAX)
                                       return (
-                                        <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
+                                        <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                                           <td style={teamHoursTdStyle}>{personName}</td>
                                           <td style={teamHoursTdStyle}>{formatClockActivityWorkDayLabel(s.work_date)}</td>
                                           <td style={teamHoursTdNum}>
@@ -618,7 +618,7 @@ export default function DashboardMyTeamSection({
                                   const jobDisplay = jobFull ? truncateJobLabel(jobFull) : '—'
                                   const jobTruncated = Boolean(jobFull && jobFull.length > JOB_LABEL_DISPLAY_MAX)
                                   return (
-                                    <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
+                                    <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                                       <td style={teamHoursTdStyle}>{personName}</td>
                                       <td style={teamHoursTdStyle}>{formatClockActivityWorkDayLabel(s.work_date)}</td>
                                       <td style={teamHoursTdNum}>
@@ -650,7 +650,7 @@ export default function DashboardMyTeamSection({
                         </div>
                       </div>
                     ) : (
-                      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                         <ClockSessionsTable
                           sessions={orderedLedgerSessions}
                           locationVariant="full"
@@ -673,13 +673,13 @@ export default function DashboardMyTeamSection({
               </div>
               <div
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                   overflow: 'hidden',
                   marginBottom: '1rem',
                 }}
               >
-                <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+                <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
                   Active clock sessions ({activeClockSessions.length})
                 </div>
                 <ClockSessionsTable
@@ -718,8 +718,8 @@ export default function DashboardMyTeamSection({
                             fontSize: '0.8125rem',
                             border: '1px solid #dc2626',
                             borderRadius: 4,
-                            background: '#fef2f2',
-                            color: '#dc2626',
+                            background: 'var(--bg-red-tint)',
+                            color: 'var(--text-red-600)',
                             cursor: 'pointer',
                           }}
                         >
@@ -733,13 +733,13 @@ export default function DashboardMyTeamSection({
               <div
                 id="dashboard-my-team-pending-sessions"
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                   overflow: 'hidden',
                   marginBottom: '1rem',
                 }}
               >
-                <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+                <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
                   Pending sessions ({pendingApprovalClockSessions.length})
                 </div>
                 <ClockSessionsTable
@@ -787,7 +787,7 @@ export default function DashboardMyTeamSection({
                           fontSize: '0.8125rem',
                           border: '1px solid #22c55e',
                           borderRadius: 4,
-                          background: '#f0fdf4',
+                          background: 'var(--bg-green-tint)',
                           color: '#16a34a',
                           cursor: 'pointer',
                         }}
@@ -817,8 +817,8 @@ export default function DashboardMyTeamSection({
                           fontSize: '0.8125rem',
                           border: '1px solid #dc2626',
                           borderRadius: 4,
-                          background: '#fef2f2',
-                          color: '#dc2626',
+                          background: 'var(--bg-red-tint)',
+                          color: 'var(--text-red-600)',
                           cursor: 'pointer',
                         }}
                       >
@@ -829,10 +829,10 @@ export default function DashboardMyTeamSection({
                         style={{
                           padding: '0.2rem 0.5rem',
                           fontSize: '0.8125rem',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
-                          background: 'white',
-                          color: '#374151',
+                          background: 'var(--surface)',
+                          color: 'var(--text-700)',
                           cursor: 'pointer',
                           textDecoration: 'none',
                         }}

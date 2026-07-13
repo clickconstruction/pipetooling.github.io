@@ -96,7 +96,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1rem 1.25rem',
           maxWidth: 400,
@@ -119,7 +119,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
             width: '100%',
             padding: '0.5rem 0.75rem',
             marginBottom: '0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             boxSizing: 'border-box',
           }}
@@ -129,13 +129,13 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
             maxHeight: 220,
             overflowY: 'auto',
             marginBottom: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 4,
           }}
         >
           {searchText.trim() ? (
             searchResults.length === 0 ? (
-              <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 No results
               </div>
             ) : (
@@ -153,7 +153,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
                       textAlign: 'left',
                       border: 'none',
                       borderBottom: '1px solid #f3f4f6',
-                      background: isSelected ? '#eff6ff' : 'none',
+                      background: isSelected ? 'var(--bg-blue-tint)' : 'none',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                     }}
@@ -184,7 +184,7 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
               })
             )
           ) : (
-            <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               Type to search jobs and bids
             </div>
           )}
@@ -195,9 +195,9 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
             onClick={onClose}
             style={{
               padding: '0.35rem 0.75rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: 'pointer',
               fontSize: '0.875rem',
             }}

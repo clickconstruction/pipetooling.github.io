@@ -72,7 +72,7 @@ function formatTimezoneSelectOptionLabel(iana: string, regionLabel: string, at: 
   return off ? `${regionLabel} (${off})` : regionLabel
 }
 
-const SALARY_END_HINT_STYLE: CSSProperties = { fontSize: '0.875rem', color: '#6b7280' }
+const SALARY_END_HINT_STYLE: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-muted)' }
 
 const SALARY_SESSION_FIELDS_ROW: CSSProperties = {
   display: 'flex',
@@ -91,10 +91,10 @@ const SALARY_SESSION_FIELDS_STACK: CSSProperties = {
 const SALARY_SESSION_CONTROL_MAX: CSSProperties = { width: '100%', maxWidth: '12rem' }
 
 const SALARY_BREAK_STRIP_STYLE: CSSProperties = {
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   padding: '0.75rem 0.875rem',
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
 }
 
 function SalarySessionPanel({
@@ -112,13 +112,13 @@ function SalarySessionPanel({
     <div
       style={{
         background: bg,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderLeft: `4px solid ${accent}`,
         borderRadius: 8,
         padding: '0.75rem 0.875rem',
       }}
     >
-      <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: '#374151' }}>{title}</div>
+      <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: 'var(--text-700)' }}>{title}</div>
       {children}
     </div>
   )
@@ -542,14 +542,14 @@ export function SalaryWorkScheduleSettings({
 
   if (loading) {
     return (
-      <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading pay schedule…</p>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading pay schedule…</p>
     )
   }
   if (!isSalary) {
     if (!orphanWorkScheduleTemplate) return null
     return (
       <div style={{ marginBottom: '1.5rem' }}>
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 0 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0 }}>
           You are not marked salaried in pay settings, but a saved salaried workday schedule still exists. Remove it to
           avoid showing automatic &quot;(s)&quot; sessions on the team clock strip.
         </p>
@@ -560,8 +560,8 @@ export function SalaryWorkScheduleSettings({
           style={{
             padding: '0.5rem 0.75rem',
             borderRadius: 6,
-            border: '1px solid #d1d5db',
-            background: saving ? '#f3f4f6' : '#fff',
+            border: '1px solid var(--border-strong)',
+            background: saving ? 'var(--bg-muted)' : 'var(--surface)',
             cursor: saving ? 'wait' : 'pointer',
             fontWeight: 600,
           }}
@@ -574,7 +574,7 @@ export function SalaryWorkScheduleSettings({
 
   return (
     <div style={{ marginBottom: '1.5rem' }}>
-      <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: 0 }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: 0 }}>
         You are marked <strong>salaried</strong> in pay settings. Define your usual 8-hour day (15-minute steps). The app
         creates clock sessions automatically so your team sees you on the clock strip. Use <strong>Update focus</strong> on
         the dashboard to link jobs or bids. To work on a Saturday or Sunday, turn on <strong>Custom schedule for this date</strong>{' '}
@@ -702,7 +702,7 @@ export function SalaryWorkScheduleSettings({
               </div>
             </SalarySessionPanel>
             <div style={SALARY_BREAK_STRIP_STYLE}>
-              <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: '#374151' }}>Break</div>
+              <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: 'var(--text-700)' }}>Break</div>
               <label>
                 <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>Length (hours)</span>
                 <select
@@ -764,7 +764,7 @@ export function SalaryWorkScheduleSettings({
           <span style={{ marginLeft: '0.35rem' }}>Different job/bid focus for second block (set on dashboard per session)</span>
         </label>
       )}
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem', background: '#fafafa' }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.75rem', marginBottom: '0.75rem', background: 'var(--bg-page)' }}>
         {canEditPastDayOverrides && (
           <label style={{ display: 'block', marginBottom: '0.5rem' }}>
             <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
@@ -776,7 +776,7 @@ export function SalaryWorkScheduleSettings({
               onChange={(e) => setOverrideDateYmd(e.target.value)}
               style={{ padding: '0.35rem 0.5rem' }}
             />
-            <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
               Staff can correct past or future days. Everyone else: today only below.
             </span>
           </label>
@@ -882,7 +882,7 @@ export function SalaryWorkScheduleSettings({
                   </div>
                 </SalarySessionPanel>
                 <div style={SALARY_BREAK_STRIP_STYLE}>
-                  <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: '#374151' }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.8125rem', marginBottom: '0.5rem', color: 'var(--text-700)' }}>
                     Break
                   </div>
                   <label>

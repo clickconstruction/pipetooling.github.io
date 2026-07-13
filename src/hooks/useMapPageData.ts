@@ -3,12 +3,18 @@ import { supabase } from '../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import type { Database } from '../types/database'
 import { normalizeAddressForGeocodeKey } from '../lib/map/normalizeAddressForGeocode'
+import { batchGeocodeCacheKeys } from '../lib/map/geocodeCacheBatches'
+import { getSubmissionSectionKey, type SubmissionSectionKey } from '../lib/bids/submissionSections'
+import { mapGeocodeErrorMessage } from '../lib/map/geocodeErrorMessage'
 
 type JobRow = Pick<
   Database['public']['Tables']['jobs_ledger']['Row'],
   'id' | 'hcp_number' | 'job_name' | 'job_address' | 'status'
 >
-type BidRow = Pick<Database['public']['Tables']['bids']['Row'], 'id' | 'bid_number' | 'project_name' | 'address' | 'outcome'>
+type BidRow = Pick<
+  Database['public']['Tables']['bids']['Row'],
+  'id' | 'bid_number' | 'project_name' | 'address' | 'outcome' | 'bid_date_sent'
+>
 
 type EstimateRow = Pick<
   Database['public']['Tables']['estimates']['Row'],
@@ -29,12 +35,15 @@ export type MapPageEntity = {
   sublabel: string
   linkTo: string
   meta: string
+  /** Bid Board section this bid falls in (bids only); same kernel as the board's buckets. */
+  bidSection?: SubmissionSectionKey
 }
 
 /** Matches [`geocode-address-batch`](supabase/functions/geocode-address-batch/index.ts) `MAX_ADDRESSES`. */
 const GEOCODE_BATCH_MAX = 20
 
 type GeocodeBatchResultRow = { address_normalized: string; lat: number; lng: number }
+type GeocodeBatchFailureRow = { address_normalized: string; error_code: string; detail?: string }
 
 function resolveEstimateAddress(e: EstimateRow): string | null {
   const a = e.for_address?.trim()
@@ -76,7 +85,7 @@ export function useMapPageData(enabled: boolean) {
           'map jobs_ledger'
         ),
         withSupabaseRetry<BidRow[]>(
-          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome').order('project_name'),
+          async () => supabase.from('bids').select('id, bid_number, project_name, address, outcome, bid_date_sent').order('project_name'),
           'map bids'
         ),
         withSupabaseRetry<EstimateRow[]>(
@@ -129,6 +138,7 @@ export function useMapPageData(enabled: boolean) {
           sublabel: b.bid_number ?? '',
           linkTo: `/bids?bidId=${encodeURIComponent(b.id)}`,
           meta: b.outcome ?? '',
+          bidSection: getSubmissionSectionKey(b) ?? undefined,
         })
       }
       for (const e of estRows) {
@@ -154,13 +164,17 @@ export function useMapPageData(enabled: boolean) {
       const keys = [...new Set(next.map((n) => n.addressKey))]
 
       type GeocodeRow = { address_normalized: string; lat: number; lng: number }
-      const cached: GeocodeRow[] =
-        keys.length === 0
-          ? []
-          : await withSupabaseRetry<GeocodeRow[]>(
-              async () => supabase.from('address_geocodes').select('address_normalized, lat, lng').in('address_normalized', keys),
+      // Batched: one .in() with every key overflows the GET URL past ~600 addresses → 400.
+      const cached: GeocodeRow[] = (
+        await Promise.all(
+          batchGeocodeCacheKeys(keys).map((batch) =>
+            withSupabaseRetry<GeocodeRow[]>(
+              async () => supabase.from('address_geocodes').select('address_normalized, lat, lng').in('address_normalized', batch),
               'map address_geocodes'
             )
+          )
+        )
+      ).flat()
 
       if (gen !== loadGenerationRef.current) return
 
@@ -201,10 +215,10 @@ export function useMapPageData(enabled: boolean) {
             prev.map((r) => (chunkKeys.has(r.address_normalized) ? { ...r, status: 'in_progress' as const } : r))
           )
 
-          const { data, error: fnErr } = await supabase.functions.invoke<{ results?: GeocodeBatchResultRow[] }>(
-            'geocode-address-batch',
-            { body: { addresses: chunk.map((c) => c.display) } }
-          )
+          const { data, error: fnErr } = await supabase.functions.invoke<{
+            results?: GeocodeBatchResultRow[]
+            failures?: GeocodeBatchFailureRow[]
+          }>('geocode-address-batch', { body: { addresses: chunk.map((c) => c.display) } })
 
           if (gen !== loadGenerationRef.current) return
 
@@ -233,6 +247,22 @@ export function useMapPageData(enabled: boolean) {
           for (const r of results) {
             byKey.set(r.address_normalized, { lat: r.lat, lng: r.lng })
           }
+          const rawFailures =
+            data != null && typeof data === 'object' && Array.isArray(data.failures) ? data.failures : []
+          const failureMessageByKey = new Map<string, string>(
+            rawFailures
+              .filter(
+                (f): f is GeocodeBatchFailureRow =>
+                  f != null &&
+                  typeof f === 'object' &&
+                  typeof (f as GeocodeBatchFailureRow).address_normalized === 'string' &&
+                  typeof (f as GeocodeBatchFailureRow).error_code === 'string'
+              )
+              .map((f) => [
+                f.address_normalized,
+                mapGeocodeErrorMessage(f.error_code, typeof f.detail === 'string' ? f.detail : undefined),
+              ])
+          )
           setGeocodeAddressRows((prev) =>
             prev.map((row) => {
               if (!chunkKeys.has(row.address_normalized)) return row
@@ -240,7 +270,7 @@ export function useMapPageData(enabled: boolean) {
               return {
                 ...row,
                 status: 'error' as const,
-                errorMessage: 'Could not geocode address',
+                errorMessage: failureMessageByKey.get(row.address_normalized) ?? 'Could not geocode address',
               }
             })
           )

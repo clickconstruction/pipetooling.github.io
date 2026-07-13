@@ -3507,7 +3507,7 @@ export default function PeopleReviewTab({
           >
             {showPeopleForReview.length > 0 && (
               <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                <h2 style={{ margin: 0, marginBottom: '0.25rem', fontSize: '1.05rem', color: '#374151' }}>Team Summary</h2>
+                <h2 style={{ margin: 0, marginBottom: '0.25rem', fontSize: '1.05rem', color: 'var(--text-700)' }}>Team Summary</h2>
                 {/* Reuse the same .team-summary-meta / .team-summary-meta-sub
                     CSS classes the inline render path uses — the stylesheet
                     is injected by TeamSummaryInline (mounted below) so the
@@ -3556,7 +3556,7 @@ export default function PeopleReviewTab({
                     }
                     setReviewPeriod(next)
                   }}
-                  style={{ padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                  style={{ padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
                 >
                   <option value="today">Today</option>
                   <option value="yesterday">Yesterday</option>
@@ -3574,7 +3574,7 @@ export default function PeopleReviewTab({
                     role="group"
                     aria-label="Custom date range"
                   >
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                       From
                       <input
                         type="date"
@@ -3582,10 +3582,10 @@ export default function PeopleReviewTab({
                         onChange={(e) => setReviewCustomRangeStart(e.target.value)}
                         aria-label="Custom range start date"
                         max={reviewCustomRangeEnd || undefined}
-                        style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                        style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
                       />
                     </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: '#374151' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                       To
                       <input
                         type="date"
@@ -3593,11 +3593,11 @@ export default function PeopleReviewTab({
                         onChange={(e) => setReviewCustomRangeEnd(e.target.value)}
                         aria-label="Custom range end date"
                         min={reviewCustomRangeStart || undefined}
-                        style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.875rem' }}
+                        style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '0.875rem' }}
                       />
                     </label>
                     {(!reviewCustomRangeStart || !reviewCustomRangeEnd) && (
-                      <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                         Pick both dates to set the range.
                       </span>
                     )}
@@ -3624,7 +3624,7 @@ export default function PeopleReviewTab({
           {showPeopleForReview.length > 0 && (
             <div style={{ marginBottom: '0.75rem' }}>
               {teamSummaryError ? (
-                <p style={{ color: '#b91c1c', padding: '0.75rem 1rem', margin: 0, border: '1px solid #fca5a5', borderRadius: 6, background: '#fef2f2' }}>
+                <p style={{ color: 'var(--text-red-700)', padding: '0.75rem 1rem', margin: 0, border: '1px solid #fca5a5', borderRadius: 6, background: 'var(--bg-red-tint)' }}>
                   {teamSummaryError}
                 </p>
               ) : teamSummaryRows ? (
@@ -3644,7 +3644,7 @@ export default function PeopleReviewTab({
                   onOpenInNewWindow={() => openTeamSummaryWindow('popup')}
                 />
               ) : (
-                <div style={{ padding: '0.5rem 0', color: '#6b7280', fontSize: '0.85rem' }}>
+                <div style={{ padding: '0.5rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                   {teamSummaryLoading ? 'Loading Team Summary…' : 'Team Summary will appear here.'}
                 </div>
               )}
@@ -3652,13 +3652,13 @@ export default function PeopleReviewTab({
           )}
 
           {showPeopleForReview.length === 0 ? (
-            <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>No people in pay config. Add people in People pay config (Hours tab) first.</p>
+            <p style={{ color: 'var(--text-muted)', padding: '1rem', margin: 0 }}>No people in pay config. Add people in People pay config (Hours tab) first.</p>
           ) : selectedReviewPersonIndex < 0 ? (
             // No one expanded yet — the Team Summary above acts as the
             // picker. Click a name to expand that person's panel here.
             null
           ) : reviewLoading ? (
-            <p style={{ color: '#6b7280', padding: '1rem', margin: 0 }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', padding: '1rem', margin: 0 }}>Loading…</p>
           ) : (
             <>
               {(() => {
@@ -3695,113 +3695,113 @@ export default function PeopleReviewTab({
                 const profitAfterOverhead = tsRow ? tsRow.profitAfterOverhead : null
                 const profitPerHourAfterOverhead = tsRow ? tsRow.profitPerHourAfterOverhead : null
                 return (
-                  <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: '1rem', display: 'inline-grid', gridTemplateColumns: 'max-content max-content', rowGap: '0.5rem', alignItems: 'center' }}>
+                  <div style={{ marginBottom: '1.5rem', padding: '0.75rem 1rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, fontSize: '1rem', display: 'inline-grid', gridTemplateColumns: 'max-content max-content', rowGap: '0.5rem', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Gross Revenue this period:</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Gross Revenue this period:</span>
                       <span
                         title="Sum across every job worked in this period of: (job Value Created) × (this user's labor cost on the job in this period ÷ the job's lifetime labor cost by everyone). 'Value Created' = job total bill × % progress — the gross revenue the job has earned to date. Allocation is cost-based, the same rule the expanded panel uses for the per-job 'Gross Revenue/hr' line."
                         aria-label="Gross Revenue earned this period, allocated by labor cost share"
-                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                        style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                         </svg>
                       </span>
                     </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{`$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Net Revenue (before overhead) this period:</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Net Revenue (before overhead) this period:</span>
                       <span
                         title="Sum across every job worked in this period of: (job Net Revenue before overhead) × (this user's labor cost on the job in this period ÷ the job's lifetime labor cost by everyone). 'Net Revenue (before overhead)' = Value Created − parts − subs − total field labor on the job, before deducting org-wide overhead. Allocation is cost-based, the same rule the expanded panel uses for the per-job 'Net Revenue on Job' line. To see overhead applied, expand any row and look at the Profit section (methods A/B/C)."
                         aria-label="Net Revenue (before overhead) this period, allocated by labor cost share"
-                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                        style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                         </svg>
                       </span>
                     </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{`$${Math.round(totalProfit).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>&minus; Overhead labor (own office/bid wages):</span>
+                      <span style={{ color: 'var(--text-muted)' }}>&minus; Overhead labor (own office/bid wages):</span>
                     </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong style={{ color: overheadLaborCost < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(overheadLaborCost).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>&minus; Overhead burden (field-hr share of office parts):</span>
-                    </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                      <strong style={{ color: '#b91c1c' }}>{overheadBurden == null ? '—' : `$${Math.round(overheadBurden).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong style={{ color: overheadLaborCost < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(overheadLaborCost).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Profit (after overhead) this period:</span>
+                      <span style={{ color: 'var(--text-muted)' }}>&minus; Overhead burden (field-hr share of office parts):</span>
+                    </div>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                      <strong style={{ color: 'var(--text-red-700)' }}>{overheadBurden == null ? '—' : `$${Math.round(overheadBurden).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Profit (after overhead) this period:</span>
                       <span
                         title="Profit (after overhead) = Net Revenue (before overhead) − this person's own overhead labor (office + bid wages) − overhead burden (their field-hour share of office parts). Matches the Team Summary table's Profit column for this person."
                         aria-label="Profit this period after deducting split overhead (own labor + parts burden)"
-                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                        style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                         </svg>
                       </span>
                     </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{(() => {
                         if (profitAfterOverhead == null) return reviewOverheadRates.loading ? '…' : '—'
-                        return <span style={{ color: profitAfterOverhead < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                        return <span style={{ color: profitAfterOverhead < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
                       })()}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Gross Revenue/hr:</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Gross Revenue/hr:</span>
                       <span
                         title="Gross Revenue this period ÷ this user's hours in the period. Period equivalent of the per-job 'Gross Revenue/hr' line: each job's Value Created is allocated to the user by labor cost share, summed across the period, then averaged per hour worked."
                         aria-label="Gross Revenue per hour, period average"
-                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                        style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                         </svg>
                       </span>
                     </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{totalHours > 0 ? `$${Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Net Revenue/hr (before overhead):</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Net Revenue/hr (before overhead):</span>
                       <span
                         title="Net Revenue (before overhead) this period ÷ this user's hours in the period. Period equivalent of the per-job 'Net Revenue/hr' line: each job's Net Revenue (before overhead) is allocated to the user by labor cost share, summed across the period, then averaged per hour worked. Does not deduct org-wide overhead."
                         aria-label="Net Revenue per hour before overhead, period average"
-                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                        style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                         </svg>
                       </span>
                     </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{totalHours > 0 ? `$${Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</strong>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', paddingRight: '1rem' }}>
-                      <span style={{ color: '#6b7280' }}>Profit/hr (after overhead):</span>
+                      <span style={{ color: 'var(--text-muted)' }}>Profit/hr (after overhead):</span>
                       <span
                         title="Profit/hr (after overhead) = Profit (after overhead) ÷ total hours. Matches the Team Summary table's Profit/hr column for this person."
                         aria-label="Profit per hour after split overhead, period average"
-                        style={{ color: '#6b7280', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
+                        style={{ color: 'var(--text-muted)', cursor: 'help', fontSize: '0.9em', display: 'inline-flex', alignItems: 'center' }}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width={16} height={16} fill="currentColor" aria-hidden="true">
                           <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
                         </svg>
                       </span>
                     </div>
-                    <div style={{ borderLeft: '1px solid #d1d5db', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                    <div style={{ borderLeft: '1px solid var(--border-strong)', paddingLeft: '1rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       <strong>{(() => {
                         if (profitPerHourAfterOverhead == null) return reviewOverheadRates.loading ? '…' : '—'
-                        return <span style={{ color: profitPerHourAfterOverhead < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitPerHourAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                        return <span style={{ color: profitPerHourAfterOverhead < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitPerHourAfterOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
                       })()}</strong>
                     </div>
                   </div>
@@ -3819,13 +3819,13 @@ export default function PeopleReviewTab({
                   Jobs Worked ({reviewLaborJobs.length + reviewCrewJobs.length})
                 </h3>
                 {reviewLaborJobs.length === 0 && reviewCrewJobs.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs in this period.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs in this period.</p>
                 ) : (
                   <>
                     {reviewJobsWorkedCollapsed ? (
-                      <div style={{ display: 'flex', gap: '2rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4, background: '#f9fafb' }}>
+                      <div style={{ display: 'flex', gap: '2rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-subtle)' }}>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Labor / total job labor:</span>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>This Labor / total job labor:</span>
                           <span style={{ fontWeight: 600 }}>{(() => {
                             const totalThisLabor = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.laborCost, 0)
                             const totalLaborByJob = new Map<string, number>()
@@ -3841,7 +3841,7 @@ export default function PeopleReviewTab({
                           })()}</span>
                         </div>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Profit / Net Revenue (before overhead):</span>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>This Profit / Net Revenue (before overhead):</span>
                           {(() => {
                             const totalRevenue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedRevenueBeforeOverhead, 0)
                             const revenueBeforeOverheadByJob = new Map<string, number>()
@@ -3852,11 +3852,11 @@ export default function PeopleReviewTab({
                             const revenueStr = totalRevenue !== 0 ? `$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
                             const revBeforeStr = totalRevBeforeOverhead !== 0 ? `$${Math.round(totalRevBeforeOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : null
                             const text = [revenueStr, revBeforeStr].filter(Boolean).join(' / ') || '—'
-                            return <span style={{ fontWeight: 600, color: totalRevenue < 0 ? '#b91c1c' : undefined }}>{text}</span>
+                            return <span style={{ fontWeight: 600, color: totalRevenue < 0 ? 'var(--text-red-700)' : undefined }}>{text}</span>
                           })()}
                         </div>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>This Revenue / Value Created:</span>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>This Revenue / Value Created:</span>
                           {(() => {
                             const totalThisValue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
                             const totalValueByJob = new Map<string, number>()
@@ -3872,19 +3872,19 @@ export default function PeopleReviewTab({
                         </div>
                       </div>
                     ) : (
-                      <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                      <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                          <thead style={{ background: '#f9fafb' }}>
+                          <thead style={{ background: 'var(--bg-subtle)' }}>
                             <tr>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ fontWeight: 600 }}>HCP #</div>
-                                <div style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400 }}>Date</div>
+                                <div style={{ fontSize: '0.8em', color: 'var(--text-muted)', fontWeight: 400 }}>Date</div>
                               </th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                                 <div style={{ fontWeight: 600 }}>Job Name</div>
-                                <div style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400 }}>Job Address</div>
+                                <div style={{ fontSize: '0.8em', color: 'var(--text-muted)', fontWeight: 400 }}>Job Address</div>
                               </th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>
                                 <div
                                   style={{ fontWeight: 600, cursor: 'help' }}
                                   title="dollars this person earned on this day for this job"
@@ -3893,14 +3893,14 @@ export default function PeopleReviewTab({
                                   This Labor
                                 </div>
                                 <div
-                                  style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400, cursor: 'help' }}
+                                  style={{ fontSize: '0.8em', color: 'var(--text-muted)', fontWeight: 400, cursor: 'help' }}
                                   title="lifetime labor cost on the whole job by everyone, including this person"
                                   aria-label="lifetime labor cost on the whole job by everyone, including this person"
                                 >
                                   total job labor
                                 </div>
                               </th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>
                                 <div
                                   style={{ fontWeight: 600, cursor: 'help' }}
                                   title="this person's share of profit on this row, allocated by labor share (revenue minus parts and labor, before overhead)"
@@ -3909,14 +3909,14 @@ export default function PeopleReviewTab({
                                   This Profit
                                 </div>
                                 <div
-                                  style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400, cursor: 'help' }}
+                                  style={{ fontSize: '0.8em', color: 'var(--text-muted)', fontWeight: 400, cursor: 'help' }}
                                   title="lifetime net revenue on the whole job, before overhead (value created minus parts and labor)"
                                   aria-label="lifetime net revenue on the whole job, before overhead (value created minus parts and labor)"
                                 >
                                   Net Revenue (before overhead)
                                 </div>
                               </th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>
                                 <div
                                   style={{ fontWeight: 600, cursor: 'help' }}
                                   title="your share of the job's earned revenue, allocated by labor cost: this row's labor cost ÷ everyone's labor cost on the job, all time"
@@ -3925,14 +3925,14 @@ export default function PeopleReviewTab({
                                   This Revenue
                                 </div>
                                 <div
-                                  style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400, cursor: 'help' }}
+                                  style={{ fontSize: '0.8em', color: 'var(--text-muted)', fontWeight: 400, cursor: 'help' }}
                                   title="the whole job's value created: total bill × % complete (treated as 100% when the ledger has no value set)"
                                   aria-label="the whole job's value created: total bill times percent complete"
                                 >
                                   Value Created
                                 </div>
                               </th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>
                                 <div
                                   style={{ fontWeight: 600, cursor: 'help' }}
                                   title="Revenue/hr is your share of the job's earned revenue divided by your hours on this row. Profit/hr is your share of the job's profit divided by your hours on this row. Both shares are allocated by labor cost: this row's labor cost ÷ everyone's labor cost on the job."
@@ -3940,7 +3940,7 @@ export default function PeopleReviewTab({
                                 >
                                   Revenue/hr
                                 </div>
-                                <div style={{ fontSize: '0.8em', color: '#6b7280', fontWeight: 400 }}>
+                                <div style={{ fontSize: '0.8em', color: 'var(--text-muted)', fontWeight: 400 }}>
                                   Profit/hr
                                 </div>
                               </th>
@@ -3956,7 +3956,7 @@ export default function PeopleReviewTab({
                                 ? (
                                   <>
                                     <div>$<strong>{Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
-                                    <div style={{ color: profitPerHour < 0 ? '#b91c1c' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                    <div style={{ color: profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
                                   </>
                                 )
                                 : '—'
@@ -3964,20 +3964,20 @@ export default function PeopleReviewTab({
                                 <Fragment key={key}>
                                   <tr
                                     onClick={() => setReviewJobExpandedKey((k) => (k === key ? null : key))}
-                                    style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                    style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                                   >
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '0.75em', color: '#6b7280', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
+                                        <span style={{ fontSize: '0.75em', color: 'var(--text-muted)', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
                                         <div>
                                           <div style={{ fontWeight: 600 }}>{(j.job_number ?? '').trim() ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.job_number) : '—'}</div>
-                                          <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{formatDateWithDay(j.job_date)}</div>
+                                          <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{formatDateWithDay(j.job_date)}</div>
                                         </div>
                                       </div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.job_name}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{stripAddressZipState(j.address) || '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{stripAddressZipState(j.address) || '—'}</div>
                                     </td>
                                     <td
                                       style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', cursor: j.job_id && j.totalLaborOnJob > 0 ? 'pointer' : undefined }}
@@ -4007,7 +4007,7 @@ export default function PeopleReviewTab({
                                         const hrs = formatHrsLabel(j.hours)
                                         return hrs ? `${dollars} / ${hrs}` : dollars
                                       })()}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                         if (j.totalLaborOnJob === 0) return '—'
                                         const pct = Math.round((j.laborCost / j.totalLaborOnJob) * 100)
                                         return `${pct}% of $${Math.round(j.totalLaborOnJob).toLocaleString('en-US')}`
@@ -4036,7 +4036,7 @@ export default function PeopleReviewTab({
                                       title={j.job_id && j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                     >
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                         if (j.revenueBeforeOverhead === 0) return '—'
                                         const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
                                         if (pct === 100) return `${pct}%`
@@ -4045,36 +4045,36 @@ export default function PeopleReviewTab({
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontSize: '0.8125rem' }}>{revProfitStr}</div>
                                     </td>
                                   </tr>
                                   {expanded && (
-                                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
+                                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem 2rem', maxWidth: 600 }}>
-                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Gross Revenue/hr`}</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Gross Revenue/hr`}</span>
                                           <span>{(() => {
                                             const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToBill / j.userTotalHoursOnJob : null
                                             return v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue/hr`}</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue/hr`}</span>
                                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             {(() => {
                                               const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
-                                              return <span style={{ color: v != null && v < 0 ? '#b91c1c' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                              return <span style={{ color: v != null && v < 0 ? 'var(--text-red-700)' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
                                             })()}
                                             <span
                                               title="Both Revenue/hr and Profit/hr are allocated by labor cost: this user's lifetime labor cost on the job ÷ everyone's lifetime labor cost on the job. So a person paid above the blended crew average is credited with a larger share of both the job's revenue and its profit per hour, and someone paid below it gets a smaller share of both. Because both shares use the same allocation rule, the per-user Revenue/hr ÷ Profit/hr ratio for a given job is constant (= valueCreated ÷ profit, the inverse of the job's profit margin)."
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title={(() => {
                                               const r = reviewOverheadRates.ratePerHour
                                               if (r == null) return "Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr − overhead rate ($/hr). Loading or no overhead data yet."
@@ -4088,13 +4088,13 @@ export default function PeopleReviewTab({
                                             const netRevPerHr = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
                                             if (netRevPerHr == null) return '—'
                                             const profitPerHr = netRevPerHr - r
-                                            return <span style={{ color: profitPerHr < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                                            return <span style={{ color: profitPerHr < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Gross Revenue</span>
-                                          <span style={{ color: '#6b7280' }}>Job Gross Revenue (total bill)</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Job Gross Revenue (total bill)</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)' }}>{(() => {
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
@@ -4103,17 +4103,17 @@ export default function PeopleReviewTab({
                                             return `${numLabel} Progress`
                                           })()}</span>
                                           <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (assumed)'}</span>
-                                          <span style={{ color: '#6b7280' }}>Value Created (revenue * progress)</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Value Created (revenue * progress)</span>
                                           <span>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s % of Value Created`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s % of Value Created`}</span>
                                           <span style={{ paddingLeft: '1rem' }}>{j.valueCreated > 0 && j.userTotalContributionToBill > 0 ? `${Math.round((j.userTotalContributionToBill / j.valueCreated) * 100)}%` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s share of Value Created`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s share of Value Created`}</span>
                                           <span style={{ paddingLeft: '1rem' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Value Created this day`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Value Created this day`}</span>
                                           <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
-                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)' }}>{(() => {
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
@@ -4127,7 +4127,7 @@ export default function PeopleReviewTab({
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Rest of Teams Labor</span>
                                           <span>{(() => {
                                             const teamsLaborDollars = Math.max(0, j.totalLaborOnJob - j.userTotalLaborOnJob)
                                             const laborStr = teamsLaborDollars > 0 ? `$${formatCurrency(teamsLaborDollars)}` : null
@@ -4135,7 +4135,7 @@ export default function PeopleReviewTab({
                                             const hoursStr = teammatesHours > 0 ? `${teammatesHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
@@ -4149,7 +4149,7 @@ export default function PeopleReviewTab({
                                             const hoursStr = j.userTotalHoursOnJob > 0 ? `${j.userTotalHoursOnJob.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
@@ -4164,32 +4164,32 @@ export default function PeopleReviewTab({
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }} title="Hourly wage only — drive cost (mileage + drive-time pay) is excluded from this rate.">{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Labor Rate`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }} title="Hourly wage only — drive cost (mileage + drive-time pay) is excluded from this rate.">{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Labor Rate`}</span>
                                           <span style={{ paddingLeft: '1rem' }}>{j.hours > 0 ? `$${formatCurrency(Math.max(0, j.laborCost - j.driveCost) / j.hours)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }} title="Average hourly wage of everyone else on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Teammates Avg Labor Rate</span>
+                                          <span style={{ color: 'var(--text-muted)' }} title="Average hourly wage of everyone else on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             const teammatesLabor = (j.totalLaborOnJob - j.totalDriveCostOnJob) - (j.userTotalLaborOnJob - j.userTotalDriveCostOnJob)
                                             return teammatesHours > 0 ? `$${formatCurrency(Math.max(0, teammatesLabor) / teammatesHours)}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }} title="Average hourly wage across everyone on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Job Avg Labor Rate</span>
+                                          <span style={{ color: 'var(--text-muted)' }} title="Average hourly wage across everyone on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Job Avg Labor Rate</span>
                                           <span>{j.totalJobHours > 0 ? `$${formatCurrency(Math.max(0, j.totalLaborOnJob - j.totalDriveCostOnJob) / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>Parts:</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Parts:</span>
                                           <span>{j.partsCost > 0 ? `$${formatCurrency(j.partsCost)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Subs:</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Subs:</span>
                                           <span>{j.subLaborCost > 0 ? `$${formatCurrency(j.subLaborCost)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Net Revenue</span>
-                                          <span style={{ color: '#6b7280' }}>Net Revenue (before overhead)</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Net Revenue (before overhead)</span>
                                           <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
                                           <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
                                           <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
-                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             A. Overhead by labor hours
                                             <span
                                               title={(() => {
@@ -4198,13 +4198,13 @@ export default function PeopleReviewTab({
                                                 if (r == null) return `Method A — Per labor hour. Rate: 90-day total overhead $ ÷ 90-day team field hours. Loading or no data yet. ${guidance}`
                                                 return `Method A — Per labor hour. 90-day rate: $${r.toFixed(2)}/hr. Job overhead = job lifetime field hours × rate. ${guidance}`
                                               })()}
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title="Profit (Method A) = Net Revenue (before overhead) − this method's overhead amount."
                                           >Profit</span>
                                           <span>{(() => {
@@ -4218,9 +4218,9 @@ export default function PeopleReviewTab({
                                             const r = reviewOverheadRates.ratePerHour
                                             if (r == null || j.totalJobHours <= 0) return '—'
                                             const profit = j.revenueBeforeOverhead - (j.totalJobHours * r)
-                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             B. Overhead by revenue
                                             <span
                                               title={(() => {
@@ -4229,13 +4229,13 @@ export default function PeopleReviewTab({
                                                 if (r == null) return `Method B — Per $ revenue. Rate: 90-day total overhead $ ÷ 90-day billed revenue $. Loading or no data yet. ${guidance}`
                                                 return `Method B — Per $ revenue. 90-day rate: ${(r * 100).toFixed(1)}% (i.e. $${(r * 100).toFixed(2)} per $100 of revenue). Job overhead = Value Created × rate. ${guidance}`
                                               })()}
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title="Profit (Method B) = Net Revenue (before overhead) − this method's overhead amount."
                                           >Profit</span>
                                           <span>{(() => {
@@ -4249,9 +4249,9 @@ export default function PeopleReviewTab({
                                             const r = reviewOverheadRates.ratePerRevenueDecimal
                                             if (r == null || j.valueCreated <= 0) return '—'
                                             const profit = j.revenueBeforeOverhead - (j.valueCreated * r)
-                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             C. Overhead by direct labor cost
                                             <span
                                               title={(() => {
@@ -4260,13 +4260,13 @@ export default function PeopleReviewTab({
                                                 if (r == null) return `Method C — Per direct labor $. Rate: 90-day total overhead $ ÷ 90-day direct field labor $. Loading or no data yet. ${guidance}`
                                                 return `Method C — Per direct labor $. 90-day rate: ${r.toFixed(2)}× direct labor (every $1 of field labor carries $${r.toFixed(2)} of overhead). Job overhead = total job labor × rate. ${guidance}`
                                               })()}
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title="Profit (Method C) = Net Revenue (before overhead) − this method's overhead amount."
                                           >Profit</span>
                                           <span>{(() => {
@@ -4280,7 +4280,7 @@ export default function PeopleReviewTab({
                                             const r = reviewOverheadRates.ratePerLaborDollar
                                             if (r == null || j.totalLaborOnJob <= 0) return '—'
                                             const profit = j.revenueBeforeOverhead - (j.totalLaborOnJob * r)
-                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
                                           })()}</span>
                                         </div>
                                       </td>
@@ -4298,7 +4298,7 @@ export default function PeopleReviewTab({
                                 ? (
                                   <>
                                     <div>$<strong>{Math.round(revPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
-                                    <div style={{ color: profitPerHour < 0 ? '#b91c1c' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                    <div style={{ color: profitPerHour < 0 ? 'var(--text-red-700)' : undefined }}>$<strong>{Math.round(profitPerHour).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
                                   </>
                                 )
                                 : '—'
@@ -4306,20 +4306,20 @@ export default function PeopleReviewTab({
                                 <Fragment key={key}>
                                   <tr
                                     onClick={() => setReviewJobExpandedKey((k) => (k === key ? null : key))}
-                                    style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                    style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                                   >
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.35rem' }}>
-                                        <span style={{ fontSize: '0.75em', color: '#6b7280', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
+                                        <span style={{ fontSize: '0.75em', color: 'var(--text-muted)', lineHeight: '1.4' }}>{expanded ? '▾' : '▸'}</span>
                                         <div>
                                           <div style={{ fontWeight: 600 }}>{effectiveJobLedgerNumber(j.hcp_number === '—' ? '' : j.hcp_number, j.click_number) ? formatJobLedgerNumberLabel(resolveJobLedgerPrefix(j.service_type_id, prefixMap), j.hcp_number === '—' ? '' : j.hcp_number, j.click_number) : '—'}</div>
-                                          <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{formatDateWithDay(j.work_date)}</div>
+                                          <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{formatDateWithDay(j.work_date)}</div>
                                         </div>
                                       </div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.job_name}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{stripAddressZipState(j.job_address) || '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{stripAddressZipState(j.job_address) || '—'}</div>
                                     </td>
                                     <td
                                       style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top', cursor: j.totalLaborOnJob > 0 ? 'pointer' : undefined }}
@@ -4349,7 +4349,7 @@ export default function PeopleReviewTab({
                                         const hrs = formatHrsLabel(j.hours)
                                         return hrs ? `${dollars} / ${hrs}` : dollars
                                       })()}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                         if (j.totalLaborOnJob === 0) return '—'
                                         const pct = Math.round((j.laborCost / j.totalLaborOnJob) * 100)
                                         return `${pct}% of $${Math.round(j.totalLaborOnJob).toLocaleString('en-US')}`
@@ -4378,7 +4378,7 @@ export default function PeopleReviewTab({
                                       title={j.revenueBeforeOverhead !== 0 && j.totalLaborOnJob > 0 ? "See everyone's profit share on this job" : undefined}
                                     >
                                       <div style={{ fontWeight: 600, color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                         if (j.revenueBeforeOverhead === 0) return '—'
                                         const pct = Math.round((j.allocatedRevenueBeforeOverhead / j.revenueBeforeOverhead) * 100)
                                         if (pct === 100) return `${pct}%`
@@ -4387,36 +4387,36 @@ export default function PeopleReviewTab({
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontWeight: 600 }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</div>
-                                      <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
+                                      <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</div>
                                     </td>
                                     <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', verticalAlign: 'top' }}>
                                       <div style={{ fontSize: '0.8125rem' }}>{revProfitStr}</div>
                                     </td>
                                   </tr>
                                   {expanded && (
-                                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem' }}>
+                                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                                      <td colSpan={6} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontSize: '0.8125rem' }}>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem 2rem', maxWidth: 600 }}>
-                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Gross Revenue/hr`}</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Gross Revenue/hr`}</span>
                                           <span>{(() => {
                                             const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToBill / j.userTotalHoursOnJob : null
                                             return v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue/hr`}</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue/hr`}</span>
                                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             {(() => {
                                               const v = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
-                                              return <span style={{ color: v != null && v < 0 ? '#b91c1c' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
+                                              return <span style={{ color: v != null && v < 0 ? 'var(--text-red-700)' : undefined }}>{v != null ? `$${Math.round(v).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
                                             })()}
                                             <span
                                               title="Both Revenue/hr and Profit/hr are allocated by labor cost: this user's lifetime labor cost on the job ÷ everyone's lifetime labor cost on the job. So a person paid above the blended crew average is credited with a larger share of both the job's revenue and its profit per hour, and someone paid below it gets a smaller share of both. Because both shares use the same allocation rule, the per-user Revenue/hr ÷ Profit/hr ratio for a given job is constant (= valueCreated ÷ profit, the inverse of the job's profit margin)."
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title={(() => {
                                               const r = reviewOverheadRates.ratePerHour
                                               if (r == null) return "Profit/hr (after overhead, Method A — per labor hour) = Net Revenue/hr − overhead rate ($/hr). Loading or no overhead data yet."
@@ -4430,13 +4430,13 @@ export default function PeopleReviewTab({
                                             const netRevPerHr = j.userTotalHoursOnJob > 0 ? j.userTotalContributionToRevenue / j.userTotalHoursOnJob : null
                                             if (netRevPerHr == null) return '—'
                                             const profitPerHr = netRevPerHr - r
-                                            return <span style={{ color: profitPerHr < 0 ? '#b91c1c' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
+                                            return <span style={{ color: profitPerHr < 0 ? 'var(--text-red-700)' : undefined }}>{`$${Math.round(profitPerHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}`}</span>
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Gross Revenue</span>
-                                          <span style={{ color: '#6b7280' }}>Job Gross Revenue (total bill)</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Job Gross Revenue (total bill)</span>
                                           <span>{j.totalBill > 0 ? `$${formatCurrency(j.totalBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)' }}>{(() => {
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
@@ -4445,17 +4445,17 @@ export default function PeopleReviewTab({
                                             return `${numLabel} Progress`
                                           })()}</span>
                                           <span>{j.pctComplete != null ? `${j.pctComplete}%` : '100% (assumed)'}</span>
-                                          <span style={{ color: '#6b7280' }}>Value Created (revenue * progress)</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Value Created (revenue * progress)</span>
                                           <span>{j.valueCreated > 0 ? `$${formatCurrency(j.valueCreated)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s % of Value Created`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s % of Value Created`}</span>
                                           <span style={{ paddingLeft: '1rem' }}>{j.valueCreated > 0 && j.userTotalContributionToBill > 0 ? `${Math.round((j.userTotalContributionToBill / j.valueCreated) * 100)}%` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s share of Value Created`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s share of Value Created`}</span>
                                           <span style={{ paddingLeft: '1rem' }}>{j.userTotalContributionToBill > 0 ? `$${formatCurrency(j.userTotalContributionToBill)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Value Created this day`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Value Created this day`}</span>
                                           <span style={{ textDecoration: 'underline', paddingLeft: '1rem' }}>{j.allocatedTotalBill > 0 ? `$${formatCurrency(j.allocatedTotalBill)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Costs</span>
-                                          <span style={{ color: '#6b7280' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)' }}>{(() => {
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
                                             const numLabel = rawNum && rawNum !== '—'
@@ -4469,7 +4469,7 @@ export default function PeopleReviewTab({
                                             const hoursStr = j.totalJobHours > 0 ? `${j.totalJobHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }}>Rest of Teams Labor</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Rest of Teams Labor</span>
                                           <span>{(() => {
                                             const teamsLaborDollars = Math.max(0, j.totalLaborOnJob - j.userTotalLaborOnJob)
                                             const laborStr = teamsLaborDollars > 0 ? `$${formatCurrency(teamsLaborDollars)}` : null
@@ -4477,7 +4477,7 @@ export default function PeopleReviewTab({
                                             const hoursStr = teammatesHours > 0 ? `${teammatesHours.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
@@ -4491,7 +4491,7 @@ export default function PeopleReviewTab({
                                             const hoursStr = j.userTotalHoursOnJob > 0 ? `${j.userTotalHoursOnJob.toFixed(2)}hrs` : null
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{(() => {
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{(() => {
                                             const name = showPeopleForReview[selectedReviewPersonIndex] ?? 'User'
                                             const numFields = j as { job_number?: string | null; hcp_number?: string | null }
                                             const rawNum = (numFields.job_number ?? numFields.hcp_number ?? '').trim()
@@ -4506,32 +4506,32 @@ export default function PeopleReviewTab({
                                             return [laborStr, hoursStr].filter(Boolean).join(' | ') || '—'
                                           })()}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }} title="Hourly wage only — drive cost (mileage + drive-time pay) is excluded from this rate.">{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Labor Rate`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }} title="Hourly wage only — drive cost (mileage + drive-time pay) is excluded from this rate.">{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Labor Rate`}</span>
                                           <span style={{ paddingLeft: '1rem' }}>{j.hours > 0 ? `$${formatCurrency(Math.max(0, j.laborCost - j.driveCost) / j.hours)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }} title="Average hourly wage of everyone else on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Teammates Avg Labor Rate</span>
+                                          <span style={{ color: 'var(--text-muted)' }} title="Average hourly wage of everyone else on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Teammates Avg Labor Rate</span>
                                           <span>{(() => {
                                             const teammatesHours = j.totalJobHours - j.userTotalHoursOnJob
                                             const teammatesLabor = (j.totalLaborOnJob - j.totalDriveCostOnJob) - (j.userTotalLaborOnJob - j.userTotalDriveCostOnJob)
                                             return teammatesHours > 0 ? `$${formatCurrency(Math.max(0, teammatesLabor) / teammatesHours)}` : '—'
                                           })()}</span>
-                                          <span style={{ color: '#6b7280' }} title="Average hourly wage across everyone on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Job Avg Labor Rate</span>
+                                          <span style={{ color: 'var(--text-muted)' }} title="Average hourly wage across everyone on this job (lifetime). Drive cost is excluded so the rate reflects pay rate, not pay rate plus drive amortization.">Job Avg Labor Rate</span>
                                           <span>{j.totalJobHours > 0 ? `$${formatCurrency(Math.max(0, j.totalLaborOnJob - j.totalDriveCostOnJob) / j.totalJobHours)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
-                                          <span style={{ color: '#6b7280' }}>Parts:</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Parts:</span>
                                           <span>{j.partsCost > 0 ? `$${formatCurrency(j.partsCost)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280' }}>Subs:</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Subs:</span>
                                           <span>{j.subLaborCost > 0 ? `$${formatCurrency(j.subLaborCost)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Net Revenue</span>
-                                          <span style={{ color: '#6b7280' }}>Net Revenue (before overhead)</span>
+                                          <span style={{ color: 'var(--text-muted)' }}>Net Revenue (before overhead)</span>
                                           <span style={{ color: j.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>{j.revenueBeforeOverhead !== 0 ? `$${formatCurrency(j.revenueBeforeOverhead)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue on Job`}</span>
                                           <span style={{ color: j.userTotalContributionToRevenue >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.userTotalContributionToRevenue !== 0 ? `$${formatCurrency(j.userTotalContributionToRevenue)}` : '—'}</span>
-                                          <span style={{ color: '#6b7280', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
+                                          <span style={{ color: 'var(--text-muted)', paddingLeft: '1rem' }}>{`${showPeopleForReview[selectedReviewPersonIndex] ?? 'User'}'s Net Revenue this Day`}</span>
                                           <span style={{ textDecoration: 'underline', color: j.allocatedRevenueBeforeOverhead >= 0 ? undefined : '#b91c1c', paddingLeft: '1rem' }}>{j.allocatedRevenueBeforeOverhead !== 0 ? `$${formatCurrency(j.allocatedRevenueBeforeOverhead)}` : '—'}</span>
                                           <span style={{ gridColumn: '1 / -1', height: '0.5rem', display: 'block' }} />
                                           <span style={{ gridColumn: '1 / -1', fontWeight: 600, marginTop: '0.25rem', marginBottom: '0.25rem' }}>Profit</span>
-                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             A. Overhead by labor hours
                                             <span
                                               title={(() => {
@@ -4540,13 +4540,13 @@ export default function PeopleReviewTab({
                                                 if (r == null) return `Method A — Per labor hour. Rate: 90-day total overhead $ ÷ 90-day team field hours. Loading or no data yet. ${guidance}`
                                                 return `Method A — Per labor hour. 90-day rate: $${r.toFixed(2)}/hr. Job overhead = job lifetime field hours × rate. ${guidance}`
                                               })()}
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title="Profit (Method A) = Net Revenue (before overhead) − this method's overhead amount."
                                           >Profit</span>
                                           <span>{(() => {
@@ -4560,9 +4560,9 @@ export default function PeopleReviewTab({
                                             const r = reviewOverheadRates.ratePerHour
                                             if (r == null || j.totalJobHours <= 0) return '—'
                                             const profit = j.revenueBeforeOverhead - (j.totalJobHours * r)
-                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             B. Overhead by revenue
                                             <span
                                               title={(() => {
@@ -4571,13 +4571,13 @@ export default function PeopleReviewTab({
                                                 if (r == null) return `Method B — Per $ revenue. Rate: 90-day total overhead $ ÷ 90-day billed revenue $. Loading or no data yet. ${guidance}`
                                                 return `Method B — Per $ revenue. 90-day rate: ${(r * 100).toFixed(1)}% (i.e. $${(r * 100).toFixed(2)} per $100 of revenue). Job overhead = Value Created × rate. ${guidance}`
                                               })()}
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title="Profit (Method B) = Net Revenue (before overhead) − this method's overhead amount."
                                           >Profit</span>
                                           <span>{(() => {
@@ -4591,9 +4591,9 @@ export default function PeopleReviewTab({
                                             const r = reviewOverheadRates.ratePerRevenueDecimal
                                             if (r == null || j.valueCreated <= 0) return '—'
                                             const profit = j.revenueBeforeOverhead - (j.valueCreated * r)
-                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
                                           })()}</span>
-                                          <span style={{ color: '#6b7280', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                          <span style={{ color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             C. Overhead by direct labor cost
                                             <span
                                               title={(() => {
@@ -4602,13 +4602,13 @@ export default function PeopleReviewTab({
                                                 if (r == null) return `Method C — Per direct labor $. Rate: 90-day total overhead $ ÷ 90-day direct field labor $. Loading or no data yet. ${guidance}`
                                                 return `Method C — Per direct labor $. 90-day rate: ${r.toFixed(2)}× direct labor (every $1 of field labor carries $${r.toFixed(2)} of overhead). Job overhead = total job labor × rate. ${guidance}`
                                               })()}
-                                              style={{ cursor: 'help', color: '#9ca3af', display: 'inline-flex', alignItems: 'center' }}
+                                              style={{ cursor: 'help', color: 'var(--text-faint)', display: 'inline-flex', alignItems: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 14, height: 14 }}><path fill="currentColor" d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM288 224C288 206.3 302.3 192 320 192C337.7 192 352 206.3 352 224C352 241.7 337.7 256 320 256C302.3 256 288 241.7 288 224zM280 288L328 288C341.3 288 352 298.7 352 312L352 400L360 400C373.3 400 384 410.7 384 424C384 437.3 373.3 448 360 448L280 448C266.7 448 256 437.3 256 424C256 410.7 266.7 400 280 400L304 400L304 336L280 336C266.7 336 256 325.3 256 312C256 298.7 266.7 288 280 288z"/></svg>
                                             </span>
                                           </span>
                                           <span
-                                            style={{ color: '#6b7280' }}
+                                            style={{ color: 'var(--text-muted)' }}
                                             title="Profit (Method C) = Net Revenue (before overhead) − this method's overhead amount."
                                           >Profit</span>
                                           <span>{(() => {
@@ -4622,7 +4622,7 @@ export default function PeopleReviewTab({
                                             const r = reviewOverheadRates.ratePerLaborDollar
                                             if (r == null || j.totalLaborOnJob <= 0) return '—'
                                             const profit = j.revenueBeforeOverhead - (j.totalLaborOnJob * r)
-                                            return <span style={{ color: profit < 0 ? '#b91c1c' : undefined }}>{`$${formatCurrency(profit)}`}</span>
+                                            return <span style={{ color: profit < 0 ? 'var(--text-red-700)' : undefined }}>{`$${formatCurrency(profit)}`}</span>
                                           })()}</span>
                                         </div>
                                       </td>
@@ -4632,15 +4632,15 @@ export default function PeopleReviewTab({
                               )
                             })}
                           </tbody>
-                          <tfoot style={{ background: '#f9fafb', fontWeight: 600, borderTop: '2px solid #e5e7eb' }}>
+                          <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600, borderTop: '2px solid var(--border)' }}>
                             <tr>
-                              <td colSpan={2} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>Totals</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>
+                              <td colSpan={2} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>Totals</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>
                                 <div style={{ fontWeight: 600 }}>{(() => {
                                   const totalThisLabor = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.laborCost, 0)
                                   return totalThisLabor > 0 ? `$${Math.round(totalThisLabor).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                 })()}</div>
-                                <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                   const totalLaborByJob = new Map<string, number>()
                                   for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
                                     if (j.job_id) totalLaborByJob.set(j.job_id, j.totalLaborOnJob)
@@ -4649,14 +4649,14 @@ export default function PeopleReviewTab({
                                   return totalLabor > 0 ? `$${Math.round(totalLabor).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                 })()}</div>
                               </td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>
                                 {(() => {
                                   const totalRevenue = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedRevenueBeforeOverhead, 0)
                                   return (
                                     <div style={{ fontWeight: 600, color: totalRevenue >= 0 ? undefined : '#b91c1c' }}>{totalRevenue !== 0 ? `$${Math.round(totalRevenue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</div>
                                   )
                                 })()}
-                                <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                   const revBeforeByJob = new Map<string, number>()
                                   for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
                                     if (j.job_id) revBeforeByJob.set(j.job_id, j.revenueBeforeOverhead)
@@ -4665,12 +4665,12 @@ export default function PeopleReviewTab({
                                   return totalRevBeforeOverhead !== 0 ? `$${Math.round(totalRevBeforeOverhead).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                 })()}</div>
                               </td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>
                                 <div style={{ fontWeight: 600 }}>{(() => {
                                   const totalThisBill = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
                                   return totalThisBill > 0 ? `$${Math.round(totalThisBill).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                 })()}</div>
-                                <div style={{ fontSize: '0.8em', color: '#6b7280' }}>{(() => {
+                                <div style={{ fontSize: '0.8em', color: 'var(--text-muted)' }}>{(() => {
                                   const totalValueByJob = new Map<string, number>()
                                   for (const j of [...reviewLaborJobs, ...reviewCrewJobs]) {
                                     if (j.job_id) totalValueByJob.set(j.job_id, j.valueCreated)
@@ -4679,7 +4679,7 @@ export default function PeopleReviewTab({
                                   return totalValue > 0 ? `$${Math.round(totalValue).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'
                                 })()}</div>
                               </td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>
                                 {(() => {
                                   const totalRev = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedTotalBill, 0)
                                   const totalProfit = [...reviewLaborJobs, ...reviewCrewJobs].reduce((s, j) => s + j.allocatedRevenueBeforeOverhead, 0)
@@ -4690,7 +4690,7 @@ export default function PeopleReviewTab({
                                   return (
                                     <>
                                       <div>$<strong>{Math.round(revHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr revenue</div>
-                                      <div style={{ color: profitHr < 0 ? '#b91c1c' : undefined }}>$<strong>{Math.round(profitHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
+                                      <div style={{ color: profitHr < 0 ? 'var(--text-red-700)' : undefined }}>$<strong>{Math.round(profitHr).toLocaleString('en-US', { maximumFractionDigits: 0 })}</strong>/hr profit</div>
                                     </>
                                   )
                                 })()}
@@ -4734,26 +4734,26 @@ export default function PeopleReviewTab({
                   const totalPay = personName ? getReviewPeriodPay(personName) : 0
                   if (reviewHoursPayCollapsed) {
                     return (
-                      <div style={{ display: 'flex', gap: '2rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', border: '1px solid #e5e7eb', borderRadius: 4, background: '#f9fafb' }}>
+                      <div style={{ display: 'flex', gap: '2rem', padding: '0.5rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-subtle)' }}>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Hours:</span>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Hours:</span>
                           <span style={{ fontWeight: 600 }}>{totalHours > 0 ? decimalToHms(totalHours).replace(/:00$/, '') || '-' : '-'}</span>
                         </div>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>Pay:</span>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Pay:</span>
                           <span style={{ fontWeight: 600 }}>{wage > 0 ? `$${Math.round(totalPay).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</span>
                         </div>
                       </div>
                     )
                   }
                   return (
-                    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                    <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                        <thead style={{ background: '#f9fafb' }}>
+                        <thead style={{ background: 'var(--bg-subtle)' }}>
                           <tr>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Date</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Pay</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Date</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Hours</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Pay</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -4761,7 +4761,7 @@ export default function PeopleReviewTab({
                             const hrs = getHoursForDay(d)
                             const pay = personName && wage > 0 ? getPayForPersonDate(personName, d) : 0
                             return (
-                              <tr key={d} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <tr key={d} style={{ borderBottom: '1px solid var(--border)' }}>
                                 <td style={{ padding: '0.5rem 0.75rem' }}>{d}</td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{hrs > 0 ? decimalToHms(hrs).replace(/:00$/, '') || '-' : '-'}</td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{wage > 0 ? `$${Math.round(pay).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
@@ -4769,11 +4769,11 @@ export default function PeopleReviewTab({
                             )
                           })}
                         </tbody>
-                        <tfoot style={{ background: '#f9fafb', fontWeight: 600, borderTop: '2px solid #e5e7eb' }}>
+                        <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600, borderTop: '2px solid var(--border)' }}>
                           <tr>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>Totals</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>{totalHours > 0 ? decimalToHms(totalHours).replace(/:00$/, '') || '-' : '-'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb' }}>{wage > 0 ? `$${Math.round(totalPay).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>Totals</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>{totalHours > 0 ? decimalToHms(totalHours).replace(/:00$/, '') || '-' : '-'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)' }}>{wage > 0 ? `$${Math.round(totalPay).toLocaleString('en-US', { maximumFractionDigits: 0 })}` : '—'}</td>
                           </tr>
                         </tfoot>
                       </table>
@@ -4785,26 +4785,26 @@ export default function PeopleReviewTab({
               <section style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Reports Filed ({reviewReports.length})</h3>
                 {reviewReports.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No reports in this period.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No reports in this period.</p>
                 ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Template</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Created</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Template</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Created</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {reviewReports.map((r) => (
-                          <tr key={r.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{displayReportTemplateName(r.template_name, authRole)}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{r.job_display_name}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{new Date(r.created_at).toLocaleString()}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <Link to={`/jobs?report=${r.id}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>View</Link>
+                              <Link to={`/jobs?report=${r.id}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>View</Link>
                             </td>
                           </tr>
                         ))}
@@ -4817,20 +4817,20 @@ export default function PeopleReviewTab({
               <section style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Tasks Completed ({reviewTasks.length})</h3>
                 {reviewTasks.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No tasks in this period.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No tasks in this period.</p>
                 ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Title</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Scheduled</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Completed</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Title</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Scheduled</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Completed</th>
                         </tr>
                       </thead>
                       <tbody>
                         {reviewTasks.map((t) => (
-                          <tr key={t.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}><ChecklistTitleWithLinks title={t.title} links={t.links} /></td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{t.scheduled_date}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{t.completed_at ? new Date(t.completed_at).toLocaleString() : '—'}</td>
@@ -4847,19 +4847,19 @@ export default function PeopleReviewTab({
                   Tasks outstanding ({reviewTasksOutstanding.length})
                 </h3>
                 {reviewTasksOutstanding.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No open tasks assigned.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No open tasks assigned.</p>
                 ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                  <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Title</th>
-                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Scheduled</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Title</th>
+                          <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Scheduled</th>
                         </tr>
                       </thead>
                       <tbody>
                         {reviewTasksOutstanding.map((t) => (
-                          <tr key={t.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={t.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>
                               <ChecklistTitleWithLinks title={t.title} links={t.links} />
                             </td>
@@ -4891,50 +4891,50 @@ export default function PeopleReviewTab({
               >
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: '92vw', maxHeight: '85vh', overflow: 'auto' }}
+                  style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 480, maxWidth: '92vw', maxHeight: '85vh', overflow: 'auto' }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '0.75rem' }}>
                     <div>
                       <h3 style={{ margin: 0, fontSize: '1.125rem' }}>{isProfit ? 'Profit shares by person' : 'Labor contributors'}</h3>
-                      <div style={{ fontSize: '0.875rem', color: '#374151', marginTop: '0.25rem' }}>{headerLabel}</div>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginTop: '0.25rem' }}>{headerLabel}</div>
                       {ctx.jobAddress ? (
-                        <div style={{ fontSize: '0.8em', color: '#6b7280', marginTop: '0.1rem' }}>{stripAddressZipState(ctx.jobAddress) || ctx.jobAddress}</div>
+                        <div style={{ fontSize: '0.8em', color: 'var(--text-muted)', marginTop: '0.1rem' }}>{stripAddressZipState(ctx.jobAddress) || ctx.jobAddress}</div>
                       ) : null}
                     </div>
                     <button
                       type="button"
                       onClick={() => setReviewLaborBreakdownContext(null)}
-                      style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280' }}
+                      style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)' }}
                       aria-label="Close"
                     >
                       ×
                     </button>
                   </div>
-                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
                     {isProfit ? (
                       <>
-                        Total profit on this job (revenue before overhead): <strong style={{ color: profitNegative ? '#b91c1c' : '#111827' }}>${Math.round(ctx.revenueBeforeOverhead).toLocaleString('en-US')}</strong>
-                        <div style={{ fontSize: '0.95em', color: '#9ca3af', marginTop: '0.15rem' }}>
+                        Total profit on this job (revenue before overhead): <strong style={{ color: profitNegative ? 'var(--text-red-700)' : 'var(--text-strong)' }}>${Math.round(ctx.revenueBeforeOverhead).toLocaleString('en-US')}</strong>
+                        <div style={{ fontSize: '0.95em', color: 'var(--text-faint)', marginTop: '0.15rem' }}>
                           Allocated by each person's share of total labor (${Math.round(denom).toLocaleString('en-US')}{sumHours > 0 ? ` · ${sumHours.toFixed(2)} hrs` : ''}).
                         </div>
                       </>
                     ) : (
-                      <>Total labor on this job (everyone, all time): <strong style={{ color: '#111827' }}>${Math.round(denom).toLocaleString('en-US')}</strong>{sumHours > 0 ? ` · ${sumHours.toFixed(2)} hrs` : ''}</>
+                      <>Total labor on this job (everyone, all time): <strong style={{ color: 'var(--text-strong)' }}>${Math.round(denom).toLocaleString('en-US')}</strong>{sumHours > 0 ? ` · ${sumHours.toFixed(2)} hrs` : ''}</>
                     )}
                   </div>
                   {rows.length === 0 ? (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No labor recorded for this job.</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No labor recorded for this job.</p>
                   ) : (
-                    <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                    <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                        <thead style={{ background: '#f9fafb' }}>
+                        <thead style={{ background: 'var(--bg-subtle)' }}>
                           <tr>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Person</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Hours</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Labor</th>
-                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Share</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Person</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Hours</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Labor</th>
+                            <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Share</th>
                             {isProfit && (
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Profit slice</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Profit slice</th>
                             )}
                           </tr>
                         </thead>
@@ -4953,18 +4953,18 @@ export default function PeopleReviewTab({
                             return (
                               <tr
                                 key={r.personName}
-                                style={{ borderBottom: '1px solid #e5e7eb', background: isYou ? '#fef3c7' : undefined }}
+                                style={{ borderBottom: '1px solid var(--border)', background: isYou ? '#fef3c7' : undefined }}
                               >
                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                   <div style={{ fontWeight: isYou ? 600 : 400 }}>
                                     {r.personName}
-                                    {isYou ? <span style={{ marginLeft: '0.4rem', fontSize: '0.75em', color: '#92400e', fontWeight: 600 }}>(you)</span> : null}
+                                    {isYou ? <span style={{ marginLeft: '0.4rem', fontSize: '0.75em', color: 'var(--text-amber-800)', fontWeight: 600 }}>(you)</span> : null}
                                   </div>
-                                  {sourceLabel ? <div style={{ fontSize: '0.75em', color: '#9ca3af' }}>{sourceLabel}</div> : null}
+                                  {sourceLabel ? <div style={{ fontSize: '0.75em', color: 'var(--text-faint)' }}>{sourceLabel}</div> : null}
                                 </td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.hours > 0 ? r.hours.toFixed(2) : '—'}</td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{r.laborCost > 0 ? `$${formatCurrency(r.laborCost)}` : '—'}</td>
-                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: '#6b7280' }}>{denom > 0 && r.laborCost > 0 ? `${pct}%` : '—'}</td>
+                                <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', color: 'var(--text-muted)' }}>{denom > 0 && r.laborCost > 0 ? `${pct}%` : '—'}</td>
                                 {isProfit && (
                                   <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: isYou ? 600 : 400, color: profitSlice >= 0 ? undefined : '#b91c1c' }}>
                                     {Math.abs(profitSlice) >= 0.5 ? `$${formatCurrency(profitSlice)}` : '—'}
@@ -4976,14 +4976,14 @@ export default function PeopleReviewTab({
                         </tbody>
                         <tfoot>
                           <tr>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>Total</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>{sumHours > 0 ? sumHours.toFixed(2) : '—'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>{sumOfRows > 0 ? `$${formatCurrency(sumOfRows)}` : '—'}</td>
-                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', color: '#6b7280' }}>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600 }}>Total</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600 }}>{sumHours > 0 ? sumHours.toFixed(2) : '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600 }}>{sumOfRows > 0 ? `$${formatCurrency(sumOfRows)}` : '—'}</td>
+                            <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', color: 'var(--text-muted)' }}>
                               {denom > 0 ? `${Math.round((sumOfRows / denom) * 100)}%` : '—'}
                             </td>
                             {isProfit && (
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid #e5e7eb', fontWeight: 600, color: ctx.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderTop: '2px solid var(--border)', fontWeight: 600, color: ctx.revenueBeforeOverhead >= 0 ? undefined : '#b91c1c' }}>
                                 {Math.abs(ctx.revenueBeforeOverhead) >= 0.5 ? `$${formatCurrency(denom > 0 ? (sumOfRows / denom) * ctx.revenueBeforeOverhead : 0)}` : '—'}
                               </td>
                             )}
@@ -4993,7 +4993,7 @@ export default function PeopleReviewTab({
                     </div>
                   )}
                   {Math.abs(sumOfRows - ctx.totalLaborOnJob) > 1 && ctx.totalLaborOnJob > 0 && (
-                    <p style={{ marginTop: '0.75rem', fontSize: '0.75em', color: '#9ca3af' }}>
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.75em', color: 'var(--text-faint)' }}>
                       Per-person rows total ${formatCurrency(sumOfRows)}; the job header showed ${formatCurrency(ctx.totalLaborOnJob)}. The two should match — a small gap usually means a sub-labor card without an assignee or a crew row outside the 2-year lookback window.
                     </p>
                   )}

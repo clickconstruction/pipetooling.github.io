@@ -27,6 +27,8 @@ export type FinancialItem = {
   jobId: string | null
   /** Job street address — shown on Not-billed rows; null elsewhere. */
   address: string | null
+  /** Stages % complete (jobs_ledger.pct_complete) — shown on Not-billed rows; null elsewhere or when unset. */
+  pctComplete?: number | null
 }
 
 export type FinancialBucket = {
@@ -50,6 +52,8 @@ export type FinancialJobRow = {
   last_work_date: string | null
   /** Difficult-to-collect flag; in Collections = status='billed' AND collections_at set. */
   collections_at?: string | null
+  /** Stages % complete (0–100), manually set on the Jobs Stages table. */
+  pct_complete?: number | null
 }
 
 export type FinancialInvoiceRow = {
@@ -317,6 +321,7 @@ export function buildUnbilledBucket(jobs: FinancialJobRow[], invoices: Financial
       dateYmd: job.last_work_date,
       jobId: job.id,
       address: (job.job_address ?? '').trim() || null,
+      pctComplete: job.pct_complete ?? null,
     })
   }
   return finishBucket(items)

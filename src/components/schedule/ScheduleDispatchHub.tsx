@@ -75,16 +75,16 @@ const HUB_EXPECTED_MANPOWER_JOB_COL_SPAN = 2
 const hubExpectedManpowerSectionTh: CSSProperties = {
   textAlign: 'left' as const,
   padding: '0.45rem',
-  border: '1px solid #e5e7eb',
-  background: '#f3f4f6',
+  border: '1px solid var(--border)',
+  background: 'var(--bg-muted)',
   fontSize: '0.8125rem',
   fontWeight: 600,
-  color: '#111827',
+  color: 'var(--text-strong)',
 }
 
 const hubExpectedManpowerRowTd: CSSProperties = {
   padding: '0.45rem',
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   verticalAlign: 'middle' as const,
   fontSize: '0.8125rem',
 }
@@ -162,16 +162,16 @@ function HubJobsPanel({
   return (
     <>
       {jobsError ? (
-        <p style={{ color: '#b91c1c', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{jobsError}</p>
+        <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{jobsError}</p>
       ) : null}
       {summariesError ? (
-        <p style={{ color: '#92400e', fontSize: '0.875rem', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
+        <p style={{ color: 'var(--text-amber-800)', fontSize: '0.875rem', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
           Could not load schedule counts for this week ({summariesError}). Counts shown as 0.
         </p>
       ) : null}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <input
             type="search"
             value={search}
@@ -181,11 +181,11 @@ function HubJobsPanel({
             style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', minWidth: 200 }}
           />
         </label>
-        <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input type="checkbox" checked={onlyWithBlocks} onChange={(e) => setOnlyWithBlocks(e.target.checked)} />
           Only jobs with blocks this week
         </label>
-        <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input
             type="checkbox"
             checked={hideWeekend}
@@ -196,7 +196,7 @@ function HubJobsPanel({
         </label>
       </div>
 
-      {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
+      {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : null}
 
       <div
         ref={jobsScrollRef}
@@ -213,8 +213,8 @@ function HubJobsPanel({
                 style={{
                   textAlign: 'left',
                   padding: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                  background: '#f3f4f6',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-muted)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 1,
@@ -226,8 +226,8 @@ function HubJobsPanel({
                 style={{
                   textAlign: 'center',
                   padding: '0.5rem',
-                  border: '1px solid #e5e7eb',
-                  background: '#f3f4f6',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg-muted)',
                   whiteSpace: 'nowrap',
                 }}
               >
@@ -240,8 +240,8 @@ function HubJobsPanel({
                   style={{
                     textAlign: 'center',
                     padding: '0.35rem',
-                    border: '1px solid #e5e7eb',
-                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, '#f3f4f6'),
+                    border: '1px solid var(--border)',
+                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, 'var(--bg-muted)'),
                     fontSize: '0.75rem',
                     minWidth: 88,
                   }}
@@ -250,7 +250,7 @@ function HubJobsPanel({
                   {hubDayColumnHeaderLabel(dk)}
                 </th>
               ))}
-              <th style={{ padding: '0.5rem', border: '1px solid #e5e7eb', background: '#f3f4f6' }} aria-label="Open" />
+              <th style={{ padding: '0.5rem', border: '1px solid var(--border)', background: 'var(--bg-muted)' }} aria-label="Open" />
             </tr>
           </thead>
           <tbody>
@@ -258,7 +258,7 @@ function HubJobsPanel({
               <tr>
                 <td
                   colSpan={2 + visibleDayKeys.length + 1}
-                  style={{ padding: '1rem', border: '1px solid #e5e7eb', color: '#6b7280', textAlign: 'center' }}
+                  style={{ padding: '1rem', border: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'center' }}
                 >
                   {rows.length === 0 && !jobsError
                     ? 'No jobs to show.'
@@ -271,10 +271,10 @@ function HubJobsPanel({
                   <td
                     style={{
                       padding: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       position: 'sticky',
                       left: 0,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       zIndex: 1,
                       maxWidth: 280,
                     }}
@@ -287,7 +287,7 @@ function HubJobsPanel({
                         margin: 0,
                         border: 'none',
                         background: 'none',
-                        color: '#1d4ed8',
+                        color: 'var(--text-blue-700)',
                         cursor: 'pointer',
                         font: 'inherit',
                         textAlign: 'left',
@@ -298,7 +298,7 @@ function HubJobsPanel({
                       {r.displayTitle}
                     </button>
                   </td>
-                  <td style={{ textAlign: 'center', padding: '0.5rem', border: '1px solid #e5e7eb', fontWeight: 600 }}>
+                  <td style={{ textAlign: 'center', padding: '0.5rem', border: '1px solid var(--border)', fontWeight: 600 }}>
                     {r.totalBlocks}
                   </td>
                   {visibleDayKeys.map((dk) => (
@@ -307,8 +307,8 @@ function HubJobsPanel({
                       style={{
                         textAlign: 'center',
                         padding: '0.35rem',
-                        border: '1px solid #e5e7eb',
-                        color: '#4b5563',
+                        border: '1px solid var(--border)',
+                        color: 'var(--text-600)',
                         background: scheduleDispatchDayColumnJobsSummaryCellBg(dk, {
                           scheduleTodayYmd,
                           columnFocusDayYmd,
@@ -318,7 +318,7 @@ function HubJobsPanel({
                       {r.byDay[dk] ?? '—'}
                     </td>
                   ))}
-                  <td style={{ padding: '0.5rem', border: '1px solid #e5e7eb', textAlign: 'center' }}>
+                  <td style={{ padding: '0.5rem', border: '1px solid var(--border)', textAlign: 'center' }}>
                     <button
                       type="button"
                       onClick={() => onOpenJob(r.id)}
@@ -348,7 +348,7 @@ function HubJobsPanel({
 const hubPeopleSalarySuffix: CSSProperties = {
   display: 'block',
   fontSize: '0.68rem',
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   fontWeight: 400,
   lineHeight: 1.1,
 }
@@ -551,7 +551,7 @@ function HubPeopleBlockCard({
         >
           <div
             style={{
-              color: '#1e40af',
+              color: 'var(--text-blue-800)',
               display: 'flex',
               alignItems: 'center',
               flexWrap: 'wrap',
@@ -561,7 +561,7 @@ function HubPeopleBlockCard({
             <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
           </div>
           {block.note ? (
-            <div style={{ color: '#4b5563', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
+            <div style={{ color: 'var(--text-600)', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
           ) : null}
         </button>
       </div>
@@ -816,7 +816,7 @@ function HubPeopleDayCell({
   if (assignJobPickingActive) {
     cellBg = isOver ? '#a7f3d0' : '#d1fae5'
   } else if (placementPickingActive && linkedWrongDay) {
-    cellBg = '#f3f4f6'
+    cellBg = 'var(--bg-muted)'
   } else if (placementPickingActive && !linkedWrongDay) {
     cellBg = isOver ? '#c7d2fe' : '#eef2ff'
   }
@@ -824,7 +824,7 @@ function HubPeopleDayCell({
   // flows: gray them out the same way the existing "linked wrong day" cells
   // do, so they read as "not a target".
   if (cellHasTimeOff && (assignJobPickingActive || placementPickingActive)) {
-    cellBg = '#f3f4f6'
+    cellBg = 'var(--bg-muted)'
   }
 
   const cellClickable =
@@ -879,7 +879,7 @@ function HubPeopleDayCell({
         position: 'relative',
         isolation: 'isolate',
         padding: '0.35rem',
-        border: isMultiSelected && multiSelectCellActive ? '2px solid #ca8a04' : '1px solid #e5e7eb',
+        border: isMultiSelected && multiSelectCellActive ? '2px solid #ca8a04' : '1px solid var(--border)',
         verticalAlign: 'top',
         maxWidth: 200,
         maxHeight: 180,
@@ -931,7 +931,7 @@ function HubPeopleDayCell({
         </div>
       ) : null}
       {cellBlocks.length === 0 ? (
-        timeOffInfo ? null : <span style={{ color: '#d1d5db' }}>—</span>
+        timeOffInfo ? null : <span style={{ color: 'var(--text-faint-300)' }}>—</span>
       ) : (
         cellBlocks.map((b) => {
           const g = b.shared_block_group_id
@@ -1294,10 +1294,10 @@ function HubPeoplePanel({
   return (
     <>
       {jobsError ? (
-        <p style={{ color: '#b91c1c', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{jobsError}</p>
+        <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{jobsError}</p>
       ) : null}
       {summariesError ? (
-        <p style={{ color: '#92400e', fontSize: '0.875rem', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
+        <p style={{ color: 'var(--text-amber-800)', fontSize: '0.875rem', marginTop: '0.5rem', whiteSpace: 'pre-wrap' }}>
           Could not load schedule blocks for this week ({summariesError}). People grid is empty.
         </p>
       ) : null}
@@ -1330,8 +1330,8 @@ function HubPeoplePanel({
                 style={{
                   ...hubPeopleToolbarIconBtn,
                   borderColor: hubMultiCellAddActive ? '#ca8a04' : '#2563eb',
-                  color: hubMultiCellAddActive ? '#ca8a04' : '#2563eb',
-                  background: hubMultiCellAddActive ? '#fffbeb' : '#fff',
+                  color: hubMultiCellAddActive ? '#ca8a04' : 'var(--text-link)',
+                  background: hubMultiCellAddActive ? 'var(--bg-amber-tint)' : 'var(--surface)',
                 }}
                 onClick={onRequestHubMultiCellAddMode}
               >
@@ -1340,7 +1340,7 @@ function HubPeoplePanel({
             ) : null}
           </div>
         ) : null}
-        <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
           <input
             type="search"
             value={search}
@@ -1350,7 +1350,7 @@ function HubPeoplePanel({
             style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', minWidth: 200 }}
           />
         </label>
-        <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input
             type="checkbox"
             checked={onlyWithBlocksThisWeek}
@@ -1359,7 +1359,7 @@ function HubPeoplePanel({
           Hide Inactive
         </label>
         {showHideWeekendToggle ? (
-          <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
             <input
               type="checkbox"
               checked={hideWeekend}
@@ -1369,7 +1369,7 @@ function HubPeoplePanel({
             Hide weekend
           </label>
         ) : null}
-        <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+        <label style={{ fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input
             type="checkbox"
             checked={highlightLinkedGroups}
@@ -1380,7 +1380,7 @@ function HubPeoplePanel({
         </label>
       </div>
 
-      {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
+      {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : null}
 
       <div
         ref={peopleScrollRef}
@@ -1397,10 +1397,10 @@ function HubPeoplePanel({
                 style={{
                   textAlign: 'left',
                   padding: '0.5rem',
-                  borderTop: '1px solid #e5e7eb',
-                  borderRight: '1px solid #e5e7eb',
-                  borderBottom: '1px solid #e5e7eb',
-                  background: isMobile ? 'transparent' : '#f3f4f6',
+                  borderTop: '1px solid var(--border)',
+                  borderRight: '1px solid var(--border)',
+                  borderBottom: '1px solid var(--border)',
+                  background: isMobile ? 'transparent' : 'var(--bg-muted)',
                   position: 'sticky',
                   left: 0,
                   zIndex: 1,
@@ -1421,8 +1421,8 @@ function HubPeoplePanel({
                   style={{
                     textAlign: 'center',
                     padding: '0.35rem',
-                    border: '1px solid #e5e7eb',
-                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, '#f3f4f6'),
+                    border: '1px solid var(--border)',
+                    ...scheduleDispatchDayColumnHeaderStyle(dk, { scheduleTodayYmd, columnFocusDayYmd }, 'var(--bg-muted)'),
                     fontSize: '0.75rem',
                     minWidth: 104,
                   }}
@@ -1445,7 +1445,7 @@ function HubPeoplePanel({
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 2,
-                          color: '#dc2626',
+                          color: 'var(--text-red-600)',
                           fontWeight: 700,
                         }}
                       >
@@ -1463,7 +1463,7 @@ function HubPeoplePanel({
               <tr>
                 <td
                   colSpan={1 + visibleDayKeys.length}
-                  style={{ padding: '1rem', border: '1px solid #e5e7eb', color: '#6b7280', textAlign: 'center' }}
+                  style={{ padding: '1rem', border: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'center' }}
                 >
                   {emptyMessage}
                 </td>
@@ -1474,15 +1474,15 @@ function HubPeoplePanel({
                   <td
                     style={{
                       padding: '0.5rem',
-                      borderTop: '1px solid #e5e7eb',
-                      borderRight: '1px solid #e5e7eb',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderTop: '1px solid var(--border)',
+                      borderRight: '1px solid var(--border)',
+                      borderBottom: '1px solid var(--border)',
                       position: 'sticky',
                       left: 0,
-                      background: isMobile ? 'transparent' : '#fff',
+                      background: isMobile ? 'transparent' : 'var(--surface)',
                       zIndex: 1,
                       fontWeight: 600,
-                      color: '#111827',
+                      color: 'var(--text-strong)',
                       verticalAlign: 'top',
                       width: '1%',
                       minWidth: 0,
@@ -1577,7 +1577,7 @@ function HubPeoplePanel({
               margin: '0 0 0.65rem',
               fontSize: '0.9375rem',
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--text-strong)',
             }}
           >
             Expected Manpower
@@ -1599,8 +1599,8 @@ function HubPeoplePanel({
               const background = isToday
                 ? SCHEDULE_DISPATCH_TODAY_COLUMN_BG
                 : selected
-                  ? '#eff6ff'
-                  : '#fff'
+                  ? 'var(--bg-blue-tint)'
+                  : 'var(--surface)'
               return (
                 <button
                   key={dk}
@@ -1615,9 +1615,9 @@ function HubPeoplePanel({
                     padding: '0.35rem 0.65rem',
                     fontSize: '0.75rem',
                     borderRadius: 6,
-                    border: selected ? '2px solid #2563eb' : '1px solid #d1d5db',
+                    border: selected ? '2px solid #2563eb' : '1px solid var(--border-strong)',
                     background,
-                    color: selected ? '#1d4ed8' : '#374151',
+                    color: selected ? 'var(--text-blue-700)' : 'var(--text-700)',
                     fontWeight: selected ? 600 : 400,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
@@ -1643,8 +1643,8 @@ function HubPeoplePanel({
                     fontSize: '0.75rem',
                     borderRadius: 6,
                     border: allWeekSelected ? '2px solid #059669' : '1px solid #34d399',
-                    background: allWeekSelected ? '#d1fae5' : '#ecfdf5',
-                    color: allWeekSelected ? '#047857' : '#065f46',
+                    background: allWeekSelected ? '#d1fae5' : 'var(--bg-emerald-tint)',
+                    color: allWeekSelected ? '#047857' : 'var(--text-emerald-800)',
                     fontWeight: allWeekSelected ? 600 : 500,
                     cursor: 'pointer',
                     whiteSpace: 'nowrap',
@@ -1669,15 +1669,15 @@ function HubPeoplePanel({
             }
           >
             {hubExpectedManpowerDayKey == null ? null : expectedManpowerDayRows.length === 0 ? (
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 No schedule blocks for {expectedManpowerSelectionLabel}.
               </p>
             ) : (
               <>
                 {expectedManpowerDayStats ? (
-                  <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <p style={{ margin: '0 0 0.65rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     {expectedManpowerSelectionLabel}:{' '}
-                    <strong style={{ color: '#374151' }}>
+                    <strong style={{ color: 'var(--text-700)' }}>
                       {formatExpectedManpowerPersonHours(expectedManpowerDayStats.personHours)}
                     </strong>{' '}
                     person-hours · {expectedManpowerDayStats.jobCount}{' '}
@@ -1720,7 +1720,7 @@ function HubPeoplePanel({
                                 padding: '0.1rem',
                                 cursor: 'pointer',
                                 fontSize: '0.65rem',
-                                color: '#374151',
+                                color: 'var(--text-700)',
                                 lineHeight: 1,
                               }}
                             >
@@ -1783,7 +1783,7 @@ function HubPeoplePanel({
                                         padding: '0.1rem',
                                         cursor: 'pointer',
                                         fontSize: '0.65rem',
-                                        color: '#374151',
+                                        color: 'var(--text-700)',
                                         lineHeight: 1,
                                       }}
                                     >
@@ -1811,7 +1811,7 @@ function HubPeoplePanel({
                                         margin: 0,
                                         border: 'none',
                                         background: 'none',
-                                        color: '#1d4ed8',
+                                        color: 'var(--text-blue-700)',
                                         cursor: 'pointer',
                                         font: 'inherit',
                                         fontWeight: 600,
@@ -1828,16 +1828,16 @@ function HubPeoplePanel({
                                     <span
                                       style={{
                                         flexShrink: 0,
-                                        color: '#4b5563',
+                                        color: 'var(--text-600)',
                                         fontWeight: 400,
                                         whiteSpace: 'nowrap',
                                       }}
                                     >
                                       {'[ '}
-                                      <span style={{ fontWeight: 400, color: '#374151' }}>
+                                      <span style={{ fontWeight: 400, color: 'var(--text-700)' }}>
                                         {formatExpectedManpowerPersonHours(job.totalPersonHours)}
                                       </span>
-                                      <span style={{ color: '#4b5563' }}>{' • '}</span>
+                                      <span style={{ color: 'var(--text-600)' }}>{' • '}</span>
                                       <span style={{ fontWeight: 600 }}>{job.distinctPeopleCount}</span>
                                       {' ]'}
                                     </span>
@@ -1845,7 +1845,7 @@ function HubPeoplePanel({
                                       <span
                                         style={{
                                           flexShrink: 0,
-                                          color: '#6b7280',
+                                          color: 'var(--text-muted)',
                                           fontWeight: 400,
                                           whiteSpace: 'nowrap',
                                         }}
@@ -1869,10 +1869,10 @@ function HubPeoplePanel({
                                     style={{
                                       ...hubExpectedManpowerRowTd,
                                       borderBottom: 'none',
-                                      background: '#fafafa',
+                                      background: 'var(--bg-page)',
                                       padding: '0.35rem 0.5rem 0.45rem',
                                       fontSize: '0.75rem',
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                     }}
                                   >
                                     <div
@@ -1885,7 +1885,7 @@ function HubPeoplePanel({
                                           overflowX: 'auto',
                                           maxWidth: '100%',
                                           marginLeft: `calc(${HUB_EXPECTED_MANPOWER_EXPAND_COL} + 0.45rem)`,
-                                          borderLeft: '2px solid #e5e7eb',
+                                          borderLeft: '2px solid var(--border)',
                                           paddingLeft: '0.45rem',
                                         }}
                                       >
@@ -1896,7 +1896,7 @@ function HubPeoplePanel({
                                           style={{
                                             borderCollapse: 'collapse',
                                             fontSize: '0.72rem',
-                                            color: '#4b5563',
+                                            color: 'var(--text-600)',
                                             width: '100%',
                                           }}
                                         >
@@ -1908,7 +1908,7 @@ function HubPeoplePanel({
                                                   style={{
                                                     textAlign: 'left',
                                                     padding: '0.25rem 0.4rem 0.35rem 0',
-                                                    borderBottom: '1px solid #e5e7eb',
+                                                    borderBottom: '1px solid var(--border)',
                                                     fontWeight: 600,
                                                     whiteSpace: 'nowrap',
                                                   }}
@@ -1921,7 +1921,7 @@ function HubPeoplePanel({
                                                 style={{
                                                   textAlign: 'left',
                                                   padding: '0.25rem 0.4rem 0.35rem 0',
-                                                  borderBottom: '1px solid #e5e7eb',
+                                                  borderBottom: '1px solid var(--border)',
                                                   fontWeight: 600,
                                                 }}
                                               >
@@ -1932,7 +1932,7 @@ function HubPeoplePanel({
                                                 style={{
                                                   textAlign: 'right',
                                                   padding: '0.25rem 0.4rem 0.35rem 0',
-                                                  borderBottom: '1px solid #e5e7eb',
+                                                  borderBottom: '1px solid var(--border)',
                                                   fontWeight: 600,
                                                   whiteSpace: 'nowrap',
                                                 }}
@@ -1944,7 +1944,7 @@ function HubPeoplePanel({
                                                 style={{
                                                   textAlign: 'left',
                                                   padding: '0.25rem 0.4rem 0.35rem 0',
-                                                  borderBottom: '1px solid #e5e7eb',
+                                                  borderBottom: '1px solid var(--border)',
                                                   fontWeight: 600,
                                                   whiteSpace: 'nowrap',
                                                 }}
@@ -2012,7 +2012,7 @@ function HubPeoplePanel({
             style={{
               margin: '0.75rem 0 0',
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
               fontWeight: 500,
             }}
           >
@@ -2107,8 +2107,8 @@ const hubPeopleToolbarBtn: CSSProperties = {
   padding: '0 0.75rem',
   border: '1px solid #2563eb',
   borderRadius: 4,
-  background: '#fff',
-  color: '#2563eb',
+  background: 'var(--surface)',
+  color: 'var(--text-link)',
   cursor: 'pointer',
   fontSize: '0.8125rem',
 }
@@ -2213,7 +2213,7 @@ export function ScheduleDispatchHub({
             display: 'flex',
             gap: 4,
             marginBottom: '1rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             paddingBottom: 2,
             alignItems: 'center',
             flexWrap: 'wrap',
@@ -2232,7 +2232,7 @@ export function ScheduleDispatchHub({
               marginBottom: -3,
               background: 'none',
               cursor: 'pointer',
-              color: hubTab === 'people' ? '#1d4ed8' : '#6b7280',
+              color: hubTab === 'people' ? 'var(--text-blue-700)' : 'var(--text-muted)',
               fontWeight: hubTab === 'people' ? 600 : 400,
             }}
           >
@@ -2251,7 +2251,7 @@ export function ScheduleDispatchHub({
               marginBottom: -3,
               background: 'none',
               cursor: 'pointer',
-              color: hubTab === 'jobs' ? '#1d4ed8' : '#6b7280',
+              color: hubTab === 'jobs' ? 'var(--text-blue-700)' : 'var(--text-muted)',
               fontWeight: hubTab === 'jobs' ? 600 : 400,
             }}
           >
@@ -2270,7 +2270,7 @@ export function ScheduleDispatchHub({
               marginBottom: -3,
               background: 'none',
               cursor: 'pointer',
-              color: hubTab === 'day' ? '#1d4ed8' : '#6b7280',
+              color: hubTab === 'day' ? 'var(--text-blue-700)' : 'var(--text-muted)',
               fontWeight: hubTab === 'day' ? 600 : 400,
             }}
           >
@@ -2286,10 +2286,10 @@ export function ScheduleDispatchHub({
                 marginLeft: 'auto',
                 padding: '0.4rem 0.85rem',
                 fontSize: '0.8125rem',
-                background: '#fff',
-                border: '1px solid #d1d5db',
+                background: 'var(--surface)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                color: '#374151',
+                color: 'var(--text-700)',
                 cursor: 'pointer',
                 fontWeight: 500,
               }}

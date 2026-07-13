@@ -81,7 +81,7 @@ const AR_BANK_REMAINING_EPS = 0.0005
 const BANK_PAYMENTS_SUMMARY_CARD_STYLE: CSSProperties = {
   marginBottom: '1rem',
   padding: '0.75rem',
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
   borderRadius: 6,
   fontSize: '0.875rem',
 }
@@ -647,7 +647,7 @@ export default function BankPaymentsModal({
       <div
         aria-busy={listLoading}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 980,
           width: '100%',
@@ -665,7 +665,7 @@ export default function BankPaymentsModal({
             justifyContent: 'space-between',
             gap: '1rem',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <h2 id="accounts-receivable-modal-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
@@ -676,7 +676,7 @@ export default function BankPaymentsModal({
             onClick={onClose}
             style={{
               border: 'none',
-              background: '#f3f4f6',
+              background: 'var(--bg-muted)',
               borderRadius: 6,
               padding: '0.35rem 0.65rem',
               cursor: 'pointer',
@@ -687,7 +687,7 @@ export default function BankPaymentsModal({
           </button>
         </div>
 
-        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid #f3f4f6', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Match Mercury deposits to <strong>Billed Awaiting Payment</strong> lines (non-Stripe). Payments appear in Edit Job →
           Payments received.
           {stripeSkippedCount > 0 ? (
@@ -699,7 +699,7 @@ export default function BankPaymentsModal({
         </div>
 
         {authRole === 'dev' && (
-          <div style={{ padding: '0.5rem 1.25rem', background: '#fafafa', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
             <button
               type="button"
               onClick={() => setDevFilterOpen((v) => !v)}
@@ -707,7 +707,7 @@ export default function BankPaymentsModal({
                 border: 'none',
                 background: 'none',
                 cursor: 'pointer',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 fontSize: '0.8125rem',
                 fontWeight: 500,
                 padding: '0.25rem 0',
@@ -717,7 +717,7 @@ export default function BankPaymentsModal({
             </button>
             {devFilterOpen && (
               <div style={{ marginTop: '0.5rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.8125rem', color: '#4b5563' }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                   Start date {sortingConfig.startDateYmd}; kinds {sortingConfig.kinds.length || 'all'}; accounts{' '}
                   {sortingConfig.accountIds.length || 'all'}; debit cards {sortingConfig.debitCardIds.length || 'any'}.
                 </span>
@@ -727,8 +727,8 @@ export default function BankPaymentsModal({
                   style={{
                     padding: '0.35rem 0.65rem',
                     borderRadius: 4,
-                    border: '1px solid #d1d5db',
-                    background: 'white',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
                     cursor: 'pointer',
                     fontSize: '0.8125rem',
                   }}
@@ -741,7 +741,7 @@ export default function BankPaymentsModal({
         )}
 
         {!canApply && (
-          <div style={{ padding: '0.5rem 1.25rem', background: '#fffbeb', fontSize: '0.8125rem', color: '#92400e' }}>
+          <div style={{ padding: '0.5rem 1.25rem', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
             Your role cannot record job payments. Recording payments from this modal is limited to dev, master, assistant, and
             primary (same as Mark Paid).
           </div>
@@ -765,7 +765,7 @@ export default function BankPaymentsModal({
                 boxSizing: 'border-box',
               }}
             >
-              <p style={{ margin: 0, textAlign: 'center', fontSize: '0.875rem', color: '#374151', fontWeight: 600 }}>
+              <p style={{ margin: 0, textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-700)', fontWeight: 600 }}>
                 Loading bank transactions…
               </p>
               <div style={{ display: 'flex', flex: 1, minHeight: 200, gap: '1rem', alignItems: 'stretch' }}>
@@ -774,14 +774,14 @@ export default function BankPaymentsModal({
                     <div
                       key={i}
                       className="dashboard-skeleton-pulse"
-                      style={{ height: 44, borderRadius: 6, background: '#e5e7eb' }}
+                      style={{ height: 44, borderRadius: 6, background: 'var(--bg-200)' }}
                     />
                   ))}
                 </div>
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div className="dashboard-skeleton-pulse" style={{ height: 72, borderRadius: 6, background: '#e5e7eb' }} />
-                  <div className="dashboard-skeleton-pulse" style={{ height: 120, borderRadius: 6, background: '#e5e7eb' }} />
-                  <div className="dashboard-skeleton-pulse" style={{ height: 88, borderRadius: 6, background: '#e5e7eb' }} />
+                  <div className="dashboard-skeleton-pulse" style={{ height: 72, borderRadius: 6, background: 'var(--bg-200)' }} />
+                  <div className="dashboard-skeleton-pulse" style={{ height: 120, borderRadius: 6, background: 'var(--bg-200)' }} />
+                  <div className="dashboard-skeleton-pulse" style={{ height: 88, borderRadius: 6, background: 'var(--bg-200)' }} />
                 </div>
               </div>
             </div>
@@ -800,7 +800,7 @@ export default function BankPaymentsModal({
             style={{
               width: '42%',
               minWidth: 260,
-              borderRight: '1px solid #e5e7eb',
+              borderRight: '1px solid var(--border)',
               display: 'flex',
               flexDirection: 'column',
               minHeight: 0,
@@ -815,7 +815,7 @@ export default function BankPaymentsModal({
                 padding: '0.5rem 0.75rem 0.35rem',
               }}
             >
-              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151' }}>Bank transactions</span>
+              <span style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)' }}>Bank transactions</span>
               {canApply ? (
                 <button
                   type="button"
@@ -823,13 +823,13 @@ export default function BankPaymentsModal({
                   aria-pressed={arBankReturnedMarkMode}
                   aria-label={arBankReturnedMarkMode ? 'Exit mark returned mode' : 'Mark deposits as returned'}
                   style={{
-                    border: '1px solid #d1d5db',
-                    background: arBankReturnedMarkMode ? '#eff6ff' : '#fff',
+                    border: '1px solid var(--border-strong)',
+                    background: arBankReturnedMarkMode ? 'var(--bg-blue-tint)' : 'var(--surface)',
                     borderRadius: 4,
                     padding: '2px 8px',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     cursor: 'pointer',
                     flexShrink: 0,
                   }}
@@ -852,7 +852,7 @@ export default function BankPaymentsModal({
                   boxSizing: 'border-box',
                   padding: '0.4rem 0.5rem',
                   fontSize: '0.8125rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                 }}
               />
@@ -864,7 +864,7 @@ export default function BankPaymentsModal({
                 gap: '0.35rem',
                 padding: '0 0.5rem 0.5rem',
                 fontSize: '0.75rem',
-                color: '#4b5563',
+                color: 'var(--text-600)',
                 cursor: 'pointer',
                 userSelect: 'none',
               }}
@@ -879,13 +879,13 @@ export default function BankPaymentsModal({
             </label>
             <div style={{ flex: 1, overflow: 'auto' }}>
               {listError && (
-                <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#b91c1c' }}>{listError}</p>
+                <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>{listError}</p>
               )}
               {!listLoading && !listError && candidates.length === 0 && (
-                <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>No matching transactions.</p>
+                <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No matching transactions.</p>
               )}
               {!listLoading && !listError && candidates.length > 0 && filteredCandidates.length === 0 && (
-                <p style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                <p style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   No bank transactions match this search.
                 </p>
               )}
@@ -908,7 +908,7 @@ export default function BankPaymentsModal({
                       padding: '0.6rem 0.75rem',
                       border: 'none',
                       borderBottom: '1px solid #f3f4f6',
-                      background: active ? '#eff6ff' : 'white',
+                      background: active ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: '0.8125rem',
                       boxSizing: 'border-box',
@@ -926,7 +926,7 @@ export default function BankPaymentsModal({
                       <div
                         style={{
                           fontWeight: 600,
-                          color: '#111827',
+                          color: 'var(--text-strong)',
                           minWidth: 0,
                           flex: '1 1 auto',
                           overflow: 'hidden',
@@ -947,7 +947,7 @@ export default function BankPaymentsModal({
                         {c.returned ? (
                           <span
                             style={{
-                              color: '#b91c1c',
+                              color: 'var(--text-red-700)',
                               fontWeight: 600,
                               fontSize: '0.72rem',
                               flexShrink: 0,
@@ -957,7 +957,7 @@ export default function BankPaymentsModal({
                           </span>
                         ) : null}
                         <KindBadgePill kind={c.kind} kindBadges={kindBadges} />
-                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{posted}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>{posted}</span>
                         {canApply && arBankReturnedMarkMode ? (
                           <label
                             style={{
@@ -966,7 +966,7 @@ export default function BankPaymentsModal({
                               gap: '0.25rem',
                               marginLeft: 4,
                               fontSize: '0.7rem',
-                              color: '#4b5563',
+                              color: 'var(--text-600)',
                               cursor: returnedToggleSavingId === c.mercury_transaction_id ? 'wait' : 'pointer',
                             }}
                             onClick={(e) => e.stopPropagation()}
@@ -987,12 +987,12 @@ export default function BankPaymentsModal({
                         ) : null}
                       </div>
                     </div>
-                    <div style={{ color: '#6b7280', marginTop: 2 }}>{c.counterparty_name?.trim() || '—'}</div>
-                    <div style={{ color: '#9ca3af', marginTop: 2, fontSize: '0.75rem' }}>
+                    <div style={{ color: 'var(--text-muted)', marginTop: 2 }}>{c.counterparty_name?.trim() || '—'}</div>
+                    <div style={{ color: 'var(--text-faint)', marginTop: 2, fontSize: '0.75rem' }}>
                       rem. {formatMoney(Number(c.remaining_available))}
                     </div>
                     {Number(c.consumed) > AR_BANK_PAYMENT_CONSUMED_DISPLAY_EPS ? (
-                      <div style={{ color: '#6b7280', marginTop: 2, fontSize: '0.75rem' }}>
+                      <div style={{ color: 'var(--text-muted)', marginTop: 2, fontSize: '0.75rem' }}>
                         <strong>Applied to jobs:</strong> {formatMoney(Number(c.consumed))}
                       </div>
                     ) : null}
@@ -1005,7 +1005,7 @@ export default function BankPaymentsModal({
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
             <div style={{ flex: 1, overflow: 'auto', padding: '1rem 1.25rem' }}>
               {!selected ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Select a bank transaction.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Select a bank transaction.</p>
               ) : (
                 <>
                   <div style={BANK_PAYMENTS_SUMMARY_CARD_STYLE}>
@@ -1017,7 +1017,7 @@ export default function BankPaymentsModal({
                           {' '}
                           <span
                             style={{
-                              color: '#b91c1c',
+                              color: 'var(--text-red-700)',
                               fontWeight: 600,
                               fontSize: '0.75rem',
                             }}
@@ -1046,18 +1046,18 @@ export default function BankPaymentsModal({
                       </div>
                       {arAllocationsLoading ? (
                         <div style={{ marginTop: 10 }}>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>Loading breakdown…</div>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 6 }}>Loading breakdown…</div>
                           <div
                             className="dashboard-skeleton-pulse"
-                            style={{ height: 14, borderRadius: 4, background: '#e5e7eb', maxWidth: '85%' }}
+                            style={{ height: 14, borderRadius: 4, background: 'var(--bg-200)', maxWidth: '85%' }}
                           />
                           <div
                             className="dashboard-skeleton-pulse"
-                            style={{ height: 14, borderRadius: 4, background: '#e5e7eb', maxWidth: '65%', marginTop: 6 }}
+                            style={{ height: 14, borderRadius: 4, background: 'var(--bg-200)', maxWidth: '65%', marginTop: 6 }}
                           />
                         </div>
                       ) : arAllocationsError ? (
-                        <div style={{ marginTop: 8, fontSize: '0.8125rem', color: '#b91c1c' }}>
+                        <div style={{ marginTop: 8, fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
                           {arAllocationsError}
                         </div>
                       ) : arAllocations.length > 0 ? (
@@ -1070,7 +1070,7 @@ export default function BankPaymentsModal({
                               margin: 0,
                               paddingLeft: '1.1rem',
                               fontSize: '0.8125rem',
-                              color: '#374151',
+                              color: 'var(--text-700)',
                             }}
                           >
                             {arAllocations.map((row) => {
@@ -1104,7 +1104,7 @@ export default function BankPaymentsModal({
                                         border: 'none',
                                         background: 'none',
                                         font: 'inherit',
-                                        color: '#2563eb',
+                                        color: 'var(--text-link)',
                                         cursor: 'pointer',
                                         textDecoration: 'underline',
                                         textUnderlineOffset: 2,
@@ -1119,12 +1119,12 @@ export default function BankPaymentsModal({
                                   )}
                                   {inv}
                                   {paid ? (
-                                    <span style={{ color: '#6b7280' }}>{` · ${paid}`}</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>{` · ${paid}`}</span>
                                   ) : null}
                                   {row.note?.trim() ? (
                                     <div
                                       style={{
-                                        color: '#6b7280',
+                                        color: 'var(--text-muted)',
                                         fontSize: '0.75rem',
                                         marginTop: 2,
                                       }}
@@ -1141,12 +1141,12 @@ export default function BankPaymentsModal({
                     </div>
                   ) : null}
 
-                  <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+                  <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                     <strong>Posted:</strong>{' '}
                     {paidOnYmdFromMercury ? (
                       <span>{formatWorkDateYmdFriendly(paidOnYmdFromMercury)}</span>
                     ) : (
-                      <span style={{ color: '#9ca3af' }}>—</span>
+                      <span style={{ color: 'var(--text-faint)' }}>—</span>
                     )}
                   </div>
 
@@ -1154,7 +1154,7 @@ export default function BankPaymentsModal({
                     style={{
                       marginBottom: '0.75rem',
                       fontSize: '0.875rem',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                       display: 'flex',
                       flexWrap: 'wrap',
                       alignItems: 'center',
@@ -1185,7 +1185,7 @@ export default function BankPaymentsModal({
                     <>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Allocations</div>
                       {targets.length === 0 ? (
-                        <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                           {billedTargetsLoading
                             ? 'Loading billed job lines…'
                             : 'No eligible billed lines (non-Stripe with balance).'}
@@ -1225,7 +1225,7 @@ export default function BankPaymentsModal({
                                   <div
                                     style={{
                                       fontSize: '0.75rem',
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                       marginBottom: 6,
                                       fontWeight: 500,
                                     }}
@@ -1252,10 +1252,10 @@ export default function BankPaymentsModal({
                                           style={{
                                             padding: '0.3rem 0.5rem',
                                             fontSize: '0.75rem',
-                                            border: '1px solid #d1d5db',
+                                            border: '1px solid var(--border-strong)',
                                             borderRadius: 4,
-                                            background: 'white',
-                                            color: '#374151',
+                                            background: 'var(--surface)',
+                                            color: 'var(--text-700)',
                                             cursor: !canApply ? 'not-allowed' : 'pointer',
                                             textAlign: 'left',
                                             maxWidth: '100%',
@@ -1273,19 +1273,19 @@ export default function BankPaymentsModal({
                                   style={{
                                     marginTop: 6,
                                     fontSize: '0.75rem',
-                                    color: '#4b5563',
+                                    color: 'var(--text-600)',
                                     lineHeight: 1.4,
                                   }}
                                 >
                                   <div style={{ fontWeight: 600 }}>{bankPaymentTargetPrimaryLabel(picked)}</div>
-                                  <div style={{ color: '#6b7280' }}>
+                                  <div style={{ color: 'var(--text-muted)' }}>
                                     {detailLead ? (
                                       <>
                                         {detailLead}
                                         {' · '}
                                       </>
                                     ) : null}
-                                    <strong style={{ fontWeight: 600, color: '#374151' }}>
+                                    <strong style={{ fontWeight: 600, color: 'var(--text-700)' }}>
                                       {formatBankPaymentTargetDollars(picked.remaining)}
                                     </strong>
                                   </div>
@@ -1328,7 +1328,7 @@ export default function BankPaymentsModal({
                                   padding: '0.25rem',
                                   border: 'none',
                                   background: 'none',
-                                  color: '#b91c1c',
+                                  color: 'var(--text-red-700)',
                                   cursor: !canApply ? 'not-allowed' : 'pointer',
                                   lineHeight: 0,
                                 }}
@@ -1372,9 +1372,9 @@ export default function BankPaymentsModal({
                             style={{
                               padding: '0.35rem 0.65rem',
                               fontSize: '0.8125rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: 'white',
+                              background: 'var(--surface)',
                               cursor: 'pointer',
                             }}
                           >
@@ -1386,16 +1386,16 @@ export default function BankPaymentsModal({
                       )}
                     </>
                   ) : (
-                    <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: 0 }}>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: 0 }}>
                       No remaining balance to allocate on this deposit.
                     </p>
                   )}
 
                   {validationMessage && (
-                    <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#b45309' }}>{validationMessage}</p>
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>{validationMessage}</p>
                   )}
                   {applyError && (
-                    <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: '#b91c1c' }}>{applyError}</p>
+                    <p style={{ marginTop: '0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{applyError}</p>
                   )}
                 </>
               )}
@@ -1404,7 +1404,7 @@ export default function BankPaymentsModal({
             <div
               style={{
                 padding: '0.75rem 1.25rem',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid var(--border)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 gap: '0.5rem',
@@ -1416,8 +1416,8 @@ export default function BankPaymentsModal({
                 style={{
                   padding: '0.45rem 0.9rem',
                   borderRadius: 4,
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                 }}
               >

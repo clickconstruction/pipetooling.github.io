@@ -13,11 +13,11 @@ const segmentBtnStyle = (active: boolean): CSSProperties => ({
   padding: '0.4rem 0.85rem',
   fontSize: '0.85rem',
   fontWeight: 600,
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   cursor: 'pointer',
-  background: active ? '#ea580c' : '#f9fafb',
-  color: active ? 'white' : '#374151',
+  background: active ? '#ea580c' : 'var(--bg-subtle)',
+  color: active ? 'white' : 'var(--text-700)',
 })
 
 export type ContractAcceptSignatureFormProps = {
@@ -59,7 +59,7 @@ export function ContractAcceptSignatureForm({
     canvas.width = w
     canvas.height = h
     const pad = new SignaturePad(canvas, {
-      backgroundColor: '#ffffff',
+      backgroundColor: 'var(--surface)',
       penColor: '#111827',
     })
     padRef.current = pad
@@ -116,7 +116,7 @@ export function ContractAcceptSignatureForm({
       style={{
         marginTop: '2rem',
         paddingTop: '1.5rem',
-        borderTop: '1px solid #e5e7eb',
+        borderTop: '1px solid var(--border)',
       }}
     >
       <h2
@@ -225,9 +225,9 @@ export function ContractAcceptSignatureForm({
                 maxWidth: 400,
                 height: 160,
                 touchAction: 'none',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                background: '#fff',
+                background: 'var(--surface)',
                 boxSizing: 'border-box',
               }}
             />
@@ -243,9 +243,9 @@ export function ContractAcceptSignatureForm({
               marginTop: '0.5rem',
               padding: '0.35rem 0.65rem',
               fontSize: '0.85rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
               cursor: 'pointer',
             }}
           >
@@ -258,7 +258,7 @@ export function ContractAcceptSignatureForm({
       <p
         style={{
           fontSize: '0.8rem',
-          color: '#6b7280',
+          color: 'var(--text-muted)',
           lineHeight: 1.45,
           marginTop: '1rem',
           marginBottom: '0.5rem',
@@ -293,7 +293,7 @@ export function ContractAcceptSignatureForm({
       </div>
 
       {(formError || fieldHint) ? (
-        <p style={{ color: '#b91c1c', marginTop: '0.75rem', textAlign: 'center' }}>{formError || fieldHint}</p>
+        <p style={{ color: 'var(--text-red-700)', marginTop: '0.75rem', textAlign: 'center' }}>{formError || fieldHint}</p>
       ) : null}
 
       <button

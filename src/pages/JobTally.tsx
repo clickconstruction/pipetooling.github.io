@@ -25,7 +25,9 @@ import { mercuryBankDescriptionFromRaw } from '../lib/mercuryBankDescriptionFrom
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
 import { buildTallyPayrollRuleFlagsToInsert, type TallyPayrollRuleForMatch } from '../lib/tallyPayrollRules'
+import { buildPayrollRuleSeedFromTransaction, type TallyPayrollRuleFormSeed } from '../lib/tallyPayrollRuleSeed'
 import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesModal'
+import { TallyMarkPayrollConfirmModal } from '../components/tally/TallyMarkPayrollConfirmModal'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
@@ -96,14 +98,14 @@ function TallyPostedDateOpenButton({
         font: 'inherit',
         cursor: 'pointer',
         borderRadius: 6,
-        border: focus ? '1px solid #1d4ed8' : hover ? '1px solid #93c5fd' : '1px solid #e5e7eb',
-        background: active ? '#eff6ff' : '#f8fafc',
+        border: focus ? '1px solid #1d4ed8' : hover ? '1px solid #93c5fd' : '1px solid var(--border)',
+        background: active ? 'var(--bg-blue-tint)' : 'var(--bg-slate-tint)',
         boxShadow: focus ? '0 0 0 2px rgba(29, 78, 216, 0.2)' : 'none',
       }}
     >
       <div
         style={{
-          color: '#1d4ed8',
+          color: 'var(--text-blue-700)',
           fontWeight: 600,
           textDecoration: 'underline',
           textUnderlineOffset: 3,
@@ -111,7 +113,7 @@ function TallyPostedDateOpenButton({
       >
         {posted.date}
       </div>
-      <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>{posted.weekday}</div>
+      <div style={{ color: 'var(--text-slate-500)', fontSize: '0.75rem', marginTop: 2 }}>{posted.weekday}</div>
     </button>
   )
 }
@@ -135,10 +137,10 @@ function tallyCardFilterChipButtonStyle(active: boolean): CSSProperties {
     borderRadius: 4,
     cursor: 'pointer',
     textDecoration: 'none',
-    color: '#1d4ed8',
+    color: 'var(--text-blue-700)',
     ...(active
-      ? { border: '1px solid #2563eb', background: '#eff6ff', fontWeight: 600 }
-      : { border: '1px solid #e5e7eb', background: '#fff', fontWeight: 400 }),
+      ? { border: '1px solid #2563eb', background: 'var(--bg-blue-tint)', fontWeight: 600 }
+      : { border: '1px solid var(--border)', background: 'var(--surface)', fontWeight: 400 }),
   }
 }
 
@@ -149,7 +151,7 @@ function tallyJobsSubRowBannerStyle(allocated: boolean): CSSProperties {
     padding: '0.4rem 0.65rem',
     borderRadius: 6,
     border: allocated ? '1px solid #a7f3d0' : '1px solid #fcd34d',
-    background: allocated ? '#ecfdf5' : '#fffbeb',
+    background: allocated ? 'var(--bg-emerald-tint)' : 'var(--bg-amber-tint)',
     borderLeft: allocated ? '3px solid #059669' : '3px solid #d97706',
   }
 }
@@ -202,13 +204,13 @@ function TallySortTh({
       onClick={() => onSort(column)}
       style={{
         padding: '0.5rem 0.6rem',
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: '1px solid var(--border)',
         cursor: 'pointer',
         userSelect: 'none',
         whiteSpace: 'nowrap',
         textAlign: 'left',
         fontSize: '0.75rem',
-        color: '#374151',
+        color: 'var(--text-700)',
       }}
     >
       {label}
@@ -223,7 +225,7 @@ const tabStyle = (active: boolean) => ({
   border: 'none' as const,
   background: 'none' as const,
   borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? '#3b82f6' : '#6b7280',
+  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer' as const,
   fontSize: '0.875rem',
@@ -241,6 +243,10 @@ export default function JobTally() {
   // Tx ids with any flag row (marked or tombstoned) — rules never re-touch these.
   const [payrollDecidedIds, setPayrollDecidedIds] = useState<Set<string>>(new Set())
   const [payrollRulesModalOpen, setPayrollRulesModalOpen] = useState(false)
+  // "Mark payroll" y/n confirm: the row awaiting confirmation, and the seed for "Create rule…".
+  const [pendingPayrollTx, setPendingPayrollTx] = useState<TallyLinkedMercuryRow | null>(null)
+  const [payrollMarkBusy, setPayrollMarkBusy] = useState(false)
+  const [payrollRulesSeed, setPayrollRulesSeed] = useState<TallyPayrollRuleFormSeed | null>(null)
   const [payrollAutoApply, setPayrollAutoApply] = useState(() => {
     try {
       return localStorage.getItem('jobs-tally-payroll-autoapply') === 'true'
@@ -308,12 +314,15 @@ export default function JobTally() {
       // Dev-only payroll flags: merge is_payroll onto each row + track decided ids.
       if (role === 'dev' && rows.length > 0) {
         try {
+          // Fetch the WHOLE flags table (it only holds payroll-decided txs, so it's
+          // inherently small). Filtering with .in(<thousands of row ids>) exceeded the
+          // request-URL limit, failed, and was swallowed below — marked rows then
+          // reappeared under "Show unlinked" because is_payroll never merged.
           const flags = await withSupabaseRetry(
             () =>
               supabase
                 .from('mercury_tally_payroll_flags')
-                .select('mercury_transaction_id, is_payroll')
-                .in('mercury_transaction_id', rows.map((r) => r.mercury_transaction_id)),
+                .select('mercury_transaction_id, is_payroll'),
             'load tally payroll flags',
           )
           const flagRows = (flags ?? []) as Array<{ mercury_transaction_id: string; is_payroll: boolean }>
@@ -322,8 +331,9 @@ export default function JobTally() {
           for (const r of rows) r.is_payroll = flagged.has(r.mercury_transaction_id)
           setPayrollFlaggedIds(flagged)
           setPayrollDecidedIds(decided)
-        } catch {
+        } catch (e) {
           // flags are best-effort; rows still render without the payroll chip
+          console.error('Tally payroll flags merge failed:', e)
         }
       } else {
         setPayrollFlaggedIds(new Set())
@@ -813,14 +823,14 @@ export default function JobTally() {
   return (
     <div style={{ padding: '1rem', maxWidth: 480, margin: '0 auto' }}>
       <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
-        <Link to="/dashboard" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>
+        <Link to="/dashboard" style={{ fontSize: '0.875rem', color: 'var(--text-link)', textDecoration: 'none' }}>
           ← Dashboard
         </Link>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
           <h1 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 700 }}>Job Parts Tally</h1>
           {activeTab === 'materials-estimate' &&
             (serviceTypes.length === 0 ? (
-              <span style={{ color: '#6b7280', fontSize: '0.75rem' }}>Loading…</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Loading…</span>
             ) : (
               <select
                 value={selectedServiceTypeId ?? ''}
@@ -833,9 +843,9 @@ export default function JobTally() {
                 style={{
                   padding: '0.25rem 0.5rem',
                   fontSize: '0.8125rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 6,
-                  background: '#fff',
+                  background: 'var(--surface)',
                 }}
               >
                 {serviceTypes.map((st) => (
@@ -853,7 +863,7 @@ export default function JobTally() {
           display: 'flex',
           alignItems: 'center',
           gap: 0,
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border)',
           marginBottom: '1rem',
           width: '100%',
         }}
@@ -917,12 +927,12 @@ export default function JobTally() {
                   aria-live="polite"
                   style={{
                     fontSize: '0.8125rem',
-                    color: '#64748b',
+                    color: 'var(--text-slate-500)',
                     lineHeight: 1.5,
                     fontVariantNumeric: 'tabular-nums',
                   }}
                 >
-                  <span style={{ fontWeight: 600, color: '#374151' }}>Transactions to sort:</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>Transactions to sort:</span>
                   {tallyUnlinkedCountInScope > 0 ? (
                     <span
                       style={{
@@ -945,7 +955,7 @@ export default function JobTally() {
                     <span>{` ${tallyUnlinkedCountInScope} unlinked`}</span>
                   )}
                   {tallyTxSearchQuery.trim() !== '' ? (
-                    <span style={{ color: '#64748b' }}>
+                    <span style={{ color: 'var(--text-slate-500)' }}>
                       {' '}
                       · Showing {tallyTxRowsForSearch.length} of {tallyTxRowsForTable.length}
                     </span>
@@ -991,7 +1001,10 @@ export default function JobTally() {
               {isDevTally ? (
                 <button
                   type="button"
-                  onClick={() => setPayrollRulesModalOpen(true)}
+                  onClick={() => {
+                    setPayrollRulesSeed(null)
+                    setPayrollRulesModalOpen(true)
+                  }}
                   title="Manage payroll auto-mark rules and apply them"
                   style={tallyCardFilterChipButtonStyle(false)}
                 >
@@ -1022,7 +1035,7 @@ export default function JobTally() {
               {linkedDebitCards.length === 0 ? (
                 <p
                   style={{
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     fontSize: '0.8125rem',
                     margin: 0,
                     lineHeight: 1.5,
@@ -1049,7 +1062,7 @@ export default function JobTally() {
                   >
                     <div
                       style={{
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                         fontSize: '0.8125rem',
                         lineHeight: 1.5,
                         textAlign: 'left',
@@ -1058,7 +1071,7 @@ export default function JobTally() {
                         paddingRight: '0.25rem',
                       }}
                     >
-                      <span style={{ fontWeight: 500, color: '#374151' }}>Filter by card</span>
+                      <span style={{ fontWeight: 500, color: 'var(--text-700)' }}>Filter by card</span>
                       <span>
                         {' · '}
                         {linkedDebitCards.length} card{linkedDebitCards.length === 1 ? '' : 's'} linked
@@ -1120,22 +1133,22 @@ export default function JobTally() {
             </div>
           ) : null}
           {tallyTxError ? (
-            <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>{tallyTxError}</p>
+            <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>{tallyTxError}</p>
           ) : null}
           {tallyTxLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
           ) : tallyTxRows.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
               No card transactions to show yet. Once your debit card is linked to your user, purchases will appear here.
             </p>
           ) : tallyTxRowsGlobalFiltered.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
               Every loaded transaction is before the org minimum posted date (
               <strong>{tallyGlobalMinPostedYmd ?? '—'}</strong>). A dev can change or clear this under Settings, Templates
               &amp; testing, Job Parts Tally.
             </p>
           ) : tallyDebitCardFilterId && tallyTxRowsFiltered.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
               No transactions for this card.{' '}
               <button
                 type="button"
@@ -1144,7 +1157,7 @@ export default function JobTally() {
                   padding: 0,
                   margin: 0,
                   font: 'inherit',
-                  color: '#1d4ed8',
+                  color: 'var(--text-blue-700)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
@@ -1158,7 +1171,7 @@ export default function JobTally() {
           ) : tallyTxScope === 'unlinked' &&
             tallyTxRowsFiltered.length > 0 &&
             tallyTxRowsForTable.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, lineHeight: 1.5 }}>
               {tallyDebitCardFilterId
                 ? 'No unlinked transactions for this card.'
                 : 'No unlinked transactions.'}{' '}
@@ -1169,7 +1182,7 @@ export default function JobTally() {
                   padding: 0,
                   margin: 0,
                   font: 'inherit',
-                  color: '#1d4ed8',
+                  color: 'var(--text-blue-700)',
                   background: 'none',
                   border: 'none',
                   cursor: 'pointer',
@@ -1215,9 +1228,9 @@ export default function JobTally() {
                         padding: '0.45rem 0.55rem',
                         fontSize: '0.875rem',
                         lineHeight: 1.35,
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 6,
-                        color: '#111827',
+                        color: 'var(--text-strong)',
                       }}
                     />
                     {tallyTxSearchQuery.trim() !== '' ? (
@@ -1231,9 +1244,9 @@ export default function JobTally() {
                           fontWeight: 500,
                           lineHeight: 1.25,
                           borderRadius: 6,
-                          border: '1px solid #d1d5db',
-                          background: 'white',
-                          color: '#374151',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--surface)',
+                          color: 'var(--text-700)',
                           cursor: 'pointer',
                         }}
                       >
@@ -1246,7 +1259,7 @@ export default function JobTally() {
               {tallyTxRowsForTable.length > 0 &&
               tallyTxSearchQuery.trim() !== '' &&
               tallyTxRowsForSearch.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem', lineHeight: 1.5 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', lineHeight: 1.5 }}>
                   No transactions match your search.{' '}
                   <button
                     type="button"
@@ -1255,7 +1268,7 @@ export default function JobTally() {
                       padding: 0,
                       margin: 0,
                       font: 'inherit',
-                      color: '#1d4ed8',
+                      color: 'var(--text-blue-700)',
                       background: 'none',
                       border: 'none',
                       cursor: 'pointer',
@@ -1381,7 +1394,7 @@ export default function JobTally() {
                                 <div
                                   style={{
                                     fontWeight: 500,
-                                    color: '#111827',
+                                    color: 'var(--text-strong)',
                                     wordBreak: 'break-word',
                                     marginBottom: 4,
                                   }}
@@ -1389,7 +1402,7 @@ export default function JobTally() {
                                   {row.counterparty_name?.trim() || '—'}
                                 </div>
                                 {bankDescription ? (
-                                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginBottom: 4 }}>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-slate-500)', marginBottom: 4 }}>
                                     {bankDescription}
                                   </div>
                                 ) : null}
@@ -1418,9 +1431,9 @@ export default function JobTally() {
                                       }
                                       style={{
                                         ...iconBtnBase,
-                                        border: '1px solid #e5e7eb',
-                                        background: '#f9fafb',
-                                        color: '#4b5563',
+                                        border: '1px solid var(--border)',
+                                        background: 'var(--bg-subtle)',
+                                        color: 'var(--text-600)',
                                       }}
                                     >
                                       <MercuryTransactionNoteIcon />
@@ -1447,9 +1460,9 @@ export default function JobTally() {
                                     }
                                     style={{
                                       ...iconBtnBase,
-                                      border: hasUserNote ? '1px solid #93c5fd' : '1px solid #e5e7eb',
-                                      background: hasUserNote ? '#eff6ff' : '#f9fafb',
-                                      color: '#1d4ed8',
+                                      border: hasUserNote ? '1px solid #93c5fd' : '1px solid var(--border)',
+                                      background: hasUserNote ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                                      color: 'var(--text-blue-700)',
                                       fontSize: '0.6875rem',
                                       fontWeight: 600,
                                       padding: '0.25rem 0.4rem',
@@ -1466,7 +1479,7 @@ export default function JobTally() {
                                     aria-label="Mercury memo"
                                     hidden={!noteOpen}
                                     style={{
-                                      color: '#64748b',
+                                      color: 'var(--text-slate-500)',
                                       fontSize: '0.75rem',
                                       marginTop: 6,
                                       wordBreak: 'break-word',
@@ -1485,7 +1498,7 @@ export default function JobTally() {
                             style={{
                               padding: '0.35rem 0.6rem 0.5rem',
                               verticalAlign: 'top',
-                              background: '#fafafa',
+                              background: 'var(--bg-page)',
                               borderTop: '1px solid #f3f4f6',
                             }}
                           >
@@ -1496,19 +1509,19 @@ export default function JobTally() {
                               style={{
                                 padding: '0.5rem 0.55rem',
                                 borderRadius: 6,
-                                border: '1px solid #e5e7eb',
-                                background: '#fff',
+                                border: '1px solid var(--border)',
+                                background: 'var(--surface)',
                               }}
                             >
                               <div
                                 style={{
                                   fontSize: '0.6875rem',
-                                  color: '#6b7280',
+                                  color: 'var(--text-muted)',
                                   marginBottom: 6,
                                 }}
                               >
                                 Transaction details that will help sorting:{' '}
-                                <span style={{ color: '#9ca3af' }}>· max 2000 chars</span>
+                                <span style={{ color: 'var(--text-faint)' }}>· max 2000 chars</span>
                               </div>
                               <textarea
                                 value={tallyUserNoteDraft}
@@ -1522,7 +1535,7 @@ export default function JobTally() {
                                   fontSize: '0.8125rem',
                                   padding: '0.35rem 0.45rem',
                                   borderRadius: 4,
-                                  border: '1px solid #d1d5db',
+                                  border: '1px solid var(--border-strong)',
                                   resize: 'vertical',
                                   minHeight: 64,
                                 }}
@@ -1567,9 +1580,9 @@ export default function JobTally() {
                                     fontWeight: 500,
                                     padding: '0.25rem 0.55rem',
                                     borderRadius: 4,
-                                    border: '1px solid #e5e7eb',
-                                    background: '#fff',
-                                    color: '#374151',
+                                    border: '1px solid var(--border)',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-700)',
                                     cursor: tallyUserNoteSaving ? 'wait' : 'pointer',
                                   }}
                                 >
@@ -1579,7 +1592,7 @@ export default function JobTally() {
                               {tallyUserNoteError ? (
                                 <p
                                   style={{
-                                    color: '#b91c1c',
+                                    color: 'var(--text-red-700)',
                                     fontSize: '0.75rem',
                                     margin: '6px 0 0',
                                   }}
@@ -1622,8 +1635,8 @@ export default function JobTally() {
                                   minHeight: 0,
                                   borderRadius: 4,
                                   border: '1px solid #93c5fd',
-                                  background: '#eff6ff',
-                                  color: '#1d4ed8',
+                                  background: 'var(--bg-blue-tint)',
+                                  color: 'var(--text-blue-700)',
                                   cursor: 'pointer',
                                 }}
                               >
@@ -1633,7 +1646,7 @@ export default function JobTally() {
                             const markPayrollBtn = isDevTally ? (
                               <button
                                 type="button"
-                                onClick={() => void setTallyPayrollFlag(row.mercury_transaction_id, true)}
+                                onClick={() => setPendingPayrollTx(row)}
                                 title="Mark as payroll — resolves this transaction without allocating it to any job"
                                 style={{
                                   fontSize: '0.75rem',
@@ -1642,9 +1655,9 @@ export default function JobTally() {
                                   padding: '0.15rem 0.45rem',
                                   minHeight: 0,
                                   borderRadius: 4,
-                                  border: '1px solid #d1d5db',
-                                  background: '#fff',
-                                  color: '#6b7280',
+                                  border: '1px solid var(--border-strong)',
+                                  background: 'var(--surface)',
+                                  color: 'var(--text-muted)',
                                   cursor: 'pointer',
                                 }}
                               >
@@ -1665,9 +1678,9 @@ export default function JobTally() {
                                         fontWeight: 500,
                                         padding: '0.15rem 0.45rem',
                                         borderRadius: 4,
-                                        border: '1px solid #d1d5db',
-                                        background: '#fff',
-                                        color: '#6b7280',
+                                        border: '1px solid var(--border-strong)',
+                                        background: 'var(--surface)',
+                                        color: 'var(--text-muted)',
                                         cursor: 'pointer',
                                       }}
                                     >
@@ -1695,7 +1708,7 @@ export default function JobTally() {
                                           style={{
                                             fontSize: '0.8125rem',
                                             fontWeight: 500,
-                                            color: '#1d4ed8',
+                                            color: 'var(--text-blue-700)',
                                             background: 'none',
                                             border: 'none',
                                             padding: 0,
@@ -1722,7 +1735,7 @@ export default function JobTally() {
                               return (
                                 <div style={tallyJobsSubRowBannerStyle(true)}>
                                   <div style={rowFlexEnd}>
-                                    <span style={{ color: '#111827' }}>{row.jobs_summary.trim()}</span>
+                                    <span style={{ color: 'var(--text-strong)' }}>{row.jobs_summary.trim()}</span>
                                     <span aria-hidden="true" style={{ color: '#047857' }}>
                                       {' | '}
                                     </span>
@@ -1735,7 +1748,7 @@ export default function JobTally() {
                               return (
                                 <div style={tallyJobsSubRowBannerStyle(true)}>
                                   <div style={rowFlexEnd}>
-                                    <span style={{ color: '#111827' }}>
+                                    <span style={{ color: 'var(--text-strong)' }}>
                                       Invoice: {row.invoices_summary.trim()}
                                     </span>
                                     <span aria-hidden="true" style={{ color: '#047857' }}>
@@ -1749,8 +1762,8 @@ export default function JobTally() {
                             return (
                               <div style={tallyJobsSubRowBannerStyle(false)}>
                                 <div style={{ ...rowFlexEnd, width: '100%' }}>
-                                  <span style={{ fontSize: '0.75rem', color: '#92400e' }}>No jobs assigned yet</span>
-                                  <span aria-hidden="true" style={{ color: '#92400e' }}>
+                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>No jobs assigned yet</span>
+                                  <span aria-hidden="true" style={{ color: 'var(--text-amber-800)' }}>
                                     {' | '}
                                   </span>
                                   {assignJobsCompactBtn}
@@ -1776,22 +1789,22 @@ export default function JobTally() {
       {activeTab === 'materials-estimate' && (
         <>
       {error && (
-        <p style={{ color: '#b91c1c', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>
+        <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', fontSize: '0.875rem' }}>{error}</p>
       )}
 
       {saved && (
         <div style={{ marginBottom: '1rem' }}>
-          <p style={{ color: '#059669', fontSize: '0.875rem', fontWeight: 500, margin: 0 }}>
+          <p style={{ color: 'var(--text-green-600)', fontSize: '0.875rem', fontWeight: 500, margin: 0 }}>
             Parts saved.
             {poCreateError ? (
-              <span style={{ color: '#b91c1c', display: 'block', marginTop: '0.25rem' }}>
+              <span style={{ color: 'var(--text-red-700)', display: 'block', marginTop: '0.25rem' }}>
                 Purchase order could not be created: {poCreateError}. You can create one manually in Materials.
               </span>
             ) : lastSaveHadPartEntries ? (
               ' Purchase order created.'
             ) : null}
           </p>
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.25rem', marginBottom: 0 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.25rem', marginBottom: 0 }}>
             You can tally another job or go back to Dashboard.
           </p>
         </div>
@@ -1803,9 +1816,9 @@ export default function JobTally() {
           Job / HCP
         </label>
         {jobsLoading ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading jobs…</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading jobs…</p>
         ) : jobs.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             No jobs assigned. Ask your supervisor to add you as a team member on a job.
           </p>
         ) : (
@@ -1818,9 +1831,9 @@ export default function JobTally() {
                 padding: '0.75rem 1rem',
                 fontSize: '1rem',
                 minHeight: TOUCH_MIN,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 8,
-                background: '#fff',
+                background: 'var(--surface)',
                 textAlign: 'left',
                 cursor: 'pointer',
                 display: 'flex',
@@ -1834,7 +1847,7 @@ export default function JobTally() {
                   ? `${selectedJob.hcp_number || '—'} · ${selectedJob.job_name || '—'}`
                   : 'Choose job…'}
               </span>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>▼</span>
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>▼</span>
             </button>
             {jobPickerOpen && (
               <div
@@ -1852,7 +1865,7 @@ export default function JobTally() {
               >
                 <div
                   style={{
-                    background: '#fff',
+                    background: 'var(--surface)',
                     borderTopLeftRadius: 16,
                     borderTopRightRadius: 16,
                     maxHeight: '70vh',
@@ -1863,7 +1876,7 @@ export default function JobTally() {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Choose job</h2>
-                    <button type="button" onClick={() => setJobPickerOpen(false)} style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
+                    <button type="button" onClick={() => setJobPickerOpen(false)} style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {(showMyJobsOnly && myJobIds ? jobs.filter((j) => myJobIds.has(j.id)) : jobs).map((j) => (
@@ -1880,15 +1893,15 @@ export default function JobTally() {
                           fontSize: '1rem',
                           lineHeight: 1.4,
                           textAlign: 'left',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 8,
-                          background: selectedJobId === j.id ? '#eff6ff' : '#fff',
+                          background: selectedJobId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                           cursor: 'pointer',
-                          color: '#111827',
+                          color: 'var(--text-strong)',
                         }}
                       >
                         <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
-                        {j.job_address && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{j.job_address}</div>}
+                        {j.job_address && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{j.job_address}</div>}
                       </button>
                     ))}
                   </div>
@@ -1927,11 +1940,11 @@ export default function JobTally() {
                 fontSize: '1rem',
                 minHeight: TOUCH_MIN,
                 boxSizing: 'border-box',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 8,
               }}
             />
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
               Fill in parts or{' '}
               <button
                 type="button"
@@ -1941,7 +1954,7 @@ export default function JobTally() {
                   background: 'none',
                   border: 'none',
                   padding: 0,
-                  color: '#2563eb',
+                  color: 'var(--text-link)',
                   textDecoration: 'underline',
                   cursor: fixtureName.trim() ? 'pointer' : 'not-allowed',
                   fontSize: 'inherit',
@@ -1970,13 +1983,13 @@ export default function JobTally() {
                   fontSize: '1rem',
                   minHeight: TOUCH_MIN,
                   boxSizing: 'border-box',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 8,
                 }}
               />
-              {partSearching && <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: '#6b7280' }}>Searching…</p>}
+              {partSearching && <p style={{ marginTop: '0.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Searching…</p>}
               {partResults.length > 0 && (
-                <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0', border: '1px solid #e5e7eb', borderRadius: 8, maxHeight: 200, overflow: 'auto' }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0 0', border: '1px solid var(--border)', borderRadius: 8, maxHeight: 200, overflow: 'auto' }}>
                   {partResults.map((p) => (
                     <li key={p.id}>
                       <button
@@ -1988,8 +2001,8 @@ export default function JobTally() {
                           padding: '0.75rem 1rem',
                           textAlign: 'left',
                           border: 'none',
-                          borderBottom: '1px solid #e5e7eb',
-                          background: '#fff',
+                          borderBottom: '1px solid var(--border)',
+                          background: 'var(--surface)',
                           cursor: 'pointer',
                           fontSize: '1rem',
                           minHeight: TOUCH_MIN,
@@ -1997,7 +2010,7 @@ export default function JobTally() {
                       >
                         {p.name}
                         {p.manufacturer && (
-                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
                             {' · '}{p.manufacturer}
                           </span>
                         )}
@@ -2011,11 +2024,11 @@ export default function JobTally() {
 
           {/* Step 4: Quantity + Add */}
           {selectedPart && (
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
               <p style={{ margin: '0 0 0.5rem 0', fontWeight: 500 }}>
                 {selectedPart.name}
                 {selectedPart.manufacturer && (
-                  <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>{' · '}{selectedPart.manufacturer}</span>
+                  <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{' · '}{selectedPart.manufacturer}</span>
                 )}
               </p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -2029,9 +2042,9 @@ export default function JobTally() {
                         height: TOUCH_MIN,
                         padding: 0,
                         fontSize: '1.25rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 8,
-                        background: '#fff',
+                        background: 'var(--surface)',
                         cursor: 'pointer',
                       }}
                     >
@@ -2049,7 +2062,7 @@ export default function JobTally() {
                       padding: '0.5rem',
                       fontSize: '1rem',
                       textAlign: 'center',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 8,
                     }}
                   />
@@ -2061,9 +2074,9 @@ export default function JobTally() {
                       height: TOUCH_MIN,
                       padding: 0,
                       fontSize: '1.25rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 8,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       cursor: 'pointer',
                     }}
                   >
@@ -2094,9 +2107,9 @@ export default function JobTally() {
                   style={{
                     padding: '0.75rem 1rem',
                     fontSize: '0.875rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-700)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 8,
                     cursor: 'pointer',
                   }}
@@ -2121,9 +2134,9 @@ export default function JobTally() {
                       justifyContent: 'space-between',
                       padding: '0.75rem 1rem',
                       marginBottom: '0.5rem',
-                      border: e.isFixtureSent ? '1px solid #86efac' : '1px solid #e5e7eb',
+                      border: e.isFixtureSent ? '1px solid #86efac' : '1px solid var(--border)',
                       borderRadius: 8,
-                      background: e.isFixtureSent ? '#dcfce7' : '#fff',
+                      background: e.isFixtureSent ? 'var(--bg-green-100)' : 'var(--surface)',
                     }}
                   >
                     <div>
@@ -2134,13 +2147,13 @@ export default function JobTally() {
                         </div>
                       ) : (
                         <>
-                          <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>{' · '}{e.partName}</span>
+                          <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>{' · '}{e.partName}</span>
                           {e.manufacturer && (
-                            <span style={{ color: '#9ca3af', fontSize: '0.875rem', marginLeft: '0.25rem' }}>
+                            <span style={{ color: 'var(--text-faint)', fontSize: '0.875rem', marginLeft: '0.25rem' }}>
                               ({e.manufacturer})
                             </span>
                           )}
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                             Qty: {e.quantity}
                           </div>
                         </>
@@ -2157,9 +2170,9 @@ export default function JobTally() {
                               height: TOUCH_MIN,
                               padding: 0,
                               fontSize: '1rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 8,
-                              background: '#fff',
+                              background: 'var(--surface)',
                               cursor: 'pointer',
                             }}
                             title="Decrease by 1"
@@ -2176,9 +2189,9 @@ export default function JobTally() {
                               height: TOUCH_MIN,
                               padding: 0,
                               fontSize: '1rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 8,
-                              background: '#fff',
+                              background: 'var(--surface)',
                               cursor: 'pointer',
                             }}
                             title="Increase by 1"
@@ -2194,8 +2207,8 @@ export default function JobTally() {
                             minWidth: TOUCH_MIN,
                             minHeight: TOUCH_MIN,
                             fontSize: '0.875rem',
-                            background: '#fee2e2',
-                            color: '#991b1b',
+                            background: 'var(--bg-red-100)',
+                            color: 'var(--text-red-800)',
                             border: 'none',
                             borderRadius: 8,
                             cursor: 'pointer',
@@ -2204,7 +2217,7 @@ export default function JobTally() {
                           Remove
                         </button>
                       </div>
-                      <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{e.fixtureName}</span>
+                      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{e.fixtureName}</span>
                     </div>
                   </li>
                 ))}
@@ -2280,7 +2293,10 @@ export default function JobTally() {
       {isDevTally ? (
         <TallyPayrollRulesModal
           open={payrollRulesModalOpen}
-          onClose={() => setPayrollRulesModalOpen(false)}
+          onClose={() => {
+            setPayrollRulesModalOpen(false)
+            setPayrollRulesSeed(null)
+          }}
           autoApply={payrollAutoApply}
           onToggleAutoApply={(next) => {
             setPayrollAutoApply(next)
@@ -2292,6 +2308,39 @@ export default function JobTally() {
           }}
           onApplyNow={() => applyPayrollRules()}
           sampleTransactions={tallyTxRows}
+          initialForm={payrollRulesSeed}
+          onRuleSaved={() => void applyPayrollRules()}
+        />
+      ) : null}
+      {isDevTally ? (
+        <TallyMarkPayrollConfirmModal
+          open={pendingPayrollTx !== null}
+          busy={payrollMarkBusy}
+          counterpartyName={pendingPayrollTx?.counterparty_name ?? null}
+          bankDescription={pendingPayrollTx ? mercuryBankDescriptionFromRaw(pendingPayrollTx.raw) : null}
+          amountLabel={pendingPayrollTx ? formatTallyCurrency(Number(pendingPayrollTx.amount)) : ''}
+          postedLabel={(() => {
+            const posted = pendingPayrollTx ? formatTallyPostedParts(pendingPayrollTx.posted_at) : null
+            return posted ? `${posted.date} · ${posted.weekday}` : null
+          })()}
+          onCancel={() => setPendingPayrollTx(null)}
+          onConfirm={() => {
+            const tx = pendingPayrollTx
+            if (!tx || payrollMarkBusy) return
+            setPayrollMarkBusy(true)
+            // setTallyPayrollFlag never throws — it catches and toasts internally.
+            void setTallyPayrollFlag(tx.mercury_transaction_id, true).finally(() => {
+              setPayrollMarkBusy(false)
+              setPendingPayrollTx(null)
+            })
+          }}
+          onCreateRule={() => {
+            const tx = pendingPayrollTx
+            if (!tx) return
+            setPayrollRulesSeed(buildPayrollRuleSeedFromTransaction(tx))
+            setPendingPayrollTx(null)
+            setPayrollRulesModalOpen(true)
+          }}
         />
       ) : null}
     </div>

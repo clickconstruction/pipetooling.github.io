@@ -64,7 +64,7 @@ export function BankingStripeInvoicesPanel() {
 
   return (
     <div>
-      <p style={{ margin: '0 0 0.75rem', color: '#4b5563', maxWidth: 720, fontSize: '0.9375rem', lineHeight: 1.55 }}>
+      <p style={{ margin: '0 0 0.75rem', color: 'var(--text-600)', maxWidth: 720, fontSize: '0.9375rem', lineHeight: 1.55 }}>
         Ledger invoice rows from <code>jobs_ledger_invoices</code>. <strong>App status</strong> is the PipeTooling column;{' '}
         <strong>Stripe status</strong> is synced from Stripe (webhook) when present. Rows with no <strong>Stripe invoice</strong> id are
         highlighted. Showing up to {INVOICES_PAGE_SIZE} rows, newest first.
@@ -77,8 +77,8 @@ export function BankingStripeInvoicesPanel() {
           style={{
             padding: '0.5rem 1rem',
             borderRadius: 4,
-            border: '1px solid #d1d5db',
-            background: 'white',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
             cursor: loading ? 'wait' : 'pointer',
           }}
         >
@@ -90,19 +90,19 @@ export function BankingStripeInvoicesPanel() {
           style={{
             marginBottom: '1rem',
             padding: '0.75rem 1rem',
-            background: '#fef2f2',
+            background: 'var(--bg-red-tint)',
             border: '1px solid #fecaca',
             borderRadius: 4,
-            color: '#991b1b',
+            color: 'var(--text-red-800)',
           }}
         >
           {error}
         </div>
       ) : null}
       {loading && rows.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '2rem', color: '#6b7280' }}>Loading…</div>
+        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>Loading…</div>
       ) : rows.length === 0 ? (
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9375rem' }}>No invoice rows yet.</p>
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9375rem' }}>No invoice rows yet.</p>
       ) : (
         <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           <table
@@ -113,7 +113,7 @@ export function BankingStripeInvoicesPanel() {
             }}
           >
             <thead>
-              <tr style={{ textAlign: 'left', borderBottom: '2px solid #e5e7eb' }}>
+              <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border)' }}>
                 <th style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Job</th>
                 <th style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Seq</th>
                 <th style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>Amount</th>
@@ -141,7 +141,7 @@ export function BankingStripeInvoicesPanel() {
                     <td style={{ padding: '0.5rem 0.75rem', maxWidth: 220 }}>
                       <Link
                         to={`/jobs?tab=stages&stagesInvoice=${encodeURIComponent(r.id)}`}
-                        style={{ color: '#2563eb', fontWeight: 600, wordBreak: 'break-word' }}
+                        style={{ color: 'var(--text-link)', fontWeight: 600, wordBreak: 'break-word' }}
                       >
                         {jobLabel}
                       </Link>
@@ -157,12 +157,12 @@ export function BankingStripeInvoicesPanel() {
                         padding: '0.5rem 0.75rem',
                         fontFamily: 'ui-monospace, monospace',
                         wordBreak: 'break-all',
-                        color: '#4b5563',
+                        color: 'var(--text-600)',
                       }}
                     >
                       {r.stripe_invoice_id ?? '—'}
                     </td>
-                    <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: '#374151' }}>
+                    <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', color: 'var(--text-700)' }}>
                       {r.created_at ? formatCompactNoteDateTime(r.created_at) : '—'}
                     </td>
                     <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -171,7 +171,7 @@ export function BankingStripeInvoicesPanel() {
                           href={r.hosted_invoice_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          style={{ color: '#2563eb', whiteSpace: 'nowrap' }}
+                          style={{ color: 'var(--text-link)', whiteSpace: 'nowrap' }}
                         >
                           Hosted link
                         </a>

@@ -30,9 +30,9 @@ export default function DashboardTallyStaleBanner({
         gap: '1rem',
         width: '100%',
         padding: '1rem 1.25rem',
-        border: '1px solid #fdba74',
+        border: '1px solid var(--border-orange)',
         borderRadius: 8,
-        background: '#fff7ed',
+        background: 'var(--bg-orange-tint)',
         marginBottom: '1rem',
         cursor: 'pointer',
         textAlign: 'left',
@@ -59,8 +59,8 @@ export default function DashboardTallyStaleBanner({
         {staleCount}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: '#c2410c' }}>Stale tally transactions</div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-orange-700)' }}>Stale tally transactions</div>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
           {staleCount === 1 ? 'One unlinked transaction — ' : `${staleCount} unlinked transactions — `}
           {agePhrase}. Sort to jobs in Job Parts Tally (Transactions).
         </div>
