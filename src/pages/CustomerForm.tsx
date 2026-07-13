@@ -222,9 +222,9 @@ export default function CustomerForm() {
           <div style={{ marginBottom: '1rem' }}>
             <label htmlFor="master" style={{ display: 'block', marginBottom: 4 }}>Customer Master</label>
             {mastersLoading ? (
-              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
             ) : (myRole === 'assistant' || myRole === 'dev') && availableMasters.length === 0 ? (
-              <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+              <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
                 {myRole === 'assistant'
                   ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
                   : 'No masters found.'}
@@ -245,7 +245,7 @@ export default function CustomerForm() {
                     </option>
                   ))}
                 </select>
-                <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
                   {myRole === 'master_technician'
                     ? 'You are automatically assigned as the customer owner.'
                     : 'Select which master this customer belongs to.'}
@@ -254,7 +254,7 @@ export default function CustomerForm() {
             )}
           </div>
         )}
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button type="submit" disabled={loading} style={{ padding: '0.5rem 1rem' }}>
             {loading ? 'Saving…' : 'Save'}
@@ -264,8 +264,8 @@ export default function CustomerForm() {
       </form>
 
       {(myRole === 'dev' || myRole === 'master_technician') && (
-        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid #e5e7eb', maxWidth: 400 }}>
-          <button type="button" onClick={() => { setDeleteOpen(true); setDeleteConfirm(''); setError(null) }} style={{ padding: '0.5rem 1rem', color: '#b91c1c' }}>
+        <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)', maxWidth: 400 }}>
+          <button type="button" onClick={() => { setDeleteOpen(true); setDeleteConfirm(''); setError(null) }} style={{ padding: '0.5rem 1rem', color: 'var(--text-red-700)' }}>
             Delete customer
           </button>
         </div>
@@ -273,7 +273,7 @@ export default function CustomerForm() {
 
       {deleteOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h2 style={{ marginTop: 0 }}>Delete customer</h2>
             <p style={{ marginBottom: '1rem' }}>Type the customer name <strong>{name}</strong> to confirm.</p>
             <input
@@ -285,7 +285,7 @@ export default function CustomerForm() {
               style={{ width: '100%', padding: '0.5rem', marginBottom: '1rem' }}
               autoComplete="off"
             />
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: 8 }}>
               <button
                 type="button"
@@ -306,7 +306,7 @@ export default function CustomerForm() {
                   navigate('/customers', { replace: true })
                 }}
                 disabled={deleting || deleteConfirm.trim() !== name.trim()}
-                style={{ padding: '0.5rem 1rem', color: '#b91c1c', background: 'white', border: '1px solid #b91c1c', borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', color: 'var(--text-red-700)', background: 'var(--surface)', border: '1px solid #b91c1c', borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer' }}
               >
                 {deleting ? 'Deleting…' : 'Delete customer'}
               </button>
@@ -318,7 +318,7 @@ export default function CustomerForm() {
                   setError(null)
                 }}
                 disabled={deleting}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: deleting ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>

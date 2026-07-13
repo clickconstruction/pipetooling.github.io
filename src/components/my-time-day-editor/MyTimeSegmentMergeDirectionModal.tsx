@@ -27,10 +27,10 @@ const actionBtn: CSSProperties = {
   boxSizing: 'border-box',
   padding: '0.55rem 0.85rem',
   fontSize: '0.8125rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 8,
-  background: 'white',
-  color: '#374151',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
   cursor: 'pointer',
   textAlign: 'center',
   font: 'inherit',
@@ -75,7 +75,7 @@ export function MyTimeSegmentMergeDirectionModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 12,
           maxWidth: 360,
           width: '100%',
@@ -89,7 +89,7 @@ export function MyTimeSegmentMergeDirectionModal({
       >
         <h3
           id="my-time-merge-direction-title"
-          style={{ margin: '0 0 0.85rem', fontSize: '1rem', fontWeight: 700, color: '#111827' }}
+          style={{ margin: '0 0 0.85rem', fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)' }}
         >
           {titleText}
         </h3>
@@ -141,8 +141,8 @@ export function MyTimeSegmentMergeDirectionModal({
               style={{
                 ...actionBtn,
                 border: '1px solid #fecaca',
-                background: '#fef2f2',
-                color: '#b91c1c',
+                background: 'var(--bg-red-tint)',
+                color: 'var(--text-red-700)',
                 fontWeight: 600,
                 cursor: disabled || rejectBusy ? 'not-allowed' : 'pointer',
                 opacity: disabled || rejectBusy ? 0.6 : 1,
@@ -165,10 +165,10 @@ export function MyTimeSegmentMergeDirectionModal({
             width: '100%',
             padding: '0.5rem 0.85rem',
             fontSize: '0.8125rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#f9fafb',
-            color: '#4b5563',
+            background: 'var(--bg-subtle)',
+            color: 'var(--text-600)',
             cursor: 'pointer',
             font: 'inherit',
           }}

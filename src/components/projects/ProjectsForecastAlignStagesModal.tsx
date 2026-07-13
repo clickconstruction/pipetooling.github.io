@@ -83,23 +83,23 @@ function describeNewDates(row: AlignmentRow): string {
 
 const CHANGE_PILL_STYLES: Record<AlignmentRow['change'], CSSProperties> = {
   unchanged: {
-    background: '#f3f4f6',
-    color: '#6b7280',
-    border: '1px solid #e5e7eb',
+    background: 'var(--bg-muted)',
+    color: 'var(--text-muted)',
+    border: '1px solid var(--border)',
   },
   shifted: {
     background: '#dbeafe',
-    color: '#1d4ed8',
+    color: 'var(--text-blue-700)',
     border: '1px solid #93c5fd',
   },
   filled: {
-    background: '#fef3c7',
-    color: '#92400e',
+    background: 'var(--bg-amber-100)',
+    color: 'var(--text-amber-800)',
     border: '1px solid #fcd34d',
   },
   repaired: {
-    background: '#fee2e2',
-    color: '#991b1b',
+    background: 'var(--bg-red-100)',
+    color: 'var(--text-red-800)',
     border: '1px solid #fca5a5',
   },
 }
@@ -291,7 +291,7 @@ export function ProjectsForecastAlignStagesModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
           borderRadius: 10,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           width: '100%',
@@ -309,15 +309,15 @@ export function ProjectsForecastAlignStagesModal({
             alignItems: 'flex-start',
             gap: 10,
             padding: '1rem 1.25rem 0.75rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: '1.125rem', color: '#0f172a', lineHeight: 1.3 }}>
+            <h2 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-slate-900)', lineHeight: 1.3 }}>
               Align stages
             </h2>
-            <div style={{ fontSize: '0.8125rem', color: '#475569' }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-slate-600)' }}>
               {plan.changedRows.length === 0
                 ? `${plan.rows.length} ${plan.rows.length === 1 ? 'stage' : 'stages'} \u00b7 already aligned`
                 : `${plan.changedRows.length} of ${plan.rows.length} ${plan.rows.length === 1 ? 'stage' : 'stages'} will change`}
@@ -333,7 +333,7 @@ export function ProjectsForecastAlignStagesModal({
               all: 'unset',
               cursor: applying ? 'not-allowed' : 'pointer',
               fontSize: '1.25rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               padding: '0.25rem 0.5rem',
               borderRadius: 4,
               flexShrink: 0,
@@ -362,20 +362,20 @@ export function ProjectsForecastAlignStagesModal({
               fontSize: '0.8125rem',
               ...(anchorBanner.tone === 'error'
                 ? {
-                    background: '#fef2f2',
+                    background: 'var(--bg-red-tint)',
                     border: '1px solid #fecaca',
-                    color: '#991b1b',
+                    color: 'var(--text-red-800)',
                   }
                 : anchorBanner.tone === 'warn'
                   ? {
-                      background: '#fffbeb',
+                      background: 'var(--bg-amber-tint)',
                       border: '1px solid #fcd34d',
-                      color: '#92400e',
+                      color: 'var(--text-amber-800)',
                     }
                   : {
-                      background: '#eff6ff',
+                      background: 'var(--bg-blue-tint)',
                       border: '1px solid #bfdbfe',
-                      color: '#1d4ed8',
+                      color: 'var(--text-blue-700)',
                     }),
             }}
           >
@@ -387,10 +387,10 @@ export function ProjectsForecastAlignStagesModal({
               role="alert"
               style={{
                 padding: '0.5rem 0.75rem',
-                background: '#fef2f2',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 6,
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
                 fontSize: '0.8125rem',
               }}
             >
@@ -401,7 +401,7 @@ export function ProjectsForecastAlignStagesModal({
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', color: '#475569' }}>
+                <tr style={{ background: 'var(--bg-slate-tint)', color: 'var(--text-slate-600)' }}>
                   <th style={thStyleNum}>#</th>
                   <th style={thStyle}>Stage</th>
                   <th style={thStyle}>Current</th>
@@ -423,7 +423,7 @@ export function ProjectsForecastAlignStagesModal({
           </div>
 
           {plan.rows.length > 0 && (
-            <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               Each subsequent stage starts where the previous one ends, preserving each
               stage's existing length. Stages with missing scheduled dates default to a
               1-day length. Recorded actual start/end timestamps are not changed.
@@ -439,8 +439,8 @@ export function ProjectsForecastAlignStagesModal({
             justifyContent: 'flex-end',
             gap: 8,
             padding: '0.75rem 1.25rem',
-            borderTop: '1px solid #e5e7eb',
-            background: '#f9fafb',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-subtle)',
             flexWrap: 'wrap',
             flexShrink: 0,
           }}
@@ -508,7 +508,7 @@ function PlanRow({
         </td>
         <td style={tdStyle}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-            <span style={{ color: '#0f172a', fontWeight: 500, overflowWrap: 'break-word' }}>
+            <span style={{ color: 'var(--text-slate-900)', fontWeight: 500, overflowWrap: 'break-word' }}>
               {row.name || '(unnamed)'}
             </span>
             <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -520,9 +520,9 @@ function PlanRow({
                     fontWeight: 600,
                     padding: '0.05rem 0.4rem',
                     borderRadius: 3,
-                    background: '#f3f4f6',
-                    color: '#4b5563',
-                    border: '1px solid #e5e7eb',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-600)',
+                    border: '1px solid var(--border)',
                   }}
                 >
                   historical
@@ -535,7 +535,7 @@ function PlanRow({
                     fontWeight: 600,
                     padding: '0.05rem 0.4rem',
                     borderRadius: 3,
-                    background: '#dcfce7',
+                    background: 'var(--bg-green-100)',
                     color: '#166534',
                     border: '1px solid #86efac',
                   }}
@@ -547,12 +547,12 @@ function PlanRow({
           </div>
         </td>
         <td style={tdStyle}>
-          <span style={{ color: row.oldStartYmd && row.oldEndYmd ? '#0f172a' : '#9ca3af' }}>
+          <span style={{ color: row.oldStartYmd && row.oldEndYmd ? 'var(--text-slate-900)' : 'var(--text-faint)' }}>
             {describeOldDates(row)}
           </span>
         </td>
         <td style={tdStyle}>
-          <span style={{ color: '#0f172a' }}>{describeNewDates(row)}</span>
+          <span style={{ color: 'var(--text-slate-900)' }}>{describeNewDates(row)}</span>
         </td>
         <td style={tdStyleCenter}>
           <span
@@ -578,8 +578,8 @@ function PlanRow({
               role="alert"
               style={{
                 fontSize: '0.75rem',
-                color: '#991b1b',
-                background: '#fef2f2',
+                color: 'var(--text-red-800)',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 4,
                 padding: '0.35rem 0.5rem',
@@ -601,7 +601,7 @@ const thStyle: CSSProperties = {
   fontWeight: 600,
   textTransform: 'uppercase',
   letterSpacing: '0.025em',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
 const thStyleNum: CSSProperties = { ...thStyle, width: 38 }
 const thStyleCenter: CSSProperties = { ...thStyle, textAlign: 'center', width: 88 }
@@ -617,7 +617,7 @@ const footerSecondaryStyle: CSSProperties = {
   padding: '0.5rem 0.85rem',
   borderRadius: 6,
   border: '1px solid #cbd5e1',
-  background: '#ffffff',
+  background: 'var(--surface)',
   color: '#1f2937',
   fontSize: '0.8125rem',
   fontWeight: 600,

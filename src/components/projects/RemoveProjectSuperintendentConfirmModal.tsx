@@ -51,7 +51,7 @@ export function RemoveProjectSuperintendentConfirmModal({
         aria-modal="true"
         aria-labelledby="remove-project-superintendent-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 440,
@@ -66,7 +66,7 @@ export function RemoveProjectSuperintendentConfirmModal({
         >
           Remove this superintendent?
         </h2>
-        <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.875rem', lineHeight: 1.4 }}>
+        <p style={{ margin: '0 0 1rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
           {personLabel} will no longer have access to {projectName}.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -77,8 +77,8 @@ export function RemoveProjectSuperintendentConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
@@ -92,8 +92,8 @@ export function RemoveProjectSuperintendentConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: busy ? '#e5e7eb' : '#b91c1c',
-              color: busy ? '#6b7280' : '#fff',
+              background: busy ? 'var(--bg-200)' : '#b91c1c',
+              color: busy ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',

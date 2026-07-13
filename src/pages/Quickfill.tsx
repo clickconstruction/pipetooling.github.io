@@ -310,10 +310,10 @@ function QuickfillDevSectionSortableRow({
             cursor: 'grab',
             touchAction: 'none',
             padding: '0.25rem 0.45rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: '#fff',
-            color: '#64748b',
+            background: 'var(--surface)',
+            color: 'var(--text-slate-500)',
             fontSize: '0.75rem',
             lineHeight: 1,
             letterSpacing: '-0.05em',
@@ -329,7 +329,7 @@ function QuickfillDevSectionSortableRow({
           />
           <span>{meta.label}</span>
         </label>
-        <span style={{ color: '#94a3b8', userSelect: 'none', fontSize: '0.875rem' }} aria-hidden>
+        <span style={{ color: 'var(--text-slate-400)', userSelect: 'none', fontSize: '0.875rem' }} aria-hidden>
           –
         </span>
         <input
@@ -352,7 +352,7 @@ function QuickfillDevSectionSortableRow({
             maxWidth: '28rem',
             boxSizing: 'border-box',
             padding: '0.35rem 0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             fontSize: '0.8125rem',
           }}
@@ -364,7 +364,7 @@ function QuickfillDevSectionSortableRow({
               alignItems: 'center',
               gap: '0.35rem',
               fontSize: '0.8125rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
             }}
           >
             <span>Min HCP (inclusive)</span>
@@ -381,7 +381,7 @@ function QuickfillDevSectionSortableRow({
               style={{
                 width: '4.5rem',
                 padding: '0.2rem 0.35rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 fontSize: '0.8125rem',
               }}
@@ -1420,7 +1420,7 @@ function QuickfillPage() {
               >
                 {label}
               </button>
-              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{subline}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{subline}</span>
             </div>
           )
         })}
@@ -1429,13 +1429,13 @@ function QuickfillPage() {
         <p
           style={{
             textAlign: 'center',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             fontSize: '0.9375rem',
             marginBottom: '1.5rem',
             padding: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
           {role === 'dev' ? (
@@ -1481,7 +1481,7 @@ function QuickfillPage() {
         </button>
         {activeSectionsPanelOpen && (
           <div style={{ padding: '0 1rem 1rem 1rem' }}>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Uncheck a section to hide it from this page and from the jump buttons above for everyone. Drag the handle to
               reorder sections for everyone. Optional per-section banners (amber callout) appear when a section is expanded.
               Settings are stored in the database.
@@ -1610,7 +1610,7 @@ function QuickfillSectionWrapper({
               aria-label={`Show pending approvals by day, ${metric.count} open`}
               style={{
                 fontSize: '0.875rem',
-                color: '#1d4ed8',
+                color: 'var(--text-blue-700)',
                 fontWeight: 500,
                 background: 'none',
                 border: 'none',
@@ -1623,12 +1623,12 @@ function QuickfillSectionWrapper({
               {outstandingLabel}
             </button>
           ) : (
-            <span style={{ fontSize: '0.875rem', color: '#475569', fontWeight: 500 }} title="Outstanding items (when tracked)">
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-slate-600)', fontWeight: 500 }} title="Outstanding items (when tracked)">
               {outstandingLabel}
             </span>
           )
         ) : null}
-        <span style={{ fontSize: '0.8125rem', color: '#64748b' }} title="Last time this section was marked up to date">
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-slate-500)' }} title="Last time this section was marked up to date">
           Last marked: {formatHeaderLastMarked(mark?.marked_at ?? null)}
         </span>
         {showMarkHistoryButton ? (
@@ -1644,7 +1644,7 @@ function QuickfillSectionWrapper({
               padding: '0.35rem',
               borderRadius: 6,
               border: '1px solid #cbd5e1',
-              background: '#f8fafc',
+              background: 'var(--bg-slate-tint)',
               color: '#334155',
               cursor: 'pointer',
               lineHeight: 0,
@@ -1658,7 +1658,7 @@ function QuickfillSectionWrapper({
         <div
           style={{
             padding: '0.75rem 1rem',
-            background: '#f0fdf4',
+            background: 'var(--bg-green-tint)',
             border: '1px solid #bbf7d0',
             borderRadius: 6,
             fontSize: '0.875rem',
@@ -1678,7 +1678,7 @@ function QuickfillSectionWrapper({
             style={{
               padding: '0.35rem 0.75rem',
               borderRadius: 6,
-              background: 'white',
+              background: 'var(--surface)',
               border: '1px solid #22c55e',
               color: '#166534',
               cursor: 'pointer',

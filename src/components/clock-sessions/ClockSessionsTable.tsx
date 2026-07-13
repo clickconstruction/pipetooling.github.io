@@ -6,7 +6,7 @@ import { formatClockSessionJobOrBidLabel, type ClockSessionRow } from '../../typ
 import type { LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
 import { ClockSessionLocationCell } from './ClockSessionLocationCell'
 
-const thStyle = { padding: '0.35rem 0.5rem', textAlign: 'left' as const, borderBottom: '1px solid #e5e7eb' }
+const thStyle = { padding: '0.35rem 0.5rem', textAlign: 'left' as const, borderBottom: '1px solid var(--border)' }
 const tdStyle = { padding: '0.35rem 0.5rem' }
 
 type ClockSessionsTableProps = {
@@ -31,7 +31,7 @@ const durationLinkButtonStyle: CSSProperties = {
   background: 'none',
   font: 'inherit',
   fontWeight: 600,
-  color: '#2563eb',
+  color: 'var(--text-link)',
   cursor: 'pointer',
   textDecoration: 'underline',
 }
@@ -212,7 +212,7 @@ function ClockSessionNotesJobContent({
             marginTop: '0.25rem',
             width: '100%',
             fontSize: '0.8125rem',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             overflowWrap: 'break-word',
             wordBreak: 'break-word',
           }}
@@ -293,10 +293,10 @@ function ClockSessionCard({
     <div
       style={{
         marginBottom: '0.5rem',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 6,
         overflow: 'hidden',
-        background: '#fff',
+        background: 'var(--surface)',
       }}
     >
       <div style={{ padding: '0.4rem 0.5rem' }}>
@@ -310,7 +310,7 @@ function ClockSessionCard({
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>{personName}</div>
-            <div style={{ fontSize: '0.8125rem', color: '#374151', marginTop: '0.25rem' }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)', marginTop: '0.25rem' }}>
               {formatClockActivityWorkDayLabel(s.work_date)}
             </div>
           </div>
@@ -339,8 +339,8 @@ function ClockSessionCard({
       <div
         style={{
           padding: '0.5rem',
-          borderTop: '1px solid #e5e7eb',
-          background: '#f9fafb',
+          borderTop: '1px solid var(--border)',
+          background: 'var(--bg-subtle)',
           maxWidth: '100%',
           overflowWrap: 'break-word',
           wordBreak: 'break-word',
@@ -357,10 +357,10 @@ function ClockSessionCard({
             style={{
               marginTop: '0.5rem',
               paddingTop: '0.5rem',
-              borderTop: '1px solid #e5e7eb',
+              borderTop: '1px solid var(--border)',
               fontSize: '0.8125rem',
               whiteSpace: 'pre-line',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
             }}
           >
             {formatAccountability(s)}
@@ -379,7 +379,7 @@ function ClockSessionCard({
                 ? {}
                 : {
                     paddingTop: '0.5rem',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                   }),
             }}
           >
@@ -434,11 +434,11 @@ export function ClockSessionsTable({
               style={{
                 padding: '0.25rem 0.5rem',
                 fontSize: '0.8125rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: durationSortActive ? '#eff6ff' : 'white',
+                background: durationSortActive ? 'var(--bg-blue-tint)' : 'var(--surface)',
                 cursor: 'pointer',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               {durationSortActive ? 'Default order' : 'Sort by duration (longest first)'}
@@ -449,9 +449,9 @@ export function ClockSessionsTable({
           <div
             style={{
               padding: '0.5rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               textAlign: 'center',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 4,
             }}
           >
@@ -479,7 +479,7 @@ export function ClockSessionsTable({
   return (
     <div style={{ overflowX: 'auto' }}>
       <table style={{ width: 'max-content', maxWidth: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-        <thead style={{ background: '#f3f4f6' }}>
+        <thead style={{ background: 'var(--bg-muted)' }}>
           <tr>
             <th style={thStyle}>Person</th>
             <th style={thStyle}>Work day</th>
@@ -523,7 +523,7 @@ export function ClockSessionsTable({
         <tbody>
           {sessions.length === 0 ? (
             <tr>
-              <td colSpan={showActionsColumn ? 7 : 6} style={{ ...tdStyle, color: '#6b7280', textAlign: 'center' }}>
+              <td colSpan={showActionsColumn ? 7 : 6} style={{ ...tdStyle, color: 'var(--text-muted)', textAlign: 'center' }}>
                 {emptyMessage}
               </td>
             </tr>
@@ -531,7 +531,7 @@ export function ClockSessionsTable({
             displaySessions.map((s) => {
               const personName = s.users?.name?.trim() ?? 'Unknown'
               return (
-                <tr key={s.id} style={{ borderBottom: '1px solid #e5e7eb', verticalAlign: 'top' }}>
+                <tr key={s.id} style={{ borderBottom: '1px solid var(--border)', verticalAlign: 'top' }}>
                   <td style={tdStyle}>{personName}</td>
                   <td style={tdStyle}>{formatClockActivityWorkDayLabel(s.work_date)}</td>
                   <td style={tdStyle}>
@@ -558,7 +558,7 @@ export function ClockSessionsTable({
                       renderNotesSecondary={renderNotesSecondary}
                     />
                   </td>
-                  <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'pre-line', color: '#6b7280' }}>
+                  <td style={{ ...tdStyle, fontSize: '0.8125rem', whiteSpace: 'pre-line', color: 'var(--text-muted)' }}>
                     {formatAccountability(s)}
                   </td>
                   {showActionsColumn && (

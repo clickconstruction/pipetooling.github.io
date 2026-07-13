@@ -23,7 +23,7 @@ const introRowStyle: CSSProperties = {
   margin: '0 0 0.75rem',
   fontSize: '0.875rem',
   lineHeight: 1.45,
-  color: '#475569',
+  color: 'var(--text-slate-600)',
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'baseline',
@@ -31,7 +31,7 @@ const introRowStyle: CSSProperties = {
 }
 
 const linkStyle: CSSProperties = {
-  color: '#2563eb',
+  color: 'var(--text-link)',
   fontWeight: 600,
 }
 
@@ -73,17 +73,17 @@ export function QuickfillEmailInboxSection({
       style={{
         borderRadius: 8,
         padding: '1rem 1.25rem',
-        background: '#fafafa',
+        background: 'var(--bg-page)',
       }}
     >
       <div id={promptId} style={introRowStyle}>
         <a href={gmailHref} target="_blank" rel="noopener noreferrer" style={linkStyle}>
           Open Gmail
         </a>
-        <span style={{ color: '#94a3b8', userSelect: 'none' }} aria-hidden>
+        <span style={{ color: 'var(--text-slate-400)', userSelect: 'none' }} aria-hidden>
           |
         </span>
-        <label htmlFor={textareaId} style={{ fontWeight: 600, color: '#374151', cursor: 'pointer', margin: 0 }}>
+        <label htmlFor={textareaId} style={{ fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer', margin: 0 }}>
           {fieldLabel}
         </label>
         <span>{description}</span>
@@ -100,7 +100,7 @@ export function QuickfillEmailInboxSection({
           boxSizing: 'border-box',
           padding: '0.65rem',
           borderRadius: 6,
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           fontSize: '0.875rem',
           fontFamily: 'inherit',
           resize: 'vertical',

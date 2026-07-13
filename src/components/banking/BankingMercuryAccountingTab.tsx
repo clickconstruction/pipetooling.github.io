@@ -1636,10 +1636,10 @@ export function BankingMercuryAccountingTab({
           style={{
             marginBottom: '1rem',
             padding: '0.75rem 1rem',
-            background: '#fef2f2',
+            background: 'var(--bg-red-tint)',
             border: '1px solid #fecaca',
             borderRadius: 4,
-            color: '#991b1b',
+            color: 'var(--text-red-800)',
           }}
         >
           {loadError}
@@ -1662,7 +1662,7 @@ export function BankingMercuryAccountingTab({
           <h2 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>Approvals</h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
             {conflictFilteredCount > 0 ? (
-              <span style={{ fontSize: '0.8rem', color: '#b45309' }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-amber-700)' }}>
                 {conflictFilteredCount.toLocaleString()} need splits cleared
               </span>
             ) : null}
@@ -1709,7 +1709,7 @@ export function BankingMercuryAccountingTab({
               flex: '1 1 16rem',
               minWidth: 0,
               padding: '0.4rem 0.6rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
               fontSize: '0.875rem',
             }}
@@ -1737,15 +1737,15 @@ export function BankingMercuryAccountingTab({
             Approve by default
           </label>
         </div>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#64748b' }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
           Transactions matched by rules await confirmation. Choose a label if different from the suggestion, then Approve.
         </p>
         {pendingLoading ? (
-          <div style={{ color: '#64748b' }}>Loading…</div>
+          <div style={{ color: 'var(--text-slate-500)' }}>Loading…</div>
         ) : pendingApprovals.length === 0 ? (
-          <div style={{ color: '#64748b' }}>No pending suggestions.</div>
+          <div style={{ color: 'var(--text-slate-500)' }}>No pending suggestions.</div>
         ) : pendingFilteredApprovals.length === 0 ? (
-          <div style={{ color: '#64748b' }}>No suggestions match your search.</div>
+          <div style={{ color: 'var(--text-slate-500)' }}>No suggestions match your search.</div>
         ) : groupByLabel ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {approvalGroups.map((g) => {
@@ -1790,9 +1790,9 @@ export function BankingMercuryAccountingTab({
                           style={{
                             alignSelf: 'flex-start',
                             padding: '0.35rem 0.75rem',
-                            background: '#fff',
+                            background: 'var(--surface)',
                             color: '#1f2937',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 6,
                             cursor: 'pointer',
                             fontWeight: 500,
@@ -1837,7 +1837,7 @@ export function BankingMercuryAccountingTab({
                   marginTop: '0.75rem',
                   padding: '0.5rem 0.25rem',
                   fontSize: '0.875rem',
-                  color: '#475569',
+                  color: 'var(--text-slate-600)',
                 }}
               >
                 <span>
@@ -1854,9 +1854,9 @@ export function BankingMercuryAccountingTab({
                     }
                     style={{
                       padding: '0.4rem 0.85rem',
-                      background: '#fff',
+                      background: 'var(--surface)',
                       color: '#1f2937',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       cursor: 'pointer',
                       fontWeight: 500,
@@ -1869,9 +1869,9 @@ export function BankingMercuryAccountingTab({
                     onClick={() => setApprovalsVisibleCount(pendingFilteredApprovals.length)}
                     style={{
                       padding: '0.4rem 0.85rem',
-                      background: '#fff',
+                      background: 'var(--surface)',
                       color: '#1f2937',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       cursor: 'pointer',
                       fontWeight: 500,
@@ -1895,8 +1895,8 @@ export function BankingMercuryAccountingTab({
           style={{
             padding: '0.5rem 1rem',
             fontWeight: 600,
-            background: rulesLoading ? '#e5e7eb' : '#2563eb',
-            color: rulesLoading ? '#64748b' : '#fff',
+            background: rulesLoading ? 'var(--bg-200)' : '#2563eb',
+            color: rulesLoading ? 'var(--text-slate-500)' : '#fff',
             border: 'none',
             borderRadius: 6,
             cursor: rulesLoading ? 'not-allowed' : 'pointer',
@@ -1921,7 +1921,7 @@ export function BankingMercuryAccountingTab({
               placeholder="Search transactions…"
               value={accountingSearchText}
               onChange={(e) => setAccountingSearchText(e.target.value)}
-              style={{ padding: '0.45rem 0.65rem', borderRadius: 6, border: '1px solid #e5e7eb' }}
+              style={{ padding: '0.45rem 0.65rem', borderRadius: 6, border: '1px solid var(--border)' }}
             />
           </label>
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', cursor: 'pointer' }}>
@@ -1949,9 +1949,9 @@ export function BankingMercuryAccountingTab({
             style={{
               padding: '0.45rem 0.75rem',
               fontSize: '0.875rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
@@ -1980,7 +1980,7 @@ export function BankingMercuryAccountingTab({
         {loading || assignmentsLoading ? (
           <div style={{ textAlign: 'center', padding: '2rem' }}>Loading…</div>
         ) : (
-          <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <BankingMercuryDragSortLedgerThead
                 showDragHandle={ledgerShowDrag}
@@ -2084,11 +2084,11 @@ export function BankingMercuryAccountingTab({
               </tbody>
             </table>
             {filteredTransactions.length === 0 ? (
-              <div style={{ padding: '1.5rem', color: '#6b7280' }}>No transactions match the current Banking filters.</div>
+              <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>No transactions match the current Banking filters.</div>
             ) : afterAccountingSearch.length === 0 ? (
-              <div style={{ padding: '1.5rem', color: '#6b7280' }}>No transactions match this search.</div>
+              <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>No transactions match this search.</div>
             ) : afterLedgerFilters.length === 0 ? (
-              <div style={{ padding: '1.5rem', color: '#6b7280' }}>
+              <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>
                 No transactions match <strong>More filters</strong>. Open <strong>More filters</strong> to adjust or{' '}
                 <button
                   type="button"
@@ -2097,7 +2097,7 @@ export function BankingMercuryAccountingTab({
                     padding: 0,
                     border: 'none',
                     background: 'none',
-                    color: '#2563eb',
+                    color: 'var(--text-link)',
                     cursor: 'pointer',
                     textDecoration: 'underline',
                     font: 'inherit',
@@ -2108,12 +2108,12 @@ export function BankingMercuryAccountingTab({
                 .
               </div>
             ) : hideLabeledTransactions && displayTransactions.length === 0 ? (
-              <div style={{ padding: '1.5rem', color: '#6b7280' }}>
+              <div style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>
                 All matching transactions have an Accounting Label. Turn off <strong>Hide labeled transactions</strong> to see them.
               </div>
             ) : null}
             {labeledHasMore ? (
-              <div style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 {labeledLoadingMore ? 'Loading more transactions…' : 'Scroll down to load more'}
               </div>
             ) : null}
@@ -2213,18 +2213,18 @@ export function BankingMercuryAccountingTab({
             aria-modal="true"
             onMouseDown={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               maxWidth: 640,
               width: '100%',
               padding: '1.25rem',
               maxHeight: '85vh',
               overflowY: 'auto',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
             }}
           >
             <h3 style={{ margin: '0 0 0.75rem' }}>Test results</h3>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#64748b' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
               {testTotal} transaction(s) match on the current Banking-loaded list (showing first {testRows.length}).
             </p>
             <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
@@ -2234,7 +2234,7 @@ export function BankingMercuryAccountingTab({
                   <li key={tx.id} style={{ marginBottom: 6 }}>
                     {formatUsd(Number(tx.amount))} · {tx.counterparty_name ?? '—'} · {formatBankingDate(tx.posted_at)}
                     {otherIds.length > 0 ? (
-                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: 2 }}>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-slate-500)', marginTop: 2 }}>
                         Also matched by:{' '}
                         {otherIds.map((id) => ruleById.get(id)?.name ?? id.slice(0, 8)).join(', ')}
                       </div>

@@ -31,7 +31,7 @@ const dayLinkButtonStyle: CSSProperties = {
   padding: 0,
   margin: 0,
   font: 'inherit',
-  color: '#2563eb',
+  color: 'var(--text-link)',
   textDecoration: 'underline dotted',
   textUnderlineOffset: '2px',
   cursor: 'pointer',
@@ -116,7 +116,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
         aria-labelledby="draft-payroll-hours-breakdown-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 720,
           width: '100%',
@@ -125,11 +125,11 @@ export function DraftPayrollPersonHoursBreakdownModal({
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           <h2 id="draft-payroll-hours-breakdown-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
             Hours breakdown — {personName}
           </h2>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Period {periodStart} – {periodEnd}
             {isSalary ? ' · Salary (weekdays 8h)' : ''}
           </p>
@@ -137,16 +137,16 @@ export function DraftPayrollPersonHoursBreakdownModal({
 
         <div style={{ padding: '1rem 1.25rem' }}>
           {loading ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : error ? (
-            <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{error}</p>
+            <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.875rem', whiteSpace: 'pre-wrap' }}>{error}</p>
           ) : rows.length === 0 ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No days in this period.</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No days in this period.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                  <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'left' }}>Date</th>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Hours</th>
                     <th style={{ padding: '0.5rem 0.65rem', textAlign: 'right' }}>Cash Due</th>
@@ -175,7 +175,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
                         {r.hours.toFixed(2)}
                         {r.pendingHours > 0 ? (
                           <div
-                            style={{ fontSize: '0.75rem', color: '#b45309', whiteSpace: 'nowrap' }}
+                            style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)', whiteSpace: 'nowrap' }}
                             title="Clocked hours awaiting approval — not included in payroll hours or Cash Due until a lead approves the sessions."
                           >
                             +{r.pendingHours.toFixed(2)} pending
@@ -188,7 +188,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
                       <td
                         style={{
                           padding: '0.45rem 0.65rem',
-                          color: '#374151',
+                          color: 'var(--text-700)',
                           wordBreak: 'break-word',
                           maxWidth: 280,
                         }}
@@ -199,13 +199,13 @@ export function DraftPayrollPersonHoursBreakdownModal({
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                  <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
                     <td style={{ padding: '0.5rem 0.65rem' }}>Period total</td>
                     <td style={{ padding: '0.5rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                       {totalHours.toFixed(2)}
                       {totalPendingHours > 0 ? (
                         <div
-                          style={{ fontSize: '0.75rem', fontWeight: 400, color: '#b45309', whiteSpace: 'nowrap' }}
+                          style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-amber-700)', whiteSpace: 'nowrap' }}
                           title="Clocked hours awaiting approval — not included in payroll hours or Cash Due until a lead approves the sessions."
                         >
                           +{totalPendingHours.toFixed(2)} pending
@@ -223,14 +223,14 @@ export function DraftPayrollPersonHoursBreakdownModal({
           )}
         </div>
 
-        <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
             onClick={onClose}
             style={{
               padding: '0.45rem 1rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 6,
               cursor: 'pointer',
               fontSize: '0.875rem',

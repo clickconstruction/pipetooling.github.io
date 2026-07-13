@@ -147,26 +147,26 @@ export function CantReachSection() {
                 <col style={{ width: '26%' }} />
                 <col style={{ width: '14%' }} />
               </colgroup>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Company Name</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact Name</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Phone</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email / Links</th>
-                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Company Name</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact Name</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Phone</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last Contact</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email / Links</th>
+                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {prospects.map((p) => (
-                  <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={{ padding: '0.75rem' }}>{p.company_name || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{p.contact_name || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>{p.address || '—'}</td>
                     <td style={{ padding: '0.75rem' }}>
                       {p.phone_number ? (
-                        <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                        <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                           {p.phone_number}
                         </a>
                       ) : (
@@ -178,7 +178,7 @@ export function CantReachSection() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                         <div>
                           {p.email ? (
-                            <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                            <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                               {p.email}
                             </a>
                           ) : (
@@ -191,7 +191,7 @@ export function CantReachSection() {
                               href={getWebsiteHref(p.links_to_website)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                              style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
                             >
                               {formatWebsiteDisplay(p.links_to_website)}
                             </a>
@@ -203,10 +203,10 @@ export function CantReachSection() {
                     </td>
                     <td style={{ padding: '0.75rem' }}>
                       <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                        <button type="button" onClick={() => handleEdit(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                        <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                        <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                        <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'white', color: '#dc2626', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
+                        <button type="button" onClick={() => handleEdit(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
+                        <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
+                        <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
+                        <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
                       </div>
                     </td>
                   </tr>
@@ -231,7 +231,7 @@ export function CantReachSection() {
                     <span className="prospectListMobileCardLabel">Phone</span>
                     <span>
                       {p.phone_number ? (
-                        <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                        <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                           {p.phone_number}
                         </a>
                       ) : (
@@ -248,7 +248,7 @@ export function CantReachSection() {
                     <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                       <span>
                         {p.email ? (
-                          <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {p.email}
                           </a>
                         ) : (
@@ -261,7 +261,7 @@ export function CantReachSection() {
                             href={getWebsiteHref(p.links_to_website)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            style={{ color: '#2563eb', textDecoration: 'underline' }}
+                            style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
                           >
                             {formatWebsiteDisplay(p.links_to_website)}
                           </a>
@@ -272,10 +272,10 @@ export function CantReachSection() {
                     </span>
                   </div>
                   <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                    <button type="button" onClick={() => handleEdit(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                    <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                    <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                    <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'white', color: '#dc2626', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
+                    <button type="button" onClick={() => handleEdit(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
+                    <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
+                    <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
+                    <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
                   </div>
                 </div>
               </div>

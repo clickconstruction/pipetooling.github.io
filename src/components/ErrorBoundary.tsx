@@ -26,7 +26,7 @@ export class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         this.props.fallback ?? (
-          <div style={{ padding: '1rem', color: '#b91c1c', fontSize: '0.875rem' }}>
+          <div style={{ padding: '1rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
             Something went wrong. Please refresh the page or try again later.
           </div>
         )

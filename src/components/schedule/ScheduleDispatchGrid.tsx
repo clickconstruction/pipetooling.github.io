@@ -46,7 +46,7 @@ function cellKey(assigneeUserId: string, workDate: string): string {
 const scheduleGridSalarySuffix: CSSProperties = {
   display: 'block',
   fontSize: '0.68rem',
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   fontWeight: 400,
   lineHeight: 1.1,
 }
@@ -135,7 +135,7 @@ function ScheduleDispatchBlockCard({
         flexDirection: 'row',
         alignItems: 'stretch',
         marginBottom: 4,
-        background: '#eff6ff',
+        background: 'var(--bg-blue-tint)',
         border: '1px solid #93c5fd',
         borderRadius: 4,
         fontSize: '0.75rem',
@@ -197,7 +197,7 @@ function ScheduleDispatchBlockCard({
           <span>{scheduleFormatWindow(block.time_start, block.time_end)}</span>
         </div>
         {block.note ? (
-          <div style={{ color: '#4b5563', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
+          <div style={{ color: 'var(--text-600)', marginTop: 2, overflowWrap: 'anywhere' }}>{block.note}</div>
         ) : null}
       </div>
       {showTopRightControls ? (
@@ -438,7 +438,7 @@ function ScheduleDispatchCell({
         minWidth: 132,
         maxWidth: 200,
         padding: 6,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         background: cellBg,
         cursor: placementPickingTargetable ? 'pointer' : undefined,
       }}
@@ -517,10 +517,10 @@ function ScheduleDispatchCell({
               width: '100%',
               padding: '0.25rem',
               fontSize: '0.7rem',
-              background: '#fff',
+              background: 'var(--surface)',
               border: '1px dashed #93c5fd',
               borderRadius: 4,
-              color: '#2563eb',
+              color: 'var(--text-link)',
               cursor: 'pointer',
             }}
           >
@@ -630,7 +630,7 @@ export function ScheduleDispatchGrid({
         onHideWeekendChange={onHideWeekendChange}
       />
 
-      {loading ? <p style={{ color: '#6b7280' }}>Loading…</p> : null}
+      {loading ? <p style={{ color: 'var(--text-muted)' }}>Loading…</p> : null}
 
       <div
         ref={scrollRootRef}
@@ -649,10 +649,10 @@ export function ScheduleDispatchGrid({
                 position: 'sticky',
                 left: 0,
                 zIndex: 2,
-                background: isMobile ? 'transparent' : '#f3f4f6',
-                borderTop: '1px solid #e5e7eb',
-                borderRight: '1px solid #e5e7eb',
-                borderBottom: '1px solid #e5e7eb',
+                background: isMobile ? 'transparent' : 'var(--bg-muted)',
+                borderTop: '1px solid var(--border)',
+                borderRight: '1px solid var(--border)',
+                borderBottom: '1px solid var(--border)',
                 padding: '0.5rem',
                 textAlign: 'left',
                 width: '1%',
@@ -677,7 +677,7 @@ export function ScheduleDispatchGrid({
                       scheduleTodayYmd,
                       columnFocusDayYmd,
                     }, '#f3f4f6'),
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     padding: '0.5rem',
                     textAlign: 'center',
                     minWidth: 132,
@@ -686,7 +686,7 @@ export function ScheduleDispatchGrid({
                   <div style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                     {dow} {md}
                   </div>
-                  <div style={{ fontSize: '0.65rem', color: '#9ca3af' }}>{dk}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-faint)' }}>{dk}</div>
                 </th>
               )
             })}
@@ -697,7 +697,7 @@ export function ScheduleDispatchGrid({
             <tr>
               <td
                 colSpan={1 + visibleDayKeys.length}
-                style={{ padding: '1rem', border: '1px solid #e5e7eb', color: '#6b7280', textAlign: 'center' }}
+                style={{ padding: '1rem', border: '1px solid var(--border)', color: 'var(--text-muted)', textAlign: 'center' }}
               >
                 No roster or scheduled assignees for this week.
               </td>
@@ -710,10 +710,10 @@ export function ScheduleDispatchGrid({
                     position: 'sticky',
                     left: 0,
                     zIndex: 1,
-                    background: isMobile ? 'transparent' : '#fff',
-                    borderTop: '1px solid #e5e7eb',
-                    borderRight: '1px solid #e5e7eb',
-                    borderBottom: '1px solid #e5e7eb',
+                    background: isMobile ? 'transparent' : 'var(--surface)',
+                    borderTop: '1px solid var(--border)',
+                    borderRight: '1px solid var(--border)',
+                    borderBottom: '1px solid var(--border)',
                     padding: '0.5rem',
                     fontWeight: 500,
                     verticalAlign: 'top',
@@ -755,7 +755,7 @@ export function ScheduleDispatchGrid({
                   </div>
                   {officialJobTeamUserIds != null && !officialJobTeamUserIds.has(m.user_id) ? (
                     <div style={{ marginTop: 4 }}>
-                      <div style={{ fontSize: '0.7rem', color: '#6b7280', lineHeight: 1.25 }}>Not on job</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.25 }}>Not on job</div>
                       {canAddUserToJobRoster && onAddUserToJobRoster ? (
                         <button
                           type="button"
@@ -768,7 +768,7 @@ export function ScheduleDispatchGrid({
                             border: 'none',
                             background: 'none',
                             fontSize: '0.7rem',
-                            color: addToJobBusyUserId === m.user_id ? '#9ca3af' : '#2563eb',
+                            color: addToJobBusyUserId === m.user_id ? 'var(--text-faint)' : 'var(--text-link)',
                             cursor: addToJobBusyUserId === m.user_id ? 'not-allowed' : 'pointer',
                             textDecoration: 'underline',
                             textUnderlineOffset: 2,

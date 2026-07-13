@@ -266,7 +266,7 @@ function TechTreeEmptyGroupDrop({ groupId, visible }: { groupId: string; visible
         border: `1px dashed ${isOver ? '#3b82f6' : '#cbd5e1'}`,
         background: isOver ? 'rgba(59,130,246,0.08)' : 'rgba(148,163,184,0.12)',
         fontSize: 12,
-        color: '#64748b',
+        color: 'var(--text-slate-500)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -379,7 +379,7 @@ function TechTreeDndTaskRow({
 
   let style: CSSProperties = {
     marginBottom: 4,
-    color: task.completedAt ? '#64748b' : '#111',
+    color: task.completedAt ? 'var(--text-slate-500)' : '#111',
     textDecoration: task.completedAt ? 'line-through' : undefined,
     transform: CSS.Transform.toString(transform),
     transition,
@@ -413,7 +413,7 @@ function TechTreeDndTaskRow({
             padding: 2,
             border: 'none',
             background: 'transparent',
-            color: '#94a3b8',
+            color: 'var(--text-slate-400)',
             cursor: disabled ? 'not-allowed' : 'grab',
             display: 'flex',
             alignItems: 'center',
@@ -441,7 +441,7 @@ function TechTreeDndTaskRow({
               {task.title}
             </TechTreeEditableTaskTitle>
             {task.assigneeLabel ? (
-              <span style={{ color: '#64748b' }}> — {task.assigneeLabel}</span>
+              <span style={{ color: 'var(--text-slate-500)' }}> — {task.assigneeLabel}</span>
             ) : null}
           </div>
         </div>
@@ -467,7 +467,7 @@ function GroupNode({ data }: NodeProps) {
         padding: 10,
         borderRadius: 8,
         border: `2px solid ${d.locked ? '#cbd5e1' : '#3b82f6'}`,
-        background: d.locked ? '#f8fafc' : '#fff',
+        background: d.locked ? 'var(--bg-slate-tint)' : 'var(--surface)',
         fontSize: 13,
         boxSizing: 'border-box',
         boxShadow: cardSearchOutline,
@@ -498,8 +498,8 @@ function GroupNode({ data }: NodeProps) {
               padding: 0,
               border: '1px solid #e2e8f0',
               borderRadius: 6,
-              background: '#fff',
-              color: '#475569',
+              background: 'var(--surface)',
+              color: 'var(--text-slate-600)',
               cursor: 'pointer',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
             }}
@@ -529,8 +529,8 @@ function GroupNode({ data }: NodeProps) {
               padding: 0,
               border: '1px solid #e2e8f0',
               borderRadius: 6,
-              background: '#fff',
-              color: '#475569',
+              background: 'var(--surface)',
+              color: 'var(--text-slate-600)',
               cursor: 'pointer',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
             }}
@@ -576,7 +576,7 @@ function GroupNode({ data }: NodeProps) {
             padding: 0,
             border: 'none',
             background: 'transparent',
-            color: '#475569',
+            color: 'var(--text-slate-600)',
             cursor: 'pointer',
             borderRadius: 4,
           }}
@@ -587,7 +587,7 @@ function GroupNode({ data }: NodeProps) {
           <div
             style={{
               fontWeight: 700,
-              color: '#0f172a',
+              color: 'var(--text-slate-900)',
               lineHeight: 1.25,
               display: 'inline-block',
               maxWidth: '100%',
@@ -600,7 +600,7 @@ function GroupNode({ data }: NodeProps) {
             {d.title}
           </div>
           {collapsed ? (
-            <div style={{ color: '#64748b', fontSize: 12, marginTop: 4, lineHeight: 1.3 }}>
+            <div style={{ color: 'var(--text-slate-500)', fontSize: 12, marginTop: 4, lineHeight: 1.3 }}>
               {d.taskCount === 1 ? '1 task' : `${d.taskCount} tasks`}
               {d.locked ? ' · Locked' : ''}
             </div>
@@ -608,7 +608,7 @@ function GroupNode({ data }: NodeProps) {
         </div>
       </div>
       {!collapsed && d.locked ? (
-        <div style={{ color: '#64748b', fontSize: 12, marginBottom: 6 }}>Complete prerequisite groups to unlock</div>
+        <div style={{ color: 'var(--text-slate-500)', fontSize: 12, marginBottom: 6 }}>Complete prerequisite groups to unlock</div>
       ) : null}
       {!collapsed && d.reorderMode && d.canEditStructure ? (
         <>
@@ -637,7 +637,7 @@ function GroupNode({ data }: NodeProps) {
                 key={t.id}
                 style={{
                   marginBottom: 4,
-                  color: t.completedAt ? '#64748b' : '#111',
+                  color: t.completedAt ? 'var(--text-slate-500)' : '#111',
                   textDecoration: t.completedAt ? 'line-through' : undefined,
                   borderRadius: 4,
                   padding: d.searchIsActive && taskMatch(t.id) ? '2px 4px' : 0,
@@ -669,7 +669,7 @@ function GroupNode({ data }: NodeProps) {
                     >
                       {t.title}
                     </TechTreeEditableTaskTitle>
-                    {t.assigneeLabel ? <span style={{ color: '#64748b' }}> — {t.assigneeLabel}</span> : null}
+                    {t.assigneeLabel ? <span style={{ color: 'var(--text-slate-500)' }}> — {t.assigneeLabel}</span> : null}
                   </div>
                 </div>
               </li>
@@ -677,7 +677,7 @@ function GroupNode({ data }: NodeProps) {
         </ul>
       ) : null}
       {!collapsed && d.tasks.length === 0 && d.canEditStructure && !d.reorderMode ? (
-        <div style={{ color: '#94a3b8', fontSize: 12 }}>No tasks yet — add below</div>
+        <div style={{ color: 'var(--text-slate-400)', fontSize: 12 }}>No tasks yet — add below</div>
       ) : null}
       <Handle
         type="source"
@@ -845,7 +845,7 @@ function RoadmapCanvasSearchPanel({
               borderRadius: 6,
               border: '1px solid #e2e8f0',
               font: 'inherit',
-              background: '#fff',
+              background: 'var(--surface)',
             }}
             aria-label="Search roadmap by group or task"
           />
@@ -856,7 +856,7 @@ function RoadmapCanvasSearchPanel({
           className="nodrag nopan"
           style={{
             fontSize: 12,
-            color: roadmapSearch.matchCount > 0 ? '#64748b' : '#b45309',
+            color: roadmapSearch.matchCount > 0 ? 'var(--text-slate-500)' : 'var(--text-amber-700)',
           }}
         >
           {roadmapSearch.matchCount === 0
@@ -878,7 +878,7 @@ function RoadmapCanvasSearchPanel({
               padding: '4px 8px',
               borderRadius: 6,
               border: '1px solid #cbd5e1',
-              background: '#f8fafc',
+              background: 'var(--bg-slate-tint)',
               cursor: 'pointer',
             }}
           >
@@ -1863,8 +1863,8 @@ export function ChecklistTechTreeTab({
     padding: 0,
     border: '1px solid #e2e8f0',
     borderRadius: 6,
-    background: '#fff',
-    color: '#475569',
+    background: 'var(--surface)',
+    color: 'var(--text-slate-600)',
     cursor: 'pointer',
     boxShadow: '0 1px 3px rgba(15, 23, 42, 0.12)',
   }
@@ -1880,7 +1880,7 @@ export function ChecklistTechTreeTab({
     borderRadius: 6,
     background: 'transparent',
     boxShadow: 'none',
-    color: '#475569',
+    color: 'var(--text-slate-600)',
     cursor: 'pointer',
     flexShrink: 0,
   }
@@ -1891,7 +1891,7 @@ export function ChecklistTechTreeTab({
   const collapseAllFloatDisabled = floatCollapsedCount === floatGroupCount
 
   if (!authUserId) {
-    return <p style={{ color: '#64748b' }}>Sign in to use the roadmap.</p>
+    return <p style={{ color: 'var(--text-slate-500)' }}>Sign in to use the roadmap.</p>
   }
 
   if (roadmapsLoading) {
@@ -1900,7 +1900,7 @@ export function ChecklistTechTreeTab({
 
   if (roadmaps.length === 0) {
     return (
-      <div style={{ color: '#64748b' }}>
+      <div style={{ color: 'var(--text-slate-500)' }}>
         <p>No roadmaps yet.</p>
         {canEditTechTree ? (
           <button
@@ -1911,7 +1911,7 @@ export function ChecklistTechTreeTab({
               padding: '8px 14px',
               borderRadius: 6,
               border: '1px solid #cbd5e1',
-              background: '#f8fafc',
+              background: 'var(--bg-slate-tint)',
               cursor: 'pointer',
             }}
           >
@@ -1923,7 +1923,7 @@ export function ChecklistTechTreeTab({
   }
 
   if (!effectiveRoadmapId) {
-    return <p style={{ color: '#64748b' }}>Select a roadmap.</p>
+    return <p style={{ color: 'var(--text-slate-500)' }}>Select a roadmap.</p>
   }
 
   if (loading) {
@@ -2028,7 +2028,7 @@ export function ChecklistTechTreeTab({
             border: isCanvasFullscreen ? 'none' : '1px solid #e2e8f0',
             borderRadius: isCanvasFullscreen ? 0 : 8,
             overflow: 'visible',
-            background: '#fff',
+            background: 'var(--surface)',
             display: 'flex',
             flexDirection: 'column',
           }}
@@ -2093,7 +2093,7 @@ export function ChecklistTechTreeTab({
             </div>
           ) : null}
           {groups.length === 0 ? (
-            <div style={{ padding: 24, color: '#64748b' }}>
+            <div style={{ padding: 24, color: 'var(--text-slate-500)' }}>
               {canEditStructure
                 ? 'Add your first group above to build the roadmap.'
                 : 'No roadmap groups yet.'}

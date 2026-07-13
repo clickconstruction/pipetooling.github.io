@@ -319,7 +319,7 @@ export function PartFormModal({
                 <div style={{ padding: '1rem' }}>
                   {/* List existing prices */}
                   {partPrices.map((priceItem, idx) => (
-                    <div key={idx} style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f0f9ff', borderRadius: 4 }}>
+                    <div key={idx} style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-sky-tint)', borderRadius: 4 }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.5rem', marginBottom: '0.5rem' }}>
                         <select
                           value={priceItem.supply_house_id}

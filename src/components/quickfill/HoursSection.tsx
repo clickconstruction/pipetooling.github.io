@@ -433,7 +433,7 @@ export function HoursSection() {
   if (!canAccessHours) {
     return (
       <section style={{ marginBottom: '2rem' }}>
-        <p style={{ color: '#6b7280' }}>You do not have access to the Hours tab.</p>
+        <p style={{ color: 'var(--text-muted)' }}>You do not have access to the Hours tab.</p>
       </section>
     )
   }
@@ -441,25 +441,25 @@ export function HoursSection() {
   return (
     <section style={{ marginBottom: '2rem' }}>
       {hoursGridFirstColMeasurer}
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : (
         <>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
             <label>
               <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>Start</span>
-              <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              <input type="date" value={hoursDateStart} onChange={(e) => setHoursDateStart(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
             </label>
             <label>
               <span style={{ marginRight: '0.5rem', fontSize: '0.875rem' }}>End</span>
-              <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+              <input type="date" value={hoursDateEnd} onChange={(e) => setHoursDateEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
             </label>
-            <button type="button" onClick={() => shiftHoursWeek(-1)} style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}>← last week</button>
-            <button type="button" onClick={() => shiftHoursWeek(1)} style={{ padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}>next week →</button>
+            <button type="button" onClick={() => shiftHoursWeek(-1)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}>← last week</button>
+            <button type="button" onClick={() => shiftHoursWeek(1)} style={{ padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}>next week →</button>
           </div>
-          <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
-            <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.875rem' }}>
+          <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.875rem' }}>
               Pending clock sessions ({pendingClockSessions.length})
             </div>
             <ClockSessionsTable
@@ -507,7 +507,7 @@ export function HoursSection() {
                           if (error) setError(error.message)
                           else loadAllClockSessionsRef.current?.()
                         }}
-                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--bg-red-tint)', color: 'var(--text-red-600)', cursor: 'pointer' }}
                       >
                         Force clock out
                       </button>
@@ -525,7 +525,7 @@ export function HoursSection() {
                             loadAllClockSessionsRef.current?.()
                             loadPeopleHoursRef.current?.()
                           }}
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: '#f0fdf4', color: '#16a34a', cursor: 'pointer' }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #22c55e', borderRadius: 4, background: 'var(--bg-green-tint)', color: '#16a34a', cursor: 'pointer' }}
                         >
                           Approve
                         </button>
@@ -537,13 +537,13 @@ export function HoursSection() {
                             if (error) setError(error.message)
                             else loadAllClockSessionsRef.current?.()
                           }}
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: '#fef2f2', color: '#dc2626', cursor: 'pointer' }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--bg-red-tint)', color: 'var(--text-red-600)', cursor: 'pointer' }}
                         >
                           Reject
                         </button>
                         <Link
                           to="/people?tab=hours"
-                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', color: '#374151', cursor: 'pointer', textDecoration: 'none' }}
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', textDecoration: 'none' }}
                         >
                           Edit
                         </Link>
@@ -572,16 +572,16 @@ export function HoursSection() {
                   loadAllClockSessionsRef.current?.()
                   loadPeopleHoursRef.current?.()
                 }}
-                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #f59e0b', borderRadius: 4, background: '#fffbeb', color: '#d97706', cursor: 'pointer' }}
+                style={{ padding: '0.2rem 0.5rem', fontSize: '0.8125rem', border: '1px solid #f59e0b', borderRadius: 4, background: 'var(--bg-amber-tint)', color: '#d97706', cursor: 'pointer' }}
               >
                 Revoke
               </button>
             )}
           />
           {showPeopleForHours.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No people with Show in Hours selected. Go to People → Hours and open People pay config; check Show in Hours for people to track.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No people with Show in Hours selected. Go to People → Hours and open People pay config; check Show in Hours for people to track.</p>
           ) : (
-            <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+            <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
                 <colgroup>
                   <col style={{ width: hoursGridFirstColW }} />
@@ -591,17 +591,17 @@ export function HoursSection() {
                   <col style={{ width: 90 }} />
                   <col style={{ width: 90 }} />
                 </colgroup>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
                     <th
                       style={{
                         padding: '0.5rem 0.75rem',
                         textAlign: 'left',
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border)',
                         position: 'sticky',
                         left: 0,
                         zIndex: 3,
-                        background: '#f9fafb',
+                        background: 'var(--bg-subtle)',
                         boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
                         maxWidth: hoursGridFirstColW,
                         minWidth: 0,
@@ -612,12 +612,12 @@ export function HoursSection() {
                       Person
                     </th>
                     {hoursDays.map((d) => (
-                      <th key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>
+                      <th key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>
                         {new Date(d + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'numeric', day: 'numeric' })}
                       </th>
                     ))}
-                    <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>HH:MM:SS</th>
-                    <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Decimal</th>
+                    <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>HH:MM:SS</th>
+                    <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Decimal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -627,7 +627,7 @@ export function HoursSection() {
                       <tr
                         key={personName}
                         style={{
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           ...(isUnassigned && canEditCrewJobs && { cursor: 'pointer' }),
                         }}
                         title={isUnassigned ? (canEditCrewJobs ? 'Click to assign jobs or bids' : 'Assign jobs or bids in Crew Jobs / Bids section above') : undefined}
@@ -652,7 +652,7 @@ export function HoursSection() {
                             position: 'sticky',
                             left: 0,
                             zIndex: 2,
-                            background: 'white',
+                            background: 'var(--surface)',
                             boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
                             maxWidth: hoursGridFirstColW,
                             minWidth: 0,
@@ -662,8 +662,8 @@ export function HoursSection() {
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
                             <span style={{ display: 'flex', flexDirection: 'row', gap: 0, marginRight: '0.25rem', flexShrink: 0 }}>
-                              <button type="button" onClick={() => moveHoursRow(personName, 'up')} disabled={idx === 0} title="Move up" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▲</button>
-                              <button type="button" onClick={() => moveHoursRow(personName, 'down')} disabled={idx === showPeopleForHours.length - 1} title="Move down" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}>▼</button>
+                              <button type="button" onClick={() => moveHoursRow(personName, 'up')} disabled={idx === 0} title="Move up" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', lineHeight: 1 }}>▲</button>
+                              <button type="button" onClick={() => moveHoursRow(personName, 'down')} disabled={idx === showPeopleForHours.length - 1} title="Move down" style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', lineHeight: 1 }}>▼</button>
                             </span>
                             <span style={{ minWidth: 0 }}>{personName}</span>
                           </div>
@@ -688,7 +688,7 @@ export function HoursSection() {
                               }}
                             >
                               {!canEdit ? (
-                                <span style={{ color: '#6b7280' }}>{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
+                                <span style={{ color: 'var(--text-muted)' }}>{decimalToHms(getDisplayHours(personName, d)) || '-'}</span>
                               ) : dayLocked ? (
                                 canEdit ? (
                                   <button
@@ -699,7 +699,7 @@ export function HoursSection() {
                                     }}
                                     title="Day marked Correct — click to view clock sessions and job assignments"
                                     style={{
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                       cursor: 'pointer',
                                       width: '100%',
                                       textAlign: 'right',
@@ -712,7 +712,7 @@ export function HoursSection() {
                                     {decimalToHms(getDisplayHours(personName, d)) || '-'}
                                   </button>
                                 ) : (
-                                  <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">
+                                  <span style={{ color: 'var(--text-muted)' }} title="Day marked Correct — locked">
                                     {decimalToHms(getDisplayHours(personName, d)) || '-'}
                                   </span>
                                 )
@@ -733,7 +733,7 @@ export function HoursSection() {
                                     saveHours(personName, d, v)
                                     setEditingHoursCell(null)
                                   }}
-                                  style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                                  style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
                                 />
                               )}
                             </td>
@@ -745,7 +745,7 @@ export function HoursSection() {
                     )
                   })}
                 </tbody>
-                <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
+                <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
                   {(() => {
                     const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getDisplayHours(p, d), 0), 0)
                     return (
@@ -754,11 +754,11 @@ export function HoursSection() {
                           <td
                             style={{
                               padding: '0.5rem 0.75rem',
-                              borderTop: '1px solid #e5e7eb',
+                              borderTop: '1px solid var(--border)',
                               position: 'sticky',
                               left: 0,
                               zIndex: 2,
-                              background: '#f9fafb',
+                              background: 'var(--bg-subtle)',
                               boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
                             }}
                           >
@@ -767,23 +767,23 @@ export function HoursSection() {
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
-                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
                                 {decimalToHms(daySum) || '-'}
                               </td>
                             )
                           })}
-                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>{decimalToHms(grandTotal) || '-'}</td>
-                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>-</td>
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>{decimalToHms(grandTotal) || '-'}</td>
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>-</td>
                         </tr>
                         <tr>
                           <td
                             style={{
                               padding: '0.5rem 0.75rem',
-                              borderTop: '1px solid #e5e7eb',
+                              borderTop: '1px solid var(--border)',
                               position: 'sticky',
                               left: 0,
                               zIndex: 2,
-                              background: '#f9fafb',
+                              background: 'var(--bg-subtle)',
                               boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
                             }}
                           >
@@ -792,23 +792,23 @@ export function HoursSection() {
                           {hoursDays.map((d) => {
                             const daySum = showPeopleForHours.reduce((s, p) => s + getDisplayHours(p, d), 0)
                             return (
-                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>
+                              <td key={d} style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>
                                 {daySum.toFixed(2)}
                               </td>
                             )
                           })}
-                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>-</td>
-                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid #e5e7eb' }}>{grandTotal.toFixed(2)}</td>
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>-</td>
+                          <td style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderTop: '1px solid var(--border)' }}>{grandTotal.toFixed(2)}</td>
                         </tr>
                         <tr>
                           <td
                             style={{
                               padding: '0.5rem 0.75rem',
-                              borderTop: '1px solid #e5e7eb',
+                              borderTop: '1px solid var(--border)',
                               position: 'sticky',
                               left: 0,
                               zIndex: 2,
-                              background: '#f9fafb',
+                              background: 'var(--bg-subtle)',
                               fontWeight: 500,
                               fontSize: '0.8125rem',
                               boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
@@ -820,14 +820,14 @@ export function HoursSection() {
                           {hoursDays.map((d) => {
                             const checked = hoursDaysCorrect.has(d)
                             return (
-                              <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                              <td key={d} style={{ padding: '0.35rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
                                 <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }} title={checked ? 'Uncheck to allow edits' : 'Check to lock this day'}>
                                   <input type="checkbox" checked={checked} onChange={() => toggleHoursDayCorrect(d)} />
                                 </label>
                               </td>
                             )
                           })}
-                          <td colSpan={2} style={{ padding: '0.35rem 0.5rem', borderTop: '1px solid #e5e7eb' }} />
+                          <td colSpan={2} style={{ padding: '0.35rem 0.5rem', borderTop: '1px solid var(--border)' }} />
                         </tr>
                       </>
                     )

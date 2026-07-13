@@ -67,13 +67,13 @@ export function QuickfillCompleteNoBillSection({
 
   return (
     <>
-      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
         Jobs marked <strong>100% complete</strong> (latest field report %, or the Edit Job{' '}
         <strong>% complete</strong> field when no report has one) with no <strong>Total Bill</strong>{' '}
         set. Open a job to fill in the Total Bill so it can be billed.
       </p>
       {completeNoBillJobs.length === 0 ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           No complete jobs are missing a Total Bill.
         </p>
       ) : (
@@ -93,7 +93,7 @@ export function QuickfillCompleteNoBillSection({
                 key={j.id}
                 style={{
                   border: '1px solid #fecaca',
-                  background: '#fef2f2',
+                  background: 'var(--bg-red-tint)',
                   borderRadius: 8,
                   padding: '0.6rem 0.75rem',
                 }}
@@ -113,11 +113,11 @@ export function QuickfillCompleteNoBillSection({
                       {name ? ` · ${name}` : ''}
                     </div>
                     {addr ? (
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{addr}</div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{addr}</div>
                     ) : null}
                     <div
                       title={workDatesTitle}
-                      style={{ fontSize: '0.8125rem', color: '#374151', marginTop: '0.15rem' }}
+                      style={{ fontSize: '0.8125rem', color: 'var(--text-700)', marginTop: '0.15rem' }}
                     >
                       {clockSummaryLine(summary)}
                     </div>
@@ -134,8 +134,8 @@ export function QuickfillCompleteNoBillSection({
                         borderRadius: 6,
                         cursor: 'pointer',
                         border: '1px solid #bfdbfe',
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        background: 'var(--bg-blue-tint)',
+                        color: 'var(--text-blue-700)',
                       }}
                     >
                       Job Detail
@@ -151,8 +151,8 @@ export function QuickfillCompleteNoBillSection({
                         borderRadius: 6,
                         cursor: 'pointer',
                         border: '1px solid #fecaca',
-                        background: 'white',
-                        color: '#b91c1c',
+                        background: 'var(--surface)',
+                        color: 'var(--text-red-700)',
                       }}
                     >
                       Edit job
@@ -168,9 +168,9 @@ export function QuickfillCompleteNoBillSection({
                         fontWeight: 600,
                         borderRadius: 6,
                         cursor: 'pointer',
-                        border: '1px solid #d1d5db',
-                        background: 'white',
-                        color: '#374151',
+                        border: '1px solid var(--border-strong)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-700)',
                       }}
                     >
                       Activity {expanded ? '▴' : '▾'}
@@ -183,7 +183,7 @@ export function QuickfillCompleteNoBillSection({
                       marginTop: '0.6rem',
                       borderTop: '1px solid #fecaca',
                       paddingTop: '0.6rem',
-                      background: 'white',
+                      background: 'var(--surface)',
                       borderRadius: 6,
                       padding: '0.6rem',
                     }}

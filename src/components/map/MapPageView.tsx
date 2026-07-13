@@ -34,7 +34,7 @@ import {
 import { mapEntityMatchesSearch } from '../../lib/map/mapEntitySearch'
 
 const openLinkLikeStyle: CSSProperties = {
-  color: '#2563eb',
+  color: 'var(--text-link)',
   background: 'none',
   border: 'none',
   padding: 0,
@@ -178,7 +178,7 @@ function GeocodeProgressList({
         open={anyActive}
         style={{
           fontSize: '0.875rem',
-          color: '#374151',
+          color: 'var(--text-700)',
           margin: 0,
           minWidth: 'min(18rem, 100%)',
         }}
@@ -216,7 +216,7 @@ function GeocodeProgressList({
                   Open
                 </button>
               ) : null}
-              {r.errorMessage ? <span style={{ color: '#b91c1c' }}>{r.errorMessage}</span> : null}
+              {r.errorMessage ? <span style={{ color: 'var(--text-red-700)' }}>{r.errorMessage}</span> : null}
             </li>
           )
         })}
@@ -272,7 +272,7 @@ function MapEntityTable({
       </div>
       <div
         style={{
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
           borderRadius: 4,
           maxHeight: 'min(50vh, 360px)',
           overflow: 'auto',
@@ -286,7 +286,7 @@ function MapEntityTable({
           }}
         >
           <thead>
-            <tr style={{ background: '#f9fafb' }}>
+            <tr style={{ background: 'var(--bg-subtle)' }}>
               <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Kind</th>
               <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Name</th>
               <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Address</th>
@@ -297,16 +297,16 @@ function MapEntityTable({
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={5} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                <td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                   {emptyHint}
                 </td>
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={`${r.kind}-${r.id}`} style={{ borderTop: '1px solid #e5e7eb' }}>
+                <tr key={`${r.kind}-${r.id}`} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.35rem 0.5rem', textTransform: 'capitalize' }}>{r.kind}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>{r.tableLabel}</td>
-                  <td style={{ padding: '0.35rem 0.5rem', color: '#374151' }}>{r.addressLabel}</td>
+                  <td style={{ padding: '0.35rem 0.5rem', color: 'var(--text-700)' }}>{r.addressLabel}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>{r.meta || '—'}</td>
                   <td style={{ padding: '0.35rem 0.5rem' }}>
                     {r.kind === 'job' && onOpenJob ? (
@@ -314,7 +314,7 @@ function MapEntityTable({
                         Open
                       </button>
                     ) : (
-                      <Link to={r.linkTo} style={{ color: '#2563eb' }}>
+                      <Link to={r.linkTo} style={{ color: 'var(--text-link)' }}>
                         Open
                       </Link>
                     )}
@@ -518,7 +518,7 @@ export function MapPageView() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.25rem',
               borderRadius: 8,
               minWidth: 280,
@@ -531,10 +531,10 @@ export function MapPageView() {
             <h2 id="geocode-chooser-title" style={{ margin: '0 0 0.75rem 0', fontSize: '1.05rem' }}>
               Multiple records at this address
             </h2>
-            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#4b5563' }}>Choose which to open.</p>
+            <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>Choose which to open.</p>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {geocodeChooserMatches.map((e) => (
-                <li key={`${e.kind}-${e.id}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <li key={`${e.kind}-${e.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
                   <button
                     type="button"
                     onClick={() => {
@@ -554,7 +554,7 @@ export function MapPageView() {
                   >
                     <span style={{ textTransform: 'capitalize', fontWeight: 600, marginRight: '0.35rem' }}>{e.kind}</span>
                     <span>{e.tableLabel}</span>
-                    {e.sublabel ? <span style={{ color: '#6b7280' }}>{` ${e.sublabel}`}</span> : null}
+                    {e.sublabel ? <span style={{ color: 'var(--text-muted)' }}>{` ${e.sublabel}`}</span> : null}
                   </button>
                 </li>
               ))}
@@ -571,11 +571,11 @@ export function MapPageView() {
       ) : null}
 
       {!loading && geocodeInProgress ? (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Resolving addresses…</p>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Resolving addresses…</p>
       ) : null}
 
-      {error ? <p style={{ color: '#b91c1c', margin: 0 }}>{error}</p> : null}
-      {loading ? <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p> : null}
+      {error ? <p style={{ color: 'var(--text-red-700)', margin: 0 }}>{error}</p> : null}
+      {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
 
       <div
         style={{
@@ -587,7 +587,7 @@ export function MapPageView() {
           minWidth: 0,
         }}
       >
-        <div style={{ flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ flex: '0 0 auto', minHeight: 360, minWidth: 0, border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <MapContainer
             key={`${mapView.lat}-${mapView.lng}-${mapView.zoom}`}
             center={[mapView.lat, mapView.lng] as L.LatLngExpression}
@@ -613,7 +613,7 @@ export function MapPageView() {
                   <div style={{ fontSize: '0.8rem' }}>
                     <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{e.kind}</div>
                     <div>{e.tableLabel}</div>
-                    <div style={{ color: '#6b7280' }}>{e.addressLabel}</div>
+                    <div style={{ color: 'var(--text-muted)' }}>{e.addressLabel}</div>
                     {e.kind === 'job' && jobFormModal ? (
                       <button type="button" onClick={() => openJobOnMap(e.id)} style={openLinkLikeStyle}>
                         Open
@@ -633,7 +633,7 @@ export function MapPageView() {
             title={tableTitle}
             titleRight={
               <>
-                <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: '#374151' }}>
+                <label htmlFor="map-page-search" style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>
                   Filter
                 </label>
                 <input
@@ -651,7 +651,7 @@ export function MapPageView() {
                     maxWidth: '100%',
                     padding: '0.35rem 0.5rem',
                     fontSize: '0.875rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                   }}
                 />
@@ -687,8 +687,8 @@ export function MapPageView() {
             cursor: 'pointer',
             fontSize: '0.875rem',
             padding: '0.35rem 0.6rem',
-            background: '#f3f4f6',
-            border: '1px solid #d1d5db',
+            background: 'var(--bg-muted)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             listStyle: 'none',
             userSelect: 'none',
@@ -701,8 +701,8 @@ export function MapPageView() {
           style={{
             marginTop: 6,
             padding: '0.5rem',
-            background: 'white',
-            border: '1px solid #d1d5db',
+            background: 'var(--surface)',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
             boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           }}

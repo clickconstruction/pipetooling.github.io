@@ -147,9 +147,9 @@ export default function PeerTeammatePicker({
         listStyle: 'none',
         padding: 0,
         margin: 0,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 6,
-        background: 'white',
+        background: 'var(--surface)',
         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
       }) as const,
     []
@@ -197,14 +197,14 @@ export default function PeerTeammatePicker({
                       padding: '0.5rem 0.75rem',
                       border: 'none',
                       borderBottom: '1px solid #f3f4f6',
-                      background: 'white',
+                      background: 'var(--surface)',
                       cursor: disabled ? 'not-allowed' : 'pointer',
                       fontSize: '0.875rem',
                     }}
                   >
                     <span style={{ display: 'block', fontWeight: 500 }}>{c.peer_name}</span>
                     {c.shared_tag_count > 0 && (
-                      <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
                         {c.shared_tag_count} shared tag{c.shared_tag_count === 1 ? '' : 's'}
                       </span>
                     )}
@@ -221,10 +221,10 @@ export default function PeerTeammatePicker({
             style={{
               padding: '0.75rem',
               fontSize: '0.875rem',
-              color: '#9ca3af',
-              border: '1px solid #e5e7eb',
+              color: 'var(--text-faint)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
-              background: 'white',
+              background: 'var(--surface)',
               boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
             }}
           >
@@ -294,7 +294,7 @@ export default function PeerTeammatePicker({
             setOpen(true)
           }}
           onFocus={() => setOpen(true)}
-          style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+          style={{ width: '100%', padding: '0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', boxSizing: 'border-box' }}
         />
       </div>
       {portalContent}

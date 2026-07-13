@@ -150,7 +150,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 520,
           width: '100%',
@@ -160,18 +160,18 @@ export function ChecklistTechTreeRoadmapMembersModal({
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
           <h2 id="roadmap-members-title" style={{ margin: 0, fontSize: '1.125rem' }}>
             Members — {roadmapTitle}
           </h2>
         </div>
         <div style={{ padding: 16 }}>
           {error ? (
-            <p style={{ color: '#b45309', marginTop: 0 }} role="alert">
+            <p style={{ color: 'var(--text-amber-700)', marginTop: 0 }} role="alert">
               {error}
             </p>
           ) : null}
-          <p style={{ marginTop: 0, fontSize: 13, color: '#64748b' }}>
+          <p style={{ marginTop: 0, fontSize: 13, color: 'var(--text-slate-500)' }}>
             Editors can change the graph and manage members. Viewers can see the roadmap and complete tasks assigned to
             them.
           </p>
@@ -204,7 +204,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                     <option value="editor">Editor</option>
                   </select>
                 ) : (
-                  <span style={{ fontSize: 13, color: '#64748b' }}>{m.role}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-slate-500)' }}>{m.role}</span>
                 )}
                 {canManage && m.user_id !== authUserId ? (
                   <button
@@ -215,8 +215,8 @@ export function ChecklistTechTreeRoadmapMembersModal({
                       padding: '4px 10px',
                       borderRadius: 6,
                       border: '1px solid #fecaca',
-                      background: '#fef2f2',
-                      color: '#b91c1c',
+                      background: 'var(--bg-red-tint)',
+                      color: 'var(--text-red-700)',
                       cursor: 'pointer',
                       fontSize: 12,
                     }}
@@ -247,7 +247,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                           fontSize: 12,
                           borderRadius: 6,
                           border: '1px solid #cbd5e1',
-                          background: '#f8fafc',
+                          background: 'var(--bg-slate-tint)',
                           cursor: 'pointer',
                         }}
                       >
@@ -262,7 +262,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
                           fontSize: 12,
                           borderRadius: 6,
                           border: '1px solid #cbd5e1',
-                          background: '#f8fafc',
+                          background: 'var(--bg-slate-tint)',
                           cursor: 'pointer',
                         }}
                       >
@@ -275,7 +275,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
             </div>
           ) : null}
         </div>
-        <div style={{ padding: 12, borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ padding: 12, borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             type="button"
             onClick={onClose}
@@ -283,7 +283,7 @@ export function ChecklistTechTreeRoadmapMembersModal({
               padding: '8px 16px',
               borderRadius: 6,
               border: '1px solid #cbd5e1',
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
             }}
           >

@@ -136,20 +136,20 @@ const labeledControlStyle: CSSProperties = {
 }
 const selectStyle: CSSProperties = {
   padding: '0.3rem 0.4rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
   fontSize: '0.875rem',
-  background: 'white',
+  background: 'var(--surface)',
 }
 const summaryStyle: CSSProperties = {
   fontSize: '0.875rem',
-  color: '#475569',
+  color: 'var(--text-slate-600)',
 }
 const dayGroupStyle: CSSProperties = {
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   marginBottom: '0.75rem',
-  background: 'white',
+  background: 'var(--surface)',
   overflow: 'hidden',
 }
 const dayHeaderStyle: CSSProperties = {
@@ -157,11 +157,11 @@ const dayHeaderStyle: CSSProperties = {
   alignItems: 'center',
   justifyContent: 'space-between',
   padding: '0.5rem 0.75rem',
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
   fontWeight: 600,
   fontSize: '0.875rem',
-  color: '#0f172a',
-  borderBottom: '1px solid #e5e7eb',
+  color: 'var(--text-slate-900)',
+  borderBottom: '1px solid var(--border)',
 }
 const rowGridStyle: CSSProperties = {
   display: 'grid',
@@ -175,22 +175,22 @@ const rowGridStyle: CSSProperties = {
 const headerRowStyle: CSSProperties = {
   ...rowGridStyle,
   background: '#fafbfc',
-  color: '#475569',
+  color: 'var(--text-slate-600)',
   fontSize: '0.75rem',
   textTransform: 'uppercase',
   letterSpacing: '0.04em',
   fontWeight: 600,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
 const numCellStyle: CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' }
-const personCellStyle: CSSProperties = { fontWeight: 500, color: '#0f172a' }
+const personCellStyle: CSSProperties = { fontWeight: 500, color: 'var(--text-slate-900)' }
 const unallocCellStyle: CSSProperties = {
   ...numCellStyle,
-  color: '#b45309',
+  color: 'var(--text-amber-700)',
   fontWeight: 700,
 }
 const ctxCellStyle: CSSProperties = {
-  color: '#64748b',
+  color: 'var(--text-slate-500)',
   fontSize: '0.8125rem',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
@@ -200,8 +200,8 @@ const auditBtnStyle: CSSProperties = {
   padding: '0.3rem 0.6rem',
   border: '1px solid #2563eb',
   borderRadius: 4,
-  background: '#eff6ff',
-  color: '#1d4ed8',
+  background: 'var(--bg-blue-tint)',
+  color: 'var(--text-blue-700)',
   cursor: 'pointer',
   fontSize: '0.8125rem',
   fontWeight: 500,
@@ -469,7 +469,7 @@ export function QuickfillUnassignedFieldTimeSection() {
   if (accessChecked && !canAccess) {
     return (
       <section style={sectionWrapStyle}>
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-muted)' }}>
           You do not have access to view unassigned field time (requires dev, assistant, or master technician with pay-approved access).
         </p>
       </section>
@@ -478,7 +478,7 @@ export function QuickfillUnassignedFieldTimeSection() {
 
   return (
     <section style={sectionWrapStyle}>
-      <p style={{ color: '#475569', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
+      <p style={{ color: 'var(--text-slate-600)', fontSize: '0.875rem', margin: '0 0 0.75rem' }}>
         Days where a person was paid (salary or hourly) for field-type time that was never tied to a
         specific job via a crew assignment. Click <strong>Open day audit</strong> to add a crew
         assignment.
@@ -520,9 +520,9 @@ export function QuickfillUnassignedFieldTimeSection() {
           onClick={() => void loadAll()}
           style={{
             padding: '0.3rem 0.6rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: 'white',
+            background: 'var(--surface)',
             cursor: 'pointer',
             fontSize: '0.875rem',
           }}
@@ -544,7 +544,7 @@ export function QuickfillUnassignedFieldTimeSection() {
       </div>
 
       {error && (
-        <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
+        <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>
           {error}
         </p>
       )}
@@ -555,7 +555,7 @@ export function QuickfillUnassignedFieldTimeSection() {
             <div key={day.workDate} style={dayGroupStyle}>
               <div style={dayHeaderStyle}>
                 <span>{formatWorkDateHeader(day.workDate)}</span>
-                <span style={{ color: '#b45309', fontWeight: 700 }}>
+                <span style={{ color: 'var(--text-amber-700)', fontWeight: 700 }}>
                   {fmtH(day.totalUnallocatedHrs)} h unassigned
                 </span>
               </div>
@@ -578,7 +578,7 @@ export function QuickfillUnassignedFieldTimeSection() {
                         style={{
                           marginLeft: '0.35rem',
                           fontSize: '0.6875rem',
-                          color: '#64748b',
+                          color: 'var(--text-slate-500)',
                           fontWeight: 400,
                         }}
                       >

@@ -3166,7 +3166,7 @@ export default function Materials() {
                 padding: '0.5rem', 
                 border: '1px solid var(--border-strong)', 
                 borderRadius: 4,
-                background: loadAllMode ? '#f0f9ff' : 'var(--surface)',
+                background: loadAllMode ? 'var(--bg-sky-tint)' : 'var(--surface)',
               }}
             />
             <select
@@ -3283,7 +3283,7 @@ export default function Materials() {
                             background: isExpanded ? 'var(--bg-muted)' : undefined,
                           }}
                           onMouseEnter={(e) => {
-                            if (!isExpanded) e.currentTarget.style.background = '#f9fafb'
+                            if (!isExpanded) e.currentTarget.style.background = 'var(--bg-subtle)'
                           }}
                           onMouseLeave={(e) => {
                             if (!isExpanded) e.currentTarget.style.background = ''
@@ -4076,7 +4076,7 @@ export default function Materials() {
                         const nestedCost = nestedTemplate ? calculateAssemblyCost(nestedTemplate.id, item.quantity) : { total: 0, missingPrices: 0, partCount: 0, nestedCount: 0 }
                         
                         return (
-                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: '#f0f9ff', borderRadius: 4, border: '1px solid #bfdbfe' }}>
+                          <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', background: 'var(--bg-sky-tint)', borderRadius: 4, border: '1px solid #bfdbfe' }}>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 500, fontSize: '0.875rem' }}>{nestedTemplate?.name || 'Unknown Assembly'}</div>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
@@ -4682,7 +4682,7 @@ export default function Materials() {
           <div>
             {/* Create PO from Template Button (when no editingPO) */}
             {selectedTemplate && !editingPO && (
-              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
                 <button
                   type="button"
                   onClick={() => createPOFromTemplate(selectedTemplate.id)}
@@ -4696,7 +4696,7 @@ export default function Materials() {
 
             {/* Add Template to PO Button (when editingPO is set) */}
             {selectedTemplate && editingPO && editingPO.status === 'draft' && (
-              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+              <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
                 <button
                   type="button"
                   onClick={() => addTemplateToPO(editingPO.id, selectedTemplate.id)}
@@ -5435,7 +5435,7 @@ const items = (itemsData as unknown as (PurchaseOrderItem & { material_parts: Ma
               {selectedPO.status === 'finalized' && (
                 <>
                   {selectedPO.notes ? (
-                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+                    <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
                       <div style={{ fontWeight: 600, marginBottom: '0.5rem', color: '#0369a1' }}>Notes</div>
                       <div style={{ marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>{selectedPO.notes}</div>
                       {selectedPO.notes_added_by && (
@@ -6904,7 +6904,7 @@ function PartPricesManager({
 
           {/* Price History View */}
           {viewingPriceHistory && (
-            <div style={{ marginTop: '2rem', padding: '1rem', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4 }}>
+            <div style={{ marginTop: '2rem', padding: '1rem', background: 'var(--bg-sky-tint)', border: '1px solid #bae6fd', borderRadius: 4 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h3 style={{ margin: 0 }}>Price History</h3>
                 <button

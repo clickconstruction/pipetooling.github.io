@@ -27,7 +27,7 @@ const backdropStyle: CSSProperties = {
 
 const dialogStyle: CSSProperties = {
   width: 'min(92vw, 460px)',
-  background: 'white',
+  background: 'var(--surface)',
   borderRadius: 12,
   padding: '1.1rem 1.1rem 1rem',
   boxShadow: '0 18px 40px rgba(0,0,0,0.35)',
@@ -39,13 +39,13 @@ const dialogStyle: CSSProperties = {
 const titleStyle: CSSProperties = {
   fontSize: '1rem',
   fontWeight: 700,
-  color: '#111827',
+  color: 'var(--text-strong)',
   textAlign: 'center',
 }
 
 const subtitleStyle: CSSProperties = {
   fontSize: '0.875rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   textAlign: 'center',
   margin: 0,
 }
@@ -54,14 +54,14 @@ const inputStyle: CSSProperties = {
   width: '100%',
   fontSize: '1rem',
   padding: '0.65rem 0.75rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 8,
   boxSizing: 'border-box',
 }
 
 const errorStyle: CSSProperties = {
   fontSize: '0.8125rem',
-  color: '#b91c1c',
+  color: 'var(--text-red-700)',
   textAlign: 'center',
 }
 
@@ -76,9 +76,9 @@ const cancelBtnStyle: CSSProperties = {
   flex: '0 0 auto',
   padding: '0.6rem 0.85rem',
   borderRadius: 8,
-  border: '1px solid #d1d5db',
-  background: 'white',
-  color: '#374151',
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
   fontSize: '0.875rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -89,7 +89,7 @@ const skipBtnStyle: CSSProperties = {
   padding: '0.6rem 0.85rem',
   borderRadius: 8,
   border: '1px solid #cbd5e1',
-  background: '#f8fafc',
+  background: 'var(--bg-slate-tint)',
   color: '#1f2937',
   fontSize: '0.875rem',
   fontWeight: 600,
@@ -145,7 +145,7 @@ export default function JobModeAdvanceNotesModal({
       <div style={dialogStyle}>
         <div style={titleStyle}>{title}</div>
         <p style={subtitleStyle}>{destinationLabel}</p>
-        <p style={{ ...subtitleStyle, color: '#6b7280' }}>{helper}</p>
+        <p style={{ ...subtitleStyle, color: 'var(--text-muted)' }}>{helper}</p>
         <input
           ref={inputRef}
           type="text"

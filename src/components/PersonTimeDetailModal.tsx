@@ -54,7 +54,7 @@ function renderBreakdownList(
   onToggleKey: (key: string) => void
 ) {
   return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+    <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
       {items.map((item, idx) => {
         const hasChildren = item.children && item.children.length > 0
         const isExpanded = hasChildren && expandedKeys.has(item.key)
@@ -82,7 +82,7 @@ function renderBreakdownList(
                     textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: 'var(--text-muted)', minWidth: '5rem' }}>
                     {formatHours(item.seconds)}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0 }}>
@@ -93,7 +93,7 @@ function renderBreakdownList(
                   </span>
                 </button>
                 {hasSubRows && (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, background: '#fafafa' }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, background: 'var(--bg-page)' }}>
                     {item.children!.map((sub, subIdx) => {
                       const truncated = sub.notes.length > 50 ? sub.notes.slice(0, 47) + '…' : sub.notes
                       return (
@@ -109,10 +109,10 @@ function renderBreakdownList(
                             borderBottom: subIdx < item.children!.length - 1 ? '1px solid #f3f4f6' : 'none',
                           }}
                         >
-                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#9ca3af', minWidth: '5rem' }}>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: 'var(--text-faint)', minWidth: '5rem' }}>
                             {formatHours(sub.seconds)}
                           </span>
-                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#6b7280' }} title={sub.notes}>
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted)' }} title={sub.notes}>
                             {truncated}
                           </span>
                         </li>
@@ -132,7 +132,7 @@ function renderBreakdownList(
                   fontSize: '0.875rem',
                 }}
               >
-                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: 'var(--text-muted)', minWidth: '5rem' }}>
                   {formatHours(item.seconds)}
                 </span>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
@@ -376,7 +376,7 @@ export function PersonTimeDetailModal({ personName, startDate, endDate, hoursRow
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1rem 1.25rem',
           maxWidth: '90vw',
@@ -393,20 +393,20 @@ export function PersonTimeDetailModal({ personName, startDate, endDate, hoursRow
           <button
             type="button"
             onClick={onClose}
-            style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
           >
             Close
           </button>
         </div>
 
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
         ) : noUser ? (
           <>
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No clock sessions for this person.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No clock sessions for this person.</p>
             {hoursRows.length > 0 && (
-              <div style={{ marginTop: '1rem', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-                <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', fontSize: '0.8125rem', fontWeight: 500 }}>Hours from timesheet</div>
+              <div style={{ marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', fontSize: '0.8125rem', fontWeight: 500 }}>Hours from timesheet</div>
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {daysInRange.map((d) => {
                     const hrs = hoursRowsMap.get(d) ?? 0
@@ -432,15 +432,15 @@ export function PersonTimeDetailModal({ personName, startDate, endDate, hoursRow
             )}
           </>
         ) : totalSeconds === 0 && breakdown.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No clock sessions in this period.</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No clock sessions in this period.</p>
         ) : (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem' }}>
               <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>Period: {formatElapsed(totalSeconds)}</span>
             </div>
 
-            <div style={{ marginBottom: '0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>By day</div>
-            <div style={{ marginBottom: '0.75rem', padding: '0.5rem 0.75rem', background: '#fafafa', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+            <div style={{ marginBottom: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>By day</div>
+            <div style={{ marginBottom: '0.75rem', padding: '0.5rem 0.75rem', background: 'var(--bg-page)', borderRadius: 6, border: '1px solid var(--border)' }}>
               {daysInRange.map((d) => {
                 const sec = secondsByDay.get(d) ?? 0
                 return (
@@ -454,7 +454,7 @@ export function PersonTimeDetailModal({ personName, startDate, endDate, hoursRow
 
             {breakdown.length > 0 && (
               <>
-                <div style={{ marginBottom: '0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>Breakdown</div>
+                <div style={{ marginBottom: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Breakdown</div>
                 {renderBreakdownList(breakdown, expandedKeys, (key) => {
                   setExpandedKeys((prev) => {
                     const next = new Set(prev)

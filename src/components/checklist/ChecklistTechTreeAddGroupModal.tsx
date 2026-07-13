@@ -73,7 +73,7 @@ export function ChecklistTechTreeAddGroupModal({
         aria-labelledby={titleId}
         aria-describedby={isLinkFromGroup ? descriptionId : undefined}
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: 20,
           maxWidth: 440,
@@ -90,12 +90,12 @@ export function ChecklistTechTreeAddGroupModal({
         {isLinkFromGroup ? (
           <p
             id={descriptionId}
-            style={{ margin: '0 0 1rem', fontSize: 13, color: '#64748b', lineHeight: 1.4 }}
+            style={{ margin: '0 0 1rem', fontSize: 13, color: 'var(--text-slate-500)', lineHeight: 1.4 }}
           >
             Creates a new group linked from {linkFromGroupTitle} (prerequisite on the left).
           </p>
         ) : null}
-        <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }} htmlFor="tech-tree-add-group-title">
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }} htmlFor="tech-tree-add-group-title">
           Group title
         </label>
         <input

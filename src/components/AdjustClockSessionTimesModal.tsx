@@ -179,7 +179,7 @@ export function AdjustClockSessionTimesModal({
           if (e.key === 'Escape' && !saving) onClose()
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 420,
@@ -190,13 +190,13 @@ export function AdjustClockSessionTimesModal({
         <h2 id="adjust-clock-times-title" style={{ margin: '0 0 0.5rem', fontSize: '1.05rem', fontWeight: 600 }}>
           Adjust times
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {isOpenSession
             ? 'Change clock-in, or set clock-out to close the session. Focus notes and job links are unchanged.'
             : 'Change clock-in and clock-out. Focus notes and job links are unchanged.'}
         </p>
         <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
+          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem' }}>
             Clock in
           </span>
           <input
@@ -204,11 +204,11 @@ export function AdjustClockSessionTimesModal({
             value={clockIn}
             onChange={(e) => setClockIn(e.target.value)}
             disabled={saving}
-            style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', width: '100%', maxWidth: 300 }}
+            style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', width: '100%', maxWidth: 300 }}
           />
         </label>
         <label style={{ display: 'block', marginBottom: '0.75rem' }}>
-          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
+          <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem' }}>
             Clock out{isOpenSession ? ' (optional while still open)' : ''}
           </span>
           <input
@@ -216,11 +216,11 @@ export function AdjustClockSessionTimesModal({
             value={clockOut}
             onChange={(e) => setClockOut(e.target.value)}
             disabled={saving}
-            style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', width: '100%', maxWidth: 300 }}
+            style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', width: '100%', maxWidth: 300 }}
           />
         </label>
         {error ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b91c1c' }} role="alert">
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }} role="alert">
             {error}
           </p>
         ) : null}
@@ -231,9 +231,9 @@ export function AdjustClockSessionTimesModal({
             disabled={saving}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: saving ? 'not-allowed' : 'pointer',
               fontSize: '0.875rem',
             }}
@@ -290,7 +290,7 @@ export function AdjustClockSessionTimesModal({
               }
             }}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.25rem',
               maxWidth: 380,
@@ -301,7 +301,7 @@ export function AdjustClockSessionTimesModal({
             <h3 id="adjust-clock-times-approved-confirm-title" style={{ margin: '0 0 0.5rem', fontSize: '1rem', fontWeight: 600 }}>
               Approved session
             </h3>
-            <p id="adjust-clock-times-approved-confirm-desc" style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+            <p id="adjust-clock-times-approved-confirm-desc" style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
               {approvedConfirm.message}
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -311,9 +311,9 @@ export function AdjustClockSessionTimesModal({
                 autoFocus
                 style={{
                   padding: '0.45rem 0.85rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                 }}

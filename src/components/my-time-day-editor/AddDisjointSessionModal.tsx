@@ -144,7 +144,7 @@ export function AddDisjointSessionModal({
           if (e.key === 'Escape') onClose()
         }}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 420,
@@ -158,7 +158,7 @@ export function AddDisjointSessionModal({
         >
           Add disjoint session
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Insert a new closed clock session. Notes and job/bid can be edited after Save.
         </p>
         <label style={{ display: 'block', marginBottom: '0.75rem' }}>
@@ -167,7 +167,7 @@ export function AddDisjointSessionModal({
               display: 'block',
               fontSize: '0.75rem',
               fontWeight: 600,
-              color: '#374151',
+              color: 'var(--text-700)',
               marginBottom: '0.25rem',
             }}
           >
@@ -179,7 +179,7 @@ export function AddDisjointSessionModal({
             onChange={(e) => setClockIn(e.target.value)}
             style={{
               padding: '0.4rem 0.5rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               fontSize: '0.875rem',
               width: '100%',
@@ -193,7 +193,7 @@ export function AddDisjointSessionModal({
               display: 'block',
               fontSize: '0.75rem',
               fontWeight: 600,
-              color: '#374151',
+              color: 'var(--text-700)',
               marginBottom: '0.25rem',
             }}
           >
@@ -205,7 +205,7 @@ export function AddDisjointSessionModal({
             onChange={(e) => setClockOut(e.target.value)}
             style={{
               padding: '0.4rem 0.5rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               fontSize: '0.875rem',
               width: '100%',
@@ -215,7 +215,7 @@ export function AddDisjointSessionModal({
         </label>
         {error ? (
           <p
-            style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b91c1c' }}
+            style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}
             role="alert"
           >
             {error}
@@ -234,9 +234,9 @@ export function AddDisjointSessionModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: 'pointer',
               fontSize: '0.875rem',
             }}

@@ -69,8 +69,8 @@ export function MyTimeMergeSegmentsModal({
     minWidth: 0,
     padding: '0.85rem 1rem',
     borderRadius: 10,
-    border: '1px solid #e5e7eb',
-    background: '#fafafa',
+    border: '1px solid var(--border)',
+    background: 'var(--bg-page)',
     cursor: 'pointer',
     textAlign: 'left',
     font: 'inherit',
@@ -79,7 +79,7 @@ export function MyTimeMergeSegmentsModal({
 
   const jobCardSelected: CSSProperties = {
     borderColor: '#2563eb',
-    background: '#eff6ff',
+    background: 'var(--bg-blue-tint)',
     boxShadow: 'inset 0 0 0 1px #2563eb',
   }
 
@@ -89,7 +89,7 @@ export function MyTimeMergeSegmentsModal({
     fontSize: '0.8125rem',
     fontWeight: 500,
     lineHeight: 1.45,
-    color: '#111827',
+    color: 'var(--text-strong)',
     overflowWrap: 'anywhere',
     wordBreak: 'break-word',
   }
@@ -111,7 +111,7 @@ export function MyTimeMergeSegmentsModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 12,
           maxWidth: 560,
           width: '100%',
@@ -125,7 +125,7 @@ export function MyTimeMergeSegmentsModal({
       >
         <h3
           id="my-time-merge-title"
-          style={{ margin: '0 0 1rem', fontSize: '1.05rem', fontWeight: 700, color: '#111827' }}
+          style={{ margin: '0 0 1rem', fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-strong)' }}
         >
           Combine segments
         </h3>
@@ -172,9 +172,9 @@ export function MyTimeMergeSegmentsModal({
               boxSizing: 'border-box',
               padding: '0.65rem 1rem',
               borderRadius: 10,
-              border: choice === 'unassigned' ? '1px solid #2563eb' : '1px dashed #d1d5db',
-              background: choice === 'unassigned' ? '#eff6ff' : 'transparent',
-              color: '#4b5563',
+              border: choice === 'unassigned' ? '1px solid #2563eb' : '1px dashed var(--border-strong)',
+              background: choice === 'unassigned' ? 'var(--bg-blue-tint)' : 'transparent',
+              color: 'var(--text-600)',
               fontSize: '0.8125rem',
               cursor: 'pointer',
               textAlign: 'center',
@@ -199,7 +199,7 @@ export function MyTimeMergeSegmentsModal({
             <label
               id="merge-focus-notes-heading"
               htmlFor="merge-focus-notes-textarea"
-              style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', cursor: 'pointer' }}
+              style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer' }}
             >
               Focus notes for merged segment
             </label>
@@ -210,7 +210,7 @@ export function MyTimeMergeSegmentsModal({
                 padding: 0,
                 border: 'none',
                 background: 'none',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 fontSize: '0.75rem',
                 cursor: 'pointer',
                 textDecoration: 'underline',
@@ -237,8 +237,8 @@ export function MyTimeMergeSegmentsModal({
               lineHeight: 1.45,
               padding: '0.55rem 0.65rem',
               borderRadius: 8,
-              border: '1px solid #d1d5db',
-              color: '#111827',
+              border: '1px solid var(--border-strong)',
+              color: 'var(--text-strong)',
               overflowX: 'hidden',
             }}
           />
@@ -250,9 +250,9 @@ export function MyTimeMergeSegmentsModal({
             onClick={onClose}
             style={{
               padding: '0.5rem 0.95rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 8,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: 'pointer',
               fontSize: '0.8125rem',
             }}

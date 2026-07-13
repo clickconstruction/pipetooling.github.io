@@ -61,7 +61,7 @@ export function ChecklistTechTreeLinksModal({
         aria-modal="true"
         aria-labelledby="tech-tree-links-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: 20,
           maxWidth: 480,
@@ -83,7 +83,7 @@ export function ChecklistTechTreeLinksModal({
           }}
         >
           <h2 id="tech-tree-links-modal-title" style={{ margin: 0, fontSize: '1.125rem' }}>
-            Links <span style={{ color: '#64748b', fontWeight: 500 }}>({edgeCount})</span>
+            Links <span style={{ color: 'var(--text-slate-500)', fontWeight: 500 }}>({edgeCount})</span>
           </h2>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <button
@@ -114,7 +114,7 @@ export function ChecklistTechTreeLinksModal({
           }}
         />
         {filteredTreeEdges.length === 0 ? (
-          <p style={{ margin: 0, color: '#64748b', fontSize: 12 }}>No links match this search</p>
+          <p style={{ margin: 0, color: 'var(--text-slate-500)', fontSize: 12 }}>No links match this search</p>
         ) : (
           <ul style={{ margin: 0, paddingLeft: '1.2em' }}>
             {filteredTreeEdges.map((e) => {

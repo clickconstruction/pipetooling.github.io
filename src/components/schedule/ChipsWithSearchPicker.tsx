@@ -70,9 +70,9 @@ const inputStyle: CSSProperties = {
   boxSizing: 'border-box',
   padding: '0.5rem 0.65rem',
   fontSize: '0.875rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: 'white',
+  background: 'var(--surface)',
 }
 
 const dropdownStyle: CSSProperties = {
@@ -81,9 +81,9 @@ const dropdownStyle: CSSProperties = {
   padding: 0,
   maxHeight: 200,
   overflow: 'auto',
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 6,
-  background: 'white',
+  background: 'var(--surface)',
 }
 
 const dropdownRowButtonStyle: CSSProperties = {
@@ -94,14 +94,14 @@ const dropdownRowButtonStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0.5rem 0.65rem',
   fontSize: '0.875rem',
-  color: '#111827',
+  color: 'var(--text-strong)',
   cursor: 'pointer',
 }
 
 const statusRowStyle: CSSProperties = {
   padding: '0.5rem 0.65rem',
   fontSize: '0.8125rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
 }
 
 const DEFAULT_BELOW_MIN_HINT = 'Type at least 2 letters to search.'
@@ -260,7 +260,7 @@ export function ChipsWithSearchPicker({
         aria-expanded={meetsMin}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={handleInputKeyDown}
-        style={{ ...inputStyle, background: disabled ? '#f3f4f6' : 'white' }}
+        style={{ ...inputStyle, background: disabled ? 'var(--bg-muted)' : 'var(--surface)' }}
       />
 
       {trimmed.length === 0 ? (
@@ -272,7 +272,7 @@ export function ChipsWithSearchPicker({
           {loading ? (
             <li style={statusRowStyle}>Searching…</li>
           ) : errorMessage ? (
-            <li style={{ ...statusRowStyle, color: '#b91c1c' }}>{errorMessage}</li>
+            <li style={{ ...statusRowStyle, color: 'var(--text-red-700)' }}>{errorMessage}</li>
           ) : results.length === 0 ? (
             <li style={statusRowStyle}>No matches.</li>
           ) : (

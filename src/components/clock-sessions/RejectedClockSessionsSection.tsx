@@ -77,9 +77,9 @@ export function RejectedClockSessionsSection({
             }}
             style={{
               ...btnSm,
-              border: '1px solid #d1d5db',
-              background: 'white',
-              color: '#374151',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
+              color: 'var(--text-700)',
             }}
           >
             Return to pending
@@ -90,9 +90,9 @@ export function RejectedClockSessionsSection({
               onClick={() => onEdit(s)}
               style={{
                 ...btnSm,
-                border: '1px solid #d1d5db',
-                background: 'white',
-                color: '#374151',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                color: 'var(--text-700)',
               }}
             >
               Edit
@@ -118,8 +118,8 @@ export function RejectedClockSessionsSection({
               style={{
                 ...btnSm,
                 border: '1px solid #dc2626',
-                background: '#fef2f2',
-                color: '#dc2626',
+                background: 'var(--bg-red-tint)',
+                color: 'var(--text-red-600)',
               }}
             >
               Delete

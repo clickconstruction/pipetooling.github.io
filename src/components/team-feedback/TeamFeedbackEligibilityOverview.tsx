@@ -42,7 +42,7 @@ function badgeStyle(detail: TeamFeedbackEligibilityDetail): CSSProperties {
     return { background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }
   }
   if (detail.reason === 'disabled') {
-    return { background: '#f3f4f6', color: '#4b5563', border: '1px solid #d1d5db' }
+    return { background: 'var(--bg-muted)', color: 'var(--text-600)', border: '1px solid var(--border-strong)' }
   }
   return { background: '#fff7ed', color: '#c2410c', border: '1px solid #fed7aa' }
 }
@@ -124,11 +124,11 @@ export default function TeamFeedbackEligibilityOverview() {
 
   const modalBody = (
     <>
-      {loading && <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>}
+      {loading && <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>}
       {!loading && hasLoadedOnce && (
         <>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
-            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem', color: '#374151' }}>
+            <span style={{ display: 'block', fontWeight: 500, marginBottom: '0.25rem', color: 'var(--text-700)' }}>
               Filter by name or email
             </span>
             <input
@@ -141,35 +141,35 @@ export default function TeamFeedbackEligibilityOverview() {
                 maxWidth: 320,
                 padding: '0.4rem 0.5rem',
                 borderRadius: 6,
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 fontSize: '0.875rem',
               }}
             />
           </label>
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#9ca3af' }}>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-faint)' }}>
             Cadence: {settings?.cadence_days ?? '—'} day(s). Prompts run on clock-out when eligible.
           </p>
           <div
             style={{
               maxHeight: 'min(28rem, 60vh)',
               overflow: 'auto',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
             }}
           >
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                <tr style={{ background: 'var(--bg-subtle)', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                     User
                   </th>
-                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                     Role
                   </th>
-                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                     Eligibility
                   </th>
-                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid #e5e7eb', fontWeight: 600 }}>
+                  <th style={{ padding: '0.5rem 0.65rem', borderBottom: '1px solid var(--border)', fontWeight: 600 }}>
                     Actions
                   </th>
                 </tr>
@@ -184,12 +184,12 @@ export default function TeamFeedbackEligibilityOverview() {
                   return (
                     <tr key={u.id}>
                       <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 500, color: '#111827' }}>{u.name || '—'}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#6b7280', wordBreak: 'break-all' }}>
+                        <div style={{ fontWeight: 500, color: 'var(--text-strong)' }}>{u.name || '—'}</div>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', wordBreak: 'break-all' }}>
                           {u.email ?? ''}
                         </div>
                       </td>
-                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: '#374151' }}>
+                      <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', color: 'var(--text-700)' }}>
                         {u.role ?? '—'}
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
@@ -206,7 +206,7 @@ export default function TeamFeedbackEligibilityOverview() {
                         >
                           {badge}
                         </span>
-                        <div style={{ color: '#4b5563', lineHeight: 1.35 }}>{line}</div>
+                        <div style={{ color: 'var(--text-600)', lineHeight: 1.35 }}>{line}</div>
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', borderBottom: '1px solid #f3f4f6', verticalAlign: 'top' }}>
                         <button
@@ -219,9 +219,9 @@ export default function TeamFeedbackEligibilityOverview() {
                             fontSize: '0.75rem',
                             fontWeight: 600,
                             borderRadius: 6,
-                            border: '1px solid #d1d5db',
-                            background: !hasStateRow || resetBusy ? '#f3f4f6' : 'white',
-                            color: '#374151',
+                            border: '1px solid var(--border-strong)',
+                            background: !hasStateRow || resetBusy ? 'var(--bg-muted)' : 'var(--surface)',
+                            color: 'var(--text-700)',
                             cursor: !hasStateRow || resetBusy ? 'not-allowed' : 'pointer',
                           }}
                         >
@@ -234,7 +234,7 @@ export default function TeamFeedbackEligibilityOverview() {
               </tbody>
             </table>
             {filteredUsers.length === 0 && (
-              <p style={{ margin: 0, padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <p style={{ margin: 0, padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                 No users match this filter.
               </p>
             )}
@@ -246,7 +246,7 @@ export default function TeamFeedbackEligibilityOverview() {
 
   return (
     <>
-      <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+      <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
         <button
           type="button"
           onClick={() => setModalOpen(true)}
@@ -254,11 +254,11 @@ export default function TeamFeedbackEligibilityOverview() {
           style={{
             padding: '0.35rem 0.75rem',
             borderRadius: 6,
-            border: '1px solid #d1d5db',
-            background: '#fff',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
             fontSize: '0.875rem',
             fontWeight: 600,
-            color: '#374151',
+            color: 'var(--text-700)',
             cursor: 'pointer',
           }}
         >
@@ -296,9 +296,9 @@ export default function TeamFeedbackEligibilityOverview() {
                 maxHeight: 'min(90vh, 900px)',
                 display: 'flex',
                 flexDirection: 'column',
-                background: '#fff',
+                background: 'var(--surface)',
                 borderRadius: 10,
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
                 overflow: 'hidden',
               }}
@@ -311,13 +311,13 @@ export default function TeamFeedbackEligibilityOverview() {
                   justifyContent: 'space-between',
                   gap: '0.75rem',
                   padding: '0.85rem 1rem',
-                  borderBottom: '1px solid #e5e7eb',
-                  background: '#f9fafb',
+                  borderBottom: '1px solid var(--border)',
+                  background: 'var(--bg-subtle)',
                 }}
               >
                 <h2
                   id="team-feedback-eligibility-modal-title"
-                  style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}
+                  style={{ margin: 0, fontSize: '1.125rem', fontWeight: 700, color: 'var(--text-strong)' }}
                 >
                   Eligibility
                 </h2>
@@ -327,11 +327,11 @@ export default function TeamFeedbackEligibilityOverview() {
                   style={{
                     padding: '0.35rem 0.65rem',
                     borderRadius: 6,
-                    border: '1px solid #d1d5db',
-                    background: '#fff',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
                     fontSize: '0.875rem',
                     fontWeight: 500,
-                    color: '#374151',
+                    color: 'var(--text-700)',
                     cursor: 'pointer',
                   }}
                 >

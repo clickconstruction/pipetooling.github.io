@@ -97,7 +97,7 @@ export default function PasswordInput({
             alignItems: 'center',
             justifyContent: 'center',
             lineHeight: 0,
-            color: '#9ca3af',
+            color: 'var(--text-faint)',
           }}
         >
           {show ? (

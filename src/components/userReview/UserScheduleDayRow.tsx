@@ -19,7 +19,7 @@ import { UserDaySummaryModal } from './UserDaySummaryModal'
 const relativeDaySublineStyle: CSSProperties = {
   display: 'block',
   fontSize: '0.7rem',
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   fontWeight: 400,
   marginTop: '0.05rem',
 }
@@ -122,12 +122,12 @@ export function UserScheduleDayRow({
             background: 'none',
             font: 'inherit',
             fontSize: '0.8125rem',
-            color: '#374151',
+            color: 'var(--text-700)',
             textAlign: 'left',
             cursor: 'pointer',
           }}
         >
-          <span style={{ fontWeight: 600, color: '#111827' }}>{narrowDateHeader}</span>
+          <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{narrowDateHeader}</span>
           {subline}
         </button>
       ) : null}
@@ -179,8 +179,8 @@ export function UserScheduleEmptyDayRow({ dayYmd }: { dayYmd: string }) {
   const dayShort = dayLabel.slice(0, 3)
   const dayMdShort = dayMd.slice(0, 5)
   return (
-    <div style={{ padding: '0.15rem 0', fontSize: '0.8125rem', color: '#9ca3af' }}>
-      <span style={{ fontWeight: 500, color: '#6b7280' }}>
+    <div style={{ padding: '0.15rem 0', fontSize: '0.8125rem', color: 'var(--text-faint)' }}>
+      <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
         {dayShort} · {dayMdShort}
       </span>
       <span style={{ marginLeft: '0.5rem' }}>— No activity</span>

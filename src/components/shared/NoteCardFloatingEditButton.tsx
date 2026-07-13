@@ -39,7 +39,7 @@ export function NoteCardFloatingEditButton({ onClick }: Props) {
           background: 'transparent',
           borderRadius: 4,
           cursor: 'pointer',
-          color: '#4b5563',
+          color: 'var(--text-600)',
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',

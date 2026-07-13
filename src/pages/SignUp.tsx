@@ -97,7 +97,7 @@ export default function SignUp() {
             autoComplete="new-password"
           />
         </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <button type="submit" disabled={loading} style={{ width: '100%', padding: '0.5rem 1rem' }}>
           {loading ? 'Creating account…' : 'Sign up'}
         </button>

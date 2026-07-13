@@ -13,7 +13,7 @@ type CollapsibleSectionProps = {
 
 export function CollapsibleSection({ title, count, headerCountLabel, open, onToggle, children, headerStyle }: CollapsibleSectionProps) {
   return (
-    <div style={{ marginBottom: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+    <div style={{ marginBottom: '1rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
       <button
         type="button"
         onClick={onToggle}

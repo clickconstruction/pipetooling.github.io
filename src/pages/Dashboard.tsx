@@ -6815,7 +6815,7 @@ export default function Dashboard() {
                                         border: '1px solid var(--border)',
                                         borderRadius: 8,
                                         marginTop: '0.5rem',
-                                        background: isRead ? 'var(--surface)' : '#f0f9ff',
+                                        background: isRead ? 'var(--surface)' : 'var(--bg-sky-tint)',
                                       }}
                                     >
                                       {!isMobile && (

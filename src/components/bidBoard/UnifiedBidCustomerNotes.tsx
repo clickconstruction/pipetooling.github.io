@@ -74,12 +74,12 @@ function mergeRows(bids: BidSubmissionEntry[], customers: CustomerContactRow[]):
 }
 
 const bidVariantRead: CSSProperties = {
-  background: '#eff6ff',
+  background: 'var(--bg-blue-tint)',
   borderLeft: '3px solid #3b82f6',
 }
 
 const customerVariantRead: CSSProperties = {
-  background: '#f0fdf4',
+  background: 'var(--bg-green-tint)',
   borderLeft: '3px solid #16a34a',
 }
 
@@ -97,7 +97,7 @@ const customerBadgeStyle: CSSProperties = {
   fontWeight: 600,
   padding: '0.125rem 0.35rem',
   borderRadius: 4,
-  background: '#dcfce7',
+  background: 'var(--bg-green-100)',
   color: '#166534',
 }
 
@@ -174,12 +174,12 @@ function BidUnifiedEntryRow({
 
   const cardBorder: CSSProperties = {
     padding: '0.75rem',
-    borderBottom: isLastInList ? 'none' : '1px solid #e5e7eb',
+    borderBottom: isLastInList ? 'none' : '1px solid var(--border)',
   }
 
   if (editing) {
     return (
-      <article aria-label="Edit bid note" style={{ ...cardBorder, background: '#ffffff', borderLeft: bidVariantRead.borderLeft }}>
+      <article aria-label="Edit bid note" style={{ ...cardBorder, background: 'var(--surface)', borderLeft: bidVariantRead.borderLeft }}>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -239,7 +239,7 @@ function BidUnifiedEntryRow({
             <button
               type="button"
               onClick={() => setEditing(false)}
-              style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
             >
               Cancel
             </button>
@@ -250,8 +250,8 @@ function BidUnifiedEntryRow({
               aria-label="Delete"
               style={{
                 padding: '0.25rem',
-                background: '#fee2e2',
-                color: '#991b1b',
+                background: 'var(--bg-red-100)',
+                color: 'var(--text-red-800)',
                 border: '1px solid #fca5a5',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -302,18 +302,18 @@ function BidUnifiedEntryRow({
             gap: '0.75rem 1rem',
             alignItems: 'center',
             fontSize: '0.875rem',
-            color: '#374151',
+            color: 'var(--text-700)',
           }}
         >
           <span style={bidBadgeStyle}>Bid note</span>
           {entry.contact_method?.trim() ? (
             <span>
-              <span style={{ color: '#6b7280', marginRight: '0.35rem' }}>Contact method</span>
+              <span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Contact method</span>
               {entry.contact_method.trim()}
             </span>
           ) : null}
           <span>{entry.occurred_at ? formatCompactNoteDateTime(entry.occurred_at) : '—'}</span>
-          <span style={{ color: '#6b7280' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
+          <span style={{ color: 'var(--text-muted)' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
         </div>
       </div>
     </article>
@@ -376,12 +376,12 @@ function CustomerUnifiedEntryRow({
 
   const cardBorder: CSSProperties = {
     padding: '0.75rem',
-    borderBottom: isLastInList ? 'none' : '1px solid #e5e7eb',
+    borderBottom: isLastInList ? 'none' : '1px solid var(--border)',
   }
 
   if (editing) {
     return (
-      <article aria-label="Edit customer note" style={{ ...cardBorder, background: '#ffffff', borderLeft: customerVariantRead.borderLeft }}>
+      <article aria-label="Edit customer note" style={{ ...cardBorder, background: 'var(--surface)', borderLeft: customerVariantRead.borderLeft }}>
         <textarea
           value={details}
           onChange={(e) => setDetails(e.target.value)}
@@ -441,7 +441,7 @@ function CustomerUnifiedEntryRow({
             <button
               type="button"
               onClick={() => setEditing(false)}
-              style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
             >
               Cancel
             </button>
@@ -452,8 +452,8 @@ function CustomerUnifiedEntryRow({
               aria-label="Delete"
               style={{
                 padding: '0.25rem',
-                background: '#fee2e2',
-                color: '#991b1b',
+                background: 'var(--bg-red-100)',
+                color: 'var(--text-red-800)',
                 border: '1px solid #fca5a5',
                 borderRadius: 4,
                 cursor: 'pointer',
@@ -504,18 +504,18 @@ function CustomerUnifiedEntryRow({
             gap: '0.75rem 1rem',
             alignItems: 'center',
             fontSize: '0.875rem',
-            color: '#374151',
+            color: 'var(--text-700)',
           }}
         >
           <span style={customerBadgeStyle}>Customer note</span>
           {entry.contact_method?.trim() ? (
             <span>
-              <span style={{ color: '#6b7280', marginRight: '0.35rem' }}>Contact method</span>
+              <span style={{ color: 'var(--text-muted)', marginRight: '0.35rem' }}>Contact method</span>
               {entry.contact_method.trim()}
             </span>
           ) : null}
           <span>{entry.contact_date ? formatCompactNoteDateTime(entry.contact_date) : '—'}</span>
-          <span style={{ color: '#6b7280' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
+          <span style={{ color: 'var(--text-muted)' }}>{noteByLineFromEmbed(entry.created_by_user)}</span>
         </div>
       </div>
     </article>
@@ -576,8 +576,8 @@ function UnifiedNewBidRow({
       aria-label="New bid note"
       style={{
         padding: '0.75rem',
-        borderBottom: isLastInList ? 'none' : '1px solid #e5e7eb',
-        background: '#fafafa',
+        borderBottom: isLastInList ? 'none' : '1px solid var(--border)',
+        background: 'var(--bg-page)',
         borderLeft: bidVariantRead.borderLeft,
       }}
     >
@@ -648,7 +648,7 @@ function UnifiedNewBidRow({
           <button
             type="button"
             onClick={onCancel}
-            style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
           >
             Cancel
           </button>
@@ -708,8 +708,8 @@ function UnifiedNewCustomerRow({
       aria-label="New customer note"
       style={{
         padding: '0.75rem',
-        borderBottom: isLastInList ? 'none' : '1px solid #e5e7eb',
-        background: '#fafafa',
+        borderBottom: isLastInList ? 'none' : '1px solid var(--border)',
+        background: 'var(--bg-page)',
         borderLeft: customerVariantRead.borderLeft,
       }}
     >
@@ -780,7 +780,7 @@ function UnifiedNewCustomerRow({
           <button
             type="button"
             onClick={onCancel}
-            style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
           >
             Cancel
           </button>
@@ -831,7 +831,7 @@ export function UnifiedBidCustomerNotesActionButtons({
         style={{
           padding: '0.25rem 0.65rem',
           background: !customerId ? '#e5e7eb' : addingKind === 'customer' ? '#15803d' : '#16a34a',
-          color: !customerId ? '#9ca3af' : 'white',
+          color: !customerId ? 'var(--text-faint)' : 'white',
           border: 'none',
           borderRadius: 4,
           cursor: !customerId ? 'not-allowed' : 'pointer',
@@ -954,11 +954,11 @@ export function UnifiedBidCustomerNotes({
           />
         </div>
       ) : null}
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', background: '#f9fafb' }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', background: 'var(--bg-subtle)' }}>
         {loading && merged.length === 0 && !hasDraft ? (
-          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</div>
+          <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</div>
         ) : null}
-        {showEmpty ? <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>No notes yet.</div> : null}
+        {showEmpty ? <div style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No notes yet.</div> : null}
         {merged.map((row, i) => (
           <UnifiedEntryRow
             key={`${row.kind}-${row.id}`}

@@ -80,9 +80,9 @@ function writeRangeToStorage(mode: RangeMode): void {
 const toggleButtonStyle = (active: boolean): CSSProperties => ({
   padding: '0.2rem 0.55rem',
   fontSize: '0.75rem',
-  border: '1px solid #d1d5db',
-  background: active ? '#1d4ed8' : '#fff',
-  color: active ? '#fff' : '#374151',
+  border: '1px solid var(--border-strong)',
+  background: active ? '#1d4ed8' : 'var(--surface)',
+  color: active ? '#fff' : 'var(--text-700)',
   cursor: 'pointer',
   fontWeight: active ? 600 : 500,
 })
@@ -120,7 +120,7 @@ function RangeToggle({ value, onChange }: { value: RangeMode; onChange: (v: Rang
               borderBottomLeftRadius: isFirst ? 4 : 0,
               borderTopRightRadius: isLast ? 4 : 0,
               borderBottomRightRadius: isLast ? 4 : 0,
-              borderRight: isLast ? '1px solid #d1d5db' : 'none',
+              borderRight: isLast ? '1px solid var(--border-strong)' : 'none',
             }}
           >
             {btn.label}
@@ -315,10 +315,10 @@ export default function UserReviewModal() {
         style={{
           padding: '0.2rem 0.55rem',
           fontSize: '0.75rem',
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           borderRadius: 4,
-          background: '#fff',
-          color: '#374151',
+          background: 'var(--surface)',
+          color: 'var(--text-700)',
           cursor: 'pointer',
         }}
       >
@@ -350,7 +350,7 @@ export default function UserReviewModal() {
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 'min(100%, 48rem)',
           width: '100%',

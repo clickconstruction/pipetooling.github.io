@@ -123,8 +123,8 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
       fontSize: '0.875rem',
       borderRadius: 6,
       cursor: 'pointer',
-      border: selected ? '2px solid #d97706' : '1px solid #d1d5db',
-      background: selected ? '#fffbeb' : 'white',
+      border: selected ? '2px solid #d97706' : '1px solid var(--border-strong)',
+      background: selected ? 'var(--bg-amber-tint)' : 'var(--surface)',
       fontWeight: selected ? 600 : 400,
     }
   }
@@ -141,7 +141,7 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
         zIndex: 65,
       }}
     >
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Create trip charge</h2>
@@ -149,11 +149,11 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
               {loading ? 'Loading…' : jobLabel || 'Job'}
             </p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
         </div>
 
         {!loading && job && !job.customer_id && (
-          <p style={{ fontSize: '0.8125rem', color: '#b45309', background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '1rem' }}>
+          <p style={{ fontSize: '0.8125rem', color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', border: '1px solid #fcd34d', borderRadius: 6, padding: '0.5rem 0.75rem', marginBottom: '1rem' }}>
             This job has no linked customer — the charge will sit in Ready to Bill until a customer is linked.
           </p>
         )}
@@ -185,19 +185,19 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
                 setAmountStr(e.target.value)
               }}
               placeholder="e.g. 95"
-              style={{ width: 140, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: 140, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
             {reason && (
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Bills as “{buildTripChargeMemo(reason)}”. Default amounts live in Settings → Jobs &amp; dispatch.
               </p>
             )}
           </div>
 
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             <button
               type="submit"
               disabled={!canSubmit}

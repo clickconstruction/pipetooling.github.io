@@ -13,12 +13,12 @@ const linkBoxStyle: CSSProperties = {
 
 const linkStyle: CSSProperties = {
   fontSize: '0.875rem',
-  color: '#2563eb',
+  color: 'var(--text-link)',
   fontWeight: 600,
 }
 
 const hintStyle: CSSProperties = {
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.8125rem',
 }
 

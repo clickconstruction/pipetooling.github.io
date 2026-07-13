@@ -196,11 +196,11 @@ export function ProjectsForecastSpecificGrid({
         // past the page's right padding. Left stays aligned with normal content padding so
         // the sticky gutter labels sit at the same x-position as other page content.
         marginRight: 'calc(-1 * (var(--app-main-pad) + 1.25rem))',
-        borderTop: '1px solid #e5e7eb',
-        borderBottom: '1px solid #e5e7eb',
+        borderTop: '1px solid var(--border)',
+        borderBottom: '1px solid var(--border)',
         display: 'flex',
         alignItems: 'stretch',
-        background: '#ffffff',
+        background: 'var(--surface)',
       }}
     >
       <div
@@ -208,8 +208,8 @@ export function ProjectsForecastSpecificGrid({
           width: gutter,
           minWidth: gutter,
           maxWidth: gutter,
-          borderRight: '1px solid #e5e7eb',
-          background: '#ffffff',
+          borderRight: '1px solid var(--border)',
+          background: 'var(--surface)',
           display: 'flex',
           flexDirection: 'column',
         }}
@@ -217,8 +217,8 @@ export function ProjectsForecastSpecificGrid({
         <div
           style={{
             height: HEADER_TOTAL_H,
-            borderBottom: '1px solid #e5e7eb',
-            background: '#f8fafc',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg-slate-tint)',
           }}
         >
           {gutterHeader ?? null}
@@ -236,7 +236,7 @@ export function ProjectsForecastSpecificGrid({
                 padding: '0 8px',
                 borderBottom: '1px solid #f1f5f9',
                 fontSize: '0.8125rem',
-                color: '#0f172a',
+                color: 'var(--text-slate-900)',
                 overflow: 'hidden',
                 whiteSpace: 'nowrap',
                 textOverflow: 'ellipsis',
@@ -269,8 +269,8 @@ export function ProjectsForecastSpecificGrid({
               position: 'sticky',
               top: 0,
               zIndex: 3,
-              background: '#ffffff',
-              borderBottom: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              borderBottom: '1px solid var(--border)',
             }}
           >
             <div
@@ -280,8 +280,8 @@ export function ProjectsForecastSpecificGrid({
                 height: FORECAST_SPECIFIC_HEADER_MONTH_H,
                 borderBottom: '1px solid #f1f5f9',
                 fontSize: '0.75rem',
-                color: '#374151',
-                background: '#f8fafc',
+                color: 'var(--text-700)',
+                background: 'var(--bg-slate-tint)',
               }}
             >
               {monthRuns.map((run) => (
@@ -294,8 +294,8 @@ export function ProjectsForecastSpecificGrid({
                     justifyContent: 'flex-start',
                     paddingLeft: 6,
                     fontWeight: 600,
-                    background: '#f8fafc',
-                    borderRight: '1px solid #e5e7eb',
+                    background: 'var(--bg-slate-tint)',
+                    borderRight: '1px solid var(--border)',
                     overflow: 'hidden',
                     whiteSpace: 'nowrap',
                   }}
@@ -310,7 +310,7 @@ export function ProjectsForecastSpecificGrid({
                 gridTemplateColumns,
                 height: FORECAST_SPECIFIC_HEADER_DAY_H,
                 fontSize: '0.6875rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               {columns.map((col, i) => {
@@ -379,7 +379,7 @@ export function ProjectsForecastSpecificGrid({
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
                 fontSize: '0.8125rem',
                 fontStyle: 'italic',
               }}
@@ -415,7 +415,7 @@ export function ProjectsForecastSpecificGrid({
                         style={{
                           gridColumn: `${i + 1} / ${i + 2}`,
                           gridRow: 1,
-                          background: !isDay ? '#fafafa' : '#f8fafc',
+                          background: !isDay ? 'var(--bg-page)' : 'var(--bg-slate-tint)',
                         }}
                       />
                     )
