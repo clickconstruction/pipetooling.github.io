@@ -2098,6 +2098,10 @@ Tech files **Turnaway** ("client not home" / "site not ready") from the Job Mode
 
 **Date**: 2026-07-04
 
+### Bid Board — Customer review modal (PR #198)
+
+New button row above the Bid Board search (home for future board tools) with **Customer review**: per-customer section counts across the boards plus **estimating and job hours** via new RPC `list_customer_review_job_hours` (migration `20260704170000`, applied 2026-07-04). UI: [`BidBoardCustomerReviewModal.tsx`](../src/components/bids/BidBoardCustomerReviewModal.tsx); pure data prep in [`bidBoardCustomerReview.ts`](../src/lib/bidBoardCustomerReview.ts).
+
 ### Job Parts Tally — "Mark as payroll" + auto-mark rules (dev-only)
 
 Robert sometimes pays **payroll with the company card**. Payroll cost already reaches per-job numbers via **clocked labor** (hours × wage), so splitting the card charge across jobs would **double-count**. But leaving it unassigned strands it in the "unlinked" queue. Fix: mark such transactions **payroll** — resolved (out of the queue) with **no job allocation**, so no job's spend moves.
