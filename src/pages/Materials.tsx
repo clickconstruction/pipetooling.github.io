@@ -2961,8 +2961,8 @@ export default function Materials() {
         </div>
       )}
 
-      {/* Service Type Filter */}
-      {visibleServiceTypes.length > 0 && (
+      {/* Service Type Filter — hidden on Supply Houses, which doesn't filter by service type */}
+      {visibleServiceTypes.length > 0 && activeTab !== 'supply-houses' && (
         <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
           {visibleServiceTypes.map(st => (
             <button
