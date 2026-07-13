@@ -23,6 +23,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'job_combined',
   'job_separated',
   'collections_change',
+  'completeness_marked',
 ]
 
 describe('JOB_ACTIVITY_EVENT_RENDER', () => {
@@ -48,5 +49,6 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
     expect(bucketForEvent('crew_added')).toBe('crew')
     expect(bucketForEvent('field_edited')).toBe('other')
     expect(bucketForEvent('collections_change')).toBe('billing')
+    expect(bucketForEvent('completeness_marked')).toBe('status')
   })
 })
