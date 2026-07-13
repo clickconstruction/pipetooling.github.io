@@ -481,7 +481,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
               )}
             </div>
             {searchMatchStatus && (
-              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} aria-live="polite">
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} aria-live="polite">
                 {searchMatchStatus}
               </span>
             )}
@@ -516,7 +516,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
               />
             </label>
             {rangeInvalid && (
-              <span style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 Pick both dates to set the range.
               </span>
             )}
@@ -567,7 +567,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
               marginTop: '-0.25rem',
               marginBottom: '0.75rem',
               fontSize: '0.875rem',
-              color: '#374151',
+              color: 'var(--text-700)',
             }}
           >
             <label
@@ -589,7 +589,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
               Only show jobs with projects
             </label>
             {!loadingJobs && bars.length > 0 && (
-              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }} aria-live="polite">
+              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }} aria-live="polite">
                 {linkedCount} of {bars.length} linked
               </span>
             )}
@@ -598,7 +598,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
       })()}
 
       {error && (
-        <p role="alert" style={{ color: '#b91c1c', marginTop: 0 }}>
+        <p role="alert" style={{ color: 'var(--text-red-700)', marginTop: 0 }}>
           {error}
         </p>
       )}
@@ -618,14 +618,14 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
       )}
 
       {!rangeInvalid && projectFilteredBars.length > 0 && dayKeys.length > 0 && filteredBars.length === 0 && searchActive && (
-        <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
           No jobs match &ldquo;{searchQuery.trim()}&rdquo;
           {onlyWithProjects ? ' among jobs linked to a project' : ''}.
         </p>
       )}
 
       {!rangeInvalid && bars.length > 0 && projectFilteredBars.length === 0 && onlyWithProjects && (
-        <p style={{ color: '#6b7280', marginTop: '0.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
           No working jobs in scope are linked to a project.{' '}
           <button
             type="button"
@@ -634,7 +634,7 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
               padding: 0,
               background: 'transparent',
               border: 'none',
-              color: '#2563eb',
+              color: 'var(--text-link)',
               textDecoration: 'underline',
               cursor: 'pointer',
               font: 'inherit',
@@ -668,8 +668,8 @@ export function ProjectsJobHistoryTab({ customerId }: Props) {
 const chipStyle: React.CSSProperties = {
   padding: '0.25rem 0.6rem',
   fontSize: '0.8125rem',
-  background: '#f1f5f9',
-  color: '#0369a1',
+  background: 'var(--bg-slate-100)',
+  color: 'var(--text-sky-700)',
   border: '1px solid #cbd5e1',
   borderRadius: 999,
   cursor: 'pointer',
@@ -680,7 +680,7 @@ const labelStyle: React.CSSProperties = {
   alignItems: 'center',
   gap: '0.35rem',
   fontSize: '0.875rem',
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 /**
@@ -699,7 +699,7 @@ const labelStyle: React.CSSProperties = {
  */
 const dateInputStyle: React.CSSProperties = {
   padding: '0.35rem 0.3rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   fontSize: '0.875rem',
   width: 92,
@@ -708,11 +708,11 @@ const dateInputStyle: React.CSSProperties = {
 
 const searchInputStyle: React.CSSProperties = {
   padding: '0.35rem 1.6rem 0.35rem 0.7rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 999,
   fontSize: '0.875rem',
   minWidth: 240,
-  background: '#ffffff',
+  background: 'var(--surface)',
 }
 
 /** Floating × inside the rounded search pill — visible only when the input has content. */
@@ -726,7 +726,7 @@ const searchClearButtonStyle: React.CSSProperties = {
   padding: 0,
   border: 'none',
   background: 'transparent',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '1rem',
   lineHeight: 1,
   cursor: 'pointer',
@@ -744,8 +744,8 @@ function layoutToggleStyle(active: boolean, side: 'left' | 'right'): React.CSSPr
   return {
     padding: '0.25rem 0.65rem',
     fontSize: '0.8125rem',
-    background: active ? '#dbeafe' : '#ffffff',
-    color: active ? '#1d4ed8' : '#374151',
+    background: active ? 'var(--bg-blue-200)' : 'var(--surface)',
+    color: active ? 'var(--text-blue-700)' : 'var(--text-700)',
     border: active ? '1px solid #1d4ed8' : '1px solid #cbd5e1',
     borderRadius: side === 'left' ? '999px 0 0 999px' : '0 999px 999px 0',
     marginLeft: side === 'right' ? -1 : 0,

@@ -83,8 +83,8 @@ function JobThreadScheduleButton({
         padding: '0.3rem 0.65rem',
         fontSize: '0.75rem',
         fontWeight: 600,
-        background: action.disabled ? '#e5e7eb' : '#15803d',
-        color: action.disabled ? '#6b7280' : '#ffffff',
+        background: action.disabled ? 'var(--bg-200)' : '#15803d',
+        color: action.disabled ? 'var(--text-muted)' : '#ffffff',
         border: `1px solid ${action.disabled ? '#d1d5db' : '#166534'}`,
         borderRadius: 4,
         cursor: action.disabled ? 'not-allowed' : 'pointer',
@@ -110,8 +110,8 @@ function JobThreadWeekDispatchButton({
         padding: '0.3rem 0.65rem',
         fontSize: '0.75rem',
         fontWeight: 600,
-        background: action.disabled ? '#e5e7eb' : '#ffffff',
-        color: action.disabled ? '#6b7280' : '#1d4ed8',
+        background: action.disabled ? 'var(--bg-200)' : 'var(--surface)',
+        color: action.disabled ? 'var(--text-muted)' : 'var(--text-blue-700)',
         border: `1px solid ${action.disabled ? '#d1d5db' : '#2563eb'}`,
         borderRadius: 4,
         cursor: action.disabled ? 'not-allowed' : 'pointer',
@@ -139,11 +139,11 @@ function JobThreadStampButtons({
     cursor: submitting ? ('not-allowed' as const) : ('pointer' as const),
   }
   const arrivedStyle = submitting
-    ? { ...base, border: '1px solid #e5e7eb', background: '#f3f4f6', color: '#9ca3af' }
+    ? { ...base, border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-faint)' }
     : { ...base, border: '1px solid #166534', background: '#15803d', color: '#ffffff' }
   const leavingStyle = submitting
-    ? { ...base, border: '1px solid #e5e7eb', background: '#f3f4f6', color: '#9ca3af' }
-    : { ...base, border: '1px solid #f59e0b', background: '#fef3c7', color: '#92400e' }
+    ? { ...base, border: '1px solid var(--border)', background: 'var(--bg-muted)', color: 'var(--text-faint)' }
+    : { ...base, border: '1px solid #f59e0b', background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
   return (
     <>
       <button
@@ -247,14 +247,14 @@ export function JobThreadNotesPanel({
     <div
       style={{
         padding: '0.75rem',
-        background: '#fff',
-        border: '1px solid #e5e7eb',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 6,
       }}
     >
       {showSectionTitle ? (
         <div style={{ marginBottom: '0.5rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-700)' }}>
             {sectionTitle}
           </div>
         </div>
@@ -281,8 +281,8 @@ export function JobThreadNotesPanel({
                   borderRadius: 999,
                   cursor: 'pointer',
                   border: `1px solid ${active ? '#2563eb' : '#d1d5db'}`,
-                  background: active ? '#2563eb' : '#fff',
-                  color: active ? '#fff' : '#6b7280',
+                  background: active ? '#2563eb' : 'var(--surface)',
+                  color: active ? '#fff' : 'var(--text-muted)',
                 }}
               >
                 {f.label}
@@ -292,7 +292,7 @@ export function JobThreadNotesPanel({
         </div>
       ) : null}
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem 0' }}>Loading…</p>
       ) : (
         <div
           ref={activityScrollRef}
@@ -306,7 +306,7 @@ export function JobThreadNotesPanel({
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {visibleActivity.length === 0 ? (
               showEmptyPlaceholder ? (
-                <li style={{ color: '#6b7280', fontSize: '0.875rem' }}>{emptyLabel}</li>
+                <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{emptyLabel}</li>
               ) : null
             ) : (
               visibleActivity.map((item) => {
@@ -327,7 +327,7 @@ export function JobThreadNotesPanel({
                         marginLeft: 0,
                       }}
                     >
-                      <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                      <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
                         <span
                           style={{
                             fontSize: '0.65rem',
@@ -344,13 +344,13 @@ export function JobThreadNotesPanel({
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
                       </div>
-                      <div style={{ color: '#4b5563', marginBottom: 4, fontSize: '0.8125rem' }}>
+                      <div style={{ color: 'var(--text-600)', marginBottom: 4, fontSize: '0.8125rem' }}>
                         {dateLine} · {windowLine}
                         {s.assigneeLabels ? (
-                          <span style={{ color: '#6b7280' }}>{` · ${s.assigneeLabels}`}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>{` · ${s.assigneeLabels}`}</span>
                         ) : null}
                       </div>
-                      <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{s.note}</div>
+                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>{s.note}</div>
                     </li>
                   )
                 }
@@ -372,7 +372,7 @@ export function JobThreadNotesPanel({
                         marginLeft: 0,
                       }}
                     >
-                      <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                      <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
                         <span
                           style={{
                             fontSize: '0.65rem',
@@ -385,12 +385,12 @@ export function JobThreadNotesPanel({
                         >
                           Clock
                         </span>
-                        <strong style={{ color: '#111827' }}>{c.personName}</strong>
+                        <strong style={{ color: 'var(--text-strong)' }}>{c.personName}</strong>
                         <span style={{ marginLeft: '0.5rem' }}>
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
                       </div>
-                      <div style={{ color: '#4b5563', fontSize: '0.8125rem' }}>
+                      <div style={{ color: 'var(--text-600)', fontSize: '0.8125rem' }}>
                         {outLabel
                           ? `${inLabel} → ${outLabel}${durLabel ? ` · ${durLabel}` : ''}`
                           : `${inLabel} → still on the clock`}
@@ -401,8 +401,8 @@ export function JobThreadNotesPanel({
                               fontSize: '0.65rem',
                               fontWeight: 700,
                               textTransform: 'uppercase',
-                              color: '#92400e',
-                              background: '#fef3c7',
+                              color: 'var(--text-amber-800)',
+                              background: 'var(--bg-amber-100)',
                               border: '1px solid #fde68a',
                               borderRadius: 4,
                               padding: '0 0.3rem',
@@ -414,7 +414,7 @@ export function JobThreadNotesPanel({
                         ) : null}
                       </div>
                       {c.note ? (
-                        <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap', marginTop: 4 }}>{c.note}</div>
+                        <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap', marginTop: 4 }}>{c.note}</div>
                       ) : null}
                     </li>
                   )
@@ -435,7 +435,7 @@ export function JobThreadNotesPanel({
                         marginLeft: 0,
                       }}
                     >
-                      <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                      <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
                         <span
                           style={{
                             fontSize: '0.65rem',
@@ -448,12 +448,12 @@ export function JobThreadNotesPanel({
                         >
                           {meta.tag}
                         </span>
-                        <strong style={{ color: '#111827' }}>{ev.actorName?.trim() || 'System'}</strong>
+                        <strong style={{ color: 'var(--text-strong)' }}>{ev.actorName?.trim() || 'System'}</strong>
                         <span style={{ marginLeft: '0.5rem' }}>
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
                       </div>
-                      <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{ev.summary}</div>
+                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>{ev.summary}</div>
                     </li>
                   )
                 }
@@ -470,13 +470,13 @@ export function JobThreadNotesPanel({
                         fontSize: '0.8125rem',
                       }}
                     >
-                      <div style={{ color: '#6b7280', marginBottom: 2 }}>
-                        <strong style={{ color: '#111827' }}>{authorName}</strong>
+                      <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
+                        <strong style={{ color: 'var(--text-strong)' }}>{authorName}</strong>
                         <span style={{ marginLeft: '0.5rem' }}>
                           {weekdayTimeChicago} · {daysAgoLabel}
                         </span>
                       </div>
-                      <div style={{ color: '#1f2937', whiteSpace: 'pre-wrap' }}>{n.body}</div>
+                      <div style={{ color: 'var(--text-gray-800)', whiteSpace: 'pre-wrap' }}>{n.body}</div>
                     </li>
                   )
                 }
@@ -495,25 +495,25 @@ export function JobThreadNotesPanel({
                       marginLeft: 0,
                     }}
                   >
-                    <div style={{ color: '#6b7280', marginBottom: 2 }}>
+                    <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
                       <span
                         style={{
                           fontSize: '0.65rem',
                           fontWeight: 700,
                           textTransform: 'uppercase',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           marginRight: '0.35rem',
                           verticalAlign: 'middle',
                         }}
                       >
                         Report
                       </span>
-                      <strong style={{ color: '#111827' }}>{r.created_by_name?.trim() || 'Unknown'}</strong>
+                      <strong style={{ color: 'var(--text-strong)' }}>{r.created_by_name?.trim() || 'Unknown'}</strong>
                       <span style={{ marginLeft: '0.5rem' }}>
                         {weekdayTimeChicago} · {daysAgoLabel}
                       </span>
                     </div>
-                    <div style={{ color: '#1f2937' }}>
+                    <div style={{ color: 'var(--text-gray-800)' }}>
                       <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
                       {summary ? (
                         <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{summary}</div>
@@ -526,8 +526,8 @@ export function JobThreadNotesPanel({
                             padding: '0.2rem 0.5rem',
                             fontSize: '0.75rem',
                             fontWeight: 600,
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
+                            background: 'var(--bg-blue-tint)',
+                            color: 'var(--text-blue-700)',
                             border: '1px solid #93c5fd',
                             borderRadius: 4,
                             cursor: 'pointer',
@@ -562,7 +562,7 @@ export function JobThreadNotesPanel({
       {canPost && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
           {showComposerLabel ? (
-            <label htmlFor="job-thread-note-body" style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>
+            <label htmlFor="job-thread-note-body" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
               Add a note
             </label>
           ) : null}
@@ -586,7 +586,7 @@ export function JobThreadNotesPanel({
               width: '100%',
               padding: '0.5rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               boxSizing: 'border-box',
               resize: 'none',
@@ -627,8 +627,8 @@ export function JobThreadNotesPanel({
                 style={{
                   padding: '0.35rem 0.75rem',
                   fontSize: '0.8125rem',
-                  background: submitting || draft.trim().length === 0 ? '#e5e7eb' : '#3b82f6',
-                  color: submitting || draft.trim().length === 0 ? '#6b7280' : 'white',
+                  background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
+                  color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
                   border: 'none',
                   borderRadius: 4,
                   cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',
@@ -668,8 +668,8 @@ export function JobThreadNotesPanel({
                 style={{
                   padding: '0.35rem 0.75rem',
                   fontSize: '0.8125rem',
-                  background: submitting || draft.trim().length === 0 ? '#e5e7eb' : '#3b82f6',
-                  color: submitting || draft.trim().length === 0 ? '#6b7280' : 'white',
+                  background: submitting || draft.trim().length === 0 ? 'var(--bg-200)' : '#3b82f6',
+                  color: submitting || draft.trim().length === 0 ? 'var(--text-muted)' : 'white',
                   border: 'none',
                   borderRadius: 4,
                   cursor: submitting || draft.trim().length === 0 ? 'not-allowed' : 'pointer',

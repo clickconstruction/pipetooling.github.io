@@ -19,7 +19,9 @@ export default function AuthPublicLandingLayout({
   titleLinkAriaLabel = DEFAULT_TITLE_ARIA_LABEL,
 }: AuthPublicLandingLayoutProps) {
   return (
-    <div className="auth-public-landing">
+    // Public/customer-facing landing (estimate + contract accept, sign-in):
+    // pinned light so customers never see the viewer-side dark theme.
+    <div className="auth-public-landing" data-theme="light">
       <div className="container">
         <div className="letter-header">
           <h1>

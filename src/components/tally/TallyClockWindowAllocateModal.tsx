@@ -325,7 +325,7 @@ export function TallyClockWindowAllocateModal({
         aria-labelledby="tally-clock-allocate-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 520,
           width: '100%',
@@ -334,25 +334,25 @@ export function TallyClockWindowAllocateModal({
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
         }}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
-          <h2 id="tally-clock-allocate-title" style={{ margin: 0, fontSize: '1.125rem', color: '#111827' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+          <h2 id="tally-clock-allocate-title" style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-strong)' }}>
             Allocate from clock
           </h2>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.5 }}>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
             Jobs and bids from your sessions on{' '}
-            <strong style={{ color: '#374151' }}>{dateRangeLabel || '…'}</strong>. Amount{' '}
-            <strong style={{ color: '#374151' }}>{formatTallyCurrency(transactionAmount)}</strong> is split evenly
+            <strong style={{ color: 'var(--text-700)' }}>{dateRangeLabel || '…'}</strong>. Amount{' '}
+            <strong style={{ color: 'var(--text-700)' }}>{formatTallyCurrency(transactionAmount)}</strong> is split evenly
             across selected jobs.
           </p>
         </div>
 
         <div style={{ padding: '1rem 1.25rem' }}>
-          {loading ? <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p> : null}
+          {loading ? <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p> : null}
           {loadError ? (
-            <p style={{ margin: 0, color: '#b91c1c', fontSize: '0.875rem', lineHeight: 1.5 }}>{loadError}</p>
+            <p style={{ margin: 0, color: 'var(--text-red-700)', fontSize: '0.875rem', lineHeight: 1.5 }}>{loadError}</p>
           ) : null}
           {!loading && !loadError && pickerRows.length === 0 ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
               No clock sessions with a job or bid in this three-day window.
             </p>
           ) : null}
@@ -386,7 +386,7 @@ export function TallyClockWindowAllocateModal({
                     />
                     <label
                       htmlFor={`tally-clock-pick-${row.key}`}
-                      style={{ flex: 1, cursor: 'pointer', fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}
+                      style={{ flex: 1, cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-strong)', lineHeight: 1.45 }}
                     >
                       <span
                         style={{
@@ -394,7 +394,7 @@ export function TallyClockWindowAllocateModal({
                           fontSize: '0.6875rem',
                           fontWeight: 600,
                           textTransform: 'uppercase',
-                          color: row.kind === 'job' ? '#1d4ed8' : '#7c3aed',
+                          color: row.kind === 'job' ? 'var(--text-blue-700)' : '#7c3aed',
                           marginRight: 6,
                         }}
                       >
@@ -402,7 +402,7 @@ export function TallyClockWindowAllocateModal({
                       </span>
                       {row.label}
                       {preview ? (
-                        <span style={{ display: 'block', color: '#059669', fontWeight: 600, marginTop: 4 }}>
+                        <span style={{ display: 'block', color: 'var(--text-green-600)', fontWeight: 600, marginTop: 4 }}>
                           {preview}
                         </span>
                       ) : null}
@@ -414,7 +414,7 @@ export function TallyClockWindowAllocateModal({
           ) : null}
 
           {applyError ? (
-            <p style={{ margin: '0.75rem 0 0', color: '#b91c1c', fontSize: '0.8125rem', lineHeight: 1.5 }}>
+            <p style={{ margin: '0.75rem 0 0', color: 'var(--text-red-700)', fontSize: '0.8125rem', lineHeight: 1.5 }}>
               {applyError}
             </p>
           ) : null}
@@ -423,7 +423,7 @@ export function TallyClockWindowAllocateModal({
         <div
           style={{
             padding: '0.75rem 1.25rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
             display: 'flex',
             justifyContent: 'flex-end',
             gap: '0.5rem',
@@ -438,9 +438,9 @@ export function TallyClockWindowAllocateModal({
               font: 'inherit',
               fontSize: '0.875rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#fff',
-              color: '#374151',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
+              color: 'var(--text-700)',
               cursor: 'pointer',
             }}
           >

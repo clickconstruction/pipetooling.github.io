@@ -49,7 +49,7 @@ export function SearchableSelectSeparatorListRow({ separator: o }: { separator: 
         listStyle: 'none',
         margin: 0,
         padding: hasLabel ? '0.45rem 0.5rem 0.15rem' : '0.35rem 0.5rem 0',
-        background: '#f9fafb',
+        background: 'var(--bg-subtle)',
       }}
     >
       {hasLabel ? (
@@ -69,7 +69,7 @@ export function SearchableSelectSeparatorListRow({ separator: o }: { separator: 
               fontSize: '0.625rem',
               fontWeight: 600,
               letterSpacing: '0.04em',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               textTransform: 'uppercase',
             }}
           >
@@ -78,7 +78,7 @@ export function SearchableSelectSeparatorListRow({ separator: o }: { separator: 
           <div style={{ flex: 1, height: 1, background: '#d1d5db', minWidth: 8 }} />
         </div>
       ) : (
-        <div style={{ borderTop: '1px solid #d1d5db', margin: 0 }} />
+        <div style={{ borderTop: '1px solid var(--border-strong)', margin: 0 }} />
       )}
     </li>
   )
@@ -510,9 +510,9 @@ export function SearchableSelect({
         listStyle: 'none',
         padding: 0,
         margin: 0,
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 6,
-        background: 'white',
+        background: 'var(--surface)',
         boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
       }) as const,
     [resolvedListMaxHeightPx],
@@ -555,7 +555,7 @@ export function SearchableSelect({
               marginBottom: 6,
               padding: '0.5rem 0.65rem',
               fontSize: 16,
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
             }}
           />
@@ -566,7 +566,7 @@ export function SearchableSelect({
               ...listboxStyle,
               padding: '0.75rem',
               fontSize: '0.875rem',
-              color: '#9ca3af',
+              color: 'var(--text-faint)',
               maxHeight: 'none',
             }}
           >
@@ -603,7 +603,7 @@ export function SearchableSelect({
                       padding: listOptionPadding,
                       border: 'none',
                       borderBottom: nextIsSep ? 'none' : '1px solid #f3f4f6',
-                      background: idx === activeIndex ? '#eff6ff' : 'white',
+                      background: idx === activeIndex ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: listOptionFontSize,
                     }}
@@ -656,10 +656,10 @@ export function SearchableSelect({
             width: '100%',
             minHeight: triggerMinHeight,
             padding: '0.5rem 0.65rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: 'white',
-            color: '#111827',
+            background: 'var(--surface)',
+            color: 'var(--text-strong)',
             boxSizing: 'border-box',
             fontSize: '0.875rem',
             outline: 'none',
@@ -683,10 +683,10 @@ export function SearchableSelect({
             width: '100%',
             minHeight: triggerMinHeight,
             padding: '0.5rem 0.65rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 4,
-            background: disabled ? '#f3f4f6' : 'white',
-            color: value === '' && emptyOption === undefined ? '#6b7280' : '#111827',
+            background: disabled ? 'var(--bg-muted)' : 'var(--surface)',
+            color: value === '' && emptyOption === undefined ? 'var(--text-muted)' : 'var(--text-strong)',
             cursor: disabled ? 'not-allowed' : 'pointer',
             boxSizing: 'border-box',
             fontSize: '0.875rem',
@@ -708,7 +708,7 @@ export function SearchableSelect({
           >
             {selectedDisplay}
           </span>
-          <span aria-hidden style={{ flexShrink: 0, color: '#6b7280', fontSize: '0.65rem' }}>
+          <span aria-hidden style={{ flexShrink: 0, color: 'var(--text-muted)', fontSize: '0.65rem' }}>
             ▾
           </span>
         </button>

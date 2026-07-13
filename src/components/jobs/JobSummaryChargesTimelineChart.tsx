@@ -164,8 +164,8 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
   return (
     <div
       style={{
-        background: 'white',
-        border: '1px solid #e5e7eb',
+        background: 'var(--surface)',
+        border: '1px solid var(--border)',
         borderRadius: 6,
         padding: '0.4rem 0.6rem',
         fontSize: '0.75rem',
@@ -173,11 +173,11 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
       }}
     >
-      <div style={{ fontWeight: 600, color: '#374151', marginBottom: '0.25rem' }}>
+      <div style={{ fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.25rem' }}>
         {row.dateLabel}
       </div>
       {row.chargeEvents.map((e, i) => (
-        <div key={`c-${i}`} style={{ color: '#7f1d1d' }}>
+        <div key={`c-${i}`} style={{ color: 'var(--text-red-900)' }}>
           {JOB_CHARGE_SOURCE_META[e.source].icon} {e.label} — ${formatCurrency(e.amount)}
         </div>
       ))}
@@ -187,13 +187,13 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         </div>
       ))}
       {row.valueEvents.map((e, i) => (
-        <div key={`v-${i}`} style={{ color: '#1e40af' }}>
+        <div key={`v-${i}`} style={{ color: 'var(--text-blue-800)' }}>
           🚩 {e.label}
           {e.percent != null ? ` — ${e.percent}% complete` : ' — no completion %'}
         </div>
       ))}
       <div style={{ marginTop: '0.25rem', borderTop: '1px solid #f3f4f6', paddingTop: '0.25rem' }}>
-        <span style={{ color: '#dc2626' }}>Cost: ${formatCurrency(row.expense)}</span>
+        <span style={{ color: 'var(--text-red-600)' }}>Cost: ${formatCurrency(row.expense)}</span>
         {row.paymentsToDate > 0 && (
           <span style={{ color: '#15803d', marginLeft: '0.6rem' }}>
             Paid: ${formatCurrency(row.paymentsToDate)}
@@ -202,14 +202,14 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         <span
           style={{
             fontWeight: 600,
-            color: row.profit >= 0 ? '#15803d' : '#b91c1c',
+            color: row.profit >= 0 ? '#15803d' : 'var(--text-red-700)',
             marginLeft: '0.6rem',
           }}
         >
           Profit: {signedCurrency(row.profit)}
         </span>
         {row.value != null && (
-          <span style={{ color: '#2563eb', marginLeft: '0.6rem' }}>
+          <span style={{ color: 'var(--text-link)', marginLeft: '0.6rem' }}>
             Value created: ${formatCurrency(row.value)}
           </span>
         )}
@@ -298,14 +298,14 @@ export default function JobSummaryChargesTimelineChart({
 
   if (loading) {
     return (
-      <p style={{ color: '#6b7280', fontSize: '0.75rem', margin: '0 0 0.75rem' }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: '0 0 0.75rem' }}>
         Loading charge timeline…
       </p>
     )
   }
   if (!data || data.chartRows.length === 0) {
     return (
-      <p style={{ color: '#6b7280', fontSize: '0.75rem', margin: '0 0 0.75rem' }}>
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', margin: '0 0 0.75rem' }}>
         No dated cost events or reports yet.
       </p>
     )
@@ -403,14 +403,14 @@ export function JobChargesTimelineChartView({
         </ResponsiveContainer>
         </div>
       </div>
-      <p style={{ color: '#374151', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
-        <span style={{ color: '#dc2626', fontWeight: 600 }}>Red falls</span> = money out ·{' '}
+      <p style={{ color: 'var(--text-700)', fontSize: '0.75rem', margin: '0.25rem 0 0' }}>
+        <span style={{ color: 'var(--text-red-600)', fontWeight: 600 }}>Red falls</span> = money out ·{' '}
         <span style={{ color: '#16a34a', fontWeight: 600 }}>Green rises</span> = payment received
-        (💵) · <span style={{ color: '#2563eb', fontWeight: 600 }}>Blue</span> = value created
+        (💵) · <span style={{ color: 'var(--text-link)', fontWeight: 600 }}>Blue</span> = value created
         (report % × job total) · 🚩 = field report · above the $0 line ={' '}
         <span style={{ color: '#15803d', fontWeight: 600 }}>profit</span>
       </p>
-      <p style={{ color: '#9ca3af', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
+      <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.15rem 0 0' }}>
         Cost sources:{' '}
         {Object.values(JOB_CHARGE_SOURCE_META)
           .map((m) => `${m.icon} ${m.name}`)

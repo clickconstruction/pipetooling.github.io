@@ -238,7 +238,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 420,
@@ -257,13 +257,13 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
           <button
             type="button"
             onClick={onClose}
-            style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }}
+            style={{ padding: '0.25rem', border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }}
             aria-label="Close"
           >
             ×
           </button>
         </div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem', fontSize: '0.875rem' }}>{error}</p>}
 
         <div style={{ marginBottom: '1rem' }}>
           <label style={{ display: 'block', fontSize: '0.8125rem', marginBottom: '0.35rem' }}>Template</label>
@@ -295,7 +295,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
         )}
 
         {!readOnly && (
-          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 6 }}>
+          <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 6 }}>
             <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: '0.5rem' }}>Disclosure (required to submit)</div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', marginBottom: '0.35rem' }}>
               <input type="radio" name="wdisclosure" checked={disclosure === 'discussed_with_subject'} onChange={() => setDisclosure('discussed_with_subject')} />
@@ -305,7 +305,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
               <input type="radio" name="wdisclosure" checked={disclosure === 'withheld_from_subject'} onChange={() => setDisclosure('withheld_from_subject')} />
               Withheld from subject
             </label>
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               This flag is stored with the writeup for your records. Subjects do not see writeups in the app in this version.
             </p>
           </div>
@@ -326,9 +326,9 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
               disabled={saving}
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
-                background: '#fff',
+                background: 'var(--surface)',
                 cursor: saving ? 'not-allowed' : 'pointer',
               }}
             >
@@ -349,14 +349,14 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
             >
               {saving ? 'Saving…' : 'Submit'}
             </button>
-            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff' }}>
+            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)' }}>
               Cancel
             </button>
           </div>
         )}
 
         {readOnly && (
-          <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 6, background: '#fff' }}>
+          <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)' }}>
             Close
           </button>
         )}

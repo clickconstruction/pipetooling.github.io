@@ -40,13 +40,13 @@ export function ProspectTeamActivityLineChart({ teamDataByDate, teamLoading, tea
   )
 
   if (teamError) {
-    return <p style={{ color: '#b91c1c', fontSize: '0.875rem' }}>{teamError}</p>
+    return <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{teamError}</p>
   }
   if (teamLoading) {
-    return <p style={{ color: '#6b7280' }}>Loading team activity…</p>
+    return <p style={{ color: 'var(--text-muted)' }}>Loading team activity…</p>
   }
   if (userSeries.length === 0 || chartRows.length === 0) {
-    return <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No team roster to chart.</p>
+    return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No team roster to chart.</p>
   }
 
   const allZero = chartRows.every((row) =>
@@ -56,7 +56,7 @@ export function ProspectTeamActivityLineChart({ teamDataByDate, teamLoading, tea
   return (
     <div>
       {allZero && (
-        <p style={{ color: '#6b7280', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
           No prospect activity in the last 30 days (marked or updated).
         </p>
       )}

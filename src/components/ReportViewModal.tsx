@@ -40,7 +40,7 @@ export function ReportLocationMapsLink({
       rel="noopener noreferrer"
       aria-label="Open reported location in Google Maps"
       title={`${latN.toFixed(4)}, ${lngN.toFixed(4)}`}
-      style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      style={{ color: 'var(--text-link)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
       onClick={
         stopPropagation
           ? (e) => {
@@ -77,7 +77,7 @@ export function ReportDetailBody({
 
   return (
     <>
-      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '1rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
         {new Date(report.created_at).toLocaleString()} · {report.created_by_name}
         {hasLoc && <ReportLocationMapsLink lat={Number(lat)} lng={Number(lng)} stopPropagation />}
       </div>
@@ -102,7 +102,7 @@ export function ReportDetailBody({
             if (isReportSignatureImageDataUrl(s)) {
               return (
                 <div key={label} style={{ marginBottom: '0.75rem' }}>
-                  <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
                     {displayLabel}
                   </span>
                   <img
@@ -110,7 +110,7 @@ export function ReportDetailBody({
                     alt=""
                     style={{ maxWidth: '100%', height: 'auto', display: 'block', marginBottom: '0.25rem' }}
                   />
-                  <div style={{ fontSize: '1rem', fontWeight: 500, color: '#4b5563' }}>{report.created_by_name}</div>
+                  <div style={{ fontSize: '1rem', fontWeight: 500, color: 'var(--text-600)' }}>{report.created_by_name}</div>
                 </div>
               )
             }
@@ -118,13 +118,13 @@ export function ReportDetailBody({
               <div key={label} style={{ marginBottom: '0.75rem' }}>
                 {fieldLayout === 'inline' ? (
                   <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                    <span style={{ color: '#6b7280', fontWeight: 500 }}>{displayLabel}</span>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>{displayLabel}</span>
                     {' - '}
                     <span>{formatReportFieldValueForRead(label, s)}</span>
                   </div>
                 ) : (
                   <>
-                    <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
                       {displayLabel}
                     </span>
                     <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
@@ -138,7 +138,7 @@ export function ReportDetailBody({
           })()}
         </div>
       ) : (
-        <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No content</p>
+        <p style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>No content</p>
       )}
     </>
   )
@@ -170,7 +170,7 @@ export default function ReportViewModal({ open, report, onClose, viewerRole }: P
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 360,
@@ -186,14 +186,14 @@ export default function ReportViewModal({ open, report, onClose, viewerRole }: P
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>
               {displayReportTemplateName(report?.template_name ?? 'Report', viewerRole)}
             </h2>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {report?.job_display_name ?? 'Unknown job'}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: '#6b7280', lineHeight: 1 }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--text-muted)', lineHeight: 1 }}
             aria-label="Close"
           >
             ×

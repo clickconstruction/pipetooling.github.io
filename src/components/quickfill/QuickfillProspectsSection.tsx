@@ -19,7 +19,7 @@ const ROW_STYLE: CSSProperties = {
 function WarmthBlock({ counts }: { counts: ProspectWarmthCounts }) {
   return (
     <div style={{ marginBottom: '1.25rem' }}>
-      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#374151', marginBottom: '0.5rem' }}>Active prospects by warmth</div>
+      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.5rem' }}>Active prospects by warmth</div>
       <div style={ROW_STYLE}>
         <span>Warmth 3</span>
         <span>({counts.w3})</span>
@@ -97,7 +97,7 @@ export function QuickfillProspectsSection() {
   useReportQuickfillSectionMetric('prospects', totalForMetric, warmthLoading)
 
   if (!canAccess) {
-    return <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>You do not have access to Prospects in Quickfill.</p>
+    return <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>You do not have access to Prospects in Quickfill.</p>
   }
 
   return (
@@ -121,17 +121,17 @@ export function QuickfillProspectsSection() {
       </Link>
 
       {warmthLoading && !warmth ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : warmth ? (
         <WarmthBlock counts={warmth} />
       ) : (
-        <p style={{ color: '#6b7280' }}>Could not load warmth counts.</p>
+        <p style={{ color: 'var(--text-muted)' }}>Could not load warmth counts.</p>
       )}
 
       {canAccessTeam && (
         <div style={{ marginBottom: '1.25rem' }}>
-          <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#374151', marginBottom: '0.25rem' }}>Team (last 30 days)</div>
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+          <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.25rem' }}>Team (last 30 days)</div>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Daily total = Marked + Updated (unique prospects per day from timers and from comments)
           </p>
           <ProspectTeamActivityLineChart

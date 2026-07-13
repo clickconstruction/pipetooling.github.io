@@ -418,7 +418,7 @@ export function PayStubAdditionalModal({
         role="dialog"
         aria-labelledby="pay-stub-additional-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.25rem',
           borderRadius: 8,
           minWidth: 340,
@@ -434,12 +434,12 @@ export function PayStubAdditionalModal({
         <h2 id="pay-stub-additional-title" style={{ margin: '0 0 0.35rem', fontSize: '1.2rem' }}>
           Additional — {activeStub.person_name}
         </h2>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)} · Gross ${formatCurrency(activeStub.gross_pay)} · Less $
           {formatCurrency(lessSum)} · Subtotal Additional ${formatCurrency(addSum)} · Net Pay ${formatCurrency(netPay)}
         </p>
         {locked ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#059669', fontWeight: 500 }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
             Installments fully cover Net Pay — adjust payments before changing Additional lines.
           </p>
         ) : null}
@@ -447,7 +447,7 @@ export function PayStubAdditionalModal({
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Lines (quantity × rate)</div>
           {lines.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>None — Net Pay follows Gross minus Less only.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>None — Net Pay follows Gross minus Less only.</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: 0, listStyle: 'none', fontSize: '0.8125rem' }}>
               {lines.map((row) => (
@@ -521,13 +521,13 @@ export function PayStubAdditionalModal({
                 value={idealAmountStr}
                 onChange={(e) => setIdealAmountStr(e.target.value)}
                 disabled={locked || adding}
-                style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', maxWidth: 140, boxSizing: 'border-box' }}
+                style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 140, boxSizing: 'border-box' }}
               />
             </label>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#374151' }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
               Remainder:{' '}
               {idealRemainderDisplay === null ? (
-                <span style={{ color: '#9ca3af' }}>—</span>
+                <span style={{ color: 'var(--text-faint)' }}>—</span>
               ) : (
                 <strong>${formatCurrency(idealRemainderDisplay)}</strong>
               )}
@@ -554,10 +554,10 @@ export function PayStubAdditionalModal({
 
           <div
             className="payStubAdditionalModal__toolPanel"
-            style={{ padding: '0.75rem', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}
+            style={{ padding: '0.75rem', background: 'var(--bg-green-tint)', borderRadius: 6, border: '1px solid #bbf7d0' }}
           >
             <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Change Line to hit Target</div>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#166534' }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-green-800)' }}>
               Sets the selected line&apos;s quantity or rate so the Additional subtotal matches the target (nearest cent per line).
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -567,7 +567,7 @@ export function PayStubAdditionalModal({
                   value={solveLineId ?? ''}
                   onChange={(e) => setSolveLineId(e.target.value || null)}
                   disabled={locked || lines.length === 0}
-                  style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 160 }}
+                  style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 160 }}
                 >
                   {lines.map((l) => (
                     <option key={l.id} value={l.id}>
@@ -584,7 +584,7 @@ export function PayStubAdditionalModal({
                   value={targetStr}
                   onChange={(e) => setTargetStr(e.target.value)}
                   disabled={locked || lines.length === 0}
-                  style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: 120 }}
+                  style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: 120 }}
                 />
               </label>
             </div>
@@ -621,24 +621,24 @@ export function PayStubAdditionalModal({
           style={{
             marginTop: '1rem',
             padding: '0.75rem',
-            background: '#fffbeb',
+            background: 'var(--bg-amber-tint)',
             borderRadius: 6,
             border: '1px solid #fcd34d',
           }}
         >
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Prevailing Wages</div>
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#92400e' }}>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>
             Stub period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)}. Base rate uses pay config hourly wage (
             {`$${formatCurrency(baseHourlyWage)}/hr`}). Add creates an Additional line: hours × (prevailing − base). Sessions exclude rejected/revoked; pending
             approval is labeled.
           </p>
           {baseHourlyWage <= 0 ? (
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#b45309', fontWeight: 600 }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-amber-700)', fontWeight: 600 }}>
               Base hourly rate is $0 — set hourly wage in People pay config (Hours tab) before using prevailing top-ups.
             </p>
           ) : null}
           {!subjectUserId?.trim() ? (
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               No user linked to this person name — clock sessions are not loaded. Match roster name to a user account.
             </p>
           ) : null}
@@ -654,7 +654,7 @@ export function PayStubAdditionalModal({
                 display: 'block',
                 marginTop: '0.2rem',
                 padding: '0.35rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 width: '100%',
                 boxSizing: 'border-box',
@@ -662,14 +662,14 @@ export function PayStubAdditionalModal({
             />
           </label>
           {pwSessionsLoading ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Loading sessions…</p>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Loading sessions…</p>
           ) : pwSessions.length === 0 && subjectUserId?.trim() ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>No clock sessions in this period.</p>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No clock sessions in this period.</p>
           ) : pwSessions.length > 0 ? (
             <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
               <table className="pwSessionsTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                 <thead>
-                  <tr style={{ background: '#fef3c7', borderBottom: '1px solid #fcd34d' }}>
+                  <tr style={{ background: 'var(--bg-amber-100)', borderBottom: '1px solid #fcd34d' }}>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Date & time</th>
                     <th className="pwCol--jobNotes" style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Job & notes</th>
                     <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Hrs & base</th>
@@ -759,7 +759,7 @@ export function PayStubAdditionalModal({
                               justifyContent: 'center',
                               alignItems: 'flex-start',
                               paddingTop: 2,
-                              color: '#9ca3af',
+                              color: 'var(--text-faint)',
                               fontSize: '0.7rem',
                             }}
                           >
@@ -775,7 +775,7 @@ export function PayStubAdditionalModal({
                           }}
                         >
                           <div style={{ lineHeight: 1.35 }}>{jobLine}</div>
-                          <div style={{ lineHeight: 1.35, fontSize: '0.7rem', color: '#6b7280' }}>{notesLine}</div>
+                          <div style={{ lineHeight: 1.35, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{notesLine}</div>
                         </div>
                       </div>
                     )
@@ -784,7 +784,7 @@ export function PayStubAdditionalModal({
                       <tr className="pwSessionRow">
                         <td style={{ padding: '0.35rem 0.5rem', verticalAlign: 'top' }}>
                           <div style={{ lineHeight: 1.35 }}>{dateLine}</div>
-                          <div style={{ whiteSpace: 'nowrap', fontSize: '0.7rem', color: '#6b7280', lineHeight: 1.35 }}>
+                          <div style={{ whiteSpace: 'nowrap', fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
                             {t0}–{t1}
                           </div>
                         </td>
@@ -793,18 +793,18 @@ export function PayStubAdditionalModal({
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right', verticalAlign: 'top' }}>
                           <div style={{ lineHeight: 1.35 }}>{closed ? hrs.toFixed(2) : '—'}</div>
-                          <div style={{ lineHeight: 1.35, fontSize: '0.7rem', color: '#6b7280' }}>
+                          <div style={{ lineHeight: 1.35, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                             ${formatCurrency(base)}
                           </div>
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{closed ? `$${formatCurrency(atBase)}` : '—'}</td>
                         <td style={{ padding: '0.35rem 0.5rem' }}>
                           {s.approved_at ? (
-                            <span style={{ color: '#059669' }}>Approved</span>
+                            <span style={{ color: 'var(--text-green-600)' }}>Approved</span>
                           ) : (
                             <span style={{ color: '#ca8a04' }}>Pending</span>
                           )}
-                          {hasLine ? <span style={{ marginLeft: 6, color: '#2563eb' }}>· Line</span> : null}
+                          {hasLine ? <span style={{ marginLeft: 6, color: 'var(--text-link)' }}>· Line</span> : null}
                         </td>
                         <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
                           <button
@@ -896,13 +896,13 @@ function LineEditor({ row, disabled, onSave, onRemove }: LineEditorProps) {
       style={{
         marginBottom: '0.75rem',
         padding: '0.5rem',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 6,
-        background: '#fafafa',
+        background: 'var(--bg-page)',
       }}
     >
       <div style={{ display: 'grid', gap: '0.35rem', gridTemplateColumns: '1fr 80px 90px', alignItems: 'end' }}>
-        <label style={{ fontSize: '0.75rem', color: '#374151' }}>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-700)' }}>
           Description
           <input
             type="text"
@@ -910,10 +910,10 @@ function LineEditor({ row, disabled, onSave, onRemove }: LineEditorProps) {
             onChange={(e) => setDesc(e.target.value)}
             onBlur={() => commit()}
             disabled={disabled}
-            style={{ display: 'block', width: '100%', marginTop: '0.15rem', padding: '0.3rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.8125rem' }}
+            style={{ display: 'block', width: '100%', marginTop: '0.15rem', padding: '0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
           />
         </label>
-        <label style={{ fontSize: '0.75rem', color: '#374151' }}>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-700)' }}>
           Qty
           <input
             type="text"
@@ -922,10 +922,10 @@ function LineEditor({ row, disabled, onSave, onRemove }: LineEditorProps) {
             onChange={(e) => setQtyStr(e.target.value)}
             onBlur={() => commit()}
             disabled={disabled}
-            style={{ display: 'block', width: '100%', marginTop: '0.15rem', padding: '0.3rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
+            style={{ display: 'block', width: '100%', marginTop: '0.15rem', padding: '0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem', boxSizing: 'border-box' }}
           />
         </label>
-        <label style={{ fontSize: '0.75rem', color: '#374151' }}>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-700)' }}>
           Rate
           <input
             type="text"
@@ -934,7 +934,7 @@ function LineEditor({ row, disabled, onSave, onRemove }: LineEditorProps) {
             onChange={(e) => setRateStr(e.target.value)}
             onBlur={() => commit()}
             disabled={disabled}
-            style={{ display: 'block', width: '100%', marginTop: '0.15rem', padding: '0.3rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.8125rem' }}
+            style={{ display: 'block', width: '100%', marginTop: '0.15rem', padding: '0.3rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8125rem' }}
           />
         </label>
       </div>
@@ -950,8 +950,8 @@ function LineEditor({ row, disabled, onSave, onRemove }: LineEditorProps) {
             padding: '2px 8px',
             fontSize: '0.75rem',
             border: '1px solid #fecaca',
-            background: 'white',
-            color: '#dc2626',
+            background: 'var(--surface)',
+            color: 'var(--text-red-600)',
             borderRadius: 4,
             cursor: disabled ? 'not-allowed' : 'pointer',
           }}

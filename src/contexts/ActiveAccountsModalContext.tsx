@@ -72,7 +72,7 @@ function ActiveAccountsModalShell({ onClose, onDataChanged }: { onClose: () => v
     >
       <div
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 'min(100%, 56rem)',
           width: '100%',
@@ -89,23 +89,23 @@ function ActiveAccountsModalShell({ onClose, onDataChanged }: { onClose: () => v
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
-          <h2 id={TITLE_ID} style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, color: '#111827' }}>
+          <h2 id={TITLE_ID} style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, color: 'var(--text-strong)' }}>
             Active Accounts
           </h2>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: '#6b7280', padding: '0.25rem' }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, color: 'var(--text-muted)', padding: '0.25rem' }}
           >
             ×
           </button>
         </div>
         <div style={{ overflowY: 'auto', padding: '0 0.25rem' }}>
-          <Suspense fallback={<p style={{ padding: '1.5rem', color: '#6b7280' }}>Loading…</p>}>
+          <Suspense fallback={<p style={{ padding: '1.5rem', color: 'var(--text-muted)' }}>Loading…</p>}>
             <ActiveAccountsPanel variant="modal" onDataChanged={onDataChanged} />
           </Suspense>
         </div>

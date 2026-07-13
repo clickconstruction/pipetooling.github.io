@@ -104,7 +104,7 @@ const labelStyle: CSSProperties = {
   flexDirection: 'column',
   gap: 4,
   fontSize: '0.8125rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   fontWeight: 600,
 }
 
@@ -113,10 +113,10 @@ const inputStyle: CSSProperties = {
   border: '1px solid #cbd5e1',
   borderRadius: 6,
   fontSize: '0.9375rem',
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
   width: '100%',
   boxSizing: 'border-box',
-  background: '#ffffff',
+  background: 'var(--surface)',
 }
 
 const previewRowStyle: CSSProperties = {
@@ -125,11 +125,11 @@ const previewRowStyle: CSSProperties = {
   alignItems: 'baseline',
   gap: 12,
   fontSize: '0.8125rem',
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
 }
 
 const previewLabelStyle: CSSProperties = {
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontWeight: 500,
 }
 
@@ -249,7 +249,7 @@ export function ProjectsForecastInsertStageModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
           borderRadius: 10,
           boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
           width: '100%',
@@ -266,18 +266,18 @@ export function ProjectsForecastInsertStageModal({
             alignItems: 'flex-start',
             gap: 10,
             padding: '1rem 1.25rem 0.75rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 }}>
-            <h2 style={{ margin: 0, fontSize: '1.125rem', color: '#0f172a', lineHeight: 1.3 }}>
+            <h2 style={{ margin: 0, fontSize: '1.125rem', color: 'var(--text-slate-900)', lineHeight: 1.3 }}>
               Add a new stage
             </h2>
             <div
               style={{
                 fontSize: '0.8125rem',
-                color: '#475569',
+                color: 'var(--text-slate-600)',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
@@ -297,7 +297,7 @@ export function ProjectsForecastInsertStageModal({
               all: 'unset',
               cursor: submitting || applying ? 'not-allowed' : 'pointer',
               fontSize: '1.25rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               padding: '0.25rem 0.5rem',
               borderRadius: 4,
               flexShrink: 0,
@@ -352,7 +352,7 @@ export function ProjectsForecastInsertStageModal({
               style={{
                 marginTop: '0.25rem',
                 padding: '0.625rem 0.75rem',
-                background: '#f8fafc',
+                background: 'var(--bg-slate-tint)',
                 border: '1px solid #e2e8f0',
                 borderRadius: 6,
                 display: 'flex',
@@ -372,7 +372,7 @@ export function ProjectsForecastInsertStageModal({
                 <div
                   style={{
                     fontSize: '0.8125rem',
-                    color: '#475569',
+                    color: 'var(--text-slate-600)',
                     paddingTop: 4,
                     borderTop: '1px dashed #e2e8f0',
                   }}
@@ -385,8 +385,8 @@ export function ProjectsForecastInsertStageModal({
                 <div
                   style={{
                     fontSize: '0.75rem',
-                    color: '#92400e',
-                    background: '#fffbeb',
+                    color: 'var(--text-amber-800)',
+                    background: 'var(--bg-amber-tint)',
                     border: '1px solid #fcd34d',
                     borderRadius: 4,
                     padding: '0.375rem 0.5rem',
@@ -401,7 +401,7 @@ export function ProjectsForecastInsertStageModal({
                 <div
                   style={{
                     fontSize: '0.75rem',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     paddingTop: 4,
                     borderTop: '1px dashed #e2e8f0',
                   }}
@@ -420,8 +420,8 @@ export function ProjectsForecastInsertStageModal({
               justifyContent: 'flex-end',
               gap: '0.5rem',
               padding: '0.75rem 1.25rem',
-              borderTop: '1px solid #e5e7eb',
-              background: '#f8fafc',
+              borderTop: '1px solid var(--border)',
+              background: 'var(--bg-slate-tint)',
             }}
           >
             <button
@@ -431,8 +431,8 @@ export function ProjectsForecastInsertStageModal({
               style={{
                 padding: '0.5rem 0.875rem',
                 border: '1px solid #cbd5e1',
-                background: '#ffffff',
-                color: '#374151',
+                background: 'var(--surface)',
+                color: 'var(--text-700)',
                 borderRadius: 6,
                 fontSize: '0.875rem',
                 fontWeight: 600,

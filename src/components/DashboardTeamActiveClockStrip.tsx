@@ -249,8 +249,8 @@ function StripClockOverlapBadge() {
       style={{
         fontSize: '0.6rem',
         fontWeight: 700,
-        color: '#92400e',
-        background: '#fffbeb',
+        color: 'var(--text-amber-800)',
+        background: 'var(--bg-amber-tint)',
         border: '1px solid #f59e0b',
         borderRadius: 3,
         padding: '1px 4px',
@@ -278,10 +278,10 @@ const srOnly: CSSProperties = {
 const th = {
   padding: '0.25rem 0.4rem',
   textAlign: 'left' as const,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   fontWeight: 600,
   fontSize: '0.75rem',
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 const td = {
   padding: '0.2rem 0.4rem',
@@ -292,7 +292,7 @@ const td = {
 
 const stripSalaryNameSuffix: CSSProperties = {
   fontSize: '0.68rem',
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
   fontWeight: 400,
   flexShrink: 0,
 }
@@ -342,7 +342,7 @@ const stripOrangeBarChevronButton: CSSProperties = {
 /** Expand chevron on neutral body rows — same metrics as orange bar chevrons. */
 const stripBodyExpandChevronButton: CSSProperties = {
   ...stripOrangeBarChevronButton,
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 const stripOrangeHeaderTitleButton: CSSProperties = {
@@ -364,7 +364,7 @@ const stripClockStripSummaryHoursButton: CSSProperties = {
   fontFamily: 'inherit',
   fontSize: STRIP_SUMMARY_CELL_FONT_REM,
   fontWeight: 600,
-  color: '#1d4ed8',
+  color: 'var(--text-blue-700)',
   WebkitTextSizeAdjust: '100%',
 }
 
@@ -372,7 +372,7 @@ const stripClockStripSummaryHoursReadonly: CSSProperties = {
   fontFamily: 'inherit',
   fontSize: STRIP_SUMMARY_CELL_FONT_REM,
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--text-700)',
   WebkitTextSizeAdjust: '100%',
 }
 
@@ -381,7 +381,7 @@ const stripClockStripSummaryPipeTime: CSSProperties = {
   fontFamily: 'inherit',
   fontSize: STRIP_SUMMARY_CELL_FONT_REM,
   fontWeight: 400,
-  color: '#4b5563',
+  color: 'var(--text-600)',
   WebkitTextSizeAdjust: '100%',
 }
 
@@ -425,7 +425,7 @@ const clockedInTodayDetailCell: CSSProperties = {
   padding: '0.1rem 0',
   borderBottom: 'none',
   fontSize: '0.68rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   verticalAlign: 'top',
 }
 
@@ -434,7 +434,7 @@ const clockedInTodaySessionTimeText: CSSProperties = {
   fontFamily: 'inherit',
   fontSize: '0.68rem',
   fontWeight: 400,
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   WebkitTextSizeAdjust: '100%',
   whiteSpace: 'nowrap' as const,
   flexShrink: 0,
@@ -445,7 +445,7 @@ const jobsWorkedTodaySessionTimeText: CSSProperties = {
   fontFamily: 'inherit',
   fontSize: '0.7rem',
   fontWeight: 400,
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   whiteSpace: 'nowrap' as const,
   flexShrink: 0,
 }
@@ -455,7 +455,7 @@ const clockedInTodaySessionBlock: CSSProperties = {
   display: 'inline-block',
   maxWidth: '100%',
   verticalAlign: 'top',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   paddingBottom: '0.2rem',
 }
 
@@ -475,10 +475,10 @@ const jobsWorkedTodaySessionRowShell: CSSProperties = {
   width: 'fit-content',
   maxWidth: '100%',
   boxSizing: 'border-box',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   paddingBottom: '0.2rem',
   fontSize: '0.68rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   ...stripSessionActionsRowChromeNoSelect,
 }
 
@@ -490,7 +490,7 @@ const jobsWorkedTodaySessionList: CSSProperties = {
 }
 
 const clockedInTodayDetailLink: CSSProperties = {
-  color: '#2563eb',
+  color: 'var(--text-link)',
   textDecoration: 'none',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -505,11 +505,11 @@ function formatHoursH(h: number): string {
 const scopeBtn = (active: boolean): CSSProperties => ({
   padding: '0.2rem 0.45rem',
   fontSize: '0.7rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: active ? '#e5e7eb' : 'white',
+  background: active ? 'var(--bg-200)' : 'var(--surface)',
   cursor: 'pointer',
-  color: '#374151',
+  color: 'var(--text-700)',
   fontWeight: active ? 600 : 500,
 })
 
@@ -552,7 +552,7 @@ const clockedInTodayJobBidLinkMemoGroup: CSSProperties = {
 }
 
 const jobBidStripLink: CSSProperties = {
-  color: '#2563eb',
+  color: 'var(--text-link)',
   textDecoration: 'none',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -578,7 +578,7 @@ const buttonAsLinkReset: CSSProperties = {
 
 /** Session memo (`clocked_sessions.notes`): one typography block for Currently In, Focus, Clocked detail (iOS PWA parity). */
 const stripSessionMemoTextStyle: CSSProperties = {
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.72rem',
   fontWeight: 400,
   lineHeight: 1.25,
@@ -1388,7 +1388,7 @@ export function DashboardTeamActiveClockStrip({
     <>
     <div
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 4,
         overflow: 'hidden',
         marginBottom: '1rem',
@@ -1607,7 +1607,7 @@ export function DashboardTeamActiveClockStrip({
                             </span>
                           ) : null}
                           {synthetic && linkText ? (
-                            <span style={{ fontSize: '0.72rem', color: '#6b7280' }} title={titleText}>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }} title={titleText}>
                               {linkText}
                               {onMaterializeSalarySession ? (
                                 <>
@@ -1632,7 +1632,7 @@ export function DashboardTeamActiveClockStrip({
                                       cursor: salaryMaterializeBusyUserId === s.user_id ? 'wait' : 'pointer',
                                       font: 'inherit',
                                       fontSize: 'inherit',
-                                      color: '#2563eb',
+                                      color: 'var(--text-link)',
                                       textDecoration: 'underline',
                                     }}
                                   >
@@ -1701,11 +1701,11 @@ export function DashboardTeamActiveClockStrip({
         ) : null}
         <div
           style={{
-            borderTop: showCurrentlyInTable ? '1px solid #e5e7eb' : 'none',
+            borderTop: showCurrentlyInTable ? '1px solid var(--border)' : 'none',
           }}
         >
           {clockedInTodayRows.length === 0 ? (
-            <p style={{ margin: '0.35rem 0.4rem 0.5rem', fontSize: '0.75rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.35rem 0.4rem 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               No sessions recorded yet today.
             </p>
           ) : (
@@ -1840,8 +1840,8 @@ export function DashboardTeamActiveClockStrip({
                                   padding: '0.1rem 0.2rem',
                                   border: '1px solid #bfdbfe',
                                   borderRadius: 4,
-                                  background: '#eff6ff',
-                                  color: '#1d4ed8',
+                                  background: 'var(--bg-blue-tint)',
+                                  color: 'var(--text-blue-700)',
                                   cursor: 'pointer',
                                   display: 'inline-flex',
                                   alignItems: 'center',
@@ -1894,10 +1894,10 @@ export function DashboardTeamActiveClockStrip({
                             style={{
                               ...td,
                               borderBottom: 'none',
-                              background: '#fafafa',
+                              background: 'var(--bg-page)',
                               padding: '0.35rem 0.5rem 0.45rem',
                               fontSize: '0.7rem',
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                             }}
                           >
                             <div id={detailId} role="region" aria-label={`Today’s clock sessions for ${rowLabel}`}>
@@ -1906,7 +1906,7 @@ export function DashboardTeamActiveClockStrip({
                                   overflowX: 'auto',
                                   maxWidth: '100%',
                                   marginLeft: `calc(${CLOCKED_IN_TODAY_EXPAND_COL} + 0.45rem)`,
-                                  borderLeft: '2px solid #e5e7eb',
+                                  borderLeft: '2px solid var(--border)',
                                   paddingLeft: '0.45rem',
                                 }}
                               >
@@ -1914,7 +1914,7 @@ export function DashboardTeamActiveClockStrip({
                                   style={{
                                     borderCollapse: 'collapse',
                                     fontSize: '0.68rem',
-                                    color: '#6b7280',
+                                    color: 'var(--text-muted)',
                                     width: 'auto',
                                   }}
                                 >
@@ -2010,7 +2010,7 @@ export function DashboardTeamActiveClockStrip({
                                                         {tIn}
                                                       </StripClockTimeMapButton>
                                                       {'-'}
-                                                      <span style={{ fontWeight: 600, color: '#374151' }}>Open</span>
+                                                      <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>Open</span>
                                                       {'•'}
                                                       <span style={clockedInTodaySessionTimeText}>
                                                         {formatElapsedOpen(s.clocked_in_at, nowMs)}
@@ -2183,7 +2183,7 @@ export function DashboardTeamActiveClockStrip({
         {jobsWorkedTodayRows.length > 0 ? (
           <div
             style={{
-              borderTop: mergeClockedInHeaderIntoJobs ? 'none' : '1px solid #e5e7eb',
+              borderTop: mergeClockedInHeaderIntoJobs ? 'none' : '1px solid var(--border)',
             }}
           >
             <div
@@ -2418,7 +2418,7 @@ export function DashboardTeamActiveClockStrip({
                                       fontWeight: 600,
                                       flex: '0 1 auto',
                                       minWidth: 0,
-                                      color: '#6b7280',
+                                      color: 'var(--text-muted)',
                                     }}
                                     title={`${job.label} — ${jobLinkStatsLabel}`}
                                   >
@@ -2450,16 +2450,16 @@ export function DashboardTeamActiveClockStrip({
                                 <span
                                   style={{
                                     flexShrink: 0,
-                                    color: '#4b5563',
+                                    color: 'var(--text-600)',
                                     fontWeight: 400,
                                     whiteSpace: 'nowrap',
                                   }}
                                 >
                                   {'[ '}
-                                  <span style={{ fontWeight: 400, color: '#374151' }}>
+                                  <span style={{ fontWeight: 400, color: 'var(--text-700)' }}>
                                     {formatHoursH(totalH)}
                                   </span>
-                                  <span style={{ color: '#4b5563' }}>{' • '}</span>
+                                  <span style={{ color: 'var(--text-600)' }}>{' • '}</span>
                                   <span style={{ fontWeight: 600 }}>{job.distinctPeopleCount}</span>
                                   {' ]'}
                                 </span>
@@ -2468,7 +2468,7 @@ export function DashboardTeamActiveClockStrip({
                                 <span
                                   style={{
                                     fontSize: '0.68rem',
-                                    color: '#6b7280',
+                                    color: 'var(--text-muted)',
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
                                     whiteSpace: 'nowrap',
@@ -2489,10 +2489,10 @@ export function DashboardTeamActiveClockStrip({
                               style={{
                                 ...td,
                                 borderBottom: 'none',
-                                background: '#fafafa',
+                                background: 'var(--bg-page)',
                                 padding: '0.35rem 0.5rem 0.45rem',
                                 fontSize: '0.7rem',
-                                color: '#6b7280',
+                                color: 'var(--text-muted)',
                               }}
                             >
                               <div
@@ -2505,7 +2505,7 @@ export function DashboardTeamActiveClockStrip({
                                     overflowX: 'auto',
                                     maxWidth: '100%',
                                     marginLeft: `calc(${CLOCKED_IN_TODAY_EXPAND_COL} + 0.45rem)`,
-                                    borderLeft: '2px solid #e5e7eb',
+                                    borderLeft: '2px solid var(--border)',
                                     paddingLeft: '0.45rem',
                                   }}
                                 >
@@ -2639,7 +2639,7 @@ export function DashboardTeamActiveClockStrip({
                                                   {tIn}
                                                 </StripClockTimeMapButton>
                                                 {'-'}
-                                                <span style={{ fontWeight: 600, color: '#374151' }}>Open</span>
+                                                <span style={{ fontWeight: 600, color: 'var(--text-700)' }}>Open</span>
                                               </>
                                             ) : (
                                               <>
@@ -2688,7 +2688,7 @@ export function DashboardTeamActiveClockStrip({
                                                 font: 'inherit',
                                                 fontSize: 'inherit',
                                                 fontWeight: 600,
-                                                color: '#1d4ed8',
+                                                color: 'var(--text-blue-700)',
                                                 whiteSpace: 'nowrap',
                                                 flexShrink: 0,
                                               }}
@@ -2699,7 +2699,7 @@ export function DashboardTeamActiveClockStrip({
                                             <span
                                               style={{
                                                 fontWeight: 600,
-                                                color: '#1d4ed8',
+                                                color: 'var(--text-blue-700)',
                                                 whiteSpace: 'nowrap',
                                                 flexShrink: 0,
                                               }}
@@ -2771,7 +2771,7 @@ export function DashboardTeamActiveClockStrip({
         aria-modal="true"
         aria-labelledby={stripRejectTitleId}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 320,
@@ -2784,12 +2784,12 @@ export function DashboardTeamActiveClockStrip({
         <h2 id={stripRejectTitleId} style={{ margin: '0 0 0.75rem', fontSize: '1.125rem' }}>
           Reject clock session?
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
-          <strong style={{ color: '#374151' }}>{stripRejectConfirm.personName}</strong>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+          <strong style={{ color: 'var(--text-700)' }}>{stripRejectConfirm.personName}</strong>
           {' · '}
           {stripRejectConfirm.timeRangeLabel}
         </p>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           This session will be marked rejected and removed from pending approval.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -2799,8 +2799,8 @@ export function DashboardTeamActiveClockStrip({
             onClick={cancelStripSessionReject}
             style={{
               padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: rejectModalBusy ? 'not-allowed' : 'pointer',
             }}

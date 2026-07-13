@@ -54,12 +54,12 @@ function formatYmdLocal(ymd: string): string {
 
 /** Heat colors for the aging map — green (not due) through deepening reds. */
 const AGING_CELL_STYLES: Record<AgingBucketKey, { background: string; color: string }> = {
-  current: { background: '#ecfdf5', color: '#065f46' },
-  past1_30: { background: '#fffbeb', color: '#92400e' },
-  past30_60: { background: '#ffedd5', color: '#9a3412' },
-  past60_90: { background: '#fee2e2', color: '#991b1b' },
-  past90plus: { background: '#fecaca', color: '#7f1d1d' },
-  noDueDate: { background: '#f3f4f6', color: '#4b5563' },
+  current: { background: 'var(--bg-emerald-tint)', color: 'var(--text-emerald-800)' },
+  past1_30: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
+  past30_60: { background: 'var(--bg-orange-100)', color: 'var(--text-orange-800)' },
+  past60_90: { background: 'var(--bg-red-100)', color: 'var(--text-red-800)' },
+  past90plus: { background: 'var(--bg-red-200)', color: 'var(--text-red-900)' },
+  noDueDate: { background: 'var(--bg-muted)', color: 'var(--text-600)' },
 }
 
 interface SupplyHousesTabProps {
@@ -101,7 +101,6 @@ export function SupplyHousesTab({
 
   const [supplyHouseSummary, setSupplyHouseSummary] = useState<SupplyHouseSummaryRow[]>([])
   const [supplyHouseSummaryLoading, setSupplyHouseSummaryLoading] = useState(false)
-  const [supplyHouseView, setSupplyHouseView] = useState<'summary' | 'aging'>('summary')
   const [agingUnpaidInvoices, setAgingUnpaidInvoices] = useState<
     Array<{ supply_house_id: string; amount: number; due_date: string | null }>
   >([])
@@ -640,7 +639,6 @@ export function SupplyHousesTab({
   function openHouseFromAging(supplyHouseId: string) {
     const sh = supplyHousesList.find((s: SupplyHouse) => s.id === supplyHouseId)
     if (!sh) return
-    setSupplyHouseView('summary')
     loadSupplyHouseDetail(sh)
   }
 
@@ -662,38 +660,19 @@ export function SupplyHousesTab({
           </h2>
         </div>
       )}
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
       <section style={{ marginBottom: '2rem' }}>
         {supplyHouseSummaryLoading ? (
-          <p style={{ color: '#6b7280' }}>Loading…</p>
+          <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
-              <div style={{ marginBottom: '0.5rem', fontSize: '1rem', fontWeight: 600, textAlign: 'center' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'start', marginBottom: '0.75rem' }}>
+              <span aria-hidden="true" />
+              <div style={{ fontSize: '1rem', fontWeight: 600, textAlign: 'center', alignSelf: 'center' }}>
                 Supply Houses: ${formatCurrency(supplyHouseSummary.reduce((sum, row) => sum + row.outstanding, 0))}
               </div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '0.25rem' }}>
-              {(['summary', 'aging'] as const).map((v) => (
-                <button
-                  key={v}
-                  type="button"
-                  onClick={() => setSupplyHouseView(v)}
-                  style={{
-                    padding: '0.3rem 0.9rem',
-                    fontSize: '0.8125rem',
-                    borderRadius: 999,
-                    border: '1px solid #d1d5db',
-                    background: supplyHouseView === v ? '#2563eb' : 'white',
-                    color: supplyHouseView === v ? 'white' : '#374151',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {v === 'summary' ? 'Summary' : 'Aging map'}
-                </button>
-              ))}
-              </div>
-              <div style={{ position: 'absolute', right: 0, top: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.25rem', justifySelf: 'end' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
                   <input
                     type="checkbox"
@@ -712,9 +691,8 @@ export function SupplyHousesTab({
                 </label>
               </div>
             </div>
-            {supplyHouseView === 'aging' && (
-              <>
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                   Unpaid dollars by days past due (from invoice due dates).
                   {agingMatrix.missingDueDateCount > 0
                     ? ` ${agingMatrix.missingDueDateCount} unpaid invoice${agingMatrix.missingDueDateCount === 1 ? ' has' : 's have'} no due date — open the house and add one to place ${agingMatrix.missingDueDateCount === 1 ? 'it' : 'them'}.`
@@ -722,7 +700,7 @@ export function SupplyHousesTab({
                 </p>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '0.6rem 0.75rem', textAlign: 'left' }}>Supply House</th>
                       {AGING_BUCKETS.map((b) => (
                         <th
@@ -739,7 +717,7 @@ export function SupplyHousesTab({
                   <tbody>
                     {agingMatrix.rows.length === 0 ? (
                       <tr>
-                        <td colSpan={AGING_BUCKETS.length + 2} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
+                        <td colSpan={AGING_BUCKETS.length + 2} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                           No unpaid invoices.
                         </td>
                       </tr>
@@ -749,7 +727,7 @@ export function SupplyHousesTab({
                           key={row.supplyHouseId}
                           onClick={() => openHouseFromAging(row.supplyHouseId)}
                           title="Open this supply house"
-                          style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                          style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                         >
                           <td style={{ padding: '0.6rem 0.75rem', fontWeight: 500 }}>{row.name}</td>
                           {AGING_BUCKETS.map((b) => {
@@ -763,7 +741,7 @@ export function SupplyHousesTab({
                                   textAlign: 'right',
                                   fontVariantNumeric: 'tabular-nums',
                                   whiteSpace: 'nowrap',
-                                  ...(has ? AGING_CELL_STYLES[b.key] : { color: '#d1d5db' }),
+                                  ...(has ? AGING_CELL_STYLES[b.key] : { color: 'var(--text-faint-300)' }),
                                 }}
                               >
                                 {has ? `$${formatCurrency(amount)}` : '—'}
@@ -778,13 +756,13 @@ export function SupplyHousesTab({
                     )}
                   </tbody>
                   <tfoot>
-                    <tr style={{ borderTop: '2px solid #e5e7eb', fontWeight: 600 }}>
+                    <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 600 }}>
                       <td style={{ padding: '0.6rem 0.75rem' }}>Total</td>
                       {AGING_BUCKETS.map((b) => {
                         const amount = agingMatrix.totals[b.key]
                         const has = amount > 0.005
                         return (
-                          <td key={b.key} style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : '#d1d5db' }}>
+                          <td key={b.key} style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : 'var(--text-faint-300)' }}>
                             {has ? `$${formatCurrency(amount)}` : '—'}
                           </td>
                         )
@@ -795,12 +773,10 @@ export function SupplyHousesTab({
                     </tr>
                   </tfoot>
                 </table>
-              </>
-            )}
-            {supplyHouseView === 'summary' && (
+            </div>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Supply House</th>
                   <th style={{ padding: '0.75rem', textAlign: 'right' }}>Outstanding</th>
                   <th style={{ padding: '0.75rem', textAlign: 'left' }}>Due</th>
@@ -826,7 +802,7 @@ export function SupplyHousesTab({
                           } else loadSupplyHouseDetail(sh)
                         }}
                         style={{
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           cursor: 'pointer',
                           background: isExpanded ? '#f0f9ff' : undefined,
                         }}
@@ -835,15 +811,15 @@ export function SupplyHousesTab({
                         <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: row.outstanding > 0 ? 600 : 400 }}>
                           ${formatCurrency(row.outstanding)}
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#6b7280' }}>
+                        <td style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                           {row.monthlyPaymentDay ? formatOrdinal(row.monthlyPaymentDay) : '—'}
                         </td>
-                        <td style={{ padding: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                           {row.lastInvoiceUpdatedAt ? longTimeAgoPhrase(row.lastInvoiceUpdatedAt) : '—'}
                         </td>
                         {showLastPayment && (
                           <td
-                            style={{ padding: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}
+                            style={{ padding: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
                             title={row.lastInvoicePaidAt ?? undefined}
                           >
                             {row.lastInvoicePaidAt ? longTimeAgoPhrase(row.lastInvoicePaidAt) : '—'}
@@ -857,7 +833,7 @@ export function SupplyHousesTab({
                                 e.stopPropagation()
                                 handleOpenEditSupplyHouse(selectedSupplyHouseForDetail)
                               }}
-                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
                               Edit
@@ -867,8 +843,8 @@ export function SupplyHousesTab({
                       </tr>
                       {isExpanded && selectedSupplyHouseForDetail && (
                         <tr>
-                          <td colSpan={showLastPayment ? 6 : 5} style={{ padding: 0, verticalAlign: 'top', borderBottom: '1px solid #e5e7eb' }}>
-                            <div style={{ padding: '1rem 1.5rem', background: '#f9fafb', borderLeft: '3px solid #3b82f6' }}>
+                          <td colSpan={showLastPayment ? 6 : 5} style={{ padding: 0, verticalAlign: 'top', borderBottom: '1px solid var(--border)' }}>
+                            <div style={{ padding: '1rem 1.5rem', background: 'var(--bg-subtle)', borderLeft: '3px solid #3b82f6' }}>
                               {supplyHouseDetailLoading ? (
                                 <p>Loading…</p>
                               ) : (
@@ -912,14 +888,14 @@ export function SupplyHousesTab({
                                         </button>
                                       </div>
                                     </div>
-                                    <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                                    <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: 1.4 }}>
                                       A red icon appears when Purchase Order # contains a PO Generator code (five digits, 10000–99999) that is not on the
                                       PO Generator ledger for this supply house or with no supply house on the ledger row. Shop-style refs like 40326-1
                                       are not treated as generator codes. Empty or other text is not flagged.
                                     </p>
-                                    <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                                    <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                        <thead style={{ background: '#f9fafb' }}>
+                                        <thead style={{ background: 'var(--bg-subtle)' }}>
                                           <tr>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Invoice #</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Purchase Order #</th>
@@ -939,7 +915,7 @@ export function SupplyHousesTab({
                                               ? supplyHouseInvoices
                                               : supplyHouseInvoices.filter((inv) => !inv.is_paid)
                                             return invoicesToShow.length === 0 ? (
-                                              <tr><td colSpan={10} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No invoices</td></tr>
+                                              <tr><td colSpan={10} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>No invoices</td></tr>
                                             ) : (
                                               invoicesToShow.map((inv) => {
                                                 const poGenCode = parsePoGeneratorCodeFromPurchaseOrderName(inv.purchase_order_number ?? '')
@@ -948,7 +924,7 @@ export function SupplyHousesTab({
                                                   poGeneratorCodesForSelectedHouse != null &&
                                                   !poGeneratorCodesForSelectedHouse.has(poGenCode)
                                                 return (
-                                              <tr key={inv.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                              <tr key={inv.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{inv.invoice_number}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -980,8 +956,8 @@ export function SupplyHousesTab({
                                                           borderRadius: 999,
                                                           fontSize: '0.7rem',
                                                           fontWeight: 600,
-                                                          background: days >= 60 ? '#fee2e2' : '#ffedd5',
-                                                          color: days >= 60 ? '#991b1b' : '#9a3412',
+                                                          background: days >= 60 ? 'var(--bg-red-100)' : 'var(--bg-orange-100)',
+                                                          color: days >= 60 ? 'var(--text-red-800)' : 'var(--text-orange-800)',
                                                         }}
                                                       >
                                                         {days}d past due
@@ -1008,20 +984,20 @@ export function SupplyHousesTab({
                                                   />
                                                 </td>
                                                 <td
-                                                  style={{ padding: '0.5rem 0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}
+                                                  style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}
                                                   title={inv.paid_at ?? undefined}
                                                 >
                                                   {inv.paid_at ? new Date(inv.paid_at).toLocaleDateString() : '—'}
                                                 </td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                                   {inv.link ? (
-                                                    <a href={inv.link} target="_blank" rel="noreferrer" style={{ color: '#3b82f6', textDecoration: 'underline' }}>View</a>
+                                                    <a href={inv.link} target="_blank" rel="noreferrer" style={{ color: 'var(--text-blue-500)', textDecoration: 'underline' }}>View</a>
                                                   ) : (
                                                     '—'
                                                   )}
                                                 </td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>
-                                                  <button type="button" onClick={(e) => { e.stopPropagation(); openEditInvoice(inv) }} title="Edit" aria-label="Edit" style={{ padding: '0.25rem', cursor: 'pointer', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                  <button type="button" onClick={(e) => { e.stopPropagation(); openEditInvoice(inv) }} title="Edit" aria-label="Edit" style={{ padding: '0.25rem', cursor: 'pointer', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={16} height={16} fill="currentColor" aria-hidden="true">
                                                       <path d="M362.7 19.3L314.3 67.7 444.3 197.7 492.7 149.3c25-25 25-65.5 0-90.5L453.3 19.3c-25-25-65.5-25-90.5 0zm-71 71L58.6 323.5c-10.4 10.4-18.3 23.3-22.2 37.4L1 481.2C-1.5 489.7 .8 498.8 7 505s15.3 8.5 23.7 6.1l120.3-35.4c14.1-4 27-11.8 37.4-22.2L421.7 220.3 291.7 90.3z" />
                                                     </svg>
@@ -1049,13 +1025,13 @@ export function SupplyHousesTab({
                                       </button>
                                     </div>
                                     {!serviceTypeId && (
-                                      <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+                                      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                                         {selectedServiceTypeIdProp !== undefined ? 'Select a service type above to create POs.' : 'Loading service types…'}
                                       </p>
                                     )}
-                                    <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                                    <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                                       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                                        <thead style={{ background: '#f9fafb' }}>
+                                        <thead style={{ background: 'var(--bg-subtle)' }}>
                                           <tr>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Name</th>
                                             <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
@@ -1064,10 +1040,10 @@ export function SupplyHousesTab({
                                         </thead>
                                         <tbody>
                                           {supplyHousePOs.length === 0 ? (
-                                            <tr><td colSpan={3} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>No purchase orders</td></tr>
+                                            <tr><td colSpan={3} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>No purchase orders</td></tr>
                                           ) : (
                                             supplyHousePOs.map((po) => (
-                                              <tr key={po.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                              <tr key={po.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{po.name}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>{po.status}</td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -1104,7 +1080,6 @@ export function SupplyHousesTab({
                 })}
               </tbody>
             </table>
-            )}
           </div>
         )}
       </section>
@@ -1142,24 +1117,24 @@ export function SupplyHousesTab({
 
       {invoiceFormOpen && selectedSupplyHouseForDetail && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <h3 style={{ margin: '0 0 1rem 0' }}>{editingInvoice ? 'Edit Invoice' : 'Add Invoice'}</h3>
             <form onSubmit={saveInvoice}>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Invoice Number *</label>
-                <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Purchase Order #</label>
-                <input type="text" value={invoicePurchaseOrderNumber} onChange={(e) => setInvoicePurchaseOrderNumber(e.target.value)} placeholder="e.g. PO-12345" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="text" value={invoicePurchaseOrderNumber} onChange={(e) => setInvoicePurchaseOrderNumber(e.target.value)} placeholder="e.g. PO-12345" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Invoice Date *</label>
-                <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Amount *</label>
-                <input type="number" step="0.01" min={0} value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="number" step="0.01" min={0} value={invoiceAmount} onChange={(e) => setInvoiceAmount(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 500 }}>
@@ -1174,7 +1149,7 @@ export function SupplyHousesTab({
                     const details = invoiceJobDetailsMap[a.job_id]
                     const label = details ? `${effectiveJobLedgerNumber(details.hcp_number, details.click_number) || '—'} · ${details.job_name || '—'}` : a.job_id.slice(0, 8)
                     return (
-                      <span key={a.job_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: '#f3f4f6', borderRadius: 4, fontSize: '0.8125rem' }}>
+                      <span key={a.job_id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.2rem 0.4rem', background: 'var(--bg-muted)', borderRadius: 4, fontSize: '0.8125rem' }}>
                         <span title={details?.job_address}>{label}</span>
                         <input
                           type="number"
@@ -1198,7 +1173,7 @@ export function SupplyHousesTab({
                             }
                             setInvoiceJobAllocations(newAllocations)
                           }}
-                          style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                          style={{ width: 44, padding: '0.15rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                         />
                         %
                         <button
@@ -1217,7 +1192,7 @@ export function SupplyHousesTab({
                             }))
                             setInvoiceJobAllocations(newAllocations)
                           }}
-                          style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1 }}
+                          style={{ padding: '0.1rem 0.25rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1 }}
                           title="Remove job"
                         >
                           ×
@@ -1232,37 +1207,37 @@ export function SupplyHousesTab({
                       setInvoiceJobSearchText('')
                       setInvoiceJobSearchResults([])
                     }}
-                    style={{ padding: '0.2rem 0.5rem', border: '1px dashed #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: '0.875rem' }}
+                    style={{ padding: '0.2rem 0.5rem', border: '1px dashed var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', fontSize: '0.875rem' }}
                   >
                     +
                   </button>
                 </div>
                 {invoiceJobAllocations.length > 0 && (
-                  <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                     Total: {invoiceJobAllocations.reduce((s, a) => s + a.pct, 0).toFixed(1)}%
                   </div>
                 )}
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Due Date</label>
-                <input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Link (URL)</label>
-                <input type="url" value={invoiceLink} onChange={(e) => setInvoiceLink(e.target.value)} placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="url" value={invoiceLink} onChange={(e) => setInvoiceLink(e.target.value)} placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
                 {editingInvoice ? (
                   <button
                     type="button"
                     onClick={() => deleteInvoice(editingInvoice)}
-                    style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fca5a5', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Delete
                   </button>
                 ) : null}
                 <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
-                  <button type="button" onClick={closeInvoiceForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                  <button type="button" onClick={closeInvoiceForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                   <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingInvoice ? 'Saving…' : 'Save'}</button>
                 </div>
               </div>
@@ -1273,7 +1248,7 @@ export function SupplyHousesTab({
 
       {invoiceJobSearchModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1001 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: '90%' }}>
             <h3 style={{ margin: '0 0 1rem 0', fontSize: '1.125rem' }}>Add job for invoice</h3>
             <input
               type="search"
@@ -1281,7 +1256,7 @@ export function SupplyHousesTab({
               value={invoiceJobSearchText}
               onChange={(e) => setInvoiceJobSearchText(e.target.value)}
               autoFocus
-              style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '1rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem 0.75rem', marginBottom: '1rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
             <div style={{ maxHeight: 300, overflow: 'auto' }}>
               {invoiceJobSearchResults.map((j) => (
@@ -1305,10 +1280,10 @@ export function SupplyHousesTab({
                     setInvoiceJobSearchText('')
                     setInvoiceJobSearchResults([])
                   }}
-                  style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid #e5e7eb', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ display: 'block', width: '100%', padding: '0.5rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   <div style={{ fontWeight: 500 }}>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'} · {j.job_name || '—'}</div>
-                  {j.job_address && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{j.job_address}</div>}
+                  {j.job_address && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>{j.job_address}</div>}
                 </button>
               ))}
             </div>
@@ -1319,7 +1294,7 @@ export function SupplyHousesTab({
 
       {applyPaymentFormOpen && selectedSupplyHouseForDetail && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <h3 style={{ margin: '0 0 1rem 0' }}>Apply Payment</h3>
             <form onSubmit={applyPayment}>
               <div style={{ marginBottom: '0.75rem' }}>
@@ -1329,7 +1304,7 @@ export function SupplyHousesTab({
                   value={applyPaymentLink}
                   onChange={(e) => setApplyPaymentLink(e.target.value)}
                   placeholder="Payment or receipt link..."
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div style={{ marginBottom: '0.75rem' }}>
@@ -1340,13 +1315,13 @@ export function SupplyHousesTab({
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Select invoices to mark as paid</label>
-                <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid #e5e7eb', borderRadius: 4, padding: '0.5rem' }}>
+                <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 4, padding: '0.5rem' }}>
                   {(() => {
                     const invoicesToShow = applyPaymentShowAll
                       ? supplyHouseInvoices
                       : supplyHouseInvoices.filter((inv) => !inv.is_paid)
                     if (invoicesToShow.length === 0) {
-                      return <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{applyPaymentShowAll ? 'No invoices' : 'No unpaid invoices'}</p>
+                      return <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{applyPaymentShowAll ? 'No invoices' : 'No unpaid invoices'}</p>
                     }
                     return invoicesToShow.map((inv) => (
                       <label key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', cursor: 'pointer' }}>
@@ -1363,10 +1338,10 @@ export function SupplyHousesTab({
                           }}
                         />
                         <span>{inv.invoice_number}</span>
-                        <span style={{ color: '#6b7280', fontSize: '0.8125rem' }}>{formatYmdLocal(inv.invoice_date)}</span>
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{formatYmdLocal(inv.invoice_date)}</span>
                         <span style={{ marginLeft: 'auto' }}>${formatCurrency(inv.amount)}</span>
                         {inv.is_paid && (
-                          <span style={{ fontSize: '0.75rem', color: '#059669' }} title={inv.paid_at ?? undefined}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-green-600)' }} title={inv.paid_at ?? undefined}>
                             Paid{inv.paid_at ? ` ${new Date(inv.paid_at).toLocaleDateString()}` : ''}
                           </span>
                         )}
@@ -1376,7 +1351,7 @@ export function SupplyHousesTab({
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={closeApplyPaymentForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                <button type="button" onClick={closeApplyPaymentForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                 <button type="submit" disabled={savingApplyPayment || applyPaymentSelectedIds.size === 0} style={{ padding: '0.5rem 1rem', background: '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: savingApplyPayment || applyPaymentSelectedIds.size === 0 ? 'not-allowed' : 'pointer' }}>
                   {savingApplyPayment ? 'Applying…' : 'Apply'}
                 </button>

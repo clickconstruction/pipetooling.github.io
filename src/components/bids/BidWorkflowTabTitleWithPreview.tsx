@@ -35,7 +35,7 @@ export function BidWorkflowTabTitleWithPreview({ bid, previewEnabled, onOpenPrev
           padding: 0,
           margin: 0,
           font: 'inherit',
-          color: '#3b82f6',
+          color: 'var(--text-blue-500)',
           cursor: 'pointer',
           textDecoration: 'underline',
         }}

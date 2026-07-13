@@ -83,7 +83,7 @@ function ClockSessionCreateModal({
       role="presentation"
     >
       <div
-        style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') handleBackdropClose()
@@ -95,7 +95,7 @@ function ClockSessionCreateModal({
         <h3 id="clock-session-create-title" style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>
           Add clock session
         </h3>
-        {error && <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {people ? (
             <div>
@@ -124,7 +124,7 @@ function ClockSessionCreateModal({
               value={clockIn}
               onChange={(e) => setClockIn(e.target.value)}
               disabled={saving}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
           <div>
@@ -137,7 +137,7 @@ function ClockSessionCreateModal({
               value={clockOut}
               onChange={(e) => setClockOut(e.target.value)}
               disabled={saving}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
           <div>
@@ -150,7 +150,7 @@ function ClockSessionCreateModal({
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               disabled={saving}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
         </div>
@@ -159,7 +159,7 @@ function ClockSessionCreateModal({
             type="button"
             onClick={onClose}
             disabled={saving}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}
           >
             Cancel
           </button>
@@ -324,7 +324,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
       role="presentation"
     >
       <div
-        style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') handleBackdropClose()
@@ -333,7 +333,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
         aria-modal
       >
         <h3 style={{ margin: '0 0 1rem 0', fontSize: '1rem' }}>{splitMode ? 'Split clock session' : 'Edit clock session'}</h3>
-        {error && <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: '#dc2626' }}>{error}</p>}
+        {error && <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p>}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           <div>
             <label style={{ display: 'block', marginBottom: 4, fontSize: '0.875rem', fontWeight: 500 }}>Clocked in</label>
@@ -342,7 +342,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
               value={clockIn}
               onChange={(e) => setClockIn(e.target.value)}
               disabled={splitMode}
-              style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
           </div>
           {splitMode && (
@@ -352,7 +352,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                 type="datetime-local"
                 value={splitAt}
                 onChange={(e) => setSplitAt(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
               {(() => {
                 const inVal = fromDatetimeLocal(clockIn)
@@ -365,7 +365,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   const nowMs = Date.now()
                   const valid = splitMs > inMs && hrs1 >= 0.01 && splitMs <= nowMs
                   return (
-                    <p style={{ marginTop: 4, fontSize: '0.8125rem', color: valid ? '#6b7280' : '#dc2626' }}>
+                    <p style={{ marginTop: 4, fontSize: '0.8125rem', color: valid ? 'var(--text-muted)' : 'var(--text-red-600)' }}>
                       Part 1: {hrs1.toFixed(2)}h | Part 2: open (still clocked in)
                       {!valid && splitVal && ' — Split must be after clock-in, at least 0.01h for part 1, and not in the future'}
                     </p>
@@ -377,7 +377,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                 const hrs2 = (outMs - splitMs) / (1000 * 3600)
                 const valid = splitMs > inMs && splitMs < outMs && hrs1 >= 0.01 && hrs2 >= 0.01
                 return (
-                  <p style={{ marginTop: 4, fontSize: '0.8125rem', color: valid ? '#6b7280' : '#dc2626' }}>
+                  <p style={{ marginTop: 4, fontSize: '0.8125rem', color: valid ? 'var(--text-muted)' : 'var(--text-red-600)' }}>
                     Part 1: {hrs1.toFixed(2)}h | Part 2: {hrs2.toFixed(2)}h
                     {!valid && splitVal && ' — Split time must be strictly between in and out, with at least 0.01h per part'}
                   </p>
@@ -386,7 +386,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
             </div>
           )}
           {editingOpen ? (
-            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {splitMode
                 ? 'First segment ends at the split time; the remainder continues as an open session.'
                 : 'Session is still open—only clock-in time and notes are editable; clock-out is unchanged.'}
@@ -399,7 +399,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                 value={clockOut}
                 onChange={(e) => setClockOut(e.target.value)}
                 disabled={splitMode}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
           )}
@@ -414,7 +414,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
                   disabled={saving}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
               <div>
@@ -427,7 +427,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   onChange={(e) => setSplitNotesSecond(e.target.value)}
                   rows={3}
                   disabled={saving}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </div>
             </>
@@ -439,7 +439,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 disabled={saving}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
           )}
@@ -474,7 +474,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                 background: 'none',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
-                color: '#3b82f6',
+                color: 'var(--text-blue-500)',
                 textDecoration: 'underline',
               }}
             >
@@ -492,7 +492,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                   setSplitNotesSecond('')
                 }}
                 disabled={saving}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}
               >
                 Cancel split
               </button>
@@ -726,7 +726,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}
               >
                 Cancel
               </button>

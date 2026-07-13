@@ -8,29 +8,29 @@ const titleStyle: CSSProperties = {
   margin: 0,
   fontSize: '1.05rem',
   fontWeight: 600,
-  color: '#111827',
+  color: 'var(--text-strong)',
 }
 
 const helperTextStyle: CSSProperties = {
   margin: 0,
   fontSize: '0.8125rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
 }
 
 const errorTextStyle: CSSProperties = {
   margin: 0,
   fontSize: '0.8125rem',
-  color: '#b91c1c',
+  color: 'var(--text-red-700)',
 }
 
 const closeButtonStyle: CSSProperties = {
   padding: '0.4rem 0.85rem',
   fontSize: '0.875rem',
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 4,
-  background: '#fff',
+  background: 'var(--surface)',
   cursor: 'pointer',
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 export type UserReviewSwitchUserModalProps = {
@@ -119,7 +119,7 @@ export function UserReviewSwitchUserModal({
         aria-modal="true"
         aria-labelledby="user-review-switch-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 420,

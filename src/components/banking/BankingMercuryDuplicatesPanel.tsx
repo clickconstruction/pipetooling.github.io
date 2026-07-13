@@ -145,7 +145,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
       style={{
         marginBottom: '1.5rem',
         border: '1px solid #fde68a',
-        background: '#fffbeb',
+        background: 'var(--bg-amber-tint)',
         borderRadius: 8,
         padding: '0.75rem 1rem',
       }}
@@ -157,12 +157,12 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
           aria-expanded={expanded}
           style={{ all: 'unset', cursor: 'pointer', display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}
         >
-          <span style={{ color: '#92400e' }}>{expanded ? '▼' : '▶'}</span>
-          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: '#92400e' }}>
+          <span style={{ color: 'var(--text-amber-800)' }}>{expanded ? '▼' : '▶'}</span>
+          <span style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>
             Possible duplicates{totalCount > 0 ? ` (${totalCount.toLocaleString()})` : ''}
           </span>
         </button>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: '#92400e', cursor: 'pointer' }}
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8rem', color: 'var(--text-amber-800)', cursor: 'pointer' }}
           title="By default only pairs involving a manually-entered transaction are shown — the real duplicate risk. Turn on to also review same-amount, same-counterparty repeats between synced transactions (usually legitimate)."
         >
           <input type="checkbox" checked={includeSyncedRepeats} onChange={(e) => setIncludeSyncedRepeats(e.target.checked)} />
@@ -173,9 +173,9 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
       {expanded ? (
         <div style={{ marginTop: '0.75rem' }}>
           {headerNote ? (
-            <div style={{ fontSize: '0.85rem', color: '#92400e' }}>{headerNote}</div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-amber-800)' }}>{headerNote}</div>
           ) : totalCount === 0 ? (
-            <div style={{ fontSize: '0.85rem', color: '#92400e' }}>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-amber-800)' }}>
               No possible duplicates{includeSyncedRepeats ? '' : ' involving manual entries'}.
             </div>
           ) : (
@@ -184,16 +184,16 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                 const keeperId = keeperFor(c)
                 const busy = busyKey === c.key
                 return (
-                  <div key={c.key} style={{ border: '1px solid #fcd34d', borderRadius: 8, background: '#fff', padding: '0.65rem 0.8rem' }}>
+                  <div key={c.key} style={{ border: '1px solid #fcd34d', borderRadius: 8, background: 'var(--surface)', padding: '0.65rem 0.8rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem' }}>
                       <div style={{ fontWeight: 700 }}>
                         {formatUsd(c.members[0]?.amount ?? 0)} · {c.members[0]?.counterpartyName ?? '—'}
-                        <span style={{ fontWeight: 500, color: '#6b7280', fontSize: '0.8rem' }}>
+                        <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                           {' '}· {c.members.length} transactions{c.maxDaysApart > 0 ? ` · up to ${c.maxDaysApart}d apart` : ' · same day'}
                         </span>
                       </div>
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: '#6b7280', marginBottom: '0.35rem' }}>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
                       Choose the one to <strong>keep</strong>; the rest are excluded from the books (reversible).
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -209,8 +209,8 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                               gap: '0.5rem',
                               padding: '0.35rem 0.5rem',
                               borderRadius: 6,
-                              background: m.id === keeperId ? '#f0fdf4' : '#f8fafc',
-                              border: m.id === keeperId ? '1px solid #bbf7d0' : '1px solid #e5e7eb',
+                              background: m.id === keeperId ? 'var(--bg-green-tint)' : 'var(--bg-slate-tint)',
+                              border: m.id === keeperId ? '1px solid #bbf7d0' : '1px solid var(--border)',
                               cursor: 'pointer',
                             }}
                           >
@@ -224,11 +224,11 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                               {badge.label}
                             </span>
                             <span style={{ fontSize: '0.8rem', minWidth: '5.5rem' }}>{formatBankingDate(m.postedAt)}</span>
-                            <span style={{ fontSize: '0.8rem', color: '#475569', flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '0.8rem', color: 'var(--text-slate-600)', flex: '1 1 auto', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {mercuryBankDescriptionFromRaw(m.raw) ?? '—'}
                               {acct ? ` · ${acct}` : ''}
                             </span>
-                            <span style={{ fontSize: '0.72rem', color: m.id === keeperId ? '#16a34a' : '#9ca3af', fontWeight: 600 }}>
+                            <span style={{ fontSize: '0.72rem', color: m.id === keeperId ? '#16a34a' : 'var(--text-faint)', fontWeight: 600 }}>
                               {m.id === keeperId ? 'Keep' : 'Exclude'}
                             </span>
                           </label>
@@ -248,7 +248,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                         type="button"
                         disabled={busy}
                         onClick={() => void handleDismiss(c)}
-                        style={{ padding: '0.4rem 0.8rem', fontWeight: 600, fontSize: '0.85rem', background: '#fff', color: '#0f172a', border: '1px solid #e5e7eb', borderRadius: 6, cursor: busy ? 'not-allowed' : 'pointer' }}
+                        style={{ padding: '0.4rem 0.8rem', fontWeight: 600, fontSize: '0.85rem', background: 'var(--surface)', color: 'var(--text-slate-900)', border: '1px solid var(--border)', borderRadius: 6, cursor: busy ? 'not-allowed' : 'pointer' }}
                       >
                         Not a duplicate
                       </button>
@@ -265,7 +265,7 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                 type="button"
                 onClick={() => setShowExcluded((v) => !v)}
                 aria-expanded={showExcluded}
-                style={{ all: 'unset', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#92400e' }}
+                style={{ all: 'unset', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-amber-800)' }}
               >
                 {showExcluded ? '▼' : '▶'} Excluded duplicates ({excluded.length.toLocaleString()})
               </button>
@@ -274,17 +274,17 @@ export function BankingMercuryDuplicatesPanel({ onAfterChange, nicknameByAccount
                   {excluded.map((r) => {
                     const busy = busyKey === r.id
                     return (
-                      <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.3rem 0.5rem', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6 }}>
+                      <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', padding: '0.3rem 0.5rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6 }}>
                         <span style={{ minWidth: '5.5rem' }}>{formatBankingDate(r.postedAt)}</span>
                         <span style={{ fontWeight: 600 }}>{formatUsd(r.amount)}</span>
-                        <span style={{ flex: '1 1 auto', minWidth: 0, color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <span style={{ flex: '1 1 auto', minWidth: 0, color: 'var(--text-slate-600)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {r.counterpartyName ?? mercuryBankDescriptionFromRaw(r.raw) ?? '—'}
                         </span>
                         <button
                           type="button"
                           disabled={busy}
                           onClick={() => void handleUndo(r)}
-                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem', fontWeight: 600, background: '#fff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 6, cursor: busy ? 'not-allowed' : 'pointer' }}
+                          style={{ padding: '0.25rem 0.6rem', fontSize: '0.78rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 6, cursor: busy ? 'not-allowed' : 'pointer' }}
                         >
                           {busy ? '…' : 'Undo'}
                         </button>

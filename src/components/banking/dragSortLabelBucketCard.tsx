@@ -50,7 +50,7 @@ function paletteForVisual(
     // buckets so users grok this isn't an expense category.
     return { border: '#94a3b8', bg: '#f1f5f9' }
   }
-  return { border: '#d1d5db', bg: '#f9fafb' }
+  return { border: 'var(--border-strong)', bg: '#f9fafb' }
 }
 
 function DragSortBucketStatsFooter({
@@ -72,7 +72,7 @@ function DragSortBucketStatsFooter({
         gap: '0.35rem',
       }}
     >
-      <span style={{ fontSize: '0.75rem', color: '#64748b', minWidth: 0 }}>
+      <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', minWidth: 0 }}>
         {count} tx · {formatUsdDragSortBucket(amountSum)}
       </span>
       {scheduleTrim ? (
@@ -110,7 +110,7 @@ function DragSortBucketStatsInlineCluster({
         flexShrink: 0,
       }}
     >
-      <span style={{ fontSize: '0.75rem', color: '#64748b', minWidth: 0 }}>
+      <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', minWidth: 0 }}>
         {count} tx · {formatUsdDragSortBucket(amountSum)}
       </span>
       {scheduleTrim ? (
@@ -176,7 +176,7 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
               flex: '1 1 auto',
               fontWeight: 600,
               fontSize: '0.9rem',
-              color: '#0f172a',
+              color: 'var(--text-slate-900)',
               wordBreak: 'break-word',
             }}
           >
@@ -191,7 +191,7 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
                 flexShrink: 0,
                 padding: '2px 6px',
                 fontSize: '0.7rem',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
@@ -209,7 +209,7 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
                 flexShrink: 0,
                 padding: '2px 6px',
                 fontSize: '0.7rem',
-                color: '#b91c1c',
+                color: 'var(--text-red-700)',
                 border: 'none',
                 background: 'transparent',
                 cursor: 'pointer',
@@ -233,7 +233,7 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
               <div
                 style={{
                   fontSize: '0.72rem',
-                  color: '#64748b',
+                  color: 'var(--text-slate-500)',
                   wordBreak: 'break-word',
                 }}
                 title={descTrim.length > 100 ? descTrim : undefined}
@@ -247,7 +247,7 @@ export const DragSortLabelBucketCard = forwardRef<HTMLDivElement, DragSortLabelB
                 <div
                   style={{
                     fontSize: '0.72rem',
-                    color: '#64748b',
+                    color: 'var(--text-slate-500)',
                     wordBreak: 'break-word',
                   }}
                   title={descTrim.length > 100 ? descTrim : undefined}

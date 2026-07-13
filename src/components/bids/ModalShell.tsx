@@ -18,7 +18,7 @@ const OVERLAY: CSSProperties = {
 }
 
 export const DEFAULT_CARD: CSSProperties = {
-  background: 'white',
+  background: 'var(--surface)',
   padding: '1.5rem',
   borderRadius: 8,
   maxWidth: 500,

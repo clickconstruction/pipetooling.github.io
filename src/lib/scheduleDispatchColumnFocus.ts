@@ -2,8 +2,8 @@ import type { CSSProperties } from 'react'
 import { useLayoutEffect, type RefObject } from 'react'
 import { getScheduleDispatchVisibleDayKeys } from '../utils/dateUtils'
 
-export const SCHEDULE_DISPATCH_TODAY_COLUMN_BG = '#fefce8'
-export const SCHEDULE_DISPATCH_COLUMN_FOCUS_BG = '#dbeafe'
+export const SCHEDULE_DISPATCH_TODAY_COLUMN_BG = 'var(--bg-yellow-tint)'
+export const SCHEDULE_DISPATCH_COLUMN_FOCUS_BG = 'var(--bg-blue-200)'
 
 export const SCHEDULE_DISPATCH_COLUMN_DAY_DATA_ATTR = 'data-schedule-column-day'
 

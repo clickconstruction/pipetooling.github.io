@@ -126,7 +126,7 @@ export default function DocumentsAddDriveLinkModal({
           maxWidth: 440,
           maxHeight: 'min(90vh, 640px)',
           overflow: 'auto',
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
           display: 'flex',
@@ -141,7 +141,7 @@ export default function DocumentsAddDriveLinkModal({
             justifyContent: 'space-between',
             gap: '0.75rem',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
           }}
         >
           <h2 id="documents-add-drive-link-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>
@@ -153,12 +153,12 @@ export default function DocumentsAddDriveLinkModal({
         </div>
         <div style={{ padding: '1rem 1.25rem 1.25rem' }}>
           {description ? (
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>{description}</p>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>{description}</p>
           ) : null}
 
           {bidNeedsTargetChoice ? (
             <fieldset style={{ margin: '0 0 0.85rem', padding: 0, border: 'none' }}>
-              <legend style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+              <legend style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
                 Link type
               </legend>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.25rem' }}>
@@ -182,7 +182,7 @@ export default function DocumentsAddDriveLinkModal({
             </fieldset>
           ) : null}
 
-          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: '#374151' }}>
+          <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 500, color: 'var(--text-700)' }}>
             Google Drive or Docs URL (https only)
             <input
               type="url"
@@ -198,7 +198,7 @@ export default function DocumentsAddDriveLinkModal({
                 padding: '0.5rem',
                 boxSizing: 'border-box',
                 font: 'inherit',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
               }}
             />
@@ -218,7 +218,7 @@ export default function DocumentsAddDriveLinkModal({
             >
               {checkStatus === 'loading' ? 'Checking…' : 'Check link'}
             </button>
-            <span style={{ fontSize: '0.78rem', color: '#6b7280' }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               Drive or Docs URLs only. Does not block saving — hints only.
             </span>
           </div>

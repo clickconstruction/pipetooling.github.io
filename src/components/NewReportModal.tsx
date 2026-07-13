@@ -332,10 +332,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 65 }}>
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ margin: 0 }}>New report</h2>
-          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -356,14 +356,14 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                       setJobSearchText('')
                     }
                   }}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid #d1d5db', background: searchMode === 'last' ? '#eff6ff' : 'white', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid var(--border-strong)', background: searchMode === 'last' ? 'var(--bg-blue-tint)' : 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Same as last report
                 </button>
               )}
             </div>
             {selectedJob && (
-              <div style={{ margin: 0, padding: '0.5rem', background: '#f3f4f6', borderRadius: 4 }}>
+              <div style={{ margin: 0, padding: '0.5rem', background: 'var(--bg-muted)', borderRadius: 4 }}>
                 <div>
                   Selected: {selectedJob.display_name} (
                   {selectedJob.source === 'bid'
@@ -371,11 +371,11 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     : `HCP: ${selectedJob.hcp_number || '—'}`}
                   )
                 </div>
-                {selectedJob.address && <div style={{ marginTop: '0.25rem', color: '#4b5563', fontSize: '0.875rem' }}>{selectedJob.address}</div>}
+                {selectedJob.address && <div style={{ marginTop: '0.25rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>{selectedJob.address}</div>}
               </div>
             )}
             {lastReportJob && (
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 recent report location:{' '}
                 <button
                   type="button"
@@ -385,7 +385,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                     setSearchResults([])
                     setJobSearchText('')
                   }}
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: '#2563eb', textDecoration: 'underline', font: 'inherit' }}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit' }}
                 >
                   {lastReportJob.display_name}
                   {lastReportJob.hcp_number
@@ -401,16 +401,16 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               value={jobSearchText}
               onChange={(e) => { setJobSearchText(e.target.value); setSearchMode('search'); setSelectedJob(null) }}
               placeholder="Search job HCP, project, bid #, or address"
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
             />
             {searchMode === 'search' && searchResults.length > 0 && (
-              <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                 {searchResults.map((r) => (
                   <button
                     key={`${r.source}-${r.id}`}
                     type="button"
                     onClick={() => { setSelectedJob(r); setSearchResults([]) }}
-                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id && selectedJob?.source === r.source ? '#eff6ff' : 'white', cursor: 'pointer', borderBottom: '1px solid #e5e7eb' }}
+                    style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', background: selectedJob?.id === r.id && selectedJob?.source === r.source ? 'var(--bg-blue-tint)' : 'var(--surface)', cursor: 'pointer', borderBottom: '1px solid var(--border)' }}
                   >
                     {r.source === 'bid' ? (
                       <span style={{ marginRight: 6, fontSize: '0.65rem', fontWeight: 700, color: '#7c3aed' }}>BID</span>
@@ -439,8 +439,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                   style={{
                     padding: '0.5rem 1rem',
                     fontSize: '0.875rem',
-                    border: selectedTemplateId === t.id ? '2px solid #3b82f6' : '1px solid #d1d5db',
-                    background: selectedTemplateId === t.id ? '#eff6ff' : 'white',
+                    border: selectedTemplateId === t.id ? '2px solid #3b82f6' : '1px solid var(--border-strong)',
+                    background: selectedTemplateId === t.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
                     borderRadius: 4,
                     cursor: 'pointer',
                     fontWeight: selectedTemplateId === t.id ? 600 : 400,
@@ -487,7 +487,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                       value={fieldValues[f.label] ?? ''}
                       onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
                       rows={3}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
                 )
@@ -495,7 +495,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
             </div>
           )}
 
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
@@ -504,8 +504,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               disabled={fields.length === 0 || !fields.some((f) => (fieldValues[f.label] ?? '').trim())}
               style={{
                 padding: '0.5rem 1rem',
-                border: copyJustClicked ? '1px solid #22c55e' : '1px solid #d1d5db',
-                background: copyJustClicked ? '#dcfce7' : 'white',
+                border: copyJustClicked ? '1px solid #22c55e' : '1px solid var(--border-strong)',
+                background: copyJustClicked ? 'var(--bg-green-100)' : 'var(--surface)',
                 borderRadius: 4,
                 cursor: 'pointer',
                 color: copyJustClicked ? '#16a34a' : undefined,
@@ -515,7 +515,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
               {copyJustClicked ? 'Copied!' : 'Copy to Text'}
             </button>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+              <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
               <button type="submit" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
               {!canSubmit && !saving && missingFields.length > 0 && (
                 <span style={{ fontSize: '0.8rem', color: '#FF6600', marginLeft: '0.5rem', display: 'inline-block' }}>

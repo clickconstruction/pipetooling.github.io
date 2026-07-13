@@ -41,7 +41,7 @@ function renderBreakdownList(
   onToggleKey: (key: string) => void
 ) {
   return (
-    <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+    <ul style={{ listStyle: 'none', padding: 0, margin: '0.5rem 0 0', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
       {items.map((item, idx) => {
         const hasChildren = item.children && item.children.length > 0
         const isExpanded = hasChildren && expandedKeys.has(item.key)
@@ -69,7 +69,7 @@ function renderBreakdownList(
                     textAlign: 'left',
                   }}
                 >
-                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                  <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: 'var(--text-muted)', minWidth: '5rem' }}>
                     {formatHours(item.seconds)}
                   </span>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', flex: 1, minWidth: 0 }}>
@@ -80,7 +80,7 @@ function renderBreakdownList(
                   </span>
                 </button>
                 {hasSubRows && (
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, background: '#fafafa' }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, background: 'var(--bg-page)' }}>
                     {item.children!.map((sub, subIdx) => {
                       const truncated = sub.notes.length > 50 ? sub.notes.slice(0, 47) + '…' : sub.notes
                       return (
@@ -96,10 +96,10 @@ function renderBreakdownList(
                             borderBottom: subIdx < item.children!.length - 1 ? '1px solid #f3f4f6' : 'none',
                           }}
                         >
-                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#9ca3af', minWidth: '5rem' }}>
+                          <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: 'var(--text-faint)', minWidth: '5rem' }}>
                             {formatHours(sub.seconds)}
                           </span>
-                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#6b7280' }} title={sub.notes}>
+                          <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-muted)' }} title={sub.notes}>
                             {truncated}
                           </span>
                         </li>
@@ -119,7 +119,7 @@ function renderBreakdownList(
                   fontSize: '0.875rem',
                 }}
               >
-                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: '#6b7280', minWidth: '5rem' }}>
+                <span style={{ fontVariantNumeric: 'tabular-nums', flexShrink: 0, color: 'var(--text-muted)', minWidth: '5rem' }}>
                   {formatHours(item.seconds)}
                 </span>
                 <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.label}>
@@ -654,7 +654,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
   if (loading && breakdown.length === 0) {
     return (
       <div style={{ marginTop: '2rem', marginBottom: '1rem' }} role="region" aria-label="My time summary">
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0, textAlign: 'center' }}>Loading…</p>
       </div>
     )
   }
@@ -685,7 +685,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
               border: 'none',
               cursor: 'pointer',
               fontSize: '0.875rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               fontWeight: 500,
             }}
           >
@@ -728,7 +728,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
               border: 'none',
               cursor: 'pointer',
               fontSize: '0.875rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               fontWeight: 500,
             }}
           >
@@ -760,7 +760,7 @@ export default function DashboardMyTimeSection({ userId, hoursDaysCorrect, disab
         )}
       </div>
       {!loading && breakdown.length === 0 && totalSecondsWeek === 0 && (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No time logged this week.</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No time logged this week.</p>
       )}
       {editorDate && !disableDayEditor && (
         <DashboardMyTimeDayEditorModal

@@ -29,9 +29,9 @@ export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGro
   return (
     <div
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 8,
-        background: '#f8fafc',
+        background: 'var(--bg-slate-tint)',
         padding: '0.6rem 0.85rem',
         display: 'flex',
         flexWrap: 'wrap',
@@ -58,13 +58,13 @@ export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGro
           font: 'inherit',
         }}
       >
-        <span style={{ color: '#64748b', width: '1rem', flex: '0 0 auto' }}>{expanded ? '▼' : '▶'}</span>
-        <span style={{ fontWeight: 700, color: '#0f172a' }}>{group.labelName}</span>
-        <span style={{ color: '#475569', fontSize: '0.875rem' }}>
+        <span style={{ color: 'var(--text-slate-500)', width: '1rem', flex: '0 0 auto' }}>{expanded ? '▼' : '▶'}</span>
+        <span style={{ fontWeight: 700, color: 'var(--text-slate-900)' }}>{group.labelName}</span>
+        <span style={{ color: 'var(--text-slate-600)', fontSize: '0.875rem' }}>
           {group.count.toLocaleString()} {group.count === 1 ? 'item' : 'items'} · {formatUsd(group.totalAmount)}
         </span>
         {group.conflictCount > 0 ? (
-          <span style={{ color: '#b45309', fontSize: '0.8rem' }}>
+          <span style={{ color: 'var(--text-amber-700)', fontSize: '0.8rem' }}>
             · {group.conflictCount.toLocaleString()} need splits cleared
           </span>
         ) : null}
@@ -101,8 +101,8 @@ export const AccountingApprovalGroupHeader = memo(function AccountingApprovalGro
             padding: '0.4rem 0.8rem',
             fontWeight: 600,
             fontSize: '0.85rem',
-            background: '#fff',
-            color: '#b91c1c',
+            background: 'var(--surface)',
+            color: 'var(--text-red-700)',
             border: '1px solid #fecaca',
             borderRadius: 6,
             cursor: busy ? 'not-allowed' : 'pointer',

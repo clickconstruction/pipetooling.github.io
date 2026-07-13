@@ -270,12 +270,12 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
               style={{
                 padding: '0.375rem 0.5rem',
                 background: 'none',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontWeight: 500,
                 fontSize: '0.875rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               Quick Fill {quickFillExpanded ? '\u25BC' : '\u25B6'}
@@ -391,7 +391,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
                   cursor: 'pointer',
                   fontSize: '1rem',
                   lineHeight: 1,
-                  color: '#374151',
+                  color: 'var(--text-700)',
                 }}
                 aria-expanded={customerMasterExpanded}
               >
@@ -401,7 +401,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
                 Customer Master {(myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') ? '*' : ''}
               </label>
               {masterUserId && !customerMasterExpanded && (
-                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   ({availableMasters.find((m) => m.id === masterUserId)?.name || availableMasters.find((m) => m.id === masterUserId)?.email || 'Selected'})
                 </span>
               )}
@@ -409,9 +409,9 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
             {customerMasterExpanded && (
               <>
                 {mastersLoading ? (
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading masters...</p>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading masters...</p>
                 ) : (myRole === 'assistant' || myRole === 'dev' || myRole === 'estimator') && availableMasters.length === 0 ? (
-                  <p style={{ fontSize: '0.875rem', color: '#b91c1c' }}>
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
                     {myRole === 'assistant'
                       ? 'No masters have adopted you yet. Ask a master to adopt you in Settings.'
                       : 'No masters found.'}
@@ -433,7 +433,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
                         </option>
                       ))}
                     </select>
-                    <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
                       {myRole === 'master_technician'
                         ? 'You are automatically assigned as the customer owner.'
                         : 'Select which master this customer belongs to.'}
@@ -444,7 +444,7 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
             )}
           </div>
         )}
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         {!onSubmitForConvert && (
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
@@ -479,11 +479,11 @@ export default function NewCustomerForm({ showQuickFill = false, onCreated, onCa
                 onClick={onCancel}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   fontWeight: 500,
                 }}
               >

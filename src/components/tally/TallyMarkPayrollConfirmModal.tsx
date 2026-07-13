@@ -58,7 +58,7 @@ export function TallyMarkPayrollConfirmModal({
         aria-modal="true"
         aria-labelledby="tally-mark-payroll-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 440,
@@ -71,18 +71,18 @@ export function TallyMarkPayrollConfirmModal({
           Mark this transaction as payroll?
         </h2>
         <div style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', lineHeight: 1.4 }}>
-          <div style={{ fontWeight: 600, color: '#111827' }}>
+          <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
             {counterpartyName?.trim() || '(no counterparty)'}
           </div>
-          <div style={{ color: '#6b7280' }}>
+          <div style={{ color: 'var(--text-muted)' }}>
             {amountLabel}
             {postedLabel ? ` · ${postedLabel}` : ''}
           </div>
           {bankDescription?.trim() ? (
-            <div style={{ color: '#6b7280', fontSize: '0.8125rem' }}>{bankDescription}</div>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{bankDescription}</div>
           ) : null}
         </div>
-        <p style={{ margin: '0 0 1rem', color: '#374151', fontSize: '0.875rem', lineHeight: 1.4 }}>
+        <p style={{ margin: '0 0 1rem', color: 'var(--text-700)', fontSize: '0.875rem', lineHeight: 1.4 }}>
           This resolves the transaction without allocating it to any job.
         </p>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
@@ -95,8 +95,8 @@ export function TallyMarkPayrollConfirmModal({
               marginRight: 'auto',
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: busy ? '#e5e7eb' : '#2563eb',
-              color: busy ? '#6b7280' : '#fff',
+              background: busy ? 'var(--bg-200)' : '#2563eb',
+              color: busy ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
@@ -111,8 +111,8 @@ export function TallyMarkPayrollConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: busy ? '#e5e7eb' : '#dc2626',
-              color: busy ? '#6b7280' : '#fff',
+              background: busy ? 'var(--bg-200)' : '#dc2626',
+              color: busy ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',
@@ -127,8 +127,8 @@ export function TallyMarkPayrollConfirmModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: busy ? '#e5e7eb' : '#7c3aed',
-              color: busy ? '#6b7280' : '#fff',
+              background: busy ? 'var(--bg-200)' : '#7c3aed',
+              color: busy ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: busy ? 'not-allowed' : 'pointer',

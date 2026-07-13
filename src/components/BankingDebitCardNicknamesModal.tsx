@@ -94,7 +94,7 @@ export function BankingDebitCardNicknamesModal({
         aria-describedby="banking-debit-card-nicknames-modal-desc"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(640px, calc(100vw - 2rem))',
           maxHeight: '90vh',
@@ -122,8 +122,8 @@ export function BankingDebitCardNicknamesModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -132,13 +132,13 @@ export function BankingDebitCardNicknamesModal({
             Close
           </button>
         </div>
-        <p id="banking-debit-card-nicknames-modal-desc" style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
+        <p id="banking-debit-card-nicknames-modal-desc" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
           Labels for Mercury <code>raw.details.debitCardInfo.id</code> (or top-level <code>raw.debitCardInfo.id</code>), shared for all devs. Save with
           empty text to remove a label, or use Clear.
         </p>
         <div style={{ overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           {debitCardIds.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               No debit card IDs yet — sync transactions that include debit card info, then Reload table.
             </p>
           ) : (
@@ -161,7 +161,7 @@ export function BankingDebitCardNicknamesModal({
                     padding: 0,
                     border: 'none',
                     background: 'none',
-                    color: onOpenRecentTransactions ? '#1d4ed8' : 'inherit',
+                    color: onOpenRecentTransactions ? 'var(--text-blue-700)' : 'inherit',
                     cursor: onOpenRecentTransactions ? 'pointer' : 'default',
                     textDecoration: onOpenRecentTransactions ? 'underline' : 'none',
                     textAlign: 'left',
@@ -192,8 +192,8 @@ export function BankingDebitCardNicknamesModal({
                     padding: '4px 10px',
                     fontSize: '0.8125rem',
                     borderRadius: 4,
-                    border: '1px solid #d1d5db',
-                    background: 'white',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
                     cursor: savingNicknameId === id ? 'wait' : 'pointer',
                   }}
                 >
@@ -215,8 +215,8 @@ export function BankingDebitCardNicknamesModal({
                     padding: '4px 10px',
                     fontSize: '0.8125rem',
                     borderRadius: 4,
-                    border: '1px solid #d1d5db',
-                    background: 'white',
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
                     cursor: savingNicknameId === id ? 'wait' : 'pointer',
                   }}
                 >

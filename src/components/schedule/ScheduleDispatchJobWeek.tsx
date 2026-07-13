@@ -921,7 +921,7 @@ export function ScheduleDispatchJobWeek() {
               padding: 0,
               border: 'none',
               background: 'none',
-              color: '#2563eb',
+              color: 'var(--text-link)',
               cursor: 'pointer',
               fontSize: '0.8125rem',
               textDecoration: 'underline',
@@ -953,7 +953,7 @@ export function ScheduleDispatchJobWeek() {
               cursor: jobWeekGridLoading ? 'not-allowed' : 'pointer',
               font: 'inherit',
               fontSize: '0.9375rem',
-              color: '#374151',
+              color: 'var(--text-700)',
               fontWeight: 600,
               textAlign: 'left',
             }}
@@ -977,7 +977,7 @@ export function ScheduleDispatchJobWeek() {
               border: 'none',
               background: 'none',
               cursor: 'pointer',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               borderRadius: 4,
             }}
           >
@@ -995,7 +995,7 @@ export function ScheduleDispatchJobWeek() {
           </button>
         </div>
         {loadError ? (
-          <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '0.5rem 0 0', whiteSpace: 'pre-wrap' }}>{loadError}</p>
+          <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0.5rem 0 0', whiteSpace: 'pre-wrap' }}>{loadError}</p>
         ) : null}
       </div>
 
@@ -1037,7 +1037,7 @@ export function ScheduleDispatchJobWeek() {
               fontSize: '0.75rem',
               border: '1px solid #4338ca',
               borderRadius: 4,
-              background: '#fff',
+              background: 'var(--surface)',
               color: '#312e81',
               cursor: 'pointer',
             }}

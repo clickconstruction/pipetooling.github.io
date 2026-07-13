@@ -34,7 +34,7 @@ export default function DashboardTallyStaleStaffBanner({
         padding: '1rem 1.25rem',
         border: '1px solid #93c5fd',
         borderRadius: 8,
-        background: '#eff6ff',
+        background: 'var(--bg-blue-tint)',
         marginBottom: '1rem',
         cursor: 'pointer',
         textAlign: 'left',
@@ -61,8 +61,8 @@ export default function DashboardTallyStaleStaffBanner({
         {peopleCount}
       </span>
       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-        <div style={{ fontWeight: 600, fontSize: '1rem', color: '#1d4ed8' }}>Stale tally follow-up</div>
-        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+        <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-blue-700)' }}>Stale tally follow-up</div>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
           <strong>{peopleCount}</strong> {peopleCount === 1 ? 'person' : 'people'} · <strong>{transactionCount}</strong>{' '}
           unlinked transaction{transactionCount === 1 ? '' : 's'} — {agePhrase}. Assign jobs on their behalf.
         </div>

@@ -6,8 +6,8 @@
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1a1a1a;
-  background-color: #fafafa;
+  color: var(--text-base);
+  background-color: var(--bg-page);
 }
 
 html,
@@ -25,7 +25,7 @@ body {
 }
 
 a {
-  color: #2563eb;
+  color: var(--text-link);
   text-decoration: none;
 }
 
@@ -51,7 +51,7 @@ input.no-spinner[type="number"] {
 input.rough-takeoff-qty-input[type="number"] {
   border: none;
   border-radius: 0;
-  border-bottom: 1px solid #d1d5db;
+  border-bottom: 1px solid var(--border-strong);
   background: transparent;
   padding: 2px 4px;
   text-align: center;
@@ -106,10 +106,170 @@ button {
   --page-wrap-pad: 2rem;
 }
 
+/* Theme tokens. <html data-theme="dark"> is stamped by ThemeContext (schedule:
+   dark 8pm–4am, gear-menu override). Surfaces adopt these incrementally —
+   anything still on raw hex simply stays light in dark mode until migrated.
+   Light values are EXACTLY the hexes they replace (light mode stays
+   pixel-identical); dark values invert the neutral ramp and lighten text
+   accents. scripts/theme-tokenize.mjs rewrites inline styles onto these.
+   A `data-theme="light"` attribute on any element re-pins its subtree to
+   the light values — used by customer-facing documents (estimate accept,
+   contracts) that must never render dark. */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+
+  --chrome-bg: #fafafa;
+  --menu-bg: #ffffff;
+  --chrome-text: #1a1a1a;
+  --chrome-border: #e5e7eb;
+
+  /* text (color:) */
+  --text-strong: #111827;
+  --text-base: #1a1a1a;
+  --text-700: #374151;
+  --text-600: #4b5563;
+  --text-muted: #6b7280;
+  --text-faint: #9ca3af;
+  --text-faint-300: #d1d5db;
+  --text-slate-900: #0f172a;
+  --text-slate-600: #475569;
+  --text-slate-500: #64748b;
+  --text-slate-400: #94a3b8;
+  --text-link: #2563eb;
+  --text-blue-500: #3b82f6;
+  --text-blue-700: #1d4ed8;
+  --text-red-600: #dc2626;
+  --text-red-700: #b91c1c;
+  --text-red-800: #991b1b;
+  --text-green-600: #059669;
+  --text-amber-700: #b45309;
+  --text-amber-800: #92400e;
+  --text-amber-900: #78350f;
+  --text-yellow-800: #854d0e;
+  --text-orange-700: #c2410c;
+  --text-orange-800: #9a3412;
+  --text-gray-800: #1f2937;
+  --text-blue-800: #1e40af;
+  --text-green-800: #166534;
+  --text-emerald-800: #065f46;
+  --text-red-900: #7f1d1d;
+  --text-sky-700: #0369a1;
+  --text-blue-900: #1e3a8a;
+
+  /* surfaces (background:) */
+  --bg-page: #fafafa;
+  --surface: #ffffff;
+  --bg-subtle: #f9fafb;
+  --bg-muted: #f3f4f6;
+  --bg-200: #e5e7eb;
+  --bg-blue-tint: #eff6ff;
+  --bg-sky-tint: #f0f9ff;
+  --bg-red-tint: #fef2f2;
+  --bg-red-100: #fee2e2;
+  --bg-red-200: #fecaca;
+  --bg-amber-tint: #fffbeb;
+  --bg-amber-100: #fef3c7;
+  --bg-orange-tint: #fff7ed;
+  --bg-green-tint: #f0fdf4;
+  --bg-green-100: #dcfce7;
+  --bg-slate-tint: #f8fafc;
+  --bg-slate-100: #f1f5f9;
+  --bg-neutral-100: #f5f5f5;
+  --bg-cream: #fdfaf3;
+  --bg-yellow-tint: #fefce8;
+  --bg-orange-100: #ffedd5;
+  --bg-emerald-tint: #ecfdf5;
+  --bg-blue-200: #dbeafe;
+  --bg-sky-100: #e0f2fe;
+
+  /* borders (border*/outline) */
+  --border: #e5e7eb;
+  --border-strong: #d1d5db;
+  --border-400: #9ca3af;
+  --border-orange: #fdba74;
+}
+
+:root[data-theme='dark'] {
+  /* Native controls (buttons, inputs, scrollbars) render dark: unstyled button
+     text is ButtonText (light) instead of black, bare buttons get dark UA
+     backgrounds. Pinned-light subtrees reset this below. */
+  color-scheme: dark;
+
+  --chrome-bg: #111827;
+  --menu-bg: #1f2937;
+  --chrome-text: #f3f4f6;
+  --chrome-border: #374151;
+
+  --text-strong: #f9fafb;
+  --text-base: #f3f4f6;
+  --text-700: #d1d5db;
+  --text-600: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-faint: #6b7280;
+  --text-faint-300: #4b5563;
+  --text-slate-900: #f1f5f9;
+  --text-slate-600: #cbd5e1;
+  --text-slate-500: #94a3b8;
+  --text-slate-400: #64748b;
+  --text-link: #60a5fa;
+  --text-blue-500: #60a5fa;
+  --text-blue-700: #93c5fd;
+  --text-red-600: #f87171;
+  --text-red-700: #f87171;
+  --text-red-800: #fca5a5;
+  --text-green-600: #34d399;
+  --text-amber-700: #fbbf24;
+  --text-amber-800: #fcd34d;
+  --text-amber-900: #fcd34d;
+  --text-yellow-800: #fde047;
+  --text-orange-700: #fdba74;
+  --text-orange-800: #fdba74;
+  --text-gray-800: #e5e7eb;
+  --text-blue-800: #93c5fd;
+  --text-green-800: #86efac;
+  --text-emerald-800: #6ee7b7;
+  --text-red-900: #fca5a5;
+  --text-sky-700: #7dd3fc;
+  --text-blue-900: #bfdbfe;
+
+  --bg-page: #111827;
+  --surface: #1f2937;
+  --bg-subtle: #18212f;
+  --bg-muted: #374151;
+  --bg-200: #4b5563;
+  --bg-blue-tint: #1e3358;
+  --bg-sky-tint: #16324a;
+  --bg-red-tint: #3b1a1a;
+  --bg-red-100: #4c1d1d;
+  --bg-red-200: #5f2626;
+  --bg-amber-tint: #3a2f11;
+  --bg-amber-100: #45390f;
+  --bg-orange-tint: #3d2513;
+  --bg-green-tint: #12301f;
+  --bg-green-100: #14532d;
+  --bg-slate-tint: #18212f;
+  --bg-slate-100: #334155;
+  --bg-neutral-100: #374151;
+  --bg-cream: #273040;
+  --bg-yellow-tint: #3f3a12;
+  --bg-orange-100: #4a2c11;
+  --bg-emerald-tint: #0c2f22;
+  --bg-blue-200: #24407a;
+  --bg-sky-100: #173e54;
+
+  --border: #374151;
+  --border-strong: #4b5563;
+  --border-400: #6b7280;
+  --border-orange: #92400e;
+}
+
 .appNavChrome {
   position: relative;
   z-index: 50;
   overflow: visible;
+  background: var(--chrome-bg);
+  color: var(--chrome-text);
 }
 
 .appNav {
@@ -133,8 +293,8 @@ button {
 
 /* Prospect selector */
 .prospectsConvert .convertProspectSelector {
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
@@ -146,13 +306,13 @@ button {
   margin-bottom: 0.5rem;
   font-weight: 600;
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-700);
 }
 
 .prospectsConvert .convertProspectSummary {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
   display: grid;
   gap: 0.5rem;
 }
@@ -164,7 +324,7 @@ button {
 }
 
 .prospectsConvert .convertProspectSummaryLabel {
-  color: #6b7280;
+  color: var(--text-muted);
   min-width: 4.5rem;
 }
 
@@ -172,9 +332,9 @@ button {
 .prospectsConvert .convertSection {
   margin-bottom: 1.5rem;
   padding: 1.5rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 12px;
-  background: white;
+  background: var(--surface);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -182,13 +342,13 @@ button {
   margin: 0 0 0.25rem 0;
   font-size: 1.0625rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-strong);
 }
 
 .prospectsConvert .convertSectionDesc {
   margin: 0 0 1.25rem 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Cards grid */
@@ -248,14 +408,14 @@ button {
 
 .prospectsConvert .convertCard {
   padding: 1rem 1.25rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  background: #fafafa;
+  background: var(--bg-page);
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
 .prospectsConvert .convertCard:hover {
-  border-color: #d1d5db;
+  border-color: var(--border-strong);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
@@ -269,7 +429,7 @@ button {
 .prospectsConvert .convertCardTitle {
   font-weight: 600;
   font-size: 0.9375rem;
-  color: #374151;
+  color: var(--text-700);
 }
 
 .prospectsConvert .convertCardFields {
@@ -281,10 +441,10 @@ button {
 .prospectsConvert .convertSelect {
   width: 100%;
   padding: 0.625rem 0.875rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 0.9375rem;
-  background: white;
+  background: var(--surface);
   transition: border-color 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
 }
@@ -297,15 +457,15 @@ button {
 }
 
 .prospectsConvert .convertInput::placeholder {
-  color: #9ca3af;
+  color: var(--text-faint);
 }
 
 .prospectsConvert .convertAddBtn {
   padding: 0.5rem 1rem;
-  background: white;
-  border: 1px dashed #d1d5db;
+  background: var(--surface);
+  border: 1px dashed var(--border-strong);
   border-radius: 8px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -315,13 +475,13 @@ button {
 .prospectsConvert .convertAddBtn:hover {
   border-color: #3b82f6;
   color: #3b82f6;
-  background: #eff6ff;
+  background: var(--bg-blue-tint);
 }
 
 .prospectsConvert .convertRemoveBtn {
   padding: 0.25rem 0.625rem;
   background: #fef2f2;
-  color: #dc2626;
+  color: var(--text-red-600);
   border: 1px solid #fecaca;
   border-radius: 6px;
   font-size: 0.8125rem;
@@ -339,11 +499,11 @@ button {
 .prospectsConvert .convertSubmitRow {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
 }
 
 .prospectsConvert .convertError {
-  color: #dc2626;
+  color: var(--text-red-600);
   font-size: 0.875rem;
   margin: 0 0 1rem 0;
 }
@@ -378,8 +538,8 @@ button {
 .prospectsConvert .convertEmptyState {
   padding: 3rem 2rem;
   text-align: center;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   border-style: dashed;
 }
@@ -387,13 +547,13 @@ button {
 .prospectsConvert .convertEmptyStateText {
   margin: 0 0 0.5rem 0;
   font-size: 1rem;
-  color: #374151;
+  color: var(--text-700);
 }
 
 .prospectsConvert .convertEmptyStateHint {
   margin: 0;
   font-size: 0.875rem;
-  color: #9ca3af;
+  color: var(--text-faint);
 }
 
 /* Workflow step and modal buttons */
@@ -401,16 +561,16 @@ button {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #374151;
+  color: var(--text-700);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .workflow .wf-btn-ghost:hover {
-  background: #f3f4f6;
-  border-color: #d1d5db;
+  background: var(--bg-muted);
+  border-color: var(--border-strong);
 }
 
 .workflow .wf-btn-primary {
@@ -481,7 +641,7 @@ button {
   background: #fee2e2;
   border: 1px solid #fecaca;
   border-radius: 6px;
-  color: #991b1b;
+  color: var(--text-red-800);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -493,15 +653,15 @@ button {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #374151;
+  color: var(--text-700);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .workflow .wf-btn-secondary:hover {
-  background: #e5e7eb;
+  background: var(--bg-200);
 }
 
 .workflow .wf-btn-secondary-blue {
@@ -517,7 +677,7 @@ button {
   padding: 0;
   background: none;
   border: none;
-  color: #2563eb;
+  color: var(--text-link);
   cursor: pointer;
   text-decoration: underline;
   font: inherit;
@@ -552,21 +712,21 @@ button {
   opacity: 0.7;
 }
 .workflow .wf-btn-modal-secondary {
-  background: #f3f4f6;
-  color: #111827;
-  border: 1px solid #d1d5db;
+  background: var(--bg-muted);
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
 }
 .workflow .wf-btn-modal-secondary:hover {
-  background: #e5e7eb;
+  background: var(--bg-200);
 }
 
 /* Assigned Stage Card (Dashboard) */
 .assignedStageCard {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 1rem;
   margin-bottom: 0.75rem;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 .assignedStageCard--rejected {
@@ -579,7 +739,7 @@ button {
   border-left: 4px solid #16a34a;
 }
 .assignedStageCard--skipped {
-  background: #f9fafb;
+  background: var(--bg-subtle);
   border-left: 4px solid #9ca3af;
 }
 .assignedStageCard--in_progress {
@@ -607,7 +767,7 @@ button {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .assignedStageCard-badge {
@@ -618,13 +778,13 @@ button {
   border-radius: 9999px;
 }
 .assignedStageCard-badge.pending {
-  background: #f3f4f6;
-  color: #6b7280;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
 }
 .assignedStageCard-badge.in_progress {
   background: #dbeafe;
-  color: #1d4ed8;
+  color: var(--text-blue-700);
   border: 1px solid #93c5fd;
 }
 .assignedStageCard-badge.completed,
@@ -635,13 +795,13 @@ button {
 }
 .assignedStageCard-badge.rejected {
   background: #fee2e2;
-  color: #b91c1c;
+  color: var(--text-red-700);
   border: 1px solid #fecaca;
 }
 .assignedStageCard-badge.skipped {
-  background: #f3f4f6;
-  color: #6b7280;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
 }
 
 .assignedStageCard-projectLink {
@@ -649,7 +809,7 @@ button {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
 
@@ -681,7 +841,7 @@ button {
   flex-wrap: wrap;
   gap: 0.5rem 1rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
 .assignedStageCard-metaItem {
@@ -695,12 +855,12 @@ button {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
 
 .assignedStageCard-link {
-  color: #2563eb;
+  color: var(--text-link);
   text-decoration: underline;
 }
 .assignedStageCard-link:hover {
@@ -717,23 +877,23 @@ button {
 }
 .assignedStageCard-notesContent {
   font-size: 0.875rem;
-  color: #374151;
+  color: var(--text-700);
   white-space: pre-wrap;
   padding: 0.5rem;
-  background: #f9fafb;
+  background: var(--bg-subtle);
   border-radius: 4px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   margin: 0;
 }
 
 .assignedStageCard-rejection {
   font-size: 0.875rem;
-  color: #b91c1c;
+  color: var(--text-red-700);
   margin-top: 0.5rem;
 }
 .assignedStageCard-skippedReason {
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
   margin-top: 0.5rem;
 }
 
@@ -743,7 +903,7 @@ button {
   gap: 0.5rem;
   margin-top: 0.75rem;
   padding-top: 0.75rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
 }
 /* Reuse wf-btn styles for AssignedStageCard (not inside .workflow) */
 .assignedStageCard .wf-btn-secondary,
@@ -758,15 +918,15 @@ button {
   padding: 0.25rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #f3f4f6;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  color: #374151;
+  color: var(--text-700);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
 .assignedStageCard .wf-btn-secondary:hover {
-  background: #e5e7eb;
+  background: var(--bg-200);
 }
 .assignedStageCard .wf-btn-primary {
   padding: 0.5rem 1rem;
@@ -803,7 +963,7 @@ button {
   background: #fee2e2;
   border: 1px solid #fecaca;
   border-radius: 6px;
-  color: #991b1b;
+  color: var(--text-red-800);
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -926,7 +1086,7 @@ button {
 
 /* Prospect List: desktop table, mobile cards */
 .prospectListWrapper {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -941,7 +1101,7 @@ button {
 
 .prospectListMobileEmpty {
   padding: 1rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.9375rem;
 }
 
@@ -951,8 +1111,8 @@ button {
   text-align: left;
   padding: 1rem;
   border: none;
-  border-bottom: 1px solid #e5e7eb;
-  background: white;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
   cursor: pointer;
   font-size: 0.9375rem;
   font-family: inherit;
@@ -963,7 +1123,7 @@ button {
 }
 
 .prospectListMobileCard:hover {
-  background: #f9fafb;
+  background: var(--bg-subtle);
 }
 
 .prospectListMobileCardSelected {
@@ -973,7 +1133,7 @@ button {
 .prospectListMobileCardTitle {
   font-weight: 600;
   font-size: 1rem;
-  color: #111827;
+  color: var(--text-strong);
   margin-bottom: 0.5rem;
 }
 
@@ -987,7 +1147,7 @@ button {
 .prospectListMobileCardLabel {
   flex-shrink: 0;
   min-width: 5rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.875rem;
 }
 
@@ -998,7 +1158,7 @@ button {
   padding-top: 0.5rem;
   border-top: 1px solid #f3f4f6;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 /* Follow Up: info card with notes on right */
@@ -1006,10 +1166,10 @@ button {
   display: flex;
   gap: 1rem;
   padding: 1rem;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 8px;
   margin-bottom: 1.5rem;
-  background: #fafafa;
+  background: var(--bg-page);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -1041,10 +1201,10 @@ button {
   gap: 0.25rem 0.5rem;
   margin-bottom: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: #fafafa;
+  background: var(--bg-page);
   border-radius: 6px;
   font-size: 0.8125rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .hoursByDayCell {
@@ -1070,8 +1230,8 @@ button.hoursByDayCell.hoursByDayCell--interactive {
 }
 
 button.hoursByDayCell.hoursByDayCell--interactive:hover {
-  background: #f3f4f6;
-  border-color: #e5e7eb;
+  background: var(--bg-muted);
+  border-color: var(--border);
 }
 
 button.hoursByDayCell.hoursByDayCell--interactive:focus-visible {
@@ -1081,7 +1241,7 @@ button.hoursByDayCell.hoursByDayCell--interactive:focus-visible {
 
 .hoursByDayGoalsLine {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-faint);
   line-height: 1.2;
 }
 
@@ -1149,7 +1309,7 @@ button.hoursByDayCell.hoursByDayCell--interactive:focus-visible {
 
 /* My Time day editor — adjust-span control (opens AdjustClockSessionTimesModal) */
 button.myTimeDaySpanAdjustLink {
-  color: #2563eb;
+  color: var(--text-link);
   text-decoration: underline;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -1162,7 +1322,7 @@ button.myTimeDaySpanAdjustLink {
 }
 
 button.myTimeDaySpanAdjustLink:hover:not(:disabled) {
-  color: #1d4ed8;
+  color: var(--text-blue-700);
 }
 
 button.myTimeDaySpanAdjustLink:focus-visible {
@@ -1323,7 +1483,7 @@ body.my-time-boundary-dragging {
 /* Jobs · Job Summary · Person summary table: clickable cell affordance */
 .jobSummaryBreakdownInteractive {
   cursor: pointer;
-  color: #1d4ed8;
+  color: var(--text-blue-700);
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 2px;
@@ -1338,7 +1498,7 @@ body.my-time-boundary-dragging {
 }
 .jobSummaryBreakdownInteractiveMuted {
   cursor: pointer;
-  color: #4b5563;
+  color: var(--text-600);
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 2px;
@@ -1364,13 +1524,13 @@ body.my-time-boundary-dragging {
   width: 100%;
   height: 100%;
   min-height: 100%;
-  background: #fff;
+  background: var(--surface);
 }
 .checklistTechTreeCanvasShell:-webkit-full-screen {
   width: 100%;
   height: 100%;
   min-height: 100%;
-  background: #fff;
+  background: var(--surface);
 }
 
 .checklistTechTreeEnterFs:hover,
@@ -1425,8 +1585,8 @@ body.my-time-boundary-dragging {
 /* Settings → People & accounts: Active Accounts modern card (matches .prospectsConvert design language) */
 .activeAccountsCard {
   margin-bottom: 2rem;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -1443,24 +1603,24 @@ body.my-time-boundary-dragging {
   cursor: pointer;
   font-size: 1.0625rem;
   font-weight: 600;
-  color: #111827;
+  color: var(--text-strong);
   text-align: left;
 }
 
 .activeAccountsCard__chevron {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-faint);
 }
 
 .activeAccountsCard__body {
   padding: 0 1.25rem 1.25rem;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--border);
 }
 
 .activeAccountsCard__desc {
   margin: 1rem 0;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .activeAccountsCard__actions {
@@ -1489,9 +1649,9 @@ body.my-time-boundary-dragging {
 
 .activeAccountsCard__btnSecondary {
   padding: 0.5rem 1rem;
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--surface);
+  color: var(--text-700);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 500;
@@ -1502,13 +1662,13 @@ body.my-time-boundary-dragging {
 .activeAccountsCard__btnSecondary:hover {
   border-color: #3b82f6;
   color: #3b82f6;
-  background: #eff6ff;
+  background: var(--bg-blue-tint);
 }
 
 .activeAccountsCard__btnDanger {
   padding: 0.5rem 1rem;
   background: #fef2f2;
-  color: #dc2626;
+  color: var(--text-red-600);
   border: 1px solid #fecaca;
   border-radius: 8px;
   font-size: 0.875rem;
@@ -1532,7 +1692,7 @@ body.my-time-boundary-dragging {
   padding: 0.5rem 0.75rem;
   white-space: nowrap;
   font-size: 0.875rem;
-  color: #6b7280;
+  color: var(--text-muted);
 }
 
 .activeAccountsCard__table th {
@@ -1541,20 +1701,20 @@ body.my-time-boundary-dragging {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: #6b7280;
-  border-bottom: 1px solid #e5e7eb;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
 .activeAccountsCard__table tbody tr:hover {
-  background: #f9fafb;
+  background: var(--bg-subtle);
 }
 
 .activeAccountsCard__rowBtn {
   padding: 0.25rem 0.625rem;
-  background: white;
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background: var(--surface);
+  color: var(--text-700);
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
   font-size: 0.8125rem;
   font-weight: 500;
@@ -1566,7 +1726,7 @@ body.my-time-boundary-dragging {
 .activeAccountsCard__rowBtn:hover:not(:disabled) {
   border-color: #3b82f6;
   color: #3b82f6;
-  background: #eff6ff;
+  background: var(--bg-blue-tint);
 }
 
 .activeAccountsCard__rowBtn:disabled {
@@ -1598,8 +1758,18 @@ body.my-time-boundary-dragging {
 
 .activeAccountsCard__select {
   padding: 0.25rem 0.5rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 6px;
-  background: white;
+  background: var(--surface);
   font-size: 0.875rem;
+}
+
+/* Dark mode: Leaflet map. Invert the raster tiles (classic OSM dark trick) and
+   match the container to the page background; markers/popups are left alone. */
+:root[data-theme='dark'] .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9);
+}
+
+:root[data-theme='dark'] .leaflet-container {
+  background: #111827;
 }

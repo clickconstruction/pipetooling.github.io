@@ -131,7 +131,7 @@ export function billingTypeLabel(inv: JobsLedgerInvoice): string {
 const metaLabel: CSSProperties = {
   padding: '0.15rem 0.75rem 0.15rem 0',
   verticalAlign: 'top',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   fontSize: '0.72rem',
   fontWeight: 500,
   whiteSpace: 'nowrap',
@@ -141,14 +141,14 @@ const metaValue: CSSProperties = {
   padding: '0.15rem 0',
   verticalAlign: 'top',
   fontSize: '0.875rem',
-  color: '#111827',
+  color: 'var(--text-strong)',
   wordBreak: 'break-word',
 }
 
 const stripeHeroAmountText: CSSProperties = {
   fontSize: '1.35rem',
   fontWeight: 700,
-  color: '#111827',
+  color: 'var(--text-strong)',
 }
 
 /**
@@ -325,10 +325,10 @@ export function HostedStripeBillPanel({
       {isStripeHosted ? (
         <>
           {stripeLoading ? (
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>Loading invoice from Stripe…</p>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading invoice from Stripe…</p>
           ) : null}
           {stripeError ? (
-            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b45309' }}>
+            <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
               {stripeError} Showing saved amounts below.
             </p>
           ) : null}
@@ -340,9 +340,9 @@ export function HostedStripeBillPanel({
                 marginBottom: '0.75rem',
                 padding: '0.75rem',
                 paddingRight: '9.5rem',
-                background: '#fafafa',
+                background: 'var(--bg-page)',
                 borderRadius: 6,
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 fontSize: '0.875rem',
               }}
             >
@@ -359,9 +359,9 @@ export function HostedStripeBillPanel({
                   fontSize: '0.75rem',
                   borderRadius: 4,
                   border: '1px solid #2563eb',
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
-                  color: '#1d4ed8',
+                  color: 'var(--text-blue-700)',
                   fontWeight: 500,
                 }}
               >
@@ -371,7 +371,7 @@ export function HostedStripeBillPanel({
                 {formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency)}
               </div>
               {stripeDetail.due_date != null ? (
-                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: '0.65rem' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', marginBottom: '0.65rem' }}>
                   Due {formatStripeDueDateChicago(stripeDetail.due_date)}
                 </div>
               ) : (
@@ -386,7 +386,7 @@ export function HostedStripeBillPanel({
                       {(stripeDetail.customer_email ?? job.customer_email)?.trim() ? (
                         <>
                           <br />
-                          <span style={{ color: '#4b5563', fontSize: '0.75rem' }}>
+                          <span style={{ color: 'var(--text-600)', fontSize: '0.75rem' }}>
                             {(stripeDetail.customer_email ?? job.customer_email ?? '').trim()}
                           </span>
                         </>
@@ -425,7 +425,7 @@ export function HostedStripeBillPanel({
               style={{
                 marginBottom: '0.75rem',
                 padding: '0.75rem',
-                background: '#f9fafb',
+                background: 'var(--bg-subtle)',
                 borderRadius: 6,
                 fontSize: '0.875rem',
               }}
@@ -433,25 +433,25 @@ export function HostedStripeBillPanel({
               <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Saved in PipeTooling</div>
               <div style={{ display: 'grid', gap: '0.35rem' }}>
                 <div>
-                  <span style={{ color: '#6b7280' }}>Billed amount: </span>${formatMoney(Number(inv.amount ?? 0))}
+                  <span style={{ color: 'var(--text-muted)' }}>Billed amount: </span>${formatMoney(Number(inv.amount ?? 0))}
                 </div>
                 {applied > 0 && (
                   <div>
-                    <span style={{ color: '#6b7280' }}>Applied to date: </span>${formatMoney(applied)}
+                    <span style={{ color: 'var(--text-muted)' }}>Applied to date: </span>${formatMoney(applied)}
                   </div>
                 )}
                 <div>
-                  <span style={{ color: '#6b7280' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
+                  <span style={{ color: 'var(--text-muted)' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
                 </div>
                 {inv.stripe_invoice_status ? (
                   <div>
-                    <span style={{ color: '#6b7280' }}>Stripe status: </span>
+                    <span style={{ color: 'var(--text-muted)' }}>Stripe status: </span>
                     {inv.stripe_invoice_status}
                   </div>
                 ) : null}
                 {inv.sent_to_customer_at ? (
                   <div>
-                    <span style={{ color: '#6b7280' }}>Sent: </span>
+                    <span style={{ color: 'var(--text-muted)' }}>Sent: </span>
                     {String(inv.sent_to_customer_at).slice(0, 10)}
                   </div>
                 ) : null}
@@ -465,13 +465,13 @@ export function HostedStripeBillPanel({
                 marginBottom: '0.75rem',
                 padding: '0.75rem',
                 borderRadius: 6,
-                border: '1px solid #e5e7eb',
-                background: '#fafafa',
+                border: '1px solid var(--border)',
+                background: 'var(--bg-page)',
                 fontSize: '0.875rem',
               }}
             >
               {stripeDetail.lines.length === 0 ? (
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   No line items returned from Stripe.
                 </p>
               ) : (
@@ -485,14 +485,14 @@ export function HostedStripeBillPanel({
                       gap: '0.75rem',
                       marginBottom: i < stripeDetail.lines.length - 1 ? '0.65rem' : 0,
                       paddingBottom: i < stripeDetail.lines.length - 1 ? '0.65rem' : 0,
-                      borderBottom: i < stripeDetail.lines.length - 1 ? '1px solid #e5e7eb' : 'none',
+                      borderBottom: i < stripeDetail.lines.length - 1 ? '1px solid var(--border)' : 'none',
                     }}
                   >
                     <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-                      <div style={{ color: '#111827', marginBottom: '0.2rem' }}>
+                      <div style={{ color: 'var(--text-strong)', marginBottom: '0.2rem' }}>
                         {line.description.trim() || '—'}
                       </div>
-                      <div style={{ color: '#6b7280', fontSize: '0.8125rem' }}>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                         Qty {displayLineQuantity(line.quantity)}
                       </div>
                     </div>
@@ -502,7 +502,7 @@ export function HostedStripeBillPanel({
                         textAlign: 'right',
                         whiteSpace: 'nowrap',
                         fontSize: '0.875rem',
-                        color: '#111827',
+                        color: 'var(--text-strong)',
                       }}
                     >
                       {formatStripeCents(line.amount, stripeDetail.currency)}
@@ -514,7 +514,7 @@ export function HostedStripeBillPanel({
                 style={{
                   marginTop: stripeDetail.lines.length > 0 ? '0.65rem' : 0,
                   paddingTop: '0.65rem',
-                  borderTop: '1px solid #e5e7eb',
+                  borderTop: '1px solid var(--border)',
                 }}
               >
                 <div
@@ -523,16 +523,16 @@ export function HostedStripeBillPanel({
                     justifyContent: 'space-between',
                     alignItems: 'baseline',
                     paddingBottom: '0.65rem',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--border)',
                     marginBottom: '0.65rem',
                   }}
                 >
-                  <span style={{ color: '#374151' }}>Total due</span>
+                  <span style={{ color: 'var(--text-700)' }}>Total due</span>
                   <span style={{ fontWeight: 600 }}>{formatStripeCents(stripeDetail.total, stripeDetail.currency)}</span>
                 </div>
                 <div style={{ display: 'grid', gap: '0.35rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem' }}>
-                    <span style={{ color: '#374151', lineHeight: 1.35, minWidth: 0 }}>
+                    <span style={{ color: 'var(--text-700)', lineHeight: 1.35, minWidth: 0 }}>
                       {(() => {
                         const paidDisplaySec = stripeDetail.paid_at ?? fallbackPaidUnixSecFromApp
                         const showPaidWhen =
@@ -542,11 +542,11 @@ export function HostedStripeBillPanel({
                         return (
                           <>
                             Amount paid{' '}
-                            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.8125rem' }}>
+                            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                               ({formatStripePaidAtChicago(paidDisplaySec)} | {formatStripePaidRelativeAgo(paidDisplaySec)})
                             </span>
                             {!fromStripe ? (
-                              <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.75rem' }}>
+                              <span style={{ fontWeight: 400, color: 'var(--text-faint)', fontSize: '0.75rem' }}>
                                 {' '}
                                 · PipeTooling record
                               </span>
@@ -560,7 +560,7 @@ export function HostedStripeBillPanel({
                     </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ color: '#374151' }}>Amount remaining</span>
+                    <span style={{ color: 'var(--text-700)' }}>Amount remaining</span>
                     <span style={{ fontWeight: 600 }}>
                       {formatStripeCents(stripeDetail.amount_remaining, stripeDetail.currency)}
                     </span>
@@ -605,8 +605,8 @@ export function HostedStripeBillPanel({
                   padding: '0.4rem 0.65rem',
                   fontSize: '0.8125rem',
                   fontWeight: 500,
-                  color: '#991b1b',
-                  background: '#fef2f2',
+                  color: 'var(--text-red-800)',
+                  background: 'var(--bg-red-tint)',
                   border: '1px solid #fecaca',
                   borderRadius: 6,
                   cursor: 'pointer',
@@ -641,7 +641,7 @@ export function HostedStripeBillPanel({
             >
               <div
                 style={{
-                  background: 'white',
+                  background: 'var(--surface)',
                   padding: '1.25rem',
                   borderRadius: 8,
                   minWidth: 360,
@@ -652,7 +652,7 @@ export function HostedStripeBillPanel({
                 }}
               >
                 <h2 style={{ margin: '0 0 0.75rem', fontSize: '1.15rem', lineHeight: 1.35 }}>Void Stripe invoice?</h2>
-                <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.45, marginBottom: '0.85rem' }}>
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.45, marginBottom: '0.85rem' }}>
                   <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.2rem' }}>
                     <li style={{ marginBottom: '0.35rem' }}>
                       Stripe will delete a draft invoice or void an open unpaid invoice so this hosted link cannot be paid.
@@ -662,13 +662,13 @@ export function HostedStripeBillPanel({
                       If this is the last billed invoice on the job, the job moves back to <strong>Ready to Bill</strong>.
                     </li>
                   </ul>
-                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: '#92400e' }}>
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
                     Paid Stripe invoices or invoices with recorded payments here cannot be voided this way; fix them in Stripe
                     or unlink payments first.
                   </p>
                 </div>
                 {voidConfirmError ? (
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#b45309', lineHeight: 1.4 }}>{voidConfirmError}</p>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-amber-700)', lineHeight: 1.4 }}>{voidConfirmError}</p>
                 ) : null}
                 <label
                   style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', cursor: 'pointer', marginBottom: '1rem' }}
@@ -695,8 +695,8 @@ export function HostedStripeBillPanel({
                     }}
                     style={{
                       padding: '0.5rem 1rem',
-                      border: '1px solid #d1d5db',
-                      background: 'white',
+                      border: '1px solid var(--border-strong)',
+                      background: 'var(--surface)',
                       borderRadius: 4,
                       cursor: voidConfirmBusy ? 'not-allowed' : 'pointer',
                       fontSize: '0.875rem',
@@ -768,7 +768,7 @@ export function HostedStripeBillPanel({
           style={{
             marginBottom: '1rem',
             padding: '0.75rem',
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
             borderRadius: 6,
             fontSize: '0.875rem',
           }}
@@ -776,30 +776,30 @@ export function HostedStripeBillPanel({
           <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>Bill sent ({billingTypeLabel(inv)})</div>
           <div style={{ display: 'grid', gap: '0.35rem' }}>
             <div>
-              <span style={{ color: '#6b7280' }}>Billed amount: </span>${formatMoney(Number(inv.amount ?? 0))}
+              <span style={{ color: 'var(--text-muted)' }}>Billed amount: </span>${formatMoney(Number(inv.amount ?? 0))}
             </div>
             {applied > 0 && (
               <div>
-                <span style={{ color: '#6b7280' }}>Applied to date: </span>${formatMoney(applied)}
+                <span style={{ color: 'var(--text-muted)' }}>Applied to date: </span>${formatMoney(applied)}
               </div>
             )}
             <div>
-              <span style={{ color: '#6b7280' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
+              <span style={{ color: 'var(--text-muted)' }}>Open on invoice: </span>${formatMoney(invoiceRemaining)}
             </div>
             {inv.sent_to_customer_at ? (
               <div>
-                <span style={{ color: '#6b7280' }}>Sent: </span>
+                <span style={{ color: 'var(--text-muted)' }}>Sent: </span>
                 {String(inv.sent_to_customer_at).slice(0, 10)}
               </div>
             ) : null}
             {inv.external_send_note ? (
               <div>
-                <span style={{ color: '#6b7280' }}>Note: </span>
+                <span style={{ color: 'var(--text-muted)' }}>Note: </span>
                 {inv.external_send_note}
               </div>
             ) : null}
             {stripeId && !hostedUrl ? (
-              <div style={{ color: '#92400e', fontSize: '0.8125rem' }}>
+              <div style={{ color: 'var(--text-amber-800)', fontSize: '0.8125rem' }}>
                 Stripe invoice id is on file, but no hosted payment link. Open the invoice in Stripe Dashboard using the id{' '}
                 <span style={{ fontFamily: 'ui-monospace, monospace' }}>{stripeId}</span>.
               </div>
@@ -814,7 +814,7 @@ export function HostedStripeBillPanel({
             marginTop: '1rem',
             marginBottom: '0.25rem',
             fontSize: '0.75rem',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             textAlign: 'center',
             display: 'flex',
             flexDirection: 'column',
@@ -851,8 +851,8 @@ export function HostedStripeBillPanel({
                   padding: '0.4rem 0.65rem',
                   fontSize: '0.8125rem',
                   fontWeight: 500,
-                  color: '#92400e',
-                  background: '#fffbeb',
+                  color: 'var(--text-amber-800)',
+                  background: 'var(--bg-amber-tint)',
                   border: '1px solid #fde68a',
                   borderRadius: 6,
                   cursor: 'pointer',
@@ -870,8 +870,8 @@ export function HostedStripeBillPanel({
                   padding: '0.4rem 0.65rem',
                   fontSize: '0.8125rem',
                   fontWeight: 500,
-                  color: '#92400e',
-                  background: '#fffbeb',
+                  color: 'var(--text-amber-800)',
+                  background: 'var(--bg-amber-tint)',
                   border: '1px solid #fde68a',
                   borderRadius: 6,
                   cursor: 'not-allowed',
@@ -888,8 +888,8 @@ export function HostedStripeBillPanel({
             style={{
               flexShrink: 0,
               padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',

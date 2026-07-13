@@ -41,15 +41,15 @@ const editJobLinkBtnStyle: CSSProperties = {
   padding: 0,
   margin: 0,
   font: 'inherit',
-  color: '#2563eb',
+  color: 'var(--text-link)',
   textDecoration: 'underline dotted',
   textUnderlineOffset: '2px',
   cursor: 'pointer',
   textAlign: 'left',
 }
 
-const negStyle: React.CSSProperties = { color: '#b91c1c' }
-const dashStyle: React.CSSProperties = { color: '#9ca3af' }
+const negStyle: React.CSSProperties = { color: 'var(--text-red-700)' }
+const dashStyle: React.CSSProperties = { color: 'var(--text-faint)' }
 
 /** "<em>—</em>" cell content used for missing values. */
 function DashCell() {
@@ -300,7 +300,7 @@ export function HoursBreakdownBody(props: {
           </p>
         </>
       )}
-      <div style={{ marginTop: '1rem', color: '#374151' }}>
+      <div style={{ marginTop: '1rem', color: 'var(--text-700)' }}>
         <div>
           <strong>Source:</strong> {srcLabel}
         </div>
@@ -354,7 +354,7 @@ export function GrossRevenueBody(props: { gb: GrossRevenueBreakdown }) {
                 <td style={centerCell}>
                   {j.hcp ? (
                     <>
-                      <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                      <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                         {j.hcp}
                       </span>{' '}
                     </>
@@ -369,7 +369,7 @@ export function GrossRevenueBody(props: { gb: GrossRevenueBreakdown }) {
                       style={{
                         fontSize: '0.7em',
                         lineHeight: 1.1,
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                         marginTop: '0.1em',
                       }}
                     >
@@ -505,8 +505,8 @@ export function ProfitBody(props: {
   const profit = entry.profitAfterOverhead
   if (burden == null || profit == null) {
     return (
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#b91c1c' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--text-red-700)' }}>
           Overhead rate is unavailable. Open the Review tab and let the
           rate finish loading, then reopen Team Summary.
         </div>
@@ -525,7 +525,7 @@ export function ProfitBody(props: {
     .sort((a, b) => b.allocatedNet - a.allocatedNet)
   return (
     <>
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div style={{ marginBottom: '0.25rem' }}>
           <strong>Net Revenue (before overhead):</strong> {fmtMoney(net)}
         </div>
@@ -536,7 +536,7 @@ export function ProfitBody(props: {
         <div style={{ marginBottom: '0.25rem' }}>
           <strong>&minus; Overhead burden</strong> (your share of office parts):{' '}
           <span style={burden < 0 ? negStyle : undefined}>{fmtMoney(burden)}</span>
-          <span style={{ color: '#6b7280' }}>
+          <span style={{ color: 'var(--text-muted)' }}>
             {' '}
             ({fmtH(entry.fieldHours)} field hrs &times; ${partsRate.toFixed(2)}/hr)
           </span>
@@ -563,7 +563,7 @@ export function ProfitBody(props: {
                 <td>
                   {j.hcp ? (
                     <>
-                      <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{j.hcp}</span>{' '}
+                      <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{j.hcp}</span>{' '}
                     </>
                   ) : null}
                   {j.jobName || '—'}
@@ -599,7 +599,7 @@ export function GrossPerHourBody(props: { entry: TeamSummaryBreakdown }) {
   if (!entry.gb.jobs || entry.gb.jobs.length === 0) {
     return (
       <>
-        <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+        <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
           <div style={{ marginBottom: '0.25rem' }}>
             <strong>Gross Revenue:</strong> {fmtMoney(totalGross)}
           </div>
@@ -633,7 +633,7 @@ export function GrossPerHourBody(props: { entry: TeamSummaryBreakdown }) {
     )
   return (
     <>
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div style={{ marginBottom: '0.25rem' }}>
           <strong>Gross Revenue:</strong> {fmtMoney(totalGross)}
         </div>
@@ -665,11 +665,11 @@ export function GrossPerHourBody(props: { entry: TeamSummaryBreakdown }) {
             </tr>
           ))}
           {entry.pb.unaccountedHours > 0.01 ? (
-            <tr style={{ background: '#fff7ed' }}>
+            <tr style={{ background: 'var(--bg-orange-tint)' }}>
               <td className="num">&mdash;</td>
               <td>
                 <em>Unallocated hours</em>
-                <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                   Hours worked in the period that weren&rsquo;t tied to a job &mdash; they dilute the headline rate but contribute no revenue.
                 </div>
               </td>
@@ -728,7 +728,7 @@ export function NetPerHourBody(props: { entry: TeamSummaryBreakdown }) {
     )
   return (
     <>
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div style={{ marginBottom: '0.5rem' }}>
           Net Revenue/hr is your <strong>total Net Revenue (before overhead)</strong>{' '}
           divided by your <strong>total hours</strong> in the period. Per-job
@@ -779,11 +779,11 @@ export function NetPerHourBody(props: { entry: TeamSummaryBreakdown }) {
               </tr>
             ))}
             {entry.pb.unaccountedHours > 0.01 ? (
-              <tr style={{ background: '#fff7ed' }}>
+              <tr style={{ background: 'var(--bg-orange-tint)' }}>
                 <td className="num">&mdash;</td>
                 <td>
                   <em>Unallocated hours</em>
-                  <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     Hours worked in the period that weren&rsquo;t tied to a job &mdash; they dilute the headline rate but contribute no net revenue.
                   </div>
                 </td>
@@ -834,8 +834,8 @@ export function ProfitPerHourBody(props: {
   const profitPerHr = entry.profitPerHourAfterOverhead
   if (profit == null || profitPerHr == null) {
     return (
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
-        <div style={{ marginBottom: '0.5rem', color: '#b91c1c' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
+        <div style={{ marginBottom: '0.5rem', color: 'var(--text-red-700)' }}>
           Overhead rate is unavailable. Open the Review tab and let the
           rate finish loading, then reopen Team Summary.
         </div>
@@ -855,14 +855,14 @@ export function ProfitPerHourBody(props: {
     totalHours > 0 ? (entry.overheadLaborCost + (entry.overheadBurden ?? 0)) / totalHours : 0
   return (
     <>
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div style={{ marginBottom: '0.25rem' }}>
           <strong>Net Revenue/hr (before overhead):</strong> {fmtMoneyPerHr(netPerHr)}
         </div>
         <div style={{ marginBottom: '0.25rem' }}>
           <strong>&minus; Overhead/hr:</strong>{' '}
           <span style={overheadPerHr < 0 ? negStyle : undefined}>{fmtMoneyPerHr(overheadPerHr)}</span>
-          <span style={{ color: '#6b7280' }}>
+          <span style={{ color: 'var(--text-muted)' }}>
             {' '}
             (own overhead labor + parts burden &divide; {fmtH(totalHours)} hrs)
           </span>
@@ -1065,7 +1065,7 @@ export function OverheadBurdenBody(props: {
   const partsRate = fieldHours90d > 0 ? officeParts90d / fieldHours90d : 0
   if (burden == null) {
     return (
-      <div style={{ marginBottom: '0.75rem', color: '#b91c1c' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-red-700)' }}>
         Overhead rate is unavailable. Open the Review tab and let the rate
         finish loading, then reopen Team Summary.
       </div>
@@ -1073,7 +1073,7 @@ export function OverheadBurdenBody(props: {
   }
   return (
     <>
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div style={{ fontSize: '1.05rem', textAlign: 'center' }}>
           <strong>
             Overhead burden:{' '}
@@ -1169,7 +1169,7 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
   const hasCost = overheadLaborCost < 0
   return (
     <>
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div>
           <strong>Hourly wage:</strong>{' '}
           {wage > 0 ? `$${wage.toFixed(2)}/hr` : <span style={dashStyle}>not configured</span>}
@@ -1230,14 +1230,14 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
             <td>Field (everything not Office or Bid)</td>
             <td className="num">{fmtH(fieldHrs)}</td>
             <td className="num" style={dashStyle}>{fmtMoney(-(fieldHrs * wage))}</td>
-            <td style={{ color: '#6b7280' }}>
+            <td style={{ color: 'var(--text-muted)' }}>
               Already in <strong>Net Revenue</strong>.
             </td>
           </tr>
         </tbody>
       </table>
       {wage <= 0 ? (
-        <p className="caption" style={{ color: '#b45309' }}>
+        <p className="caption" style={{ color: 'var(--text-amber-700)' }}>
           No <code>hourly_wage</code> is set for this person in{' '}
           <code>people_pay_config</code>, so the cost columns above show as
           $0. Set their wage on the People &rarr; Hours &rarr; Pay config row
@@ -1263,7 +1263,7 @@ export function OverheadLaborBody(props: { entry: TeamSummaryBreakdown }) {
         contribution visible in each person&rsquo;s own row &mdash; it
         does <strong>not</strong> change Gross, Net, or Profit numbers.
       </p>
-      <div style={{ marginTop: '1rem', color: '#374151' }}>
+      <div style={{ marginTop: '1rem', color: 'var(--text-700)' }}>
         <strong>Source:</strong> {srcLabel}
       </div>
     </>
@@ -1339,7 +1339,7 @@ export function FieldHoursBody(props: {
               const jobName = j.jobName || '—'
               const hcpPrefix = j.hcp ? (
                 <>
-                  <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                  <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>
                     {j.hcp}
                   </span>{' '}
                 </>
@@ -1373,10 +1373,10 @@ export function FieldHoursBody(props: {
               )
             })}
             {unaccountedFieldHrs > 0.005 ? (
-              <tr style={{ background: '#fff7ed' }}>
+              <tr style={{ background: 'var(--bg-orange-tint)' }}>
                 <td>
                   <em>Unallocated field hrs</em>
-                  <div style={{ color: '#6b7280', fontSize: '0.8rem' }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                     Field-type hours not tied to a specific job allocation
                     (e.g. salary day with no crew assignment).
                   </div>
@@ -1461,7 +1461,7 @@ export function FieldHoursBody(props: {
         time has its own crew row and is filtered from this field-revenue
         rollup; its share of the day appears as overhead. {ohRateNote}
       </p>
-      <div style={{ marginTop: '1rem', color: '#374151' }}>
+      <div style={{ marginTop: '1rem', color: 'var(--text-700)' }}>
         <div>
           <strong>Source:</strong> {srcLabel}
         </div>
@@ -1492,7 +1492,7 @@ export function OverheadRateBody(props: { overheadDecomp: OverheadRateDecomp }) 
   ]
   return (
     <>
-      <div style={{ marginBottom: '0.75rem', color: '#374151' }}>
+      <div style={{ marginBottom: '0.75rem', color: 'var(--text-700)' }}>
         <div style={{ marginBottom: '0.5rem' }}>
           Rolling 90-day overhead rate. Method A is{' '}
           <strong>$ per field hour</strong>: it spreads the overhead pool

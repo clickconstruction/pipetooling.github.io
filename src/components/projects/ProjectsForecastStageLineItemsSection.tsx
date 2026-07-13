@@ -248,7 +248,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
         flexDirection: 'column',
         gap: 6,
         padding: '0.5rem 0.75rem',
-        background: '#f0f9ff',
+        background: 'var(--bg-sky-tint)',
         border: '1px solid #bae6fd',
         borderRadius: 6,
       }}
@@ -268,7 +268,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
         }}
       >
         <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{expanded ? '\u25BC' : '\u25B6'}</span>
-        <span style={{ fontWeight: 500, color: '#0369a1' }}>
+        <span style={{ fontWeight: 500, color: 'var(--text-sky-700)' }}>
           Line Items For Office
           {!expanded ? <> | {formatAmount(total)}</> : null}
         </span>
@@ -277,7 +277,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
       {expanded ? (
         <>
           {loadingItems ? (
-            <div style={{ fontSize: '0.8125rem', color: '#6b7280', textAlign: 'center' }}>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
               Loading line items…
             </div>
           ) : itemsError ? (
@@ -285,10 +285,10 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
               role="alert"
               style={{
                 padding: '0.4rem 0.6rem',
-                background: '#fef2f2',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 4,
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
                 fontSize: '0.75rem',
               }}
             >
@@ -298,7 +298,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
             <p
               style={{
                 fontSize: '0.8125rem',
-                color: '#92400e',
+                color: 'var(--text-amber-800)',
                 margin: 0,
                 fontStyle: 'italic',
                 textAlign: 'center',
@@ -311,7 +311,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
               <div
                 style={{
                   fontSize: '0.8125rem',
-                  background: 'white',
+                  background: 'var(--surface)',
                   border: '1px solid #bae6fd',
                   borderRadius: 4,
                   overflow: 'hidden',
@@ -342,7 +342,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 onClick={(e) => e.stopPropagation()}
-                                style={{ color: '#2563eb', textDecoration: 'underline' }}
+                                style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
                                 title={item.link ?? ''}
                               >
                                 {item.memo}
@@ -356,7 +356,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                               ...liBodyCell,
                               borderBottom: border,
                               fontSize: '0.8125rem',
-                              color: '#4b5563',
+                              color: 'var(--text-600)',
                               whiteSpace: 'nowrap',
                             }}
                           >
@@ -367,7 +367,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                               ...liBodyCell,
                               borderBottom: border,
                               textAlign: 'right',
-                              color: (item.amount || 0) < 0 ? '#b91c1c' : '#374151',
+                              color: (item.amount || 0) < 0 ? 'var(--text-red-700)' : 'var(--text-700)',
                               fontWeight: 500,
                             }}
                           >
@@ -506,7 +506,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
               {editing.link &&
               editing.link.trim() &&
               !editing.link.trim().match(/^https?:\/\//i) ? (
-                <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: 2 }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-red-600)', marginTop: 2 }}>
                   Link should start with http:// or https://
                 </div>
               ) : null}
@@ -564,14 +564,14 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
             Add Purchase Order to “{stepName}”
           </h3>
           {availablePOs.length === 0 ? (
-            <p style={{ color: '#6b7280', margin: 0 }}>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>
               No finalized purchase orders available. Go to Materials → Purchase Orders to create
               and finalize one.
             </p>
           ) : (
             <div
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 4,
                 maxHeight: 400,
                 overflow: 'auto',
@@ -585,7 +585,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                   style={pickerRowStyle}
                 >
                   <div style={{ fontWeight: 600, marginBottom: 2 }}>{po.name}</div>
-                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     ${po.total.toFixed(2)}
                   </div>
                 </button>
@@ -613,7 +613,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
             Add Supply House Invoice to “{stepName}”
           </h3>
           {availableInvoices.length === 0 ? (
-            <p style={{ color: '#6b7280', margin: 0 }}>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>
               No supply house invoices available. Add invoices in Materials → Supply Houses.
             </p>
           ) : (
@@ -627,7 +627,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
               />
               <div
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                   maxHeight: 400,
                   overflow: 'auto',
@@ -649,7 +649,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                     : availableInvoices
                   if (filtered.length === 0) {
                     return (
-                      <p style={{ padding: '1rem', color: '#6b7280', margin: 0 }}>
+                      <p style={{ padding: '1rem', color: 'var(--text-muted)', margin: 0 }}>
                         No matching invoices.
                       </p>
                     )
@@ -663,12 +663,12 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                     >
                       <div style={{ fontWeight: 600, marginBottom: 2, fontSize: '0.875rem' }}>
                         {inv.supply_house_name}
-                        <span style={{ color: '#6b7280', fontWeight: 400 }}>
+                        <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
                           {' '}
                           · {formatShortIsoDate(inv.invoice_date)} · ${inv.amount.toFixed(2)}
                         </span>
                         {inv.purchase_order_number ? (
-                          <span style={{ color: '#6b7280', fontWeight: 400 }}>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>
                             {' '}
                             · {inv.purchase_order_number}
                           </span>
@@ -677,7 +677,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                       <div
                         style={{
                           fontSize: '0.8125rem',
-                          color: '#9ca3af',
+                          color: 'var(--text-faint)',
                           display: 'flex',
                           flexWrap: 'wrap',
                           gap: '0.4rem 1rem',
@@ -686,7 +686,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                         <span>#{inv.invoice_number}</span>
                         {inv.due_date ? <span>Due {formatShortIsoDate(inv.due_date)}</span> : null}
                         {inv.is_paid ? (
-                          <span style={{ color: '#059669', fontWeight: 500 }}>Paid</span>
+                          <span style={{ color: 'var(--text-green-600)', fontWeight: 500 }}>Paid</span>
                         ) : null}
                       </div>
                     </button>
@@ -716,7 +716,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
           <h3 style={{ marginTop: 0, marginBottom: '0.75rem' }}>{viewingPO.name}</h3>
           <div
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 4,
               overflow: 'auto',
               marginBottom: '1rem',
@@ -724,7 +724,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
             }}
           >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
                   <th style={poHeadCell}>Part</th>
                   <th style={poHeadCell}>Qty</th>
@@ -735,7 +735,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
               </thead>
               <tbody>
                 {viewingPO.items.map((item, idx) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                     <td style={poBodyCell}>{item.part.name}</td>
                     <td style={poBodyCell}>{item.quantity}</td>
                     <td style={poBodyCell}>{item.supply_house?.name ?? '-'}</td>
@@ -746,7 +746,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                   </tr>
                 ))}
               </tbody>
-              <tfoot style={{ background: '#f9fafb' }}>
+              <tfoot style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
                   <td colSpan={4} style={{ ...poBodyCell, textAlign: 'right', fontWeight: 600 }}>
                     Grand Total:
@@ -791,7 +791,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
                   href={normalizeUrl(viewingInvoice.link)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: '#2563eb', textDecoration: 'underline' }}
+                  style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
                 >
                   View invoice link
                 </a>
@@ -813,7 +813,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
           ariaLabel="Confirm delete line item"
         >
           <h3 style={{ marginTop: 0, marginBottom: '0.5rem' }}>Delete line item?</h3>
-          <p style={{ marginTop: 0, marginBottom: '1rem', color: '#374151', fontSize: '0.875rem' }}>
+          <p style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--text-700)', fontSize: '0.875rem' }}>
             “{confirmDelete.memo}” will be removed from this stage. This can’t be undone.
           </p>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -878,7 +878,7 @@ function NestedModal({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: '#ffffff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           minWidth: 320,
@@ -927,8 +927,8 @@ const rowGhostBtn: CSSProperties = {
   padding: '0.2rem 0.45rem',
   borderRadius: 4,
   border: '1px solid #bae6fd',
-  background: '#eff6ff',
-  color: '#1d4ed8',
+  background: 'var(--bg-blue-tint)',
+  color: 'var(--text-blue-700)',
   fontSize: '0.6875rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -949,8 +949,8 @@ const addButtonStyle: CSSProperties = {
   padding: '0.35rem 0.7rem',
   borderRadius: 5,
   border: '1px solid #bbf7d0',
-  background: '#ecfdf5',
-  color: '#065f46',
+  background: 'var(--bg-emerald-tint)',
+  color: 'var(--text-emerald-800)',
   fontSize: '0.75rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -958,7 +958,7 @@ const addButtonStyle: CSSProperties = {
 
 const fieldLabel: CSSProperties = {
   fontSize: '0.75rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   fontWeight: 600,
 }
 
@@ -967,8 +967,8 @@ const textInputStyle: CSSProperties = {
   borderRadius: 6,
   border: '1px solid #cbd5e1',
   fontSize: '0.875rem',
-  color: '#0f172a',
-  background: '#ffffff',
+  color: 'var(--text-slate-900)',
+  background: 'var(--surface)',
   width: '100%',
   boxSizing: 'border-box',
 }
@@ -977,8 +977,8 @@ const modalSecondaryBtn: CSSProperties = {
   padding: '0.45rem 0.85rem',
   borderRadius: 6,
   border: '1px solid #cbd5e1',
-  background: '#ffffff',
-  color: '#1f2937',
+  background: 'var(--surface)',
+  color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -1000,21 +1000,21 @@ const pickerRowStyle: CSSProperties = {
   width: '100%',
   textAlign: 'left',
   padding: '0.7rem 0.85rem',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   cursor: 'pointer',
-  background: '#ffffff',
+  background: 'var(--surface)',
   border: 'none',
   borderLeft: 'none',
   borderRight: 'none',
   borderTop: 'none',
-  color: '#0f172a',
+  color: 'var(--text-slate-900)',
   fontFamily: 'inherit',
 }
 
 const poHeadCell: CSSProperties = {
   padding: '0.6rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   fontWeight: 600,
 }
 

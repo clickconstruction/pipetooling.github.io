@@ -275,7 +275,7 @@ export default function AdditionalReportModal({
       return {
         ...base,
         border: '2px solid #3b82f6',
-        background: '#eff6ff',
+        background: 'var(--bg-blue-tint)',
         fontWeight: 600,
       }
     }
@@ -283,15 +283,15 @@ export default function AdditionalReportModal({
       return {
         ...base,
         border: '1px solid #3b82f6',
-        background: '#eff6ff',
-        color: '#1e40af',
+        background: 'var(--bg-blue-tint)',
+        color: 'var(--text-blue-800)',
         fontWeight: 500,
       }
     }
     return {
       ...base,
-      border: '1px solid #d1d5db',
-      background: 'white',
+      border: '1px solid var(--border-strong)',
+      background: 'var(--surface)',
       fontWeight: 400,
     }
   }
@@ -308,18 +308,18 @@ export default function AdditionalReportModal({
         zIndex: overlayZIndex,
       }}
     >
-      <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
+      <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 560, maxHeight: '90vh', overflow: 'auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
           <div>
             <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Additional Report</h2>
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', fontWeight: 500 }}>
               {hcpNumber} {jobName}
             </p>
-            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {jobAddress}
             </p>
           </div>
-          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
         </div>
 
         <div
@@ -364,10 +364,10 @@ export default function AdditionalReportModal({
                 jobLinksLoading ? '#e5e7eb' : customerFilesUrl ? '#c7d2fe' : '#fecaca'
               }`,
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: jobLinksLoading ? 'not-allowed' : 'pointer',
               opacity: jobLinksLoading ? 0.85 : 1,
-              color: jobLinksLoading ? '#9ca3af' : customerFilesUrl ? '#2563eb' : '#dc2626',
+              color: jobLinksLoading ? '#9ca3af' : customerFilesUrl ? 'var(--text-link)' : 'var(--text-red-600)',
             }}
           >
             <Folder size={22} strokeWidth={2} aria-hidden />
@@ -405,10 +405,10 @@ export default function AdditionalReportModal({
                 jobLinksLoading ? '#e5e7eb' : customerPicturesUrl ? '#c7d2fe' : '#fecaca'
               }`,
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: jobLinksLoading ? 'not-allowed' : 'pointer',
               opacity: jobLinksLoading ? 0.85 : 1,
-              color: jobLinksLoading ? '#9ca3af' : customerPicturesUrl ? '#2563eb' : '#dc2626',
+              color: jobLinksLoading ? '#9ca3af' : customerPicturesUrl ? 'var(--text-link)' : 'var(--text-red-600)',
             }}
           >
             <Images size={22} strokeWidth={2} aria-hidden />
@@ -418,7 +418,7 @@ export default function AdditionalReportModal({
         <button
           type="button"
           onClick={() => setShowJobReportsModal(true)}
-          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: '#2563eb', background: 'none', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', marginBottom: '1rem' }}
+          style={{ padding: '0.5rem 1rem', fontSize: '0.875rem', color: 'var(--text-link)', background: 'none', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer', marginBottom: '1rem' }}
         >
           View my reports for this job
         </button>
@@ -475,7 +475,7 @@ export default function AdditionalReportModal({
                       value={fieldValues[f.label] ?? ''}
                       onChange={(e) => setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))}
                       rows={3}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
                 )
@@ -483,10 +483,10 @@ export default function AdditionalReportModal({
             </div>
           )}
 
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             <button type="submit" disabled={!canSubmit || saving} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
           </div>
         </form>

@@ -218,7 +218,7 @@ export default function LienToolingPrefillModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 560,
           width: '100%',
@@ -229,18 +229,18 @@ export default function LienToolingPrefillModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
           <h2 id="lien-tooling-prefill-title" style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>
             Open Lien Tooling
           </h2>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Confirm fields below, then copy a shareable link or open Lien Tooling. Sender details use Settings → Physical
             invoice issuer when set.
           </p>
         </div>
 
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e5e7eb' }}>
-          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem' }}>Form</div>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Form</div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
             {(
               [
@@ -257,8 +257,8 @@ export default function LienToolingPrefillModal({
                   padding: '0.4rem 0.75rem',
                   fontSize: '0.8125rem',
                   borderRadius: 6,
-                  border: formType === value ? '2px solid #2563eb' : '1px solid #d1d5db',
-                  background: formType === value ? '#eff6ff' : 'white',
+                  border: formType === value ? '2px solid #2563eb' : '1px solid var(--border-strong)',
+                  background: formType === value ? 'var(--bg-blue-tint)' : 'var(--surface)',
                   cursor: 'pointer',
                   fontWeight: formType === value ? 600 : 400,
                 }}
@@ -301,7 +301,7 @@ export default function LienToolingPrefillModal({
                       width: '100%',
                       boxSizing: 'border-box',
                       padding: '0.5rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
                       fontFamily: 'inherit',
                       fontSize: '0.875rem',
@@ -322,7 +322,7 @@ export default function LienToolingPrefillModal({
                     width: '100%',
                     boxSizing: 'border-box',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.875rem',
                   }}
@@ -335,7 +335,7 @@ export default function LienToolingPrefillModal({
         <div
           style={{
             padding: '1rem 1.25rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
             display: 'flex',
             flexWrap: 'wrap',
             gap: '0.5rem',
@@ -348,8 +348,8 @@ export default function LienToolingPrefillModal({
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
-              background: 'white',
-              border: '1px solid #d1d5db',
+              background: 'var(--surface)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
@@ -363,9 +363,9 @@ export default function LienToolingPrefillModal({
             style={{
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
-              background: 'white',
+              background: 'var(--surface)',
               border: '1px solid #2563eb',
-              color: '#2563eb',
+              color: 'var(--text-link)',
               borderRadius: 4,
               cursor: shareUrl ? 'pointer' : 'not-allowed',
             }}

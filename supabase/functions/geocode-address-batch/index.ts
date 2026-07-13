@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
+import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,6 +15,10 @@ const MIN_KEY_LEN = 3
 
 function normalizeKey(address: string): string {
   return address.trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+function appendDetail(base: string | undefined, extra: string): string {
+  return base ? `${base}; ${extra}` : extra
 }
 
 function jsonResponse(status: number, body: Record<string, unknown>) {
@@ -100,10 +105,13 @@ serve(async (req) => {
   }
 
   const results: { address_normalized: string; lat: number; lng: number }[] = []
+  // Per-address failure reasons; error_code values match mapGeocodeErrorMessage on the client.
+  const failures: { address_normalized: string; error_code: string; detail?: string }[] = []
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
 
   for (let i = 0; i < uniqueInput.length; i++) {
     const { key, display } = uniqueInput[i]!
+    let failure: { error_code: string; detail?: string } | null = null
 
     const { data: existing, error: exErr } = await supabase
       .from('address_geocodes')
@@ -126,19 +134,29 @@ serve(async (req) => {
     let lng: number | null = null
 
     const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(display)}&limit=1&addressdetails=0`
-    const nRes = await fetch(url, {
-      headers: { 'User-Agent': 'PipeTooling/1.0 (https://github.com/Click-Construction; map page geocode)' },
-    })
-    if (nRes.ok) {
-      const arr = (await nRes.json()) as NominatimHit[]
-      if (Array.isArray(arr) && arr.length > 0) {
-        const la = parseFloat(arr[0]!.lat)
-        const lo = parseFloat(arr[0]!.lon)
-        if (Number.isFinite(la) && Number.isFinite(lo)) {
-          lat = la
-          lng = lo
+    try {
+      const nRes = await fetch(url, {
+        headers: { 'User-Agent': 'PipeTooling/1.0 (https://github.com/Click-Construction; map page geocode)' },
+      })
+      if (nRes.ok) {
+        const arr = (await nRes.json()) as NominatimHit[]
+        if (Array.isArray(arr) && arr.length > 0) {
+          const la = parseFloat(arr[0]!.lat)
+          const lo = parseFloat(arr[0]!.lon)
+          if (Number.isFinite(la) && Number.isFinite(lo)) {
+            lat = la
+            lng = lo
+          } else {
+            failure = { error_code: 'invalid_coordinates', detail: 'OpenStreetMap returned unusable coordinates' }
+          }
+        } else {
+          failure = { error_code: 'not_found', detail: 'No match from OpenStreetMap' }
         }
+      } else {
+        failure = { error_code: 'upstream', detail: `OpenStreetMap (Nominatim) HTTP ${nRes.status}` }
       }
+    } catch {
+      failure = { error_code: 'upstream', detail: 'OpenStreetMap (Nominatim) request failed' }
     }
 
     if (lat !== null && lng !== null) {
@@ -160,7 +178,12 @@ serve(async (req) => {
     }
 
     if (googleKey.length > 0) {
-      const g = await geocodeWithGoogle(display, googleKey)
+      let g: Awaited<ReturnType<typeof geocodeWithGoogle>>
+      try {
+        g = await geocodeWithGoogle(display, googleKey)
+      } catch {
+        g = { ok: false, error: 'google_upstream', detail: 'Google Geocoding request failed' }
+      }
       if (g.ok) {
         const { error: upErr } = await supabase.from('address_geocodes').upsert(
           {
@@ -176,11 +199,63 @@ serve(async (req) => {
           return jsonResponse(500, { error: upErr.message })
         }
         results.push({ address_normalized: key, lat: g.lat, lng: g.lng })
+        continue
+      }
+      failure =
+        g.error === 'not_found' && !g.detail
+          ? { error_code: 'not_found', detail: 'No match from OpenStreetMap or Google' }
+          : { error_code: g.error, detail: g.detail }
+    } else if (failure) {
+      failure = {
+        ...failure,
+        detail: appendDetail(failure.detail, 'Google fallback not configured'),
       }
     }
+
+    // Third-tier fallback: US Census geocoder (free, no key, US addresses only).
+    let c: Awaited<ReturnType<typeof geocodeWithCensus>>
+    try {
+      c = await geocodeWithCensus(display)
+    } catch {
+      c = { ok: false, error: 'census_upstream', detail: 'US Census geocoder request failed' }
+    }
+    if (c.ok) {
+      const { error: upErr } = await supabase.from('address_geocodes').upsert(
+        {
+          address_normalized: key,
+          lat: c.lat,
+          lng: c.lng,
+          geocoded_at: new Date().toISOString(),
+          geocode_error: null,
+        },
+        { onConflict: 'address_normalized' }
+      )
+      if (upErr) {
+        return jsonResponse(500, { error: upErr.message })
+      }
+      results.push({ address_normalized: key, lat: c.lat, lng: c.lng })
+      continue
+    }
+    // Keep the earlier (more actionable) failure code; note the Census outcome in the detail.
+    if (failure) {
+      failure = {
+        ...failure,
+        detail: appendDetail(
+          failure.detail,
+          c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : 'no match from US Census'
+        ),
+      }
+    } else {
+      failure =
+        c.error === 'census_upstream'
+          ? { error_code: 'census_upstream', detail: c.detail }
+          : { error_code: 'not_found', detail: 'No match from US Census' }
+    }
+
+    failures.push({ address_normalized: key, ...failure })
   }
 
-  return new Response(JSON.stringify({ results }), {
+  return new Response(JSON.stringify({ results, failures }), {
     status: 200,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   })

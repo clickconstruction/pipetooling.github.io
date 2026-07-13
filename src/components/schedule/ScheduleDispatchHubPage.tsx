@@ -1112,7 +1112,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     if (!hubAssignJobPickerOpen) return null
     if (hubAssignJobPickerIntent === 'multi') {
       return (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563' }}>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-600)' }}>
           Adding the same job to <strong>{hubMultiCellAddSelection.size}</strong> selected person/day cell
           {hubMultiCellAddSelection.size === 1 ? '' : 's'} (this week&apos;s hub list).
         </p>
@@ -1120,7 +1120,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     }
     if (hubCellAddContext) {
       return (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#4b5563' }}>
+        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-600)' }}>
           Pick a job to add a block for <strong>{hubEmptyCellChoiceSubtitle}</strong> (this week&apos;s hub list).
         </p>
       )
@@ -1743,7 +1743,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                 fontSize: '0.75rem',
                 border: '1px solid #4338ca',
                 borderRadius: 4,
-                background: '#fff',
+                background: 'var(--surface)',
                 color: '#312e81',
                 cursor: 'pointer',
               }}
@@ -1758,11 +1758,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
               margin: '0 1.25rem',
               marginBottom: '0.75rem',
               padding: '0.5rem 0.75rem',
-              background: '#ecfdf5',
+              background: 'var(--bg-emerald-tint)',
               border: '1px solid #6ee7b7',
               borderRadius: 6,
               fontSize: '0.8125rem',
-              color: '#065f46',
+              color: 'var(--text-emerald-800)',
               display: 'flex',
               flexWrap: 'wrap',
               alignItems: 'center',
@@ -1781,7 +1781,7 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
                 fontSize: '0.75rem',
                 border: '1px solid #047857',
                 borderRadius: 4,
-                background: '#fff',
+                background: 'var(--surface)',
                 color: '#064e3b',
                 cursor: 'pointer',
               }}

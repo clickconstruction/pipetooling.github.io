@@ -122,7 +122,7 @@ export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: num
       style={{
         marginBottom: '1.5rem',
         padding: '1rem 1.25rem',
-        background: '#fef3c7',
+        background: 'var(--bg-amber-100)',
         border: '1px solid #fcd34d',
         borderRadius: 8,
         display: 'flex',
@@ -131,7 +131,7 @@ export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: num
         gap: '0.75rem',
       }}
     >
-      <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: '#92400e' }}>
+      <span style={{ fontSize: '0.9375rem', fontWeight: 500, color: 'var(--text-amber-800)' }}>
         Keep Jobs Billing up to date (HCP ≥ {minHcpNumber}): {counts?.specificWork ?? 0} Specific Work,{' '}
         {counts?.billedMaterials ?? 0} Other job charges, {counts?.totalBill ?? 0} Total Bill need filling
       </span>

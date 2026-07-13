@@ -558,7 +558,7 @@ function DashboardJobPicturesLinkRow({
           e.preventDefault()
           openInExternalBrowser(url)
         }}
-        style={{ display: 'inline-flex', alignItems: 'center', color: '#3b82f6', textDecoration: 'none' }}
+        style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-blue-500)', textDecoration: 'none' }}
       >
         {/* Font Awesome Free 7.x — images (OFL) */}
         {glyph}
@@ -584,7 +584,7 @@ function DashboardJobPicturesLinkRow({
           border: 'none',
           background: 'transparent',
           cursor: 'pointer',
-          color: '#dc2626',
+          color: 'var(--text-red-600)',
         }}
       >
         {glyph}
@@ -819,7 +819,7 @@ function ReadyToBillJobIconToolbar({
     background: 'none',
     border: 'none',
     cursor: 'pointer',
-    color: '#374151',
+    color: 'var(--text-700)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -4517,9 +4517,9 @@ export default function Dashboard() {
                 style={{
                   padding: '0.35rem 0.75rem',
                   fontSize: '0.875rem',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--bg-muted)',
+                  color: 'var(--text-700)',
+                  border: '1px solid var(--border)',
                   borderRadius: 6,
                   textDecoration: 'none',
                   fontWeight: 500,
@@ -4561,9 +4561,9 @@ export default function Dashboard() {
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.875rem',
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #e5e7eb',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-700)',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                     textDecoration: 'none',
                     fontWeight: 500,
@@ -4598,9 +4598,9 @@ export default function Dashboard() {
             style={{
               padding: '0.5rem 0.9rem',
               borderRadius: 8,
-              border: '1px solid #d1d5db',
-              background: 'white',
-              color: '#1f2937',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
+              color: 'var(--text-gray-800)',
               fontSize: '0.875rem',
               fontWeight: 600,
               cursor: 'pointer',
@@ -4679,8 +4679,8 @@ export default function Dashboard() {
               fontWeight: 600,
               border: '2px solid #ea580c',
               borderRadius: 8,
-              background: '#fff7ed',
-              color: '#c2410c',
+              background: 'var(--bg-orange-tint)',
+              color: 'var(--text-orange-700)',
               cursor: 'pointer',
             }}
           >
@@ -4772,7 +4772,7 @@ export default function Dashboard() {
             {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
               <DashboardListRowSkeleton rows={2} />
             ) : readyToBillDashboardUnits.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
             ) : (
               <div>
                 {readyToBillDashboardUnits.map((unit) => {
@@ -4782,11 +4782,11 @@ export default function Dashboard() {
                       <div
                         key={inv.id}
                         style={{
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 8,
                           padding: '1rem',
                           marginBottom: '0.75rem',
-                          background: '#fff',
+                          background: 'var(--surface)',
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -4794,9 +4794,9 @@ export default function Dashboard() {
                             <div style={{ fontWeight: 600 }}>
                               {inv.hcp_number || '—'} · {inv.job_name || '—'}
                             </div>
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                               {inv.job_address?.trim() ? (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
                               ) : (
                                 '—'
                               )}
@@ -4807,7 +4807,7 @@ export default function Dashboard() {
                                 const { applied, open } = dashboardBilledInvoiceAmounts(inv)
                                 if (applied <= 0) return null
                                 return (
-                                  <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                                  <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                                     {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
                                   </div>
                                 )
@@ -4824,7 +4824,7 @@ export default function Dashboard() {
                                     rel="noopener noreferrer"
                                     onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
                                     title="Google Drive"
-                                    style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                                    style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                       <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
@@ -4838,7 +4838,7 @@ export default function Dashboard() {
                                     rel="noopener noreferrer"
                                     onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
                                     title="Job Plans"
-                                    style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                                    style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                                   >
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                       <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
@@ -4856,17 +4856,19 @@ export default function Dashboard() {
                               onEditJob={openReadyToBillEditJob}
                               onOpenDetail={openReadyToBillDetailJobModal}
                             />
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                            <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                            <button type="button" onClick={() => {
+                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                            <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                              <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 openDashboardBillCustomerInvoice(inv)
                               }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
-                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                              {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4879,11 +4881,11 @@ export default function Dashboard() {
                     <div
                       key={bundleInv != null ? `bundle-${j.id}-${bundleInv.id}` : j.id}
                       style={{
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
                         padding: '1rem',
                         marginBottom: '0.75rem',
-                        background: '#fff',
+                        background: 'var(--surface)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -4891,15 +4893,15 @@ export default function Dashboard() {
                           <div style={{ fontWeight: 600 }}>
                             {j.hcp_number || '—'} · {j.job_name || '—'}
                           </div>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                             {j.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
                             ) : (
                               '—'
                             )}
                           </div>
                           {bundleInv != null ? (
-                            <div style={{ fontSize: '0.75rem', color: '#1e40af', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
                               Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                             </div>
                           ) : (
@@ -4910,12 +4912,12 @@ export default function Dashboard() {
                           {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {j.google_drive_link?.trim() && (
-                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
                                 </a>
                               )}
                               {j.job_plans_link?.trim() && (
-                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
                                 </a>
                               )}
@@ -4930,12 +4932,14 @@ export default function Dashboard() {
                             onEditJob={openReadyToBillEditJob}
                             onOpenDetail={openReadyToBillDetailJobModal}
                           />
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                          <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
-                          {bundleInv != null ? (
-                            <>
-                              <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                          <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
+                          {bundleInv != null && (
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            {bundleInv != null ? (
                               <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
@@ -4943,21 +4947,21 @@ export default function Dashboard() {
                                 }
                                 openDashboardBillCustomerInvoice(bundleInv)
                               }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
-                            </>
-                          ) : (
-                            <button type="button" onClick={() => {
+                            ) : (
+                              <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 setSendRecordJobMeta({ id: j.id })
                               }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
-                          )}
-                          {(bundleInv?.created_at ?? j.created_at) && (
-                            <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
-                              {isMobile ? <>Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}</> : <>Open<br />{formatTimeSince(bundleInv?.created_at ?? j.created_at)}</>}
-                            </span>
-                          )}
+                            )}
+                            {(bundleInv?.created_at ?? j.created_at) && (
+                              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
+                                Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5037,13 +5041,13 @@ export default function Dashboard() {
                       const inv = unit.inv
                       const cardKey = unit.kind === 'job_bundle' ? `billed-bundle-${unit.job.id}-${inv.id}` : inv.id
                       return (
-                    <div key={cardKey} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: '#fff' }}>
+                    <div key={cardKey} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                         <div>
                           <div style={{ fontWeight: 600 }}>{inv.hcp_number || '—'} · {inv.job_name || '—'}</div>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                             {inv.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
                             ) : (
                               '—'
                             )}
@@ -5054,7 +5058,7 @@ export default function Dashboard() {
                               const { applied, open } = dashboardBilledInvoiceAmounts(inv)
                               if (applied <= 0) return null
                               return (
-                                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                                   {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
                                 </div>
                               )
@@ -5065,22 +5069,24 @@ export default function Dashboard() {
                           {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {inv.google_drive_link?.trim() && (
-                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
                                 </a>
                               )}
                               {inv.job_plans_link?.trim() && (
-                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
                                 </a>
                               )}
                             </div>
                           )}
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
-                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5089,13 +5095,13 @@ export default function Dashboard() {
                     const j = unit.job
                     const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
                     return (
-                      <div key={j.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: '#fff' }}>
+                      <div key={j.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                           <div>
                             <div style={{ fontWeight: 600 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                               {j.job_address?.trim() ? (
-                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                                <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
                               ) : (
                                 '—'
                               )}
@@ -5106,22 +5112,24 @@ export default function Dashboard() {
                             {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                 {j.google_drive_link?.trim() && (
-                                  <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
                                   </a>
                                 )}
                                 {j.job_plans_link?.trim() && (
-                                  <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                  <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
                                   </a>
                                 )}
                               </div>
                             )}
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                            <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                            <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
-                            {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created"><>Open<br />{formatTimeSince(j.created_at)}</></span>}
+                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                            <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                              <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
+                              {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -5252,7 +5260,7 @@ export default function Dashboard() {
           {readyToBillLoading && readyToBillDashboardUnits.length === 0 ? (
             <DashboardListRowSkeleton rows={2} />
           ) : readyToBillDashboardUnits.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No jobs or invoices ready to bill yet</p>
           ) : (
             <div>
               {readyToBillDashboardUnits.map((unit) => {
@@ -5262,11 +5270,11 @@ export default function Dashboard() {
                     <div
                       key={inv.id}
                       style={{
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
                         padding: '1rem',
                         marginBottom: '0.75rem',
-                        background: '#fff',
+                        background: 'var(--surface)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -5274,9 +5282,9 @@ export default function Dashboard() {
                           <div style={{ fontWeight: 600 }}>
                             {inv.hcp_number || '—'} · {inv.job_name || '—'}
                           </div>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                             {inv.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
                             ) : (
                               '—'
                             )}
@@ -5287,7 +5295,7 @@ export default function Dashboard() {
                               const { applied, open } = dashboardBilledInvoiceAmounts(inv)
                               if (applied <= 0) return null
                               return (
-                                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                                   {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
                                 </div>
                               )
@@ -5304,7 +5312,7 @@ export default function Dashboard() {
                                   rel="noopener noreferrer"
                                   onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }}
                                   title="Google Drive"
-                                  style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                     <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
@@ -5318,7 +5326,7 @@ export default function Dashboard() {
                                   rel="noopener noreferrer"
                                   onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }}
                                   title="Job Plans"
-                                  style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                                  style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                     <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
@@ -5336,17 +5344,19 @@ export default function Dashboard() {
                               onEditJob={openReadyToBillEditJob}
                               onOpenDetail={openReadyToBillDetailJobModal}
                             />
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                          <button type="button" onClick={() => {
+                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 openDashboardBillCustomerInvoice(inv)
                               }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
-                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5359,11 +5369,11 @@ export default function Dashboard() {
                   <div
                     key={bundleInv != null ? `bundle-${j.id}-${bundleInv.id}` : j.id}
                     style={{
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       padding: '1rem',
                       marginBottom: '0.75rem',
-                      background: '#fff',
+                      background: 'var(--surface)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -5371,15 +5381,15 @@ export default function Dashboard() {
                         <div style={{ fontWeight: 600 }}>
                           {j.hcp_number || '—'} · {j.job_name || '—'}
                         </div>
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                           {j.job_address?.trim() ? (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
                           ) : (
                             '—'
                           )}
                         </div>
                         {bundleInv != null ? (
-                          <div style={{ fontSize: '0.75rem', color: '#1e40af', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: 4 }} title="Single billing line for this job (Stripe or external send)">
                             Billing line: ${remaining.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                           </div>
                         ) : (
@@ -5390,12 +5400,12 @@ export default function Dashboard() {
                         {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                             {j.google_drive_link?.trim() && (
-                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
                               </a>
                             )}
                             {j.job_plans_link?.trim() && (
-                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
                               </a>
                             )}
@@ -5410,12 +5420,14 @@ export default function Dashboard() {
                             onEditJob={openReadyToBillEditJob}
                             onOpenDetail={openReadyToBillDetailJobModal}
                           />
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
-                        {bundleInv != null ? (
-                          <>
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
+                        {bundleInv != null && (
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          {bundleInv != null ? (
                             <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
@@ -5423,21 +5435,21 @@ export default function Dashboard() {
                                 }
                                 openDashboardBillCustomerInvoice(bundleInv)
                               }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
-                          </>
-                        ) : (
-                          <button type="button" onClick={() => {
+                          ) : (
+                            <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 setSendRecordJobMeta({ id: j.id })
                               }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
-                        )}
-                        {(bundleInv?.created_at ?? j.created_at) && (
-                          <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
-                            {isMobile ? <>Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}</> : <>Open<br />{formatTimeSince(bundleInv?.created_at ?? j.created_at)}</>}
-                          </span>
-                        )}
+                          )}
+                          {(bundleInv?.created_at ?? j.created_at) && (
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
+                              Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -5523,13 +5535,13 @@ export default function Dashboard() {
                   const inv = unit.inv
                   const cardKey = unit.kind === 'job_bundle' ? `billed-bundle-${unit.job.id}-${inv.id}` : inv.id
                   return (
-                    <div key={cardKey} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: '#fff' }}>
+                    <div key={cardKey} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                         <div>
                           <div style={{ fontWeight: 600 }}>{inv.hcp_number || '—'} · {inv.job_name || '—'}</div>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                             {inv.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{inv.job_address}</a>
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(inv.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{inv.job_address}</a>
                             ) : (
                               '—'
                             )}
@@ -5540,7 +5552,7 @@ export default function Dashboard() {
                               const { applied, open } = dashboardBilledInvoiceAmounts(inv)
                               if (applied <= 0) return null
                               return (
-                                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+                                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
                                   {`Applied: $${applied.toLocaleString('en-US', { minimumFractionDigits: 2 })} · Open: $${open.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
                                 </div>
                               )
@@ -5551,22 +5563,24 @@ export default function Dashboard() {
                           {(inv.google_drive_link?.trim() || inv.job_plans_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {inv.google_drive_link?.trim() && (
-                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={inv.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
                                 </a>
                               )}
                               {inv.job_plans_link?.trim() && (
-                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={inv.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(inv.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
                                 </a>
                               )}
                             </div>
                           )}
-                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
-                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                            <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                          <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Mark Paid'}</button>
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5575,13 +5589,13 @@ export default function Dashboard() {
                 const j = unit.job
                 const remaining = Number(j.revenue ?? 0) - Number(j.payments_made ?? 0)
                 return (
-                  <div key={j.id} style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: '#fff' }}>
+                  <div key={j.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', marginBottom: '0.75rem', background: 'var(--surface)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
                       <div>
                         <div style={{ fontWeight: 600 }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                           {j.job_address?.trim() ? (
-                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                            <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
                           ) : (
                             '—'
                           )}
@@ -5592,22 +5606,24 @@ export default function Dashboard() {
                         {(j.google_drive_link?.trim() || j.job_plans_link?.trim()) && (
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                             {j.google_drive_link?.trim() && (
-                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                              <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
                               </a>
                             )}
                             {j.job_plans_link?.trim() && (
-                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                              <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
                               </a>
                             )}
                           </div>
                         )}
-                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
-                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
-                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                        <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
-                        {j.created_at && <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created"><>Open<br />{formatTimeSince(j.created_at)}</></span>}
+                          <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
+                        <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
+                        <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
+                          {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -5624,7 +5640,7 @@ export default function Dashboard() {
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Checklist: Due Today
-            <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
+            <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
           </h2>
@@ -5644,10 +5660,10 @@ export default function Dashboard() {
                     alignItems: 'center',
                     gap: '0.75rem',
                     padding: '0.5rem 0.75rem',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     marginBottom: '0.5rem',
-                    background: isCompleted ? '#f0fdf4' : '#fff',
+                    background: isCompleted ? 'var(--bg-green-tint)' : 'var(--surface)',
                   }}
                 >
                   <input
@@ -5655,11 +5671,11 @@ export default function Dashboard() {
                     checked={isCompleted}
                     onChange={() => void toggleChecklistComplete(inst)}
                   />
-                  <span style={{ flex: 1, fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? '#6b7280' : 'inherit' }}>
+                  <span style={{ flex: 1, fontWeight: 500, textDecoration: isCompleted ? 'line-through' : 'none', color: isCompleted ? 'var(--text-muted)' : 'inherit' }}>
                     <ChecklistTitleWithLinks title={title} links={links} />
                   </span>
                   {inst.completed_at && (
-                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                       {new Date(inst.completed_at).toLocaleString()}
                     </span>
                   )}
@@ -5670,9 +5686,9 @@ export default function Dashboard() {
                         onClick={(e) => { e.preventDefault(); openMuteModal(inst) }}
                         style={{
                           padding: '0.2rem',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
-                          background: 'white',
+                          background: 'var(--surface)',
                           cursor: 'pointer',
                           fontSize: '0.875rem',
                           lineHeight: 1,
@@ -5693,7 +5709,7 @@ export default function Dashboard() {
                           background: 'none',
                           cursor: 'pointer',
                           fontSize: '0.8125rem',
-                          color: '#9ca3af',
+                          color: 'var(--text-faint)',
                           textDecoration: 'underline',
                         }}
                       >
@@ -5712,7 +5728,7 @@ export default function Dashboard() {
         <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Checklist: Outstanding
-            <Link to="/checklist?tab=review" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
+            <Link to="/checklist?tab=review" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               View all →
             </Link>
           </h2>
@@ -5731,10 +5747,10 @@ export default function Dashboard() {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem 0.75rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
                       marginBottom: '0.5rem',
-                      background: '#fff',
+                      background: 'var(--surface)',
                     }}
                   >
                     <input
@@ -5746,7 +5762,7 @@ export default function Dashboard() {
                     />
                     <span style={{ flex: 1, fontWeight: 500 }}>
                       <ChecklistTitleWithLinks title={title} links={links} />
-                      <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                       {' '}({formatTDays(getDaysUntilDue(inst.scheduled_date))})
                     </span>
                     </span>
@@ -5760,7 +5776,7 @@ export default function Dashboard() {
                         border: 'none',
                         borderRadius: 4,
                         background: 'transparent',
-                        color: '#3b82f6',
+                        color: 'var(--text-blue-500)',
                         cursor: 'pointer',
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -5806,7 +5822,7 @@ export default function Dashboard() {
               {firstAssistantDispatchPhone && (
                 <a
                   href={`tel:${firstAssistantDispatchPhone.telHref}`}
-                  style={{ fontSize: '0.6875rem', color: '#6b7280', textDecoration: 'none', lineHeight: 1.15, whiteSpace: 'nowrap' }}
+                  style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', textDecoration: 'none', lineHeight: 1.15, whiteSpace: 'nowrap' }}
                   aria-label={`Schedule wrong? Click to call dispatch at ${firstAssistantDispatchPhone.display}`}
                   title={`Call dispatch at ${firstAssistantDispatchPhone.display}`}
                 >
@@ -5814,7 +5830,7 @@ export default function Dashboard() {
                 </a>
               )}
             </div>
-            <Link to="/calendar" style={{ fontSize: '0.875rem', fontWeight: 400, color: '#2563eb' }}>
+            <Link to="/calendar" style={{ fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
               Calendar →
             </Link>
           </div>
@@ -5830,14 +5846,14 @@ export default function Dashboard() {
                 const sorted = [...blocks].sort((a, b) => a.time_start.localeCompare(b.time_start))
                 return (
                   <div key={which} style={{ marginBottom: which === 'today' ? '1.25rem' : 0 }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: '#374151', textAlign: 'center' }}>
+                    <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 0.5rem 0', color: 'var(--text-700)', textAlign: 'center' }}>
                       {dayTitle}
-                      <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
+                      <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.5rem' }}>
                         {scheduleFormatWeekdayLong(ymd)}
                       </span>
                     </h3>
                     {sorted.length === 0 ? (
-                      <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
+                      <p style={{ margin: 0, color: 'var(--text-faint)', fontSize: '0.875rem', textAlign: 'center' }}>No blocks scheduled.</p>
                     ) : (
                       <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                         {sorted.map((b) => {
@@ -5880,10 +5896,10 @@ export default function Dashboard() {
                               aria-label={`Job details: ${rowLabel}`}
                               style={{
                                 padding: '0.5rem 0.75rem',
-                                border: '1px solid #e5e7eb',
+                                border: '1px solid var(--border)',
                                 borderRadius: 8,
                                 marginBottom: '0.5rem',
-                                background: '#fff',
+                                background: 'var(--surface)',
                                 cursor: 'pointer',
                               }}
                             >
@@ -5937,7 +5953,7 @@ export default function Dashboard() {
                                             border: 'none',
                                             padding: '0.2rem',
                                             cursor: 'pointer',
-                                            color: '#2563eb',
+                                            color: 'var(--text-link)',
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                           }}
@@ -5960,14 +5976,14 @@ export default function Dashboard() {
                                       )
                                     })()}
                                   </div>
-                                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                                  <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                                     {scheduleFormatWindow(b.time_start, b.time_end)}
                                   </div>
                                   {b.note?.trim() ? (
                                     <div
                                       style={{
                                         fontSize: '0.8125rem',
-                                        color: '#9ca3af',
+                                        color: 'var(--text-faint)',
                                         marginTop: '0.35rem',
                                         wordBreak: 'break-word',
                                       }}
@@ -6120,9 +6136,9 @@ export default function Dashboard() {
                   borderRadius: 4,
                   lineHeight: 1.2,
                   whiteSpace: 'nowrap',
-                  background: '#dbeafe',
+                  background: 'var(--bg-blue-200)',
                   border: '1px solid #93c5fd',
-                  color: '#1e40af',
+                  color: 'var(--text-blue-800)',
                 }
                 const myBidPillAccountManager: CSSProperties = {
                   fontSize: '0.6875rem',
@@ -6174,7 +6190,7 @@ export default function Dashboard() {
                             <div style={{ flex: 1, minWidth: 0 }}>
                               <span style={{ fontWeight: 500 }}>{b.project_name || 'Untitled'}</span>
                               {b.service_type_name && (
-                                <span style={{ color: '#6b7280', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
+                                <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({b.service_type_name})</span>
                               )}
                             </div>
                             <div
@@ -6195,7 +6211,7 @@ export default function Dashboard() {
                               )}
                             </div>
                           </div>
-                          <div style={{ marginTop: '0.25rem', color: '#4b5563' }}>
+                          <div style={{ marginTop: '0.25rem', color: 'var(--text-600)' }}>
                             Due {dueStr} · {status}
                           </div>
                         </Link>
@@ -6209,11 +6225,11 @@ export default function Dashboard() {
                           style={{
                             flexShrink: 0,
                             padding: '0.35rem 0.55rem',
-                            background: '#f3f4f6',
-                            border: '1px solid #d1d5db',
+                            background: 'var(--bg-muted)',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
                             cursor: 'pointer',
-                            color: '#374151',
+                            color: 'var(--text-700)',
                             fontSize: '0.8125rem',
                           }}
                           title="Preview bid"
@@ -6234,7 +6250,7 @@ export default function Dashboard() {
                               background: 'transparent',
                               border: 'none',
                               cursor: 'pointer',
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                             }}
                             title="Hide bid"
                             aria-label="Hide bid"
@@ -6251,10 +6267,10 @@ export default function Dashboard() {
                               flexShrink: 0,
                               padding: '0.2rem 0.5rem',
                               fontSize: '0.8125rem',
-                              border: '1px solid #d1d5db',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
-                              background: 'white',
-                              color: '#374151',
+                              background: 'var(--surface)',
+                              color: 'var(--text-700)',
                               cursor: 'pointer',
                             }}
                           >
@@ -6270,7 +6286,7 @@ export default function Dashboard() {
                             marginTop: '0.35rem',
                             marginLeft: '0.5rem',
                             padding: '0.6rem 0.75rem 0.6rem 1rem',
-                            background: '#fffbeb',
+                            background: 'var(--bg-amber-tint)',
                             border: '1px solid #fcd34d',
                             borderLeft: '3px solid #f59e0b',
                             borderRadius: 6,
@@ -6290,7 +6306,7 @@ export default function Dashboard() {
                                   : 0,
                             }}
                           >
-                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>Unread updates</span>
+                            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>Unread updates</span>
                             <button
                               type="button"
                               onClick={(e) => {
@@ -6304,8 +6320,8 @@ export default function Dashboard() {
                                 fontSize: '0.8125rem',
                                 border: '1px solid #d97706',
                                 borderRadius: 4,
-                                background: 'white',
-                                color: '#78350f',
+                                background: 'var(--surface)',
+                                color: 'var(--text-amber-900)',
                                 cursor: 'pointer',
                                 fontWeight: 500,
                               }}
@@ -6326,7 +6342,7 @@ export default function Dashboard() {
                                   border: 'none',
                                   cursor: 'pointer',
                                   fontSize: '0.8125rem',
-                                  color: '#92400e',
+                                  color: 'var(--text-amber-800)',
                                   textDecoration: 'underline',
                                   fontWeight: 500,
                                 }
@@ -6342,7 +6358,7 @@ export default function Dashboard() {
                                         marginBottom: '0.35rem',
                                       }}
                                     >
-                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>
+                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
                                         Recent Bid Notes
                                       </span>
                                       <div
@@ -6416,7 +6432,7 @@ export default function Dashboard() {
                                             style={{
                                               cursor: 'pointer',
                                               fontSize: '0.8125rem',
-                                              color: '#78350f',
+                                              color: 'var(--text-amber-900)',
                                               listStyle: 'none',
                                             }}
                                           >
@@ -6475,7 +6491,7 @@ export default function Dashboard() {
                                   border: 'none',
                                   cursor: 'pointer',
                                   fontSize: '0.8125rem',
-                                  color: '#92400e',
+                                  color: 'var(--text-amber-800)',
                                   textDecoration: 'underline',
                                   fontWeight: 500,
                                 }
@@ -6491,7 +6507,7 @@ export default function Dashboard() {
                                         marginBottom: '0.35rem',
                                       }}
                                     >
-                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>
+                                      <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-amber-800)' }}>
                                         Recent Customer Notes
                                       </span>
                                       <div
@@ -6565,7 +6581,7 @@ export default function Dashboard() {
                                             style={{
                                               cursor: 'pointer',
                                               fontSize: '0.8125rem',
-                                              color: '#78350f',
+                                              color: 'var(--text-amber-900)',
                                               listStyle: 'none',
                                             }}
                                           >
@@ -6620,20 +6636,20 @@ export default function Dashboard() {
                     </li>
                   )
                 }
-                const unsentCardStyle: CSSProperties = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
-                const sentCardStyle: CSSProperties = { background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, color: '#1e40af', textDecoration: 'none', fontSize: '0.875rem' }
+                const unsentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
+                const sentCardStyle: CSSProperties = { background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, color: 'var(--text-blue-800)', textDecoration: 'none', fontSize: '0.875rem' }
                 const hiddenBidCardStyle: CSSProperties = {
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   textDecoration: 'none',
                   fontSize: '0.875rem',
                 }
                 return (
                   <>
                     {unsentBids.length === 0 && sentBids.length > 0 ? (
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No unsent bids</p>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No unsent bids</p>
                     ) : null}
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {unsentBids.map((b) => renderBidItem(b, unsentCardStyle))}
@@ -6643,7 +6659,7 @@ export default function Dashboard() {
                         to="/bids?tab=bid-board"
                         style={{
                           fontSize: '0.875rem',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           textDecoration: 'underline',
                         }}
                       >
@@ -6660,7 +6676,7 @@ export default function Dashboard() {
                               border: 'none',
                               cursor: 'pointer',
                               fontSize: '0.875rem',
-                              color: '#2563eb',
+                              color: 'var(--text-link)',
                               textDecoration: 'underline',
                             }}
                           >
@@ -6677,7 +6693,7 @@ export default function Dashboard() {
                               border: 'none',
                               cursor: 'pointer',
                               fontSize: '0.875rem',
-                              color: '#2563eb',
+                              color: 'var(--text-link)',
                               textDecoration: 'underline',
                             }}
                           >
@@ -6687,16 +6703,16 @@ export default function Dashboard() {
                       </span>
                     </div>
                     {sentBidsExpanded && sentBids.length > 0 && (
-                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
-                        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: '0.5rem' }}>Sent bids</div>
+                      <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Sent bids</div>
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                           {sentBids.map((b) => renderBidItem(b, sentCardStyle))}
                         </ul>
                       </div>
                     )}
               {hiddenBidsExpanded && hiddenBidIds.size > 0 && (
-                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e5e7eb' }}>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: '0.5rem' }}>Hidden bids</div>
+                <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Hidden bids</div>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {myBids.filter((b) => hiddenBidIds.has(b.id)).map((b) => renderBidItem(b, hiddenBidCardStyle, 'hidden'))}
                   </ul>
@@ -6730,16 +6746,16 @@ export default function Dashboard() {
               {(() => {
                 const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
                 const n = visibleItems.filter((inst) => !readInstanceIds.has(inst.id)).length
-                return n > 0 ? <span style={{ fontWeight: 600, color: '#2563eb' }}>{' - '}{n} UNREAD</span> : null
+                return n > 0 ? <span style={{ fontWeight: 600, color: 'var(--text-link)' }}>{' - '}{n} UNREAD</span> : null
               })()}
             </h2>
           </div>
           {completedItemsOpen && (
             <>
               {completedItemsLoading ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
               ) : completedItems.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No completed items in the last 7 days.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No completed items in the last 7 days.</p>
               ) : (
                 (() => {
                   const visibleItems = completedItems.filter((inst) => !ignoredItemIds.has(inst.checklist_item_id))
@@ -6783,15 +6799,15 @@ export default function Dashboard() {
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 padding: '0.5rem 0.75rem',
-                                border: '1px solid #e5e7eb',
+                                border: '1px solid var(--border)',
                                 borderRadius: 8,
                                 cursor: 'pointer',
-                                background: '#f9fafb',
+                                background: 'var(--bg-subtle)',
                               }}
                             >
                               <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
                               <span style={{ fontWeight: 500 }}>{completerName}</span>
-                              <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>({items.length} item{items.length !== 1 ? 's' : ''}{unreadCount > 0 ? ` · ${unreadCount} unread` : ''})</span>
+                              <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>({items.length} item{items.length !== 1 ? 's' : ''}{unreadCount > 0 ? ` · ${unreadCount} unread` : ''})</span>
                             </div>
                             {isExpanded && (
                               <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
@@ -6812,10 +6828,10 @@ export default function Dashboard() {
                                         alignItems: isMobile ? 'stretch' : 'center',
                                         gap: isMobile ? '0.5rem' : '0.75rem',
                                         padding: '0.5rem 0.75rem',
-                                        border: '1px solid #e5e7eb',
+                                        border: '1px solid var(--border)',
                                         borderRadius: 8,
                                         marginTop: '0.5rem',
-                                        background: isRead ? '#fff' : '#f0f9ff',
+                                        background: isRead ? 'var(--surface)' : 'var(--bg-sky-tint)',
                                       }}
                                     >
                                       {!isMobile && (
@@ -6824,7 +6840,7 @@ export default function Dashboard() {
                                           title="Ignore"
                                           onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
                                           disabled={!!ignoringItemId}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
                                         >
                                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
                                         </button>
@@ -6837,28 +6853,28 @@ export default function Dashboard() {
                                             title="Ignore"
                                             onClick={(e) => { e.stopPropagation(); ignoreTaskType(inst.checklist_item_id) }}
                                             disabled={!!ignoringItemId}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: ignoringItemId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                           >
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M73 39.1C63.6 29.7 48.4 29.7 39.1 39.1C29.8 48.5 29.7 63.7 39 73.1L567 601.1C576.4 610.5 591.6 610.5 600.9 601.1C610.2 591.7 610.3 576.5 600.9 567.2L513.1 479.4C530.6 476.1 543.9 460.7 543.9 442.3C543.9 435.6 542.1 429 538.8 423.3L517 385.7C498 353.1 488 316.1 488 278.4L488 263.9C488 179.3 425.4 109.2 344 97.6L344 87.9C344 74.6 333.3 63.9 320 63.9C306.7 63.9 296 74.6 296 87.9L296 97.6C253.8 103.6 216.6 125.4 190.6 156.7L73 39.1zM224.8 190.9C246.7 162.4 281.2 144 320 144C386.3 144 440 197.7 440 264L440 278.5C440 324.7 452.3 370 475.5 409.9L488.4 432L465.8 432L224.7 190.9zM164.5 409.9C184 376.5 195.8 339.2 199.1 300.9L152.4 254.2C152.2 257.5 152.1 260.8 152.1 264.1L152.1 278.6C152.1 316.3 142.1 353.3 123.1 385.9L101.1 423.2C97.7 429 96 435.5 96 442.2C96 463.1 112.9 480 133.8 480L378.2 480L330.2 432L151.6 432L164.5 409.9zM252.1 528C262 556 288.7 576 320 576C351.3 576 378 556 387.9 528L252.1 528z"/></svg>
                                           </button>
                                         )}
                                         {isMobile ? (
-                                          <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#6b7280' }}>
+                                          <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                             <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
                                             <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
                                           </span>
                                         ) : (
-                                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                             {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
                                           </span>
                                         )}
-                                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
+                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>→ {assigneeName}</span>
                                         {!isMobile && (
                                           <button
                                             type="button"
                                             title="Re-send"
                                             onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#3b82f6', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: 'var(--text-blue-500)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                           >
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
                                           </button>
@@ -6868,7 +6884,7 @@ export default function Dashboard() {
                                             type="button"
                                             title="Re-send"
                                             onClick={(e) => { e.stopPropagation(); openFwd(inst) }}
-                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#3b82f6', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, cursor: 'pointer', background: 'transparent', color: 'var(--text-blue-500)', border: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                           >
                                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M371.8 82.4C359.8 87.4 352 99 352 112L352 192L240 192C142.8 192 64 270.8 64 368C64 481.3 145.5 531.9 164.2 542.1C166.7 543.5 169.5 544 172.3 544C183.2 544 192 535.1 192 524.3C192 516.8 187.7 509.9 182.2 504.8C172.8 496 160 478.4 160 448.1C160 395.1 203 352.1 256 352.1L352 352.1L352 432.1C352 445 359.8 456.7 371.8 461.7C383.8 466.7 397.5 463.9 406.7 454.8L566.7 294.8C579.2 282.3 579.2 262 566.7 249.5L406.7 89.5C397.5 80.3 383.8 77.6 371.8 82.6z"/></svg>
                                           </button>
@@ -6880,7 +6896,7 @@ export default function Dashboard() {
                                               title="Mark as read"
                                               onClick={() => markCompletedItemAsRead(inst)}
                                               disabled={!!markingReadId}
-                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: markingReadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z"/></svg>
                                             </button>
@@ -6891,7 +6907,7 @@ export default function Dashboard() {
                                               title="Mark as unread"
                                               onClick={() => markCompletedItemAsUnread(inst)}
                                               disabled={!!markingUnreadId}
-                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#6b7280', border: 'none', cursor: markingUnreadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                              style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: markingUnreadId ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                             >
                                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16} fill="currentColor" aria-hidden><path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z"/></svg>
                                             </button>
@@ -6920,7 +6936,7 @@ export default function Dashboard() {
                             gap: '0.5rem',
                             cursor: 'pointer',
                             fontSize: '0.9375rem',
-                            color: '#9ca3af',
+                            color: 'var(--text-faint)',
                             marginBottom: ignoredSectionOpen ? '0.5rem' : 0,
                           }}
                         >
@@ -6966,15 +6982,15 @@ export default function Dashboard() {
                                           alignItems: 'center',
                                           gap: '0.5rem',
                                           padding: '0.5rem 0.75rem',
-                                          border: '1px solid #e5e7eb',
+                                          border: '1px solid var(--border)',
                                           borderRadius: 8,
                                           cursor: 'pointer',
-                                          background: '#f9fafb',
+                                          background: 'var(--bg-subtle)',
                                         }}
                                       >
                                         <span style={{ fontSize: '0.875rem', minWidth: 16 }}>{isExpanded ? '▼' : '▶'}</span>
                                         <span style={{ fontWeight: 500 }}>{completerName}</span>
-                                        <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
+                                        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>({items.length} item{items.length !== 1 ? 's' : ''})</span>
                                       </div>
                                       {isExpanded && (
                                         <ul style={{ listStyle: 'none', padding: '0.5rem 0 0 1.5rem', margin: 0 }}>
@@ -6994,10 +7010,10 @@ export default function Dashboard() {
                                                   alignItems: isMobile ? 'stretch' : 'center',
                                                   gap: isMobile ? '0.5rem' : '0.75rem',
                                                   padding: '0.5rem 0.75rem',
-                                                  border: '1px solid #e5e7eb',
+                                                  border: '1px solid var(--border)',
                                                   borderRadius: 8,
                                                   marginTop: '0.5rem',
-                                                  background: '#fff',
+                                                  background: 'var(--surface)',
                                                 }}
                                               >
                                                 {!isMobile && (
@@ -7005,7 +7021,7 @@ export default function Dashboard() {
                                                     type="button"
                                                     onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
                                                     disabled={!!ignoringItemId}
-                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                                                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer', flexShrink: 0 }}
                                                   >
                                                     Un-ignore
                                                   </button>
@@ -7013,22 +7029,22 @@ export default function Dashboard() {
                                                 <span style={{ width: isMobile ? '100%' : undefined, flex: isMobile ? undefined : 1, fontWeight: 500, minWidth: 0 }}><ChecklistTitleWithLinks title={title} links={links} /></span>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
                                                   {isMobile ? (
-                                                    <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: '#6b7280' }}>
+                                                    <span style={{ display: 'flex', flexDirection: 'column', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                       <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleDateString()}</span>
                                                       <span style={{ display: 'block' }}>{inst.completed_at && new Date(inst.completed_at).toLocaleTimeString()}</span>
                                                     </span>
                                                   ) : (
-                                                    <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                       {inst.completed_at && new Date(inst.completed_at).toLocaleString()}
                                                     </span>
                                                   )}
-                                                  <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>→ {assigneeName}</span>
+                                                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>→ {assigneeName}</span>
                                                   {isMobile && (
                                                     <button
                                                       type="button"
                                                       onClick={(e) => { e.stopPropagation(); unignoreTaskType(inst.checklist_item_id) }}
                                                       disabled={!!ignoringItemId}
-                                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: '#2563eb', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
+                                                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 500, borderRadius: 6, background: 'transparent', color: 'var(--text-link)', border: '1px solid #93c5fd', cursor: ignoringItemId ? 'not-allowed' : 'pointer' }}
                                                     >
                                                       Un-ignore
                                                     </button>
@@ -7079,9 +7095,9 @@ export default function Dashboard() {
                     style={{
                       padding: '0.25rem 0.5rem',
                       fontSize: '0.8125rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 4,
-                      background: recentReportsView === 'unread' ? '#f3f4f6' : 'transparent',
+                      background: recentReportsView === 'unread' ? 'var(--bg-muted)' : 'transparent',
                       cursor: 'pointer',
                       fontWeight: recentReportsView === 'unread' ? 600 : 400,
                       color: 'inherit',
@@ -7095,9 +7111,9 @@ export default function Dashboard() {
                     style={{
                       padding: '0.25rem 0.5rem',
                       fontSize: '0.8125rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 4,
-                      background: recentReportsView === 'all' ? '#f3f4f6' : 'transparent',
+                      background: recentReportsView === 'all' ? 'var(--bg-muted)' : 'transparent',
                       cursor: 'pointer',
                       fontWeight: recentReportsView === 'all' ? 600 : 400,
                       color: 'inherit',
@@ -7107,7 +7123,7 @@ export default function Dashboard() {
                   </button>
                 </div>
                 {!isReportEnabledOnlyUser && (
-                  <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: '#2563eb', textDecoration: 'none' }}>View all →</Link>
+                  <Link to="/jobs?tab=reports" style={{ fontSize: '0.875rem', color: 'var(--text-link)', textDecoration: 'none' }}>View all →</Link>
                 )}
               </div>
               {recentReportsLoading ? (
@@ -7123,9 +7139,9 @@ export default function Dashboard() {
                       <li key={r.id} style={{ marginBottom: '0.5rem' }}>
                         <div
                           style={{
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 8,
-                            background: isExpanded ? '#fff' : (isRead ? '#f9fafb' : '#fff'),
+                            background: isExpanded ? '#fff' : (isRead ? 'var(--bg-subtle)' : 'var(--surface)'),
                             opacity: isRead && !isExpanded ? 0.85 : 1,
                             overflow: 'hidden',
                           }}
@@ -7150,7 +7166,7 @@ export default function Dashboard() {
                           }}
                         >
                         {!isRead && (
-                          <span style={{ flexShrink: 0, width: 20, height: 20, color: '#6b7280', marginTop: 2 }} aria-hidden>
+                          <span style={{ flexShrink: 0, width: 20, height: 20, color: 'var(--text-muted)', marginTop: 2 }} aria-hidden>
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: '100%', height: '100%' }}>
                               <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3 64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9 192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8 464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528 256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7 200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
                             </svg>
@@ -7165,7 +7181,7 @@ export default function Dashboard() {
                             }}
                             title="Hide from dashboard"
                             aria-label="Hide from dashboard"
-                            style={{ flexShrink: 0, width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' }}
+                            style={{ flexShrink: 0, width: 24, height: 24, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" fill="currentColor" style={{ width: 14, height: 14 }}>
                               <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z" />
@@ -7174,8 +7190,8 @@ export default function Dashboard() {
                         )}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <span style={{ fontWeight: 500 }}>{r.job_display_name || 'Unknown job'}</span>
-                          <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {displayReportTemplateName(r.template_name, role)}</span>
-                          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.5rem' }}>· {displayReportTemplateName(r.template_name, role)}</span>
+                          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                             {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
                           </div>
                         </div>
@@ -7195,7 +7211,7 @@ export default function Dashboard() {
                             }}
                             title="Mark as unread"
                             aria-label="Mark as unread"
-                            style={{ flexShrink: 0, width: 44, height: 44, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginLeft: 'auto' }}
+                            style={{ flexShrink: 0, width: 44, height: 44, padding: 0, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-faint)', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginLeft: 'auto' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" style={{ width: 26, height: 26 }}>
                               <path d="M576 480C576 515.3 547.5 544 512.1 544L128 544C92.6 544 64 515.3 64 480L64 228C64.1 212.5 71.8 198 84.5 189.2L270 61.3C300.1 40.6 339.8 40.6 369.9 61.3L555.5 189.2C568.3 198 575.9 212.5 576 228L576 480zM128 496L512.1 496C520.9 496 528 488.9 528 480L528 288.3L373.2 405.7C341.8 429.6 298.3 429.6 266.8 405.7L112 288.3L112 480C112 488.9 119.2 496 128 496zM527.6 228.4L342.7 100.8C329 91.4 311 91.4 297.3 100.8L112.4 228.4L295.8 367.5C310.1 378.3 329.9 378.3 344.2 367.5L527.6 228.4z" />
@@ -7207,16 +7223,16 @@ export default function Dashboard() {
                           <div
                             style={{
                               padding: '0.75rem 0.75rem 1rem',
-                              borderTop: '1px solid #e5e7eb',
+                              borderTop: '1px solid var(--border)',
                               fontSize: '0.875rem',
                             }}
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div style={{ marginBottom: '0.5rem' }}>
                               <div style={{ fontWeight: 600, fontSize: '1rem' }}>{displayReportTemplateName(r.template_name, role)}</div>
-                              <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{r.job_display_name || 'Unknown job'}</div>
+                              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.job_display_name || 'Unknown job'}</div>
                             </div>
-                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
                               {new Date(r.created_at).toLocaleString()} · {r.created_by_name}
                               {r.reported_at_lat != null && r.reported_at_lng != null && (
                                 <a
@@ -7224,7 +7240,7 @@ export default function Dashboard() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   title={`${Number(r.reported_at_lat).toFixed(4)}, ${Number(r.reported_at_lng).toFixed(4)}`}
-                                  style={{ color: '#2563eb', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                                  style={{ color: 'var(--text-link)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
                                 >
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={16} height={16}>
                                     <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512 148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9 252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7 320 320 320z" fill="currentColor" />
@@ -7237,7 +7253,7 @@ export default function Dashboard() {
                                 {Object.entries(r.field_values).map(([label, val]) =>
                                   val ? (
                                     <div key={label} style={{ marginBottom: '0.75rem' }}>
-                                      <span style={{ color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
+                                      <span style={{ color: 'var(--text-muted)', fontWeight: 500, display: 'block', marginBottom: '0.25rem' }}>
                                         {label}
                                       </span>
                                       <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{formatReportFieldValueInlineList(val)}</div>
@@ -7246,7 +7262,7 @@ export default function Dashboard() {
                                 )}
                               </div>
                             ) : (
-                              <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No content</p>
+                              <p style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>No content</p>
                             )}
                           </div>
                         )}
@@ -7256,12 +7272,12 @@ export default function Dashboard() {
                   })}
                 </ul>
               ) : (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   No reports yet.{' '}
                   {isReportEnabledOnlyUser ? (
                     'Create one above.'
                   ) : (
-                    <Link to="/jobs?tab=reports" style={{ color: '#2563eb' }}>Create one</Link>
+                    <Link to="/jobs?tab=reports" style={{ color: 'var(--text-link)' }}>Create one</Link>
                   )}
                 </p>
               )}
@@ -7274,7 +7290,7 @@ export default function Dashboard() {
                     gap: '0.5rem',
                     cursor: 'pointer',
                     fontSize: '0.8125rem',
-                    color: '#9ca3af',
+                    color: 'var(--text-faint)',
                     fontWeight: 300,
                   }}
                 >
@@ -7308,7 +7324,7 @@ export default function Dashboard() {
           )}
         </div>
       )}
-      {userError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{userError}</p>}
+      {userError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{userError}</p>}
       {fwdInstance && (
         <div
           style={{
@@ -7325,7 +7341,7 @@ export default function Dashboard() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               minWidth: 320,
@@ -7341,7 +7357,7 @@ export default function Dashboard() {
                   type="text"
                   value={fwdTitle}
                   onChange={(e) => setFwdTitle(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 />
               </div>
               <div>
@@ -7349,7 +7365,7 @@ export default function Dashboard() {
                 <select
                   value={fwdAssigneeId}
                   onChange={(e) => setFwdAssigneeId(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 >
                   {sendTaskUsers.map((u) => (
                     <option key={u.id} value={u.id}>
@@ -7379,7 +7395,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setFwdInstance(null)}
-                style={{ padding: '0.5rem 1rem', background: '#e5e7eb', color: '#374151', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -7409,11 +7425,11 @@ export default function Dashboard() {
                 <div
                   key={j.id}
                   style={{
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     padding: '1rem',
                     marginBottom: '0.75rem',
-                    background: '#fff',
+                    background: 'var(--surface)',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -7432,26 +7448,26 @@ export default function Dashboard() {
                         style={{
                           fontWeight: 600,
                           cursor: 'pointer',
-                          color: '#111827',
+                          color: 'var(--text-strong)',
                           width: 'fit-content',
                         }}
                       >
                         {j.hcp_number || '—'} · {j.job_name || '—'}
                       </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                         {j.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
                         ) : (
                           '—'
                         )}
                       </div>
                       {isSubcontractorLikeRole(role) && (
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                           Job: {labelJobsLedgerStatusForDashboard(j.status)}
                         </div>
                       )}
                       {isSubcontractorLikeRole(role) && narrowViewport660 && j.created_at && (
-                        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }} title="Time since job created">
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }} title="Time since job created">
                           Open {formatTimeSince(j.created_at)}
                         </div>
                       )}
@@ -7466,7 +7482,7 @@ export default function Dashboard() {
                               rel="noopener noreferrer"
                               onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
                               title="Google Drive"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                 <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
@@ -7485,7 +7501,7 @@ export default function Dashboard() {
                               rel="noopener noreferrer"
                               onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
                               title="Job Plans"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                 <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
@@ -7499,14 +7515,14 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
                           >
                             View<br />Details
                           </button>
                           <button
                             type="button"
                             onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                           >
                             View<br />Reports
                           </button>
@@ -7516,7 +7532,7 @@ export default function Dashboard() {
                         <button
                           type="button"
                           onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                         >
                           View<br />Reports
                         </button>
@@ -7530,7 +7546,7 @@ export default function Dashboard() {
                               flexDirection: 'column',
                               alignItems: 'center',
                               fontSize: '0.8125rem',
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                               textAlign: 'center',
                               maxWidth: 220,
                               lineHeight: 1.25,
@@ -7597,14 +7613,14 @@ export default function Dashboard() {
                                 }
                               : (j.collect_payment_button_variant ?? 'default') === 'pending_dispatch'
                                 ? {
-                                    background: '#fffbeb',
-                                    color: '#b45309',
+                                    background: 'var(--bg-amber-tint)',
+                                    color: 'var(--text-amber-700)',
                                     border: '1px solid #f59e0b',
                                     fontWeight: 500,
                                   }
                                 : {
-                                    background: 'white',
-                                    color: '#2563eb',
+                                    background: 'var(--surface)',
+                                    color: 'var(--text-link)',
                                     border: '1px solid #2563eb',
                                   }),
                           }}
@@ -7622,12 +7638,12 @@ export default function Dashboard() {
                         </button>
                       )}
                       {j.created_at && (!isSubcontractorLikeRole(role) || !narrowViewport660) && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
                           <>Open<br />{formatTimeSince(j.created_at)}</>
                         </span>
                       )}
                       {isSubcontractorLikeRole(role) && isMobile && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                           {(() => {
                             const m = subcontractorLastActivityMobileLine(j, { formatTitle: formatDatetime })
                             if (!m.clickable) {
@@ -7713,11 +7729,11 @@ export default function Dashboard() {
                 <div
                   key={j.id}
                   style={{
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 8,
                     padding: '1rem',
                     marginBottom: '0.75rem',
-                    background: '#fff',
+                    background: 'var(--surface)',
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -7736,15 +7752,15 @@ export default function Dashboard() {
                         style={{
                           fontWeight: 600,
                           cursor: 'pointer',
-                          color: '#111827',
+                          color: 'var(--text-strong)',
                           width: 'fit-content',
                         }}
                       >
                         {j.hcp_number || '—'} · {j.job_name || '—'}
                       </div>
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                         {j.job_address?.trim() ? (
-                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
                         ) : (
                           '—'
                         )}
@@ -7755,7 +7771,7 @@ export default function Dashboard() {
                         const { line, title } = d
                         return (
                           <div
-                            style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}
+                            style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}
                             title={title}
                           >
                             {line}
@@ -7773,7 +7789,7 @@ export default function Dashboard() {
                               rel="noopener noreferrer"
                               onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }}
                               title="Google Drive"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                 <path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" />
@@ -7792,7 +7808,7 @@ export default function Dashboard() {
                               rel="noopener noreferrer"
                               onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }}
                               title="Job Plans"
-                              style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}
+                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
                                 <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" />
@@ -7806,14 +7822,14 @@ export default function Dashboard() {
                           <button
                             type="button"
                             onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}
                           >
                             View<br />Details
                           </button>
                           <button
                             type="button"
                             onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                           >
                             View<br />Reports
                           </button>
@@ -7823,7 +7839,7 @@ export default function Dashboard() {
                         <button
                           type="button"
                           onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                         >
                           View<br />Reports
                         </button>
@@ -7837,7 +7853,7 @@ export default function Dashboard() {
                               flexDirection: 'column',
                               alignItems: 'center',
                               fontSize: '0.8125rem',
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                               textAlign: 'center',
                               maxWidth: 220,
                               lineHeight: 1.25,
@@ -7891,8 +7907,8 @@ export default function Dashboard() {
                         style={{
                           padding: '0.35rem 0.75rem',
                           fontSize: '0.875rem',
-                          background: 'white',
-                          color: '#2563eb',
+                          background: 'var(--surface)',
+                          color: 'var(--text-link)',
                           border: '1px solid #2563eb',
                           borderRadius: 4,
                           cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
@@ -7903,12 +7919,12 @@ export default function Dashboard() {
                       </button>
                       ) : null}
                       {j.created_at && (!isMobile || !isSubcontractorLikeRole(role)) && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
                           <>Open<br />{formatTimeSince(j.created_at)}</>
                         </span>
                       )}
                       {isSubcontractorLikeRole(role) && isMobile && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: '#6b7280' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', width: '100%', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                           {j.created_at && (
                           <span>
                             Open<br />
@@ -7982,9 +7998,9 @@ export default function Dashboard() {
         <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.5rem' }}>Upcoming inspection (3 days)</h2>
           {upcomingInspectionsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : upcomingInspections.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No inspections in the next 3 days.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No inspections in the next 3 days.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {upcomingInspections.map((i) => {
@@ -8002,17 +8018,17 @@ export default function Dashboard() {
                       style={{
                         display: 'block',
                         padding: '0.5rem 0.75rem',
-                        background: '#eff6ff',
+                        background: 'var(--bg-blue-tint)',
                         border: '1px solid #bfdbfe',
                         borderRadius: 4,
-                        color: '#1e40af',
+                        color: 'var(--text-blue-800)',
                         textDecoration: 'none',
                         fontSize: '0.875rem',
                       }}
                     >
                       <div>
-                        <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>{formatted}</span>
-                        <span style={{ color: '#4b5563' }}>{' - '}{i.inspection_type}</span>
+                        <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>{formatted}</span>
+                        <span style={{ color: 'var(--text-600)' }}>{' - '}{i.inspection_type}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
                         <span style={{ fontWeight: 500 }}>{i.address}</span>
@@ -8021,7 +8037,7 @@ export default function Dashboard() {
                             type="button"
                             onClick={(e) => { e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
                             title={`View ${i.address} on map`}
-                            style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)', flexShrink: 0, background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
                               <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
@@ -8062,11 +8078,11 @@ export default function Dashboard() {
                     <div
                       key={j.id}
                       style={{
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 8,
                         padding: '1rem',
                         marginBottom: '0.75rem',
-                        background: '#fff',
+                        background: 'var(--surface)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
@@ -8085,15 +8101,15 @@ export default function Dashboard() {
                             style={{
                               fontWeight: 600,
                               cursor: 'pointer',
-                              color: '#111827',
+                              color: 'var(--text-strong)',
                               width: 'fit-content',
                             }}
                           >
                             {j.hcp_number || '—'} · {j.job_name || '—'}
                           </div>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 4 }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 4 }}>
                             {j.job_address?.trim() ? (
-                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: '#2563eb', textDecoration: 'none' }}>{j.job_address}</a>
+                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.job_address.trim())}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{j.job_address}</a>
                             ) : (
                               '—'
                             )}
@@ -8103,7 +8119,7 @@ export default function Dashboard() {
                           {(j.google_drive_link?.trim() || j.job_plans_link?.trim() || j.job_pictures_link?.trim()) && (
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                               {j.google_drive_link?.trim() && (
-                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={j.google_drive_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.google_drive_link!.trim()) }} title="Google Drive" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M403 378.9L239.4 96L400.6 96L564.2 378.9L403 378.9zM265.5 402.5L184.9 544L495.4 544L576 402.5L265.5 402.5zM218.1 131.4L64 402.5L144.6 544L301 272.8L218.1 131.4z" /></svg>
                                 </a>
                               )}
@@ -8113,7 +8129,7 @@ export default function Dashboard() {
                                 </span>
                               )}
                               {j.job_plans_link?.trim() && (
-                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: '#6b7280', padding: '0.35rem' }}>
+                                <a href={j.job_plans_link.trim()} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser(j.job_plans_link!.trim()) }} title="Job Plans" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-muted)', padding: '0.35rem' }}>
                                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true"><path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z" /></svg>
                                 </a>
                               )}
@@ -8124,7 +8140,7 @@ export default function Dashboard() {
                               <button
                                 type="button"
                                 onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })}
-                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
+                                style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}
                               >
                                 View<br />Reports
                               </button>
@@ -8139,8 +8155,8 @@ export default function Dashboard() {
                                 style={{
                                   padding: '0.35rem 0.75rem',
                                   fontSize: '0.875rem',
-                                  background: 'white',
-                                  color: '#2563eb',
+                                  background: 'var(--surface)',
+                                  color: 'var(--text-link)',
                                   border: '1px solid #2563eb',
                                   borderRadius: 4,
                                   cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer',
@@ -8152,7 +8168,7 @@ export default function Dashboard() {
                             </div>
                             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                               {j.created_at && (
-                                <span style={{ fontSize: '0.875rem', color: '#6b7280' }} title="Time since job created">
+                                <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created">
                                   <>Open<br />{formatTimeSince(j.created_at)}</>
                                 </span>
                               )}
@@ -8292,7 +8308,7 @@ export default function Dashboard() {
       {/* Reject Modal */}
       {rejectStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Previous work incomplete: {rejectStep.step.name}</h3>
             <label style={{ display: 'block', marginBottom: 4 }}>Reason and Proposed Remedy</label>
             <textarea
@@ -8313,7 +8329,7 @@ export default function Dashboard() {
       {/* Skip Modal */}
       {skipStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Skip stage: {skipStep.step.name}</h3>
             <label style={{ display: 'block', marginBottom: 4 }}>Why is this stage being skipped?</label>
             <textarea
@@ -8324,12 +8340,12 @@ export default function Dashboard() {
               placeholder="e.g. Client waived inspection, combined with prior stage, not applicable..."
             />
             <div style={{ marginBottom: '1rem' }}>
-              <button type="button" onClick={() => setSkipStep((s) => s ? { ...s, reason: 'Not relevant' } : null)} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>
+              <button type="button" onClick={() => setSkipStep((s) => s ? { ...s, reason: 'Not relevant' } : null)} style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline' }}>
                 Not relevant
               </button>
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={submitSkip} disabled={!skipStep.reason.trim()} style={{ padding: '0.5rem 1rem', color: '#92400e', ...(!skipStep.reason.trim() && { opacity: 0.5, cursor: 'not-allowed' }) }}>Skip</button>
+              <button type="button" onClick={submitSkip} disabled={!skipStep.reason.trim()} style={{ padding: '0.5rem 1rem', color: 'var(--text-amber-800)', ...(!skipStep.reason.trim() && { opacity: 0.5, cursor: 'not-allowed' }) }}>Skip</button>
               <button type="button" onClick={() => setSkipStep(null)} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
             </div>
           </div>
@@ -8339,7 +8355,7 @@ export default function Dashboard() {
       {/* Set Start Modal */}
       {setStartStep && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}>
             <h3 style={{ marginTop: 0 }}>Set Start Time: {setStartStep.step.name}</h3>
             <label htmlFor="start-datetime" style={{ display: 'block', marginBottom: 4 }}>Start Date & Time</label>
             <input
@@ -8390,7 +8406,7 @@ export default function Dashboard() {
               {subscribedLoading && subscribedSteps.length === 0 ? (
                 <SubscribedSkeleton />
               ) : subscribedSteps.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
                   No subscribed stages. Go to a workflow and enable &quot;Notify when started&quot;, &quot;Notify when complete&quot;, or &quot;Notify when re-opened&quot; for steps you want to track here.
                 </p>
               ) : (
@@ -8405,14 +8421,14 @@ export default function Dashboard() {
                         key={sub.step_id}
                         style={{
                           padding: '0.75rem 0',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                         }}
                       >
                         <div>
                           <Link to={`/workflows/${sub.project_id}#step-${sub.step_id}`} style={{ fontWeight: 500 }}>
                             {sub.step_name}
                           </Link>
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>
                             {formatProjectNumberLabel(sub.project_number) ?? 'Project'}:{' '}
                             <button
                               type="button"
@@ -8420,7 +8436,7 @@ export default function Dashboard() {
                                 editProjectModal?.openEditProjectModal(sub.project_id)
                               }}
                               style={{
-                                color: '#2563eb',
+                                color: 'var(--text-link)',
                                 background: 'none',
                                 border: 'none',
                                 padding: 0,
@@ -8433,7 +8449,7 @@ export default function Dashboard() {
                             </button>
                           </div>
                           {notifications.length > 0 && (
-                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 4 }}>
                               Notify when: {notifications.join(', ')}
                             </div>
                           )}
@@ -8562,9 +8578,9 @@ export default function Dashboard() {
       ) : null}
       {readyForBillingJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Send to<br />Billing</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {readyForBillingJob.hcpNumber} · {readyForBillingJob.jobName}
             </p>
             <div style={{ marginBottom: '1rem' }}>
@@ -8595,7 +8611,7 @@ export default function Dashboard() {
                   setReadyForBillingChecked1(false)
                   setReadyForBillingChecked2(false)
                 }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -8627,7 +8643,7 @@ export default function Dashboard() {
       )}
       {sendRecordJobMeta && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8 }}>Loading job…</div>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8 }}>Loading job…</div>
         </div>
       )}
       <BilledPaymentConfirmationModal
@@ -8666,9 +8682,9 @@ export default function Dashboard() {
       />
       {sendBackInvoice && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}</h2>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {`Job ${sendBackInvoice.inv.hcp_number || '—'} · ${sendBackInvoice.inv.job_name || '—'} · $${sendBackInvoice.inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
             </p>
             {sendBackInvoice.action === 'delete' && (
@@ -8677,7 +8693,7 @@ export default function Dashboard() {
             {sendBackInvoice.action === 'revert' &&
               invoiceNeedsStripeVoidForRevert(sendBackInvoice.inv) &&
               sendBackInvoiceStripeExplainerAfterFailure && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
                 This bill was sent via Stripe. We will void or remove the Stripe invoice so the customer cannot pay an unpaid bill. If it is already paid in Stripe, send back will fail until you resolve it there.
               </p>
             )}
@@ -8695,7 +8711,7 @@ export default function Dashboard() {
                   setSendBackChecked(false)
                   setSendBackInvoiceStripeExplainerAfterFailure(false)
                 }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -8739,7 +8755,7 @@ export default function Dashboard() {
       )}
       {sendBackJob && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 400, maxWidth: 480 }}>
             <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>{sendBackJob.toStatus === 'working' ? 'Job: Send Job Back' : 'Send back'}</h2>
             <p style={{ margin: '0 0 1rem', fontSize: '0.875rem' }}>
               {sendBackJob.toStatus === 'ready_to_bill'
@@ -8752,19 +8768,19 @@ export default function Dashboard() {
                     }`
                   : 'This will move the job back to Assigned Jobs (Working).'}
             </p>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               {sendBackJob.hcpNumber} · {sendBackJob.jobName}
             </p>
             {sendBackJob.toStatus === 'working' && sendBackCollectPaymentNotice != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>{sendBackCollectPaymentNotice}</p>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>{sendBackCollectPaymentNotice}</p>
             )}
             {sendBackStatusEventLine != null && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                 {sendBackStatusEventLine}
               </p>
             )}
             {sendBackJob.toStatus === 'ready_to_bill' && (
-              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#92400e' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-amber-800)' }}>
                 Billed lines on this job will be removed (Stripe invoices voided first where applicable). Lines with recorded payments block send back until adjusted. Paid Stripe invoices block until resolved in Stripe.
               </p>
             )}
@@ -8786,7 +8802,7 @@ export default function Dashboard() {
                   setSendBackJob(null)
                   setSendBackChecked(false)
                 }}
-                style={{ padding: '0.5rem 1rem', border: '1px solid #d1d5db', background: 'white', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>

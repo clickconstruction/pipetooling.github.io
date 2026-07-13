@@ -255,7 +255,7 @@ export function PayStubLessModal({
         role="dialog"
         aria-labelledby="pay-stub-less-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.25rem',
           borderRadius: 8,
           minWidth: 320,
@@ -271,30 +271,30 @@ export function PayStubLessModal({
         <h2 id="pay-stub-less-title" style={{ margin: '0 0 0.35rem', fontSize: '1.2rem' }}>
           Less — {activeStub.person_name}
         </h2>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Period {ledgerPeriodLabel(activeStub.period_start, activeStub.period_end)} · Gross ${formatCurrency(activeStub.gross_pay)} · Net Pay $
           {formatCurrency(netPay)}
         </p>
-        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Installments apply to Net Pay (not Gross).
         </p>
         <div
           style={{
             marginBottom: '1rem',
             padding: '0.75rem',
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
             borderRadius: 6,
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
           }}
         >
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Payments on this report</div>
           <div style={{ fontSize: '0.875rem', display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
-              <span style={{ color: '#374151' }}>Paid to date</span>
+              <span style={{ color: 'var(--text-700)' }}>Paid to date</span>
               <span style={{ fontWeight: 600 }}>${formatCurrency(paidSum)}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
-              <span style={{ color: '#374151' }}>Balance</span>
+              <span style={{ color: 'var(--text-700)' }}>Balance</span>
               <button
                 type="button"
                 disabled={balanceFillDisabled}
@@ -310,7 +310,7 @@ export function PayStubLessModal({
                   padding: 0,
                   border: 'none',
                   background: 'none',
-                  color: balanceFillDisabled ? '#6b7280' : '#2563eb',
+                  color: balanceFillDisabled ? 'var(--text-muted)' : 'var(--text-link)',
                   cursor: balanceFillDisabled ? 'not-allowed' : 'pointer',
                   textDecoration: balanceFillDisabled ? 'none' : 'underline',
                   fontSize: 'inherit',
@@ -323,9 +323,9 @@ export function PayStubLessModal({
             </div>
           </div>
           {payments.length === 0 ? (
-            <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>No payments recorded yet.</p>
+            <p style={{ margin: '0.75rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No payments recorded yet.</p>
           ) : (
-            <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.2rem', fontSize: '0.8125rem', color: '#374151' }}>
+            <ul style={{ margin: '0.75rem 0 0', paddingLeft: '1.2rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
               {[...payments]
                 .sort((a, b) => a.paid_at.localeCompare(b.paid_at))
                 .map((p) => (
@@ -336,7 +336,7 @@ export function PayStubLessModal({
                     {p.memo?.trim() ? (
                       <>
                         {' · '}
-                        <span style={{ color: '#6b7280' }}>{p.memo.trim()}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{p.memo.trim()}</span>
                       </>
                     ) : null}
                   </li>
@@ -345,7 +345,7 @@ export function PayStubLessModal({
           )}
         </div>
         {deductionsLocked ? (
-          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#059669', fontWeight: 500 }}>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
             Installments fully cover Net Pay — add or remove charges only after adjusting payments.
           </p>
         ) : null}
@@ -353,14 +353,14 @@ export function PayStubLessModal({
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Charges on this report</div>
           {deductions.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>None — totals reflect Gross only.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>None — totals reflect Gross only.</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.875rem' }}>
               {deductions.map((d) => (
                 <li key={d.id} style={{ marginBottom: '0.5rem' }}>
                   <span style={{ fontWeight: 500 }}>${formatCurrency(d.amount)}</span>
                   {' · '}
-                  <span style={{ color: '#6b7280' }}>{d.source === 'offset' ? 'Offset' : 'Manual'}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{d.source === 'offset' ? 'Offset' : 'Manual'}</span>
                   {' — '}
                   {d.description}
                   <button
@@ -372,8 +372,8 @@ export function PayStubLessModal({
                       padding: '1px 6px',
                       fontSize: '0.75rem',
                       border: '1px solid #fecaca',
-                      background: 'white',
-                      color: '#dc2626',
+                      background: 'var(--surface)',
+                      color: 'var(--text-red-600)',
                       borderRadius: 4,
                       cursor: deductionsLocked || deletingDeductionId === d.id ? 'not-allowed' : 'pointer',
                       opacity: deductionsLocked ? 0.5 : 1,
@@ -387,7 +387,7 @@ export function PayStubLessModal({
           )}
         </div>
 
-        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 6, border: '1px solid #e5e7eb' }}>
+        <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 6, border: '1px solid var(--border)' }}>
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Add manual charge</div>
           <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
             Amount ($)
@@ -398,7 +398,7 @@ export function PayStubLessModal({
               value={manualAmount}
               onChange={(e) => setManualAmount(e.target.value)}
               disabled={deductionsLocked || savingManual}
-              style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%', maxWidth: 160 }}
+              style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%', maxWidth: 160 }}
             />
           </label>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.8125rem' }}>
@@ -409,7 +409,7 @@ export function PayStubLessModal({
               onChange={(e) => setManualDescription(e.target.value)}
               disabled={deductionsLocked || savingManual}
               placeholder="Reason for deduction"
-              style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, width: '100%' }}
+              style={{ display: 'block', marginTop: '0.2rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '100%' }}
             />
           </label>
           <button
@@ -433,9 +433,9 @@ export function PayStubLessModal({
         <div style={{ marginBottom: '1rem' }}>
           <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.35rem' }}>Apply pending offset</div>
           {pendingLoading ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
           ) : pendingOffsets.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No pending offsets for this person.</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No pending offsets for this person.</p>
           ) : (
             <ul style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.8125rem' }}>
               {pendingOffsets.map((o) => {

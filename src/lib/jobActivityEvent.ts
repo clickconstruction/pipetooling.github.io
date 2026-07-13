@@ -63,7 +63,7 @@ const DANGER_RED = { tagColor: '#b91c1c', borderColor: '#fca5a5' } as const
 const STATUS_AMBER = { tagColor: '#b45309', borderColor: '#fcd34d' } as const
 const CREW_INDIGO = { tagColor: '#4f46e5', borderColor: '#a5b4fc' } as const
 const WORK_TEAL = { tagColor: '#0f766e', borderColor: '#5eead4' } as const
-const EDIT_GRAY = { tagColor: '#6b7280', borderColor: '#d1d5db' } as const
+const EDIT_GRAY = { tagColor: '#6b7280', borderColor: 'var(--border-strong)' } as const
 const COMBINE_PURPLE = { tagColor: '#7c3aed', borderColor: '#c4b5fd' } as const
 
 export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRenderMeta> = {

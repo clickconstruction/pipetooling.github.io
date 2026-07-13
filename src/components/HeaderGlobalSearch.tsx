@@ -362,8 +362,8 @@ const resultsPanelBaseStyle = {
   left: 'var(--app-nav-pad-x)',
   right: 'var(--app-nav-pad-x)',
   zIndex: 42,
-  background: '#ffffff',
-  border: '1px solid #e5e7eb',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderTop: 'none',
   borderRadius: '0 0 8px 8px',
   boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
@@ -411,7 +411,7 @@ export function HeaderGlobalSearchNavLayer() {
             minWidth: 0,
             padding: '0.45rem 0.6rem',
             fontSize: '1rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
             boxSizing: 'border-box',
           }}
@@ -423,11 +423,11 @@ export function HeaderGlobalSearchNavLayer() {
             flex: '0 0 auto',
             padding: '0.45rem 0.75rem',
             fontSize: '0.875rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
             cursor: 'pointer',
-            color: '#111827',
+            color: 'var(--text-strong)',
           }}
         >
           Back
@@ -461,7 +461,7 @@ export function HeaderGlobalSearchNavLayer() {
                       background: 'transparent',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
-                      color: '#111827',
+                      color: 'var(--text-strong)',
                       borderBottom: '1px solid #f3f4f6',
                     }}
                   >
@@ -474,7 +474,7 @@ export function HeaderGlobalSearchNavLayer() {
                             padding: '0.1rem 0.28rem',
                             borderRadius: 3,
                             background: pill.color,
-                            color: '#111827',
+                            color: 'var(--text-strong)',
                             lineHeight: 1.2,
                           }}
                         >
@@ -495,7 +495,7 @@ export function HeaderGlobalSearchNavLayer() {
               margin: 0,
               padding: '0.5rem 0.6rem',
               fontSize: '0.875rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               overflowY: 'visible',
               maxHeight: 'none',
             }}

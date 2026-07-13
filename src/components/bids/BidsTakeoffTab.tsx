@@ -2479,7 +2479,7 @@ export function BidsTakeoffTab({
           >
             <div
               style={{
-                background: 'white',
+                background: 'var(--surface)',
                 padding: '1.5rem',
                 borderRadius: 8,
                 maxWidth: 420,
@@ -2491,12 +2491,12 @@ export function BidsTakeoffTab({
               <h3 id="takeoff-remove-confirm-title" style={{ margin: '0 0 0.75rem', fontSize: '1.05rem' }}>
                 Remove this line?
               </h3>
-              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                 {takeoffRemoveConfirm.kind === 'rough_line'
                   ? 'This part line will be removed from the takeoff. You can add it again later.'
                   : 'This assembly line will be removed from the takeoff. You can add an assembly again later.'}
               </p>
-              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.5 }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
                 <strong>Delete</strong> is focused when this dialog opens—press <strong>Space</strong> or{' '}
                 <strong>Enter</strong> to remove the line, or choose <strong>Cancel</strong> / <strong>Esc</strong> to
                 keep it.
@@ -2507,8 +2507,8 @@ export function BidsTakeoffTab({
                   onClick={closeTakeoffRemoveConfirm}
                   style={{
                     padding: '0.4rem 0.85rem',
-                    background: '#f3f4f6',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--bg-muted)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     cursor: 'pointer',
                     fontSize: '0.875rem',
@@ -2545,7 +2545,7 @@ export function BidsTakeoffTab({
                 placeholder="Search bids (bid #, project name, or GC/Builder)..."
                 value={takeoffSearchQuery}
                 onChange={(e) => setTakeoffSearchQuery(e.target.value)}
-                style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
               />
               <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
             </div>
@@ -2553,10 +2553,10 @@ export function BidsTakeoffTab({
           {selectedBidForTakeoff && (
             <div
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '1.5rem 2rem',
-                background: 'white',
+                background: 'var(--surface)',
                 marginBottom: '1.5rem',
                 ...(narrowViewport640 ? { position: 'relative' } : {}),
               }}
@@ -2611,7 +2611,7 @@ export function BidsTakeoffTab({
                         fontSize: '0.875rem',
                         fontWeight: 500,
                         marginRight: '0.25rem',
-                        color: '#4b5563',
+                        color: 'var(--text-600)',
                         whiteSpace: 'nowrap',
                       }}
                     >
@@ -2623,12 +2623,12 @@ export function BidsTakeoffTab({
                       style={{
                         padding: '0.35rem 0.75rem',
                         fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: takeoffMaterialsModel === 'exact' ? '#e5e7eb' : 'white',
+                        background: takeoffMaterialsModel === 'exact' ? 'var(--bg-200)' : 'var(--surface)',
                         cursor: 'pointer',
                         fontWeight: takeoffMaterialsModel === 'exact' ? 600 : 400,
-                        color: takeoffMaterialsModel === 'exact' ? '#111827' : '#6b7280',
+                        color: takeoffMaterialsModel === 'exact' ? 'var(--text-strong)' : 'var(--text-muted)',
                         boxShadow: takeoffMaterialsModel === 'exact' ? '0 0 0 2px #374151' : 'none',
                       }}
                     >
@@ -2640,12 +2640,12 @@ export function BidsTakeoffTab({
                       style={{
                         padding: '0.35rem 0.75rem',
                         fontSize: '0.8125rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: takeoffMaterialsModel === 'rough' ? '#e5e7eb' : 'white',
+                        background: takeoffMaterialsModel === 'rough' ? 'var(--bg-200)' : 'var(--surface)',
                         cursor: 'pointer',
                         fontWeight: takeoffMaterialsModel === 'rough' ? 600 : 400,
-                        color: takeoffMaterialsModel === 'rough' ? '#111827' : '#6b7280',
+                        color: takeoffMaterialsModel === 'rough' ? 'var(--text-strong)' : 'var(--text-muted)',
                         boxShadow: takeoffMaterialsModel === 'rough' ? '0 0 0 2px #374151' : 'none',
                       }}
                     >
@@ -2671,7 +2671,7 @@ export function BidsTakeoffTab({
                       }
                     }}
                     title={takeoffBookVersions.find((v) => v.id === selectedTakeoffBookVersionId)?.name ?? undefined}
-                    style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '12rem' }}
+                    style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '12rem' }}
                   >
                     <option value="">— Select version —</option>
                     {takeoffBookVersions.map((v) => (
@@ -2698,30 +2698,30 @@ export function BidsTakeoffTab({
                       {applyingTakeoffBookTemplates ? 'Applying…' : 'Apply Matching Fixture Assemblies'}
                     </button>
                     {takeoffBookApplyMessage && (
-                      <span style={{ color: '#059669', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
+                      <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{takeoffBookApplyMessage}</span>
                     )}
                   </div>
                 )}
               </div>
               {takeoffCountRows.length === 0 ? (
-                <p style={{ color: '#6b7280', margin: 0 }}>Add fixtures in the Counts tab first.</p>
+                <p style={{ color: 'var(--text-muted)', margin: 0 }}>Add fixtures in the Counts tab first.</p>
               ) : (
                 <>
                   {normalizeMaterialsModel(selectedBidForTakeoff.materials_model) === 'exact' ? (
                   <>
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     Select an Assembly for each Fixture or Tie-in you want to include in a PO (Purchase Order). Materials broken down by stage allows for staged billing.
                   </p>
-                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Quantity</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assembly</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Parts</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Stage</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Quantity</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2729,7 +2729,7 @@ export function BidsTakeoffTab({
                           const mappingsForRow = takeoffMappings.filter((m) => m.countRowId === row.id)
                           if (mappingsForRow.length === 0) {
                             return (
-                              <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                 <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
                                 <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
@@ -2754,7 +2754,7 @@ export function BidsTakeoffTab({
                                   if (preview === undefined || preview === 'loading') partsCell = 'Loading…'
                                   else if (preview === null) partsCell = 'Error loading parts'
                                   else if (!Array.isArray(preview) || preview.length === 0) partsCell = (
-                                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                                       No parts{' '}
                                       <button
                                         type="button"
@@ -2788,7 +2788,7 @@ export function BidsTakeoffTab({
                                             <button
                                               type="button"
                                               onClick={() => { setTakeoffPreviewModalTemplateId(mapping.templateId); setTakeoffPreviewModalTemplateName(templateName) }}
-                                              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                                             >
                                               and {rest} more
                                             </button>
@@ -2800,7 +2800,7 @@ export function BidsTakeoffTab({
                                             <button
                                               type="button"
                                               onClick={() => { setTakeoffPreviewModalTemplateId(mapping.templateId); setTakeoffPreviewModalTemplateName(templateName) }}
-                                              style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
+                                              style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}
                                             >
                                               View all
                                             </button>
@@ -2811,7 +2811,7 @@ export function BidsTakeoffTab({
                                   }
                                 }
                                 return (
-                                  <tr key={mapping.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                  <tr key={mapping.id} style={{ borderBottom: '1px solid var(--border)' }}>
                                     <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
                                     <td style={{ padding: '0.75rem' }}>
                                       <div style={{ position: 'relative' }}>
@@ -2829,13 +2829,13 @@ export function BidsTakeoffTab({
                                             onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffTemplatePickerOpenMappingId(null) }}
                                             readOnly={takeoffTemplatePickerOpenMappingId !== mapping.id && !!mapping.templateId}
                                             placeholder="Search assemblies by name or description…"
-                                            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffTemplatePickerOpenMappingId !== mapping.id && mapping.templateId ? '#f3f4f6' : undefined }}
+                                            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: takeoffTemplatePickerOpenMappingId !== mapping.id && mapping.templateId ? 'var(--bg-muted)' : undefined }}
                                           />
                                           {mapping.templateId && takeoffTemplatePickerOpenMappingId !== mapping.id && (
                                             <button
                                               type="button"
                                               onClick={() => { setTakeoffMapping(mapping.id, { templateId: '' }); setTakeoffTemplatePickerOpenMappingId(mapping.id); setTakeoffTemplatePickerQuery('') }}
-                                              style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                              style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                             >
                                               Clear
                                             </button>
@@ -2855,7 +2855,7 @@ export function BidsTakeoffTab({
                                             <span
                                               style={{
                                                 fontSize: '0.7rem',
-                                                color: '#6b7280',
+                                                color: 'var(--text-muted)',
                                                 textAlign: 'left',
                                                 overflow: 'hidden',
                                                 textOverflow: 'ellipsis',
@@ -2891,7 +2891,7 @@ export function BidsTakeoffTab({
                                                 border: 'none',
                                                 borderRadius: 4,
                                                 cursor: 'pointer',
-                                                color: '#6b7280',
+                                                color: 'var(--text-muted)',
                                               }}
                                             >
                                               <TakeoffPartEditIcon />
@@ -2905,7 +2905,7 @@ export function BidsTakeoffTab({
                                       <select
                                         value={mapping.stage}
                                         onChange={(e) => setTakeoffMapping(mapping.id, { stage: e.target.value as TakeoffStage })}
-                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                       >
                                         {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
                                           <option key={s} value={s}>{STAGE_LABELS[s]}</option>
@@ -2918,14 +2918,14 @@ export function BidsTakeoffTab({
                                         min={1}
                                         value={mapping.quantity}
                                         onChange={(e) => setTakeoffMapping(mapping.id, { quantity: e.target.value === '' ? 1 : Number(e.target.value) })}
-                                        style={{ width: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                                        style={{ width: 80, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                                       />
                                     </td>
                                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>
                                       <button
                                         type="button"
                                         onClick={() => setTakeoffRemoveConfirm({ kind: 'exact_mapping', mappingId: mapping.id })}
-                                        style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                                        style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                                       >
                                         Remove
                                       </button>
@@ -2933,7 +2933,7 @@ export function BidsTakeoffTab({
                                   </tr>
                                 )
                               })}
-                              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                 <td style={{ padding: '0.75rem' }} />
                                 <td colSpan={5} style={{ padding: '0.75rem' }}>
                                   <button
@@ -2964,14 +2964,14 @@ export function BidsTakeoffTab({
                       type="button"
                       onClick={printTakeoffBreakdown}
                       disabled={takeoffPrinting || takeoffMappedCount === 0}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: takeoffPrinting || takeoffMappedCount === 0 ? 'not-allowed' : 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: takeoffPrinting || takeoffMappedCount === 0 ? 'not-allowed' : 'pointer' }}
                     >
                       {takeoffPrinting ? 'Preparing…' : 'Print Breakdown'}
                     </button>
                     <select
                       value={takeoffExistingPOId}
                       onChange={(e) => setTakeoffExistingPOId(e.target.value)}
-                      style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 200 }}
+                      style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 200 }}
                     >
                       <option value="">OR add to existing PO…</option>
                       {draftPOs.map((po) => (
@@ -2982,39 +2982,39 @@ export function BidsTakeoffTab({
                       type="button"
                       onClick={addTakeoffToExistingPO}
                       disabled={takeoffAddingToPO || takeoffMappedCount === 0 || !takeoffExistingPOId.trim()}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: takeoffAddingToPO || takeoffMappedCount === 0 || !takeoffExistingPOId ? 'not-allowed' : 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: takeoffAddingToPO || takeoffMappedCount === 0 || !takeoffExistingPOId ? 'not-allowed' : 'pointer' }}
                     >
                       {takeoffAddingToPO ? 'Adding…' : 'Add to selected PO'}
                     </button>
                   </div>
                   {takeoffExistingPOId.trim() && (
-                    <div style={{ marginTop: '1rem', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden', maxHeight: 240, overflowY: 'auto' }}>
-                      <div style={{ padding: '0.5rem 0.75rem', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontWeight: 600, fontSize: '0.875rem' }}>
+                    <div style={{ marginTop: '1rem', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden', maxHeight: 240, overflowY: 'auto' }}>
+                      <div style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)', fontWeight: 600, fontSize: '0.875rem' }}>
                         Current items in this PO
                       </div>
                       {takeoffExistingPOItems === 'loading' && (
-                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading current items…</p>
+                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading current items…</p>
                       )}
                       {takeoffExistingPOItems === null && (
-                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Could not load items.</p>
+                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Could not load items.</p>
                       )}
                       {Array.isArray(takeoffExistingPOItems) && takeoffExistingPOItems.length === 0 && (
-                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>This PO has no items yet.</p>
+                        <p style={{ padding: '0.75rem 1rem', margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>This PO has no items yet.</p>
                       )}
                       {Array.isArray(takeoffExistingPOItems) && takeoffExistingPOItems.length > 0 && (
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                          <thead style={{ background: '#f9fafb' }}>
+                          <thead style={{ background: 'var(--bg-subtle)' }}>
                             <tr>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assembly</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Qty</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Price</th>
+                              <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total</th>
                             </tr>
                           </thead>
                           <tbody>
                             {takeoffExistingPOItems.map((item, i) => (
-                              <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                                 <td style={{ padding: '0.5rem 0.75rem' }}>{item.part_name}</td>
                                 <td style={{ padding: '0.5rem 0.75rem' }}>{item.template_name ?? '—'}</td>
                                 <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{item.quantity}</td>
@@ -3023,10 +3023,10 @@ export function BidsTakeoffTab({
                               </tr>
                             ))}
                           </tbody>
-                          <tfoot style={{ background: '#f9fafb' }}>
+                          <tfoot style={{ background: 'var(--bg-subtle)' }}>
                             <tr>
-                              <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>Grand Total:</td>
-                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>
+                              <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid var(--border)' }}>Grand Total:</td>
+                              <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid var(--border)' }}>
                                 ${takeoffExistingPOItems.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0).toFixed(2)}
                               </td>
                             </tr>
@@ -3054,19 +3054,19 @@ export function BidsTakeoffTab({
                       void handleRoughPartLinesDragEnd(e)
                     }}
                   >
-                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part or Assembly</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part or Assembly</th>
                           <th
                             style={{
                               padding: '0.75rem',
                               paddingLeft: 'calc(0.75rem + 0.35rem)',
                               paddingRight: '0.25rem',
                               textAlign: 'left',
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                             }}
                           >
                             Unit price
@@ -3075,7 +3075,7 @@ export function BidsTakeoffTab({
                             style={{
                               padding: '0.35rem 0.05rem 0.35rem 0.125rem',
                               textAlign: 'center',
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                               whiteSpace: 'nowrap',
                             }}
                           >
@@ -3085,13 +3085,13 @@ export function BidsTakeoffTab({
                             style={{
                               padding: '0.35rem 0.5rem 0.35rem 0.05rem',
                               textAlign: 'right',
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                               whiteSpace: 'nowrap',
                             }}
                           >
                             Line total
                           </th>
-                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                          <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -3102,7 +3102,7 @@ export function BidsTakeoffTab({
                           return (
                             <Fragment key={row.id}>
                               {linesForRow.length === 0 ? (
-                                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.75rem' }}>{takeoffFixtureCountLabel(row)}</td>
                                   <td colSpan={5} style={{ padding: '0.75rem' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
@@ -3117,7 +3117,7 @@ export function BidsTakeoffTab({
                                           }
                                         }}
                                         style={{
-                                          color: '#1d4ed8',
+                                          color: 'var(--text-blue-700)',
                                           cursor: 'pointer',
                                           textDecoration: 'underline',
                                           textUnderlineOffset: '2px',
@@ -3143,7 +3143,7 @@ export function BidsTakeoffTab({
                                           }
                                         }}
                                         style={{
-                                          color: '#4b5563',
+                                          color: 'var(--text-600)',
                                           cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
                                           textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
                                           textUnderlineOffset: '2px',
@@ -3198,7 +3198,7 @@ export function BidsTakeoffTab({
                                 </SortableContext>
                               )}
                               {linesForRow.length > 0 ? (
-                                <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.75rem' }} />
                                   <td colSpan={5} style={{ padding: '0.75rem' }}>
                                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
@@ -3213,7 +3213,7 @@ export function BidsTakeoffTab({
                                           }
                                         }}
                                         style={{
-                                          color: '#1d4ed8',
+                                          color: 'var(--text-blue-700)',
                                           cursor: 'pointer',
                                           textDecoration: 'underline',
                                           textUnderlineOffset: '2px',
@@ -3239,7 +3239,7 @@ export function BidsTakeoffTab({
                                           }
                                         }}
                                         style={{
-                                          color: '#4b5563',
+                                          color: 'var(--text-600)',
                                           cursor: materialTemplates.length === 0 ? 'not-allowed' : 'pointer',
                                           textDecoration: materialTemplates.length === 0 ? 'none' : 'underline',
                                           textUnderlineOffset: '2px',
@@ -3266,8 +3266,8 @@ export function BidsTakeoffTab({
                       disabled={takeoffPrinting || takeoffRoughFilledLineCount === 0}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         cursor: takeoffPrinting || takeoffRoughFilledLineCount === 0 ? 'not-allowed' : 'pointer',
                       }}
@@ -3278,7 +3278,7 @@ export function BidsTakeoffTab({
                   </>
                   )}
                   {takeoffSuccessMessage && (
-                    <p style={{ margin: '1rem 0 0', color: '#059669', fontSize: '0.875rem' }}>{takeoffSuccessMessage}</p>
+                    <p style={{ margin: '1rem 0 0', color: 'var(--text-green-600)', fontSize: '0.875rem' }}>{takeoffSuccessMessage}</p>
                   )}
                   {takeoffCreatedPOId && (
                     <p style={{ margin: '0.75rem 0 0' }}>
@@ -3298,7 +3298,7 @@ export function BidsTakeoffTab({
 
           {/* Add Template modal (from Takeoffs when no templates match) */}
           {takeoffAddTemplateModalOpen && (
-            <ModalShell zIndex={1100} cardStyle={{ background: 'white', padding: '2rem', borderRadius: 8, maxWidth: 560, width: '90%', maxHeight: '90vh', overflowY: 'auto' }} onCardClick={(e) => e.stopPropagation()}>
+            <ModalShell zIndex={1100} cardStyle={{ background: 'var(--surface)', padding: '2rem', borderRadius: 8, maxWidth: 560, width: '90%', maxHeight: '90vh', overflowY: 'auto' }} onCardClick={(e) => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                   <h2 style={{ margin: 0 }}>Add Assembly</h2>
                   <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1 }}>×</button>
@@ -3306,60 +3306,60 @@ export function BidsTakeoffTab({
                 <form onSubmit={saveTakeoffNewTemplate}>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Name *</label>
-                    <input type="text" value={takeoffNewTemplateName} onChange={(e) => setTakeoffNewTemplateName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <input type="text" value={takeoffNewTemplateName} onChange={(e) => setTakeoffNewTemplateName(e.target.value)} required style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                   </div>
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Description</label>
-                    <textarea value={takeoffNewTemplateDescription} onChange={(e) => setTakeoffNewTemplateDescription(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <textarea value={takeoffNewTemplateDescription} onChange={(e) => setTakeoffNewTemplateDescription(e.target.value)} rows={2} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
                     <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Items (parts or assembly)</div>
-                    <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: '#f9fafb', borderRadius: 4 }}>
-                      <select value={takeoffNewItemType} onChange={(e) => setTakeoffNewItemType(e.target.value as 'part' | 'template')} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}>
+                    <div style={{ marginBottom: '0.75rem', padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 4 }}>
+                      <select value={takeoffNewItemType} onChange={(e) => setTakeoffNewItemType(e.target.value as 'part' | 'template')} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}>
                         <option value="part">Part</option>
                         <option value="template">Nested Assembly</option>
                       </select>
                       {takeoffNewItemType === 'part' ? (
                         <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
                           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                            <input type="text" value={takeoffNewItemPartId ? (takeoffAddTemplateParts.find((p) => p.id === takeoffNewItemPartId)?.name ?? '') : takeoffNewItemPartSearchQuery} onChange={(e) => setTakeoffNewItemPartSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemPartDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemPartDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemPartDropdownOpen(false) }} readOnly={!!takeoffNewItemPartId} placeholder="Search parts by name, manufacturer, type, or notes…" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffNewItemPartId ? '#f3f4f6' : undefined }} />
-                            {takeoffNewItemPartId && <button type="button" onClick={() => { setTakeoffNewItemPartId(''); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
+                            <input type="text" value={takeoffNewItemPartId ? (takeoffAddTemplateParts.find((p) => p.id === takeoffNewItemPartId)?.name ?? '') : takeoffNewItemPartSearchQuery} onChange={(e) => setTakeoffNewItemPartSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemPartDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemPartDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemPartDropdownOpen(false) }} readOnly={!!takeoffNewItemPartId} placeholder="Search parts by name, manufacturer, type, or notes…" style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: takeoffNewItemPartId ? 'var(--bg-muted)' : undefined }} />
+                            {takeoffNewItemPartId && <button type="button" onClick={() => { setTakeoffNewItemPartId(''); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
                           </div>
                           {takeoffNewItemPartDropdownOpen && (
-                            <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(takeoffNewItemPartSearchQuery.trim()); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
+                            <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                              {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(takeoffNewItemPartSearchQuery.trim()); setTakeoffNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, takeoffNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemPartId(p.id); setTakeoffNewItemPartSearchQuery(''); setTakeoffNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                             </ul>
                           )}
                         </div>
                       ) : (
                         <div style={{ position: 'relative', marginBottom: '0.5rem' }}>
                           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-                            <input type="text" value={takeoffNewItemTemplateId ? (materialTemplates.find((t) => t.id === takeoffNewItemTemplateId)?.name ?? '') : takeoffNewItemTemplateSearchQuery} onChange={(e) => setTakeoffNewItemTemplateSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemTemplateDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemTemplateDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemTemplateDropdownOpen(false) }} readOnly={!!takeoffNewItemTemplateId} placeholder="Search assemblies by name or description…" style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: takeoffNewItemTemplateId ? '#f3f4f6' : undefined }} />
-                            {takeoffNewItemTemplateId && <button type="button" onClick={() => { setTakeoffNewItemTemplateId(''); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
+                            <input type="text" value={takeoffNewItemTemplateId ? (materialTemplates.find((t) => t.id === takeoffNewItemTemplateId)?.name ?? '') : takeoffNewItemTemplateSearchQuery} onChange={(e) => setTakeoffNewItemTemplateSearchQuery(e.target.value)} onFocus={() => setTakeoffNewItemTemplateDropdownOpen(true)} onBlur={() => setTimeout(() => setTakeoffNewItemTemplateDropdownOpen(false), 150)} onKeyDown={(e) => { if (e.key === 'Escape') setTakeoffNewItemTemplateDropdownOpen(false) }} readOnly={!!takeoffNewItemTemplateId} placeholder="Search assemblies by name or description…" style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: takeoffNewItemTemplateId ? 'var(--bg-muted)' : undefined }} />
+                            {takeoffNewItemTemplateId && <button type="button" onClick={() => { setTakeoffNewItemTemplateId(''); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>}
                           </div>
                           {takeoffNewItemTemplateDropdownOpen && (
-                            <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
+                            <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                              {filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates, takeoffNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setTakeoffNewItemTemplateId(t.id); setTakeoffNewItemTemplateSearchQuery(''); setTakeoffNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
                             </ul>
                           )}
                         </div>
                       )}
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                        <input type="number" min={1} value={takeoffNewItemQuantity} onChange={(e) => setTakeoffNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                        <input type="number" min={1} value={takeoffNewItemQuantity} onChange={(e) => setTakeoffNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                         <button type="button" onClick={addTakeoffNewTemplateItem} disabled={(takeoffNewItemType === 'part' && !takeoffNewItemPartId) || (takeoffNewItemType === 'template' && !takeoffNewItemTemplateId)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add item</button>
                       </div>
                     </div>
-                    <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead style={{ background: '#f9fafb' }}><tr><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Prices</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}></th></tr></thead>
+                        <thead style={{ background: 'var(--bg-subtle)' }}><tr><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Prices</th><th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}></th></tr></thead>
                         <tbody>
                           {takeoffNewTemplateItems.length === 0 ? (
-                            <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies above.</td></tr>
+                            <tr><td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No items yet. Add parts or nested assemblies above.</td></tr>
                           ) : (
                             takeoffNewTemplateItems.map((item, idx) => {
                               const name = item.item_type === 'part' && item.part_id ? (takeoffAddTemplateParts.find((p) => p.id === item.part_id)?.name ?? '—') : item.item_type === 'template' && item.nested_template_id ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—') : '—'
                               return (
-                                <tr key={idx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                                <tr key={idx} style={{ borderBottom: '1px solid var(--border)' }}>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -3368,15 +3368,15 @@ export function BidsTakeoffTab({
                                       min={1}
                                       value={item.quantity}
                                       onChange={(e) => updateTakeoffNewTemplateItemQuantity(idx, parseInt(e.target.value, 10) || 1)}
-                                      style={{ width: 64, padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                      style={{ width: 64, padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                                     />
                                   </td>
                                   <td style={{ padding: '0.5rem 0.75rem' }}>
                                     {item.item_type === 'part' && item.part_id ? (
-                                      <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}>Prices</button>
+                                      <button type="button" onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}>Prices</button>
                                     ) : '—'}
                                   </td>
-                                  <td style={{ padding: '0.5rem 0.75rem' }}><button type="button" onClick={() => removeTakeoffNewTemplateItem(idx)} style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}>Remove</button></td>
+                                  <td style={{ padding: '0.5rem 0.75rem' }}><button type="button" onClick={() => removeTakeoffNewTemplateItem(idx)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}>Remove</button></td>
                                 </tr>
                               )
                             })
@@ -3385,9 +3385,9 @@ export function BidsTakeoffTab({
                       </table>
                     </div>
                   </div>
-                  <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
-                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                       {saveAsAssemblyCountRowId
                         ? 'Optional: a bundle price a supply house quotes for this whole assembly. Pick one below with “Use for takeoff” to replace this fixture’s part lines with a single bundle line at that price.'
                         : 'Optional: a bundle price a supply house quotes for this whole assembly. Saved with the assembly and usable later via Add assembly → Add as bundle.'}
@@ -3399,7 +3399,7 @@ export function BidsTakeoffTab({
                             <tr key={p.supplyHouseId} style={{ borderBottom: '1px solid #f3f4f6' }}>
                               {saveAsAssemblyCountRowId && (
                                 <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>
-                                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', color: '#374151' }}>
+                                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                                     <input
                                       type="radio"
                                       name="takeoff-apply-bundle-price"
@@ -3423,7 +3423,7 @@ export function BidsTakeoffTab({
                                       return cur > idx ? cur - 1 : cur
                                     })
                                   }}
-                                  style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}
                                 >
                                   Remove
                                 </button>
@@ -3437,7 +3437,7 @@ export function BidsTakeoffTab({
                       const used = new Set(takeoffNewTemplatePrices.map((p) => p.supplyHouseId))
                       const available = supplyHouses.filter((sh) => !used.has(sh.id))
                       if (available.length === 0) {
-                        return <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Every supply house already has a price.</p>
+                        return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
                       }
                       const priceNum = parseFloat(takeoffNewTemplatePriceValue)
                       const canAdd = !!takeoffNewTemplatePriceSupplyHouseId && !isNaN(priceNum) && priceNum >= 0
@@ -3449,19 +3449,19 @@ export function BidsTakeoffTab({
                         setTakeoffNewTemplatePriceValue('')
                       }
                       return (
-                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#f9fafb', padding: '0.75rem', borderRadius: 4 }}>
-                          <select value={takeoffNewTemplatePriceSupplyHouseId} onChange={(e) => setTakeoffNewTemplatePriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
+                          <select value={takeoffNewTemplatePriceSupplyHouseId} onChange={(e) => setTakeoffNewTemplatePriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}>
                             <option value="">Select supply house</option>
                             {available.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}</option>)}
                           </select>
-                          <input type="number" min={0} step="0.01" value={takeoffNewTemplatePriceValue} onChange={(e) => setTakeoffNewTemplatePriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                          <button type="button" disabled={!canAdd} onClick={addPrice} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : '#e5e7eb', color: canAdd ? 'white' : '#9ca3af', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>Add</button>
+                          <input type="number" min={0} step="0.01" value={takeoffNewTemplatePriceValue} onChange={(e) => setTakeoffNewTemplatePriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                          <button type="button" disabled={!canAdd} onClick={addPrice} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>Add</button>
                         </div>
                       )
                     })()}
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                    <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="button" onClick={closeTakeoffAddTemplateModal} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                     <button type="submit" disabled={savingTakeoffNewTemplate} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffNewTemplate ? 'Saving…' : 'Save'}</button>
                   </div>
                 </form>
@@ -3486,7 +3486,7 @@ export function BidsTakeoffTab({
             >
               <div
                 style={{
-                  background: 'white',
+                  background: 'var(--surface)',
                   padding: '1.5rem',
                   borderRadius: 8,
                   maxWidth: 440,
@@ -3513,7 +3513,7 @@ export function BidsTakeoffTab({
                   onChange={(e) => setRoughAddAssemblySearchQuery(e.target.value)}
                   placeholder="Search assemblies by name or description…"
                   disabled={roughAddAssemblyExpanding}
-                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                 />
                 <ul
                   style={{
@@ -3522,12 +3522,12 @@ export function BidsTakeoffTab({
                     listStyle: 'none',
                     maxHeight: '70vh',
                     overflowY: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 4,
                   }}
                 >
                   {filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).length === 0 ? (
-                    <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li>
+                    <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li>
                   ) : (
                     filterTemplatesByQuery(materialTemplates, roughAddAssemblySearchQuery, 50).map((t) => (
                       <li key={t.id} style={{ display: 'flex', alignItems: 'stretch', borderBottom: '1px solid #f3f4f6' }}>
@@ -3544,13 +3544,13 @@ export function BidsTakeoffTab({
                             textAlign: 'left',
                             padding: '0.5rem 0.75rem',
                             border: 'none',
-                            background: roughAddAssemblyExpanding ? '#f9fafb' : '#fff',
+                            background: roughAddAssemblyExpanding ? 'var(--bg-subtle)' : 'var(--surface)',
                             cursor: roughAddAssemblyExpanding ? 'not-allowed' : 'pointer',
                           }}
                         >
                           <div style={{ fontWeight: 500 }}>{t.name}</div>
                           {t.description ? (
-                            <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>
+                            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>
                           ) : null}
                         </button>
                         <button
@@ -3565,8 +3565,8 @@ export function BidsTakeoffTab({
                             padding: '0.5rem 0.75rem',
                             border: 'none',
                             borderLeft: '1px solid #f3f4f6',
-                            background: roughAddAssemblyExpanding ? '#f9fafb' : '#eff6ff',
-                            color: '#1d4ed8',
+                            background: roughAddAssemblyExpanding ? 'var(--bg-subtle)' : 'var(--bg-blue-tint)',
+                            color: 'var(--text-blue-700)',
                             fontWeight: 600,
                             fontSize: '0.8125rem',
                             whiteSpace: 'nowrap',
@@ -3580,7 +3580,7 @@ export function BidsTakeoffTab({
                   )}
                 </ul>
                 {roughAddAssemblyExpanding ? (
-                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>Adding parts…</p>
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Adding parts…</p>
                 ) : null}
               </div>
             </div>
@@ -3601,7 +3601,7 @@ export function BidsTakeoffTab({
             >
               <div
                 style={{
-                  background: 'white',
+                  background: 'var(--surface)',
                   borderRadius: 8,
                   padding: '1.5rem',
                   maxWidth: 420,
@@ -3616,18 +3616,18 @@ export function BidsTakeoffTab({
                   <button
                     type="button"
                     onClick={() => { setTakeoffPreviewModalTemplateId(null); setTakeoffPreviewModalTemplateName(null) }}
-                    style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Close
                   </button>
                 </div>
                 {(() => {
                   const preview = takeoffTemplatePreviewCache[takeoffPreviewModalTemplateId]
-                  if (preview === 'loading') return <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
-                  if (preview === null) return <p style={{ margin: 0, color: '#b91c1c' }}>Error loading parts.</p>
+                  if (preview === 'loading') return <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p>
+                  if (preview === null) return <p style={{ margin: 0, color: 'var(--text-red-700)' }}>Error loading parts.</p>
                   if (!preview || preview.length === 0) return (
                     <div>
-                      <p style={{ margin: 0, marginBottom: '1rem', color: '#6b7280' }}>No parts in this template.</p>
+                      <p style={{ margin: 0, marginBottom: '1rem', color: 'var(--text-muted)' }}>No parts in this template.</p>
                       <button
                         type="button"
                         onClick={() => {
@@ -3661,12 +3661,12 @@ export function BidsTakeoffTab({
             </div>
           )}
           {!selectedBidForTakeoff && (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3675,7 +3675,7 @@ export function BidsTakeoffTab({
                       key={bid.id}
                       onClick={() => onSelectBid(bid)}
                       style={{
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border)',
                         cursor: 'pointer',
                       }}
                     >
@@ -3720,8 +3720,8 @@ export function BidsTakeoffTab({
                       alignItems: 'center',
                       gap: '0.25rem',
                       padding: '0.35rem 0.5rem',
-                      background: takeoffBookEntriesVersionId === v.id ? '#dbeafe' : '#f3f4f6',
-                      border: takeoffBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid #d1d5db',
+                      background: takeoffBookEntriesVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
+                      border: takeoffBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                       borderRadius: 4,
                     }}
                   >
@@ -3744,7 +3744,7 @@ export function BidsTakeoffTab({
                       <button
                         type="button"
                         onClick={() => deleteTakeoffBookVersion(v)}
-                        style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: '#991b1b', fontSize: '0.875rem' }}
+                        style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-red-800)', fontSize: '0.875rem' }}
                         title="Delete version"
                       >
                         ×
@@ -3763,21 +3763,21 @@ export function BidsTakeoffTab({
               {takeoffBookEntriesVersionId && (
                 <>
                   <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9375rem' }}>Entries</h4>
-                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                      <thead style={{ background: '#f9fafb' }}>
+                      <thead style={{ background: 'var(--bg-subtle)' }}>
                         <tr>
-                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Fixture or Tie-in</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
-                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Stage</th>
-                          <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid #e5e7eb' }} />
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Fixture or Tie-in</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assembly</th>
+                          <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Stage</th>
+                          <th style={{ padding: '0.5rem', width: 60, borderBottom: '1px solid var(--border)' }} />
                         </tr>
                       </thead>
                       <tbody>
                         {takeoffBookEntries.map((entry) => (
-                          <tr key={entry.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={entry.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem' }}>{entry.fixture_name ?? ''}{entry.alias_names?.length ? (
-                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.25rem' }}>also: {entry.alias_names.join(', ')}</span>
                             ) : null}</td>
                             <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => materialTemplates.find((t) => t.id === i.template_id)?.name ?? i.template_id).join(', ')}</td>
                             <td style={{ padding: '0.5rem' }}>{entry.items.length === 0 ? '—' : entry.items.map((i) => STAGE_LABELS[i.stage as TakeoffStage] ?? i.stage).join(', ')}</td>
@@ -3816,7 +3816,7 @@ export function BidsTakeoffTab({
               onClick={closeTakeoffBookVersionForm}
             >
               <div
-                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 320, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 style={{ margin: '0 0 1rem' }}>{editingTakeoffBookVersion ? 'Edit version' : 'New version'}</h3>
@@ -3826,11 +3826,11 @@ export function BidsTakeoffTab({
                     type="text"
                     value={takeoffBookVersionNameInput}
                     onChange={(e) => setTakeoffBookVersionNameInput(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem', boxSizing: 'border-box' }}
                     placeholder="e.g. 2025 Standard"
                   />
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                    <button type="button" onClick={closeTakeoffBookVersionForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                    <button type="button" onClick={closeTakeoffBookVersionForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                     <button type="submit" disabled={savingTakeoffBookVersion} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookVersion ? 'Saving…' : 'Save'}</button>
                   </div>
                 </form>
@@ -3851,7 +3851,7 @@ export function BidsTakeoffTab({
               onClick={closeTakeoffBookEntryForm}
             >
               <div
-                style={{ background: 'white', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+                style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', minWidth: 360, boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 style={{ margin: '0 0 1rem' }}>{editingTakeoffBookEntry ? 'Edit entry' : 'New entry'}</h3>
@@ -3861,7 +3861,7 @@ export function BidsTakeoffTab({
                     type="text"
                     value={takeoffBookEntryFixtureName}
                     onChange={(e) => setTakeoffBookEntryFixtureName(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.75rem', boxSizing: 'border-box' }}
                     placeholder="e.g. Toilet"
                   />
                   <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Additional names (optional)</label>
@@ -3869,10 +3869,10 @@ export function BidsTakeoffTab({
                     type="text"
                     value={takeoffBookEntryAliasNames}
                     onChange={(e) => setTakeoffBookEntryAliasNames(e.target.value)}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.25rem', boxSizing: 'border-box' }}
                     placeholder="e.g. WC, Commode"
                   />
-                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: '#6b7280' }}>If any of these match a count row's Fixture or Tie-in, these assemblies and stages are applied.</p>
+                  <p style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>If any of these match a count row's Fixture or Tie-in, these assemblies and stages are applied.</p>
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Assembly / Stage</label>
                     {takeoffBookEntryItemRows.map((row, idx) => (
@@ -3880,7 +3880,7 @@ export function BidsTakeoffTab({
                         <select
                           value={row.templateId}
                           onChange={(e) => setTakeoffBookEntryItemRows((prev) => prev.map((r, i) => (i === idx ? { ...r, templateId: e.target.value } : r)))}
-                          style={{ flex: '1 1 140px', minWidth: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                          style={{ flex: '1 1 140px', minWidth: 120, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                         >
                           <option value="">— Select assembly —</option>
                           {materialTemplates.map((t) => (
@@ -3890,7 +3890,7 @@ export function BidsTakeoffTab({
                         <select
                           value={row.stage}
                           onChange={(e) => setTakeoffBookEntryItemRows((prev) => prev.map((r, i) => (i === idx ? { ...r, stage: e.target.value as TakeoffStage } : r)))}
-                          style={{ flex: '0 0 auto', minWidth: 100, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                          style={{ flex: '0 0 auto', minWidth: 100, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                         >
                           {(['rough_in', 'top_out', 'trim_set'] as const).map((s) => (
                             <option key={s} value={s}>{STAGE_LABELS[s]}</option>
@@ -3900,7 +3900,7 @@ export function BidsTakeoffTab({
                           type="button"
                           onClick={() => setTakeoffBookEntryItemRows((prev) => prev.filter((_, i) => i !== idx))}
                           disabled={takeoffBookEntryItemRows.length <= 1}
-                          style={{ padding: '0.5rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 4, cursor: takeoffBookEntryItemRows.length <= 1 ? 'not-allowed' : 'pointer', color: '#991b1b', opacity: takeoffBookEntryItemRows.length <= 1 ? 0.6 : 1 }}
+                          style={{ padding: '0.5rem', background: 'var(--bg-red-tint)', border: '1px solid #fecaca', borderRadius: 4, cursor: takeoffBookEntryItemRows.length <= 1 ? 'not-allowed' : 'pointer', color: 'var(--text-red-800)', opacity: takeoffBookEntryItemRows.length <= 1 ? 0.6 : 1 }}
                           title="Remove"
                         >
                           Remove
@@ -3910,7 +3910,7 @@ export function BidsTakeoffTab({
                     <button
                       type="button"
                       onClick={() => setTakeoffBookEntryItemRows((prev) => [...prev, { templateId: '', stage: 'rough_in' }])}
-                      style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ marginTop: '0.25rem', padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Add assembly & stage
                     </button>
@@ -3926,14 +3926,14 @@ export function BidsTakeoffTab({
                             await deleteTakeoffBookEntry(editingTakeoffBookEntry)
                             closeTakeoffBookEntryForm()
                           }}
-                          style={{ padding: '0.5rem 1rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                         >
                           Delete
                         </button>
                       )}
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button type="button" onClick={closeTakeoffBookEntryForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                      <button type="button" onClick={closeTakeoffBookEntryForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                       <button type="submit" disabled={savingTakeoffBookEntry || !takeoffBookEntryFixtureName.trim() || !takeoffBookEntryItemRows.some((r) => r.templateId.trim() !== '')} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingTakeoffBookEntry ? 'Saving…' : 'Save'}</button>
                     </div>
                   </div>
@@ -3953,14 +3953,14 @@ export function BidsTakeoffTab({
                     <select
                       value={costEstimate?.purchase_order_id_rough_in ?? ''}
                       onChange={(e) => setCostEstimatePO('rough_in', e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     >
                       <option value="">—</option>
                       {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'rough_in' || po.stage === null).map((po) => (
                         <option key={po.id} value={po.id}>{po.name}</option>
                       ))}
                     </select>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       Rough In materials: {costEstimateMaterialTotalRoughIn != null ? `$${formatCurrency(Number(costEstimateMaterialTotalRoughIn))}` : '—'}
                       {costEstimateMaterialTotalRoughIn != null && (
                         <>
@@ -3973,7 +3973,7 @@ export function BidsTakeoffTab({
                       <button
                         type="button"
                         onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_rough_in)}
-                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
                       >
                         View
                       </button>
@@ -3984,14 +3984,14 @@ export function BidsTakeoffTab({
                     <select
                       value={costEstimate?.purchase_order_id_top_out ?? ''}
                       onChange={(e) => setCostEstimatePO('top_out', e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     >
                       <option value="">—</option>
                       {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'top_out' || po.stage === null).map((po) => (
                         <option key={po.id} value={po.id}>{po.name}</option>
                       ))}
                     </select>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       Top Out materials: {costEstimateMaterialTotalTopOut != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTopOut))}` : '—'}
                       {costEstimateMaterialTotalTopOut != null && (
                         <>
@@ -4004,7 +4004,7 @@ export function BidsTakeoffTab({
                       <button
                         type="button"
                         onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_top_out)}
-                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
                       >
                         View
                       </button>
@@ -4015,14 +4015,14 @@ export function BidsTakeoffTab({
                     <select
                       value={costEstimate?.purchase_order_id_trim_set ?? ''}
                       onChange={(e) => setCostEstimatePO('trim_set', e.target.value)}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     >
                       <option value="">—</option>
                       {purchaseOrdersForCostEstimate.filter((po) => po.stage === 'trim_set' || po.stage === null).map((po) => (
                         <option key={po.id} value={po.id}>{po.name}</option>
                       ))}
                     </select>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                       Trim Set materials: {costEstimateMaterialTotalTrimSet != null ? `$${formatCurrency(Number(costEstimateMaterialTotalTrimSet))}` : '—'}
                       {costEstimateMaterialTotalTrimSet != null && (
                         <>
@@ -4035,7 +4035,7 @@ export function BidsTakeoffTab({
                       <button
                         type="button"
                         onClick={() => setCostEstimatePOModalPoId(costEstimate.purchase_order_id_trim_set)}
-                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
+                        style={{ marginTop: '0.25rem', padding: 0, background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', fontSize: '0.875rem', textDecoration: 'underline' }}
                       >
                         View
                       </button>
@@ -4043,7 +4043,7 @@ export function BidsTakeoffTab({
                   </div>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tax %</label>
+                  <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Tax %</label>
                   <input
                     type="number"
                     min={0}
@@ -4051,7 +4051,7 @@ export function BidsTakeoffTab({
                     step={0.01}
                     value={costEstimatePOModalTaxPercent}
                     onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                    style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
+                    style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
                   />
                 </div>
                 <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
@@ -4068,11 +4068,11 @@ export function BidsTakeoffTab({
               ) : (
               <div style={{ marginBottom: '1.5rem' }}>
                 <h3 style={{ margin: '0 0 0.75rem', fontSize: '1rem', textAlign: 'center' }}>MATERIALS</h3>
-                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
+                <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                   Rough takeoff totals: sum of part lines from the Takeoffs tab (quantity × unit price). Edit lines on Takeoffs → Rough.
                 </p>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.875rem', color: '#6b7280' }}>Tax %</label>
+                  <label style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Tax %</label>
                   <input
                     type="number"
                     min={0}
@@ -4080,7 +4080,7 @@ export function BidsTakeoffTab({
                     step={0.01}
                     value={costEstimatePOModalTaxPercent}
                     onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                    style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
+                    style={{ width: '4rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right', fontSize: '0.875rem' }}
                   />
                 </div>
                 <p style={{ margin: '0.5rem 0 0', fontWeight: 600, textAlign: 'right' }}>
@@ -4113,7 +4113,7 @@ export function BidsTakeoffTab({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 560,
@@ -4128,36 +4128,36 @@ export function BidsTakeoffTab({
               <button
                 type="button"
                 onClick={() => setCostEstimatePOModalPoId(null)}
-                style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Close
               </button>
             </div>
             {costEstimatePOModalData === 'loading' && (
-              <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p>
             )}
             {costEstimatePOModalData === null && (
-              <p style={{ margin: 0, color: '#6b7280' }}>Could not load items.</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Could not load items.</p>
             )}
             {costEstimatePOModalData && costEstimatePOModalData !== 'loading' && (
               <>
                 {costEstimatePOModalData.items.length === 0 ? (
-                  <p style={{ margin: '0 0 1rem', color: '#6b7280' }}>No items in this PO.</p>
+                  <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)' }}>No items in this PO.</p>
                 ) : null}
                 {costEstimatePOModalData.items.length > 0 ? (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', marginBottom: '1rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Item</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Assembly</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Cost</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Item</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Qty</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Assembly</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Cost</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {costEstimatePOModalData.items.map((item, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={i} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{item.part_name}</td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>{item.quantity}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{item.template_name ?? '—'}</td>
@@ -4166,10 +4166,10 @@ export function BidsTakeoffTab({
                         </tr>
                       ))}
                     </tbody>
-                    <tfoot style={{ background: '#f9fafb' }}>
+                    <tfoot style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>Grand Total:</td>
-                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid #e5e7eb' }}>
+                        <td colSpan={4} style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid var(--border)' }}>Grand Total:</td>
+                        <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600, borderTop: '1px solid var(--border)' }}>
                           ${costEstimatePOModalData.items.reduce((sum, item) => sum + item.quantity * item.price_at_time, 0).toFixed(2)}
                         </td>
                       </tr>
@@ -4182,7 +4182,7 @@ export function BidsTakeoffTab({
                             step={0.01}
                             value={costEstimatePOModalTaxPercent}
                             onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                            style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                            style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
                           />
                           %:
                         </td>
@@ -4203,7 +4203,7 @@ export function BidsTakeoffTab({
                         step={0.01}
                         value={costEstimatePOModalTaxPercent}
                         onChange={(e) => setCostEstimatePOModalTaxPercent(e.target.value)}
-                        style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                        style={{ width: '5rem', padding: '0.25rem 0.5rem', margin: '0 0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
                       />
                       %: $0.00
                     </p>
@@ -4219,7 +4219,7 @@ export function BidsTakeoffTab({
                       }
                     }}
                     disabled={false}
-                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Print for Review
                   </button>
@@ -4270,7 +4270,7 @@ export function BidsTakeoffTab({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               maxWidth: 500,
@@ -4286,14 +4286,14 @@ export function BidsTakeoffTab({
               <button
                 type="button"
                 onClick={closeAddPartsToTemplateModal}
-                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+                style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 ×
               </button>
             </div>
 
             {error && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
                 {error}
               </div>
             )}
@@ -4311,7 +4311,7 @@ export function BidsTakeoffTab({
                     onKeyDown={(e) => { if (e.key === 'Escape') setAddPartsDropdownOpen(false) }}
                     readOnly={!!addPartsSelectedPartId}
                     placeholder="Search parts by name, manufacturer, type, or notes…"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: addPartsSelectedPartId ? '#f3f4f6' : undefined }}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: addPartsSelectedPartId ? 'var(--bg-muted)' : undefined }}
                   />
                   {addPartsSelectedPartId && (
                     <button
@@ -4321,18 +4321,18 @@ export function BidsTakeoffTab({
                         setAddPartsSearchQuery('')
                         setAddPartsDropdownOpen(true)
                       }}
-                      style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
                       Clear
                     </button>
                   )}
                 </div>
                 {addPartsDropdownOpen && (
-                  <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                  <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
                     {takeoffAddTemplateParts.length === 0 ? (
-                      <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li>
+                      <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li>
                     ) : filterPartsByQuery(takeoffAddTemplateParts, addPartsSearchQuery).length === 0 ? (
-                      <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                      <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                         No parts match.{' '}
                         <button
                           type="button"
@@ -4357,11 +4357,11 @@ export function BidsTakeoffTab({
                             setAddPartsDropdownOpen(false)
                           }}
                           style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
-                          onMouseEnter={(e) => ((e.target as HTMLElement).style.background = '#f9fafb')}
+                          onMouseEnter={(e) => ((e.target as HTMLElement).style.background = 'var(--bg-subtle)')}
                           onMouseLeave={(e) => ((e.target as HTMLElement).style.background = 'transparent')}
                         >
                           <div style={{ fontWeight: 500 }}>{p.name}</div>
-                          {p.manufacturer && <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{p.manufacturer}</div>}
+                          {p.manufacturer && <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.manufacturer}</div>}
                         </li>
                       ))
                     )}
@@ -4377,7 +4377,7 @@ export function BidsTakeoffTab({
                 min="1"
                 value={addPartsQuantity}
                 onChange={(e) => setAddPartsQuantity(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
               />
             </div>
 
@@ -4385,7 +4385,7 @@ export function BidsTakeoffTab({
               <button
                 type="button"
                 onClick={closeAddPartsToTemplateModal}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -4425,7 +4425,7 @@ export function BidsTakeoffTab({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '2rem',
               borderRadius: 8,
               maxWidth: 560,
@@ -4438,7 +4438,7 @@ export function BidsTakeoffTab({
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', gap: '1rem' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Edit Assembly</label>
+                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.35rem' }}>Edit Assembly</label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <input
                     type="text"
@@ -4446,7 +4446,7 @@ export function BidsTakeoffTab({
                     onChange={(e) => setEditTemplateNameDraft(e.target.value)}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveEditTemplateName() } }}
                     placeholder="Assembly name"
-                    style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '1rem', fontWeight: 600 }}
+                    style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '1rem', fontWeight: 600 }}
                   />
                   {editTemplateNameDraft.trim() && editTemplateNameDraft.trim() !== editTemplateModalName && (
                     <button
@@ -4460,32 +4460,32 @@ export function BidsTakeoffTab({
                   )}
                 </div>
               </div>
-              <button type="button" onClick={closeEditTemplateModal} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280', lineHeight: 1 }}>×</button>
+              <button type="button" onClick={closeEditTemplateModal} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1 }}>×</button>
             </div>
 
             {error && (
-              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4, fontSize: '0.875rem' }}>
+              <div style={{ marginBottom: '1rem', padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4, fontSize: '0.875rem' }}>
                 {error}
               </div>
             )}
 
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Existing items</div>
-              <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                  <thead style={{ background: '#f9fafb' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
                     <tr>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Type</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Qty</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Prices</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}></th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Type</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Qty</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Prices</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {editTemplateItems.length === 0 ? (
                       <tr>
-                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: '#6b7280', fontSize: '0.875rem' }}>No items yet. Add parts or nested templates below.</td>
+                        <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No items yet. Add parts or nested templates below.</td>
                       </tr>
                     ) : (
                       editTemplateItems.map((item) => {
@@ -4495,7 +4495,7 @@ export function BidsTakeoffTab({
                             ? (materialTemplates.find((t) => t.id === item.nested_template_id)?.name ?? '—')
                             : '—'
                         return (
-                          <tr key={item.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={item.id} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{item.item_type === 'part' ? 'Part' : 'Assembly'}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{name}</td>
                             <td style={{ padding: '0.5rem 0.75rem' }}>{item.quantity}</td>
@@ -4504,7 +4504,7 @@ export function BidsTakeoffTab({
                                 <button
                                   type="button"
                                   onClick={() => setPartPricesModal({ partId: item.part_id!, partName: name })}
-                                  style={{ padding: '0.25rem 0.5rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}
+                                  style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer' }}
                                 >
                                   Prices
                                 </button>
@@ -4514,7 +4514,7 @@ export function BidsTakeoffTab({
                               <button
                                 type="button"
                                 onClick={() => removeEditTemplateItem(item.id)}
-                                style={{ padding: '0.25rem 0.5rem', background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                                style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                               >
                                 Remove
                               </button>
@@ -4530,11 +4530,11 @@ export function BidsTakeoffTab({
 
             <div style={{ marginBottom: '1rem' }}>
               <div style={{ fontWeight: 500, marginBottom: '0.5rem' }}>Add item</div>
-              <div style={{ padding: '0.75rem', background: '#f9fafb', borderRadius: 4 }}>
+              <div style={{ padding: '0.75rem', background: 'var(--bg-subtle)', borderRadius: 4 }}>
                 <select
                   value={editTemplateNewItemType}
                   onChange={(e) => setEditTemplateNewItemType(e.target.value as 'part' | 'template')}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginBottom: '0.5rem' }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '0.5rem' }}
                 >
                   <option value="part">Part</option>
                   <option value="template">Nested Template</option>
@@ -4551,15 +4551,15 @@ export function BidsTakeoffTab({
                         onKeyDown={(e) => { if (e.key === 'Escape') setEditTemplateNewItemPartDropdownOpen(false) }}
                         readOnly={!!editTemplateNewItemPartId}
                         placeholder="Search parts by name, manufacturer, type, or notes…"
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: editTemplateNewItemPartId ? '#f3f4f6' : undefined }}
+                        style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editTemplateNewItemPartId ? 'var(--bg-muted)' : undefined }}
                       />
                       {editTemplateNewItemPartId && (
-                        <button type="button" onClick={() => { setEditTemplateNewItemPartId(''); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
+                        <button type="button" onClick={() => { setEditTemplateNewItemPartId(''); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
                       )}
                     </div>
                     {editTemplateNewItemPartDropdownOpen && (
-                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
+                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                        {takeoffAddTemplateParts.length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No parts match.{' '}<button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => { openBidsPartFormForCreate(editTemplateNewItemPartSearchQuery.trim()); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}>Add Part</button></li> : filterPartsByQuery(takeoffAddTemplateParts, editTemplateNewItemPartSearchQuery).map((p) => (<li key={p.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemPartId(p.id); setEditTemplateNewItemPartSearchQuery(''); setEditTemplateNewItemPartDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{p.name}</div>{(p.manufacturer || p.part_types?.name) && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}</div>}</li>))}
                       </ul>
                     )}
                   </div>
@@ -4575,29 +4575,29 @@ export function BidsTakeoffTab({
                         onKeyDown={(e) => { if (e.key === 'Escape') setEditTemplateNewItemTemplateDropdownOpen(false) }}
                         readOnly={!!editTemplateNewItemTemplateId}
                         placeholder="Search assemblies by name or description…"
-                        style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: editTemplateNewItemTemplateId ? '#f3f4f6' : undefined }}
+                        style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: editTemplateNewItemTemplateId ? 'var(--bg-muted)' : undefined }}
                       />
                       {editTemplateNewItemTemplateId && (
-                        <button type="button" onClick={() => { setEditTemplateNewItemTemplateId(''); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
+                        <button type="button" onClick={() => { setEditTemplateNewItemTemplateId(''); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(true) }} style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Clear</button>
                       )}
                     </div>
                     {editTemplateNewItemTemplateDropdownOpen && (
-                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid #d1d5db', borderRadius: 4, background: '#fff', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
-                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: '#6b7280' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}</li>))}
+                      <ul style={{ position: 'absolute', left: 0, right: 0, top: '100%', margin: 0, marginTop: 2, padding: 0, listStyle: 'none', maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', zIndex: 60, boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}>
+                        {filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).length === 0 ? <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No assemblies match.</li> : filterTemplatesByQuery(materialTemplates.filter((t) => t.id !== editTemplateModalId), editTemplateNewItemTemplateSearchQuery, 50).map((t) => (<li key={t.id} onMouseDown={(e) => e.preventDefault()} onClick={() => { setEditTemplateNewItemTemplateId(t.id); setEditTemplateNewItemTemplateSearchQuery(''); setEditTemplateNewItemTemplateDropdownOpen(false) }} style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}><div style={{ fontWeight: 500 }}>{t.name}</div>{t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}</li>))}
                       </ul>
                     )}
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <input type="number" min={1} value={editTemplateNewItemQuantity} onChange={(e) => setEditTemplateNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="number" min={1} value={editTemplateNewItemQuantity} onChange={(e) => setEditTemplateNewItemQuantity(e.target.value)} style={{ width: 80, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                   <button type="button" onClick={addEditTemplateItem} disabled={editTemplateAddingItem || (editTemplateNewItemType === 'part' && !editTemplateNewItemPartId) || (editTemplateNewItemType === 'template' && !editTemplateNewItemTemplateId)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{editTemplateAddingItem ? 'Adding…' : 'Add item'}</button>
                 </div>
               </div>
             </div>
 
-            <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ marginBottom: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
               <div style={{ fontWeight: 500, marginBottom: '0.25rem' }}>Supply house prices</div>
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Bundle prices a supply house quotes for this whole assembly. Used when adding this assembly as a bundle and shown in the bundle breakdown.
               </p>
               {editTemplatePrices.length > 0 && (
@@ -4618,7 +4618,7 @@ export function BidsTakeoffTab({
                                 value={editingVal}
                                 autoFocus
                                 onChange={(e) => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                                style={{ width: '7rem', padding: '0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                                style={{ width: '7rem', padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
                               />
                             ) : (
                               `$${p.price.toFixed(2)}`
@@ -4633,14 +4633,14 @@ export function BidsTakeoffTab({
                                     const n = parseFloat(editingVal)
                                     if (!Number.isNaN(n) && n >= 0) void updateEditTemplatePrice(p.id, n)
                                   }}
-                                  style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', marginRight: '0.5rem' }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-700)', cursor: 'pointer', marginRight: '0.5rem' }}
                                 >
                                   Save
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => setEditTemplatePriceEditing((prev) => { const next = { ...prev }; delete next[p.id]; return next })}
-                                  style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer' }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
                                 >
                                   Cancel
                                 </button>
@@ -4650,14 +4650,14 @@ export function BidsTakeoffTab({
                                 <button
                                   type="button"
                                   onClick={() => setEditTemplatePriceEditing((prev) => ({ ...prev, [p.id]: String(p.price) }))}
-                                  style={{ background: 'none', border: 'none', color: '#1d4ed8', cursor: 'pointer', marginRight: '0.5rem' }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-blue-700)', cursor: 'pointer', marginRight: '0.5rem' }}
                                 >
                                   Edit
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => void removeEditTemplatePrice(p.id)}
-                                  style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer' }}
+                                  style={{ background: 'none', border: 'none', color: 'var(--text-red-600)', cursor: 'pointer' }}
                                 >
                                   Remove
                                 </button>
@@ -4674,25 +4674,25 @@ export function BidsTakeoffTab({
                 const used = new Set(editTemplatePrices.map((p) => p.supply_house_id))
                 const available = supplyHouses.filter((sh) => !used.has(sh.id))
                 if (available.length === 0) {
-                  return <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>Every supply house already has a price.</p>
+                  return <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Every supply house already has a price.</p>
                 }
                 const priceNum = parseFloat(editTemplateNewPriceValue)
                 const canAdd = !editTemplatePriceSaving && !!editTemplateNewPriceSupplyHouseId && !Number.isNaN(priceNum) && priceNum >= 0
                 return (
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: '#f9fafb', padding: '0.75rem', borderRadius: 4 }}>
-                    <select value={editTemplateNewPriceSupplyHouseId} onChange={(e) => setEditTemplateNewPriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', background: 'var(--bg-subtle)', padding: '0.75rem', borderRadius: 4 }}>
+                    <select value={editTemplateNewPriceSupplyHouseId} onChange={(e) => setEditTemplateNewPriceSupplyHouseId(e.target.value)} style={{ flex: 1, padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}>
                       <option value="">Select supply house</option>
                       {available.map((sh) => <option key={sh.id} value={sh.id}>{sh.name}</option>)}
                     </select>
-                    <input type="number" min={0} step="0.01" value={editTemplateNewPriceValue} onChange={(e) => setEditTemplateNewPriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
-                    <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : '#e5e7eb', color: canAdd ? 'white' : '#9ca3af', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
+                    <input type="number" min={0} step="0.01" value={editTemplateNewPriceValue} onChange={(e) => setEditTemplateNewPriceValue(e.target.value)} placeholder="0.00" style={{ width: '7rem', padding: '0.45rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
+                    <button type="button" disabled={!canAdd} onClick={() => void addEditTemplatePrice()} style={{ padding: '0.45rem 1rem', background: canAdd ? '#3b82f6' : 'var(--bg-200)', color: canAdd ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed' }}>{editTemplatePriceSaving ? 'Adding…' : 'Add'}</button>
                   </div>
                 )
               })()}
             </div>
 
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={closeEditTemplateModal} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Close</button>
+              <button type="button" onClick={closeEditTemplateModal} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Close</button>
             </div>
           </div>
         </div>
@@ -4701,11 +4701,11 @@ export function BidsTakeoffTab({
       {/* Part Prices modal - check/modify prices for a part from Add/Edit Assembly */}
       {bundleBreakdownModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }} onClick={() => setBundleBreakdownModal(null)}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 560, width: '92%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 560, width: '92%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem', gap: '1rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1rem' }}>{bundleBreakdownModal.assemblyName}</h3>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                   Compare buying the parts individually vs. a supply-house bundle quote. Click a bundle price to use it for this line.
                 </p>
               </div>
@@ -4717,29 +4717,29 @@ export function BidsTakeoffTab({
                     setBundleBreakdownModal(null)
                     void openEditTemplateModal(templateId, assemblyName)
                   }}
-                  style={{ padding: '0.35rem 0.75rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
+                  style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500, whiteSpace: 'nowrap' }}
                 >
                   Edit assembly
                 </button>
-                <button type="button" onClick={() => setBundleBreakdownModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280', lineHeight: 1 }}>×</button>
+                <button type="button" onClick={() => setBundleBreakdownModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)', lineHeight: 1 }}>×</button>
               </div>
             </div>
             {bundleBreakdownData === 'loading' || bundleBreakdownData == null ? (
-              <p style={{ margin: 0, color: '#6b7280' }}>Loading breakdown…</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading breakdown…</p>
             ) : (
               <>
                 {/* Parts in the assembly */}
-                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.4rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)', marginBottom: '0.4rem' }}>
                   Parts in assembly ({bundleBreakdownData.parts.length})
                 </div>
                 {bundleBreakdownData.parts.length === 0 ? (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>This assembly has no parts.</p>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>This assembly has no parts.</p>
                 ) : (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', marginBottom: '1rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', color: '#6b7280', fontWeight: 500 }}>Part</th>
-                        <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', color: '#6b7280', fontWeight: 500 }}>Qty</th>
+                        <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Part</th>
+                        <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem', color: 'var(--text-muted)', fontWeight: 500 }}>Qty</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4754,11 +4754,11 @@ export function BidsTakeoffTab({
                 )}
 
                 {/* À-la-carte: all parts combined at each supply house */}
-                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.4rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)', marginBottom: '0.4rem' }}>
                   Parts total by supply house
                 </div>
                 {bundleBreakdownData.perSupplyHouse.length === 0 ? (
-                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>No catalog prices found for these parts.</p>
+                  <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No catalog prices found for these parts.</p>
                 ) : (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', marginBottom: '1rem' }}>
                     <tbody>
@@ -4767,7 +4767,7 @@ export function BidsTakeoffTab({
                           <td style={{ padding: '0.4rem 0.5rem' }}>
                             {h.supplyHouseName}
                             {h.missingCount > 0 && (
-                              <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 4, padding: '0.05rem 0.3rem' }}>
+                              <span style={{ marginLeft: '0.4rem', fontSize: '0.7rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', border: '1px solid #fde68a', borderRadius: 4, padding: '0.05rem 0.3rem' }}>
                                 missing {h.missingCount}
                               </span>
                             )}
@@ -4780,11 +4780,11 @@ export function BidsTakeoffTab({
                 )}
 
                 {/* Supply-house bundle quotes (clickable to apply) */}
-                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#374151', marginBottom: '0.4rem' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--text-700)', marginBottom: '0.4rem' }}>
                   Bundle quotes
                 </div>
                 {bundleBreakdownData.bundleQuotes.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                     No bundle prices yet. Add one in Materials → Assembly Book, or via Save as Assembly.
                   </p>
                 ) : (
@@ -4798,7 +4798,7 @@ export function BidsTakeoffTab({
                             <button
                               type="button"
                               onClick={() => applyBundleQuoteToLine(bundleBreakdownModal.lineId, q.price, q.supplyHouseName)}
-                              style={{ padding: '0.3rem 0.6rem', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                              style={{ padding: '0.3rem 0.6rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)', border: '1px solid #bfdbfe', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                             >
                               Use this price
                             </button>
@@ -4815,22 +4815,22 @@ export function BidsTakeoffTab({
       )}
       {partPricesModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }} onClick={() => setPartPricesModal(null)}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 440, width: '90%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 440, width: '90%', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1rem' }}>Prices: {partPricesModal.partName}</h3>
-              <button type="button" onClick={() => setPartPricesModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: '#6b7280' }}>×</button>
+              <button type="button" onClick={() => setPartPricesModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
             </div>
             {partPricesModalData === 'loading' ? (
-              <p style={{ margin: 0, color: '#6b7280' }}>Loading prices…</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading prices…</p>
             ) : (
               <>
                 {partPricesModalData && partPricesModalData.length > 0 ? (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply House</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}></th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply House</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Price</th>
+                        <th style={{ padding: '0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -4853,7 +4853,7 @@ export function BidsTakeoffTab({
                                 min="0"
                                 value={editVal}
                                 onChange={(e) => setPartPricesModalEditing((p) => ({ ...p, [row.price_id]: e.target.value }))}
-                                style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                                style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                               />
                             </td>
                             <td style={{ padding: '0.5rem', textAlign: 'right' }}>
@@ -4872,7 +4872,7 @@ export function BidsTakeoffTab({
                     </tbody>
                   </table>
                 ) : (
-                  <p style={{ margin: 0, marginBottom: '1rem', color: '#6b7280' }}>No prices yet. Add one below.</p>
+                  <p style={{ margin: 0, marginBottom: '1rem', color: 'var(--text-muted)' }}>No prices yet. Add one below.</p>
                 )}
                 {(() => {
                   const existingSupplyHouseIds = new Set((partPricesModalData ?? []).map((r) => r.supply_house_id))
@@ -4880,12 +4880,12 @@ export function BidsTakeoffTab({
                   const addPriceNum = parseFloat(partPricesModalAddPrice)
                   const canAdd = partPricesModalAddSupplyHouseId && !isNaN(addPriceNum) && addPriceNum > 0 && !partPricesModalAdding && supplyHousesWithoutPrice.length > 0
                   return supplyHousesWithoutPrice.length > 0 ? (
-                    <div style={{ paddingTop: '1rem', borderTop: '1px solid #e5e7eb', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--border)', marginTop: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 500, fontSize: '0.875rem' }}>Add price:</span>
                       <select
                         value={partPricesModalAddSupplyHouseId}
                         onChange={(e) => setPartPricesModalAddSupplyHouseId(e.target.value)}
-                        style={{ padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '140px' }}
+                        style={{ padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '140px' }}
                       >
                         <option value="">Select supply house</option>
                         {supplyHousesWithoutPrice.map((sh) => (
@@ -4900,7 +4900,7 @@ export function BidsTakeoffTab({
                         value={partPricesModalAddPrice}
                         onChange={(e) => setPartPricesModalAddPrice(e.target.value)}
                         placeholder="Price"
-                        style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ width: '6rem', padding: '0.25rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       />
                       <button
                         type="button"
@@ -4932,8 +4932,8 @@ export function BidsTakeoffTab({
                 left: roughQtyNumpadPos.left,
                 zIndex: 1200,
                 padding: '0.35rem',
-                background: '#fff',
-                border: '1px solid #e5e7eb',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
               }}
@@ -4965,9 +4965,9 @@ export function BidsTakeoffTab({
                 listStyle: 'none',
                 maxHeight: 240,
                 overflowY: 'auto',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: '#fff',
+                background: 'var(--surface)',
                 zIndex: 1200,
                 boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
               }}
@@ -4977,7 +4977,7 @@ export function BidsTakeoffTab({
                 if (!openMapping) return null
                 const options = takeoffTemplatePickerOptions(openMapping)
                 return options.length === 0 ? (
-                  <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                  <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                     No templates match.{' '}
                     <button
                       type="button"
@@ -5005,7 +5005,7 @@ export function BidsTakeoffTab({
                       style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
                     >
                       <div style={{ fontWeight: 500 }}>{t.name}</div>
-                      {t.description && <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{t.description}</div>}
+                      {t.description && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{t.description}</div>}
                     </li>
                   ))
                 )
@@ -5107,7 +5107,7 @@ function SortableRoughPartLineRow({
         title={`lowest: ${roughCatalogLow.supplyHouseName}`}
         style={{
           fontSize: '0.7rem',
-          color: '#059669',
+          color: 'var(--text-green-600)',
           maxWidth: '100%',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -5118,9 +5118,9 @@ function SortableRoughPartLineRow({
         lowest: {roughCatalogLow.supplyHouseName}
       </span>
     ) : !roughCatalogLow ? (
-      <span style={{ fontSize: '0.7rem', color: '#6b7280', textAlign: 'left' }}>No catalog price</span>
+      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'left' }}>No catalog price</span>
     ) : (
-      <span style={{ fontSize: '0.7rem', color: '#92400e', textAlign: 'left' }}>Bid override</span>
+      <span style={{ fontSize: '0.7rem', color: 'var(--text-amber-800)', textAlign: 'left' }}>Bid override</span>
     )
   const bundleRows = isBundle ? (bundlePartLines ?? []) : []
   const showBundleRows = isBundle && !bundleCollapsed && bundleRows.length > 0
@@ -5130,7 +5130,7 @@ function SortableRoughPartLineRow({
     <tr
       ref={setNodeRef}
       style={{
-        borderBottom: showBundleRows ? 'none' : '1px solid #e5e7eb',
+        borderBottom: showBundleRows ? 'none' : '1px solid var(--border)',
         ...rowTransformStyle,
       }}
     >
@@ -5154,7 +5154,7 @@ function SortableRoughPartLineRow({
                   marginTop: '0.35rem',
                   marginLeft: '1.5rem',
                   fontSize: '0.75rem',
-                  color: '#4b5563',
+                  color: 'var(--text-600)',
                   cursor: 'pointer',
                   textDecoration: 'underline',
                   textUnderlineOffset: '2px',
@@ -5183,8 +5183,8 @@ function SortableRoughPartLineRow({
                 fontWeight: 600,
                 textTransform: 'uppercase',
                 letterSpacing: '0.03em',
-                color: '#1d4ed8',
-                background: '#eff6ff',
+                color: 'var(--text-blue-700)',
+                background: 'var(--bg-blue-tint)',
                 border: '1px solid #bfdbfe',
                 borderRadius: 4,
                 padding: '0.05rem 0.35rem',
@@ -5206,7 +5206,7 @@ function SortableRoughPartLineRow({
                 style={{
                   alignSelf: 'flex-start',
                   fontSize: '0.7rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   background: 'none',
                   border: 'none',
                   padding: 0,
@@ -5242,9 +5242,9 @@ function SortableRoughPartLineRow({
               style={{
                 flex: 1,
                 padding: '0.5rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: takeoffRoughPartPickerLineId !== line.id && line.partId ? '#f3f4f6' : undefined,
+                background: takeoffRoughPartPickerLineId !== line.id && line.partId ? 'var(--bg-muted)' : undefined,
               }}
             />
           </div>
@@ -5261,17 +5261,17 @@ function SortableRoughPartLineRow({
                 listStyle: 'none',
                 maxHeight: 220,
                 overflowY: 'auto',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: '#fff',
+                background: 'var(--surface)',
                 zIndex: 50,
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
               }}
             >
               {takeoffAddTemplateParts.length === 0 ? (
-                <li style={{ padding: '0.75rem', color: '#6b7280' }}>Loading parts…</li>
+                <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>Loading parts…</li>
               ) : filterPartsByQuery(takeoffAddTemplateParts, takeoffRoughPartSearchQuery).length === 0 ? (
-                <li style={{ padding: '0.75rem', color: '#6b7280' }}>
+                <li style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                   No parts match.{' '}
                   <button
                     type="button"
@@ -5308,7 +5308,7 @@ function SortableRoughPartLineRow({
                   >
                     <div style={{ fontWeight: 500 }}>{p.name}</div>
                     {(p.manufacturer || p.part_types?.name) && (
-                      <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                         {[p.manufacturer, p.part_types?.name].filter(Boolean).join(' · ')}
                       </div>
                     )}
@@ -5331,7 +5331,7 @@ function SortableRoughPartLineRow({
               <span
                 style={{
                   fontSize: '0.7rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   textAlign: 'left',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
@@ -5371,7 +5371,7 @@ function SortableRoughPartLineRow({
                   border: 'none',
                   borderRadius: 4,
                   cursor: 'pointer',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                 }}
               >
                 <TakeoffPartEditIcon />
@@ -5392,7 +5392,7 @@ function SortableRoughPartLineRow({
               })
             }
             aria-label="Unit price"
-            style={{ width: 96, minWidth: 88, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+            style={{ width: 96, minWidth: 88, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
           />
         ) : (
           <div
@@ -5432,7 +5432,7 @@ function SortableRoughPartLineRow({
                     })
                   }
                   aria-label="Unit price"
-                  style={{ width: 96, minWidth: 88, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'center' }}
+                  style={{ width: 96, minWidth: 88, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'center' }}
                 />
                 {roughUnitPriceStatus}
               </div>
@@ -5456,7 +5456,7 @@ function SortableRoughPartLineRow({
                   }}
                   style={{
                     fontSize: '0.7rem',
-                    color: '#4b5563',
+                    color: 'var(--text-600)',
                     cursor: 'pointer',
                     textDecoration: 'underline',
                     textUnderlineOffset: '2px',
@@ -5487,7 +5487,7 @@ function SortableRoughPartLineRow({
                   }}
                   style={{
                     fontSize: '0.7rem',
-                    color: '#1d4ed8',
+                    color: 'var(--text-blue-700)',
                     cursor: 'pointer',
                     textDecoration: 'underline',
                     textUnderlineOffset: '2px',
@@ -5547,10 +5547,10 @@ function SortableRoughPartLineRow({
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#fff',
-              border: '1px solid #e5e7eb',
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
               borderRadius: 4,
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               lineHeight: 0,
             }}
           >
@@ -5568,8 +5568,8 @@ function SortableRoughPartLineRow({
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              background: '#fef2f2',
-              color: '#b91c1c',
+              background: 'var(--bg-red-tint)',
+              color: 'var(--text-red-700)',
               border: '1px solid #fecaca',
               borderRadius: 4,
               cursor: 'pointer',
@@ -5591,9 +5591,9 @@ function SortableRoughPartLineRow({
         <tr
           key={`${line.id}-bp-${bp.partId}`}
           style={{
-            borderBottom: i === bundleRows.length - 1 ? '1px solid #e5e7eb' : '1px solid #f3f4f6',
-            background: '#fafafa',
-            color: '#9ca3af',
+            borderBottom: i === bundleRows.length - 1 ? '1px solid var(--border)' : '1px solid #f3f4f6',
+            background: 'var(--bg-page)',
+            color: 'var(--text-faint)',
             ...rowTransformStyle,
           }}
         >
@@ -5614,11 +5614,11 @@ function SortableRoughPartLineRow({
                   width: 96,
                   minWidth: 88,
                   padding: '0.4rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 4,
                   textAlign: 'center',
-                  background: '#f3f4f6',
-                  color: '#9ca3af',
+                  background: 'var(--bg-muted)',
+                  color: 'var(--text-faint)',
                   cursor: 'not-allowed',
                 }}
               />
@@ -5630,7 +5630,7 @@ function SortableRoughPartLineRow({
           <td style={{ padding: '0.4rem 0.5rem', textAlign: 'right', fontSize: '0.7rem' }}>
             <div style={{ fontStyle: 'italic' }}>not counted</div>
             {bp.supplyHouseName ? (
-              <div style={{ color: '#9ca3af', fontStyle: 'normal' }}>{bp.supplyHouseName}</div>
+              <div style={{ color: 'var(--text-faint)', fontStyle: 'normal' }}>{bp.supplyHouseName}</div>
             ) : null}
           </td>
           <td style={{ padding: '0.4rem 0.75rem' }} />

@@ -162,9 +162,9 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
             style={{
               padding: '0.35rem 0.75rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
@@ -182,22 +182,22 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
           style={{
             marginBottom: '1.5rem',
             padding: '1rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
-            background: '#f9fafb',
+            background: 'var(--bg-subtle)',
           }}
         >
           <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', fontWeight: 600 }}>Who can see this tab</h3>
-          <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Grant Assistants, Master Technicians, or Primaries org-wide activity (same table as below). Others keep only their own usage.
           </p>
           {activityGrantListLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading grants…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading grants…</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 720, fontSize: '0.875rem' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
@@ -213,12 +213,12 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                       const granted = activityViewerGrantSet.has(u.id)
                       const busy = activityGrantBusyId === u.id
                       return (
-                        <tr key={u.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{u.name || '—'}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{u.email || '—'}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {u.phone ? (
-                              <a href={`tel:${u.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                              <a href={`tel:${u.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                 {u.phone}
                               </a>
                             ) : (
@@ -253,9 +253,9 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                                 style={{
                                   padding: '0.25rem 0.5rem',
                                   fontSize: '0.8125rem',
-                                  border: '1px solid #d1d5db',
+                                  border: '1px solid var(--border-strong)',
                                   borderRadius: 6,
-                                  background: '#fff',
+                                  background: 'var(--surface)',
                                   cursor: busy ? 'not-allowed' : 'pointer',
                                 }}
                               >
@@ -304,24 +304,24 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                 </tbody>
               </table>
               {users.filter((u) => ['assistant', 'master_technician', 'primary'].includes(u.role)).length === 0 && (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No eligible users loaded.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No eligible users loaded.</p>
               )}
             </div>
           )}
         </div>
       )}
       <div>
-      <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+      <p style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
         Approximate active time while the app tab is visible (UTC calendar days). One heartbeat per minute per user.
       </p>
-      {error && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{error}</p>}
       {loading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 960 }}>
             <thead>
-              <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+              <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                 <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                 <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
                 <th style={{ padding: '0.5rem 0.75rem' }}>Last seen</th>
@@ -331,7 +331,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.userId} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr key={r.userId} style={{ borderBottom: '1px solid var(--border)' }}>
                   <td style={{ padding: '0.5rem 0.75rem' }}>
                     <button
                       type="button"
@@ -344,7 +344,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                         padding: 0,
                         margin: 0,
                         font: 'inherit',
-                        color: '#2563eb',
+                        color: 'var(--text-link)',
                         textDecoration: 'underline dotted',
                         textUnderlineOffset: '2px',
                         cursor: 'pointer',
@@ -364,7 +364,7 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
             </tbody>
           </table>
           {rows.length === 0 && (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.75rem' }}>No activity data in the last 30 days.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.75rem' }}>No activity data in the last 30 days.</p>
           )}
         </div>
       )}

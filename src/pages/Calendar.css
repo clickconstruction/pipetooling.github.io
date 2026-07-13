@@ -1,9 +1,9 @@
 .calendar-grid-day {
-  background: #fff;
+  background: var(--surface);
 }
 
 .calendar-grid-day:hover {
-  background: #eff6ff;
+  background: var(--bg-blue-tint);
 }
 
 .calendar-grid-day:focus-visible {

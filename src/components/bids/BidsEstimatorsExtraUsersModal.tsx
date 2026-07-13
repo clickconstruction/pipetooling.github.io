@@ -141,7 +141,7 @@ export function BidsEstimatorsExtraUsersModal({
   }
 
   const sheet: CSSProperties = {
-    background: '#fff',
+    background: 'var(--surface)',
     borderRadius: 8,
     maxWidth: 520,
     width: '100%',
@@ -163,7 +163,7 @@ export function BidsEstimatorsExtraUsersModal({
         <div
           style={{
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -178,9 +178,9 @@ export function BidsEstimatorsExtraUsersModal({
             onClick={onClose}
             style={{
               padding: '0.35rem 0.65rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
               cursor: 'pointer',
             }}
           >
@@ -188,22 +188,22 @@ export function BidsEstimatorsExtraUsersModal({
           </button>
         </div>
         <div style={{ padding: '0.75rem 1.25rem 1.25rem', overflow: 'auto', flex: 1 }}>
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#374151' }}>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
             Users with role <strong>Estimator</strong> are always columns. Add anyone else from your team
             below to also show their bid-clock time. Changes are visible to everyone.
           </p>
           {loading ? (
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
             <>
               {estimatorRoleUsers.length > 0 ? (
                 <div style={{ marginTop: '0.5rem' }}>
-                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280', marginBottom: '0.25rem' }}>
+                  <div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
                     Always included
                   </div>
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                     {estimatorRoleUsers.map((u) => (
-                      <li key={u.id} style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', color: '#374151', background: '#f3f4f6', borderRadius: 4 }}>
+                      <li key={u.id} style={{ padding: '0.35rem 0.5rem', fontSize: '0.875rem', color: 'var(--text-700)', background: 'var(--bg-muted)', borderRadius: 4 }}>
                         {u.name?.trim() || '—'}
                       </li>
                     ))}
@@ -216,7 +216,7 @@ export function BidsEstimatorsExtraUsersModal({
                     fontSize: '0.75rem',
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                     marginBottom: '0.25rem',
                   }}
                 >
@@ -231,7 +231,7 @@ export function BidsEstimatorsExtraUsersModal({
                   style={{
                     width: '100%',
                     padding: '0.4rem 0.6rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.875rem',
                     boxSizing: 'border-box',
@@ -239,7 +239,7 @@ export function BidsEstimatorsExtraUsersModal({
                   }}
                 />
                 {filteredCandidates.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                     {search.trim() ? 'No users match.' : 'No additional users.'}
                   </p>
                 ) : (
@@ -257,7 +257,7 @@ export function BidsEstimatorsExtraUsersModal({
                             gap: '0.5rem',
                             padding: '0.35rem 0.5rem',
                             borderRadius: 4,
-                            background: isOn ? '#eff6ff' : 'transparent',
+                            background: isOn ? 'var(--bg-blue-tint)' : 'transparent',
                           }}
                         >
                           <label
@@ -277,10 +277,10 @@ export function BidsEstimatorsExtraUsersModal({
                               disabled={busy}
                               onChange={(e) => void toggle(u.id, e.target.checked)}
                             />
-                            <span style={{ color: '#111827' }}>{u.name?.trim() || '—'}</span>
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{labelForRole(u.role)}</span>
+                            <span style={{ color: 'var(--text-strong)' }}>{u.name?.trim() || '—'}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{labelForRole(u.role)}</span>
                           </label>
-                          {busy ? <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>…</span> : null}
+                          {busy ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>…</span> : null}
                         </li>
                       )
                     })}

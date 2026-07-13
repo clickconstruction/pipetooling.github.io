@@ -201,7 +201,7 @@ export function BankingUserCardLinkModal({
         aria-labelledby="banking-user-card-link-modal-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(960px, calc(100vw - 2rem))',
           maxHeight: '90vh',
@@ -229,8 +229,8 @@ export function BankingUserCardLinkModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -239,7 +239,7 @@ export function BankingUserCardLinkModal({
             Close
           </button>
         </div>
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: '0 0 0.75rem', flexShrink: 0 }}>
           Map each company debit card (from Mercury transaction payloads) to a user so they can see matching transactions on Job
           Tally. One card maps to one user. Auto-assign user uses the same list as Tally user and sets Banking user attribution
           (user_id) on matching transactions (existing unattributed rows when you save; new syncs apply automatically). Clearing
@@ -247,9 +247,9 @@ export function BankingUserCardLinkModal({
         </p>
         <div style={{ overflow: 'auto', flex: '1 1 auto', minHeight: 0 }}>
           {!loaded ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p>
           ) : debitCardIds.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               No debit card IDs yet — sync transactions that include debit card info, then Reload table.
             </p>
           ) : (
@@ -283,7 +283,7 @@ export function BankingUserCardLinkModal({
                         padding: 0,
                         border: 'none',
                         background: 'none',
-                        color: onOpenRecentTransactions ? '#1d4ed8' : '#0f172a',
+                        color: onOpenRecentTransactions ? 'var(--text-blue-700)' : 'var(--text-slate-900)',
                         cursor: onOpenRecentTransactions ? 'pointer' : 'default',
                         textDecoration: onOpenRecentTransactions ? 'underline' : 'none',
                         textAlign: 'left',
@@ -292,11 +292,11 @@ export function BankingUserCardLinkModal({
                       {formatMercuryDebitCardIdCompact(cardId)}
                     </button>
                     {nick ? (
-                      <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: 2 }}>{nick}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', marginTop: 2 }}>{nick}</div>
                     ) : null}
                   </div>
                   <div style={{ flex: '1.5 1 11rem', minWidth: 140 }}>
-                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginBottom: 2 }}>Tally user</label>
+                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-slate-500)', marginBottom: 2 }}>Tally user</label>
                     <SearchableSelect
                       value={userIdByCard[cardId] ?? ''}
                       onChange={(v) => setUserIdByCard((d) => ({ ...d, [cardId]: v }))}
@@ -308,7 +308,7 @@ export function BankingUserCardLinkModal({
                     />
                   </div>
                   <div style={{ flex: '1.5 1 11rem', minWidth: 140 }}>
-                    <label style={{ display: 'block', fontSize: '0.7rem', color: '#64748b', marginBottom: 2 }}>Auto-assign user</label>
+                    <label style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-slate-500)', marginBottom: 2 }}>Auto-assign user</label>
                     <SearchableSelect
                       value={autoAssignUserIdByCard[cardId] ?? ''}
                       onChange={(v) => setAutoAssignUserIdByCard((d) => ({ ...d, [cardId]: v }))}
@@ -327,8 +327,8 @@ export function BankingUserCardLinkModal({
                       padding: '0.4rem 0.85rem',
                       borderRadius: 4,
                       border: '1px solid #1d4ed8',
-                      background: '#eff6ff',
-                      color: '#1d4ed8',
+                      background: 'var(--bg-blue-tint)',
+                      color: 'var(--text-blue-700)',
                       cursor: savingCardId === cardId ? 'wait' : 'pointer',
                       fontWeight: 600,
                       fontSize: '0.8125rem',

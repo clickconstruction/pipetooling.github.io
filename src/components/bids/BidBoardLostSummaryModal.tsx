@@ -33,11 +33,11 @@ function bidLedgerNumberCellLabel(bid: BidWithBuilder, prefixMap: LedgerPrefixMa
 const th: CSSProperties = {
   padding: '0.5rem 0.65rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   fontSize: '0.75rem',
   fontWeight: 600,
-  color: '#374151',
-  background: '#f9fafb',
+  color: 'var(--text-700)',
+  background: 'var(--bg-subtle)',
 }
 
 const td: CSSProperties = {
@@ -314,7 +314,7 @@ export function BidBoardLostSummaryModal({
         aria-modal="true"
         aria-labelledby="bid-board-lost-summary-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1rem 1.25rem',
           maxWidth: 1100,
@@ -346,8 +346,8 @@ export function BidBoardLostSummaryModal({
             style={{
               padding: '0.35rem 0.75rem',
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: '#f9fafb',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--bg-subtle)',
               cursor: 'pointer',
               fontSize: '0.875rem',
             }}
@@ -356,7 +356,7 @@ export function BidBoardLostSummaryModal({
           </button>
         </div>
         {error ? (
-          <div style={{ padding: '0.75rem', background: '#fef2f2', color: '#b91c1c', borderRadius: 6, marginBottom: '0.5rem' }}>
+          <div style={{ padding: '0.75rem', background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 6, marginBottom: '0.5rem' }}>
             {error}
           </div>
         ) : null}
@@ -382,10 +382,10 @@ export function BidBoardLostSummaryModal({
               padding: '0.35rem 0.65rem',
               fontSize: '0.8125rem',
               borderRadius: 6,
-              border: activeTab === 'all' ? '1px solid #2563eb' : '1px solid #d1d5db',
-              background: activeTab === 'all' ? '#eff6ff' : '#fff',
+              border: activeTab === 'all' ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+              background: activeTab === 'all' ? 'var(--bg-blue-tint)' : 'var(--surface)',
               cursor: 'pointer',
-              color: activeTab === 'all' ? '#1d4ed8' : '#374151',
+              color: activeTab === 'all' ? 'var(--text-blue-700)' : 'var(--text-700)',
               fontWeight: activeTab === 'all' ? 600 : 400,
             }}
           >
@@ -406,10 +406,10 @@ export function BidBoardLostSummaryModal({
                   padding: '0.35rem 0.65rem',
                   fontSize: '0.8125rem',
                   borderRadius: 6,
-                  border: sel ? '1px solid #2563eb' : '1px solid #d1d5db',
-                  background: sel ? '#eff6ff' : '#fff',
+                  border: sel ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                  background: sel ? 'var(--bg-blue-tint)' : 'var(--surface)',
                   cursor: 'pointer',
-                  color: sel ? '#1d4ed8' : '#374151',
+                  color: sel ? 'var(--text-blue-700)' : 'var(--text-700)',
                   fontWeight: sel ? 600 : 400,
                   maxWidth: '14rem',
                   overflow: 'hidden',
@@ -427,7 +427,7 @@ export function BidBoardLostSummaryModal({
           id="lost-summary-table-panel"
           role="tabpanel"
           aria-labelledby={activeTab === 'all' ? 'lost-summary-tab-all' : `lost-summary-tab-${activeTab}`}
-          style={{ flex: 1, minHeight: 0, overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 6 }}
+          style={{ flex: 1, minHeight: 0, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}
         >
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -442,7 +442,7 @@ export function BidBoardLostSummaryModal({
                 <tr>
                   <td
                     colSpan={showLaborColumn ? 3 : 2}
-                    style={{ ...td, textAlign: 'center', color: '#6b7280', padding: '2rem' }}
+                    style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}
                   >
                     Loading…
                   </td>
@@ -451,7 +451,7 @@ export function BidBoardLostSummaryModal({
                 <tr>
                   <td
                     colSpan={showLaborColumn ? 3 : 2}
-                    style={{ ...td, textAlign: 'center', color: '#6b7280', padding: '2rem' }}
+                    style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}
                   >
                     No lost bids in this list.
                   </td>
@@ -460,7 +460,7 @@ export function BidBoardLostSummaryModal({
                 <tr>
                   <td
                     colSpan={showLaborColumn ? 3 : 2}
-                    style={{ ...td, textAlign: 'center', color: '#6b7280', padding: '2rem' }}
+                    style={{ ...td, textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}
                   >
                     No bids for this person in this list.
                   </td>
@@ -471,7 +471,7 @@ export function BidBoardLostSummaryModal({
                   const missingLossReason = loss === ''
                   const tdRow: CSSProperties = {
                     ...td,
-                    ...(missingLossReason ? { background: '#fef2f2' } : {}),
+                    ...(missingLossReason ? { background: 'var(--bg-red-tint)' } : {}),
                   }
                   const ledgerLabel = bidLedgerNumberCellLabel(bid, ledgerPrefixMap)
                   const topLine = `${ledgerLabel} | ${formatBidStaffDisplayName(bid.account_manager)} | ${formatBidStaffDisplayName(bid.estimator)}`
@@ -508,7 +508,7 @@ export function BidBoardLostSummaryModal({
                           <div
                             style={{
                               fontSize: '0.8125rem',
-                              color: '#4b5563',
+                              color: 'var(--text-600)',
                               lineHeight: 1.35,
                               wordBreak: 'break-word',
                             }}
@@ -542,7 +542,7 @@ export function BidBoardLostSummaryModal({
                             style={{
                               fontSize: '0.875rem',
                               fontWeight: 600,
-                              color: '#111827',
+                              color: 'var(--text-strong)',
                               wordBreak: 'break-word',
                             }}
                           >
@@ -565,7 +565,7 @@ export function BidBoardLostSummaryModal({
                                 fontSize: '0.8125rem',
                                 padding: '0.35rem 0.5rem',
                                 borderRadius: 4,
-                                border: '1px solid #d1d5db',
+                                border: '1px solid var(--border-strong)',
                                 resize: 'vertical',
                                 fontFamily: 'inherit',
                               }}
@@ -616,8 +616,8 @@ export function BidBoardLostSummaryModal({
                                   padding: '0.25rem 0.55rem',
                                   fontSize: '0.75rem',
                                   borderRadius: 4,
-                                  border: '1px solid #d1d5db',
-                                  background: '#f9fafb',
+                                  border: '1px solid var(--border-strong)',
+                                  background: 'var(--bg-subtle)',
                                   cursor: isSavingLoss ? 'not-allowed' : 'pointer',
                                 }}
                               >
@@ -629,7 +629,7 @@ export function BidBoardLostSummaryModal({
                                 style={{
                                   marginTop: '0.35rem',
                                   fontSize: '0.75rem',
-                                  color: '#b91c1c',
+                                  color: 'var(--text-red-700)',
                                   whiteSpace: 'pre-wrap',
                                 }}
                               >
@@ -639,7 +639,7 @@ export function BidBoardLostSummaryModal({
                           </div>
                         ) : (
                           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <span style={{ flex: '1 1 8rem', color: loss ? '#374151' : '#9ca3af' }}>
+                            <span style={{ flex: '1 1 8rem', color: loss ? 'var(--text-700)' : 'var(--text-faint)' }}>
                               {loss || '—'}
                             </span>
                             <button
@@ -655,8 +655,8 @@ export function BidBoardLostSummaryModal({
                                 padding: '0.2rem 0.5rem',
                                 fontSize: '0.75rem',
                                 borderRadius: 4,
-                                border: '1px solid #d1d5db',
-                                background: '#fff',
+                                border: '1px solid var(--border-strong)',
+                                background: 'var(--surface)',
                                 cursor: 'pointer',
                               }}
                             >
@@ -671,7 +671,7 @@ export function BidBoardLostSummaryModal({
                             ...td,
                             textAlign: 'right',
                             whiteSpace: 'nowrap',
-                            ...(missingLossReason ? { background: '#fef2f2' } : {}),
+                            ...(missingLossReason ? { background: 'var(--bg-red-tint)' } : {}),
                           }}
                         >
                           {laborCellDisplay(getLaborUsdForBid(laborByBid, bid.id))}

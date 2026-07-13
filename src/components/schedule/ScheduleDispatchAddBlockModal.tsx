@@ -182,7 +182,7 @@ export function ScheduleDispatchAddBlockModal({
         role="dialog"
         aria-labelledby="schedule-dispatch-add-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 420,
@@ -205,13 +205,13 @@ export function ScheduleDispatchAddBlockModal({
             <>
               {' '}
               <span aria-hidden>·</span>{' '}
-              <span title={jobTitle} style={{ fontSize: '0.9rem', color: '#374151', fontWeight: 600 }}>
+              <span title={jobTitle} style={{ fontSize: '0.9rem', color: 'var(--text-700)', fontWeight: 600 }}>
                 {jobTitle}
               </span>
             </>
           ) : null}
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.35, wordBreak: 'break-word' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.35, wordBreak: 'break-word' }}>
           <strong>{personLabel}</strong>
           {workDate.trim() ? (
             <>
@@ -222,7 +222,7 @@ export function ScheduleDispatchAddBlockModal({
           ) : null}
         </p>
         {error ? (
-          <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: '0 0 0.75rem', whiteSpace: 'pre-wrap' }}>{error}</p>
+          <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: '0 0 0.75rem', whiteSpace: 'pre-wrap' }}>{error}</p>
         ) : null}
         <div style={{ marginBottom: '0.75rem' }}>
           <DispatchAddBlockTimeRange
@@ -241,7 +241,7 @@ export function ScheduleDispatchAddBlockModal({
           />
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.75rem', alignItems: 'flex-end' }}>
-          <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 120px' }}>
             Start
             <input
               type="time"
@@ -261,19 +261,19 @@ export function ScheduleDispatchAddBlockModal({
               paddingBottom: 2,
             }}
           >
-            <div style={{ fontSize: '0.65rem', color: '#6b7280', marginBottom: 2 }}>Duration</div>
+            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: 2 }}>Duration</div>
             <div
               style={{
                 fontSize: '0.875rem',
                 fontWeight: 600,
                 fontVariantNumeric: 'tabular-nums',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               {durationDisplay}
             </div>
           </div>
-          <label style={{ fontSize: '0.75rem', color: '#6b7280', flex: '1 1 120px' }}>
+          <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', flex: '1 1 120px' }}>
             End
             <input
               type="time"
@@ -283,7 +283,7 @@ export function ScheduleDispatchAddBlockModal({
             />
           </label>
         </div>
-        <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.75rem' }}>
+        <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.75rem' }}>
           Note (optional)
           <input
             type="text"
@@ -297,7 +297,7 @@ export function ScheduleDispatchAddBlockModal({
           <button
             type="button"
             onClick={onClose}
-            style={{ padding: '0.45rem 1rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.45rem 1rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
           >
             Cancel
           </button>
@@ -308,8 +308,8 @@ export function ScheduleDispatchAddBlockModal({
             style={{
               padding: '0.45rem 1rem',
               fontSize: '0.875rem',
-              background: saving ? '#e5e7eb' : '#2563eb',
-              color: saving ? '#6b7280' : '#fff',
+              background: saving ? 'var(--bg-200)' : '#2563eb',
+              color: saving ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 4,
               cursor: saving ? 'not-allowed' : 'pointer',

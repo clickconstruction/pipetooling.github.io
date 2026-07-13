@@ -84,7 +84,7 @@ const tabStyle = (active: boolean) => ({
   border: 'none',
   background: 'none',
   borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
-  color: active ? '#3b82f6' : '#6b7280',
+  color: active ? 'var(--text-blue-500)' : 'var(--text-muted)',
   fontWeight: active ? 600 : 400,
   cursor: 'pointer' as const,
   fontSize: '0.9375rem',
@@ -1513,7 +1513,7 @@ export default function Prospects() {
   if (authLoading) {
     return (
       <div style={{ padding: '1rem 1.5rem' }}>
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       </div>
     )
   }
@@ -1521,7 +1521,7 @@ export default function Prospects() {
   if (authRole === 'estimator' && !estimatorProspectsAccess) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
-        <p style={{ color: '#6b7280' }}>
+        <p style={{ color: 'var(--text-muted)' }}>
           You don’t have access to Prospects. A dev can enable &quot;Can access Prospects&quot; for your account in Settings → Active accounts.
         </p>
       </div>
@@ -1554,7 +1554,7 @@ export default function Prospects() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid #e5e7eb', marginBottom: '2rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', borderBottom: '2px solid var(--border)', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button
           type="button"
           onClick={() => setTab('follow-up')}
@@ -1562,7 +1562,7 @@ export default function Prospects() {
         >
           Follow Up
         </button>
-        <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+        <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
           onClick={() => setTab('prospect-list')}
@@ -1570,7 +1570,7 @@ export default function Prospects() {
         >
           Prospect List
         </button>
-        <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+        <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
         <button
           type="button"
           onClick={() => setTab('convert')}
@@ -1580,7 +1580,7 @@ export default function Prospects() {
         </button>
         {canAccessTeamTab && (
           <>
-            <span style={{ color: '#9ca3af', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
+            <span style={{ color: 'var(--text-faint)', padding: '0 0.1rem', position: 'relative', top: '-1px', fontSize: '0.875rem' }}>|</span>
             <button
               type="button"
               onClick={() => setTab('team')}
@@ -1595,11 +1595,11 @@ export default function Prospects() {
       {activeTab === 'follow-up' && (
         <>
           {!canAccessFollowUp ? (
-            <p style={{ color: '#6b7280' }}>You do not have access to Follow Up.</p>
+            <p style={{ color: 'var(--text-muted)' }}>You do not have access to Follow Up.</p>
           ) : followUpLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading...</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
           ) : followUpProspects.length === 0 ? (
-            <p style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+            <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               No prospects to follow up. Add prospects in Prospect List.
             </p>
           ) : currentProspect ? (
@@ -1615,16 +1615,16 @@ export default function Prospects() {
                   cursor: 'pointer',
                   transition: 'background 0.15s, opacity 0.15s',
                 } as const
-                const btnSecondary = { ...btnBase, background: 'white', color: '#374151', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }
+                const btnSecondary = { ...btnBase, background: 'var(--surface)', color: 'var(--text-700)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }
                 const btnPrimary = { ...btnBase, background: '#3b82f6', color: 'white', boxShadow: '0 1px 2px rgba(59,130,246,0.3)' }
                 const btnGreen = { ...btnBase, background: '#059669', color: 'white', boxShadow: '0 1px 2px rgba(5,150,105,0.3)' }
                 const btnDestructive = { ...btnBase, background: '#dc2626', color: 'white', boxShadow: '0 1px 2px rgba(220,38,38,0.3)' }
                 const btnDisabled = (s: object) => ({ ...s, opacity: 0.6, cursor: 'not-allowed' as const })
                 return (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'white', padding: '0.25rem', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #e5e7eb' }}>
-                      <span style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0 0.5rem', color: '#6b7280' }}>Warmth</span>
-                      <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 600, fontSize: '1rem', color: '#1f2937' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface)', padding: '0.25rem', borderRadius: 8, boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '0.875rem', fontWeight: 500, padding: '0 0.5rem', color: 'var(--text-muted)' }}>Warmth</span>
+                      <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 600, fontSize: '1rem', color: 'var(--text-gray-800)' }}>
                         {currentProspect.warmth_count ?? 0}
                       </span>
                       <button
@@ -1696,7 +1696,7 @@ export default function Prospects() {
                         Next Prospect
                       </button>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>this time</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>this time</span>
                         <button
                           type="button"
                           onClick={() => {
@@ -1709,7 +1709,7 @@ export default function Prospects() {
                             padding: '0.5rem 1rem',
                             fontVariantNumeric: 'tabular-nums',
                             fontSize: '0.875rem',
-                            color: '#6b7280',
+                            color: 'var(--text-muted)',
                             fontFamily: 'ui-monospace, monospace',
                             background: 'none',
                             border: '1px solid transparent',
@@ -1722,7 +1722,7 @@ export default function Prospects() {
                         </button>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>all time</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>all time</span>
                         <span
                           style={{
                             display: 'inline-flex',
@@ -1730,7 +1730,7 @@ export default function Prospects() {
                             padding: '0.5rem 1rem',
                             fontVariantNumeric: 'tabular-nums',
                             fontSize: '0.875rem',
-                            color: '#059669',
+                            color: 'var(--text-green-600)',
                             fontFamily: 'ui-monospace, monospace',
                             fontWeight: 500,
                           }}
@@ -1740,7 +1740,7 @@ export default function Prospects() {
                         </span>
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.0625rem' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>my day</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>my day</span>
                         <span
                           style={{
                             display: 'inline-flex',
@@ -1748,7 +1748,7 @@ export default function Prospects() {
                             padding: '0.5rem 1rem',
                             fontVariantNumeric: 'tabular-nums',
                             fontSize: '0.875rem',
-                            color: '#059669',
+                            color: 'var(--text-green-600)',
                             fontFamily: 'ui-monospace, monospace',
                             fontWeight: 500,
                           }}
@@ -1775,8 +1775,8 @@ export default function Prospects() {
                       fontSize: '0.875rem',
                       fontWeight: 500,
                       borderRadius: 8,
-                      background: '#fef3c7',
-                      color: '#92400e',
+                      background: 'var(--bg-amber-100)',
+                      color: 'var(--text-amber-800)',
                       border: '1px solid #fde68a',
                       boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                       cursor: saving ? 'not-allowed' : 'pointer',
@@ -1820,7 +1820,7 @@ export default function Prospects() {
                     width: '100%',
                     minHeight: '4.5rem',
                     padding: '0.5rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     marginBottom: '0.75rem',
                     resize: 'vertical',
@@ -1839,8 +1839,8 @@ export default function Prospects() {
                           style={{
                             padding: '0.35rem 0.6rem',
                             fontSize: '0.8125rem',
-                            background: '#f3f4f6',
-                            border: '1px solid #d1d5db',
+                            background: 'var(--bg-muted)',
+                            border: '1px solid var(--border-strong)',
                             borderRadius: 4,
                             cursor: saving ? 'not-allowed' : 'pointer',
                             fontWeight: 500,
@@ -1857,10 +1857,10 @@ export default function Prospects() {
                             padding: '0.2rem 0.35rem',
                             fontSize: '0.75rem',
                             background: 'none',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 4,
                             cursor: 'pointer',
-                            color: '#6b7280',
+                            color: 'var(--text-muted)',
                             lineHeight: 1,
                           }}
                         >
@@ -1874,12 +1874,12 @@ export default function Prospects() {
                       style={{
                         padding: '0.35rem 0.6rem',
                         fontSize: '0.8125rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         cursor: 'pointer',
                         fontWeight: 500,
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                       }}
                     >
                       + Add
@@ -1887,7 +1887,7 @@ export default function Prospects() {
                   </div>
                 )}
                 {comments.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No comments yet.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No comments yet.</p>
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {comments.map((c) => (
@@ -1896,14 +1896,14 @@ export default function Prospects() {
                         style={{
                           padding: '0.5rem 0.75rem',
                           marginBottom: '0.5rem',
-                          background: '#f9fafb',
-                          border: '1px solid #e5e7eb',
+                          background: 'var(--bg-subtle)',
+                          border: '1px solid var(--border)',
                           borderRadius: 4,
                           fontSize: '0.875rem',
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                             {formatDateTime(c.created_at)}
                             {c.created_by_user && (
                               <span style={{ marginLeft: '0.5rem' }}>
@@ -1912,7 +1912,7 @@ export default function Prospects() {
                             )}
                           </span>
                           {(c.interaction_type === 'answered' || c.interaction_type === 'didnt_answer') && (
-                            <span style={{ fontSize: '0.7rem', background: '#e5e7eb', padding: '0.15rem 0.4rem', borderRadius: 4 }}>
+                            <span style={{ fontSize: '0.7rem', background: 'var(--bg-200)', padding: '0.15rem 0.4rem', borderRadius: 4 }}>
                               {formatInteractionType(c.interaction_type)}
                             </span>
                           )}
@@ -1938,8 +1938,8 @@ export default function Prospects() {
                           fontSize: '0.75rem',
                           fontWeight: 600,
                           borderRadius: 4,
-                          background: '#fef3c7',
-                          color: '#92400e',
+                          background: 'var(--bg-amber-100)',
+                          color: 'var(--text-amber-800)',
                         }}
                       >
                         {formatDueBadge(currentProspect.last_contact)}
@@ -1956,7 +1956,7 @@ export default function Prospects() {
                   <div>
                     <strong>Phone Number:</strong>{' '}
                     {currentProspect.phone_number ? (
-                      <a href={`tel:${encodeURIComponent(currentProspect.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                      <a href={`tel:${encodeURIComponent(currentProspect.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                         {currentProspect.phone_number}
                       </a>
                     ) : (
@@ -1966,7 +1966,7 @@ export default function Prospects() {
                   <div>
                     <strong>Email:</strong>{' '}
                     {currentProspect.email ? (
-                      <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                      <a href={`mailto:${encodeURIComponent(currentProspect.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                         {currentProspect.email}
                       </a>
                     ) : (
@@ -1980,7 +1980,7 @@ export default function Prospects() {
                         href={currentProspect.links_to_website.startsWith('http') ? currentProspect.links_to_website : `https://${currentProspect.links_to_website}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                        style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
                       >
                         {currentProspect.links_to_website}
                       </a>
@@ -1994,7 +1994,7 @@ export default function Prospects() {
                       <strong>Call back scheduled for:</strong>{' '}
                       <Link
                         to="/calendar"
-                        style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                        style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
                       >
                         {formatDateTime(scheduledCallback.callback_date)}
                         {scheduledCallback.note && ` (${scheduledCallback.note})`}
@@ -2007,7 +2007,7 @@ export default function Prospects() {
                       value={followUpNotes}
                       onChange={(e) => setFollowUpNotes(e.target.value)}
                       placeholder="Add notes..."
-                      style={{ width: '100%', minHeight: 120, padding: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.9375rem', resize: 'vertical', fontFamily: 'inherit' }}
+                      style={{ width: '100%', minHeight: 120, padding: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.9375rem', resize: 'vertical', fontFamily: 'inherit' }}
                     />
                     <div className="followUpInfoCardNotesActions">
                     <button
@@ -2022,13 +2022,13 @@ export default function Prospects() {
                       type="button"
                       onClick={cancelFollowUpNotes}
                       disabled={followUpNotes === (currentProspect.notes ?? '')}
-                      style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
+                      style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', fontSize: '0.875rem' }}
                     >
                       Cancel
                     </button>
                   </div>
                   {/* Copy templates */}
-                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
                     <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem' }}>Copy:</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
                       {COPY_TEMPLATE_KEYS.map((key) => (
@@ -2039,8 +2039,8 @@ export default function Prospects() {
                             style={{
                               padding: '0.35rem 0.6rem',
                               fontSize: '0.8125rem',
-                              background: '#f3f4f6',
-                              border: '1px solid #d1d5db',
+                              background: 'var(--bg-muted)',
+                              border: '1px solid var(--border-strong)',
                               borderRadius: 4,
                               cursor: 'pointer',
                               fontWeight: 500,
@@ -2057,7 +2057,7 @@ export default function Prospects() {
                               background: 'none',
                               border: 'none',
                               cursor: 'pointer',
-                              color: emailSentTemplateKeys.has(key) ? '#059669' : '#6b7280',
+                              color: emailSentTemplateKeys.has(key) ? 'var(--text-green-600)' : 'var(--text-muted)',
                               fontSize: '0.875rem',
                             }}
                           >
@@ -2072,7 +2072,7 @@ export default function Prospects() {
                               background: 'none',
                               border: 'none',
                               cursor: 'pointer',
-                              color: '#6b7280',
+                              color: 'var(--text-muted)',
                               fontSize: '0.875rem',
                             }}
                           >
@@ -2087,8 +2087,8 @@ export default function Prospects() {
             </div>
           ) : null}
           {canAccessFollowUp && (
-            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: '#374151' }}>
+            <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                 <input
                   type="checkbox"
                   checked={didntAnswerMoveNext}
@@ -2115,7 +2115,7 @@ export default function Prospects() {
                   background: 'none',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
-                  color: '#3b82f6',
+                  color: 'var(--text-blue-500)',
                   textDecoration: 'underline',
                 }}
               >
@@ -2129,9 +2129,9 @@ export default function Prospects() {
       {activeTab === 'prospect-list' && (
         <>
           {!canAccessFollowUp ? (
-            <p style={{ color: '#6b7280' }}>You do not have access to Prospect List.</p>
+            <p style={{ color: 'var(--text-muted)' }}>You do not have access to Prospect List.</p>
           ) : prospectListLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading...</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
           ) : (
             <>
               <div style={{ width: '100%', marginBottom: '0.25rem' }}>
@@ -2144,7 +2144,7 @@ export default function Prospects() {
                   autoCorrect="off"
                   autoCapitalize="off"
                   spellCheck={false}
-                  style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.35rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
                 />
               </div>
               {(() => {
@@ -2198,7 +2198,7 @@ export default function Prospects() {
             }
             const warmthKeys = Array.from(byWarmth.keys()).sort((a, b) => b - a)
             return warmthKeys.length === 0 ? (
-              <p style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>No prospects yet.</p>
+              <p style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No prospects yet.</p>
             ) : (
               <div>
                 {warmthKeys.map((warmth) => {
@@ -2230,28 +2230,28 @@ export default function Prospects() {
                                 <col style={{ width: '24%' }} />
                                 {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && <col style={{ width: '6%' }} />}
                               </colgroup>
-                              <thead style={{ background: '#f9fafb' }}>
+                              <thead style={{ background: 'var(--bg-subtle)' }}>
                                 <tr>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Company Name</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Contact Name</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Phone</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Contact</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Time</th>
-                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Email / Links</th>
-                                  {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>}
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Company Name</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Contact Name</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Phone</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last Contact</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Time</th>
+                                  <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Email / Links</th>
+                                  {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>}
                                 </tr>
                               </thead>
                               <tbody>
                                 {prospects.length === 0 ? (
-                                  <tr><td colSpan={(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) ? 8 : 7} style={{ padding: '0.75rem', color: '#6b7280' }}>No prospects in this group</td></tr>
+                                  <tr><td colSpan={(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) ? 8 : 7} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No prospects in this group</td></tr>
                                 ) : (
                                   prospects.map((p) => (
                                     <tr
                                       key={p.id}
                                       onClick={() => selectProspectForList(p)}
                                       style={{
-                                        borderBottom: '1px solid #e5e7eb',
+                                        borderBottom: '1px solid var(--border)',
                                         cursor: 'pointer',
                                         background: selectedProspectForList?.id === p.id ? '#eff6ff' : undefined,
                                       }}
@@ -2261,7 +2261,7 @@ export default function Prospects() {
                                       <td style={{ padding: '0.75rem' }}>{p.address || '—'}</td>
                                       <td style={{ padding: '0.75rem' }}>
                                         {p.phone_number ? (
-                                          <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                                          <a href={`tel:${encodeURIComponent(p.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                                             {p.phone_number}
                                           </a>
                                         ) : (
@@ -2269,14 +2269,14 @@ export default function Prospects() {
                                         )}
                                       </td>
                                       <td style={{ padding: '0.75rem' }}>{formatDateTime(p.last_contact)}{formatDaysSince(p.last_contact)}</td>
-                                      <td style={{ padding: '0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: '#059669' }}>
+                                      <td style={{ padding: '0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
                                         {(prospectLedgerSecondsMap[p.id] ?? 0) === 0 ? '—' : formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
                                       </td>
                                       <td style={{ padding: '0.75rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                           <div>
                                             {p.email ? (
-                                              <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}>
+                                              <a href={`mailto:${encodeURIComponent(p.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}>
                                                 {p.email}
                                               </a>
                                             ) : (
@@ -2289,7 +2289,7 @@ export default function Prospects() {
                                                 href={getWebsiteHref(p.links_to_website)}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                style={{ color: '#2563eb', textDecoration: 'underline', cursor: 'pointer' }}
+                                                style={{ color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }}
                                               >
                                                 {formatWebsiteDisplay(p.links_to_website)}
                                               </a>
@@ -2302,10 +2302,10 @@ export default function Prospects() {
                                       {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && (
                                         <td style={{ padding: '0.75rem' }} onClick={(e) => e.stopPropagation()}>
                                           <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                            <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                                            <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                                            <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                                            <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'white', color: '#dc2626', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
+                                            <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
+                                            <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
+                                            <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
+                                            <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
                                           </div>
                                         </td>
                                       )}
@@ -2341,7 +2341,7 @@ export default function Prospects() {
                                       <span className="prospectListMobileCardLabel">Phone</span>
                                       <span>
                                         {p.phone_number ? (
-                                          <a href={`tel:${encodeURIComponent(p.phone_number)}`} onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                          <a href={`tel:${encodeURIComponent(p.phone_number)}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                             {p.phone_number}
                                           </a>
                                         ) : (
@@ -2355,7 +2355,7 @@ export default function Prospects() {
                                     </div>
                                     <div className="prospectListMobileCardRow">
                                       <span className="prospectListMobileCardLabel">Time</span>
-                                      <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: '#059669' }}>
+                                      <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', color: 'var(--text-green-600)' }}>
                                         {(prospectLedgerSecondsMap[p.id] ?? 0) === 0 ? '—' : formatTimerSeconds(prospectLedgerSecondsMap[p.id] ?? 0)}
                                       </span>
                                     </div>
@@ -2364,7 +2364,7 @@ export default function Prospects() {
                                       <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                                         <span>
                                           {p.email ? (
-                                            <a href={`mailto:${encodeURIComponent(p.email)}`} onClick={(e) => e.stopPropagation()} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                                            <a href={`mailto:${encodeURIComponent(p.email)}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                                               {p.email}
                                             </a>
                                           ) : (
@@ -2378,7 +2378,7 @@ export default function Prospects() {
                                               target="_blank"
                                               rel="noopener noreferrer"
                                               onClick={(e) => e.stopPropagation()}
-                                              style={{ color: '#2563eb', textDecoration: 'underline' }}
+                                              style={{ color: 'var(--text-link)', textDecoration: 'underline' }}
                                             >
                                               {formatWebsiteDisplay(p.links_to_website)}
                                             </a>
@@ -2394,10 +2394,10 @@ export default function Prospects() {
                                   </button>
                                   {(warmth === CANT_REACH_KEY || warmth === NO_LONGER_FIT_KEY) && (
                                     <div style={{ position: 'absolute', bottom: '0.5rem', left: '0.5rem', right: '0.5rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }} onClick={(e) => e.stopPropagation()}>
-                                      <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
-                                      <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
-                                      <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
-                                      <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'white', color: '#dc2626', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
+                                      <button type="button" onClick={() => openEditModalForProspect(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Edit</button>
+                                      <button type="button" onClick={() => handleSendBack(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Send back</button>
+                                      <button type="button" onClick={() => handleNotAFitFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: saving ? 'not-allowed' : 'pointer' }}>Not a fit</button>
+                                      <button type="button" onClick={() => handleDeleteFromList(p)} disabled={saving} style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem', border: '1px solid #dc2626', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-red-600)', cursor: saving ? 'not-allowed' : 'pointer' }}>Delete</button>
                                     </div>
                                   )}
                                 </div>
@@ -2420,7 +2420,7 @@ export default function Prospects() {
       {activeTab === 'convert' && (
         <div className="prospectsConvert">
           {!canAccessFollowUp ? (
-            <p style={{ color: '#6b7280' }}>You do not have access to Convert.</p>
+            <p style={{ color: 'var(--text-muted)' }}>You do not have access to Convert.</p>
           ) : (
             <>
               {/* Prospect selector */}
@@ -2452,13 +2452,13 @@ export default function Prospects() {
                     <div className="convertProspectSummaryRow">
                       <span className="convertProspectSummaryLabel">Phone</span>
                       <span>{convertProspect.phone_number ? (
-                        <a href={`tel:${encodeURIComponent(convertProspect.phone_number)}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{convertProspect.phone_number}</a>
+                        <a href={`tel:${encodeURIComponent(convertProspect.phone_number)}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{convertProspect.phone_number}</a>
                       ) : '—'}</span>
                     </div>
                     <div className="convertProspectSummaryRow">
                       <span className="convertProspectSummaryLabel">Email</span>
                       <span>{convertProspect.email ? (
-                        <a href={`mailto:${encodeURIComponent(convertProspect.email)}`} style={{ color: '#2563eb', textDecoration: 'none' }}>{convertProspect.email}</a>
+                        <a href={`mailto:${encodeURIComponent(convertProspect.email)}`} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>{convertProspect.email}</a>
                       ) : '—'}</span>
                     </div>
                     <div className="convertProspectSummaryRow">
@@ -2627,7 +2627,7 @@ export default function Prospects() {
       {activeTab === 'team' && canAccessTeamTab && (
         <div style={{ padding: '1rem 0' }}>
           {teamLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {(() => {
@@ -2647,14 +2647,14 @@ export default function Prospects() {
                     const d = new Date(dk + 'T12:00:00')
                     const dateLabel = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
                     return (
-                      <section key={dk} style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
-                        <div style={{ padding: '0.5rem 1rem', background: '#f9fafb', fontWeight: 600, fontSize: '0.9375rem' }}>
+                      <section key={dk} style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+                        <div style={{ padding: '0.5rem 1rem', background: 'var(--bg-subtle)', fontWeight: 600, fontSize: '0.9375rem' }}>
                           {dateLabel}
                         </div>
                         <div style={{ overflowX: 'auto' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                             <thead>
-                              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                              <tr style={{ borderBottom: '1px solid var(--border)' }}>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', fontWeight: 600 }}>User</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Marked</th>
                                 <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 600 }}>Updated</th>
@@ -2696,7 +2696,7 @@ export default function Prospects() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 400,
@@ -2718,7 +2718,7 @@ export default function Prospects() {
                   background: 'none',
                   border: 'none',
                   cursor: saving ? 'not-allowed' : 'pointer',
-                  color: '#9ca3af',
+                  color: 'var(--text-faint)',
                   opacity: saving ? 0.5 : 1,
                 }}
                 aria-label="Delete prospect"
@@ -2738,7 +2738,7 @@ export default function Prospects() {
                   type="text"
                   value={editCompanyName}
                   onChange={(e) => setEditCompanyName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -2747,7 +2747,7 @@ export default function Prospects() {
                   type="text"
                   value={editContactName}
                   onChange={(e) => setEditContactName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -2756,7 +2756,7 @@ export default function Prospects() {
                   type="text"
                   value={editPhoneNumber}
                   onChange={(e) => setEditPhoneNumber(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -2765,7 +2765,7 @@ export default function Prospects() {
                   type="email"
                   value={editEmail}
                   onChange={(e) => setEditEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -2774,7 +2774,7 @@ export default function Prospects() {
                   type="text"
                   value={editAddress}
                   onChange={(e) => setEditAddress(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -2783,7 +2783,7 @@ export default function Prospects() {
                   type="text"
                   value={editLinksToWebsite}
                   onChange={(e) => setEditLinksToWebsite(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
             </div>
@@ -2799,7 +2799,7 @@ export default function Prospects() {
               <button
                 type="button"
                 onClick={() => { if (!saving) { setEditModalOpen(false); setEditingProspect(null) } }}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -2824,7 +2824,7 @@ export default function Prospects() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 400,
@@ -2841,7 +2841,7 @@ export default function Prospects() {
                   type="date"
                   value={callbackDate}
                   onChange={(e) => setCallbackDate(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -2850,7 +2850,7 @@ export default function Prospects() {
                   type="time"
                   value={callbackTime}
                   onChange={(e) => setCallbackTime(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -2860,7 +2860,7 @@ export default function Prospects() {
                   value={callbackNote}
                   onChange={(e) => setCallbackNote(e.target.value)}
                   placeholder="Optional note (e.g. discuss pricing)"
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
             </div>
@@ -2876,7 +2876,7 @@ export default function Prospects() {
               <button
                 type="button"
                 onClick={() => !saving && setCallbackModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -2901,7 +2901,7 @@ export default function Prospects() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 560,
@@ -2926,7 +2926,7 @@ export default function Prospects() {
                   style={{
                     width: '100%',
                     padding: '0.5rem 0.75rem',
-                    border: '1px solid #d1d5db',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     fontSize: '0.9375rem',
                     fontFamily: 'inherit',
@@ -2943,7 +2943,7 @@ export default function Prospects() {
                   width: '100%',
                   minHeight: 200,
                   padding: '0.75rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   fontSize: '0.9375rem',
                   resize: 'vertical',
@@ -2953,7 +2953,7 @@ export default function Prospects() {
                 }}
               />
               <div style={{ marginTop: '0.75rem' }}>
-                <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '0.375rem' }}>Placeholders:</div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.375rem' }}>Placeholders:</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.375rem' }}>
                   {[
                     { text: '[User name]' },
@@ -2987,8 +2987,8 @@ export default function Prospects() {
                       }}
                       style={{
                         padding: '0.25rem 0.5rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #e5e7eb',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border)',
                         borderRadius: 9999,
                         fontSize: '0.8125rem',
                         cursor: 'pointer',
@@ -3011,7 +3011,7 @@ export default function Prospects() {
                 <button
                   type="button"
                   onClick={() => !copyTemplateSaving && setEditingCopyTemplateKey(null)}
-                  style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
                 >
                   Cancel
                 </button>
@@ -3037,7 +3037,7 @@ export default function Prospects() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 400,
@@ -3047,7 +3047,7 @@ export default function Prospects() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 1rem 0' }}>Missing information</h3>
-            <p style={{ margin: '0 0 1rem 0', color: '#6b7280', fontSize: '0.9375rem' }}>
+            <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)', fontSize: '0.9375rem' }}>
               The following fields are blank but used in your template. Please fill them in before copying:
             </p>
             <ul style={{ margin: '0 0 1rem 0', paddingLeft: '1.25rem' }}>
@@ -3082,7 +3082,7 @@ export default function Prospects() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 480,
@@ -3096,18 +3096,18 @@ export default function Prospects() {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ margin: '0 0 1rem 0' }}>Timer history</h3>
-            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Past instances when you clicked No Longer a Fit, Next Prospect, or Can&apos;t reach.
             </p>
             {timerEventsLoading ? (
-              <p style={{ color: '#6b7280' }}>Loading…</p>
+              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
             ) : timerEvents.length === 0 ? (
-              <p style={{ color: '#6b7280' }}>No events yet.</p>
+              <p style={{ color: 'var(--text-muted)' }}>No events yet.</p>
             ) : (
               <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Date & time</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Timer</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Button</th>
@@ -3120,7 +3120,7 @@ export default function Prospects() {
                         <td style={{ padding: '0.5rem 0.75rem' }}>{formatDateTime(e.created_at)}</td>
                         <td style={{ padding: '0.5rem 0.75rem', fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace' }}>{formatTimerSeconds(e.timer_seconds)}</td>
                         <td style={{ padding: '0.5rem 0.75rem' }}>{formatTimerButtonName(e.button_name)}</td>
-                        <td style={{ padding: '0.5rem 0.75rem', color: '#6b7280' }}>{e.prospect?.company_name ?? '—'}</td>
+                        <td style={{ padding: '0.5rem 0.75rem', color: 'var(--text-muted)' }}>{e.prospect?.company_name ?? '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3131,7 +3131,7 @@ export default function Prospects() {
               <button
                 type="button"
                 onClick={() => setTimerHistoryModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Close
               </button>
@@ -3156,7 +3156,7 @@ export default function Prospects() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 360,
@@ -3167,7 +3167,7 @@ export default function Prospects() {
           >
             <h3 style={{ margin: '0 0 1rem 0' }}>My time prospecting</h3>
             {myTimeStatsLoading ? (
-              <p style={{ color: '#6b7280' }}>Loading…</p>
+              <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
             ) : myTimeStats ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9375rem' }}>
                 {(() => {
@@ -3178,26 +3178,26 @@ export default function Prospects() {
                   return (
                     <>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: '#6b7280' }}>Today</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: '#059669' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Today</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: 'var(--text-green-600)' }}>
                           {today === 0 ? '—' : formatTimerSeconds(today)}
                         </span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: '#6b7280' }}>Yesterday</span>
+                        <span style={{ color: 'var(--text-muted)' }}>Yesterday</span>
                         <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500 }}>
                           {myTimeStats.yesterday === 0 ? '—' : formatTimerSeconds(myTimeStats.yesterday)}
                         </span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: '#6b7280' }}>Last 7 days</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: '#059669' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Last 7 days</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: 'var(--text-green-600)' }}>
                           {last7 === 0 ? '—' : formatTimerSeconds(last7)}
                         </span>
                       </div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ color: '#6b7280' }}>Lifetime</span>
-                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: '#059669' }}>
+                        <span style={{ color: 'var(--text-muted)' }}>Lifetime</span>
+                        <span style={{ fontVariantNumeric: 'tabular-nums', fontFamily: 'ui-monospace, monospace', fontWeight: 500, color: 'var(--text-green-600)' }}>
                           {lifetime === 0 ? '—' : formatTimerSeconds(lifetime)}
                         </span>
                       </div>
@@ -3210,7 +3210,7 @@ export default function Prospects() {
               <button
                 type="button"
                 onClick={() => setMyTimeModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Close
               </button>
@@ -3235,7 +3235,7 @@ export default function Prospects() {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               padding: '1.5rem',
               maxWidth: 400,
@@ -3246,7 +3246,7 @@ export default function Prospects() {
           >
             <h3 style={{ margin: '0 0 1rem 0' }}>New Prospect</h3>
             {newProspectError && (
-              <p style={{ color: '#dc2626', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{newProspectError}</p>
+              <p style={{ color: 'var(--text-red-600)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{newProspectError}</p>
             )}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <label>
@@ -3255,7 +3255,7 @@ export default function Prospects() {
                   type="text"
                   value={newCompanyName}
                   onChange={(e) => setNewCompanyName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -3264,7 +3264,7 @@ export default function Prospects() {
                   type="text"
                   value={newContactName}
                   onChange={(e) => setNewContactName(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -3273,7 +3273,7 @@ export default function Prospects() {
                   type="text"
                   value={newPhoneNumber}
                   onChange={(e) => setNewPhoneNumber(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -3282,7 +3282,7 @@ export default function Prospects() {
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -3291,7 +3291,7 @@ export default function Prospects() {
                   type="text"
                   value={newAddress}
                   onChange={(e) => setNewAddress(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
               <label>
@@ -3300,7 +3300,7 @@ export default function Prospects() {
                   type="text"
                   value={newLinksToWebsite}
                   onChange={(e) => setNewLinksToWebsite(e.target.value)}
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
               </label>
             </div>
@@ -3316,7 +3316,7 @@ export default function Prospects() {
               <button
                 type="button"
                 onClick={() => !saving && setNewProspectModalOpen(false)}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>

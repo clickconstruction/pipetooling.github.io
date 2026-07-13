@@ -127,10 +127,10 @@ export default function JobReportsModal({
     padding: '0.5rem 0.75rem',
     fontSize: '0.875rem',
     background: 'none',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
     cursor: 'pointer',
-    color: '#374151',
+    color: 'var(--text-700)',
   }
 
   return (
@@ -139,7 +139,7 @@ export default function JobReportsModal({
         style={{
           position: 'fixed',
           inset: 0,
-          background: 'white',
+          background: 'var(--surface)',
           zIndex,
           display: 'flex',
           flexDirection: 'column',
@@ -152,7 +152,7 @@ export default function JobReportsModal({
             justifyContent: 'space-between',
             alignItems: 'center',
             padding: '1rem 1.5rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             flexShrink: 0,
             flexWrap: 'wrap',
             gap: '0.5rem',
@@ -202,10 +202,10 @@ export default function JobReportsModal({
                 padding: '0.5rem 1rem',
                 fontSize: '1rem',
                 background: 'none',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: 'pointer',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
               aria-label="Close"
             >
@@ -214,15 +214,15 @@ export default function JobReportsModal({
           </div>
         </header>
 
-        <div style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>
+        <div style={{ padding: '1rem 1.5rem', fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
           {jobDisplayName}
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', padding: '0 1.5rem 1.5rem' }}>
           {loading ? (
-            <p style={{ color: '#6b7280' }}>Loading reports…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading reports…</p>
           ) : reports.length === 0 ? (
-            <p style={{ color: '#6b7280', marginBottom: '1rem' }}>No reports yet. Add one below.</p>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>No reports yet. Add one below.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {reports.map((r) => {
@@ -232,9 +232,9 @@ export default function JobReportsModal({
                     key={r.id}
                     style={{
                       marginBottom: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 8,
-                      background: '#fff',
+                      background: 'var(--surface)',
                       overflow: 'hidden',
                     }}
                   >
@@ -256,13 +256,13 @@ export default function JobReportsModal({
                           width: 28,
                           height: 28,
                           padding: 0,
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 4,
-                          background: '#f9fafb',
+                          background: 'var(--bg-subtle)',
                           cursor: 'pointer',
                           fontSize: '0.75rem',
                           lineHeight: 1,
-                          color: '#374151',
+                          color: 'var(--text-700)',
                         }}
                       >
                         {isExpanded ? '▾' : '▸'}
@@ -272,7 +272,7 @@ export default function JobReportsModal({
                         <div
                           style={{
                             fontSize: '0.875rem',
-                            color: '#6b7280',
+                            color: 'var(--text-muted)',
                             display: 'flex',
                             alignItems: 'center',
                             flexWrap: 'wrap',

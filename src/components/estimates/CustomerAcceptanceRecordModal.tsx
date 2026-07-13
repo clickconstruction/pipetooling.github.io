@@ -177,7 +177,7 @@ export default function CustomerAcceptanceRecordModal({
           maxWidth: 720,
           maxHeight: 'min(92vh, 900px)',
           overflow: 'auto',
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           boxShadow: '0 16px 48px rgba(0,0,0,0.2)',
           display: 'flex',
@@ -193,10 +193,10 @@ export default function CustomerAcceptanceRecordModal({
             gap: '0.75rem',
             flexWrap: 'wrap',
             padding: '1rem 1.25rem',
-            borderBottom: '1px solid #e5e7eb',
+            borderBottom: '1px solid var(--border)',
             position: 'sticky',
             top: 0,
-            background: 'white',
+            background: 'var(--surface)',
             zIndex: 1,
           }}
         >
@@ -205,7 +205,7 @@ export default function CustomerAcceptanceRecordModal({
               Accepted estimate
             </h2>
             {row && row.status === 'customer_accepted' ? (
-              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 {row.acceptor_printed_name?.trim() ? (
                   <>
                     <strong>Signed as:</strong> {row.acceptor_printed_name.trim()}
@@ -237,9 +237,9 @@ export default function CustomerAcceptanceRecordModal({
         </div>
 
         <div style={{ padding: '1rem 1.25rem 1.5rem' }}>
-          {loading ? <p style={{ margin: 0, color: '#6b7280' }}>Loading…</p> : null}
+          {loading ? <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading…</p> : null}
           {error ? (
-            <p style={{ margin: 0, color: '#b91c1c' }} role="alert">
+            <p style={{ margin: 0, color: 'var(--text-red-700)' }} role="alert">
               {error}
             </p>
           ) : null}
@@ -247,10 +247,10 @@ export default function CustomerAcceptanceRecordModal({
             <div
               style={{
                 fontFamily: 'system-ui, sans-serif',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '1rem',
-                background: '#fafafa',
+                background: 'var(--bg-page)',
               }}
             >
               <EstimateAcceptBody

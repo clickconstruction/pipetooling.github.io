@@ -364,14 +364,14 @@ export function BankingSortingSnapshotSection() {
   return (
     <section
       style={{
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '1rem 1.25rem',
-        background: '#fafafa',
+        background: 'var(--bg-page)',
       }}
     >
-      {loading && <p style={{ margin: 0, textAlign: 'center', color: '#6b7280' }}>Loading…</p>}
-      {error && !loading && <p style={{ color: '#b91c1c', marginBottom: '1rem', textAlign: 'center' }}>{error}</p>}
+      {loading && <p style={{ margin: 0, textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</p>}
+      {error && !loading && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem', textAlign: 'center' }}>{error}</p>}
       {!loading && !error && (
         <>
           <div
@@ -382,7 +382,7 @@ export function BankingSortingSnapshotSection() {
               gap: '0.75rem 1.25rem',
               marginBottom: '1rem',
               fontSize: '0.875rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
             }}
           >
             <span
@@ -390,21 +390,21 @@ export function BankingSortingSnapshotSection() {
               style={{ whiteSpace: 'nowrap' }}
             >
               Without person:{' '}
-              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{counts.withoutPerson}</strong>
+              <strong style={{ color: 'var(--text-slate-900)', fontWeight: 600 }}>{counts.withoutPerson}</strong>
             </span>
             <span
               title="Rows in this list with no job allocations (Jobs column shows Not split)."
               style={{ whiteSpace: 'nowrap' }}
             >
               Not split to jobs:{' '}
-              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{counts.withoutJobSplit}</strong>
+              <strong style={{ color: 'var(--text-slate-900)', fontWeight: 600 }}>{counts.withoutJobSplit}</strong>
             </span>
             <span
               title="All Mercury transactions matching your Banking sorting filters (including rows already fully attributed)."
               style={{ whiteSpace: 'nowrap' }}
             >
               Total available:{' '}
-              <strong style={{ color: '#0f172a', fontWeight: 600 }}>{filteredLen}</strong>
+              <strong style={{ color: 'var(--text-slate-900)', fontWeight: 600 }}>{filteredLen}</strong>
             </span>
           </div>
           {visibleLen > 0 && (
@@ -413,7 +413,7 @@ export function BankingSortingSnapshotSection() {
                 style={{
                   margin: '0 0 0.5rem',
                   fontSize: '0.875rem',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   textAlign: 'center',
                   fontWeight: 500,
                 }}
@@ -423,7 +423,7 @@ export function BankingSortingSnapshotSection() {
               <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
                       <th style={{ padding: '0.5rem 0.4rem', textAlign: 'left' }}>Posted</th>
                       <th style={{ padding: '0.5rem 0.4rem', textAlign: 'right' }}>Amount</th>
                       <th style={{ padding: '0.5rem 0.4rem', textAlign: 'left' }}>Debit card</th>
@@ -445,7 +445,7 @@ export function BankingSortingSnapshotSection() {
                         setAllocModalTx(r)
                       }
                       return (
-                        <tr key={r.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.4rem', whiteSpace: 'nowrap' }}>{formatPostedDate(r.posted_at)}</td>
                           <td style={{ padding: '0.5rem 0.4rem', textAlign: 'right' }}>${formatCurrency(Number(r.amount))}</td>
                           <td
@@ -538,8 +538,8 @@ export function BankingSortingSnapshotSection() {
                     style={{
                       padding: '0.35rem 0.75rem',
                       borderRadius: 4,
-                      border: '1px solid #d1d5db',
-                      background: canPrev ? 'white' : '#f3f4f6',
+                      border: '1px solid var(--border-strong)',
+                      background: canPrev ? 'var(--surface)' : 'var(--bg-muted)',
                       cursor: canPrev ? 'pointer' : 'not-allowed',
                       fontSize: '0.8125rem',
                     }}
@@ -553,8 +553,8 @@ export function BankingSortingSnapshotSection() {
                     style={{
                       padding: '0.35rem 0.75rem',
                       borderRadius: 4,
-                      border: '1px solid #d1d5db',
-                      background: canNext ? 'white' : '#f3f4f6',
+                      border: '1px solid var(--border-strong)',
+                      background: canNext ? 'var(--surface)' : 'var(--bg-muted)',
                       cursor: canNext ? 'pointer' : 'not-allowed',
                       fontSize: '0.8125rem',
                     }}
@@ -571,7 +571,7 @@ export function BankingSortingSnapshotSection() {
                 margin: '0 0 1rem',
                 textAlign: 'center',
                 fontSize: '0.875rem',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
               }}
             >
               No incomplete transactions in your sorting list.

@@ -88,7 +88,7 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
         aria-modal
         aria-labelledby="tally-job-tx-modal-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 640,
           width: '100%',
@@ -99,7 +99,7 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
         onClick={(e) => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.75rem', padding: '1rem 1rem 0.5rem' }}>
-          <h2 id="tally-job-tx-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: '#111827' }}>
+          <h2 id="tally-job-tx-modal-title" style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text-strong)' }}>
             Transactions for {jobLabel}
           </h2>
           <button
@@ -111,9 +111,9 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
               padding: '0.35rem 0.5rem',
               minWidth: 36,
               borderRadius: 6,
-              border: '1px solid #d1d5db',
-              background: 'white',
-              color: '#374151',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
+              color: 'var(--text-700)',
               fontSize: '1.25rem',
               lineHeight: 1,
               cursor: 'pointer',
@@ -122,26 +122,26 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
             ×
           </button>
         </div>
-        <p style={{ margin: '0 1rem 0.75rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 1rem 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           Your linked card purchases allocated to this job ({filteredSorted.length} transaction{filteredSorted.length === 1 ? '' : 's'}).
         </p>
         {filteredSorted.length === 0 ? (
-          <p style={{ margin: '0 1rem 1rem', fontSize: '0.875rem', color: '#6b7280' }}>No transactions found.</p>
+          <p style={{ margin: '0 1rem 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>No transactions found.</p>
         ) : (
           <div style={{ padding: '0 1rem 1rem', overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: '0.75rem' }}>
+                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid var(--border)', color: 'var(--text-700)', fontSize: '0.75rem' }}>
                     Posted
                   </th>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: '0.75rem' }}>
+                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid var(--border)', color: 'var(--text-700)', fontSize: '0.75rem' }}>
                     Total
                   </th>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: '0.75rem' }}>
+                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid var(--border)', color: 'var(--text-700)', fontSize: '0.75rem' }}>
                     On job
                   </th>
-                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid #e5e7eb', color: '#374151', fontSize: '0.75rem' }}>
+                  <th style={{ textAlign: 'left', padding: '0.5rem 0.5rem', borderBottom: '1px solid var(--border)', color: 'var(--text-700)', fontSize: '0.75rem' }}>
                     Counterparty
                   </th>
                 </tr>
@@ -157,8 +157,8 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
                           if (!posted) return '—'
                           return (
                             <>
-                              <div style={{ color: '#111827' }}>{posted.date}</div>
-                              <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>{posted.weekday}</div>
+                              <div style={{ color: 'var(--text-strong)' }}>{posted.date}</div>
+                              <div style={{ color: 'var(--text-slate-500)', fontSize: '0.75rem', marginTop: 2 }}>{posted.weekday}</div>
                             </>
                           )
                         })()}
@@ -184,9 +184,9 @@ export function TallyJobTransactionsModal({ open, onClose, jobId, jobLabel, rows
                         {jobAmt != null ? formatTallyCurrency(jobAmt) : '—'}
                       </td>
                       <td style={{ padding: '0.45rem 0.5rem', verticalAlign: 'top', maxWidth: 220 }}>
-                        <div style={{ fontWeight: 500, color: '#111827' }}>{row.counterparty_name?.trim() || '—'}</div>
+                        <div style={{ fontWeight: 500, color: 'var(--text-strong)' }}>{row.counterparty_name?.trim() || '—'}</div>
                         {row.note?.trim() ? (
-                          <div style={{ color: '#64748b', fontSize: '0.75rem', marginTop: 2 }}>{row.note.trim()}</div>
+                          <div style={{ color: 'var(--text-slate-500)', fontSize: '0.75rem', marginTop: 2 }}>{row.note.trim()}</div>
                         ) : null}
                       </td>
                     </tr>

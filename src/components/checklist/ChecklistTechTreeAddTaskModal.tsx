@@ -104,7 +104,7 @@ export function ChecklistTechTreeAddTaskModal({
         aria-modal="true"
         aria-labelledby="tech-tree-add-task-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: 20,
           maxWidth: 440,
@@ -118,8 +118,8 @@ export function ChecklistTechTreeAddTaskModal({
         <h2 id="tech-tree-add-task-modal-title" style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>
           {isEditMode ? 'Edit task' : 'Add task'}
         </h2>
-        <p style={{ margin: '0 0 1rem', color: '#64748b', fontSize: 13 }}>Group: {groupTitle || '—'}</p>
-        <label style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }} htmlFor="tech-tree-add-task-title">
+        <p style={{ margin: '0 0 1rem', color: 'var(--text-slate-500)', fontSize: 13 }}>Group: {groupTitle || '—'}</p>
+        <label style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }} htmlFor="tech-tree-add-task-title">
           Task title
         </label>
         <input
@@ -129,7 +129,7 @@ export function ChecklistTechTreeAddTaskModal({
           style={{ width: '100%', padding: '8px 10px', marginBottom: 12, boxSizing: 'border-box' }}
           disabled={saving}
         />
-        <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Assignees (optional)</div>
+        <div style={{ fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}>Assignees (optional)</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 200, overflow: 'auto', marginBottom: 16 }}>
           {usersOrderedForDisplay.map((u) => (
             <label key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>

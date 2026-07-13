@@ -749,7 +749,7 @@ export default function PeopleOverheadTab({
     border: 'none',
     background: 'none',
     cursor: 'pointer',
-    color: '#2563eb',
+    color: 'var(--text-link)',
     textDecoration: 'underline',
     padding: 0,
     font: 'inherit',
@@ -782,16 +782,16 @@ export default function PeopleOverheadTab({
             alignItems: 'baseline',
             gap: '0.75rem 1.25rem',
             padding: '0.5rem 0.75rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
-            background: '#fafafa',
+            background: 'var(--bg-page)',
             fontSize: '0.875rem',
             flex: '1 1 auto',
           }}
           title="Trailing-window average overhead cost per calendar day. Recent days (last few) may underreport because clock sessions need approval before they count."
           aria-label="Average daily cost of overhead"
         >
-          <strong style={{ color: '#111827' }}>Average daily cost of overhead</strong>
+          <strong style={{ color: 'var(--text-strong)' }}>Average daily cost of overhead</strong>
           {(() => {
             const fmt = (v: number | null) => {
               if (overheadAvgDailyCost.loading) return '…'
@@ -800,9 +800,9 @@ export default function PeopleOverheadTab({
             }
             return (
               <>
-                <span><span style={{ color: '#6b7280' }}>7-day:</span> {fmt(overheadAvgDailyCost.avg7)}</span>
-                <span><span style={{ color: '#6b7280' }}>30-day:</span> {fmt(overheadAvgDailyCost.avg30)}</span>
-                <span><span style={{ color: '#6b7280' }}>90-day:</span> {fmt(overheadAvgDailyCost.avg90)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>7-day:</span> {fmt(overheadAvgDailyCost.avg7)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>30-day:</span> {fmt(overheadAvgDailyCost.avg30)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>90-day:</span> {fmt(overheadAvgDailyCost.avg90)}</span>
               </>
             )
           })()}
@@ -814,16 +814,16 @@ export default function PeopleOverheadTab({
             alignItems: 'baseline',
             gap: '0.75rem 1.25rem',
             padding: '0.5rem 0.75rem',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
-            background: '#fafafa',
+            background: 'var(--bg-page)',
             fontSize: '0.875rem',
             flex: '1 1 auto',
           }}
           title="For each window: total Office Total ($) divided by total revenue billed (jobs_ledger_invoices.amount with sent_to_customer_at in window), expressed as dollars of overhead per $100 of revenue. Returns — when revenue is $0 in the window."
           aria-label="Average overhead per $100 in revenue"
         >
-          <strong style={{ color: '#111827' }}>Average overhead per $100 in revenue</strong>
+          <strong style={{ color: 'var(--text-strong)' }}>Average overhead per $100 in revenue</strong>
           {(() => {
             const fmt = (v: number | null) => {
               if (overheadAvgDailyCost.loading) return '…'
@@ -832,9 +832,9 @@ export default function PeopleOverheadTab({
             }
             return (
               <>
-                <span><span style={{ color: '#6b7280' }}>7-day:</span> {fmt(overheadAvgDailyCost.per100_7)}</span>
-                <span><span style={{ color: '#6b7280' }}>30-day:</span> {fmt(overheadAvgDailyCost.per100_30)}</span>
-                <span><span style={{ color: '#6b7280' }}>90-day:</span> {fmt(overheadAvgDailyCost.per100_90)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>7-day:</span> {fmt(overheadAvgDailyCost.per100_7)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>30-day:</span> {fmt(overheadAvgDailyCost.per100_30)}</span>
+                <span><span style={{ color: 'var(--text-muted)' }}>90-day:</span> {fmt(overheadAvgDailyCost.per100_90)}</span>
               </>
             )
           })()}
@@ -853,18 +853,18 @@ export default function PeopleOverheadTab({
         <button
           type="button"
           onClick={() => shiftOverheadWeek(-1)}
-          style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+          style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
         >
           Previous week
         </button>
         <button
           type="button"
           onClick={() => shiftOverheadWeek(1)}
-          style={{ padding: '0.35rem 0.65rem', border: '1px solid #d1d5db', borderRadius: 4, background: 'white', cursor: 'pointer' }}
+          style={{ padding: '0.35rem 0.65rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: 'pointer' }}
         >
           Next week
         </button>
-        <span style={{ fontSize: '0.8125rem', color: '#6b7280', alignSelf: 'center' }}>View:</span>
+        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', alignSelf: 'center' }}>View:</span>
         <div style={{ display: 'inline-flex', alignItems: 'stretch' }}>
           <button
             type="button"
@@ -877,11 +877,11 @@ export default function PeopleOverheadTab({
             style={{
               padding: '0.35rem 0.65rem',
               fontSize: '0.8125rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: '4px 0 0 4px',
               borderRight: 'none',
-              background: !overheadTableSimpleView ? '#2563eb' : 'white',
-              color: !overheadTableSimpleView ? 'white' : '#111827',
+              background: !overheadTableSimpleView ? '#2563eb' : 'var(--surface)',
+              color: !overheadTableSimpleView ? 'white' : 'var(--text-strong)',
               cursor: 'pointer',
               fontWeight: !overheadTableSimpleView ? 600 : 400,
             }}
@@ -899,10 +899,10 @@ export default function PeopleOverheadTab({
             style={{
               padding: '0.35rem 0.65rem',
               fontSize: '0.8125rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: '0 4px 4px 0',
-              background: overheadTableSimpleView ? '#2563eb' : 'white',
-              color: overheadTableSimpleView ? 'white' : '#111827',
+              background: overheadTableSimpleView ? '#2563eb' : 'var(--surface)',
+              color: overheadTableSimpleView ? 'white' : 'var(--text-strong)',
               cursor: 'pointer',
               fontWeight: overheadTableSimpleView ? 600 : 400,
             }}
@@ -916,7 +916,7 @@ export default function PeopleOverheadTab({
             type="date"
             value={overheadDateStart}
             onChange={(e) => setOverheadDateStart(e.target.value)}
-            style={{ padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
           />
         </label>
         <label style={{ fontSize: '0.875rem' }}>
@@ -925,7 +925,7 @@ export default function PeopleOverheadTab({
             type="date"
             value={overheadDateEnd}
             onChange={(e) => setOverheadDateEnd(e.target.value)}
-            style={{ padding: '0.25rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+            style={{ padding: '0.25rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
           />
         </label>
         </div>
@@ -937,9 +937,9 @@ export default function PeopleOverheadTab({
             padding: '0.45rem 0.75rem',
             fontSize: '0.8125rem',
             fontWeight: 600,
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
-            background: '#fafafa',
+            background: 'var(--bg-page)',
             cursor: 'pointer',
             textAlign: 'left',
             maxWidth: 'min(100%, 280px)',
@@ -947,19 +947,19 @@ export default function PeopleOverheadTab({
         >
           <span style={{ display: 'block' }}>Overhead office job</span>
           {overheadSettingsLoading ? (
-            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#6b7280', marginTop: '0.15rem' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)', marginTop: '0.15rem' }}>
               Loading…
             </span>
           ) : overheadOfficeJobLedgerId && overheadOfficeJobLabel ? (
-            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#4b5563', marginTop: '0.15rem' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-600)', marginTop: '0.15rem' }}>
               {String(overheadOfficeJobLabel.hcp_number ?? '—')} — {overheadOfficeJobLabel.job_name ?? 'Job'}
             </span>
           ) : overheadOfficeJobLedgerId ? (
-            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#b91c1c', marginTop: '0.15rem' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-red-700)', marginTop: '0.15rem' }}>
               Saved job not found
             </span>
           ) : (
-            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: '#6b7280', marginTop: '0.15rem' }}>
+            <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)', marginTop: '0.15rem' }}>
               Not configured
             </span>
           )}
@@ -970,18 +970,18 @@ export default function PeopleOverheadTab({
       overheadOfficePartsLoading ||
       overheadOtherJobsSessionsLoading ||
       overheadOtherJobsPartsLoading ? (
-        <p style={{ color: '#6b7280' }}>Loading overhead (sessions, office materials, field totals)…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading overhead (sessions, office materials, field totals)…</p>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', textAlign: 'center' }}>
             <thead>
-              <tr style={{ background: '#f3f4f6' }}>
-                <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Date</th>
+              <tr style={{ background: 'var(--bg-muted)' }}>
+                <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>Date</th>
                 {!overheadTableSimpleView ? (
                   <>
-                    <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Bid labor ($)</th>
-                    <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Office labor ($)</th>
-                    <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>Office parts ($)</th>
+                    <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>Bid labor ($)</th>
+                    <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>Office labor ($)</th>
+                    <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--border)' }}>Office parts ($)</th>
                   </>
                 ) : null}
                 {overheadTableSimpleView ? (
@@ -989,8 +989,8 @@ export default function PeopleOverheadTab({
                     <th
                       style={{
                         padding: '0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
-                        borderLeft: '1px solid #d1d5db',
+                        borderBottom: '1px solid var(--border)',
+                        borderLeft: '1px solid var(--border-strong)',
                       }}
                       title="Office Total ($) as a percentage of Field Total ($); — when field total is $0"
                     >
@@ -999,8 +999,8 @@ export default function PeopleOverheadTab({
                     <th
                       style={{
                         padding: '0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
-                        borderLeft: '1px solid #d1d5db',
+                        borderBottom: '1px solid var(--border)',
+                        borderLeft: '1px solid var(--border-strong)',
                       }}
                     >
                       Office Total ($) / Hours
@@ -1008,8 +1008,8 @@ export default function PeopleOverheadTab({
                     <th
                       style={{
                         padding: '0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
-                        borderLeft: '1px solid #d1d5db',
+                        borderBottom: '1px solid var(--border)',
+                        borderLeft: '1px solid var(--border-strong)',
                       }}
                     >
                       Field Total ($) / Hours
@@ -1020,7 +1020,7 @@ export default function PeopleOverheadTab({
                     <th
                       style={{
                         padding: '0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border)',
                       }}
                     >
                       Office Total ($) / Hours
@@ -1028,8 +1028,8 @@ export default function PeopleOverheadTab({
                     <th
                       style={{
                         padding: '0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
-                        borderLeft: '1px solid #d1d5db',
+                        borderBottom: '1px solid var(--border)',
+                        borderLeft: '1px solid var(--border-strong)',
                       }}
                       title="Office Total ($) as a percentage of Field Total ($); — when field total is $0"
                     >
@@ -1038,8 +1038,8 @@ export default function PeopleOverheadTab({
                     <th
                       style={{
                         padding: '0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
-                        borderLeft: '1px solid #d1d5db',
+                        borderBottom: '1px solid var(--border)',
+                        borderLeft: '1px solid var(--border-strong)',
                       }}
                     >
                       Field Total ($) / Hours
@@ -1051,7 +1051,7 @@ export default function PeopleOverheadTab({
             <tbody>
               {overheadMergedByDay.length === 0 ? (
                 <tr>
-                  <td colSpan={overheadTableColCount} style={{ padding: '0.75rem', color: '#6b7280' }}>
+                  <td colSpan={overheadTableColCount} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>
                     No rows in this range (no qualifying overhead or field-total activity for these dates).
                   </td>
                 </tr>
@@ -1103,7 +1103,7 @@ export default function PeopleOverheadTab({
                               style={{
                                 padding: '0.5rem',
                                 borderBottom: '1px solid #f3f4f6',
-                                borderLeft: '1px solid #d1d5db',
+                                borderLeft: '1px solid var(--border-strong)',
                               }}
                               aria-label={
                                 overheadFactor == null
@@ -1117,7 +1117,7 @@ export default function PeopleOverheadTab({
                               style={{
                                 padding: '0.5rem',
                                 borderBottom: '1px solid #f3f4f6',
-                                borderLeft: '1px solid #d1d5db',
+                                borderLeft: '1px solid var(--border-strong)',
                               }}
                             >
                               <button
@@ -1130,7 +1130,7 @@ export default function PeopleOverheadTab({
                                 <span style={{ fontWeight: 400 }}> · {row.totalLaborHours.toFixed(2)}h</span>
                               </button>
                             </td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid #d1d5db' }}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid var(--border-strong)' }}>
                               <button
                                 type="button"
                                 aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
@@ -1164,7 +1164,7 @@ export default function PeopleOverheadTab({
                               style={{
                                 padding: '0.5rem',
                                 borderBottom: '1px solid #f3f4f6',
-                                borderLeft: '1px solid #d1d5db',
+                                borderLeft: '1px solid var(--border-strong)',
                               }}
                               aria-label={
                                 overheadFactor == null
@@ -1174,7 +1174,7 @@ export default function PeopleOverheadTab({
                             >
                               {overheadFactor == null ? '—' : `${Math.round(overheadFactor * 100)}%`}
                             </td>
-                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid #d1d5db' }}>
+                            <td style={{ padding: '0.5rem', borderBottom: '1px solid #f3f4f6', borderLeft: '1px solid var(--border-strong)' }}>
                               <button
                                 type="button"
                                 aria-label={`Field total for ${row.work_date}: ${formatCurrency(row.otherJobsUsd)}, ${row.otherJobsLaborHours.toFixed(2)} hours jobs-ledger labor`}
@@ -1205,8 +1205,8 @@ export default function PeopleOverheadTab({
                 )
                 const footerCellBase = {
                   padding: '0.5rem',
-                  borderTop: '2px solid #d1d5db',
-                  background: '#f9fafb',
+                  borderTop: '2px solid var(--border-strong)',
+                  background: 'var(--bg-subtle)',
                   fontWeight: 600,
                 } as const
                 return (
@@ -1229,7 +1229,7 @@ export default function PeopleOverheadTab({
                       {overheadTableSimpleView ? (
                         <>
                           <td
-                            style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}
+                            style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}
                             aria-label={
                               totalOverheadFactor == null
                                 ? 'Period total Overhead %: not available (field total dollars is zero)'
@@ -1242,14 +1242,14 @@ export default function PeopleOverheadTab({
                               ? '—'
                               : `${Math.round(totalOverheadFactor * 100)}%`}
                           </td>
-                          <td style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}>
+                          <td style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}>
                             {formatCurrency(overheadTableTotals.totalUsd)}
                             <span style={{ fontWeight: 400 }}>
                               {' '}
                               · {overheadTableTotals.totalLaborHours.toFixed(2)}h
                             </span>
                           </td>
-                          <td style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}>
+                          <td style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}>
                             {formatCurrency(overheadTableTotals.otherJobsUsd)}
                             <span style={{ fontWeight: 400 }}>
                               {' '}
@@ -1267,7 +1267,7 @@ export default function PeopleOverheadTab({
                             </span>
                           </td>
                           <td
-                            style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}
+                            style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}
                             aria-label={
                               totalOverheadFactor == null
                                 ? 'Period total Overhead %: not available (field total dollars is zero)'
@@ -1280,7 +1280,7 @@ export default function PeopleOverheadTab({
                               ? '—'
                               : `${Math.round(totalOverheadFactor * 100)}%`}
                           </td>
-                          <td style={{ ...footerCellBase, borderLeft: '1px solid #d1d5db' }}>
+                          <td style={{ ...footerCellBase, borderLeft: '1px solid var(--border-strong)' }}>
                             {formatCurrency(overheadTableTotals.otherJobsUsd)}
                             <span style={{ fontWeight: 400 }}>
                               {' '}
@@ -1319,7 +1319,7 @@ export default function PeopleOverheadTab({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               maxWidth: 560,
               width: '100%',
@@ -1331,13 +1331,13 @@ export default function PeopleOverheadTab({
             }}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
               <h2 id="overhead-breakdown-title" style={{ margin: 0, fontSize: '1.125rem' }}>
                 {overheadBreakdownModalModel.title} — {overheadBreakdownModalModel.workDate}
               </h2>
               {overheadBreakdownModalModel.scope === 'officeParts' ? (
                 <>
-                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>
                     Mercury allocations by <strong>posted date</strong> (company time zone), supply invoice shares by{' '}
                     <strong>invoice date</strong>, tally parts by <strong>entry date</strong>. Separate from labor; no dedupe across
                     sources.
@@ -1373,7 +1373,7 @@ export default function PeopleOverheadTab({
                       style={{
                         margin: '0.15rem 0 0 0',
                         fontSize: '0.75rem',
-                        color: '#6b7280',
+                        color: 'var(--text-muted)',
                         fontStyle: 'italic',
                       }}
                       title="Movement between your own accounts; excluded from Materials."
@@ -1388,7 +1388,7 @@ export default function PeopleOverheadTab({
                 </>
               ) : (
                 <>
-                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: '#4b5563' }}>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-600)' }}>
                     Approved, closed sessions in this category. Labor $ = hours × hourly wage from pay config.
                   </p>
                   <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.875rem', fontWeight: 600 }}>
@@ -1401,11 +1401,11 @@ export default function PeopleOverheadTab({
             <div style={{ padding: '0.75rem 1rem', overflowY: 'auto', flex: 1 }}>
               {overheadBreakdownModalModel.scope === 'officeParts' ? (
                 overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
-                  <p style={{ margin: 0, color: '#6b7280' }}>No materials lines for this date.</p>
+                  <p style={{ margin: 0, color: 'var(--text-muted)' }}>No materials lines for this date.</p>
                 ) : (
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                     <thead>
-                      <tr style={{ background: '#f3f4f6' }}>
+                      <tr style={{ background: 'var(--bg-muted)' }}>
                         <th style={{ textAlign: 'left', padding: '0.45rem' }}>Source</th>
                         <th style={{ textAlign: 'left', padding: '0.45rem' }}>Description</th>
                         <th style={{ textAlign: 'right', padding: '0.45rem' }}>Amount ($)</th>
@@ -1427,11 +1427,11 @@ export default function PeopleOverheadTab({
               ) : overheadBreakdownModalModel.scope === 'total' ? (
                 <>
                   {overheadBreakdownModalModel.personTotal.length === 0 ? (
-                    <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280' }}>No labor sessions for this date.</p>
+                    <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)' }}>No labor sessions for this date.</p>
                   ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ background: '#f3f4f6' }}>
+                        <tr style={{ background: 'var(--bg-muted)' }}>
                           <th style={{ textAlign: 'left', padding: '0.45rem' }}>Person</th>
                           <th style={{ textAlign: 'right', padding: '0.45rem' }}>Hours</th>
                           <th style={{ textAlign: 'right', padding: '0.45rem' }}>Office ($)</th>
@@ -1445,7 +1445,7 @@ export default function PeopleOverheadTab({
                             <td style={{ padding: '0.45rem' }}>
                               {r.userName}
                               {r.missingWage ? (
-                                <span style={{ color: '#b45309', fontSize: '0.75rem' }}>
+                                <span style={{ color: 'var(--text-amber-700)', fontSize: '0.75rem' }}>
                                   {' '}
                                   (no hourly wage for some sessions)
                                 </span>
@@ -1463,7 +1463,7 @@ export default function PeopleOverheadTab({
                     </table>
                   )}
 
-                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                     <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail (labor)</summary>
                     {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
                       <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
@@ -1473,9 +1473,9 @@ export default function PeopleOverheadTab({
                           <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
                             {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
                             ${formatCurrency(ln.laborUsd)}
-                            {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                            {ln.missingWage ? <span style={{ color: 'var(--text-amber-700)' }}> (no hourly wage)</span> : null}
                             {ln.notes ? (
-                              <span style={{ color: '#6b7280' }}> | {ln.notes}</span>
+                              <span style={{ color: 'var(--text-muted)' }}> | {ln.notes}</span>
                             ) : null}
                           </li>
                         ))}
@@ -1483,7 +1483,7 @@ export default function PeopleOverheadTab({
                     )}
                   </details>
 
-                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                     <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Materials (office job)</summary>
                     {overheadBreakdownModalModel.sortedPartLines.length === 0 ? (
                       <p style={{ margin: '0.5rem 0 0 0' }}>No materials lines for this date.</p>
@@ -1507,7 +1507,7 @@ export default function PeopleOverheadTab({
                             <li key={ln.sortKey} style={{ marginBottom: '0.25rem' }}>
                               {ln.source === 'mercury' ? 'Mercury' : ln.source === 'supply' ? 'Supply' : 'Tally'} — {ln.label}
                               {cardLabel ? (
-                                <span style={{ color: '#6b7280' }}> · on {cardLabel}</span>
+                                <span style={{ color: 'var(--text-muted)' }}> · on {cardLabel}</span>
                               ) : null}
                               {' — '}
                               ${formatCurrency(ln.amountUsd)}
@@ -1522,9 +1522,9 @@ export default function PeopleOverheadTab({
                     style={{
                       marginTop: '1.25rem',
                       paddingTop: '0.75rem',
-                      borderTop: '1px solid #e5e7eb',
+                      borderTop: '1px solid var(--border)',
                       fontSize: '0.8125rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                     }}
                   >
                     <p style={{ margin: 0 }}>
@@ -1538,11 +1538,11 @@ export default function PeopleOverheadTab({
               ) : overheadBreakdownModalModel.scope === 'otherJobs' ? (
                 <>
                   {overheadBreakdownModalModel.personRows.length === 0 ? (
-                    <p style={{ margin: '0 0 0.75rem 0', color: '#6b7280' }}>No labor sessions for this date.</p>
+                    <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)' }}>No labor sessions for this date.</p>
                   ) : (
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                       <thead>
-                        <tr style={{ background: '#f3f4f6' }}>
+                        <tr style={{ background: 'var(--bg-muted)' }}>
                           <th style={{ textAlign: 'left', padding: '0.45rem' }}>Person</th>
                           <th style={{ textAlign: 'right', padding: '0.45rem' }}>Hours</th>
                           <th style={{ textAlign: 'right', padding: '0.45rem' }}>Labor ($)</th>
@@ -1554,7 +1554,7 @@ export default function PeopleOverheadTab({
                             <td style={{ padding: '0.45rem' }}>
                               {r.userName}
                               {r.missingWage ? (
-                                <span style={{ color: '#b45309', fontSize: '0.75rem' }}>
+                                <span style={{ color: 'var(--text-amber-700)', fontSize: '0.75rem' }}>
                                   {' '}
                                   (no hourly wage for some sessions)
                                 </span>
@@ -1570,7 +1570,7 @@ export default function PeopleOverheadTab({
                     </table>
                   )}
 
-                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                     <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail (labor)</summary>
                     {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
                       <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
@@ -1579,9 +1579,9 @@ export default function PeopleOverheadTab({
                         {overheadBreakdownModalModel.sortedSessions.map((ln) => (
                           <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
                             {ln.userName} — {ln.hours.toFixed(2)}h — ${formatCurrency(ln.laborUsd)}
-                            {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                            {ln.missingWage ? <span style={{ color: 'var(--text-amber-700)' }}> (no hourly wage)</span> : null}
                             {ln.notes ? (
-                              <span style={{ color: '#6b7280' }}> | {ln.notes}</span>
+                              <span style={{ color: 'var(--text-muted)' }}> | {ln.notes}</span>
                             ) : null}
                           </li>
                         ))}
@@ -1589,7 +1589,7 @@ export default function PeopleOverheadTab({
                     )}
                   </details>
 
-                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                  <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                     <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
                       {overheadOfficeJobLedgerId ? 'Materials (field / non-office jobs)' : 'Materials (all jobs)'}
                     </summary>
@@ -1609,7 +1609,7 @@ export default function PeopleOverheadTab({
                                   ? {
                                       paddingLeft: '0.5rem',
                                       borderLeft: '3px solid #94a3b8',
-                                      background: '#f8fafc',
+                                      background: 'var(--bg-slate-tint)',
                                     }
                                   : null),
                               }}
@@ -1617,7 +1617,7 @@ export default function PeopleOverheadTab({
                               <div
                                 style={{
                                   fontWeight: 600,
-                                  color: '#374151',
+                                  color: 'var(--text-700)',
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'baseline',
@@ -1631,7 +1631,7 @@ export default function PeopleOverheadTab({
                                       style={{
                                         marginLeft: '0.4rem',
                                         fontWeight: 500,
-                                        color: '#64748b',
+                                        color: 'var(--text-slate-500)',
                                         fontStyle: 'italic',
                                         fontSize: '0.7rem',
                                       }}
@@ -1640,12 +1640,12 @@ export default function PeopleOverheadTab({
                                     </span>
                                   ) : null}
                                 </span>
-                                <span style={{ fontWeight: 500, color: '#6b7280' }}>
+                                <span style={{ fontWeight: 500, color: 'var(--text-muted)' }}>
                                   ${formatCurrency(section.totalUsd)}
                                 </span>
                               </div>
                               {section.lines.length === 0 ? (
-                                <p style={{ margin: '0.15rem 0 0 1.1rem', color: '#9ca3af' }}>None</p>
+                                <p style={{ margin: '0.15rem 0 0 1.1rem', color: 'var(--text-faint)' }}>None</p>
                               ) : (
                                 <ul style={{ margin: '0.15rem 0 0 0', paddingLeft: '1.1rem' }}>
                                   {section.lines.map((ln) => (
@@ -1667,9 +1667,9 @@ export default function PeopleOverheadTab({
                     style={{
                       marginTop: '1.25rem',
                       paddingTop: '0.75rem',
-                      borderTop: '1px solid #e5e7eb',
+                      borderTop: '1px solid var(--border)',
                       fontSize: '0.8125rem',
-                      color: '#6b7280',
+                      color: 'var(--text-muted)',
                     }}
                   >
                     <p style={{ margin: 0 }}>
@@ -1687,11 +1687,11 @@ export default function PeopleOverheadTab({
                   </div>
                 </>
               ) : overheadBreakdownModalModel.personRows.length === 0 ? (
-                <p style={{ margin: 0, color: '#6b7280' }}>No sessions in this category for this date.</p>
+                <p style={{ margin: 0, color: 'var(--text-muted)' }}>No sessions in this category for this date.</p>
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
-                    <tr style={{ background: '#f3f4f6' }}>
+                    <tr style={{ background: 'var(--bg-muted)' }}>
                       <th style={{ textAlign: 'left', padding: '0.45rem' }}>Person</th>
                       <th style={{ textAlign: 'right', padding: '0.45rem' }}>Hours</th>
                       <th style={{ textAlign: 'right', padding: '0.45rem' }}>Labor ($)</th>
@@ -1703,7 +1703,7 @@ export default function PeopleOverheadTab({
                         <td style={{ padding: '0.45rem' }}>
                           {r.userName}
                           {r.missingWage ? (
-                            <span style={{ color: '#b45309', fontSize: '0.75rem' }}> (no hourly wage)</span>
+                            <span style={{ color: 'var(--text-amber-700)', fontSize: '0.75rem' }}> (no hourly wage)</span>
                           ) : null}
                         </td>
                         <td style={{ padding: '0.45rem', textAlign: 'right' }}>{r.hours.toFixed(2)}</td>
@@ -1717,7 +1717,7 @@ export default function PeopleOverheadTab({
               {overheadBreakdownModalModel.scope !== 'officeParts' &&
               overheadBreakdownModalModel.scope !== 'total' &&
               overheadBreakdownModalModel.scope !== 'otherJobs' ? (
-                <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: '#4b5563' }}>
+                <details open style={{ marginTop: '1rem', fontSize: '0.8125rem', color: 'var(--text-600)' }}>
                   <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Session detail</summary>
                   {overheadBreakdownModalModel.sortedSessions.length === 0 ? (
                     <p style={{ margin: '0.5rem 0 0 0' }}>No sessions.</p>
@@ -1727,9 +1727,9 @@ export default function PeopleOverheadTab({
                         <li key={ln.sessionId} style={{ marginBottom: '0.25rem' }}>
                           {ln.userName} — {ln.bucket === 'office' ? 'Office' : 'Bid'} — {ln.hours.toFixed(2)}h —{' '}
                           ${formatCurrency(ln.laborUsd)}
-                          {ln.missingWage ? <span style={{ color: '#b45309' }}> (no hourly wage)</span> : null}
+                          {ln.missingWage ? <span style={{ color: 'var(--text-amber-700)' }}> (no hourly wage)</span> : null}
                           {ln.notes ? (
-                            <span style={{ color: '#6b7280' }}> | {ln.notes}</span>
+                            <span style={{ color: 'var(--text-muted)' }}> | {ln.notes}</span>
                           ) : null}
                         </li>
                       ))}
@@ -1738,15 +1738,15 @@ export default function PeopleOverheadTab({
                 </details>
               ) : null}
             </div>
-            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setOverheadBreakdownModal(null)}
                 style={{
                   padding: '0.4rem 0.9rem',
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                 }}
               >
@@ -1778,7 +1778,7 @@ export default function PeopleOverheadTab({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               maxWidth: 560,
               width: '100%',
@@ -1790,16 +1790,16 @@ export default function PeopleOverheadTab({
             }}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
               <h2 id="overhead-office-job-modal-title" style={{ margin: 0, fontSize: '1.125rem' }}>
                 Overhead office job
               </h2>
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Which job counts as office overhead for clock time and materials in this table.
               </p>
             </div>
             <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
-              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.45 }}>
+              <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.875rem', color: 'var(--text-600)', lineHeight: 1.45 }}>
                 Daily labor overhead from <strong>approved, closed</strong> clock sessions: time on the office job below,
                 and time on <strong>bids</strong>. If both job and bid are set on a session, the <strong>office job</strong>{' '}
                 wins. Amounts use session hours × <strong>hourly wage</strong> from People pay config (same name as clock
@@ -1815,18 +1815,18 @@ export default function PeopleOverheadTab({
                 dollars)—not margin; <strong>—</strong> when field total is $0.
               </p>
               {overheadSettingsLoading ? (
-                <p style={{ margin: 0, color: '#6b7280' }}>Loading setting…</p>
+                <p style={{ margin: 0, color: 'var(--text-muted)' }}>Loading setting…</p>
               ) : overheadOfficeJobLedgerId ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
                   {overheadOfficeJobLabel ? (
                     <Link
                       to={`/jobs?edit=${encodeURIComponent(overheadOfficeJobLedgerId)}`}
-                      style={{ fontWeight: 600, color: '#2563eb' }}
+                      style={{ fontWeight: 600, color: 'var(--text-link)' }}
                     >
                       {String(overheadOfficeJobLabel.hcp_number ?? '—')} — {overheadOfficeJobLabel.job_name ?? 'Job'}
                     </Link>
                   ) : (
-                    <span style={{ color: '#b91c1c' }}>Saved job id not found — pick another.</span>
+                    <span style={{ color: 'var(--text-red-700)' }}>Saved job id not found — pick another.</span>
                   )}
                   {isDev ? (
                     <>
@@ -1837,8 +1837,8 @@ export default function PeopleOverheadTab({
                           padding: '0.25rem 0.6rem',
                           fontSize: '0.8125rem',
                           borderRadius: 4,
-                          border: '1px solid #d1d5db',
-                          background: 'white',
+                          border: '1px solid var(--border-strong)',
+                          background: 'var(--surface)',
                           cursor: 'pointer',
                         }}
                       >
@@ -1867,9 +1867,9 @@ export default function PeopleOverheadTab({
                           fontSize: '0.8125rem',
                           borderRadius: 4,
                           border: '1px solid #fecaca',
-                          background: '#fef2f2',
+                          background: 'var(--bg-red-tint)',
                           cursor: 'pointer',
-                          color: '#b91c1c',
+                          color: 'var(--text-red-700)',
                         }}
                       >
                         Clear
@@ -1879,7 +1879,7 @@ export default function PeopleOverheadTab({
                 </div>
               ) : (
                 <p style={{ margin: 0, fontSize: '0.875rem' }}>
-                  <span style={{ color: '#6b7280' }}>No office job configured — bid overhead still shows.</span>{' '}
+                  <span style={{ color: 'var(--text-muted)' }}>No office job configured — bid overhead still shows.</span>{' '}
                   {isDev ? (
                     <button
                       type="button"
@@ -1888,28 +1888,28 @@ export default function PeopleOverheadTab({
                         padding: '0.25rem 0.6rem',
                         fontSize: '0.8125rem',
                         borderRadius: 4,
-                        border: '1px solid #d1d5db',
-                        background: 'white',
+                        border: '1px solid var(--border-strong)',
+                        background: 'var(--surface)',
                         cursor: 'pointer',
                       }}
                     >
                       Choose office job
                     </button>
                   ) : (
-                    <span style={{ color: '#6b7280' }}> Ask a dev to configure the office job.</span>
+                    <span style={{ color: 'var(--text-muted)' }}> Ask a dev to configure the office job.</span>
                   )}
                 </p>
               )}
             </div>
-            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setOverheadOfficeJobModalOpen(false)}
                 style={{
                   padding: '0.4rem 0.9rem',
                   borderRadius: 6,
-                  border: '1px solid #d1d5db',
-                  background: 'white',
+                  border: '1px solid var(--border-strong)',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                 }}
               >
@@ -1941,7 +1941,7 @@ export default function PeopleOverheadTab({
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               maxWidth: 480,
               width: '100%',
@@ -1953,15 +1953,15 @@ export default function PeopleOverheadTab({
             }}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
               <h2 id="overhead-job-picker-title" style={{ margin: 0, fontSize: '1.125rem' }}>
                 Choose office job
               </h2>
-              <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Search and select one job to attribute office overhead clock time.
               </p>
             </div>
-            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)' }}>
               <input
                 type="search"
                 value={overheadJobSearch}
@@ -1969,12 +1969,12 @@ export default function PeopleOverheadTab({
                 placeholder="Search jobs…"
                 aria-label="Search jobs"
                 autoFocus
-                style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: 6, border: '1px solid #d1d5db', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.45rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', boxSizing: 'border-box' }}
               />
             </div>
             <div style={{ overflowY: 'auto', flex: 1, padding: '0.5rem 0' }}>
               {overheadJobResults.length === 0 ? (
-                <p style={{ margin: '0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ margin: '0 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {overheadJobSearch.trim() ? 'No matches.' : 'Type to search.'}
                 </p>
               ) : (
@@ -2014,18 +2014,18 @@ export default function PeopleOverheadTab({
                         }}
                       >
                         <span style={{ fontWeight: 600 }}>{effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—'}</span>
-                        <span style={{ color: '#6b7280' }}> — {j.job_name}</span>
+                        <span style={{ color: 'var(--text-muted)' }}> — {j.job_name}</span>
                       </button>
                     </li>
                   ))}
                 </ul>
               )}
             </div>
-            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end' }}>
+            <div style={{ padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'flex-end' }}>
               <button
                 type="button"
                 onClick={() => setOverheadJobPickerOpen(false)}
-                style={{ padding: '0.4rem 0.85rem', borderRadius: 6, border: '1px solid #d1d5db', background: 'white', cursor: 'pointer' }}
+                style={{ padding: '0.4rem 0.85rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer' }}
               >
                 Cancel
               </button>

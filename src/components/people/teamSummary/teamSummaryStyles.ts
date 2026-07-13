@@ -27,7 +27,7 @@ export const TEAM_SUMMARY_INLINE_CSS = `
 }
 .team-summary-tools input[type="search"] {
   padding: 0.35rem 0.6rem;
-  border: 1px solid #d1d5db;
+  border: 1px solid var(--border-strong);
   border-radius: 4px;
   font: inherit;
   min-width: 220px;
@@ -41,16 +41,16 @@ export const TEAM_SUMMARY_INLINE_CSS = `
 .team-summary-tools .team-summary-print-btn,
 .team-summary-tools .team-summary-open-window-btn {
   padding: 0.3rem 0.6rem;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-700);
   border-radius: 4px;
   font-size: 0.8rem;
   cursor: pointer;
 }
 .team-summary-tools .team-summary-reset-sort-btn:hover,
 .team-summary-tools .team-summary-print-btn:hover,
-.team-summary-tools .team-summary-open-window-btn:hover { background: #f9fafb; }
+.team-summary-tools .team-summary-open-window-btn:hover { background: var(--bg-subtle); }
 /* Push "Print" + "Open in new window" to the far right of the tools
    row. Putting the auto margin on the first of the two siblings
    shoves both of them (and any remaining gap-sized space) to the
@@ -60,29 +60,29 @@ export const TEAM_SUMMARY_INLINE_CSS = `
    instead of overflowing. */
 .team-summary-tools .team-summary-print-btn { margin-left: auto; }
 .team-summary-tools .team-summary-reset-sort-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-.team-summary-tools .team-summary-filter-status { color: #6b7280; font-size: 0.85rem; }
-.team-summary-meta { color: #6b7280; margin-bottom: 0.25rem; font-size: 0.85rem; }
-.team-summary-meta-sub { color: #6b7280; margin-bottom: 0.75rem; font-size: 0.85rem; }
+.team-summary-tools .team-summary-filter-status { color: var(--text-muted); font-size: 0.85rem; }
+.team-summary-meta { color: var(--text-muted); margin-bottom: 0.25rem; font-size: 0.85rem; }
+.team-summary-meta-sub { color: var(--text-muted); margin-bottom: 0.75rem; font-size: 0.85rem; }
 .team-summary-meta-sub-btn {
   background: none;
   border: 0;
   padding: 0;
-  color: #2563eb;
+  color: var(--text-link);
   cursor: pointer;
   font: inherit;
   text-decoration: underline dotted;
   text-underline-offset: 2px;
 }
-.team-summary-meta-sub-btn:hover { color: #1d4ed8; }
+.team-summary-meta-sub-btn:hover { color: var(--text-blue-700); }
 
 /* --- Table --- */
 .team-summary-table { border-collapse: collapse; table-layout: auto; }
 .team-summary-table th,
-.team-summary-table td { border: 1px solid #e5e7eb; white-space: nowrap; }
+.team-summary-table td { border: 1px solid var(--border); white-space: nowrap; }
 .team-summary-table th {
   padding: 0.5rem 0.75rem;
   text-align: left;
-  background: #f9fafb;
+  background: var(--bg-subtle);
   font-weight: 600;
   vertical-align: bottom;
   position: relative;
@@ -93,7 +93,7 @@ export const TEAM_SUMMARY_INLINE_CSS = `
  * labels around it) rather than bottom-aligned like the rest. */
 .team-summary-table th[data-sort="profitAfterOverhead"] { vertical-align: middle; }
 .team-summary-table th[data-sort] { cursor: pointer; user-select: none; }
-.team-summary-table th[data-sort]:hover { background: #f3f4f6; }
+.team-summary-table th[data-sort]:hover { background: var(--bg-muted); }
 .team-summary-table th[data-sort]:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
 /* Sort indicator floats in the top-right corner of the header cell
  * (above the label text) instead of sitting inline after the last
@@ -104,22 +104,22 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   position: absolute;
   top: 2px;
   right: 4px;
-  color: #9ca3af;
+  color: var(--text-faint);
   font-size: 0.7em;
   line-height: 1;
   pointer-events: none;
 }
 .team-summary-table th[aria-sort="ascending"] .sort-indicator,
-.team-summary-table th[aria-sort="descending"] .sort-indicator { color: #1f2937; }
-.team-summary-table tfoot td { border-top: 2px solid #d1d5db; }
+.team-summary-table th[aria-sort="descending"] .sort-indicator { color: var(--text-strong); }
+.team-summary-table tfoot td { border-top: 2px solid var(--border-strong); }
 .team-summary-table .empty-state td {
   padding: 1rem 0.75rem;
   text-align: center;
-  color: #6b7280;
+  color: var(--text-muted);
   font-style: italic;
-  background: #fafafa;
+  background: var(--bg-page);
 }
-.team-summary-table .click-cell:hover { background: #eff6ff; }
+.team-summary-table .click-cell:hover { background: var(--bg-blue-tint); }
 .team-summary-table .click-cell:focus-visible { outline: 2px solid #2563eb; outline-offset: -2px; }
 .team-summary-person-name-btn {
   display: inline-flex;
@@ -135,7 +135,7 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   text-align: left;
 }
 .team-summary-person-name-btn .chevron {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.8em;
   width: 0.7em;
   display: inline-block;
@@ -146,14 +146,14 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   outline-offset: 1px;
   border-radius: 2px;
 }
-.team-summary-table tbody tr.selected-person td { background: #dbeafe; }
+.team-summary-table tbody tr.selected-person td { background: var(--bg-blue-tint); }
 .team-summary-table tbody tr.selected-person .team-summary-person-name-btn .person-name-text {
   font-weight: 700;
-  color: #1e3a8a;
+  color: var(--text-blue-700);
 }
-.team-summary-table tbody tr.selected-person .team-summary-person-name-btn .chevron { color: #1e3a8a; }
+.team-summary-table tbody tr.selected-person .team-summary-person-name-btn .chevron { color: var(--text-blue-700); }
 .team-summary-footer-caption {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.8rem;
   margin-top: 0.5rem;
 }
@@ -183,7 +183,7 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: #fff;
+  background: var(--surface);
   border-radius: 8px;
   padding: 1rem 1.5rem 1.5rem;
   max-width: 95vw;
@@ -202,16 +202,16 @@ export const TEAM_SUMMARY_INLINE_CSS = `
 .team-summary-modal-header h2 { margin: 0; font-size: 1.1rem; }
 .team-summary-modal-header-actions { display: flex; align-items: center; gap: 0.5rem; }
 .team-summary-modal-print {
-  background: #fff;
-  border: 1px solid #d1d5db;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
   padding: 0.25rem 0.6rem;
   border-radius: 4px;
   font-size: 0.8rem;
   cursor: pointer;
-  color: #374151;
+  color: var(--text-700);
   line-height: 1.2;
 }
-.team-summary-modal-print:hover { background: #f9fafb; }
+.team-summary-modal-print:hover { background: var(--bg-subtle); }
 .team-summary-modal-print:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
 .team-summary-modal-close {
   background: none;
@@ -219,24 +219,24 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   font-size: 1.5rem;
   line-height: 1;
   cursor: pointer;
-  color: #6b7280;
+  color: var(--text-muted);
   padding: 0.25rem 0.5rem;
   border-radius: 4px;
 }
-.team-summary-modal-close:hover { background: #f3f4f6; color: #111827; }
+.team-summary-modal-close:hover { background: var(--bg-muted); color: var(--text-strong); }
 .team-summary-modal-close:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
 .team-summary-modal h3 {
   margin-top: 1.25rem;
   margin-bottom: 0.5rem;
   font-size: 0.95rem;
-  color: #374151;
+  color: var(--text-700);
 }
 .team-summary-modal table { width: 100%; border-collapse: collapse; }
 .team-summary-modal th,
 .team-summary-modal td {
   padding: 0.35rem 0.6rem;
   white-space: normal;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
 }
 .team-summary-modal td.num,
 .team-summary-modal th.num {
@@ -245,7 +245,7 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   white-space: nowrap;
 }
 .team-summary-modal .caption {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-top: 1rem;
 }
@@ -254,11 +254,11 @@ export const TEAM_SUMMARY_INLINE_CSS = `
 .team-summary-modal .hours-day-list { display: block; }
 .team-summary-modal .hours-day-section {
   padding: 0.45rem 0;
-  border-bottom: 1px solid #f3f4f6;
+  border-bottom: 1px solid var(--bg-muted);
 }
 .team-summary-modal .hours-day-section:last-child { border-bottom: none; }
 .team-summary-modal .hours-day-header {
-  color: #1f2937;
+  color: var(--text-strong);
   font-weight: 600;
   font-size: 0.92rem;
 }
@@ -277,12 +277,12 @@ export const TEAM_SUMMARY_INLINE_CSS = `
   border-radius: 4px;
 }
 .team-summary-modal button.hours-day-header.day-link .day-link-date {
-  color: #2563eb;
+  color: var(--text-link);
   text-decoration: underline dotted;
   text-underline-offset: 3px;
 }
-.team-summary-modal button.hours-day-header.day-link:hover { background: #eff6ff; }
-.team-summary-modal button.hours-day-header.day-link:hover .day-link-date { color: #1d4ed8; }
+.team-summary-modal button.hours-day-header.day-link:hover { background: var(--bg-blue-tint); }
+.team-summary-modal button.hours-day-header.day-link:hover .day-link-date { color: var(--text-blue-700); }
 .team-summary-modal button.hours-day-header.day-link:focus-visible {
   outline: 2px solid #2563eb;
   outline-offset: 1px;
@@ -290,7 +290,7 @@ export const TEAM_SUMMARY_INLINE_CSS = `
 .team-summary-modal .hours-day-allocs {
   margin-left: 1.5rem;
   margin-top: 0.25rem;
-  color: #374151;
+  color: var(--text-700);
   font-size: 0.9rem;
   line-height: 1.5;
 }
@@ -302,22 +302,22 @@ export const TEAM_SUMMARY_INLINE_CSS = `
 .team-summary-modal .hours-day-alloc .alloc-pct {
   display: inline-block;
   min-width: 3.4rem;
-  color: #6b7280;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 .team-summary-modal .hours-day-alloc .alloc-jobnum {
-  color: #1f2937;
+  color: var(--text-strong);
   font-variant-numeric: tabular-nums;
 }
-.team-summary-modal .hours-day-alloc .alloc-jobname { color: #4b5563; }
-.team-summary-modal .hours-day-alloc .alloc-address { color: #6b7280; }
+.team-summary-modal .hours-day-alloc .alloc-jobname { color: var(--text-600); }
+.team-summary-modal .hours-day-alloc .alloc-address { color: var(--text-muted); }
 .team-summary-modal .hours-day-alloc .alloc-counted {
-  color: #6b7280;
+  color: var(--text-muted);
   margin-left: 0.5rem;
   font-variant-numeric: tabular-nums;
 }
 .team-summary-modal .hours-day-noalloc {
-  color: #9ca3af;
+  color: var(--text-faint);
   font-style: italic;
   font-size: 0.85rem;
   padding: 0.05rem 0;
@@ -325,10 +325,10 @@ export const TEAM_SUMMARY_INLINE_CSS = `
 .team-summary-modal .hours-day-total {
   margin-top: 0.85rem;
   padding-top: 0.5rem;
-  border-top: 2px solid #d1d5db;
+  border-top: 2px solid var(--border-strong);
   font-weight: 600;
   font-size: 0.95rem;
-  color: #1f2937;
+  color: var(--text-strong);
 }
 
 /* --- Print --- */

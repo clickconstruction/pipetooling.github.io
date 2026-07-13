@@ -77,7 +77,7 @@ export function PeopleHoursGrid({
   const [editingHoursValue, setEditingHoursValue] = useState('')
 
   return (
-    <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+    <div ref={hoursTableScrollRef} style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem', tableLayout: 'fixed' }}>
       <colgroup>
         <col style={{ width: hoursGridFirstColW }} />
@@ -87,17 +87,17 @@ export function PeopleHoursGrid({
         <col style={{ width: 90 }} />
         <col style={{ width: 90 }} />
       </colgroup>
-      <thead style={{ background: '#f9fafb' }}>
+      <thead style={{ background: 'var(--bg-subtle)' }}>
         <tr>
           <th
             style={{
               padding: '0.5rem 0.75rem',
               textAlign: 'left',
-              borderBottom: '1px solid #e5e7eb',
+              borderBottom: '1px solid var(--border)',
               position: 'sticky',
               left: 0,
               zIndex: 3,
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
               boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
               maxWidth: hoursGridFirstColW,
               minWidth: 0,
@@ -116,7 +116,7 @@ export function PeopleHoursGrid({
                 style={{
                   padding: '0.5rem 0.5rem',
                   textAlign: 'right',
-                  borderBottom: '1px solid #e5e7eb',
+                  borderBottom: '1px solid var(--border)',
                   ...(hoursFlashWorkDate === d
                     ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                     : {}),
@@ -149,8 +149,8 @@ export function PeopleHoursGrid({
               </th>
             )
           })}
-          <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>HH:MM:SS</th>
-          <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Decimal</th>
+          <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>HH:MM:SS</th>
+          <th style={{ padding: '0.5rem 0.5rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Decimal</th>
         </tr>
       </thead>
       <tbody>
@@ -162,7 +162,7 @@ export function PeopleHoursGrid({
               key={personName}
               data-hours-person={personName}
               style={{
-                borderBottom: '1px solid #e5e7eb',
+                borderBottom: '1px solid var(--border)',
                 ...(isClickable && { cursor: 'pointer' }),
                 ...(jobHighlightPeople.has(personName)
                   ? { backgroundColor: 'rgba(219, 234, 254, 0.45)' }
@@ -210,7 +210,7 @@ export function PeopleHoursGrid({
                       onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'up') }}
                       disabled={idx === 0}
                       title="Move up"
-                      style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                      style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === 0 ? 'not-allowed' : 'pointer', color: idx === 0 ? 'var(--text-faint-300)' : 'var(--text-muted)', lineHeight: 1 }}
                     >
                       ▲
                     </button>
@@ -219,7 +219,7 @@ export function PeopleHoursGrid({
                       onClick={(e) => { e.stopPropagation(); moveHoursRow(personName, 'down') }}
                       disabled={idx === showPeopleForHours.length - 1}
                       title="Move down"
-                      style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? '#d1d5db' : '#6b7280', lineHeight: 1 }}
+                      style={{ padding: '2px 1px', border: 'none', background: 'none', cursor: idx === showPeopleForHours.length - 1 ? 'not-allowed' : 'pointer', color: idx === showPeopleForHours.length - 1 ? 'var(--text-faint-300)' : 'var(--text-muted)', lineHeight: 1 }}
                     >
                       ▼
                     </button>
@@ -269,7 +269,7 @@ export function PeopleHoursGrid({
                     }}
                   >
                     {!canEdit ? (
-                      <span style={{ color: '#6b7280' }}>{decimalToHms(gridDisplayHrs) || '-'}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>{decimalToHms(gridDisplayHrs) || '-'}</span>
                     ) : dayLocked ? (
                       canEdit ? (
                         <button
@@ -280,7 +280,7 @@ export function PeopleHoursGrid({
                           }}
                           title="Day marked Correct — click to view clock sessions and job assignments"
                           style={{
-                            color: '#6b7280',
+                            color: 'var(--text-muted)',
                             cursor: 'pointer',
                             width: '100%',
                             textAlign: 'right',
@@ -293,7 +293,7 @@ export function PeopleHoursGrid({
                           {decimalToHms(gridDisplayHrs) || '-'}
                         </button>
                       ) : (
-                        <span style={{ color: '#6b7280' }} title="Day marked Correct — locked">
+                        <span style={{ color: 'var(--text-muted)' }} title="Day marked Correct — locked">
                           {decimalToHms(gridDisplayHrs) || '-'}
                         </span>
                       )
@@ -326,7 +326,7 @@ export function PeopleHoursGrid({
                           }
                           setEditingHoursCell(null)
                         }}
-                        style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid #d1d5db', borderRadius: 4, textAlign: 'right' }}
+                        style={{ width: 72, padding: '0.25rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, textAlign: 'right' }}
                       />
                     )}
                     {showMyTimeCorner ? (
@@ -405,7 +405,7 @@ export function PeopleHoursGrid({
                           padding: '0 5px',
                           border: '1px solid rgba(217,119,6,0.55)',
                           background: '#fbbf24',
-                          color: '#78350f',
+                          color: 'var(--text-amber-900)',
                           borderRadius: 9999,
                           fontSize: '0.7rem',
                           fontWeight: 700,
@@ -435,7 +435,7 @@ export function PeopleHoursGrid({
                           style={{
                             fontSize: '0.7rem',
                             fontWeight: 600,
-                            color: '#92400e',
+                            color: 'var(--text-amber-800)',
                             lineHeight: 1.1,
                             marginTop: 1,
                           }}
@@ -455,7 +455,7 @@ export function PeopleHoursGrid({
           )
         })}
       </tbody>
-      <tfoot style={{ background: '#f9fafb', fontWeight: 600 }}>
+      <tfoot style={{ background: 'var(--bg-subtle)', fontWeight: 600 }}>
         {(() => {
           const grandTotal = showPeopleForHours.reduce((s, p) => s + hoursDays.reduce((ds, d) => ds + getHoursGridDisplayHours(p, d), 0), 0)
           return (
@@ -464,11 +464,11 @@ export function PeopleHoursGrid({
                 <td
                   style={{
                     padding: '0.5rem 0.75rem',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                     position: 'sticky',
                     left: 0,
                     zIndex: 2,
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
                   }}
                 >
@@ -482,7 +482,7 @@ export function PeopleHoursGrid({
                       style={{
                         padding: '0.5rem 0.5rem',
                         textAlign: 'center',
-                        borderTop: '1px solid #e5e7eb',
+                        borderTop: '1px solid var(--border)',
                         ...(hoursFlashWorkDate === d
                           ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                           : {}),
@@ -492,20 +492,20 @@ export function PeopleHoursGrid({
                     </td>
                   )
                 })}
-                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
                   {decimalToHms(grandTotal) || '-'}
                 </td>
-                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>-</td>
+                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>-</td>
               </tr>
               <tr>
                 <td
                   style={{
                     padding: '0.5rem 0.75rem',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                     position: 'sticky',
                     left: 0,
                     zIndex: 2,
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
                   }}
                 >
@@ -519,7 +519,7 @@ export function PeopleHoursGrid({
                       style={{
                         padding: '0.5rem 0.5rem',
                         textAlign: 'center',
-                        borderTop: '1px solid #e5e7eb',
+                        borderTop: '1px solid var(--border)',
                         ...(hoursFlashWorkDate === d
                           ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                           : {}),
@@ -529,8 +529,8 @@ export function PeopleHoursGrid({
                     </td>
                   )
                 })}
-                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>-</td>
-                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid #e5e7eb' }}>
+                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>-</td>
+                <td style={{ padding: '0.5rem 0.5rem', textAlign: 'center', borderTop: '1px solid var(--border)' }}>
                   {grandTotal.toFixed(2)}
                 </td>
               </tr>
@@ -538,11 +538,11 @@ export function PeopleHoursGrid({
                 <td
                   style={{
                     padding: '0.5rem 0.75rem',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                     position: 'sticky',
                     left: 0,
                     zIndex: 2,
-                    background: '#f9fafb',
+                    background: 'var(--bg-subtle)',
                     fontWeight: 500,
                     fontSize: '0.8125rem',
                     boxShadow: '4px 0 8px -4px rgba(0, 0, 0, 0.08)',
@@ -559,7 +559,7 @@ export function PeopleHoursGrid({
                       style={{
                         padding: '0.35rem 0.5rem',
                         textAlign: 'center',
-                        borderTop: '1px solid #e5e7eb',
+                        borderTop: '1px solid var(--border)',
                         ...(hoursFlashWorkDate === d
                           ? { backgroundColor: 'rgba(254, 243, 199, 0.9)', boxShadow: 'inset 0 0 0 2px rgba(245, 158, 11, 0.65)' }
                           : {}),
@@ -575,7 +575,7 @@ export function PeopleHoursGrid({
                     </td>
                   )
                 })}
-                <td colSpan={2} style={{ padding: '0.5rem 0.5rem', borderTop: '1px solid #e5e7eb' }} />
+                <td colSpan={2} style={{ padding: '0.5rem 0.5rem', borderTop: '1px solid var(--border)' }} />
               </tr>
             </>
           )

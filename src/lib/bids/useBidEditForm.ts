@@ -22,6 +22,8 @@ export type BidEditFormValues = {
   accountManagerId: string
   formServiceTypeId: string
   bidDueDate: string
+  /** Optional 'HH:MM' time-of-day the bid is due; empty when unset. */
+  bidDueTime: string
   estimatedJobStartDate: string
   designDrawingPlanDate: string
   planPages: string
@@ -54,6 +56,7 @@ export type BidEditFormSetters = {
   setAccountManagerId: Dispatch<SetStateAction<string>>
   setFormServiceTypeId: Dispatch<SetStateAction<string>>
   setBidDueDate: Dispatch<SetStateAction<string>>
+  setBidDueTime: Dispatch<SetStateAction<string>>
   setEstimatedJobStartDate: Dispatch<SetStateAction<string>>
   setDesignDrawingPlanDate: Dispatch<SetStateAction<string>>
   setPlanPages: Dispatch<SetStateAction<string>>
@@ -122,6 +125,7 @@ export function useBidEditForm(): BidEditForm {
   const [accountManagerId, setAccountManagerId] = useState('')
   const [formServiceTypeId, setFormServiceTypeId] = useState('')
   const [bidDueDate, setBidDueDate] = useState('')
+  const [bidDueTime, setBidDueTime] = useState('')
   const [estimatedJobStartDate, setEstimatedJobStartDate] = useState('')
   const [designDrawingPlanDate, setDesignDrawingPlanDate] = useState('')
   const [planPages, setPlanPages] = useState('')
@@ -155,6 +159,7 @@ export function useBidEditForm(): BidEditForm {
     setEstimatorId('')
     setAccountManagerId(opts.accountManagerId)
     setBidDueDate('')
+    setBidDueTime('')
     setEstimatedJobStartDate('')
     setSubmittedTo('')
     setOutcome('')
@@ -185,6 +190,8 @@ export function useBidEditForm(): BidEditForm {
     setEstimatorId(bid.estimator_id ?? '')
     setAccountManagerId((bid as { account_manager_id?: string | null }).account_manager_id ?? '')
     setBidDueDate(bid.bid_due_date ?? '')
+    // Postgres `time` comes back as 'HH:MM:SS'; the <input type="time"> wants 'HH:MM'.
+    setBidDueTime(((bid as { bid_due_time?: string | null }).bid_due_time ?? '').slice(0, 5))
     setEstimatedJobStartDate(bid.estimated_job_start_date ?? '')
     setDesignDrawingPlanDate(bid.design_drawing_plan_date ?? '')
     setPlanPages(bid.plan_pages ?? '')
@@ -225,6 +232,7 @@ export function useBidEditForm(): BidEditForm {
     accountManagerId,
     formServiceTypeId,
     bidDueDate,
+    bidDueTime,
     estimatedJobStartDate,
     designDrawingPlanDate,
     planPages,
@@ -257,6 +265,7 @@ export function useBidEditForm(): BidEditForm {
     setAccountManagerId,
     setFormServiceTypeId,
     setBidDueDate,
+    setBidDueTime,
     setEstimatedJobStartDate,
     setDesignDrawingPlanDate,
     setPlanPages,

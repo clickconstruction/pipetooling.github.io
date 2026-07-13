@@ -93,7 +93,7 @@ function latestThreadActivity(
 const expandedHeaderLabelStyle: CSSProperties = {
   fontSize: '0.6875rem',
   fontWeight: 600,
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   textTransform: 'uppercase',
   letterSpacing: '0.03em',
   marginBottom: '0.15rem',
@@ -123,7 +123,7 @@ function JobSummaryExpandedHeader({
   const bDetail = deriveStagesBillingActivityDetail(job)
   const activity = latestThreadActivity(stat)
   const activityMeta = activity ? getDispatchNoteDisplayMeta(activity.atIso) : null
-  const infoValueStyle: CSSProperties = { fontSize: '0.8125rem', color: '#374151' }
+  const infoValueStyle: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-700)' }
   return (
     <div
       style={{
@@ -131,8 +131,8 @@ function JobSummaryExpandedHeader({
         flexWrap: 'wrap',
         gap: '1rem',
         alignItems: 'flex-start',
-        background: '#f9fafb',
-        border: '1px solid #e5e7eb',
+        background: 'var(--bg-subtle)',
+        border: '1px solid var(--border)',
         borderRadius: 6,
         padding: '0.6rem 0.75rem',
         marginBottom: '0.75rem',
@@ -152,8 +152,8 @@ function JobSummaryExpandedHeader({
             borderRadius: 6,
             cursor: 'pointer',
             border: '1px solid #bfdbfe',
-            background: '#eff6ff',
-            color: '#1d4ed8',
+            background: 'var(--bg-blue-tint)',
+            color: 'var(--text-blue-700)',
           }}
         >
           Job Detail
@@ -170,9 +170,9 @@ function JobSummaryExpandedHeader({
             fontWeight: 600,
             borderRadius: 6,
             cursor: 'pointer',
-            border: '1px solid #d1d5db',
-            background: 'white',
-            color: '#374151',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
+            color: 'var(--text-700)',
           }}
         >
           Edit Job
@@ -181,7 +181,7 @@ function JobSummaryExpandedHeader({
       <div style={{ minWidth: 110 }}>
         <div style={expandedHeaderLabelStyle}>Assigned</div>
         {assigned.length === 0 ? (
-          <div style={{ ...infoValueStyle, color: '#9ca3af' }}>—</div>
+          <div style={{ ...infoValueStyle, color: 'var(--text-faint)' }}>—</div>
         ) : (
           assigned.map((n) => (
             <div key={n} style={infoValueStyle}>
@@ -195,13 +195,13 @@ function JobSummaryExpandedHeader({
         <div style={{ ...infoValueStyle, fontWeight: 600 }}>
           Job: {num}
           {serviceName ? (
-            <span style={{ fontWeight: 400, color: '#6b7280' }}> · {serviceName}</span>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {serviceName}</span>
           ) : null}
         </div>
-        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.15rem' }}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
           j: {jYmd ? formatEstimatedCompletionDisplay(jYmd) : '—'}
         </div>
-        <div style={{ fontSize: '0.75rem', color: '#6b7280' }} title={bDetail?.tooltip}>
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title={bDetail?.tooltip}>
           b: {bDetail ? formatEstimatedCompletionDisplay(bDetail.ymd) : '—'}
         </div>
       </div>
@@ -209,7 +209,7 @@ function JobSummaryExpandedHeader({
         <div style={expandedHeaderLabelStyle}>Last activity</div>
         {activity && activityMeta ? (
           <>
-            <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.15rem' }}>
+            <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.15rem' }}>
               {activity.author ? <span>{activity.author}</span> : null}
               {activity.author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
               <span>{activityMeta.weekdayTimeChicago}</span>
@@ -229,7 +229,7 @@ function JobSummaryExpandedHeader({
             </div>
           </>
         ) : (
-          <div style={{ ...infoValueStyle, color: '#9ca3af' }}>{stat ? '—' : '…'}</div>
+          <div style={{ ...infoValueStyle, color: 'var(--text-faint)' }}>{stat ? '—' : '…'}</div>
         )}
       </div>
     </div>
@@ -262,11 +262,11 @@ function renderJobSummarySupplyHouseInvoiceTableContent(
   invoicesFromSupplyHouses: number,
 ): ReactNode {
   if (!invoiceLoaded) {
-    return <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+    return <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading…</p>
   }
   if (invoiceRows.length === 0) {
     return (
-      <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
         {invoicesFromSupplyHouses > 0
           ? 'No invoice allocation lines returned for this job.'
           : 'No allocated supply house invoices.'}
@@ -276,7 +276,7 @@ function renderJobSummarySupplyHouseInvoiceTableContent(
   return (
     <table style={{ width: '100%', maxWidth: 560, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
       <thead>
-        <tr style={{ background: '#f3f4f6' }}>
+        <tr style={{ background: 'var(--bg-muted)' }}>
           <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Supply house</th>
           <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Invoice</th>
           <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Date</th>
@@ -288,7 +288,7 @@ function renderJobSummarySupplyHouseInvoiceTableContent(
           const portalHref =
             supplyHouseWebsitePortalHref(row.invoice_link) ?? supplyHouseWebsitePortalHref(row.website_url)
           return (
-            <tr key={`${row.invoice_id}-${row.job_id}`} style={{ borderTop: '1px solid #e5e7eb' }}>
+            <tr key={`${row.invoice_id}-${row.job_id}`} style={{ borderTop: '1px solid var(--border)' }}>
               <td style={{ padding: '0.25rem 0.4rem' }}>{row.supply_house_name || '—'}</td>
               <td style={{ padding: '0.25rem 0.4rem' }}>
                 {portalHref ? (
@@ -305,7 +305,7 @@ function renderJobSummarySupplyHouseInvoiceTableContent(
                       background: 'none',
                       font: 'inherit',
                       fontSize: '0.75rem',
-                      color: '#2563eb',
+                      color: 'var(--text-link)',
                       textDecoration: 'underline',
                       cursor: 'pointer',
                       textAlign: 'left',
@@ -328,22 +328,22 @@ function renderJobSummarySupplyHouseInvoiceTableContent(
 }
 
 const jobSummaryPartsCostDetailsBoxStyle: CSSProperties = {
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: '0.35rem 0.5rem',
-  background: 'white',
+  background: 'var(--surface)',
 }
 
 const jobSummaryPartsCostFlatRowStyle: CSSProperties = {
   fontWeight: 600,
   fontSize: '0.8125rem',
-  color: '#374151',
+  color: 'var(--text-700)',
 }
 
 /** Indents Job Summary cost breakdown section bodies under their headings. */
 const jobSummaryCostSectionBodyStyle: CSSProperties = {
   paddingLeft: '0.75rem',
-  borderLeft: '2px solid #e5e7eb',
+  borderLeft: '2px solid var(--border)',
 }
 
 /** One ledger row of the Job Summary tab; produced by the parent's jobSummaryData memo. */
@@ -460,9 +460,9 @@ export default function JobsJobSummaryTab({
 }: JobsJobSummaryTabProps) {
   return (
         <div>
-          {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+          {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
           {jobSummaryLedgerError && (
-            <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{jobSummaryLedgerError}</p>
+            <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{jobSummaryLedgerError}</p>
           )}
           <div style={{ marginBottom: '1rem' }}>
             <input
@@ -470,30 +470,30 @@ export default function JobsJobSummaryTab({
               placeholder="Search HCP, job name, address…"
               value={jobSummarySearch}
               onChange={(e) => setJobSummarySearch(e.target.value)}
-              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+              style={{ width: '100%', padding: '0.5rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
             />
           </div>
           {/* Job Summary uses jobSummaryLedgerJobs, not the Stages/Billing/Parts jobs list — do not gate on jobsListLoading or it stays true when users open this tab first. */}
           {tallyPartsLoading || laborJobsLoading || (jobSummaryLedgerJobs === null && jobSummaryLedgerLoading) ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : jobSummaryData.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No billing jobs yet. Add jobs in Billing to see the summary.</p>
           ) : (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP #</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Name</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Address</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Team Labor</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Sub Labor</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts Cost</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Bill</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Revenue before Overhead</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>HCP #</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Name</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Address</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Team Labor</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Sub Labor</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Parts Cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total Bill</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Revenue before Overhead</th>
                     <th
                       title="Percent complete — 100% when all invoices are paid; otherwise latest field report %, or the job's % complete field when no report has one"
-                      style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}
+                      style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}
                     >
                       %
                     </th>
@@ -578,13 +578,13 @@ export default function JobsJobSummaryTab({
                               }
                             }}
                             style={{
-                              borderBottom: '1px solid #e5e7eb',
+                              borderBottom: '1px solid var(--border)',
                               cursor: 'pointer',
-                              background: expanded ? '#f9fafb' : undefined,
+                              background: expanded ? 'var(--bg-subtle)' : undefined,
                             }}
                           >
                             <td style={{ padding: '0.75rem' }}>
-                              <span style={{ marginRight: '0.35rem', color: '#6b7280', userSelect: 'none' }} aria-hidden>
+                              <span style={{ marginRight: '0.35rem', color: 'var(--text-muted)', userSelect: 'none' }} aria-hidden>
                                 {expanded ? '▼' : '▶'}
                               </span>
                               {effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—'}
@@ -613,7 +613,7 @@ export default function JobsJobSummaryTab({
                             >
                               ${formatCurrency(profit)}
                             </td>
-                            <td style={{ padding: '0.75rem', textAlign: 'right', color: '#374151' }}>
+                            <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--text-700)' }}>
                               {formatJobSummaryPercentComplete(
                                 resolveJobSummaryPercentComplete(
                                   jobSummaryReportPctByJobId.get(job.id) ?? null,
@@ -627,7 +627,7 @@ export default function JobsJobSummaryTab({
                         if (!expanded) return [mainRow]
                         const detailRow = (
                           <tr key={`${job.id}-summary-detail`}>
-                            <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fafafa' }}>
+                            <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
                               <div style={{ padding: '0.75rem 1rem', fontSize: '0.8125rem' }}>
                                 <JobSummaryExpandedHeader
                                   job={job}
@@ -643,7 +643,7 @@ export default function JobsJobSummaryTab({
                                     marginBottom: '0.5rem',
                                   }}
                                 >
-                                  <div style={{ fontWeight: 600, color: '#374151' }}>Cost breakdown</div>
+                                  <div style={{ fontWeight: 600, color: 'var(--text-700)' }}>Cost breakdown</div>
                                   <button
                                     type="button"
                                     aria-label="Print or save as PDF: cost breakdown (opens the browser print dialog)"
@@ -675,9 +675,9 @@ export default function JobsJobSummaryTab({
                                     style={{
                                       fontSize: '0.8125rem',
                                       padding: '0.25rem 0.6rem',
-                                      border: '1px solid #d1d5db',
+                                      border: '1px solid var(--border-strong)',
                                       borderRadius: 4,
-                                      background: '#fff',
+                                      background: 'var(--surface)',
                                       cursor: printCostBreakdownJobId === job.id ? 'not-allowed' : 'pointer',
                                       opacity: printCostBreakdownJobId === job.id ? 0.75 : 1,
                                     }}
@@ -761,13 +761,13 @@ export default function JobsJobSummaryTab({
                                   return (
                                     <section style={{ marginBottom: '0.75rem' }}>
                                       {!hasAnyPerson && !cardColLoading && !hasUnassignedRowContent ? (
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                           No per-person team labor or card data.
                                         </p>
                                       ) : cardColLoading && !hasAnyPerson && !hasUnassignedRowContent ? (
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading…</p>
                                       ) : noRowsAfterFilter && breakdownPersonQ.trim() !== '' && !hasUnassignedRowContent ? (
-                                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                        <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                           No people match your search.
                                         </p>
                                       ) : (
@@ -777,7 +777,7 @@ export default function JobsJobSummaryTab({
                                               style={{
                                                 margin: '0 0 0.35rem',
                                                 fontSize: '0.72rem',
-                                                color: '#6b7280',
+                                                color: 'var(--text-muted)',
                                                 lineHeight: 1.45,
                                               }}
                                             >
@@ -793,7 +793,7 @@ export default function JobsJobSummaryTab({
                                             }}
                                           >
                                             <thead>
-                                              <tr style={{ background: '#f3f4f6' }}>
+                                              <tr style={{ background: 'var(--bg-muted)' }}>
                                                 <th
                                                   style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}
                                                   title="Click a cell in this column for a breakdown"
@@ -849,7 +849,7 @@ export default function JobsJobSummaryTab({
                                                     title: `${r.displayName} — row summary`,
                                                     body: (
                                                       <div
-                                                        style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: '#374151' }}
+                                                        style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', color: 'var(--text-700)' }}
                                                       >
                                                         <p style={{ margin: 0 }}>
                                                           Hours: {formatDecimalWorkHoursToHhMm(r.hours)}
@@ -868,7 +868,7 @@ export default function JobsJobSummaryTab({
                                                               ? '—'
                                                               : `$${formatCurrency(r.card)}`}
                                                         </p>
-                                                        <p style={{ margin: 0, color: '#6b7280' }}>
+                                                        <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                                                           Supply: job-level only (not per person).
                                                         </p>
                                                         <p style={{ margin: 0, fontWeight: 600 }}>
@@ -898,7 +898,7 @@ export default function JobsJobSummaryTab({
                                                         totalHours={laborEntry.hours}
                                                       />
                                                     ) : (
-                                                      <p style={{ margin: 0, color: '#6b7280' }}>No work-date hours breakdown for this name.</p>
+                                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>No work-date hours breakdown for this name.</p>
                                                     ),
                                                   })
                                                 }
@@ -917,7 +917,7 @@ export default function JobsJobSummaryTab({
                                                         totalHours={laborEntry.hours}
                                                       />
                                                     ) : (
-                                                      <p style={{ margin: 0, color: '#6b7280' }}>
+                                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                                                         Team labor total ${formatCurrency(r.teamLabor)} (no per-date split in the model).
                                                       </p>
                                                     ),
@@ -967,7 +967,7 @@ export default function JobsJobSummaryTab({
                                                             />
                                                           </div>
                                                         ) : (
-                                                          <p style={{ margin: 0, color: '#6b7280' }}>
+                                                          <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                                                             Team: ${formatCurrency(r.teamLabor)}
                                                           </p>
                                                         )}
@@ -998,7 +998,7 @@ export default function JobsJobSummaryTab({
                                                 const lineTotalPersonInteractive =
                                                   !cardColLoading && !jobSummaryPartsCostIsZero(rowSum)
                                                 return (
-                                                <tr key={r.normKey} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                <tr key={r.normKey} style={{ borderTop: '1px solid var(--border)' }}>
                                                   <td
                                                     className="jobSummaryBreakdownInteractive"
                                                     style={{ padding: '0.25rem 0.4rem' }}
@@ -1115,7 +1115,7 @@ export default function JobsJobSummaryTab({
                                                     style={{
                                                       padding: '0.25rem 0.4rem',
                                                       textAlign: 'right',
-                                                      color: '#6b7280',
+                                                      color: 'var(--text-muted)',
                                                     }}
                                                   >
                                                     —
@@ -1234,7 +1234,7 @@ export default function JobsJobSummaryTab({
                                                   return (
                                                 <tr
                                                   key={`${job.id}::summary-unassigned`}
-                                                  style={{ borderTop: '1px solid #e5e7eb' }}
+                                                  style={{ borderTop: '1px solid var(--border)' }}
                                                 >
                                                   <td style={{ padding: '0.25rem 0.4rem' }}>Unassigned</td>
                                                   <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>—</td>
@@ -1385,14 +1385,14 @@ export default function JobsJobSummaryTab({
                                                   setJobSummaryCostDrilldown({
                                                     title: 'Person summary — total row',
                                                     body: (
-                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                      <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
                                                         <p style={{ margin: '0 0 0.5rem' }}>
                                                           This row sums the job columns used in the person summary. Row labels match the
                                                           amounts above: team labor and (when a person search is active) card roll up
                                                           to the visible people; supply is always the full job allocation.
                                                         </p>
                                                         {isBreakdownFiltered ? (
-                                                          <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                             A person name filter is active: the table only lists matches, but hours in
                                                             the first column and supply stay full-job figures.
                                                           </p>
@@ -1406,13 +1406,13 @@ export default function JobsJobSummaryTab({
                                                   setJobSummaryCostDrilldown({
                                                     title: 'Total — hours (full job)',
                                                     body: (
-                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                      <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
                                                         <p style={{ margin: '0 0 0.75rem' }}>
                                                           These hours are the full team labor model total for the job. They are not
                                                           reduced when you filter the person name list.
                                                         </p>
                                                         {isBreakdownFiltered ? (
-                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                             Filtered table rows:{' '}
                                                             {formatDecimalWorkHoursToHhMm(
                                                               filtered.reduce((s, r) => s + r.hours, 0),
@@ -1429,7 +1429,7 @@ export default function JobsJobSummaryTab({
                                                           }}
                                                         >
                                                           <thead>
-                                                            <tr style={{ background: '#f3f4f6' }}>
+                                                            <tr style={{ background: 'var(--bg-muted)' }}>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team cost</th>
@@ -1439,7 +1439,7 @@ export default function JobsJobSummaryTab({
                                                             {teamLaborRow.breakdown.map((b) => (
                                                               <tr
                                                                 key={normalizePersonNameKey(b.personName)}
-                                                                style={{ borderTop: '1px solid #e5e7eb' }}
+                                                                style={{ borderTop: '1px solid var(--border)' }}
                                                               >
                                                                 <td style={{ padding: '0.25rem 0.4rem' }}>{b.personName}</td>
                                                                 <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
@@ -1466,8 +1466,8 @@ export default function JobsJobSummaryTab({
                                                       ? 'Total — team labor (filter)'
                                                       : 'Total — team labor (full job)',
                                                     body: isBreakdownFiltered ? (
-                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
-                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                      <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
+                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                           Sum of team labor for names matching the current filter. Footer total: $
                                                           {formatCurrency(teamFooterAmt)}.
                                                         </p>
@@ -1480,7 +1480,7 @@ export default function JobsJobSummaryTab({
                                                           }}
                                                         >
                                                           <thead>
-                                                            <tr style={{ background: '#f3f4f6' }}>
+                                                            <tr style={{ background: 'var(--bg-muted)' }}>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team labor</th>
@@ -1488,7 +1488,7 @@ export default function JobsJobSummaryTab({
                                                           </thead>
                                                           <tbody>
                                                             {filtered.map((x) => (
-                                                              <tr key={x.normKey} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                              <tr key={x.normKey} style={{ borderTop: '1px solid var(--border)' }}>
                                                                 <td style={{ padding: '0.25rem 0.4rem' }}>{x.displayName}</td>
                                                                 <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                                   {formatDecimalWorkHoursToHhMm(x.hours)}
@@ -1504,8 +1504,8 @@ export default function JobsJobSummaryTab({
                                                         </table>
                                                       </div>
                                                     ) : teamLaborRow ? (
-                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
-                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                      <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
+                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                           Full job team labor. Total: ${formatCurrency(teamLaborCost)}.
                                                         </p>
                                                         <table
@@ -1517,7 +1517,7 @@ export default function JobsJobSummaryTab({
                                                           }}
                                                         >
                                                           <thead>
-                                                            <tr style={{ background: '#f3f4f6' }}>
+                                                            <tr style={{ background: 'var(--bg-muted)' }}>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Name</th>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Hours</th>
                                                               <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Team labor</th>
@@ -1527,7 +1527,7 @@ export default function JobsJobSummaryTab({
                                                             {teamLaborRow.breakdown.map((b) => (
                                                               <tr
                                                                 key={normalizePersonNameKey(b.personName)}
-                                                                style={{ borderTop: '1px solid #e5e7eb' }}
+                                                                style={{ borderTop: '1px solid var(--border)' }}
                                                               >
                                                                 <td style={{ padding: '0.25rem 0.4rem' }}>{b.personName}</td>
                                                                 <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
@@ -1542,7 +1542,7 @@ export default function JobsJobSummaryTab({
                                                         </table>
                                                       </div>
                                                     ) : (
-                                                      <p style={{ margin: 0, color: '#6b7280' }}>No team labor data.</p>
+                                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>No team labor data.</p>
                                                     ),
                                                   })
                                                 }
@@ -1554,14 +1554,14 @@ export default function JobsJobSummaryTab({
                                                       ? 'Total — card (filter)'
                                                       : 'Total — card (full job)',
                                                     body: (
-                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
+                                                      <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
                                                         {isBreakdownFiltered ? (
-                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                             Mercury lines attributed to names in the current filter. Unattributed
                                                             card is in the Unassigned row, not this footer.
                                                           </p>
                                                         ) : (
-                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                             All job Mercury lines with job allocation. Total card charges: $
                                                             {formatCurrency(cardCharges)}.
                                                           </p>
@@ -1590,8 +1590,8 @@ export default function JobsJobSummaryTab({
                                                   setJobSummaryCostDrilldown({
                                                     title: 'Total — supply houses (full job)',
                                                     body: (
-                                                      <div style={{ lineHeight: 1.5, color: '#374151' }}>
-                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                                                      <div style={{ lineHeight: 1.5, color: 'var(--text-700)' }}>
+                                                        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                           Supply is allocated to the job, not to individual people. The Total row uses
                                                           the same figure whether or not a person name filter is active.
                                                         </p>
@@ -1618,11 +1618,11 @@ export default function JobsJobSummaryTab({
                                                           flexDirection: 'column',
                                                           gap: '0.75rem',
                                                           lineHeight: 1.5,
-                                                          color: '#374151',
+                                                          color: 'var(--text-700)',
                                                         }}
                                                       >
                                                         {isBreakdownFiltered ? (
-                                                          <p style={{ margin: 0, fontSize: '0.8rem', color: '#6b7280' }}>
+                                                          <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                                                             With a name filter, team and card in this total follow the table rows; supply
                                                             is the full job allocation. Hours and supply amounts are still full job.
                                                           </p>
@@ -1637,7 +1637,7 @@ export default function JobsJobSummaryTab({
                                                           {isBreakdownFiltered ? 'filtered' : 'full job'}
                                                           ).
                                                         </p>
-                                                        <p style={{ margin: 0, color: '#6b7280' }}>
+                                                        <p style={{ margin: 0, color: 'var(--text-muted)' }}>
                                                           <strong>Supply houses:</strong> ${formatCurrency(
                                                             Number(invoicesFromSupplyHouses ?? 0),
                                                           )}{' '}
@@ -1647,7 +1647,7 @@ export default function JobsJobSummaryTab({
                                                           Sum: ${formatCurrency(personSummaryFooterRowTotal)}
                                                         </p>
                                                         <div
-                                                          style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid #e5e7eb' }}
+                                                          style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}
                                                         >
                                                           <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', fontWeight: 600 }}>Line lists</p>
                                                           <p style={{ margin: '0 0 0.35rem', fontSize: '0.8rem' }}>Card (for this total)</p>
@@ -1679,7 +1679,7 @@ export default function JobsJobSummaryTab({
                                                   })
                                                 }
                                                 return (
-                                              <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
+                                              <tr style={{ borderTop: '1px solid var(--border-strong)', fontWeight: 600 }}>
                                                 <td
                                                   className="jobSummaryBreakdownInteractive"
                                                   style={{ padding: '0.25rem 0.4rem' }}
@@ -1859,7 +1859,7 @@ export default function JobsJobSummaryTab({
                                           !jobSummaryPartsCostIsZero(cardCharges) &&
                                           Math.abs((sumCardF ?? 0) + unattributedCard - cardCharges) > 0.02 &&
                                           breakdownPersonQ.trim() === '' ? (
-                                            <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: '#b45309' }}>
+                                            <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--text-amber-700)' }}>
                                               Per-person card totals may not match job card total; check attributions.
                                             </p>
                                           ) : null}
@@ -1876,7 +1876,7 @@ export default function JobsJobSummaryTab({
                                           cursor: 'pointer',
                                           fontWeight: 600,
                                           fontSize: '0.8125rem',
-                                          color: '#374151',
+                                          color: 'var(--text-700)',
                                           userSelect: 'none',
                                         }}
                                         onClick={(e) => e.stopPropagation()}
@@ -1898,7 +1898,7 @@ export default function JobsJobSummaryTab({
                                           }}
                                         >
                                           <thead>
-                                            <tr style={{ background: '#f3f4f6' }}>
+                                            <tr style={{ background: 'var(--bg-muted)' }}>
                                               <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Person</th>
                                               <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Hours</th>
                                             </tr>
@@ -1906,7 +1906,7 @@ export default function JobsJobSummaryTab({
                                           {teamBreakdownFiltered.length === 0 && breakdownPersonQ.trim() !== '' ? (
                                             <tbody>
                                               <tr>
-                                                <td colSpan={2} style={{ padding: '0.35rem 0.5rem', color: '#6b7280' }}>
+                                                <td colSpan={2} style={{ padding: '0.35rem 0.5rem', color: 'var(--text-muted)' }}>
                                                   No people match your search.
                                                 </td>
                                               </tr>
@@ -1950,14 +1950,14 @@ export default function JobsJobSummaryTab({
                                                       }
                                                     }}
                                                     style={{
-                                                      borderTop: '1px solid #e5e7eb',
+                                                      borderTop: '1px solid var(--border)',
                                                       cursor: 'pointer',
-                                                      background: personExpanded ? '#f3f4f6' : undefined,
+                                                      background: personExpanded ? 'var(--bg-muted)' : undefined,
                                                     }}
                                                   >
                                                     <td style={{ padding: '0.35rem 0.5rem' }}>
                                                       <span
-                                                        style={{ marginRight: '0.35rem', color: '#6b7280', userSelect: 'none' }}
+                                                        style={{ marginRight: '0.35rem', color: 'var(--text-muted)', userSelect: 'none' }}
                                                         aria-hidden
                                                       >
                                                         {personExpanded ? '▼' : '▶'}
@@ -1976,8 +1976,8 @@ export default function JobsJobSummaryTab({
                                                         colSpan={2}
                                                         style={{
                                                           padding: 0,
-                                                          borderTop: '1px solid #e5e7eb',
-                                                          background: '#fafafa',
+                                                          borderTop: '1px solid var(--border)',
+                                                          background: 'var(--bg-page)',
                                                           verticalAlign: 'top',
                                                         }}
                                                       >
@@ -1992,11 +1992,11 @@ export default function JobsJobSummaryTab({
                                                               !clockLoaded && combinedRows.length > 0
                                                             if (combinedRows.length === 0) {
                                                               return clockLoaded ? (
-                                                                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
+                                                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                                                                   No crew allocation or clock sessions for this person.
                                                                 </p>
                                                               ) : (
-                                                                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.75rem' }}>
+                                                                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                                                                   Loading clock sessions…
                                                                 </p>
                                                               )
@@ -2022,7 +2022,7 @@ export default function JobsJobSummaryTab({
                                                                   }}
                                                                 >
                                                                   <thead>
-                                                                    <tr style={{ background: '#f3f4f6' }}>
+                                                                    <tr style={{ background: 'var(--bg-muted)' }}>
                                                                       <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>
                                                                         Work date
                                                                       </th>
@@ -2049,7 +2049,7 @@ export default function JobsJobSummaryTab({
                                                                         return (
                                                                           <tr
                                                                             key={`alloc-${row.workDate}-${idx}`}
-                                                                            style={{ borderTop: '1px solid #e5e7eb' }}
+                                                                            style={{ borderTop: '1px solid var(--border)' }}
                                                                           >
                                                                             <td style={{ padding: '0.25rem 0.4rem' }}>
                                                                               {isJobSummaryNoWorkDateKey(row.workDate)
@@ -2058,13 +2058,13 @@ export default function JobsJobSummaryTab({
                                                                                     row.workDate,
                                                                                   )}
                                                                             </td>
-                                                                            <td style={{ padding: '0.25rem 0.4rem', color: '#9ca3af' }}>
+                                                                            <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-faint)' }}>
                                                                               —
                                                                             </td>
-                                                                            <td style={{ padding: '0.25rem 0.4rem', color: '#9ca3af' }}>
+                                                                            <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-faint)' }}>
                                                                               —
                                                                             </td>
-                                                                            <td style={{ padding: '0.25rem 0.4rem', color: '#9ca3af' }}>
+                                                                            <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-faint)' }}>
                                                                               —
                                                                             </td>
                                                                             <td
@@ -2097,7 +2097,7 @@ export default function JobsJobSummaryTab({
                                                                       return (
                                                                         <tr
                                                                           key={`punch-${s.id}-${idx}`}
-                                                                          style={{ borderTop: '1px solid #e5e7eb' }}
+                                                                          style={{ borderTop: '1px solid var(--border)' }}
                                                                         >
                                                                           <td style={{ padding: '0.25rem 0.4rem' }}>
                                                                             {isJobSummaryNoWorkDateKey(row.workDate)
@@ -2122,7 +2122,7 @@ export default function JobsJobSummaryTab({
                                                                             style={{
                                                                               padding: '0.25rem 0.4rem',
                                                                               textAlign: 'right',
-                                                                              color: '#9ca3af',
+                                                                              color: 'var(--text-faint)',
                                                                             }}
                                                                           >
                                                                             —
@@ -2131,7 +2131,7 @@ export default function JobsJobSummaryTab({
                                                                             style={{
                                                                               padding: '0.25rem 0.4rem',
                                                                               textAlign: 'right',
-                                                                              color: '#9ca3af',
+                                                                              color: 'var(--text-faint)',
                                                                             }}
                                                                           >
                                                                             —
@@ -2143,9 +2143,9 @@ export default function JobsJobSummaryTab({
                                                                   <tfoot>
                                                                     <tr
                                                                       style={{
-                                                                        borderTop: '1px solid #d1d5db',
+                                                                        borderTop: '1px solid var(--border-strong)',
                                                                         fontWeight: 600,
-                                                                        background: '#f9fafb',
+                                                                        background: 'var(--bg-subtle)',
                                                                       }}
                                                                     >
                                                                       <td
@@ -2177,7 +2177,7 @@ export default function JobsJobSummaryTab({
                                                                   <p
                                                                     style={{
                                                                       margin: '0.35rem 0 0',
-                                                                      color: '#6b7280',
+                                                                      color: 'var(--text-muted)',
                                                                       fontSize: '0.72rem',
                                                                     }}
                                                                   >
@@ -2197,7 +2197,7 @@ export default function JobsJobSummaryTab({
                                           })
                                           )}
                                           <tbody>
-                                            <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
+                                            <tr style={{ borderTop: '1px solid var(--border-strong)', fontWeight: 600 }}>
                                               <td style={{ padding: '0.35rem 0.5rem' }}>Total</td>
                                               <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>
                                                 {formatCurrency(teamLaborRow.manHours)}
@@ -2229,7 +2229,7 @@ export default function JobsJobSummaryTab({
                                                 border: '1px solid #fde68a',
                                                 borderRadius: 6,
                                                 padding: '0.5rem 0.75rem',
-                                                background: '#fffbeb',
+                                                background: 'var(--bg-amber-tint)',
                                               }}
                                             >
                                               <div style={{ fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.8125rem' }}>
@@ -2237,7 +2237,7 @@ export default function JobsJobSummaryTab({
                                               </div>
                                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                                                 <thead>
-                                                  <tr style={{ background: '#fef3c7' }}>
+                                                  <tr style={{ background: 'var(--bg-amber-100)' }}>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>User</th>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Work date</th>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>In</th>
@@ -2268,9 +2268,9 @@ export default function JobsJobSummaryTab({
                                         })()}
                                       </div>
                                     ) : teamLaborCost === 0 ? (
-                                      <p style={{ margin: 0, color: '#6b7280' }}>No team labor for this job.</p>
+                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>No team labor for this job.</p>
                                     ) : (
-                                      <p style={{ margin: 0, color: '#6b7280' }}>Team labor total ${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>
+                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>Team labor total ${formatCurrency(teamLaborCost)} (no per-person breakdown).</p>
                                     )}
                                     </div>
                                       </div>
@@ -2283,7 +2283,7 @@ export default function JobsJobSummaryTab({
                                           cursor: 'pointer',
                                           fontWeight: 600,
                                           fontSize: '0.8125rem',
-                                          color: '#374151',
+                                          color: 'var(--text-700)',
                                           userSelect: 'none',
                                         }}
                                         onClick={(e) => e.stopPropagation()}
@@ -2297,11 +2297,11 @@ export default function JobsJobSummaryTab({
                                     <div style={jobSummaryCostSectionBodyStyle}>
                                     {subLaborJobs.length > 0 ? (
                                       subLaborJobsFiltered.length === 0 && breakdownPersonQ.trim() !== '' ? (
-                                        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+                                        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                                           No people match your search.
                                         </p>
                                       ) : (
-                                        <ul style={{ margin: 0, paddingLeft: '1.1rem', color: '#374151' }}>
+                                        <ul style={{ margin: 0, paddingLeft: '1.1rem', color: 'var(--text-700)' }}>
                                           {subLaborJobsFiltered.map((lj) => {
                                             const c = laborJobSubCost(lj, mileageCost, timePerMile)
                                             return (
@@ -2315,7 +2315,7 @@ export default function JobsJobSummaryTab({
                                         </ul>
                                       )
                                     ) : (
-                                      <p style={{ margin: 0, color: '#6b7280' }}>No sub labor for this HCP.</p>
+                                      <p style={{ margin: 0, color: 'var(--text-muted)' }}>No sub labor for this HCP.</p>
                                     )}
                                     </div>
                                       </div>
@@ -2328,7 +2328,7 @@ export default function JobsJobSummaryTab({
                                           cursor: 'pointer',
                                           fontWeight: 600,
                                           fontSize: '0.8125rem',
-                                          color: '#374151',
+                                          color: 'var(--text-700)',
                                           userSelect: 'none',
                                         }}
                                         onClick={(e) => e.stopPropagation()}
@@ -2353,7 +2353,7 @@ export default function JobsJobSummaryTab({
                                               cursor: 'pointer',
                                               fontWeight: 600,
                                               fontSize: '0.8125rem',
-                                              color: '#374151',
+                                              color: 'var(--text-700)',
                                               userSelect: 'none',
                                             }}
                                             onClick={(e) => e.stopPropagation()}
@@ -2365,7 +2365,7 @@ export default function JobsJobSummaryTab({
                                             {tallyPartsForJob.length > 0 ? (
                                               <table style={{ width: '100%', maxWidth: 560, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                                                 <thead>
-                                                  <tr style={{ background: '#f3f4f6' }}>
+                                                  <tr style={{ background: 'var(--bg-muted)' }}>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Fixture / Part</th>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Qty</th>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>Line cost</th>
@@ -2382,7 +2382,7 @@ export default function JobsJobSummaryTab({
                                                         ? r.fixture_name || 'Fixture'
                                                         : [r.part_name, r.fixture_name].filter(Boolean).join(' · ') || 'Part'
                                                     return (
-                                                      <tr key={r.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                      <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }}>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{label}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>{r.quantity}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>${formatCurrency(lineCost)}</td>
@@ -2392,11 +2392,11 @@ export default function JobsJobSummaryTab({
                                                 </tbody>
                                               </table>
                                             ) : partsFromTally > 0 ? (
-                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                 Total reflects tally data; no line rows for this job in the current view.
                                               </p>
                                             ) : (
-                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>No tally parts.</p>
+                                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>No tally parts.</p>
                                             )}
                                           </div>
                                         </details>
@@ -2413,7 +2413,7 @@ export default function JobsJobSummaryTab({
                                             cursor: 'pointer',
                                             fontWeight: 600,
                                             fontSize: '0.8125rem',
-                                            color: '#374151',
+                                            color: 'var(--text-700)',
                                             userSelect: 'none',
                                           }}
                                           onClick={(e) => e.stopPropagation()}
@@ -2439,20 +2439,20 @@ export default function JobsJobSummaryTab({
                                                     borderTop: '1px solid #f3f4f6',
                                                   }}
                                                 >
-                                                  <span style={{ color: '#374151' }}>{m.description?.trim() || '—'}</span>
+                                                  <span style={{ color: 'var(--text-700)' }}>{m.description?.trim() || '—'}</span>
                                                   <span style={{ whiteSpace: 'nowrap' }}>${formatCurrency(Number(m.amount ?? 0))}</span>
                                                 </div>
                                               ))
                                             }
                                             if (billedMaterialsSum > 0) {
                                               return (
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                   No material line items on file for this job.
                                                 </p>
                                               )
                                             }
                                             return (
-                                              <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>No other job charges.</p>
+                                              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>No other job charges.</p>
                                             )
                                           })()}
                                         </div>
@@ -2476,7 +2476,7 @@ export default function JobsJobSummaryTab({
                                             cursor: 'pointer',
                                             fontWeight: 600,
                                             fontSize: '0.8125rem',
-                                            color: '#374151',
+                                            color: 'var(--text-700)',
                                             userSelect: 'none',
                                           }}
                                           onClick={(e) => e.stopPropagation()}
@@ -2511,7 +2511,7 @@ export default function JobsJobSummaryTab({
                                             cursor: 'pointer',
                                             fontWeight: 600,
                                             fontSize: '0.8125rem',
-                                            color: '#374151',
+                                            color: 'var(--text-700)',
                                             userSelect: 'none',
                                           }}
                                           onClick={(e) => e.stopPropagation()}
@@ -2524,12 +2524,12 @@ export default function JobsJobSummaryTab({
                                             const mRows = jobSummaryMercuryAllocationsByJobId.get(job.id) ?? []
                                             if (!mLoaded) {
                                               return (
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading…</p>
                                               )
                                             }
                                             if (mRows.length === 0) {
                                               return (
-                                                <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                   {cardCharges > 0
                                                     ? 'No card allocation rows returned (check access).'
                                                     : 'No Mercury card allocations for this job.'}
@@ -2539,7 +2539,7 @@ export default function JobsJobSummaryTab({
                                             return (
                                               <table style={{ width: '100%', maxWidth: 760, borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                                                 <thead>
-                                                  <tr style={{ background: '#f3f4f6' }}>
+                                                  <tr style={{ background: 'var(--bg-muted)' }}>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Posted</th>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Counterparty</th>
                                                     <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>User</th>
@@ -2562,7 +2562,7 @@ export default function JobsJobSummaryTab({
                                                           formatMercuryDebitCardIdCompact(debitCardId)
                                                         : '—'
                                                     return (
-                                                      <tr key={row.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                      <tr key={row.id} style={{ borderTop: '1px solid var(--border)' }}>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{posted}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{tx?.counterparty_name ?? '—'}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>
@@ -2572,7 +2572,7 @@ export default function JobsJobSummaryTab({
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                           ${formatCurrency(allocAbs)}
                                                         </td>
-                                                        <td style={{ padding: '0.25rem 0.4rem', color: '#4b5563' }}>
+                                                        <td style={{ padding: '0.25rem 0.4rem', color: 'var(--text-600)' }}>
                                                           {[row.note, tx?.note, tx?.external_memo].filter(Boolean).join(' · ') || '—'}
                                                         </td>
                                                       </tr>
@@ -2600,7 +2600,7 @@ export default function JobsJobSummaryTab({
                                               cursor: 'pointer',
                                               fontWeight: 600,
                                               fontSize: '0.8125rem',
-                                              color: '#374151',
+                                              color: 'var(--text-700)',
                                               userSelect: 'none',
                                             }}
                                             onClick={(e) => e.stopPropagation()}
@@ -2608,7 +2608,7 @@ export default function JobsJobSummaryTab({
                                             Cost by person (tally & card)
                                           </summary>
                                           <div style={{ marginTop: '0.5rem' }}>
-                                            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.45 }}>
+                                            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                                               Other job charges and supply house invoices are job-level only (not split by person), same as
                                               the Parts tab.
                                             </p>
@@ -2625,7 +2625,7 @@ export default function JobsJobSummaryTab({
                                               const mLoaded = jobSummaryMercuryAllocationsByJobId.has(job.id)
                                               if (needMercury && !mLoaded) {
                                                 return (
-                                                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>Loading…</p>
+                                                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>Loading…</p>
                                                 )
                                               }
                                               const mRows = needMercury
@@ -2648,7 +2648,7 @@ export default function JobsJobSummaryTab({
                                                 jobSummaryPartsCostIsZero(ppFooter.cardCharges)
                                               ) {
                                                 return (
-                                                  <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                                     No per-person tally or card amounts for this job.
                                                   </p>
                                                 )
@@ -2660,7 +2660,7 @@ export default function JobsJobSummaryTab({
                                                       style={{
                                                         margin: '0 0 0.5rem',
                                                         fontSize: '0.72rem',
-                                                        color: '#6b7280',
+                                                        color: 'var(--text-muted)',
                                                         lineHeight: 1.45,
                                                       }}
                                                     >
@@ -2676,7 +2676,7 @@ export default function JobsJobSummaryTab({
                                                     }}
                                                   >
                                                     <thead>
-                                                      <tr style={{ background: '#f3f4f6' }}>
+                                                      <tr style={{ background: 'var(--bg-muted)' }}>
                                                         <th style={{ padding: '0.25rem 0.4rem', textAlign: 'left' }}>Person</th>
                                                         <th style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                           Parts from Tally
@@ -2692,8 +2692,8 @@ export default function JobsJobSummaryTab({
                                                             colSpan={4}
                                                             style={{
                                                               padding: '0.25rem 0.4rem',
-                                                              color: '#6b7280',
-                                                              borderTop: '1px solid #e5e7eb',
+                                                              color: 'var(--text-muted)',
+                                                              borderTop: '1px solid var(--border)',
                                                             }}
                                                           >
                                                             No people match your search.
@@ -2703,7 +2703,7 @@ export default function JobsJobSummaryTab({
                                                         ppRowsFiltered.map((row) => {
                                                           const rt = row.partsFromTally + row.cardCharges
                                                           return (
-                                                            <tr key={row.key} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                                            <tr key={row.key} style={{ borderTop: '1px solid var(--border)' }}>
                                                               <td style={{ padding: '0.25rem 0.4rem' }}>{row.displayName}</td>
                                                               <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                                 {jobSummaryPartsCostIsZero(row.partsFromTally)
@@ -2722,7 +2722,7 @@ export default function JobsJobSummaryTab({
                                                           )
                                                         })
                                                       )}
-                                                      <tr style={{ borderTop: '1px solid #d1d5db', fontWeight: 600 }}>
+                                                      <tr style={{ borderTop: '1px solid var(--border-strong)', fontWeight: 600 }}>
                                                         <td style={{ padding: '0.25rem 0.4rem' }}>{ppFooter.displayName}</td>
                                                         <td style={{ padding: '0.25rem 0.4rem', textAlign: 'right' }}>
                                                           ${formatCurrency(ppFooter.partsFromTally)}
@@ -2738,14 +2738,14 @@ export default function JobsJobSummaryTab({
                                                     </tbody>
                                                   </table>
                                                   {(billedMaterialsSum > 0 || invoicesFromSupplyHouses > 0) && (
-                                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.72rem', color: '#6b7280' }}>
+                                                    <p style={{ margin: '0.5rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                                                       Job-level (not in table above): other job charges $
                                                       {formatCurrency(billedMaterialsSum)} · supply invoices $
                                                       {formatCurrency(invoicesFromSupplyHouses)}
                                                     </p>
                                                   )}
                                                   {!ppSumsOk && (
-                                                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: '#b45309' }}>
+                                                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.72rem', color: 'var(--text-amber-700)' }}>
                                                       Row totals may not match job-level parts totals; check attributions and line items.
                                                     </p>
                                                   )}
@@ -2767,7 +2767,7 @@ export default function JobsJobSummaryTab({
                                           cursor: 'pointer',
                                           fontWeight: 600,
                                           fontSize: '0.8125rem',
-                                          color: '#374151',
+                                          color: 'var(--text-700)',
                                           userSelect: 'none',
                                         }}
                                         onClick={(e) => e.stopPropagation()}
@@ -2779,7 +2779,7 @@ export default function JobsJobSummaryTab({
                                       </summary>
                                       <div style={{ marginTop: '0.5rem' }}>
                                         <div style={jobSummaryCostSectionBodyStyle}>
-                                          <p style={{ margin: 0, color: '#374151' }}>
+                                          <p style={{ margin: 0, color: 'var(--text-700)' }}>
                                             Revenue (billing):{' '}
                                             {totalBill === 0 ? '—' : `$${formatCurrency(totalBill)}`}
                                           </p>
@@ -2802,9 +2802,9 @@ export default function JobsJobSummaryTab({
             style={{
               marginTop: '1rem',
               padding: '0.75rem 1rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 4,
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
               fontSize: '0.875rem',
               display: 'flex',
               flexDirection: 'column',
@@ -2819,7 +2819,7 @@ export default function JobsJobSummaryTab({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '0.35rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               <span>Only include jobs with HCP # greater than</span>
@@ -2834,11 +2834,11 @@ export default function JobsJobSummaryTab({
                   setJobSummaryMinHcpExclusive(v)
                   writeJobSummaryMinHcpExclusiveToStorage(v)
                 }}
-                style={{ width: '5.5rem', padding: '0.35rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                style={{ width: '5.5rem', padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               />
             </label>
             {jobSummaryLedgerAllJobs != null && jobSummaryLedgerJobs != null && (
-              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
                 Showing {jobSummaryLedgerJobs.length} of {jobSummaryLedgerAllJobs.length} jobs after filter.
               </p>
             )}
@@ -2847,7 +2847,7 @@ export default function JobsJobSummaryTab({
                 margin: jobSummaryLedgerAllJobs != null && jobSummaryLedgerJobs != null ? '0.35rem 0 0 0' : '0.5rem 0 0 0',
                 maxWidth: '42rem',
                 fontSize: '0.8125rem',
-                color: '#6b7280',
+                color: 'var(--text-muted)',
               }}
             >
               Jobs with no HCP # (or a non-numeric HCP) are always included. Set to −1 to include every HCP #.

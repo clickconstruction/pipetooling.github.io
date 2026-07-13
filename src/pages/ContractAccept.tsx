@@ -229,7 +229,7 @@ export default function ContractAccept() {
             />
             <div style={{ textAlign: 'center', padding: '0 1rem 1.5rem' }}>
               {thankYouCta.status === 'waiting_auth' || thankYouCta.status === 'fetching' ? (
-                <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#6b7280' }}>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
                   Checking for more contracts…
                 </p>
               ) : thankYouCta.status === 'anon' ? (
@@ -261,7 +261,7 @@ export default function ContractAccept() {
         <div className="auth-public-landing__signin-stack auth-public-landing__signin-stack--wide">
           <div className="auth-public-landing__signin-box">
             <h1 style={{ fontSize: '1.25rem' }}>Contract</h1>
-            <p style={{ color: '#b91c1c' }}>{error}</p>
+            <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
           </div>
         </div>
       </AuthPublicLandingLayout>
@@ -291,7 +291,7 @@ export default function ContractAccept() {
                 href={canonical}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: '#2563eb', fontWeight: 600 }}
+                style={{ color: 'var(--text-link)', fontWeight: 600 }}
               >
                 Open full document
               </a>
@@ -303,10 +303,10 @@ export default function ContractAccept() {
               style={{
                 maxHeight: 'min(50vh, 420px)',
                 overflow: 'auto',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '1rem',
-                background: '#f9fafb',
+                background: 'var(--bg-subtle)',
                 fontSize: '0.9rem',
                 marginBottom: '0.5rem',
               }}
@@ -319,7 +319,7 @@ export default function ContractAccept() {
           ) : null}
 
           {!hasRenderableSigningBody && !canonical ? (
-            <p style={{ color: '#6b7280' }}>No document content was provided for this link.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No document content was provided for this link.</p>
           ) : null}
 
           <ContractAcceptSignatureForm

@@ -86,7 +86,7 @@ export default function SettingsCatalogsProspectsTab({
 }: SettingsCatalogsProspectsTabProps) {
   return (
     <>
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setProspectCopySectionOpen((prev) => !prev)}
@@ -109,8 +109,8 @@ export default function SettingsCatalogsProspectsTab({
               Prospect copy templates (dev)
             </button>
             {prospectCopySectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Default text for the three copy buttons in Prospects → Follow Up. Users can override with their own text. Placeholders: [User name], [user email], [user phone number], [company name], [prospect phone number], [prospect contact name], [prospect last contact], [prospect last successful contact] (and _______ for Phone call / Just checking in).
                 </p>
                 <form onSubmit={saveProspectCopyDefaults}>
@@ -121,13 +121,13 @@ export default function SettingsCatalogsProspectsTab({
                       value={prospectCopyNoResponseSubject}
                       onChange={(e) => setProspectCopyNoResponseSubject(e.target.value)}
                       placeholder="Subject (e.g. Follow up - [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
                     />
                     <textarea
                       value={prospectCopyNoResponse}
                       onChange={(e) => setProspectCopyNoResponse(e.target.value)}
                       rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
@@ -137,13 +137,13 @@ export default function SettingsCatalogsProspectsTab({
                       value={prospectCopyPhoneFollowupSubject}
                       onChange={(e) => setProspectCopyPhoneFollowupSubject(e.target.value)}
                       placeholder="Subject (e.g. Re: [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
                     />
                     <textarea
                       value={prospectCopyPhoneFollowup}
                       onChange={(e) => setProspectCopyPhoneFollowup(e.target.value)}
                       rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
@@ -153,13 +153,13 @@ export default function SettingsCatalogsProspectsTab({
                       value={prospectCopyJustCheckingInSubject}
                       onChange={(e) => setProspectCopyJustCheckingInSubject(e.target.value)}
                       placeholder="Subject (e.g. Re: [company name])"
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '0.5rem' }}
                     />
                     <textarea
                       value={prospectCopyJustCheckingIn}
                       onChange={(e) => setProspectCopyJustCheckingIn(e.target.value)}
                       rows={6}
-                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem', fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />
                   </div>
                   <button
@@ -174,7 +174,7 @@ export default function SettingsCatalogsProspectsTab({
             )}
           </div>
 
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setEstimateCxSectionOpen((prev) => !prev)}
@@ -197,8 +197,8 @@ export default function SettingsCatalogsProspectsTab({
               Estimate customer experience defaults (dev)
             </button>
             {estimateCxSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Defaults for estimate emails, public acceptance page, and thank-you. Staff can override per draft estimate on the estimate detail page. Sent estimates freeze copy at send time. Email templates:
                   <code>{' {{accept_url}}'}</code>,<code>{' {{title}}'}</code>,<code>{' {{estimate_number}}'}</code>.
                 </p>
@@ -220,7 +220,7 @@ export default function SettingsCatalogsProspectsTab({
                         style={{
                           width: '100%',
                           padding: '0.5rem',
-                          border: '1px solid #d1d5db',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           fontSize: '0.875rem',
                           fontFamily: 'inherit',
@@ -249,7 +249,7 @@ export default function SettingsCatalogsProspectsTab({
             )}
           </div>
 
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setEstimateLineItemCatalogSectionOpen((prev) => !prev)}
@@ -272,8 +272,8 @@ export default function SettingsCatalogsProspectsTab({
               Estimate line item catalog (dev)
             </button>
             {estimateLineItemCatalogSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Preset line item, count, unit price, and optional description for draft estimates. Staff pick from the
                   book icon next to Line items.
                 </p>
@@ -302,7 +302,7 @@ export default function SettingsCatalogsProspectsTab({
                           })
                         }}
                         placeholder="Line item"
-                        style={{ flex: '1 1 120px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ flex: '1 1 120px', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       />
                       <input
                         type="number"
@@ -323,7 +323,7 @@ export default function SettingsCatalogsProspectsTab({
                         }}
                         placeholder="Count"
                         title="Count"
-                        style={{ width: 72, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ width: 72, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       />
                       <input
                         type="number"
@@ -342,7 +342,7 @@ export default function SettingsCatalogsProspectsTab({
                           })
                         }}
                         placeholder="Unit ($)"
-                        style={{ width: 100, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ width: 100, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       />
                       <input
                         value={r.description}
@@ -358,7 +358,7 @@ export default function SettingsCatalogsProspectsTab({
                         }}
                         placeholder="Description (optional)"
                         aria-label="Description (optional)"
-                        style={{ flex: '1 1 160px', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                        style={{ flex: '1 1 160px', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                       />
                       <button
                         type="button"
@@ -410,7 +410,7 @@ export default function SettingsCatalogsProspectsTab({
             )}
           </div>
 
-          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setEstimatePublicTermsSectionOpen((prev) => !prev)}
@@ -436,8 +436,8 @@ export default function SettingsCatalogsProspectsTab({
               Public estimate Terms and Conditions (plain text)
             </button>
             {estimatePublicTermsSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Shown at <code>/estimate/terms</code> to anyone (no login). Linked from the estimate acceptance page.
                 </p>
                 <form onSubmit={saveEstimatePublicTerms}>
@@ -450,7 +450,7 @@ export default function SettingsCatalogsProspectsTab({
                     style={{
                       width: '100%',
                       padding: '0.5rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
                       fontSize: '0.875rem',
                       fontFamily: 'inherit',

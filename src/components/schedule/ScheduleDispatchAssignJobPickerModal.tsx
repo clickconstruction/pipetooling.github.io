@@ -74,7 +74,7 @@ export function ScheduleDispatchAssignJobPickerModal({
         role="dialog"
         aria-labelledby="hub-assign-job-picker-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 480,
@@ -124,7 +124,7 @@ export function ScheduleDispatchAssignJobPickerModal({
           ) : null}
         </div>
         {subtitle ? (
-          <div style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#4b5563' }}>{subtitle}</div>
+          <div style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-600)' }}>{subtitle}</div>
         ) : null}
         <input
           ref={searchRef}
@@ -135,9 +135,9 @@ export function ScheduleDispatchAssignJobPickerModal({
           aria-label="Search jobs"
           style={{ marginBottom: '0.75rem', padding: '0.4rem', fontSize: '0.875rem' }}
         />
-        <div style={{ overflowY: 'auto', flex: 1, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+        <div style={{ overflowY: 'auto', flex: 1, border: '1px solid var(--border)', borderRadius: 6 }}>
           {jobRows.length === 0 ? (
-            <div style={{ padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>No jobs match.</div>
+            <div style={{ padding: '1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No jobs match.</div>
           ) : (
             <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
               {jobRows.map((r) => (
@@ -153,7 +153,7 @@ export function ScheduleDispatchAssignJobPickerModal({
                       textAlign: 'left',
                       padding: '0.55rem 0.75rem',
                       border: 'none',
-                      background: r.sessionToday ? '#eff6ff' : '#fff',
+                      background: r.sessionToday ? 'var(--bg-blue-tint)' : 'var(--surface)',
                       cursor: 'pointer',
                       fontSize: '0.875rem',
                       display: 'flex',
@@ -169,8 +169,8 @@ export function ScheduleDispatchAssignJobPickerModal({
                           flexShrink: 0,
                           fontSize: '0.75rem',
                           fontWeight: 500,
-                          color: '#1e40af',
-                          background: '#dbeafe',
+                          color: 'var(--text-blue-800)',
+                          background: 'var(--bg-blue-200)',
                           padding: '0.12rem 0.4rem',
                           borderRadius: 4,
                         }}
@@ -190,13 +190,13 @@ export function ScheduleDispatchAssignJobPickerModal({
             aria-label="Confirm mark not coming in today"
             style={{
               border: '1px solid #fecaca',
-              background: '#fef2f2',
+              background: 'var(--bg-red-tint)',
               borderRadius: 6,
               padding: '0.6rem 0.75rem',
               marginTop: '0.75rem',
             }}
           >
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: '#7f1d1d', lineHeight: 1.4 }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: 'var(--text-red-900)', lineHeight: 1.4 }}>
               Mark <strong>{notComingIn.personLabel}</strong> as not coming in
               {notComingIn.workDateLabel ? (
                 <>
@@ -224,8 +224,8 @@ export function ScheduleDispatchAssignJobPickerModal({
                 style={{
                   padding: '0.4rem 0.85rem',
                   fontSize: '0.8125rem',
-                  background: '#fff',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: notComingIn.busy ? 'not-allowed' : 'pointer',
                 }}
@@ -276,7 +276,7 @@ export function ScheduleDispatchAssignJobPickerModal({
                     fontSize: '0.8125rem',
                     background: 'transparent',
                     border: 'none',
-                    color: '#b91c1c',
+                    color: 'var(--text-red-700)',
                     cursor: notComingIn.busy ? 'not-allowed' : 'pointer',
                     textDecoration: 'underline',
                     fontWeight: 500,
@@ -292,8 +292,8 @@ export function ScheduleDispatchAssignJobPickerModal({
               style={{
                 padding: '0.45rem 1rem',
                 fontSize: '0.875rem',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 cursor: 'pointer',
               }}

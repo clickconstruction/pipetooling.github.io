@@ -35,20 +35,20 @@ export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
   const canSubmit = trimmedLength > 0 && trimmedLength <= HELP_FEEDBACK_BODY_MAX && !submitting
 
   return (
-    <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb' }}>
+    <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
       <h2 style={{ margin: '0 0 0.35rem', fontSize: '0.9375rem', fontWeight: 600 }}>
         Feedback on this guide or feature?
       </h2>
-      <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+      <p style={{ margin: '0 0 0.6rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         Suggestions, confusion, or something the app should do differently — it goes straight to the devs.
       </p>
       {submitted ? (
-        <p style={{ fontSize: '0.875rem', color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, padding: '0.5rem 0.75rem', margin: 0 }}>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-green-800)', background: 'var(--bg-green-tint)', border: '1px solid #bbf7d0', borderRadius: 6, padding: '0.5rem 0.75rem', margin: 0 }}>
           Thanks — feedback sent.{' '}
           <button
             type="button"
             onClick={() => setSubmitted(false)}
-            style={{ background: 'none', border: 'none', color: '#166534', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
+            style={{ background: 'none', border: 'none', color: 'var(--text-green-800)', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: '0.875rem' }}
           >
             Send more
           </button>
@@ -61,7 +61,7 @@ export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
             rows={3}
             maxLength={HELP_FEEDBACK_BODY_MAX + 100}
             placeholder="What could be better?"
-            style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 6, boxSizing: 'border-box', fontSize: '0.875rem' }}
+            style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box', fontSize: '0.875rem' }}
           />
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: '0.4rem' }}>
             <button
@@ -71,10 +71,10 @@ export function HelpGuideFeedbackForm({ guideSlug }: { guideSlug: string }) {
             >
               {submitting ? 'Sending…' : 'Send feedback'}
             </button>
-            <span style={{ fontSize: '0.75rem', color: trimmedLength > HELP_FEEDBACK_BODY_MAX ? '#b91c1c' : '#9ca3af' }}>
+            <span style={{ fontSize: '0.75rem', color: trimmedLength > HELP_FEEDBACK_BODY_MAX ? 'var(--text-red-700)' : 'var(--text-faint)' }}>
               {trimmedLength}/{HELP_FEEDBACK_BODY_MAX}
             </span>
-            {error && <span style={{ fontSize: '0.8125rem', color: '#b91c1c' }}>{error}</span>}
+            {error && <span style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>{error}</span>}
           </div>
         </form>
       )}

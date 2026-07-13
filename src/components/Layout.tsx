@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useForceReload } from '../contexts/ForceReloadContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import { consumePendingOpenAddTask } from '../lib/iosPwa'
@@ -63,13 +64,13 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
   textDecoration: isActive ? 'underline' : 'none',
   color: 'inherit',
   fontWeight: isActive ? 600 : undefined,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--chrome-border)',
 })
 
 const IMPERSONATION_KEY = 'impersonation_original'
 
 const SUBCONTRACTOR_PATHS = ['/', '/dashboard', '/calendar', '/checklist', '/settings', '/tally', '/help']
-const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/documents', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help']
+const PRIMARY_PATHS = ['/dashboard', '/materials', '/estimates', '/jobs', '/bids', '/calendar', '/checklist', '/settings', '/tally', '/help']
 const SUPERINTENDENT_PATHS = ['/dashboard', '/projects', '/workflows', '/jobs', '/schedule-dispatch', '/bids', '/materials', '/estimates', '/documents', '/calendar', '/checklist', '/settings', '/tally', '/help']
 
 const HEADER_ACTION_BUTTON_HEIGHT = 'calc(1rem + 1.25em)'
@@ -88,7 +89,8 @@ const headerActionButtonBase = {
 export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { user: authUser, role, profileName, estimatorProspectsAccess } = useAuth()
+  const { user: authUser, role, profileName, estimatorProspectsAccess, readOnly } = useAuth()
+  const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
   useAssistantDispatchLanding()
@@ -139,7 +141,7 @@ export default function Layout() {
   }, [checklistAddModal, location.search, location.pathname, navigate])
   const headerSearchEligible =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
-  const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : '#ffffff'
+  const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
     if (!authUser?.id) return
@@ -347,6 +349,11 @@ export default function Layout() {
       <path d="M224 224C224 171 267 128 320 128C373 128 416 171 416 224C416 266.7 388.1 302.9 349.5 315.4C321.1 324.6 288 350.7 288 392L288 416C288 433.7 302.3 448 320 448C337.7 448 352 433.7 352 416L352 392C352 390.3 352.6 387.9 355.5 384.7C358.5 381.4 363.4 378.2 369.2 376.3C433.5 355.6 480 295.3 480 224C480 135.6 408.4 64 320 64C231.6 64 160 135.6 160 224C160 241.7 174.3 256 192 256C209.7 256 224 241.7 224 224zM320 576C342.1 576 360 558.1 360 536C360 513.9 342.1 496 320 496C297.9 496 280 513.9 280 536C280 558.1 297.9 576 320 576z" />
     </svg>
   )
+  const calendarNavIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M224 64C241.7 64 256 78.3 256 96L256 128L384 128L384 96C384 78.3 398.3 64 416 64C433.7 64 448 78.3 448 96L448 128L480 128C515.3 128 544 156.7 544 192L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 192C96 156.7 124.7 128 160 128L192 128L192 96C192 78.3 206.3 64 224 64zM160 304L160 336C160 344.8 167.2 352 176 352L208 352C216.8 352 224 344.8 224 336L224 304C224 295.2 216.8 288 208 288L176 288C167.2 288 160 295.2 160 304zM288 304L288 336C288 344.8 295.2 352 304 352L336 352C344.8 352 352 344.8 352 336L352 304C352 295.2 344.8 288 336 288L304 288C295.2 288 288 295.2 288 304zM432 288C423.2 288 416 295.2 416 304L416 336C416 344.8 423.2 352 432 352L464 352C472.8 352 480 344.8 480 336L480 304C480 295.2 472.8 288 464 288L432 288zM160 432L160 464C160 472.8 167.2 480 176 480L208 480C216.8 480 224 472.8 224 464L224 432C224 423.2 216.8 416 208 416L176 416C167.2 416 160 423.2 160 432zM304 416C295.2 416 288 423.2 288 432L288 464C288 472.8 295.2 480 304 480L336 480C344.8 480 352 472.8 352 464L352 432C352 423.2 344.8 416 336 416L304 416zM416 432L416 464C416 472.8 423.2 480 432 480L464 480C472.8 480 480 472.8 480 464L480 432C480 423.2 472.8 416 464 416L432 416C423.2 416 416 423.2 416 432z" />
+    </svg>
+  )
 
   function renderMobileHeaderLinks() {
     const iconLinkStyle = ({ isActive }: { isActive: boolean }) => ({
@@ -543,11 +550,26 @@ export default function Layout() {
         {...(dailyGoalsGateOpen ? { inert: true as const } : {})}
       >
       <AddTaskShortcutBanner role={role} />
+      {readOnly && (
+        <div
+          role="status"
+          style={{
+            background: 'var(--bg-amber-100)',
+            borderBottom: '1px solid #f59e0b',
+            color: 'var(--text-amber-800)',
+            padding: '0.4rem 1rem',
+            fontSize: '0.8125rem',
+            textAlign: 'center',
+          }}
+        >
+          <strong>Training mode — read-only.</strong> Explore anything; changes won't save until an admin turns this off.
+        </div>
+      )}
       <div className="appNavChrome">
       <nav
         className="appNav"
         style={{
-          borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid #e5e7eb',
+          borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid var(--chrome-border)',
           background: impersonating && isMobile ? '#fef3c7' : undefined,
           display: 'flex',
           gap: '0.5rem',
@@ -588,8 +610,8 @@ export default function Layout() {
                     left: 0,
                     top: '100%',
                     marginTop: 4,
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
+                    background: 'var(--menu-bg)',
+                    border: '1px solid var(--chrome-border)',
                     borderRadius: 8,
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                     minWidth: 160,
@@ -757,23 +779,6 @@ export default function Layout() {
                 {mapNavIcon}
               </NavLink>
             )}
-            <NavLink
-              to="/calendar"
-              style={({ isActive }) => ({
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '0.5rem',
-                color: 'inherit',
-                textDecoration: 'none',
-                ...(isActive && { borderBottom: '1px solid currentColor' }),
-              })}
-              title="Calendar"
-              aria-label="Calendar"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
-                <path d="M224 64C241.7 64 256 78.3 256 96L256 128L384 128L384 96C384 78.3 398.3 64 416 64C433.7 64 448 78.3 448 96L448 128L480 128C515.3 128 544 156.7 544 192L544 480C544 515.3 515.3 544 480 544L160 544C124.7 544 96 515.3 96 480L96 192C96 156.7 124.7 128 160 128L192 128L192 96C192 78.3 206.3 64 224 64zM160 304L160 336C160 344.8 167.2 352 176 352L208 352C216.8 352 224 344.8 224 336L224 304C224 295.2 216.8 288 208 288L176 288C167.2 288 160 295.2 160 304zM288 304L288 336C288 344.8 295.2 352 304 352L336 352C344.8 352 352 344.8 352 336L352 304C352 295.2 344.8 288 336 288L304 288C295.2 288 288 295.2 288 304zM432 288C423.2 288 416 295.2 416 304L416 336C416 344.8 423.2 352 432 352L464 352C472.8 352 480 344.8 480 336L480 304C480 295.2 472.8 288 464 288L432 288zM160 432L160 464C160 472.8 167.2 480 176 480L208 480C216.8 480 224 472.8 224 464L224 432C224 423.2 216.8 416 208 416L176 416C167.2 416 160 423.2 160 432zM304 416C295.2 416 288 423.2 288 432L288 464C288 472.8 295.2 480 304 480L336 480C344.8 480 352 472.8 352 464L352 432C352 423.2 344.8 416 336 416L304 416zM416 432L416 464C416 472.8 423.2 480 432 480L464 480C472.8 480 480 472.8 480 464L480 432C480 423.2 472.8 416 464 416L432 416C423.2 416 416 423.2 416 432z" />
-              </svg>
-            </NavLink>
             {canShowMaterialsNav && !isMobile && (
               <NavLink
                 to="/materials"
@@ -850,23 +855,6 @@ export default function Layout() {
               )}
             </>
           )}
-            {!isMobile && (
-              <NavLink
-                to="/help"
-                style={({ isActive }) => ({
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '0.5rem',
-                  color: 'inherit',
-                  textDecoration: 'none',
-                  ...(isActive && { borderBottom: '1px solid currentColor' }),
-                })}
-                title="Help"
-                aria-label="Help"
-              >
-                {helpIcon}
-              </NavLink>
-            )}
             <div ref={gearRef} style={{ position: 'relative' }}>
             <button
               type="button"
@@ -894,8 +882,8 @@ export default function Layout() {
                   right: 0,
                   top: '100%',
                   marginTop: 4,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--menu-bg)',
+                  border: '1px solid var(--chrome-border)',
                   borderRadius: 8,
                   boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                   minWidth: 168,
@@ -925,7 +913,7 @@ export default function Layout() {
                       cursor: 'pointer',
                       fontSize: 'inherit',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       fontWeight: jobModeEnabled ? 600 : 400,
                     }}
@@ -940,8 +928,8 @@ export default function Layout() {
                         alignItems: 'center',
                         justifyContent: 'center',
                         borderRadius: 3,
-                        border: '1px solid #9ca3af',
-                        background: jobModeEnabled ? '#16a34a' : 'white',
+                        border: '1px solid var(--border-400)',
+                        background: jobModeEnabled ? '#16a34a' : 'var(--surface)',
                         color: 'white',
                         fontSize: '0.75rem',
                         lineHeight: 1,
@@ -951,8 +939,73 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setThemeOverride(theme === 'dark' ? 'light' : 'dark')}
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  aria-label="Toggle dark mode"
+                  aria-pressed={theme === 'dark'}
+                  style={{
+                    display: 'flex',
+                    width: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 'inherit',
+                    color: 'inherit',
+                    borderBottom: themeOverride !== null ? 'none' : '1px solid var(--chrome-border)',
+                    boxSizing: 'border-box',
+                    fontWeight: theme === 'dark' ? 600 : 400,
+                  }}
+                >
+                  <span>Dark Mode</span>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      display: 'inline-flex',
+                      width: 16,
+                      height: 16,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 3,
+                      border: '1px solid var(--border-400)',
+                      background: theme === 'dark' ? '#16a34a' : 'var(--surface)',
+                      color: 'white',
+                      fontSize: '0.75rem',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {theme === 'dark' ? '✓' : ''}
+                  </span>
+                </button>
+                {themeOverride !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setThemeOverride(null)}
+                    title="Follow the time of day: light 4am–8pm, dark 8pm–4am"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '0 1rem 0.5rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--text-muted)',
+                      fontSize: '0.8125rem',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    Auto (dark 8pm–4am)
+                  </button>
+                )}
                 {(role === 'estimator' ||
-                  role === 'primary' ||
                   role === null ||
                   role === 'dev' ||
                   role === 'master_technician' ||
@@ -967,7 +1020,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -989,7 +1042,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -1011,7 +1064,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -1033,7 +1086,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -1055,7 +1108,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -1066,28 +1119,46 @@ export default function Layout() {
                     Banking
                   </NavLink>
                 )}
-                {isMobile && (
-                  <NavLink
-                    to="/help"
-                    onClick={() => setGearOpen(false)}
-                    style={({ isActive }) => ({
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem',
-                      padding: '0.5rem 1rem',
-                      textDecoration: 'none',
-                      color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
-                      boxSizing: 'border-box',
-                      ...(isActive && { fontWeight: 600 }),
-                    })}
-                    title="Help"
-                    aria-label="Help"
-                  >
-                    {helpIcon}
-                    Help
-                  </NavLink>
-                )}
+                <NavLink
+                  to="/calendar"
+                  onClick={() => setGearOpen(false)}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.5rem 1rem',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    borderBottom: '1px solid var(--chrome-border)',
+                    boxSizing: 'border-box',
+                    ...(isActive && { fontWeight: 600 }),
+                  })}
+                  title="Calendar"
+                  aria-label="Calendar"
+                >
+                  {calendarNavIcon}
+                  Calendar
+                </NavLink>
+                <NavLink
+                  to="/help"
+                  onClick={() => setGearOpen(false)}
+                  style={({ isActive }) => ({
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    padding: '0.5rem 1rem',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    borderBottom: '1px solid var(--chrome-border)',
+                    boxSizing: 'border-box',
+                    ...(isActive && { fontWeight: 600 }),
+                  })}
+                  title="Help"
+                  aria-label="Help"
+                >
+                  {helpIcon}
+                  Help
+                </NavLink>
                 <NavLink
                   to="/settings"
                   onClick={() => setGearOpen(false)}
@@ -1096,7 +1167,7 @@ export default function Layout() {
                     padding: '0.5rem 1rem',
                     textDecoration: 'none',
                     color: 'inherit',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--chrome-border)',
                   }}
                 >
                   Settings
@@ -1120,8 +1191,8 @@ export default function Layout() {
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: 'inherit',
-                    color: '#dc2626',
-                    borderBottom: '1px solid #e5e7eb',
+                    color: 'var(--text-red-600)',
+                    borderBottom: '1px solid var(--chrome-border)',
                   }}
                 >
                   Sign out
@@ -1141,8 +1212,8 @@ export default function Layout() {
                     border: 'none',
                     cursor: 'pointer',
                     fontSize: 'inherit',
-                    color: '#dc2626',
-                    borderBottom: role === 'dev' ? '1px solid #e5e7eb' : 'none',
+                    color: 'var(--text-red-600)',
+                    borderBottom: role === 'dev' ? '1px solid var(--chrome-border)' : 'none',
                   }}
                 >
                   Hard Reload
@@ -1219,13 +1290,13 @@ export default function Layout() {
           <div
             style={{
               padding: '0.5rem 1rem',
-              borderTop: '1px solid #e5e7eb',
+              borderTop: '1px solid var(--chrome-border)',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
               gap: '0.75rem',
               flexWrap: 'wrap',
-              background: '#f9fafb',
+              background: 'var(--bg-subtle)',
             }}
           >
             <button
@@ -1259,7 +1330,7 @@ export default function Layout() {
                 color: isPinnedIn(pins, location.pathname, getTabFromPath(location.pathname, location.search))
                   ? '#3730a3'
                   : '#6b7280',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: 'pointer',
               }}
@@ -1288,8 +1359,8 @@ export default function Layout() {
                     justifyContent: 'center',
                     padding: '0.35rem 0.5rem',
                     background: pinForOpen ? '#e0e7ff' : 'transparent',
-                    color: pinForOpen ? '#3730a3' : '#6b7280',
-                    border: '1px solid #d1d5db',
+                    color: pinForOpen ? '#3730a3' : 'var(--text-muted)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 6,
                     cursor: 'pointer',
                   }}
@@ -1306,8 +1377,8 @@ export default function Layout() {
                       left: 0,
                       marginBottom: 4,
                       padding: '0.5rem',
-                      background: 'white',
-                      border: '1px solid #e5e7eb',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--chrome-border)',
                       borderRadius: 8,
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                       display: 'flex',
@@ -1322,9 +1393,9 @@ export default function Layout() {
                       style={{
                         padding: '0.35rem 0.5rem',
                         fontSize: '0.8125rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--chrome-border)',
                         borderRadius: 6,
-                        background: '#fff',
+                        background: 'var(--surface)',
                         minWidth: 120,
                       }}
                       aria-label="Pin for user"
@@ -1363,8 +1434,8 @@ export default function Layout() {
                       style={{
                         padding: '0.35rem 0.6rem',
                         fontSize: '0.8125rem',
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        background: 'var(--bg-blue-tint)',
+                        color: 'var(--text-blue-700)',
                         border: '1px solid #bfdbfe',
                         borderRadius: 6,
                         cursor: pinForSaving ? 'not-allowed' : 'pointer',
@@ -1381,7 +1452,7 @@ export default function Layout() {
               <span
                 style={{
                   fontSize: '0.875rem',
-                  color: pinForMessage.type === 'success' ? '#059669' : '#b91c1c',
+                  color: pinForMessage.type === 'success' ? 'var(--text-green-600)' : 'var(--text-red-700)',
                   fontWeight: 500,
                 }}
               >

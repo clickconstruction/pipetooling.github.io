@@ -179,7 +179,7 @@ export function PersonOffsetFormModal({
         aria-modal="true"
         aria-labelledby="person-offset-form-title"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
+        style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320 }}
       >
         <h2 id="person-offset-form-title" style={{ marginTop: 0 }}>
           {title}

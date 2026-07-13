@@ -38,14 +38,14 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
 
   if (!showUsersTabTags) return null
   if (usersTabTagsLoading) {
-    return <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>Loading tags…</div>
+    return <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Loading tags…</div>
   }
 
   const usersTabTagsPanelStyle: CSSProperties = {
     width: '100%',
     marginTop: '0.25rem',
     padding: '0.35rem 0 0',
-    borderTop: '1px solid #e5e7eb',
+    borderTop: '1px solid var(--border)',
     boxSizing: 'border-box',
   }
 
@@ -72,12 +72,12 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
 
   const tagOrgControls =
     tagUserId != null ? (
-      <div style={{ width: '100%', marginBottom: '0.5rem', fontSize: '0.75rem', color: '#374151' }}>
+      <div style={{ width: '100%', marginBottom: '0.5rem', fontSize: '0.75rem', color: 'var(--text-700)' }}>
         <div
           style={{
             fontSize: '0.65rem',
             fontWeight: 600,
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             letterSpacing: '0.02em',
             marginBottom: '0.25rem',
             textAlign: 'left',
@@ -99,7 +99,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
             value={savedTagOrg ?? ''}
             disabled={usersTabTagOrgSavingUserId === tagUserId}
             onChange={(ev) => void applyUserTagOrgChange(tagUserId, ev.target.value)}
-            style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+            style={{ fontSize: '0.8125rem', padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid var(--border-strong)', minWidth: 200 }}
           >
             <option value="">Heuristic (no override)</option>
             {tagOrgMasterSelectOptions.map((m) => (
@@ -122,12 +122,12 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
             style={{
               width: '100%',
               textAlign: 'left',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               lineHeight: 1.45,
               marginBottom: tagOrgConflict ? '0.25rem' : 0,
             }}
           >
-            <span style={{ fontWeight: 600, color: '#9ca3af' }}>Signals </span>
+            <span style={{ fontWeight: 600, color: 'var(--text-faint)' }}>Signals </span>
             {signals.assistantMasters.length > 0 && (
               <span>Assistant: {signals.assistantMasters.map(tagOrgMasterLabel).join(', ')}. </span>
             )}
@@ -157,7 +157,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
               width: '100%',
               textAlign: 'left',
               fontSize: '0.75rem',
-              color: '#b45309',
+              color: 'var(--text-amber-700)',
               marginTop: '0.2rem',
             }}
           >
@@ -171,7 +171,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
     return (
       <div style={usersTabTagsPanelStyle}>
         {showUsersTabTagOrgSignals ? tagOrgControls : null}
-        <div style={{ fontSize: '0.8125rem', color: '#9ca3af', textAlign: 'left' }}>
+        <div style={{ fontSize: '0.8125rem', color: 'var(--text-faint)', textAlign: 'left' }}>
           {anchor.kind === 'person'
             ? 'No roster row'
             : showUsersTabTagOrgSignals
@@ -241,7 +241,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
         style={{
           fontSize: '0.8125rem',
           fontWeight: 500,
-          color: '#6b7280',
+          color: 'var(--text-muted)',
           marginBottom: '0.2rem',
           textAlign: 'left',
         }}
@@ -302,7 +302,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
         <p
           style={{
             fontSize: '0.8125rem',
-            color: '#9ca3af',
+            color: 'var(--text-faint)',
             margin: '0 0 0.35rem 0',
           }}
         >
@@ -349,7 +349,7 @@ export function PeopleUserTagsPanel({ anchor, people, tags, showToast }: PeopleU
             onChange={(ev) => setUsersTabTagDraftByKey((prev) => ({ ...prev, [draftKey]: ev.target.value }))}
             placeholder="New tag name"
             disabled={busy}
-            style={{ fontSize: '0.8125rem', padding: '0.2rem 0.4rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: 120 }}
+            style={{ fontSize: '0.8125rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 120 }}
           />
           <button
             type="button"

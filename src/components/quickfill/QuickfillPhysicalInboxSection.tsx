@@ -17,7 +17,7 @@ type QuickfillPhysicalInboxSectionProps = {
 
 const hintStyle: CSSProperties = {
   fontSize: '0.875rem',
-  color: '#475569',
+  color: 'var(--text-slate-600)',
   margin: '0 0 0.75rem',
   lineHeight: 1.45,
 }
@@ -88,7 +88,7 @@ export function QuickfillPhysicalInboxSection({ markButtonPalette, onConfirmMark
       style={{
         borderRadius: 8,
         padding: '1rem 1.25rem',
-        background: '#fafafa',
+        background: 'var(--bg-page)',
       }}
     >
       {showActionButtons ? (
@@ -188,7 +188,7 @@ export function QuickfillPhysicalInboxSection({ markButtonPalette, onConfirmMark
       >
         <label
           htmlFor="quickfill-physical-inbox-textarea"
-          style={{ fontWeight: 600, color: '#374151', cursor: 'pointer', margin: 0 }}
+          style={{ fontWeight: 600, color: 'var(--text-700)', cursor: 'pointer', margin: 0 }}
         >
           Still in physical inbox
         </label>
@@ -205,7 +205,7 @@ export function QuickfillPhysicalInboxSection({ markButtonPalette, onConfirmMark
           boxSizing: 'border-box',
           padding: '0.65rem',
           borderRadius: 6,
-          border: '1px solid #d1d5db',
+          border: '1px solid var(--border-strong)',
           fontSize: '0.875rem',
           fontFamily: 'inherit',
           resize: 'vertical',

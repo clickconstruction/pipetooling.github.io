@@ -41,7 +41,7 @@ export default function JobBookModal({ open, onClose, onDbError }: JobBookModalP
         aria-modal="true"
         aria-labelledby={titleId}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.5rem',
           borderRadius: 8,
           minWidth: 320,
@@ -74,9 +74,9 @@ export default function JobBookModal({ open, onClose, onDbError }: JobBookModalP
             onClick={onClose}
             style={{
               padding: '0.35rem 0.65rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: '#f3f4f6',
+              background: 'var(--bg-muted)',
               cursor: 'pointer',
               fontSize: '0.875rem',
               flexShrink: 0,

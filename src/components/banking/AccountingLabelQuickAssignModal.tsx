@@ -137,7 +137,7 @@ export function AccountingLabelQuickAssignModal({
         aria-labelledby={titleId}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 10,
           maxWidth: 420,
           width: '100%',
@@ -153,7 +153,7 @@ export function AccountingLabelQuickAssignModal({
           Assign accounting label
         </h2>
         {transactionSummary ? (
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#64748b' }}>{transactionSummary}</p>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--text-slate-500)' }}>{transactionSummary}</p>
         ) : null}
         <label htmlFor={searchId} style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6 }}>
           Search labels
@@ -182,7 +182,7 @@ export function AccountingLabelQuickAssignModal({
             width: '100%',
             padding: '0.5rem 0.65rem',
             fontSize: '0.875rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
             boxSizing: 'border-box',
             marginBottom: '0.75rem',
@@ -196,13 +196,13 @@ export function AccountingLabelQuickAssignModal({
             flex: '1 1 auto',
             minHeight: 0,
             overflow: 'auto',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 6,
             maxHeight: 320,
           }}
         >
           {filteredLabels.length === 0 ? (
-            <div style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: '#64748b' }}>
+            <div style={{ padding: '0.75rem 1rem', fontSize: '0.875rem', color: 'var(--text-slate-500)' }}>
               {labels.length === 0 ? 'No accounting labels configured.' : 'No labels match this search.'}
             </div>
           ) : (
@@ -230,8 +230,8 @@ export function AccountingLabelQuickAssignModal({
                     fontSize: '0.875rem',
                     border: 'none',
                     borderBottom: idx < filteredLabels.length - 1 ? '1px solid #f3f4f6' : 'none',
-                    background: highlighted ? '#eff6ff' : '#fff',
-                    color: '#0f172a',
+                    background: highlighted ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                    color: 'var(--text-slate-900)',
                     cursor: busy ? 'not-allowed' : 'pointer',
                   }}
                 >
@@ -249,9 +249,9 @@ export function AccountingLabelQuickAssignModal({
             style={{
               padding: '0.45rem 0.9rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
               cursor: busy ? 'not-allowed' : 'pointer',
             }}
           >

@@ -66,7 +66,7 @@ export function ChecklistTechTreeLineUpModal({ open, onClose, groups, onAddLink,
         aria-modal="true"
         aria-labelledby="tech-tree-line-up-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: 20,
           maxWidth: 440,
@@ -80,11 +80,11 @@ export function ChecklistTechTreeLineUpModal({ open, onClose, groups, onAddLink,
         <h2 id="tech-tree-line-up-modal-title" style={{ margin: '0 0 0.5rem', fontSize: '1.125rem' }}>
           Prerequisite link (from → to)
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: 12, color: '#64748b' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: 12, color: 'var(--text-slate-500)' }}>
           Choose which group must be completed before another unlocks.
         </p>
         <label
-          style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }}
+          style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}
           htmlFor="tech-tree-line-up-from"
         >
           From group (first)
@@ -104,7 +104,7 @@ export function ChecklistTechTreeLineUpModal({ open, onClose, groups, onAddLink,
           ))}
         </select>
         <label
-          style={{ display: 'block', fontSize: 12, color: '#64748b', marginBottom: 4 }}
+          style={{ display: 'block', fontSize: 12, color: 'var(--text-slate-500)', marginBottom: 4 }}
           htmlFor="tech-tree-line-up-to"
         >
           To group (after)

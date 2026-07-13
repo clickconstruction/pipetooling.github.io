@@ -10,9 +10,9 @@ const readOnlyBox: CSSProperties = {
   marginTop: 4,
   padding: '8px 10px',
   fontSize: '0.8125rem',
-  color: '#374151',
-  background: '#fff',
-  border: '1px solid #e5e7eb',
+  color: 'var(--text-700)',
+  background: 'var(--surface)',
+  border: '1px solid var(--border)',
   borderRadius: 4,
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
@@ -30,7 +30,7 @@ const readOnlyBoxPreview: CSSProperties = {
 const labelStyle: CSSProperties = {
   fontSize: '0.75rem',
   fontWeight: 600,
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   marginBottom: 2,
 }
 
@@ -42,7 +42,7 @@ const labelStylePreview: CSSProperties = {
 /** Full-width note sub-row `<td>` (Ledger / Drag Sort); transparent to match parent row; rule under band. */
 export const mercuryTxNotesSubRowTdStyle: CSSProperties = {
   padding: 0,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   background: 'transparent',
 }
 
@@ -126,18 +126,18 @@ function MercuryTxNotesPipeLineBox({ bankTrim, combinedNoteText }: MercuryTxNote
   const hasBank = bankTrim !== ''
   const hasNote = combinedNoteText !== ''
   if (!hasBank && !hasNote) return null
-  const labelMuted: CSSProperties = { fontWeight: 600, color: '#6b7280' }
+  const labelMuted: CSSProperties = { fontWeight: 600, color: 'var(--text-muted)' }
 
   return (
     <div role="presentation" style={mercuryTxPipeLineBoxStyle}>
       {hasBank ? (
-        <span style={{ color: '#374151' }}>
+        <span style={{ color: 'var(--text-700)' }}>
           {bankTrim}
           {hasNote ? MERCURY_DRAG_SORT_PIPE_NOTE : null}
         </span>
       ) : null}
       {hasNote ? (
-        <span style={{ color: '#374151' }}>
+        <span style={{ color: 'var(--text-700)' }}>
           {!hasBank ? <span style={labelMuted}>note: </span> : null}
           {combinedNoteText}
         </span>
@@ -169,7 +169,7 @@ const orgNotePreviewLineStyle: CSSProperties = {
   paddingLeft: '1.25rem',
   fontSize: '0.75rem',
   lineHeight: 1.35,
-  color: '#64748b',
+  color: 'var(--text-slate-500)',
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -375,7 +375,7 @@ export function MercuryTxNotesEditorPanel({
               padding: '8px 10px',
               fontSize: '0.8125rem',
               lineHeight: 1.35,
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               resize: 'none',
               maxHeight: '12rem',
@@ -429,9 +429,9 @@ export function MercuryTxNotesEditorPanel({
                 fontSize: '0.8125rem',
                 fontWeight: 600,
                 borderRadius: 4,
-                border: '1px solid #d1d5db',
-                background: '#fff',
-                color: '#374151',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                color: 'var(--text-700)',
                 cursor: orgSaving ? 'not-allowed' : 'pointer',
               }}
             >

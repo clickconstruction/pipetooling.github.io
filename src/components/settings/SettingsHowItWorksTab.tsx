@@ -3,20 +3,20 @@
 export default function SettingsHowItWorksTab({ active }: { active: boolean }) {
   return (
     <div id="settings-how-it-works" style={{ display: active ? undefined : 'none' }}>
-      <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8, padding: '1rem', background: '#f9fafb' }}>
-        <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+      <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--bg-subtle)' }}>
+        <div style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.6 }}>
           PipeTooling helps Masters better manage Projects with Subs.
           <br />
           Three types of People: Masters, Assistants, Subs
         </div>
         <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '0.75rem', fontWeight: 600 }}>How It Works</h2>
-        <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+        <ol style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.6 }}>
           <li style={{ marginBottom: '0.5rem' }}>Master accounts have Customers</li>
           <li style={{ marginBottom: '0.5rem' }}>Customers can have Projects</li>
           <li style={{ marginBottom: '0.5rem' }}>Masters assign People to Project Stages</li>
           <li>When People complete Stages, Masters are updated</li>
         </ol>
-        <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+        <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
           <strong>Sharing</strong>:
           <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
             <li style={{ marginBottom: '0.5rem' }}>
@@ -33,7 +33,7 @@ export default function SettingsHowItWorksTab({ active }: { active: boolean }) {
             </li>
           </ul>
         </div>
-        <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+        <div style={{ marginTop: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
           <strong>Subcontractors</strong>:
           <ul style={{ margin: '0.25rem 0 0 1.25rem', padding: 0, listStyle: 'disc' }}>
             <li>Only see a stage when it is assigned to them</li>
@@ -50,12 +50,12 @@ export default function SettingsHowItWorksTab({ active }: { active: boolean }) {
         style={{
           marginTop: '2.5rem',
           padding: '1.5rem',
-          backgroundColor: '#f9fafb',
+          backgroundColor: 'var(--bg-subtle)',
           borderRadius: '0.5rem',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
         }}
       >
-        <p style={{ margin: 0, lineHeight: '1.6', color: '#374151', fontSize: '0.9375rem' }}>
+        <p style={{ margin: 0, lineHeight: '1.6', color: 'var(--text-700)', fontSize: '0.9375rem' }}>
           PipeTooling is a web application designed to decrease the actions and thinking necessary for Plumbers,
           Electricians, and HVAC techs to engage and win work while reducing the comunication risk of completing that
           work with Assistance, Teammates, Subs, and Customers. Our mission is to reduce uncertainty so better and

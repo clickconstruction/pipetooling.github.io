@@ -29,9 +29,9 @@ const rowBtn: CSSProperties = {
   width: '100%',
   textAlign: 'left',
   padding: '0.5rem 0.65rem',
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 6,
-  background: '#fff',
+  background: 'var(--surface)',
   cursor: 'pointer',
   fontSize: '0.875rem',
   lineHeight: 1.35,
@@ -99,7 +99,7 @@ export function BidBoardWeeklySentCellModal({
         aria-modal="true"
         aria-labelledby={titleId}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 520,
@@ -117,7 +117,7 @@ export function BidBoardWeeklySentCellModal({
             <h2 id={titleId} style={{ margin: 0, fontSize: '1.0625rem', fontWeight: 600, lineHeight: 1.3 }}>
               Sent bids
             </h2>
-            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.35 }}>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.35 }}>
               {title}
             </p>
           </div>
@@ -126,7 +126,7 @@ export function BidBoardWeeklySentCellModal({
             onClick={onClose}
             style={{
               border: 'none',
-              background: '#f3f4f6',
+              background: 'var(--bg-muted)',
               borderRadius: 6,
               padding: '0.35rem 0.65rem',
               cursor: 'pointer',
@@ -141,7 +141,7 @@ export function BidBoardWeeklySentCellModal({
 
         <div style={{ flex: 1, minHeight: 120, overflow: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           {orderedBids.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               No matching bids in the current board filter (ids may be stale if data refreshed).
             </p>
           ) : (
@@ -161,9 +161,9 @@ export function BidBoardWeeklySentCellModal({
                     onClose()
                   }}
                 >
-                  <div style={{ fontWeight: 600, color: '#111827' }}>{bidRowPrimaryLabel(bid)}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{bidRowPrimaryLabel(bid)}</div>
                   {sub ? (
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>{sub}</div>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
                   ) : null}
                   <div
                     style={{
@@ -172,15 +172,15 @@ export function BidBoardWeeklySentCellModal({
                       flexWrap: 'wrap',
                       gap: '0.35rem 0.75rem',
                       fontSize: '0.8125rem',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                     }}
                   >
                     <span>
-                      <span style={{ color: '#6b7280' }}>Value </span>
+                      <span style={{ color: 'var(--text-muted)' }}>Value </span>
                       {valueStr}
                     </span>
                     <span>
-                      <span style={{ color: '#6b7280' }}>Outcome </span>
+                      <span style={{ color: 'var(--text-muted)' }}>Outcome </span>
                       {outcomeShort(bid.outcome)}
                     </span>
                   </div>

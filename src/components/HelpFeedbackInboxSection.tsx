@@ -40,7 +40,7 @@ export function HelpFeedbackInboxSection() {
     return (
       <li
         key={row.id}
-        style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6', background: isClosed ? '#f3f4f6' : undefined }}
+        style={{ padding: '0.75rem 0', borderBottom: '1px solid #f3f4f6', background: isClosed ? 'var(--bg-muted)' : undefined }}
       >
         <div
           role="button"
@@ -59,7 +59,7 @@ export function HelpFeedbackInboxSection() {
           }}
           style={{ cursor: 'pointer' }}
         >
-          <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 4 }}>
+          <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: 4 }}>
             <span aria-hidden style={{ marginRight: 6 }}>{expanded ? '▼' : '▶'}</span>
             From {fromLabel}
             {row.created_at ? <span style={{ marginLeft: '0.5rem' }}>· {formatDatetime(row.created_at)}</span> : null}
@@ -70,8 +70,8 @@ export function HelpFeedbackInboxSection() {
                 marginLeft: '0.5rem',
                 fontSize: '0.75rem',
                 fontWeight: 600,
-                color: '#1d4ed8',
-                background: '#eff6ff',
+                color: 'var(--text-blue-700)',
+                background: 'var(--bg-blue-tint)',
                 border: '1px solid #bfdbfe',
                 borderRadius: 999,
                 padding: '0.1rem 0.55rem',
@@ -83,7 +83,7 @@ export function HelpFeedbackInboxSection() {
           </div>
           <div style={{ fontWeight: 500, whiteSpace: 'pre-wrap' }}>{row.body}</div>
           {isClosed && row.closed_note?.trim() ? (
-            <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#6b7280' }}>
+            <div style={{ marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               Closed{row.closed_by?.name?.trim() ? ` by ${row.closed_by.name}` : ''}: {row.closed_note}
             </div>
           ) : null}
@@ -97,7 +97,7 @@ export function HelpFeedbackInboxSection() {
                   value={closeNoteDraft}
                   onChange={(e) => setCloseNoteDraft(e.target.value)}
                   placeholder="Optional close note…"
-                  style={{ flex: 1, minWidth: 180, padding: '0.4rem 0.6rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+                  style={{ flex: 1, minWidth: 180, padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
                 />
                 <button
                   type="button"
@@ -116,7 +116,7 @@ export function HelpFeedbackInboxSection() {
                 type="button"
                 disabled={busy}
                 onClick={() => void reopenHelpFeedback(row.id)}
-                style={{ padding: '0.4rem 0.85rem', background: 'white', color: '#1d4ed8', border: '1px solid #93c5fd', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
+                style={{ padding: '0.4rem 0.85rem', background: 'var(--surface)', color: 'var(--text-blue-700)', border: '1px solid #93c5fd', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
               >
                 {busy ? '…' : 'Reopen'}
               </button>
@@ -128,7 +128,7 @@ export function HelpFeedbackInboxSection() {
   }
 
   return (
-    <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: 'white', marginBottom: '1rem' }}>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', marginBottom: '1rem' }}>
       <button
         type="button"
         aria-expanded={sectionOpen}
@@ -153,8 +153,8 @@ export function HelpFeedbackInboxSection() {
           style={{
             fontSize: '0.75rem',
             fontWeight: 700,
-            color: openCount > 0 ? '#b45309' : '#6b7280',
-            background: openCount > 0 ? '#fffbeb' : '#f3f4f6',
+            color: openCount > 0 ? 'var(--text-amber-700)' : 'var(--text-muted)',
+            background: openCount > 0 ? 'var(--bg-amber-tint)' : 'var(--bg-muted)',
             border: `1px solid ${openCount > 0 ? '#fcd34d' : '#e5e7eb'}`,
             borderRadius: 999,
             padding: '0.05rem 0.5rem',
@@ -164,11 +164,11 @@ export function HelpFeedbackInboxSection() {
         </span>
       </button>
       {sectionOpen && (
-        <div style={{ padding: '0 1rem 0.75rem', borderTop: '1px solid #e5e7eb' }}>
+        <div style={{ padding: '0 1rem 0.75rem', borderTop: '1px solid var(--border)' }}>
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No feedback yet.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No feedback yet.</p>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>{rows.map(renderRow)}</ul>
           )}
