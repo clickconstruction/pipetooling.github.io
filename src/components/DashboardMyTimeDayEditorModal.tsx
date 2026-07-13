@@ -41,6 +41,7 @@ import {
   finalizeInnerBoundaryMsForCluster,
   getNextSessionClusterInTimeline,
   groupTimeContiguousSessionClusters,
+  CLOCK_OVERLAP_WARNING_EPS_MS,
   hasPairwiseClockIntervalOverlap,
   initialClusterSplitState,
   internalRowJoinMs,
@@ -2821,11 +2822,11 @@ export function DashboardMyTimeDayEditorModal({
                   const t1 = item.endMs
                   const span = Math.max(1, t1 - t0)
                   const flexW = (item.endMs - item.startMs) / totalDur
-                  const clusterIntervalOverlap = hasPairwiseClockIntervalOverlap(c, nowTick)
+                  const clusterIntervalOverlap = hasPairwiseClockIntervalOverlap(c, nowTick, CLOCK_OVERLAP_WARNING_EPS_MS)
                   const nextClusterBlock = getNextSessionClusterInTimeline(timelineItems, idx)
                   const formOverlapDividerBelow =
                     nextClusterBlock != null &&
-                    hasPairwiseClockIntervalOverlap([...c, ...nextClusterBlock.sessions], nowTick)
+                    hasPairwiseClockIntervalOverlap([...c, ...nextClusterBlock.sessions], nowTick, CLOCK_OVERLAP_WARNING_EPS_MS)
                   const showClusterBottomDivider = idx !== timelineItems.length - 1
 
                   return (
