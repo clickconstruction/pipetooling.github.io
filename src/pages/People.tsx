@@ -110,6 +110,12 @@ import { PeoplePayConfigModal } from '../components/people/PeoplePayConfigModal'
 import { SalariedWorkdaysBulkModal } from '../components/people/SalariedWorkdaysBulkModal'
 import { buildPeopleHoursManualDraftSession, isDraftPeopleHoursSessionId } from '../lib/peopleHoursManualDraftSession'
 import {
+  EMPTY_SALARIED_PAYROLL_WINDOW,
+  fetchSalariedPayrollWindows,
+  salariedHoursForDay,
+  type SalariedPayrollWindow,
+} from '../lib/salariedPayrollDays'
+import {
   buildJobBidLabelMapsFromClockRows,
   collectPeopleHoursDaySessionsForScale,
   scaleClosedSessionsToTargetHours,
@@ -1529,6 +1535,11 @@ export default function People() {
       }
     }
 
+    // Salaried: unpaid time off + employment window adjust the flat 8/0 credit.
+    const salaryWindow = isSalary
+      ? (await fetchSalariedPayrollWindows(supabase, [personName], start, end))[personName] ?? EMPTY_SALARIED_PAYROLL_WINDOW
+      : null
+
     const dayRows: Array<{
       work_date: string
       hours: number
@@ -1540,11 +1551,8 @@ export default function People() {
       job_rate: number | null
     }> = []
     for (const d of daysInRange) {
-      const hrs = isSalary
-        ? (() => {
-            const day = new Date(d + 'T12:00:00').getDay()
-            return day >= 1 && day <= 5 ? 8 : 0
-          })()
+      const hrs = salaryWindow
+        ? salariedHoursForDay(d, salaryWindow)
         : hoursRows.find((r) => r.date === d)?.hours ?? 0
       const sp = splitByDate?.get(d) ?? null
       if (sp) {
@@ -2646,6 +2654,46 @@ export default function People() {
     return wage * hrs
   }
 
+  // Draft Payroll preview must match generatePayStub: salaried hours are the flat 8/0
+  // adjusted for unpaid time off + employment window (cost matrix / grids stay flat 8/0).
+  const [draftPayrollSalaryWindows, setDraftPayrollSalaryWindows] = useState<Record<string, SalariedPayrollWindow>>({})
+
+  useEffect(() => {
+    if (!draftPayrollModalOpen || !canAccessPay) return
+    const salariedNames = Object.keys(payConfig).filter((n) => payConfig[n]?.is_salary)
+    if (salariedNames.length === 0) {
+      setDraftPayrollSalaryWindows({})
+      return
+    }
+    let cancelled = false
+    void fetchSalariedPayrollWindows(supabase, salariedNames, payStubPeriodStart, payStubPeriodEnd)
+      .then((map) => {
+        if (!cancelled) setDraftPayrollSalaryWindows(map)
+      })
+      .catch(() => {
+        if (!cancelled) setDraftPayrollSalaryWindows({})
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [draftPayrollModalOpen, canAccessPay, payStubPeriodStart, payStubPeriodEnd, payConfig])
+
+  function getPayrollEffectiveHours(personName: string, workDate: string): number {
+    const cfg = payConfig[personName]
+    if (cfg?.is_salary) {
+      return salariedHoursForDay(
+        workDate,
+        draftPayrollSalaryWindows[personName.trim()] ?? EMPTY_SALARIED_PAYROLL_WINDOW,
+      )
+    }
+    return getHoursForPersonDate(personName, workDate)
+  }
+
+  function getPayrollCostForPersonDate(personName: string, workDate: string): number {
+    const wage = payConfig[personName]?.hourly_wage ?? 0
+    return wage * getPayrollEffectiveHours(personName, workDate)
+  }
+
   function getCostForPersonDateMatrix(personName: string, workDate: string): number {
     if (!showMaxHours) return getCostForPersonDate(personName, workDate)
     const cfg = payConfig[personName]
@@ -3510,8 +3558,8 @@ export default function People() {
           payStubPaymentsByStubId={payStubPaymentsByStubId}
           payStubDeductionsByStubId={payStubDeductionsByStubId}
           payStubAdditionalByStubId={payStubAdditionalByStubId}
-          getCostForPersonDate={getCostForPersonDate}
-          getEffectiveHours={getEffectiveHours}
+          getCostForPersonDate={getPayrollCostForPersonDate}
+          getEffectiveHours={getPayrollEffectiveHours}
           getRunPayrollReviewDayItems={getRunPayrollReviewDayItems}
           onBulkGenerateRemaining={bulkGenerateMissingPayStubsInModal}
           onGenerateReport={async (person) => {

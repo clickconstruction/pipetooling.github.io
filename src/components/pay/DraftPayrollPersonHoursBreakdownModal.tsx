@@ -131,7 +131,7 @@ export function DraftPayrollPersonHoursBreakdownModal({
           </h2>
           <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Period {periodStart} – {periodEnd}
-            {isSalary ? ' · Salary (weekdays 8h)' : ''}
+            {isSalary ? ' · Salary (8h weekdays, less unpaid time off, within employment dates)' : ''}
           </p>
         </div>
 
@@ -173,6 +173,11 @@ export function DraftPayrollPersonHoursBreakdownModal({
                       </td>
                       <td style={{ padding: '0.45rem 0.65rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
                         {r.hours.toFixed(2)}
+                        {r.salaryNote ? (
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                            {r.salaryNote}
+                          </div>
+                        ) : null}
                         {r.pendingHours > 0 ? (
                           <div
                             style={{ fontSize: '0.75rem', color: 'var(--text-amber-700)', whiteSpace: 'nowrap' }}
