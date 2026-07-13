@@ -1051,11 +1051,9 @@ export default function JobTally() {
                       display: 'flex',
                       flexWrap: 'nowrap',
                       alignItems: 'center',
-                      justifyContent: 'space-between',
                       gap: '0.35rem',
                       width: '100%',
                       maxWidth: '100%',
-                      marginBottom: '0.35rem',
                       overflowX: 'auto',
                       WebkitOverflowScrolling: 'touch',
                     }}
@@ -1066,8 +1064,7 @@ export default function JobTally() {
                         fontSize: '0.8125rem',
                         lineHeight: 1.5,
                         textAlign: 'left',
-                        flex: '1 1 auto',
-                        minWidth: 0,
+                        flexShrink: 0,
                         paddingRight: '0.25rem',
                       }}
                     >
@@ -1093,17 +1090,6 @@ export default function JobTally() {
                     >
                       All cards
                     </button>
-                  </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '0.35rem',
-                      width: '100%',
-                    }}
-                  >
                     {linkedDebitCards.map((c) => {
                       const label = formatLinkedCardDisplayLabel(c)
                       const active = tallyDebitCardFilterId === c.mercury_debit_card_id
@@ -1121,7 +1107,7 @@ export default function JobTally() {
                               ? `Clear card filter, ${label}`
                               : `Show only transactions for ${label}`
                           }
-                          style={tallyCardFilterChipButtonStyle(active)}
+                          style={{ ...tallyCardFilterChipButtonStyle(active), flexShrink: 0 }}
                         >
                           {label}
                         </button>
