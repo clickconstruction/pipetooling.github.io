@@ -49,6 +49,76 @@ const KIND_COLOR: Record<MapPageEntity['kind'], string> = {
   estimate: '#16a34a',
 }
 
+const KIND_PILL_ACTIVE: Record<MapPageEntity['kind'], { bg: string; text: string }> = {
+  job: { bg: 'var(--bg-blue-tint)', text: 'var(--text-blue-700)' },
+  bid: { bg: 'var(--bg-orange-tint)', text: 'var(--text-orange-700)' },
+  estimate: { bg: 'var(--bg-green-tint)', text: 'var(--text-green-600)' },
+}
+
+/** Header toggle for one map layer; the dot matches that kind's marker color. */
+function LayerPill({
+  kind,
+  label,
+  active,
+  onToggle,
+}: {
+  kind: MapPageEntity['kind']
+  label: string
+  active: boolean
+  onToggle: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-pressed={active}
+      title={active ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.4rem',
+        padding: '0.3rem 0.8rem',
+        borderRadius: 999,
+        border: `1px solid ${active ? KIND_COLOR[kind] : 'var(--border)'}`,
+        background: active ? KIND_PILL_ACTIVE[kind].bg : 'transparent',
+        color: active ? KIND_PILL_ACTIVE[kind].text : 'var(--text-muted)',
+        fontSize: '0.8125rem',
+        fontWeight: 600,
+        lineHeight: 1.2,
+        cursor: 'pointer',
+        transition: 'background 120ms ease, border-color 120ms ease, color 120ms ease',
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: active ? KIND_COLOR[kind] : 'var(--text-faint-300)',
+          transition: 'background 120ms ease',
+        }}
+      />
+      {label}
+    </button>
+  )
+}
+
+const headerToolbarButtonStyle: CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '0.4rem',
+  padding: '0.3rem 0.8rem',
+  borderRadius: 8,
+  border: '1px solid var(--border-strong)',
+  background: 'var(--surface)',
+  color: 'var(--text-700)',
+  fontSize: '0.8125rem',
+  fontWeight: 500,
+  lineHeight: 1.2,
+  cursor: 'pointer',
+}
+
 function FitBoundsToEntities({ points }: { points: [number, number][] }) {
   const map = useMap()
   const doneRef = useRef(false)
@@ -460,38 +530,49 @@ export function MapPageView() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '1rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: '0.75rem' }}>
-        <h1 style={{ margin: 0, fontSize: '1.25rem' }}>Map</h1>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showJobs} onChange={() => setShowJobs((s) => !s)} />
-          Jobs
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showBids} onChange={() => setShowBids((s) => !s)} />
-          Bids
-        </label>
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.875rem' }}>
-          <input type="checkbox" checked={showEst} onChange={() => setShowEst((s) => !s)} />
-          Estimates
-        </label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', rowGap: '0.6rem' }}>
+        <h1 style={{ margin: 0, marginRight: '0.25rem', fontSize: '1.25rem' }}>Map</h1>
+        <LayerPill kind="job" label="Jobs" active={showJobs} onToggle={() => setShowJobs((s) => !s)} />
+        <LayerPill kind="bid" label="Bids" active={showBids} onToggle={() => setShowBids((s) => !s)} />
+        <LayerPill kind="estimate" label="Estimates" active={showEst} onToggle={() => setShowEst((s) => !s)} />
         <GeocodeProgressList rows={geocodeAddressRows} entities={entities} onAddressOpen={onGeocodeAddressOpen} />
-        <button
-          type="button"
-          onClick={() => setClearDraw((c) => c + 1)}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-        >
-          Clear draw
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            void reload()
-            loadMapDefaultView()
-          }}
-          style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: 'pointer' }}
-        >
-          Reload data
-        </button>
+        <div style={{ display: 'inline-flex', gap: '0.5rem', marginLeft: 'auto' }}>
+          <button
+            type="button"
+            onClick={() => setClearDraw((c) => c + 1)}
+            disabled={!filterPoly}
+            title={filterPoly ? 'Remove the drawn area filter' : 'Draw an area on the map to filter first'}
+            style={{
+              ...headerToolbarButtonStyle,
+              opacity: filterPoly ? 1 : 0.45,
+              cursor: filterPoly ? 'pointer' : 'default',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+            Clear draw
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void reload()
+              loadMapDefaultView()
+            }}
+            disabled={loading}
+            style={{
+              ...headerToolbarButtonStyle,
+              opacity: loading ? 0.45 : 1,
+              cursor: loading ? 'default' : 'pointer',
+            }}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+              <path d="M21 3v5h-5" />
+            </svg>
+            {loading ? 'Reloading…' : 'Reload data'}
+          </button>
+        </div>
       </div>
 
       <MapGeocodeReviewModal
