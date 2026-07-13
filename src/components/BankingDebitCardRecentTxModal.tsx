@@ -96,7 +96,7 @@ export function BankingDebitCardRecentTxModal({
         aria-labelledby="banking-debit-card-recent-tx-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(720px, calc(100vw - 2rem))',
           maxHeight: '90vh',
@@ -124,8 +124,8 @@ export function BankingDebitCardRecentTxModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',
@@ -134,26 +134,26 @@ export function BankingDebitCardRecentTxModal({
             Close
           </button>
         </div>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#6b7280', wordBreak: 'break-all', flexShrink: 0 }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-muted)', wordBreak: 'break-all', flexShrink: 0 }}>
           <code style={{ fontSize: '0.75rem' }}>{debitCardId}</code>
           {' — '}
           Showing {displayRows.length} of {matchingSorted.length} matching (from loaded rows, newest first).
         </p>
-        <div style={{ overflow: 'auto', flex: '1 1 auto', minHeight: 0, border: '1px solid #e5e7eb', borderRadius: 4 }}>
+        <div style={{ overflow: 'auto', flex: '1 1 auto', minHeight: 0, border: '1px solid var(--border)', borderRadius: 4 }}>
           {displayRows.length === 0 ? (
-            <p style={{ margin: 0, padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: 0, padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               No loaded transactions for this card. Reload the Banking table or sync from Mercury (developers).
             </p>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ background: '#f9fafb', textAlign: 'left' }}>
-                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Posted</th>
-                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Amount</th>
-                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Kind</th>
-                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Counterparty</th>
-                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }}>Note</th>
-                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid #e5e7eb' }} />
+                <tr style={{ background: 'var(--bg-subtle)', textAlign: 'left' }}>
+                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Posted</th>
+                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Amount</th>
+                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Kind</th>
+                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Counterparty</th>
+                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }}>Note</th>
+                  <th style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)' }} />
                 </tr>
               </thead>
               <tbody>

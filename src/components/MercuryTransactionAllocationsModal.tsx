@@ -202,7 +202,7 @@ const sumEpsilon = 0.0001
 const segmentGroupStyle: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'stretch',
-  background: '#f1f5f9',
+  background: 'var(--bg-slate-100)',
   padding: 3,
   borderRadius: 10,
   gap: 3,
@@ -226,13 +226,13 @@ const segmentBtnBase: CSSProperties = {
 const segmentBtnInactive: CSSProperties = {
   ...segmentBtnBase,
   background: 'transparent',
-  color: '#64748b',
+  color: 'var(--text-slate-500)',
 }
 
 const segmentBtnActive: CSSProperties = {
   ...segmentBtnBase,
-  background: '#ffffff',
-  color: '#1d4ed8',
+  background: 'var(--surface)',
+  color: 'var(--text-blue-700)',
   boxShadow: '0 1px 3px rgba(15, 23, 42, 0.08)',
 }
 
@@ -245,8 +245,8 @@ const splitAmountInputStyle: CSSProperties = {
   fontWeight: 500,
   border: '1px solid #e2e8f0',
   borderRadius: 10,
-  background: '#fff',
-  color: '#0f172a',
+  background: 'var(--surface)',
+  color: 'var(--text-slate-900)',
   boxSizing: 'border-box',
   fontVariantNumeric: 'tabular-nums',
   fontFamily: 'inherit',
@@ -259,8 +259,8 @@ function fillRemainderButtonStyle(disabled: boolean): CSSProperties {
     padding: '8px 14px',
     borderRadius: 10,
     border: `1px solid ${disabled ? '#e2e8f0' : '#cbd5e1'}`,
-    background: disabled ? '#f8fafc' : '#fff',
-    color: disabled ? '#94a3b8' : '#334155',
+    background: disabled ? 'var(--bg-slate-tint)' : 'var(--surface)',
+    color: disabled ? 'var(--text-slate-400)' : '#334155',
     cursor: disabled ? 'not-allowed' : 'pointer',
     fontFamily: 'inherit',
     boxShadow: disabled ? 'none' : '0 1px 2px rgba(15, 23, 42, 0.05)',
@@ -930,7 +930,7 @@ export function MercuryTransactionAllocationsModal({
         aria-labelledby="mercury-alloc-title"
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           width: 'min(640px, calc(100vw - 2rem))',
           maxHeight: '90vh',
@@ -952,7 +952,7 @@ export function MercuryTransactionAllocationsModal({
               padding: '0.65rem 0.85rem',
               borderRadius: 6,
               border: '1px solid #cbd5e1',
-              background: '#f8fafc',
+              background: 'var(--bg-slate-tint)',
               color: '#334155',
               fontSize: '0.8125rem',
               lineHeight: 1.45,
@@ -972,17 +972,17 @@ export function MercuryTransactionAllocationsModal({
               width: '100%',
               borderCollapse: 'collapse',
               fontSize: '0.8125rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 6,
             }}
           >
             <thead>
-              <tr style={{ borderBottom: '1px solid #e5e7eb', background: '#f9fafb' }}>
-                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: '#475569' }}>Posted</th>
-                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: '#475569' }}>Amount</th>
-                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: '#475569' }}>Debit card</th>
-                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: '#475569' }}>Account</th>
-                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: '#475569' }}>Counterparty</th>
+              <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Posted</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Amount</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Debit card</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Account</th>
+                <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 600, color: 'var(--text-slate-600)' }}>Counterparty</th>
               </tr>
             </thead>
             <tbody>
@@ -1060,7 +1060,7 @@ export function MercuryTransactionAllocationsModal({
             style={{
               fontSize: '0.8125rem',
               marginBottom: '0.5rem',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               textAlign: 'center',
             }}
           >
@@ -1073,7 +1073,7 @@ export function MercuryTransactionAllocationsModal({
                 border: 'none',
                 background: 'none',
                 padding: 0,
-                color: internalTransfersLabelLocked === true ? '#9ca3af' : '#2563eb',
+                color: internalTransfersLabelLocked === true ? 'var(--text-faint)' : 'var(--text-link)',
                 textDecoration: 'underline',
                 cursor: internalTransfersLabelLocked === true ? 'not-allowed' : 'pointer',
                 font: 'inherit',
@@ -1085,14 +1085,14 @@ export function MercuryTransactionAllocationsModal({
           </div>
         ) : null}
         {jobSearch.trim().length > 2 && jobSearchLoading ? (
-          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.35rem' }}>Searching…</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Searching…</div>
         ) : null}
         {jobSearch.trim().length > 2 && jobResults.length > 0 ? (
           <div
             style={{
               maxHeight: 140,
               overflow: 'auto',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 4,
               marginBottom: 0,
               fontSize: '0.8125rem',
@@ -1110,14 +1110,14 @@ export function MercuryTransactionAllocationsModal({
                   padding: '0.45rem 0.65rem',
                   border: 'none',
                   borderBottom: '1px solid #f3f4f6',
-                  background: 'white',
+                  background: 'var(--surface)',
                   cursor: 'pointer',
                 }}
               >
                 <span style={{ fontWeight: 600 }}>
                   {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id ?? null, r.hcp_number, r.job_name, r.click_number)}
                 </span>
-                <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
+                <span style={{ color: 'var(--text-muted)' }}> · {r.job_address}</span>
               </button>
             ))}
           </div>
@@ -1125,7 +1125,7 @@ export function MercuryTransactionAllocationsModal({
         </div>
 
         {!tallySelfService && showAttributionHint ? (
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             Legacy person (roster): <strong>{legacyPersonDisplayName}</strong>. Pick a user below to replace with a login, or remove attribution.
           </p>
         ) : null}
@@ -1144,7 +1144,7 @@ export function MercuryTransactionAllocationsModal({
               <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Person</span>
               {recentChipsOrdered.length > 0 ? (
                 <>
-                  <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 500 }}>Recent</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-slate-500)', fontWeight: 500 }}>Recent</span>
                   {recentChipsOrdered.map((id) => {
                     const opt = usersOptions.find(
                       (o): o is SearchableSelectSelectableOption =>
@@ -1165,7 +1165,7 @@ export function MercuryTransactionAllocationsModal({
                           padding: '3px 10px',
                           borderRadius: 999,
                           border: '1px solid #e2e8f0',
-                          background: userId === id ? '#e0f2fe' : '#fff',
+                          background: userId === id ? '#e0f2fe' : 'var(--surface)',
                           color: '#334155',
                           cursor: 'pointer',
                           fontFamily: 'inherit',
@@ -1205,7 +1205,7 @@ export function MercuryTransactionAllocationsModal({
                     setUserId('')
                     setStripAttribution(true)
                   }}
-                  style={{ fontSize: '0.75rem', color: '#b91c1c', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                  style={{ fontSize: '0.75rem', color: 'var(--text-red-700)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                 >
                   Remove person attribution
                 </button>
@@ -1217,10 +1217,10 @@ export function MercuryTransactionAllocationsModal({
         {showTallyDayContext ? (
           <div style={{ marginBottom: '1rem' }}>
             {staffDayContextLoading ? (
-              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: '0.5rem' }}>Loading schedule and sessions…</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Loading schedule and sessions…</div>
             ) : null}
             {staffDayContextError ? (
-              <div style={{ fontSize: '0.75rem', color: '#b91c1c', marginBottom: '0.5rem' }}>{staffDayContextError}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-red-700)', marginBottom: '0.5rem' }}>{staffDayContextError}</div>
             ) : null}
 
             <div style={{ marginBottom: '0.75rem' }}>
@@ -1228,7 +1228,7 @@ export function MercuryTransactionAllocationsModal({
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 600,
-                  color: '#475569',
+                  color: 'var(--text-slate-600)',
                   marginBottom: '0.35rem',
                   textAlign: 'center',
                 }}
@@ -1236,7 +1236,7 @@ export function MercuryTransactionAllocationsModal({
                 {tallyScheduleHeadings.scheduleTitle}
               </div>
               {staffDayScheduleJobs.length === 0 && !staffDayContextLoading ? (
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>None on schedule</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)' }}>None on schedule</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {staffDayScheduleJobs.map((d) => {
@@ -1251,9 +1251,9 @@ export function MercuryTransactionAllocationsModal({
                           width: '100%',
                           textAlign: 'left',
                           padding: '0.45rem 0.65rem',
-                          border: '1px solid #e5e7eb',
+                          border: '1px solid var(--border)',
                           borderRadius: 6,
-                          background: '#fff',
+                          background: 'var(--surface)',
                           cursor: 'pointer',
                           fontSize: '0.8125rem',
                           fontFamily: 'inherit',
@@ -1262,13 +1262,13 @@ export function MercuryTransactionAllocationsModal({
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                           <div style={{ fontWeight: 600 }}>
                             {d.windowsLabel}
-                            <span style={{ fontWeight: 400, color: '#64748b' }}> | </span>
+                            <span style={{ fontWeight: 400, color: 'var(--text-slate-500)' }}> | </span>
                             <span style={{ fontWeight: 600 }}>
                               {formatJobLedgerShortLine(ledgerPrefixMap, d.service_type_id, d.hcp_number, d.job_name, d.click_number)}
                             </span>
                           </div>
                           {addr !== '' ? (
-                            <div style={{ fontSize: '0.8125rem', color: '#6b7280', fontWeight: 400 }}>{addr}</div>
+                            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 400 }}>{addr}</div>
                           ) : null}
                         </div>
                       </button>
@@ -1283,7 +1283,7 @@ export function MercuryTransactionAllocationsModal({
                 style={{
                   fontSize: '0.75rem',
                   fontWeight: 600,
-                  color: '#475569',
+                  color: 'var(--text-slate-600)',
                   marginBottom: '0.35rem',
                   textAlign: 'center',
                 }}
@@ -1291,7 +1291,7 @@ export function MercuryTransactionAllocationsModal({
                 {tallyScheduleHeadings.clockSessionsTitle}
               </div>
               {staffDaySessionJobs.length === 0 && staffDaySessionBids.length === 0 && !staffDayContextLoading ? (
-                <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>No job or bid on sessions</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-slate-400)' }}>No job or bid on sessions</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {staffDaySessionJobs.map((r) => (
@@ -1304,9 +1304,9 @@ export function MercuryTransactionAllocationsModal({
                         width: '100%',
                         textAlign: 'left',
                         padding: '0.45rem 0.65rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 6,
-                        background: '#fff',
+                        background: 'var(--surface)',
                         cursor: 'pointer',
                         fontSize: '0.8125rem',
                         fontFamily: 'inherit',
@@ -1315,7 +1315,7 @@ export function MercuryTransactionAllocationsModal({
                       <span style={{ fontWeight: 600 }}>
                         {formatJobLedgerShortLine(ledgerPrefixMap, r.service_type_id, r.hcp_number, r.job_name, r.click_number)}
                       </span>
-                      <span style={{ color: '#6b7280' }}> · {r.job_address}</span>
+                      <span style={{ color: 'var(--text-muted)' }}> · {r.job_address}</span>
                     </button>
                   ))}
                   {staffDaySessionBids.map((b) => (
@@ -1323,11 +1323,11 @@ export function MercuryTransactionAllocationsModal({
                       key={b.id}
                       style={{
                         padding: '0.45rem 0.65rem',
-                        border: '1px dashed #e5e7eb',
+                        border: '1px dashed var(--border)',
                         borderRadius: 6,
                         fontSize: '0.8125rem',
-                        color: '#64748b',
-                        background: '#f8fafc',
+                        color: 'var(--text-slate-500)',
+                        background: 'var(--bg-slate-tint)',
                       }}
                     >
                       {b.label}
@@ -1352,7 +1352,7 @@ export function MercuryTransactionAllocationsModal({
                 padding: '0.65rem 0.75rem',
                 borderRadius: 12,
                 border: '1px solid #f1f5f9',
-                background: '#fafafa',
+                background: 'var(--bg-page)',
               }}
             >
               <div
@@ -1427,7 +1427,7 @@ export function MercuryTransactionAllocationsModal({
                   title={noteTrim}
                   style={{
                     fontSize: '0.75rem',
-                    color: '#64748b',
+                    color: 'var(--text-slate-500)',
                     marginTop: '0.35rem',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
@@ -1438,7 +1438,7 @@ export function MercuryTransactionAllocationsModal({
                 </div>
               ) : null}
               {ln.mode === 'percent' && displayTotal > 0 && Number.isFinite(dd ?? NaN) && ln.valueStr.trim() !== '' ? (
-                <div style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.35rem' }}>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
                   ≈ {formatCurrency(dd ?? 0)} of {formatCurrency(displayTotal)}
                 </div>
               ) : null}
@@ -1457,7 +1457,7 @@ export function MercuryTransactionAllocationsModal({
                   boxSizing: 'border-box',
                   border: '1px solid #e2e8f0',
                   borderRadius: 10,
-                  background: '#fff',
+                  background: 'var(--surface)',
                   fontFamily: 'inherit',
                 }}
               />
@@ -1470,7 +1470,7 @@ export function MercuryTransactionAllocationsModal({
           style={{
             fontSize: '0.8125rem',
             marginBottom: '1rem',
-            color: displayTotal <= 0 ? '#6b7280' : canSave ? '#059669' : '#b45309',
+            color: displayTotal <= 0 ? 'var(--text-muted)' : canSave ? 'var(--text-green-600)' : 'var(--text-amber-700)',
             textAlign: 'start',
           }}
         >
@@ -1491,8 +1491,8 @@ export function MercuryTransactionAllocationsModal({
             onClick={onClose}
             style={{
               padding: '0.45rem 0.85rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
             }}
