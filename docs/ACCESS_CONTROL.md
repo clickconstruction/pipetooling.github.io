@@ -112,6 +112,9 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Special Permissions**:
 - Create, edit, and delete users
+- **Archive / restore accounts** (Active Accounts): toolbar Archive dialog, **Archive & Reassign Customers**, and a per-row **Archive** (Edit mode) with an effects confirm; archiving an already-archived account reports "already archived (date)" (409). Devs can also archive **any** roster person on People → Users, not just ones they created (v2.652)
+- **Merge users** (Active Accounts, v2.652): absorb one account into another — same role required; absorbed must be archived or never signed in; live account survives; dry-run preview; `merge_user_accounts` RPC + `merge-users` Edge (absorbed login banned). Dev-only end to end
+- **Jobs → Crew P&L** (tab key `teams-summary`, v2.656): dev-only per-person labor-vs-billing profit rollup (masters/assistants/superintendents are redirected)
 - Impersonate other users ("imitate" function; cannot impersonate devs)
 - Manage system templates
 - Set user passwords
@@ -396,7 +399,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Access**:
 - Dashboard, Materials, Jobs (Reports and Billing tabs), Bids (full access: all tabs, create/edit/delete bids), Calendar, Checklist, Settings
-- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Sub Sheet Ledger, Teams Summary)
+- **Blocked**: Customers, Projects, People, Quickfill, other Jobs tabs (Sub Sheet Ledger, Crew P&L)
 
 **Service Type Filtering**:
 - Devs can restrict a primary to specific service types in Materials via `primary_service_type_ids` on the user record (like `estimator_service_type_ids`)
@@ -421,7 +424,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 **Jobs - Reports and Billing Tabs**:
 - **Reports tab**: View all reports via `list_reports_with_job_info` RPC; SELECT, INSERT, UPDATE on reports (delete restricted to devs only)
 - **Billing tab**: View jobs and add materials; Edit/Delete buttons hidden (read + add materials only)
-- Other Jobs tabs hidden (Sub Sheet Ledger, Teams Summary)
+- Other Jobs tabs hidden (Sub Sheet Ledger, Crew P&L)
 
 **Dashboard**:
 - Recent Reports section (same as masters); **primary** defaults **collapsed** and does **not** auto-expand when reports are unread (**`RECENT_FEATURES`** **v2.494**)
@@ -453,7 +456,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 **Access**:
 - Dashboard, Projects, Workflow, Jobs, Bids, Materials, Calendar, Checklist, Settings, Tally
 - **Blocked**: Customers (direct), People, Templates, Prospects
-- **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Teams Summary, Stages, Billing)
+- **Jobs tabs**: Reports, Sub Sheet Ledger (hide Team Labor, Crew P&L, Stages, Billing)
 - **Bids tabs**: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release (hide Pricing, Cover Letter, Submission)
 - **Customers**: Create from Bids modal only (like estimator)
 - **Assign people**: Yes (Workflow) — superintendent can assign subcontractors to stages
@@ -482,7 +485,7 @@ Pipetooling implements comprehensive role-based access control (RBAC) using eigh
 
 **Jobs**:
 - Reports, Sub Sheet Ledger tabs only (no Stages or Billing)
-- Team Labor and Teams Summary tabs hidden
+- Team Labor and Crew P&L tabs hidden
 
 **Bids**:
 - Draft flow: Bid Board, Builder Review, Counts, Takeoff, Cost Estimate, RFI, Change Order, Lien Release
@@ -587,9 +590,9 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Roadmap**: **Members** modal — add/remove, **viewer** / **editor** (`can_manage_checklist_tech_tree_roadmap_members`) | ✅ | ✅ | ✅ | ✅ if **editor** | ✅ if **editor** | ✅ | ✅ if **editor** |
 | Header **Task** (global modal — add checklist item + assignees + instances on allowed routes) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ |
 
-**RLS notes** (v2.408, [`20270427120000_checklist_tech_tree_multi_roadmap.sql`](../supabase/migrations/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **Dev**, **master_technician**, **assistant**, and **primary** bypass membership for **select** and **structure** (see all roadmaps). **Subcontractor**, **estimator**, **superintendent** (and anyone not in that bypass set) need a row in **`checklist_tech_tree_roadmap_members`** for each roadmap they can open. Migration backfill adds **viewer** on the **Default** roadmap for all non-archived users, so everyone typically retains access to that graph; additional named roadmaps are visible only to bypass roles or invited members.
+**RLS notes** (v2.408, [`20270427120000_checklist_tech_tree_multi_roadmap.sql`](../supabase/archive/migrations-pre-baseline/20270427120000_checklist_tech_tree_multi_roadmap.sql)): **Dev**, **master_technician**, **assistant**, and **primary** bypass membership for **select** and **structure** (see all roadmaps). **Subcontractor**, **estimator**, **superintendent** (and anyone not in that bypass set) need a row in **`checklist_tech_tree_roadmap_members`** for each roadmap they can open. Migration backfill adds **viewer** on the **Default** roadmap for all non-archived users, so everyone typically retains access to that graph; additional named roadmaps are visible only to bypass roles or invited members.
 
-**Task modal CHECKLIST RLS** ([`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](../supabase/migrations/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)): **`can_define_task_style_checklist_items()`** allows **subcontractor**, **helpers**, and **estimator** to insert/update/delete checklist definitions only when **`created_by_user_id = auth.uid()`** (and related assignee/instance rows for those items); staff paths still use **`is_dev_or_master_or_assistant()`** unchanged. [**`20260501205038_fix_checklist_items_rls_recursion.sql`](../supabase/migrations/20260501205038_fix_checklist_items_rls_recursion.sql)** adds **`checklist_item_created_by_auth_user(uuid)`** and **`checklist_instance_parent_item_created_by_auth_user(uuid)`** (**`SECURITY DEFINER`**, **`SET row_security = off`**) so junction/instance policies do not query **`checklist_items`** under RLS recursively (**RECENT_FEATURES.md** v2.450).
+**Task modal CHECKLIST RLS** ([`20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql`](../supabase/archive/migrations-pre-baseline/20270519120000_subcontractor_helpers_estimator_checklist_task_definitions.sql)): **`can_define_task_style_checklist_items()`** allows **subcontractor**, **helpers**, and **estimator** to insert/update/delete checklist definitions only when **`created_by_user_id = auth.uid()`** (and related assignee/instance rows for those items); staff paths still use **`is_dev_or_master_or_assistant()`** unchanged. [**`20260501205038_fix_checklist_items_rls_recursion.sql`](../supabase/migrations/20260501205038_fix_checklist_items_rls_recursion.sql)** adds **`checklist_item_created_by_auth_user(uuid)`** and **`checklist_instance_parent_item_created_by_auth_user(uuid)`** (**`SECURITY DEFINER`**, **`SET row_security = off`**) so junction/instance policies do not query **`checklist_items`** under RLS recursively (**RECENT_FEATURES.md** v2.450).
 
 ### Quickfill (`/quickfill`)
 
