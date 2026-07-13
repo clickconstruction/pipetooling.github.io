@@ -278,10 +278,10 @@ export function BidsCountsTab({
       {selectedBidForCounts && (
         <div
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '1.5rem 2rem',
-            background: 'white',
+            background: 'var(--surface)',
             marginBottom: '1.5rem',
             ...(narrowViewport640 ? { position: 'relative' } : {}),
           }}
@@ -362,21 +362,21 @@ export function BidsCountsTab({
               </div>
             </div>
           )}
-          <div ref={countsTableRef} style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+          <div ref={countsTableRef} style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
             <DndContext
               sensors={countRowsSensors}
               collisionDetection={closestCenter}
               onDragEnd={handleCountsDragEnd}
             >
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }} aria-label="Reorder"></th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: 132 }}>Count<span style={{ color: '#FF6600' }}>*</span></th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb', width: '50%' }}>Fixture or Tie-in<span style={{ color: '#FF6600' }}>*</span></th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Group/Tag</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Plan Page</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }} aria-label="Actions"></th>
+                    <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }} aria-label="Reorder"></th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: 132 }}>Count<span style={{ color: '#FF6600' }}>*</span></th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)', width: '50%' }}>Fixture or Tie-in<span style={{ color: '#FF6600' }}>*</span></th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Group/Tag</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Plan Page</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }} aria-label="Actions"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -452,8 +452,8 @@ export function BidsCountsTab({
                   title={countRows.length === 0 ? 'No count rows to clear' : 'Remove all count rows for this bid'}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: 'white',
-                    color: '#b91c1c',
+                    background: 'var(--surface)',
+                    color: 'var(--text-red-700)',
                     border: '1px solid #fca5a5',
                     borderRadius: 4,
                     cursor: countRows.length === 0 || clearAllCountsBusy ? 'not-allowed' : 'pointer',
@@ -481,7 +481,7 @@ export function BidsCountsTab({
       {countsImportOpen && selectedBidForCounts && (
         <ModalShell>
             <h2 style={{ margin: '0 0 1rem 0' }}>Import Counts</h2>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.75rem' }}>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
               Paste from Excel or enter one row per line. Use tab or comma to separate columns.
             </p>
             <textarea
@@ -489,16 +489,16 @@ export function BidsCountsTab({
               onChange={(e) => { setCountsImportText(e.target.value); setCountsImportError(null) }}
               placeholder={'Fixture or Tie-in\tCount\tPlan Page (optional)\nToilet\t5\tA-101\nLavatory Sink\t3\n4 columns: Fixture\tCount\tGroup/Tag\tPlan Page'}
               rows={8}
-              style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', fontFamily: 'monospace', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', resize: 'vertical' }}
+              style={{ width: '100%', padding: '0.5rem', fontSize: '0.875rem', fontFamily: 'monospace', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', resize: 'vertical' }}
             />
             {countsImportError && (
-              <p style={{ color: '#b91c1c', fontSize: '0.875rem', marginTop: '0.5rem', marginBottom: 0 }}>{countsImportError}</p>
+              <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginTop: '0.5rem', marginBottom: 0 }}>{countsImportError}</p>
             )}
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => { setCountsImportOpen(false); setCountsImportText(''); setCountsImportError(null) }}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>
@@ -531,18 +531,18 @@ export function BidsCountsTab({
             placeholder="Search bids (bid #, project name, or GC/Builder)..."
             value={countsSearchQuery}
             onChange={(e) => setCountsSearchQuery(e.target.value)}
-            style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box' }}
+            style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
           />
           <MyBidsToggle active={onlyMyBids} onChange={setOnlyMyBids} />
         </div>
       )}
       {!selectedBidForCounts && (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
               </tr>
             </thead>
             <tbody>
@@ -551,7 +551,7 @@ export function BidsCountsTab({
                   key={bid.id}
                   onClick={() => onSelectBid(bid)}
                   style={{
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--border)',
                     cursor: 'pointer',
                   }}
                 >

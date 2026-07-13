@@ -8,7 +8,7 @@ import { APP_CALENDAR_TZ, formatScheduleDispatchWeekNavLabel } from '../../utils
 const thBase: CSSProperties = {
   padding: '0.375rem 0.75rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   fontSize: '0.8125rem',
 }
 
@@ -24,21 +24,21 @@ const stickyCorner: CSSProperties = {
   position: 'sticky',
   left: 0,
   zIndex: 3,
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
   boxShadow: '1px 0 0 #e5e7eb',
 }
 
 const stickyOutcomes: CSSProperties = {
   padding: '0.35rem 0.75rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   fontSize: '0.75rem',
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--text-700)',
   position: 'sticky',
   left: 0,
   zIndex: 3,
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
   boxShadow: '1px 0 0 #e5e7eb',
 }
 
@@ -46,11 +46,11 @@ const stickyRowHeader: CSSProperties = {
   padding: '0.375rem 0.75rem',
   fontSize: '0.875rem',
   textAlign: 'left',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   position: 'sticky',
   left: 0,
   zIndex: 2,
-  background: '#fff',
+  background: 'var(--surface)',
   boxShadow: '1px 0 0 #e5e7eb',
 }
 
@@ -99,7 +99,7 @@ export function BidBoardWeeklySentSection({
               border: 'none',
               background: 'none',
               cursor: 'pointer',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               fontSize: '0.8125rem',
               textDecoration: 'underline',
             }}
@@ -113,7 +113,7 @@ export function BidBoardWeeklySentSection({
         hidden={!detailsOpen}
         style={{ marginTop: detailsOpen ? '0.35rem' : 0, marginBottom: detailsOpen ? '0.75rem' : 0 }}
       >
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
           One table: each <strong>column</strong> is a week (newest first). Each <strong>row</strong> is an estimator;
           each cell is one value: <strong>$</strong> in <strong>thousands</strong> with <strong>K</strong>, a hyphen,
           then <strong>sent</strong> count (e.g. <strong>$625K-3</strong>, <strong>$0-0</strong>). Dollars are the sum
@@ -129,11 +129,11 @@ export function BidBoardWeeklySentSection({
       </div>
 
       {weeks.length === 0 ? (
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No sent bids in this view.</p>
+        <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No sent bids in this view.</p>
       ) : (
         <div
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 4,
             overflowX: 'auto',
           }}
@@ -146,7 +146,7 @@ export function BidBoardWeeklySentSection({
               minWidth: Math.max(480, 140 + pivot.weeks.length * 112),
             }}
           >
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
                 <th scope="col" style={stickyCorner}>
                   Estimator
@@ -171,9 +171,9 @@ export function BidBoardWeeklySentSection({
                       key={`o-${w.weekStart}`}
                       style={{
                         padding: '0.35rem 0.5rem',
-                        borderBottom: '1px solid #e5e7eb',
+                        borderBottom: '1px solid var(--border)',
                         fontSize: '0.75rem',
-                        color: '#4b5563',
+                        color: 'var(--text-600)',
                         textAlign: 'center',
                         verticalAlign: 'top',
                         lineHeight: 1.35,
@@ -190,7 +190,7 @@ export function BidBoardWeeklySentSection({
             </thead>
             <tbody>
               {pivot.rows.map((row) => (
-                <tr key={row.estimatorKey} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                <tr key={row.estimatorKey} style={{ borderBottom: '1px solid var(--border)' }}>
                   <th scope="row" style={stickyRowHeader}>
                     {row.displayName}
                   </th>

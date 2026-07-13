@@ -169,15 +169,15 @@ function EstimateDetailCustomerActivitySection({
           fontSize: '1rem',
           fontWeight: 600,
           cursor: 'pointer',
-          color: '#111827',
+          color: 'var(--text-strong)',
         }}
       >
         Customer activity
       </summary>
       {loading ? (
-        <p style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '0.5rem' }}>Loading…</p>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Loading…</p>
       ) : events.length === 0 ? (
-        <p style={{ fontSize: '0.9rem', color: '#6b7280', marginTop: '0.5rem' }}>
+        <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
           No link views or acceptance events recorded yet.
         </p>
       ) : (
@@ -186,7 +186,7 @@ function EstimateDetailCustomerActivitySection({
             margin: '0.5rem 0 0',
             paddingLeft: '1.25rem',
             fontSize: '0.9rem',
-            color: '#374151',
+            color: 'var(--text-700)',
           }}
         >
           {events.map((ev) => {
@@ -352,10 +352,10 @@ const estimateListCreateJobButtonStyle: CSSProperties = {
   fontSize: '0.75rem',
   lineHeight: 1.2,
   fontWeight: 600,
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
-  background: '#f9fafb',
-  color: '#111827',
+  background: 'var(--bg-subtle)',
+  color: 'var(--text-strong)',
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 }
@@ -481,7 +481,7 @@ const estimateListTableScrollWrapStyle: CSSProperties = {
 }
 
 const estInputBase: CSSProperties = {
-  border: '1px solid #d1d5db',
+  border: '1px solid var(--border-strong)',
   borderRadius: 6,
   fontSize: '0.875rem',
   boxSizing: 'border-box',
@@ -515,10 +515,10 @@ function estPrimaryButton(disabled: boolean): CSSProperties {
 function estSecondaryButton(disabled?: boolean): CSSProperties {
   return {
     padding: '0.5rem 1rem',
-    background: '#f3f4f6',
-    border: '1px solid #d1d5db',
+    background: 'var(--bg-muted)',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
-    color: '#374151',
+    color: 'var(--text-700)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     fontWeight: 500,
     fontSize: '0.875rem',
@@ -536,10 +536,10 @@ function estSendButton(disabled: boolean): CSSProperties {
 function estDangerOutlineButton(disabled?: boolean): CSSProperties {
   return {
     padding: '0.5rem 1rem',
-    background: '#fef2f2',
+    background: 'var(--bg-red-tint)',
     border: '1px solid #fecaca',
     borderRadius: 4,
-    color: '#b91c1c',
+    color: 'var(--text-red-700)',
     cursor: disabled ? 'not-allowed' : 'pointer',
     fontWeight: 500,
     fontSize: '0.875rem',
@@ -552,10 +552,10 @@ function estSmallSecondaryButton(): CSSProperties {
     padding: '0.35rem 0.65rem',
     fontSize: '0.8125rem',
     fontWeight: 500,
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
-    background: '#f3f4f6',
-    color: '#374151',
+    background: 'var(--bg-muted)',
+    color: 'var(--text-700)',
     cursor: 'pointer',
   }
 }
@@ -829,7 +829,7 @@ type EstimateListTableProps = {
 
 const estimateListCustomerCellStyle: CSSProperties = {
   fontSize: '0.85rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   overflowWrap: 'anywhere',
   wordBreak: 'break-word',
 }
@@ -837,7 +837,7 @@ const estimateListCustomerCellStyle: CSSProperties = {
 const estimateListCustomerColumnNameStyle: CSSProperties = {
   fontSize: '0.85rem',
   fontWeight: 500,
-  color: '#111827',
+  color: 'var(--text-strong)',
   overflowWrap: 'anywhere',
   wordBreak: 'break-word',
 }
@@ -896,7 +896,7 @@ function EstimateListTable({
           border: 'none',
           background: 'none',
           cursor: 'pointer',
-          color: '#374151',
+          color: 'var(--text-700)',
           fontSize: '0.75rem',
           lineHeight: 1.1,
           flexShrink: 0,
@@ -905,7 +905,7 @@ function EstimateListTable({
       >
         <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
         {count > 0 ? (
-          <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 600 }}>{count}</span>
+          <span style={{ fontSize: '0.65rem', color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
         ) : null}
       </button>
     )
@@ -973,7 +973,7 @@ function EstimateListTable({
             {renderExpandButton(estimateId)}
           </div>
           <div {...lastActivityBodyInteractiveProps(st, estimateId, titleForEmpty, expanded)}>
-            <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
           </div>
         </td>
       )
@@ -995,7 +995,7 @@ function EstimateListTable({
           {renderExpandButton(estimateId)}
         </div>
         <div {...lastActivityBodyInteractiveProps(st, estimateId, titleWithNotes, expanded)}>
-          <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
             {author ? <span>{author}</span> : null}
             {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
             <span>{meta.weekdayTimeChicago}</span>
@@ -1004,7 +1004,7 @@ function EstimateListTable({
           <div
             style={{
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
               lineHeight: 1.35,
               wordBreak: 'break-word',
               whiteSpace: 'pre-wrap',
@@ -1022,12 +1022,12 @@ function EstimateListTable({
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
       <thead>
-        <tr style={{ borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
+        <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left' }}>
           <th style={{ padding: '0.5rem', whiteSpace: 'nowrap' }}>#</th>
           <th style={{ padding: '0.5rem', lineHeight: 1.3 }}>
             <div>Title</div>
             {showCustomerColumn ? null : (
-              <div style={{ fontSize: '0.8rem', fontWeight: 400, color: '#6b7280' }}>Customer</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>Customer</div>
             )}
           </th>
           {showCustomerColumn ? (
@@ -1121,7 +1121,7 @@ function EstimateListTable({
                         border: 'none',
                         padding: 0,
                         cursor: 'pointer',
-                        color: '#1d4ed8',
+                        color: 'var(--text-blue-700)',
                         textDecoration: 'underline',
                         font: 'inherit',
                         textAlign: 'left',
@@ -1157,7 +1157,7 @@ function EstimateListTable({
                 )}
               </td>
               <td style={{ padding: '0.5rem' }}>{formatMoney(r.total_cents)}</td>
-              <td style={{ padding: '0.5rem', color: '#6b7280' }}>
+              <td style={{ padding: '0.5rem', color: 'var(--text-muted)' }}>
                 {updatedLines ? (
                   <div
                     style={{
@@ -1168,7 +1168,7 @@ function EstimateListTable({
                     }}
                   >
                     <span>{updatedLines.short}</span>
-                    <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>{updatedLines.relative}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-faint)' }}>{updatedLines.relative}</span>
                   </div>
                 ) : (
                   '—'
@@ -1197,8 +1197,8 @@ function EstimateListTable({
                     colSpan={threadColSpan}
                     style={{
                       padding: '0.5rem 0.75rem',
-                      background: '#f9fafb',
-                      borderBottom: '1px solid #e5e7eb',
+                      background: 'var(--bg-subtle)',
+                      borderBottom: '1px solid var(--border)',
                     }}
                   >
                     <JobThreadNotesPanel
@@ -1254,7 +1254,7 @@ function EstimateListCards({
           border: 'none',
           background: 'none',
           cursor: 'pointer',
-          color: '#374151',
+          color: 'var(--text-700)',
           fontSize: '0.75rem',
           lineHeight: 1.1,
           flexShrink: 0,
@@ -1263,7 +1263,7 @@ function EstimateListCards({
       >
         <span aria-hidden>{expanded ? '\u25BC' : '\u25B6'}</span>
         {count > 0 ? (
-          <span style={{ fontSize: '0.65rem', color: '#2563eb', fontWeight: 600 }}>{count}</span>
+          <span style={{ fontSize: '0.65rem', color: 'var(--text-link)', fontWeight: 600 }}>{count}</span>
         ) : null}
       </button>
     )
@@ -1328,7 +1328,7 @@ function EstimateListCards({
               border: 'none',
               padding: 0,
               cursor: 'pointer',
-              color: '#1d4ed8',
+              color: 'var(--text-blue-700)',
               textDecoration: 'underline',
               font: 'inherit',
               textAlign: 'left',
@@ -1362,7 +1362,7 @@ function EstimateListCards({
       )
     }
     return (
-      <div style={{ marginTop: '0.5rem', fontWeight: 600, color: '#374151' }}>{statusLabel(r.status)}</div>
+      <div style={{ marginTop: '0.5rem', fontWeight: 600, color: 'var(--text-700)' }}>{statusLabel(r.status)}</div>
     )
   }
 
@@ -1402,7 +1402,7 @@ function EstimateListCards({
         >
           {renderExpandControl(estimateId)}
           <button type="button" onClick={toggle} style={previewButtonStyle}>
-            <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>—</span>
+            <span style={{ fontSize: '0.8125rem', color: 'var(--text-faint)' }}>—</span>
           </button>
         </div>
       )
@@ -1429,7 +1429,7 @@ function EstimateListCards({
           onClick={toggle}
           style={previewButtonStyle}
         >
-          <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginBottom: '0.2rem' }}>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }}>
             {author ? <span>{author}</span> : null}
             {author ? <span style={{ margin: '0 0.35rem' }}>·</span> : null}
             <span>{meta.weekdayTimeChicago}</span>
@@ -1438,7 +1438,7 @@ function EstimateListCards({
           <div
             style={{
               fontSize: '0.8125rem',
-              color: '#374151',
+              color: 'var(--text-700)',
               lineHeight: 1.35,
               wordBreak: 'break-word',
               whiteSpace: 'pre-wrap',
@@ -1464,10 +1464,10 @@ function EstimateListCards({
             key={r.id}
             role="listitem"
             style={{
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '0.75rem',
-              background: '#fff',
+              background: 'var(--surface)',
               minWidth: 0,
             }}
           >
@@ -1500,7 +1500,7 @@ function EstimateListCards({
                       wordBreak: 'break-word',
                     }}
                   >
-                    <Link to={`/estimates/${r.estimate_number}`} style={{ color: '#111827', textDecoration: 'none' }}>
+                    <Link to={`/estimates/${r.estimate_number}`} style={{ color: 'var(--text-strong)', textDecoration: 'none' }}>
                       {r.title || '—'}
                     </Link>
                   </div>
@@ -1509,12 +1509,12 @@ function EstimateListCards({
                 <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 0 }}>
                   <div style={{ fontWeight: 600 }}>{formatMoney(r.total_cents)}</div>
                   {updatedLines ? (
-                    <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem', lineHeight: 1.25 }}>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', lineHeight: 1.25 }}>
                       <span>{updatedLines.short}</span>
-                      <div style={{ fontSize: '0.8rem', color: '#9ca3af' }}>{updatedLines.relative}</div>
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-faint)' }}>{updatedLines.relative}</div>
                     </div>
                   ) : (
-                    <span style={{ fontSize: '0.85rem', color: '#9ca3af' }}>—</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-faint)' }}>—</span>
                   )}
                 </div>
               </div>
@@ -1525,7 +1525,7 @@ function EstimateListCards({
                   style={{
                     marginTop: '0.75rem',
                     paddingTop: '0.75rem',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                     minWidth: 0,
                   }}
                 >
@@ -1706,7 +1706,7 @@ function EstimateList() {
           flexWrap: 'wrap',
           gap: '0.25rem',
           marginTop: '0.75rem',
-          borderBottom: '1px solid #e5e7eb',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         <button
@@ -1738,7 +1738,7 @@ function EstimateList() {
             gap: '0.5rem',
             marginTop: '0.75rem',
             padding: '0.5rem 0.75rem',
-            background: '#eff6ff',
+            background: 'var(--bg-blue-tint)',
             border: '1px solid #bfdbfe',
             borderRadius: 6,
             fontSize: '0.875rem',
@@ -1756,7 +1756,7 @@ function EstimateList() {
             }
             style={{
               padding: '0.25rem 0.5rem',
-              background: 'white',
+              background: 'var(--surface)',
               border: '1px solid #93c5fd',
               borderRadius: 4,
               cursor: 'pointer',
@@ -1785,9 +1785,9 @@ function EstimateList() {
           {loading ? (
             <p>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: '#6b7280' }}>{estimatesListEmptyLabel}</p>
+            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>{estimatesListEmptyLabel}</p>
           ) : filteredRows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: '#6b7280' }}>No estimates match your search.</p>
+            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No estimates match your search.</p>
           ) : (
             <div style={{ ...estimateListTableScrollWrapStyle, marginTop: '1rem' }}>
               {narrowViewport640 ? (
@@ -1827,9 +1827,9 @@ function EstimateList() {
           {loading ? (
             <p style={{ marginTop: '1rem' }}>Loading…</p>
           ) : rows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: '#6b7280' }}>{estimatesListEmptyLabel}</p>
+            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>{estimatesListEmptyLabel}</p>
           ) : filteredRows.length === 0 ? (
-            <p style={{ marginTop: '1rem', color: '#6b7280' }}>No estimates match your search.</p>
+            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>No estimates match your search.</p>
           ) : (
             <div
               style={{
@@ -1842,7 +1842,7 @@ function EstimateList() {
               <section>
                 <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Unsent</h2>
                 {followupBuckets.unsent.length === 0 ? (
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No estimates</p>
                 ) : (
                   <div style={estimateListTableScrollWrapStyle}>
                     {narrowViewport640 ? (
@@ -1870,7 +1870,7 @@ function EstimateList() {
               <section>
                 <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Sent</h2>
                 {followupBuckets.sent.length === 0 ? (
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No estimates</p>
                 ) : (
                   <div style={estimateListTableScrollWrapStyle}>
                     {narrowViewport640 ? (
@@ -1898,7 +1898,7 @@ function EstimateList() {
               <section>
                 <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem', fontWeight: 600 }}>Accepted</h2>
                 {followupBuckets.accepted.length === 0 ? (
-                  <p style={{ margin: 0, color: '#6b7280', fontSize: '0.9rem' }}>No estimates</p>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>No estimates</p>
                 ) : (
                   <div style={estimateListTableScrollWrapStyle}>
                     {narrowViewport640 ? (
@@ -2548,7 +2548,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         labelContent: (
           <>
             <span style={{ fontWeight: 500 }}>{name}</span>
-            <span style={{ color: '#6b7280' }}> · {email || 'no email'}</span>
+            <span style={{ color: 'var(--text-muted)' }}> · {email || 'no email'}</span>
           </>
         ),
       }
@@ -2799,9 +2799,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         style={{
           marginTop: '1rem',
           padding: '0.75rem',
-          background: '#fafafa',
+          background: 'var(--bg-page)',
           borderRadius: 8,
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
         }}
       >
         <p style={{ fontSize: '0.85rem', fontWeight: 500, margin: '0 0 0.35rem', userSelect: 'none' }}>
@@ -2871,7 +2871,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   }}
                 />
               </label>
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '0.35rem 0 0' }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0.35rem 0 0' }}>
                 Clear the textarea to use organization default. Check “Hide…” to omit the footer for this quote only
                 (saved as an empty override).
               </p>
@@ -2907,14 +2907,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </label>
           ),
         )}
-        <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.75rem', marginBottom: 0 }}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem', marginBottom: 0 }}>
           Blank fields show organization defaults (built-in if unset in Settings). Only changes you make are saved as
           overrides.
         </p>
         {section.description ? (
-          <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '0.5rem 0 0' }}>{section.description}</p>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0.5rem 0 0' }}>{section.description}</p>
         ) : null}
-        <p style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.75rem', marginBottom: 0 }}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem', marginBottom: 0 }}>
           Save the draft (Save draft or Send) to persist overrides.
         </p>
       </div>
@@ -3379,9 +3379,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 style={{
                   marginTop: '0.5rem',
                   fontSize: '0.875rem',
-                  color: '#374151',
+                  color: 'var(--text-700)',
                   padding: '0.5rem 0.75rem',
-                  background: '#f9fafb',
+                  background: 'var(--bg-subtle)',
                   borderRadius: 6,
                   maxWidth: 480,
                 }}
@@ -3412,7 +3412,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                             padding: 0,
                             border: 'none',
                             background: 'none',
-                            color: '#b91c1c',
+                            color: 'var(--text-red-700)',
                             cursor: 'pointer',
                             font: 'inherit',
                             fontSize: '0.875rem',
@@ -3461,7 +3461,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         padding: 0,
                         border: 'none',
                         background: 'none',
-                        color: '#2563eb',
+                        color: 'var(--text-link)',
                         cursor: 'pointer',
                         font: 'inherit',
                         fontSize: '0.875rem',
@@ -3489,7 +3489,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                         <strong>Most recent note:</strong>{' '}
                         {customerNotesLoading && customerNotesEntries.length === 0 ? (
-                          <span style={{ color: '#6b7280' }}>Loading…</span>
+                          <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
                         ) : (
                           <span
                             style={{
@@ -3513,7 +3513,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         padding: 0,
                         border: 'none',
                         background: 'none',
-                        color: '#2563eb',
+                        color: 'var(--text-link)',
                         cursor: 'pointer',
                         font: 'inherit',
                         fontSize: '0.875rem',
@@ -3572,7 +3572,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             {isDraft || row.status === 'customer_accepted' ? (
               <span
                 style={{
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   fontSize: '0.9rem',
                   fontWeight: 600,
                   lineHeight: 1.25,
@@ -3582,19 +3582,19 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               </span>
           ) : (
             <h1 style={{ margin: 0 }}>
-              <span style={{ color: '#6b7280', fontSize: '0.9rem', fontWeight: 600 }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>
                 # {row.estimate_number}
               </span>{' '}
               {title || 'Estimate'}
             </h1>
           )}
         </div>
-        <span style={{ fontWeight: 600, color: '#92400e' }}>{statusLabel(row.status)}</span>
+        <span style={{ fontWeight: 600, color: 'var(--text-amber-800)' }}>{statusLabel(row.status)}</span>
       </div>
 
       {!isDraft && row.status !== 'customer_accepted' ? (
         <>
-          <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: '#374151' }}>
+          <p style={{ margin: '0.5rem 0 0', fontSize: '0.9rem', color: 'var(--text-700)' }}>
             <strong>For:</strong>{' '}
             {(() => {
               const cust = row.customer_id ? customers.find((c) => c.id === row.customer_id) : undefined
@@ -3602,7 +3602,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               return row.for_address?.trim() || crm || '—'
             })()}
           </p>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: '#374151' }}>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.9rem', color: 'var(--text-700)' }}>
             <strong>Acceptance page logo:</strong>{' '}
             {acceptanceDocHeaderBrand ? acceptHeaderBrandLabel(acceptanceDocHeaderBrand) : 'None'}
           </p>
@@ -3610,7 +3610,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <h2 style={{ fontSize: '1.1rem', margin: '0 0 0.5rem' }}>
               {staffResolvedExperience?.docLineItemsHeading ?? 'Line items'}
             </h2>
-            <div style={{ fontSize: '0.9rem', color: '#374151' }}>
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
               <EstimateLineItemsTable lines={estimatePublicLineItems(row.line_items_snapshot)} />
             </div>
           </section>
@@ -3686,7 +3686,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           background: 'transparent',
                           lineHeight: 0,
                           cursor: 'pointer',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                         }}
                       >
                         <svg
@@ -3715,7 +3715,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       display: 'block',
                       fontSize: '0.85rem',
                       fontWeight: 600,
-                      color: '#dc2626',
+                      color: 'var(--text-red-600)',
                       marginBottom: '0.35rem',
                       textAlign: 'center',
                     }}
@@ -3784,9 +3784,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       fontSize: '0.8125rem',
                       fontWeight: validUntilPreset === n ? 600 : 500,
                       borderRadius: 4,
-                      border: validUntilPreset === n ? 'none' : '1px solid #d1d5db',
-                      background: validUntilPreset === n ? '#ea580c' : '#f3f4f6',
-                      color: validUntilPreset === n ? 'white' : '#374151',
+                      border: validUntilPreset === n ? 'none' : '1px solid var(--border-strong)',
+                      background: validUntilPreset === n ? '#ea580c' : 'var(--bg-muted)',
+                      color: validUntilPreset === n ? 'white' : 'var(--text-700)',
                       cursor: 'pointer',
                     }}
                   >
@@ -3821,9 +3821,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       fontSize: '0.8125rem',
                       fontWeight: 500,
                       borderRadius: 4,
-                      border: '1px solid #d1d5db',
-                      background: '#f3f4f6',
-                      color: '#374151',
+                      border: '1px solid var(--border-strong)',
+                      background: 'var(--bg-muted)',
+                      color: 'var(--text-700)',
                       cursor: 'pointer',
                       maxWidth: 200,
                       overflow: 'hidden',
@@ -3855,9 +3855,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               >
                 <div
                   style={{
-                    background: '#fff',
+                    background: 'var(--surface)',
                     borderRadius: 8,
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     maxWidth: 560,
                     width: '100%',
                     maxHeight: 'min(85vh, 640px)',
@@ -3867,7 +3867,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <div style={{ padding: '1rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <div style={{ padding: '1rem', borderBottom: '1px solid var(--border)' }}>
                     <div
                       style={{
                         display: 'flex',
@@ -3888,9 +3888,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                               fontSize: '0.8125rem',
                               fontWeight: 500,
                               borderRadius: 4,
-                              border: catalogModalTab === 'pick' ? 'none' : '1px solid #d1d5db',
-                              background: catalogModalTab === 'pick' ? '#3b82f6' : '#f3f4f6',
-                              color: catalogModalTab === 'pick' ? 'white' : '#374151',
+                              border: catalogModalTab === 'pick' ? 'none' : '1px solid var(--border-strong)',
+                              background: catalogModalTab === 'pick' ? '#3b82f6' : 'var(--bg-muted)',
+                              color: catalogModalTab === 'pick' ? 'white' : 'var(--text-700)',
                               cursor: 'pointer',
                             }}
                           >
@@ -3908,9 +3908,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                               fontSize: '0.8125rem',
                               fontWeight: 500,
                               borderRadius: 4,
-                              border: catalogModalTab === 'edit' ? 'none' : '1px solid #d1d5db',
-                              background: catalogModalTab === 'edit' ? '#3b82f6' : '#f3f4f6',
-                              color: catalogModalTab === 'edit' ? 'white' : '#374151',
+                              border: catalogModalTab === 'edit' ? 'none' : '1px solid var(--border-strong)',
+                              background: catalogModalTab === 'edit' ? '#3b82f6' : 'var(--bg-muted)',
+                              color: catalogModalTab === 'edit' ? 'white' : 'var(--text-700)',
                               cursor: 'pointer',
                             }}
                           >
@@ -3959,7 +3959,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       }}
                     >
                       {catalogFiltered.length === 0 ? (
-                        <li style={{ padding: '1rem', color: '#6b7280' }}>
+                        <li style={{ padding: '1rem', color: 'var(--text-muted)' }}>
                           {catalogLineItems.length === 0 ?
                             canManageEstimateCatalog ?
                               'No preset items yet. Use Edit book to add some.'
@@ -3977,9 +3977,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                                   flex: '1 1 auto',
                                   textAlign: 'left',
                                   padding: '0.6rem 0.75rem',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid var(--border)',
                                   borderRadius: 6,
-                                  background: '#fafafa',
+                                  background: 'var(--bg-page)',
                                   cursor: 'pointer',
                                   fontSize: '0.9rem',
                                 }}
@@ -3987,7 +3987,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                                 <span style={{ display: 'block', fontWeight: 500 }}>
                                   {c.line_item.trim() || c.description.trim() || '—'}
                                 </span>
-                                <span style={{ color: '#6b7280', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem' }}>
+                                <span style={{ color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', fontSize: '0.8125rem' }}>
                                   {c.quantity} × {formatMoney(c.unit_price_cents)}
                                   {c.line_item.trim() && c.description.trim() ? ` · ${c.description.trim()}` : ''}
                                 </span>
@@ -4006,9 +4006,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                                   flexShrink: 0,
                                   padding: '0.35rem 0.5rem',
                                   fontSize: '0.75rem',
-                                  border: '1px solid #e5e7eb',
+                                  border: '1px solid var(--border)',
                                   borderRadius: 6,
-                                  background: '#fff',
+                                  background: 'var(--surface)',
                                   cursor: 'pointer',
                                   alignSelf: 'stretch',
                                 }}
@@ -4022,16 +4022,16 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                                   marginTop: '0.35rem',
                                   marginLeft: '0.25rem',
                                   padding: '0.5rem 0.65rem',
-                                  background: '#f9fafb',
+                                  background: 'var(--bg-subtle)',
                                   borderRadius: 6,
                                   fontSize: '0.8rem',
-                                  color: '#374151',
+                                  color: 'var(--text-700)',
                                 }}
                               >
                                 {catalogHistoryLoadingId === c.id ?
-                                  <span style={{ color: '#6b7280' }}>Loading…</span>
+                                  <span style={{ color: 'var(--text-muted)' }}>Loading…</span>
                                 : (catalogEventsByItemId[c.id] ?? []).length === 0 ?
-                                  <span style={{ color: '#6b7280' }}>No history yet.</span>
+                                  <span style={{ color: 'var(--text-muted)' }}>No history yet.</span>
                                 : (
                                   <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                                     {(catalogEventsByItemId[c.id] ?? []).map((ev) => (
@@ -4039,13 +4039,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                                         key={ev.id}
                                         style={{
                                           padding: '0.35rem 0',
-                                          borderBottom: '1px solid #e5e7eb',
+                                          borderBottom: '1px solid var(--border)',
                                         }}
                                       >
                                         <div style={{ fontWeight: 500 }}>
                                           {catalogEditorNames.get(ev.editor_user_id) ?? ev.editor_user_id}
                                         </div>
-                                        <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>
+                                        <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
                                           {new Date(ev.edited_at).toLocaleString()}
                                         </div>
                                         <div style={{ marginTop: '0.2rem' }}>{catalogEventSummary(ev)}</div>
@@ -4061,7 +4061,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     </ul>
                   ) : (
                     <div style={{ padding: '0.5rem 1rem 1rem', overflowY: 'auto', flex: 1 }}>
-                      <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+                      <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         Changes apply for everyone. History is kept per line item.
                       </p>
                       {catalogEditRows.map((r, idx) => (
@@ -4266,8 +4266,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                             padding: 0,
                             border: '1px solid #fca5a5',
                             borderRadius: '50%',
-                            background: '#fef2f2',
-                            color: '#b91c1c',
+                            background: 'var(--bg-red-tint)',
+                            color: 'var(--text-red-700)',
                             fontSize: '1.125rem',
                             fontWeight: 500,
                             lineHeight: 0,
@@ -4317,10 +4317,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       height: 28,
                       margin: 0,
                       padding: 0,
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: '50%',
-                      background: '#f9fafb',
-                      color: '#374151',
+                      background: 'var(--bg-subtle)',
+                      color: 'var(--text-700)',
                       fontSize: '1.125rem',
                       fontWeight: 500,
                       lineHeight: 1,
@@ -4381,9 +4381,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 style={{
                   marginTop: '1.5rem',
                   padding: '1rem 1.15rem',
-                  border: '1px dashed #d1d5db',
+                  border: '1px dashed var(--border-strong)',
                   borderRadius: 8,
-                  background: '#fafafa',
+                  background: 'var(--bg-page)',
                   boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                 }}
                 aria-labelledby="estimate-draft-supporting-doc-placeholder-heading"
@@ -4401,13 +4401,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       width: 40,
                       height: 40,
                       borderRadius: 8,
-                      background: '#e5e7eb',
+                      background: 'var(--bg-200)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
                       fontSize: '1.25rem',
-                      color: '#9ca3af',
+                      color: 'var(--text-faint)',
                       fontWeight: 600,
                     }}
                     aria-hidden
@@ -4417,11 +4417,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                     <h2
                       id="estimate-draft-supporting-doc-placeholder-heading"
-                      style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#9ca3af' }}
+                      style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-faint)' }}
                     >
                       Supporting document
                     </h2>
-                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.45 }}>
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                       Preview — add a label and URL in Supporting document (Optional) below.
                     </p>
                   </div>
@@ -4433,7 +4433,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 style={{
                   fontSize: '1.1rem',
                   margin: '0 0 0.5rem',
-                  color: terms.trim() ? '#111827' : '#9ca3af',
+                  color: terms.trim() ? 'var(--text-strong)' : 'var(--text-faint)',
                   transition: 'color 0.15s ease',
                 }}
               >
@@ -4451,8 +4451,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   boxSizing: 'border-box',
                   margin: 0,
                   whiteSpace: 'pre-wrap',
-                  background: '#f9fafb',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--bg-subtle)',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '1rem',
                   fontSize: '0.9rem',
@@ -4468,7 +4468,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               marginTop: '1rem',
               marginLeft: 'auto',
               marginRight: 'auto',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '0.75rem',
               maxWidth: 560,
@@ -4534,7 +4534,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   >
                     {attachmentCheckStatus === 'loading' ? 'Checking…' : 'Check link'}
                   </button>
-                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     Drive or Docs URLs only. Does not block sending — hints only.
                   </span>
                 </div>
@@ -4549,13 +4549,13 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 {attachmentCheckStatus === 'warn' && attachmentCheckMessage ? (
                   <p
                     role="status"
-                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b45309', lineHeight: 1.45 }}
+                    style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-amber-700)', lineHeight: 1.45 }}
                   >
                     {attachmentCheckMessage}
                   </p>
                 ) : null}
                 {attachmentCheckStatus === 'error' && attachmentCheckMessage ? (
-                  <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#b91c1c', lineHeight: 1.45 }}>
+                  <p role="alert" style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-red-700)', lineHeight: 1.45 }}>
                     {attachmentCheckMessage}
                   </p>
                 ) : null}
@@ -4575,9 +4575,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 </a>
               </div>
             ) : (
-              <p style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>No supporting document for this quote.</p>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-faint)' }}>No supporting document for this quote.</p>
             )}
-            <details style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: '#374151', textAlign: 'center' }}>
+            <details style={{ margin: '0.65rem 0 0', fontSize: '0.85rem', color: 'var(--text-700)', textAlign: 'center' }}>
               <summary style={{ cursor: 'pointer', fontWeight: 500, color: '#1f2937' }}>
                 How to share a file in Google Drive
               </summary>
@@ -4619,7 +4619,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               marginTop: '1rem',
               marginLeft: 'auto',
               marginRight: 'auto',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '0.75rem',
               maxWidth: 560,
@@ -4628,7 +4628,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             }}
           >
             <legend style={{ fontWeight: 500, padding: '0 0.35rem' }}>Email when customer accepts</legend>
-            <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.45 }}>
+            <p style={{ margin: '0 0 0.65rem', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
               Choose who gets an email when the customer submits acceptance. Check <strong>Notify me</strong> for
               yourself, then search below to add anyone else.
             </p>
@@ -4659,11 +4659,11 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 <span>
                   <span style={{ fontWeight: 600 }}>Notify me</span>
                   <span style={{ fontWeight: 500 }}> · {profileName?.trim() || 'You'}</span>
-                  <span style={{ color: '#6b7280' }}> · {user.email?.trim() || '—'}</span>
+                  <span style={{ color: 'var(--text-muted)' }}> · {user.email?.trim() || '—'}</span>
                 </span>
               </label>
             ) : null}
-            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#374151', marginBottom: '0.35rem' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-700)', marginBottom: '0.35rem' }}>
               Also notify
             </div>
             <SearchableMultiSelect
@@ -4725,7 +4725,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             style={{
               marginBottom: '1rem',
               padding: '0.75rem',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               fontSize: '0.875rem',
               boxSizing: 'border-box',
@@ -4733,7 +4733,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           >
             <div style={{ fontWeight: 600, marginBottom: '0.35rem' }}>Acceptance notify recipients</div>
             {acceptNotifyResolvedUsers.length === 0 ? (
-              <p style={{ margin: 0, color: '#6b7280' }}>No staff email recipients were set for this quote.</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>No staff email recipients were set for this quote.</p>
             ) : (
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
                 {acceptNotifyResolvedUsers.map((u) => (
@@ -4743,7 +4743,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 ))}
               </ul>
             )}
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: '#6b7280' }}>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               This list was locked when the quote was sent.
             </p>
           </div>
@@ -4753,12 +4753,12 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               style={{
                 marginTop: 0,
                 padding: '1rem',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 8,
                 maxWidth: 'min(640px, 100%)',
                 width: '100%',
                 boxSizing: 'border-box',
-                background: 'white',
+                background: 'var(--surface)',
                 fontFamily: 'system-ui, sans-serif',
               }}
             >
@@ -4785,7 +4785,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             </p>
           )}
           {(row.customer_id || row.customer_email) && (
-            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: '#374151' }}>
+            <div style={{ marginTop: '0.75rem', fontSize: '0.9rem', color: 'var(--text-700)' }}>
               {row.customer_id ? (
                 <p style={{ margin: '0.25rem 0' }}>
                   <strong>Customer:</strong>{' '}
@@ -4805,7 +4805,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                           background: 'transparent',
                           cursor: 'pointer',
                           font: 'inherit',
-                          color: '#2563eb',
+                          color: 'var(--text-link)',
                           textDecoration: 'underline',
                           textUnderlineOffset: '2px',
                         }}
@@ -4826,7 +4826,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           {row.status === 'customer_accepted' && (
             <>
               <h2 style={{ fontSize: '1rem', marginTop: '1.5rem' }}>Customer acceptance</h2>
-              <ul style={{ fontSize: '0.9rem', color: '#374151' }}>
+              <ul style={{ fontSize: '0.9rem', color: 'var(--text-700)' }}>
                 <li>Name: {row.acceptor_printed_name || '—'}</li>
                 <li>
                   At:{' '}
@@ -4848,7 +4848,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     <img
                       src={acceptorSignatureSignedUrl}
                       alt="Customer signature"
-                      style={{ maxWidth: 400, width: '100%', border: '1px solid #e5e7eb', borderRadius: 6 }}
+                      style={{ maxWidth: 400, width: '100%', border: '1px solid var(--border)', borderRadius: 6 }}
                     />
                   </li>
                 ) : row.acceptor_signature_storage_path ? (
@@ -4929,7 +4929,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                 loading={estimateCustomerEventsLoading}
                 events={estimateCustomerEvents}
               />
-              <p style={{ marginTop: '1rem', color: '#92400e' }}>
+              <p style={{ marginTop: '1rem', color: 'var(--text-amber-800)' }}>
                 Waiting for customer. Contact them with the link from the email we sent (or ask an admin to resend).
               </p>
               <EstimateCustomerAcceptLinkButtons
@@ -4949,7 +4949,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
           style={{
             marginTop: '2rem',
             paddingTop: '1rem',
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
           }}
         >
           <summary style={{ cursor: 'pointer', fontWeight: 600, userSelect: 'none' }}>Customer experience</summary>
@@ -4964,7 +4964,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             />
           ) : null}
           {!isDraft && row.customer_experience_sent ? (
-            <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '1rem' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
               Shown below is the copy customers see — saved when this estimate was sent.
             </p>
           ) : null}
@@ -4975,9 +4975,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               style={{
                 padding: '0.35rem 0.75rem',
                 borderRadius: 4,
-                border: '1px solid #d1d5db',
-                background: customerPreviewTab === 'email' ? '#eff6ff' : '#f9fafb',
-                color: '#374151',
+                border: '1px solid var(--border-strong)',
+                background: customerPreviewTab === 'email' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                color: 'var(--text-700)',
                 fontWeight: customerPreviewTab === 'email' ? 600 : 500,
                 fontSize: '0.875rem',
                 cursor: 'pointer',
@@ -4991,9 +4991,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               style={{
                 padding: '0.35rem 0.75rem',
                 borderRadius: 4,
-                border: '1px solid #d1d5db',
-                background: customerPreviewTab === 'page' ? '#eff6ff' : '#f9fafb',
-                color: '#374151',
+                border: '1px solid var(--border-strong)',
+                background: customerPreviewTab === 'page' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                color: 'var(--text-700)',
                 fontWeight: customerPreviewTab === 'page' ? 600 : 500,
                 fontSize: '0.875rem',
                 cursor: 'pointer',
@@ -5007,9 +5007,9 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               style={{
                 padding: '0.35rem 0.75rem',
                 borderRadius: 4,
-                border: '1px solid #d1d5db',
-                background: customerPreviewTab === 'thankyou' ? '#eff6ff' : '#f9fafb',
-                color: '#374151',
+                border: '1px solid var(--border-strong)',
+                background: customerPreviewTab === 'thankyou' ? 'var(--bg-blue-tint)' : 'var(--bg-subtle)',
+                color: 'var(--text-700)',
                 fontWeight: customerPreviewTab === 'thankyou' ? 600 : 500,
                 fontSize: '0.875rem',
                 cursor: 'pointer',
@@ -5023,14 +5023,14 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <>
               <div
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '1rem',
-                  background: '#fafafa',
+                  background: 'var(--bg-page)',
                   fontSize: '0.9rem',
                 }}
               >
-                <p style={{ margin: '0 0 0.5rem', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
                   <strong>From:</strong> {ESTIMATE_EMAIL_FROM_LABEL}
                 </p>
                 <p style={{ margin: '0 0 0.5rem' }}>
@@ -5040,7 +5040,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                   <strong>Subject:</strong> {staffResolvedExperience.emailSubject}
                 </p>
                 <p style={{ margin: '0 0 0.35rem', fontWeight: 600 }}>HTML preview</p>
-                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                   Matches the HTML email (centered logo when an acceptance page logo is selected).
                 </p>
                 <div
@@ -5054,8 +5054,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     className="estimate-email-html-preview-root"
                     style={{
                       margin: 0,
-                      background: 'white',
-                      border: '1px solid #e5e7eb',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       padding: '0.75rem',
                       fontFamily: 'system-ui, sans-serif',
@@ -5070,8 +5070,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                     margin: 0,
                     whiteSpace: 'pre-wrap',
                     fontFamily: 'inherit',
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border)',
                     borderRadius: 6,
                     padding: '0.75rem',
                   }}
@@ -5088,10 +5088,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               <div
                 style={{
                   fontFamily: 'system-ui, sans-serif',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: '1rem',
-                  background: 'white',
+                  background: 'var(--surface)',
                   maxWidth: 'min(640px, 100%)',
                   width: '100%',
                   boxSizing: 'border-box',
@@ -5177,10 +5177,10 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
               <div
                 style={{
                   fontFamily: 'system-ui, sans-serif',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   padding: 0,
-                  background: 'white',
+                  background: 'var(--surface)',
                   maxWidth: 'min(640px, 100%)',
                   width: '100%',
                   boxSizing: 'border-box',
@@ -5214,7 +5214,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
         >
           <div
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1rem 2rem 2rem',
               borderRadius: 8,
               maxWidth: '500px',
@@ -5261,7 +5261,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             aria-labelledby="unlink-job-confirm-title"
             aria-describedby="unlink-job-confirm-desc"
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               padding: '1.5rem',
               borderRadius: 8,
               minWidth: 320,
@@ -5272,7 +5272,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
             <h2 id="unlink-job-confirm-title" style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>
               Unlink job
             </h2>
-            <p id="unlink-job-confirm-desc" style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: '#374151' }}>
+            <p id="unlink-job-confirm-desc" style={{ margin: '0 0 1.25rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
               Remove the job link from this estimate? The job will stay in Jobs; only the link here is cleared.
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>

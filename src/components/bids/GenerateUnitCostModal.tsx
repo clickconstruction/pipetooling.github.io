@@ -18,7 +18,7 @@ const overlay: CSSProperties = {
 }
 
 const panel: CSSProperties = {
-  background: 'white',
+  background: 'var(--surface)',
   borderRadius: 8,
   maxWidth: 440,
   width: '100%',
@@ -153,7 +153,7 @@ export function GenerateUnitCostModal({
               margin: '0 0 0.75rem',
               fontSize: '1.125rem',
               fontWeight: 600,
-              color: '#111827',
+              color: 'var(--text-strong)',
               textAlign: 'center',
               lineHeight: 1.3,
             }}
@@ -166,7 +166,7 @@ export function GenerateUnitCostModal({
           style={{
             margin: '0 0 0.75rem',
             fontSize: '0.875rem',
-            color: '#374151',
+            color: 'var(--text-700)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -180,19 +180,19 @@ export function GenerateUnitCostModal({
           {showThisLineRevenueSummary ?
             <span>
               This line revenue: <strong>${formatCurrency(currentRowRevenue)}</strong>
-              <span style={{ color: '#6b7280', fontWeight: 400 }}> ({pctDisplay} of total)</span>
+              <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}> ({pctDisplay} of total)</span>
             </span>
           : null}
         </div>
 
         {totalRevenue <= 0 ?
-          <p style={{ margin: '0 0 0.75rem', padding: '0.5rem', background: '#fef3c7', borderRadius: 6, fontSize: '0.8125rem', color: '#92400e' }}>
+          <p style={{ margin: '0 0 0.75rem', padding: '0.5rem', background: 'var(--bg-amber-100)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
             Set prices so total revenue is greater than zero before using this tool.
           </p>
         : null}
 
         {isFixedPrice ?
-          <p style={{ margin: '0 0 0.75rem', padding: '0.5rem', background: '#f3f4f6', borderRadius: 6, fontSize: '0.8125rem', color: '#374151' }}>
+          <p style={{ margin: '0 0 0.75rem', padding: '0.5rem', background: 'var(--bg-muted)', borderRadius: 6, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
             Fixed price: the applied amount is the total revenue for this line (not multiplied by count).
           </p>
         : null}
@@ -228,7 +228,7 @@ export function GenerateUnitCostModal({
               width: '6rem',
               flex: '0 0 auto',
               padding: '0.5rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               fontSize: '0.875rem',
               boxSizing: 'border-box',
@@ -265,9 +265,9 @@ export function GenerateUnitCostModal({
             onClick={onClose}
             style={{
               padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
-              background: 'white',
+              background: 'var(--surface)',
               cursor: 'pointer',
               fontSize: '0.875rem',
             }}

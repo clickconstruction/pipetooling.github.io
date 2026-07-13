@@ -38,9 +38,9 @@ function firstOrNull<T>(v: T | T[] | null): T | null {
 
 const TH: CSSProperties = {
   padding: '0.4rem 0.5rem',
-  borderBottom: '2px solid #e5e7eb',
+  borderBottom: '2px solid var(--border)',
   fontSize: '0.8rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   textAlign: 'center',
   whiteSpace: 'nowrap',
 }
@@ -48,7 +48,7 @@ const TD_NUM: CSSProperties = { padding: '0.4rem 0.5rem', borderBottom: '1px sol
 const TD_NAME: CSSProperties = { padding: '0.4rem 0.5rem', borderBottom: '1px solid #f3f4f6', textAlign: 'left' }
 
 function CountCell({ value, style }: { value: number; style?: CSSProperties }) {
-  return <td style={{ ...TD_NUM, ...style }}>{value > 0 ? value : <span style={{ color: '#d1d5db' }}>—</span>}</td>
+  return <td style={{ ...TD_NUM, ...style }}>{value > 0 ? value : <span style={{ color: 'var(--text-faint-300)' }}>—</span>}</td>
 }
 
 export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }) {
@@ -136,7 +136,7 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
     <ModalShell
       zIndex={1000}
       cardStyle={{
-        background: 'white',
+        background: 'var(--surface)',
         padding: '1.5rem',
         borderRadius: 8,
         maxWidth: 1000,
@@ -150,12 +150,12 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
         <button
           type="button"
           onClick={onClose}
-          style={{ padding: '0.35rem 0.9rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+          style={{ padding: '0.35rem 0.9rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
         >
           Close
         </button>
       </div>
-      <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: '#6b7280' }}>
+      <p style={{ margin: '0 0 0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
         All trades. Hours are reported team clock hours — estimating (clocked to the customer's bids) and jobs (clocked
         to the customer's jobs) — excluding rejected/revoked sessions.
       </p>
@@ -165,14 +165,14 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
         aria-label="Search customers in the Customer review"
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.75rem' }}
+        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', marginBottom: '0.75rem' }}
       />
       {loading ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>Loading…</div>
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading…</div>
       ) : error ? (
-        <div style={{ padding: '1rem', color: '#dc2626' }}>{error}</div>
+        <div style={{ padding: '1rem', color: 'var(--text-red-600)' }}>{error}</div>
       ) : visibleRows.length === 0 ? (
-        <div style={{ padding: '2rem', textAlign: 'center', color: '#6b7280' }}>
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
           {rows.length === 0 ? 'No customers to show yet.' : 'No customers match your search.'}
         </div>
       ) : (
@@ -207,17 +207,17 @@ export function BidBoardCustomerReviewModal({ onClose }: { onClose: () => void }
           </tbody>
           <tfoot>
             <tr style={{ fontWeight: 700 }}>
-              <td style={{ ...TD_NAME, borderTop: '2px solid #e5e7eb' }}>
+              <td style={{ ...TD_NAME, borderTop: '2px solid var(--border)' }}>
                 Total ({visibleRows.length} customer{visibleRows.length === 1 ? '' : 's'})
               </td>
-              <CountCell value={totals.counts.unsent} style={{ borderTop: '2px solid #e5e7eb' }} />
-              <CountCell value={totals.counts.pending} style={{ borderTop: '2px solid #e5e7eb' }} />
-              <CountCell value={totals.counts.won} style={{ borderTop: '2px solid #e5e7eb' }} />
-              <CountCell value={totals.counts.startedOrComplete} style={{ borderTop: '2px solid #e5e7eb' }} />
-              <CountCell value={totals.counts.lost} style={{ borderTop: '2px solid #e5e7eb' }} />
-              <td style={{ ...TD_NUM, borderTop: '2px solid #e5e7eb' }}>{formatCustomerReviewHours(totals.estimatingHours)}</td>
-              <td style={{ ...TD_NUM, borderTop: '2px solid #e5e7eb' }}>{formatCustomerReviewHours(totals.jobHours)}</td>
-              <td style={{ ...TD_NUM, borderTop: '2px solid #e5e7eb' }}>{formatCustomerReviewHours(totals.totalHours)}</td>
+              <CountCell value={totals.counts.unsent} style={{ borderTop: '2px solid var(--border)' }} />
+              <CountCell value={totals.counts.pending} style={{ borderTop: '2px solid var(--border)' }} />
+              <CountCell value={totals.counts.won} style={{ borderTop: '2px solid var(--border)' }} />
+              <CountCell value={totals.counts.startedOrComplete} style={{ borderTop: '2px solid var(--border)' }} />
+              <CountCell value={totals.counts.lost} style={{ borderTop: '2px solid var(--border)' }} />
+              <td style={{ ...TD_NUM, borderTop: '2px solid var(--border)' }}>{formatCustomerReviewHours(totals.estimatingHours)}</td>
+              <td style={{ ...TD_NUM, borderTop: '2px solid var(--border)' }}>{formatCustomerReviewHours(totals.jobHours)}</td>
+              <td style={{ ...TD_NUM, borderTop: '2px solid var(--border)' }}>{formatCustomerReviewHours(totals.totalHours)}</td>
             </tr>
           </tfoot>
         </table>

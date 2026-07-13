@@ -13,10 +13,10 @@ function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOu
         alignItems: 'center',
         gap: '0.5rem',
         padding: '0.35rem 0.5rem',
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: '1px solid var(--border)',
       }}
     >
-      <div style={{ flex: '0 1 9rem', minWidth: 0, fontSize: '0.8125rem', color: '#374151' }}>{row.displayName}</div>
+      <div style={{ flex: '0 1 9rem', minWidth: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }}>{row.displayName}</div>
       <div style={{ flex: 1, minWidth: 0, position: 'relative', padding: '6px 0' }}>
         <div
           aria-hidden
@@ -24,11 +24,11 @@ function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOu
             height: 10,
             position: 'relative',
             borderRadius: 4,
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             overflow: 'visible',
             opacity: pct === null ? 0.45 : 1,
             background:
-              'linear-gradient(90deg, #fee2e2 0%, #fee2e2 20%, #fef9c3 20%, #fef9c3 40%, #dcfce7 40%, #dcfce7 60%, #fef9c3 60%, #fef9c3 80%, #fee2e2 80%, #fee2e2 100%)',
+              'linear-gradient(90deg, var(--bg-red-100) 0%, var(--bg-red-100) 20%, #fef9c3 20%, #fef9c3 40%, var(--bg-green-100) 40%, var(--bg-green-100) 60%, #fef9c3 60%, #fef9c3 80%, var(--bg-red-100) 80%, var(--bg-red-100) 100%)',
           }}
         >
           {pct !== null ? (
@@ -55,7 +55,7 @@ function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOu
           textAlign: 'right',
           fontSize: '0.8125rem',
           fontWeight: 600,
-          color: '#374151',
+          color: 'var(--text-700)',
         }}
       >
         {pctStr}
@@ -67,14 +67,14 @@ function BidBoardEstimatingHealthWonPctSliderRow({ row }: { row: BidBoardStaffOu
 export function BidBoardEstimatingHealthWonPctSliders({ stats }: { stats: BidBoardStaffOutcomesByRole }) {
   if (stats.estimators.length === 0 && stats.accountManagers.length === 0) return null
   return (
-    <div style={{ margin: '0 0 0.625rem 0', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+    <div style={{ margin: '0 0 0.625rem 0', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
       {stats.estimators.length > 0 ? (
         <>
           <div
             style={{
               padding: '0.375rem 0.75rem',
-              background: '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
+              background: 'var(--bg-subtle)',
+              borderBottom: '1px solid var(--border)',
               fontSize: '0.875rem',
               fontWeight: 600,
             }}
@@ -91,8 +91,8 @@ export function BidBoardEstimatingHealthWonPctSliders({ stats }: { stats: BidBoa
           <div
             style={{
               padding: '0.375rem 0.75rem',
-              background: '#f9fafb',
-              borderBottom: '1px solid #e5e7eb',
+              background: 'var(--bg-subtle)',
+              borderBottom: '1px solid var(--border)',
               borderTop: stats.estimators.length > 0 ? '1px solid #e5e7eb' : undefined,
               fontSize: '0.875rem',
               fontWeight: 600,

@@ -38,7 +38,7 @@ const overlay: CSSProperties = {
 }
 
 const panel: CSSProperties = {
-  background: 'white',
+  background: 'var(--surface)',
   borderRadius: 8,
   maxWidth: 720,
   width: '100%',
@@ -50,10 +50,10 @@ const panel: CSSProperties = {
 }
 
 const sectionStyle: CSSProperties = {
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: '0.75rem 1rem',
-  background: '#fafafa',
+  background: 'var(--bg-page)',
 }
 
 const sectionLabelStyle: CSSProperties = {
@@ -61,18 +61,18 @@ const sectionLabelStyle: CSSProperties = {
   fontSize: '0.75rem',
   fontWeight: 600,
   letterSpacing: '0.04em',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   textTransform: 'uppercase',
   marginBottom: '0.5rem',
 }
 
 const previewWrapStyle: CSSProperties = {
-  border: '1px solid #e5e7eb',
+  border: '1px solid var(--border)',
   borderRadius: 6,
   padding: '0.5rem',
   maxHeight: 320,
   overflowY: 'auto',
-  background: 'white',
+  background: 'var(--surface)',
 }
 
 export type PackageAndSendPricingRowInput = PackageRowInput
@@ -402,8 +402,8 @@ export function PackageAndSendBidPricingModal({
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>Package and send</h2>
-            <p style={{ margin: '0.15rem 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+            <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: 'var(--text-strong)' }}>Package and send</h2>
+            <p style={{ margin: '0.15rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
               {bidLabel}
               {priceBookVersionName ? ` · ${priceBookVersionName}` : ''}
             </p>
@@ -419,7 +419,7 @@ export function PackageAndSendBidPricingModal({
               fontSize: '1.5rem',
               lineHeight: 1,
               cursor: 'pointer',
-              color: '#6b7280',
+              color: 'var(--text-muted)',
               padding: '0.25rem 0.5rem',
             }}
           >
@@ -436,10 +436,10 @@ export function PackageAndSendBidPricingModal({
                 onClick={() => openInExternalBrowser(plansLink)}
                 style={{
                   padding: '0.4rem 0.75rem',
-                  background: 'white',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  color: '#2563eb',
+                  color: 'var(--text-link)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: 500,
@@ -450,7 +450,7 @@ export function PackageAndSendBidPricingModal({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   wordBreak: 'break-all',
                   overflowWrap: 'anywhere',
                 }}
@@ -460,7 +460,7 @@ export function PackageAndSendBidPricingModal({
             </div>
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <span style={{ color: '#92400e', fontSize: '0.875rem' }}>
+              <span style={{ color: 'var(--text-amber-800)', fontSize: '0.875rem' }}>
                 No job plans URL on this bid.
               </span>
               <button
@@ -468,10 +468,10 @@ export function PackageAndSendBidPricingModal({
                 onClick={onRequestEditBid}
                 style={{
                   padding: '0.35rem 0.75rem',
-                  background: 'white',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   cursor: 'pointer',
                   fontSize: '0.8125rem',
                 }}
@@ -491,10 +491,10 @@ export function PackageAndSendBidPricingModal({
                 onClick={() => openInExternalBrowser(countToolingPlansLink)}
                 style={{
                   padding: '0.4rem 0.75rem',
-                  background: 'white',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
-                  color: '#2563eb',
+                  color: 'var(--text-link)',
                   cursor: 'pointer',
                   fontSize: '0.875rem',
                   fontWeight: 500,
@@ -505,7 +505,7 @@ export function PackageAndSendBidPricingModal({
               <span
                 style={{
                   fontSize: '0.75rem',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   wordBreak: 'break-all',
                   overflowWrap: 'anywhere',
                 }}
@@ -514,7 +514,7 @@ export function PackageAndSendBidPricingModal({
               </span>
             </div>
           ) : (
-            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               No CountTooling Plans link on this bid.
             </span>
           )}
@@ -532,7 +532,7 @@ export function PackageAndSendBidPricingModal({
             }}
           >
             <p style={{ ...sectionLabelStyle, marginBottom: 0 }}>Pricing preview</p>
-            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
               {externalRows.length} {externalRows.length === 1 ? 'row' : 'rows'}
               {' · '}includes the four columns the recipient will see
             </span>
@@ -584,9 +584,9 @@ export function PackageAndSendBidPricingModal({
                         fontSize: '0.75rem',
                         fontWeight: 500,
                         cursor: 'pointer',
-                        border: selected ? '1px solid #2563eb' : '1px solid #d1d5db',
-                        background: selected ? '#2563eb' : 'white',
-                        color: selected ? 'white' : '#111827',
+                        border: selected ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                        background: selected ? '#2563eb' : 'var(--surface)',
+                        color: selected ? 'white' : 'var(--text-strong)',
                         lineHeight: 1.2,
                       }}
                     >
@@ -609,7 +609,7 @@ export function PackageAndSendBidPricingModal({
             portalZIndex={MODAL_Z + 10}
           />
           {disabledReason ? (
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#92400e' }}>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
               {disabledReason}
             </p>
           ) : null}
@@ -618,11 +618,11 @@ export function PackageAndSendBidPricingModal({
               style={{
                 margin: '0.5rem 0 0',
                 padding: '0.5rem',
-                background: '#fef2f2',
+                background: 'var(--bg-red-tint)',
                 border: '1px solid #fecaca',
                 borderRadius: 4,
                 fontSize: '0.8125rem',
-                color: '#991b1b',
+                color: 'var(--text-red-800)',
               }}
             >
               {errorMessage}
@@ -694,10 +694,10 @@ export function PackageAndSendBidPricingModal({
               }
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: copyForTextDisabled ? '#e5e7eb' : '#f3f4f6',
-                color: copyForTextDisabled ? '#9ca3af' : '#111827',
+                background: copyForTextDisabled ? 'var(--bg-200)' : 'var(--bg-muted)',
+                color: copyForTextDisabled ? 'var(--text-faint)' : 'var(--text-strong)',
                 cursor: copyForTextDisabled ? 'not-allowed' : 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -715,10 +715,10 @@ export function PackageAndSendBidPricingModal({
               }
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: sendDisabledBase ? '#e5e7eb' : '#f3f4f6',
-                color: sendDisabledBase ? '#9ca3af' : '#111827',
+                background: sendDisabledBase ? 'var(--bg-200)' : 'var(--bg-muted)',
+                color: sendDisabledBase ? 'var(--text-faint)' : 'var(--text-strong)',
                 cursor: sendDisabledBase ? 'not-allowed' : 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -730,9 +730,9 @@ export function PackageAndSendBidPricingModal({
               onClick={onClose}
               style={{
                 padding: '0.5rem 1rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
-                background: 'white',
+                background: 'var(--surface)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}

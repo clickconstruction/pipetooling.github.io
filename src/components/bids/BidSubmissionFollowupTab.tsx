@@ -346,7 +346,7 @@ export function BidSubmissionFollowupTab({
     const trimmed = (url ?? '').trim()
     if (!trimmed) {
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', margin: 0, color: '#9ca3af', fontWeight: 400 }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', margin: 0, color: 'var(--text-faint)', fontWeight: 400 }}>
           {label} —
         </span>
       )
@@ -370,7 +370,7 @@ export function BidSubmissionFollowupTab({
             e.preventDefault()
             openInExternalBrowser(trimmed)
           }}
-          style={{ color: '#3b82f6', fontWeight: 600 }}
+          style={{ color: 'var(--text-blue-500)', fontWeight: 600 }}
         >
           {label}
         </a>
@@ -401,7 +401,7 @@ export function BidSubmissionFollowupTab({
             border: 'none',
             borderRadius: 4,
             cursor: 'pointer',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             flexShrink: 0,
             lineHeight: 1,
           }}
@@ -815,7 +815,7 @@ export function BidSubmissionFollowupTab({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', width: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flexShrink: 0, flexWrap: 'wrap' }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.875rem', color: '#374151' }}>Highlight no update in last</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>Highlight no update in last</span>
             <input
               id="submission-followup-stale-days"
               type="number"
@@ -829,13 +829,13 @@ export function BidSubmissionFollowupTab({
               style={{
                 width: '3.25rem',
                 padding: '0.35rem 0.4rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 fontSize: '0.875rem',
                 boxSizing: 'border-box',
               }}
             />
-            <span style={{ fontSize: '0.875rem', color: '#374151' }}>days</span>
+            <span style={{ fontSize: '0.875rem', color: 'var(--text-700)' }}>days</span>
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -846,7 +846,7 @@ export function BidSubmissionFollowupTab({
             id="account-manager-print"
             value={selectedAccountManagerForPrint}
             onChange={(e) => setSelectedAccountManagerForPrint(e.target.value)}
-            style={{ padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, minWidth: '180px' }}
+            style={{ padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: '180px' }}
           >
             <option value="">Select...</option>
             <option value="ALL">ALL ({totalBidsCount})</option>
@@ -896,10 +896,10 @@ export function BidSubmissionFollowupTab({
         <div
           ref={summaryCardRef}
           style={{
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--border)',
             borderRadius: 8,
             padding: '1.5rem 2rem',
-            background: 'white',
+            background: 'var(--surface)',
             marginBottom: '1.5rem',
             ...(narrowViewport640 ? { position: 'relative' } : {}),
           }}
@@ -954,13 +954,13 @@ export function BidSubmissionFollowupTab({
                   title="Previous bid in this list"
                   style={{
                     padding: '0.35rem 0.6rem',
-                    background: submissionFollowupNav.canPrev ? '#f3f4f6' : '#f9fafb',
-                    border: '1px solid #d1d5db',
+                    background: submissionFollowupNav.canPrev ? 'var(--bg-muted)' : 'var(--bg-subtle)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     cursor: submissionFollowupNav.canPrev ? 'pointer' : 'not-allowed',
                     fontSize: '1rem',
                     lineHeight: 1,
-                    color: submissionFollowupNav.canPrev ? '#111827' : '#9ca3af',
+                    color: submissionFollowupNav.canPrev ? 'var(--text-strong)' : 'var(--text-faint)',
                   }}
                 >
                   ←
@@ -970,7 +970,7 @@ export function BidSubmissionFollowupTab({
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    color: submissionFollowupNav.inList ? '#374151' : '#9ca3af',
+                    color: submissionFollowupNav.inList ? 'var(--text-700)' : 'var(--text-faint)',
                     minWidth: '3.5rem',
                     textAlign: 'center',
                   }}
@@ -987,19 +987,19 @@ export function BidSubmissionFollowupTab({
                   title="Next bid in this list"
                   style={{
                     padding: '0.35rem 0.6rem',
-                    background: submissionFollowupNav.canNext ? '#f3f4f6' : '#f9fafb',
-                    border: '1px solid #d1d5db',
+                    background: submissionFollowupNav.canNext ? 'var(--bg-muted)' : 'var(--bg-subtle)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     cursor: submissionFollowupNav.canNext ? 'pointer' : 'not-allowed',
                     fontSize: '1rem',
                     lineHeight: 1,
-                    color: submissionFollowupNav.canNext ? '#111827' : '#9ca3af',
+                    color: submissionFollowupNav.canNext ? 'var(--text-strong)' : 'var(--text-faint)',
                   }}
                 >
                   →
                 </button>
               </div>
-              <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+              <span aria-hidden style={{ color: 'var(--text-faint-300)', flexShrink: 0, userSelect: 'none' }}>|</span>
               {/* Share copies ?bidId=&tab=submission-followup; superintendent role is redirected off that tab by URL effect */}
               <button
                 type="button"
@@ -1021,8 +1021,8 @@ export function BidSubmissionFollowupTab({
                 }}
                 style={{
                   padding: '0.5rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                   display: 'flex',
@@ -1038,7 +1038,7 @@ export function BidSubmissionFollowupTab({
                 type="button"
                 onClick={() => onEditBid(selectedBid)}
                 title="Edit bid"
-                style={{ padding: '0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ padding: '0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
                   <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
@@ -1083,15 +1083,15 @@ export function BidSubmissionFollowupTab({
                 }}
               >
                 <strong>Bid Size</strong>
-                <span style={{ color: '#111827', wordBreak: 'break-word' }}>
+                <span style={{ color: 'var(--text-strong)', wordBreak: 'break-word' }}>
                   {formatCompactCurrency(selectedBid.bid_value != null ? Number(selectedBid.bid_value) : null)}
                 </span>
                 <strong>Account Man</strong>
-                <span style={{ color: '#111827', wordBreak: 'break-word' }}>
+                <span style={{ color: 'var(--text-strong)', wordBreak: 'break-word' }}>
                   {formatBidStaffDisplayName(selectedBid.account_manager)}
                 </span>
                 <strong>Estimator</strong>
-                <span style={{ color: '#111827', wordBreak: 'break-word' }}>
+                <span style={{ color: 'var(--text-strong)', wordBreak: 'break-word' }}>
                   {formatBidStaffDisplayName(selectedBid.estimator)}
                 </span>
               </div>
@@ -1106,7 +1106,7 @@ export function BidSubmissionFollowupTab({
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: '#3b82f6',
+                          color: 'var(--text-blue-500)',
                           cursor: 'pointer',
                           textDecoration: 'underline',
                           padding: 0,
@@ -1145,11 +1145,11 @@ export function BidSubmissionFollowupTab({
                       style={{
                         padding: '0.375rem 0.75rem',
                         fontSize: '0.875rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         cursor: 'pointer',
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         fontWeight: 500,
                       }}
                     >
@@ -1177,11 +1177,11 @@ export function BidSubmissionFollowupTab({
                       style={{
                         padding: '0.375rem 0.75rem',
                         fontSize: '0.875rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         cursor: 'pointer',
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         fontWeight: 500,
                       }}
                     >
@@ -1210,11 +1210,11 @@ export function BidSubmissionFollowupTab({
                       style={{
                         padding: '0.375rem 0.75rem',
                         fontSize: '0.875rem',
-                        background: '#f3f4f6',
-                        border: '1px solid #d1d5db',
+                        background: 'var(--bg-muted)',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
                         cursor: 'pointer',
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         fontWeight: 500,
                       }}
                     >
@@ -1254,11 +1254,11 @@ export function BidSubmissionFollowupTab({
               }}
             >
               {submissionFollowupUrlRow('Project Folder', selectedBid.drive_link)}
-              <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+              <span aria-hidden style={{ color: 'var(--text-faint-300)', flexShrink: 0, userSelect: 'none' }}>|</span>
               {submissionFollowupUrlRow('Job Plans', selectedBid.plans_link)}
-              <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+              <span aria-hidden style={{ color: 'var(--text-faint-300)', flexShrink: 0, userSelect: 'none' }}>|</span>
               {submissionFollowupUrlRow('Bid Submission', selectedBid.bid_submission_link)}
-              <span aria-hidden style={{ color: '#d1d5db', flexShrink: 0, userSelect: 'none' }}>|</span>
+              <span aria-hidden style={{ color: 'var(--text-faint-300)', flexShrink: 0, userSelect: 'none' }}>|</span>
               {submissionFollowupUrlRow('CountTooling Plans', selectedBid.count_tooling_plans_link)}
             </div>
             <div
@@ -1275,7 +1275,7 @@ export function BidSubmissionFollowupTab({
                 onClick={handleScrollToSelectedBidRow}
                 title="Go to bid in table"
                 aria-label="Go to bid in table"
-                style={{ padding: '0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ padding: '0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="20" height="20" fill="currentColor" aria-hidden="true">
                   <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM303 441L223 361C213.6 351.6 213.6 336.4 223 327.1C232.4 317.8 247.6 317.7 256.9 327.1L295.9 366.1L295.9 216C295.9 202.7 306.6 192 319.9 192C333.2 192 343.9 202.7 343.9 216L343.9 366.1L382.9 327.1C392.3 317.7 407.5 317.7 416.8 327.1C426.1 336.5 426.2 351.7 416.8 361L336.8 441C327.4 450.4 312.2 450.4 302.9 441z" />
@@ -1297,9 +1297,9 @@ export function BidSubmissionFollowupTab({
                   aria-label="Add checklist task with link to this bid on Submission & Followup"
                   style={{
                     padding: '0.5rem 1rem',
-                    background: '#ffffff',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--surface)',
+                    color: 'var(--text-700)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     cursor:
                       !selectedBid?.id || !authUser?.id ? 'not-allowed' : 'pointer',
@@ -1359,8 +1359,8 @@ export function BidSubmissionFollowupTab({
                 ...(narrowViewport640 ? { width: '100%', wordBreak: 'break-word' } : {}),
               }}
             >
-              <span style={{ color: '#6b7280' }}>Last update: </span>
-              <span style={{ color: '#111827', fontWeight: 500 }}>
+              <span style={{ color: 'var(--text-muted)' }}>Last update: </span>
+              <span style={{ color: 'var(--text-strong)', fontWeight: 500 }}>
                 {formatTimeSinceLastContact(
                   effectiveSubmissionBidLastNoteIso(selectedBid, lastContactFromEntries, customerContacts),
                 )}
@@ -1371,7 +1371,7 @@ export function BidSubmissionFollowupTab({
               aria-label="Notes type"
               style={{
                 display: 'inline-flex',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 4,
                 overflow: 'hidden',
                 flexShrink: 0,
@@ -1388,9 +1388,9 @@ export function BidSubmissionFollowupTab({
                 style={{
                   padding: '0.5rem 1rem',
                   border: 'none',
-                  borderRight: '1px solid #d1d5db',
-                  background: submissionFollowupNotesTab === 'all' ? '#3b82f6' : '#ffffff',
-                  color: submissionFollowupNotesTab === 'all' ? '#ffffff' : '#374151',
+                  borderRight: '1px solid var(--border-strong)',
+                  background: submissionFollowupNotesTab === 'all' ? '#3b82f6' : 'var(--surface)',
+                  color: submissionFollowupNotesTab === 'all' ? '#ffffff' : 'var(--text-700)',
                   cursor: 'pointer',
                   fontWeight: submissionFollowupNotesTab === 'all' ? 600 : 400,
                   fontSize: '0.875rem',
@@ -1408,9 +1408,9 @@ export function BidSubmissionFollowupTab({
                 style={{
                   padding: '0.5rem 1rem',
                   border: 'none',
-                  borderRight: '1px solid #d1d5db',
-                  background: submissionFollowupNotesTab === 'bid' ? '#3b82f6' : '#ffffff',
-                  color: submissionFollowupNotesTab === 'bid' ? '#ffffff' : '#374151',
+                  borderRight: '1px solid var(--border-strong)',
+                  background: submissionFollowupNotesTab === 'bid' ? '#3b82f6' : 'var(--surface)',
+                  color: submissionFollowupNotesTab === 'bid' ? '#ffffff' : 'var(--text-700)',
                   cursor: 'pointer',
                   fontWeight: submissionFollowupNotesTab === 'bid' ? 600 : 400,
                   fontSize: '0.875rem',
@@ -1433,8 +1433,8 @@ export function BidSubmissionFollowupTab({
                 style={{
                   padding: '0.5rem 1rem',
                   border: 'none',
-                  background: submissionFollowupNotesTab === 'customer' ? '#16a34a' : '#ffffff',
-                  color: submissionFollowupNotesTab === 'customer' ? '#ffffff' : '#374151',
+                  background: submissionFollowupNotesTab === 'customer' ? '#16a34a' : 'var(--surface)',
+                  color: submissionFollowupNotesTab === 'customer' ? '#ffffff' : 'var(--text-700)',
                   cursor: !selectedBid.customers?.id ? 'not-allowed' : 'pointer',
                   fontWeight: submissionFollowupNotesTab === 'customer' ? 600 : 400,
                   fontSize: '0.875rem',
@@ -1481,7 +1481,7 @@ export function BidSubmissionFollowupTab({
                   useBidBoardCustomerChrome
                 />
               ) : (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   No linked customer — customer notes are not available for this bid.
                 </p>
               )
@@ -1506,7 +1506,7 @@ export function BidSubmissionFollowupTab({
         placeholder="Search bids (project name or GC/Builder)..."
         value={submissionSearchQuery}
         onChange={(e) => setSubmissionSearchQuery(e.target.value)}
-        style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, marginTop: 0, marginBottom: '1rem', boxSizing: 'border-box' }}
+        style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginTop: 0, marginBottom: '1rem', boxSizing: 'border-box' }}
       />
       <button
         type="button"
@@ -1518,23 +1518,23 @@ export function BidSubmissionFollowupTab({
         {SUBMISSION_UNSENT_SECTION_LABEL} ({submissionUnsent.length})
       </button>
       {submissionSectionOpen.unsent && (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Job Plans" />
-                <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Pages</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Update</th>
-                <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
+                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid var(--border)' }} title="Job Plans" />
+                <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Pages</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project / GC</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Account Man</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Estimator</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last Update</th>
+                <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid var(--border)' }} />
               </tr>
             </thead>
             <tbody>
               {submissionUnsent.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                <tr><td colSpan={8} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
               ) : (
                 submissionUnsent.map((bid) => (
                   <tr
@@ -1542,20 +1542,20 @@ export function BidSubmissionFollowupTab({
                     id={`submission-row-${bid.id}`}
                     onClick={() => onSelectBid(bid)}
                     style={{
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       cursor: 'pointer',
                       background: submissionFollowupListRowBackground(bid, selectedBid?.id === bid.id),
                     }}
                   >
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                       {bid.plans_link ? (
-                        <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.plans_link!) }} title="Job Plans" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                        <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.plans_link!) }} title="Job Plans" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                             <path d="M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM387.4 496L252.6 496C236.8 496 224 483.2 224 467.4C224 461 226.1 454.9 230 449.8L297.6 362.9C303 356 311.3 352 320 352C328.7 352 337 356 342.4 362.9L410 449.9C413.9 454.9 416 461.1 416 467.5C416 483.3 403.2 496.1 387.4 496.1zM240 288C257.7 288 272 302.3 272 320C272 337.7 257.7 352 240 352C222.3 352 208 337.7 208 320C208 302.3 222.3 288 240 288z"/>
                           </svg>
                         </a>
                       ) : (
-                        <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
+                        <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'center' }}>{bid.plan_pages?.trim() ?? '—'}</td>
@@ -1591,7 +1591,7 @@ export function BidSubmissionFollowupTab({
                               onSelectBid(bid)
                               setTimeout(() => summaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                             }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
@@ -1601,7 +1601,7 @@ export function BidSubmissionFollowupTab({
                             type="button"
                             title="Edit bid"
                             onClick={(e) => { e.stopPropagation(); onEditBid(bid) }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
@@ -1627,23 +1627,23 @@ export function BidSubmissionFollowupTab({
         Not yet won or lost ({submissionPending.length})
       </button>
       {submissionSectionOpen.pending && (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Job Plans" />
-                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Bid Submission" />
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Last Update</th>
-                <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
+                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid var(--border)' }} title="Job Plans" />
+                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid var(--border)' }} title="Bid Submission" />
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project / GC</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>GC/Builder (customer)</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Account Man</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Estimator</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Last Update</th>
+                <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid var(--border)' }} />
               </tr>
             </thead>
             <tbody>
               {submissionPending.length === 0 ? (
-                <tr><td colSpan={8} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                <tr><td colSpan={8} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
               ) : (
                 submissionPending.map((bid) => (
                   <tr
@@ -1651,38 +1651,38 @@ export function BidSubmissionFollowupTab({
                     id={`submission-row-${bid.id}`}
                     onClick={() => onSelectBid(bid)}
                     style={{
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       cursor: 'pointer',
                       background: submissionFollowupListRowBackground(bid, selectedBid?.id === bid.id),
                     }}
                   >
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                       {bid.plans_link ? (
-                        <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.plans_link!) }} title="Job Plans" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                        <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.plans_link!) }} title="Job Plans" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                             <path d="M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM387.4 496L252.6 496C236.8 496 224 483.2 224 467.4C224 461 226.1 454.9 230 449.8L297.6 362.9C303 356 311.3 352 320 352C328.7 352 337 356 342.4 362.9L410 449.9C413.9 454.9 416 461.1 416 467.5C416 483.3 403.2 496.1 387.4 496.1zM240 288C257.7 288 272 302.3 272 320C272 337.7 257.7 352 240 352C222.3 352 208 337.7 208 320C208 302.3 222.3 288 240 288z"/>
                           </svg>
                         </a>
                       ) : (
-                        <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
+                        <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                       {bid.bid_submission_link ? (
-                        <a href={bid.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.bid_submission_link!) }} title="Bid Submission" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                        <a href={bid.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.bid_submission_link!) }} title="Bid Submission" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                             <path d="M240 112L128 112C119.2 112 112 119.2 112 128L112 512C112 520.8 119.2 528 128 528L208 528L208 576L128 576C92.7 576 64 547.3 64 512L64 128C64 92.7 92.7 64 128 64L261.5 64C278.5 64 294.8 70.7 306.8 82.7L429.3 205.3C441.3 217.3 448 233.6 448 250.6L448 400.1L400 400.1L400 272.1L312 272.1C272.2 272.1 240 239.9 240 200.1L240 112.1zM380.1 224L288 131.9L288 200C288 213.3 298.7 224 312 224L380.1 224zM272 444L304 444C337.1 444 364 470.9 364 504C364 537.1 337.1 564 304 564L292 564L292 592C292 603 283 612 272 612C261 612 252 603 252 592L252 464C252 453 261 444 272 444zM304 524C315 524 324 515 324 504C324 493 315 484 304 484L292 484L292 524L304 524zM400 444L432 444C460.7 444 484 467.3 484 496L484 560C484 588.7 460.7 612 432 612L400 612C389 612 380 603 380 592L380 464C380 453 389 444 400 444zM432 572C438.6 572 444 566.6 444 560L444 496C444 489.4 438.6 484 432 484L420 484L420 572L432 572zM508 464C508 453 517 444 528 444L576 444C587 444 596 453 596 464C596 475 587 484 576 484L548 484L548 508L576 508C587 508 596 517 596 528C596 539 587 548 576 548L548 548L548 592C548 603 539 612 528 612C517 612 508 603 508 592L508 464z"/>
                           </svg>
                         </a>
                       ) : (
-                        <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
+                        <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: '0.75rem' }}>
                       <div>
                         <div>{formatBidNameWithValue(bid)}</div>
                         {bid.address && (
-                          <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.125rem' }}>
+                          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.125rem' }}>
                             {bid.address}
                           </div>
                         )}
@@ -1690,7 +1690,7 @@ export function BidSubmissionFollowupTab({
                     </td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
                           {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
                         </button>
                       ) : (
@@ -1727,7 +1727,7 @@ export function BidSubmissionFollowupTab({
                               onSelectBid(bid)
                               setTimeout(() => summaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                             }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
@@ -1737,7 +1737,7 @@ export function BidSubmissionFollowupTab({
                             type="button"
                             title="Edit bid"
                             onClick={(e) => { e.stopPropagation(); onEditBid(bid) }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
@@ -1763,24 +1763,24 @@ export function BidSubmissionFollowupTab({
         Won ({submissionWon.length})
       </button>
       {submissionSectionOpen.won && (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Project Folder" />
-                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Job Plans" />
-                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="CountTooling Plans" />
-                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid #e5e7eb' }} title="Bid Submission" />
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Start Date</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
-                <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
+                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid var(--border)' }} title="Project Folder" />
+                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid var(--border)' }} title="Job Plans" />
+                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid var(--border)' }} title="CountTooling Plans" />
+                <th style={{ padding: '0.75rem', textAlign: 'center', width: 44, borderBottom: '1px solid var(--border)' }} title="Bid Submission" />
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project / GC</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Start Date</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>GC/Builder (customer)</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Account Man</th>
+                <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid var(--border)' }} />
               </tr>
             </thead>
             <tbody>
               {submissionWon.length === 0 ? (
-                <tr><td colSpan={9} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                <tr><td colSpan={9} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
               ) : (
                 submissionWon.map((bid) => (
                   <tr
@@ -1788,60 +1788,60 @@ export function BidSubmissionFollowupTab({
                     id={`submission-row-${bid.id}`}
                     onClick={() => onSelectBid(bid)}
                     style={{
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       cursor: 'pointer',
                       background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
                     }}
                   >
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                       {bid.drive_link ? (
-                        <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.drive_link!) }} title="Project Folder" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                        <a href={bid.drive_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.drive_link!) }} title="Project Folder" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                             <path d="M129.5 464L179.5 304L558.9 304L508.9 464L129.5 464zM320.2 512L509 512C530 512 548.6 498.4 554.8 478.3L604.8 318.3C614.5 287.4 591.4 256 559 256L179.6 256C158.6 256 140 269.6 133.8 289.7L112.2 358.4L112.2 160C112.2 151.2 119.4 144 128.2 144L266.9 144C270.4 144 273.7 145.1 276.5 147.2L314.9 176C328.7 186.4 345.6 192 362.9 192L480.2 192C489 192 496.2 199.2 496.2 208L544.2 208C544.2 172.7 515.5 144 480.2 144L362.9 144C356 144 349.2 141.8 343.7 137.6L305.3 108.8C294.2 100.5 280.8 96 266.9 96L128.2 96C92.9 96 64.2 124.7 64.2 160L64.2 448C64.2 483.3 92.9 512 128.2 512L320.2 512z"/>
                           </svg>
                         </a>
                       ) : (
-                        <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
+                        <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                       {bid.plans_link ? (
-                        <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.plans_link!) }} title="Job Plans" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                        <a href={bid.plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.plans_link!) }} title="Job Plans" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                             <path d="M304 112L192 112C183.2 112 176 119.2 176 128L176 512C176 520.8 183.2 528 192 528L448 528C456.8 528 464 520.8 464 512L464 272L376 272C336.2 272 304 239.8 304 200L304 112zM444.1 224L352 131.9L352 200C352 213.3 362.7 224 376 224L444.1 224zM128 128C128 92.7 156.7 64 192 64L325.5 64C342.5 64 358.8 70.7 370.8 82.7L493.3 205.3C505.3 217.3 512 233.6 512 250.6L512 512C512 547.3 483.3 576 448 576L192 576C156.7 576 128 547.3 128 512L128 128zM387.4 496L252.6 496C236.8 496 224 483.2 224 467.4C224 461 226.1 454.9 230 449.8L297.6 362.9C303 356 311.3 352 320 352C328.7 352 337 356 342.4 362.9L410 449.9C413.9 454.9 416 461.1 416 467.5C416 483.3 403.2 496.1 387.4 496.1zM240 288C257.7 288 272 302.3 272 320C272 337.7 257.7 352 240 352C222.3 352 208 337.7 208 320C208 302.3 222.3 288 240 288z"/>
                           </svg>
                         </a>
                       ) : (
-                        <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
+                        <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                       {bid.count_tooling_plans_link ? (
-                        <a href={bid.count_tooling_plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.count_tooling_plans_link!) }} title="CountTooling Plans" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                        <a href={bid.count_tooling_plans_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.count_tooling_plans_link!) }} title="CountTooling Plans" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                             <path d="M192 112L304 112L304 200C304 239.8 336.2 272 376 272L464 272L464 512C464 520.8 456.8 528 448 528L192 528C183.2 528 176 520.8 176 512L176 128C176 119.2 183.2 112 192 112zM352 131.9L444.1 224L376 224C362.7 224 352 213.3 352 200L352 131.9zM192 64C156.7 64 128 92.7 128 128L128 512C128 547.3 156.7 576 192 576L448 576C483.3 576 512 547.3 512 512L512 250.5C512 233.5 505.3 217.2 493.3 205.2L370.7 82.7C358.7 70.7 342.5 64 325.5 64L192 64zM298.2 359.6C306.8 349.5 305.7 334.4 295.6 325.8C285.5 317.2 270.4 318.3 261.8 328.4L213.8 384.4C206.1 393.4 206.1 406.6 213.8 415.6L261.8 471.6C270.4 481.7 285.6 482.8 295.6 474.2C305.6 465.6 306.8 450.4 298.2 440.4L263.6 400L298.2 359.6zM378.2 328.4C369.6 318.3 354.4 317.2 344.4 325.8C334.4 334.4 333.2 349.6 341.8 359.6L376.4 400L341.8 440.4C333.2 450.5 334.3 465.6 344.4 474.2C354.5 482.8 369.6 481.7 378.2 471.6L426.2 415.6C433.9 406.6 433.9 393.4 426.2 384.4L378.2 328.4z"/>
                           </svg>
                         </a>
                       ) : (
-                        <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
+                        <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: 0, textAlign: 'center', width: 44 }} onClick={(e) => e.stopPropagation()}>
                       {bid.bid_submission_link ? (
-                        <a href={bid.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.bid_submission_link!) }} title="Bid Submission" style={{ color: '#3b82f6', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
+                        <a href={bid.bid_submission_link} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(bid.bid_submission_link!) }} title="Bid Submission" style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem' }}>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor">
                             <path d="M240 112L128 112C119.2 112 112 119.2 112 128L112 512C112 520.8 119.2 528 128 528L208 528L208 576L128 576C92.7 576 64 547.3 64 512L64 128C64 92.7 92.7 64 128 64L261.5 64C278.5 64 294.8 70.7 306.8 82.7L429.3 205.3C441.3 217.3 448 233.6 448 250.6L448 400.1L400 400.1L400 272.1L312 272.1C272.2 272.1 240 239.9 240 200.1L240 112.1zM380.1 224L288 131.9L288 200C288 213.3 298.7 224 312 224L380.1 224zM272 444L304 444C337.1 444 364 470.9 364 504C364 537.1 337.1 564 304 564L292 564L292 592C292 603 283 612 272 612C261 612 252 603 252 592L252 464C252 453 261 444 272 444zM304 524C315 524 324 515 324 504C324 493 315 484 304 484L292 484L292 524L304 524zM400 444L432 444C460.7 444 484 467.3 484 496L484 560C484 588.7 460.7 612 432 612L400 612C389 612 380 603 380 592L380 464C380 453 389 444 400 444zM432 572C438.6 572 444 566.6 444 560L444 496C444 489.4 438.6 484 432 484L420 484L420 572L432 572zM508 464C508 453 517 444 528 444L576 444C587 444 596 453 596 464C596 475 587 484 576 484L548 484L548 508L576 508C587 508 596 517 596 528C596 539 587 548 576 548L548 548L548 592C548 603 539 612 528 612C517 612 508 603 508 592L508 464z"/>
                           </svg>
                         </a>
                       ) : (
-                        <span style={{ color: '#9ca3af', padding: '0.5rem' }}>—</span>
+                        <span style={{ color: 'var(--text-faint)', padding: '0.5rem' }}>—</span>
                       )}
                     </td>
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                     <td style={{ padding: '0.75rem' }}>{formatDateYYMMDD(bid.estimated_job_start_date)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
                           {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
                         </button>
                       ) : (
@@ -1866,7 +1866,7 @@ export function BidSubmissionFollowupTab({
                               onSelectBid(bid)
                               setTimeout(() => summaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                             }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
@@ -1876,7 +1876,7 @@ export function BidSubmissionFollowupTab({
                             type="button"
                             title="Edit bid"
                             onClick={(e) => { e.stopPropagation(); onEditBid(bid) }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
@@ -1902,20 +1902,20 @@ export function BidSubmissionFollowupTab({
         Started or Complete ({submissionStartedOrComplete.length})
       </button>
       {submissionSectionOpen.startedOrComplete && (
-        <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>GC/Builder (customer)</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
-                <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid #e5e7eb' }} />
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project / GC</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>GC/Builder (customer)</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Account Man</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Estimator</th>
+                <th style={{ padding: '0.75rem', width: 80, borderBottom: '1px solid var(--border)' }} />
               </tr>
             </thead>
             <tbody>
               {submissionStartedOrComplete.length === 0 ? (
-                <tr><td colSpan={5} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                <tr><td colSpan={5} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
               ) : (
                 submissionStartedOrComplete.map((bid) => (
                   <tr
@@ -1923,7 +1923,7 @@ export function BidSubmissionFollowupTab({
                     id={`submission-row-${bid.id}`}
                     onClick={() => onSelectBid(bid)}
                     style={{
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--border)',
                       cursor: 'pointer',
                       background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
                     }}
@@ -1931,7 +1931,7 @@ export function BidSubmissionFollowupTab({
                     <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                     <td style={{ padding: '0.75rem', textAlign: 'left' }}>
                       {(bid.customers || bid.bids_gc_builders) ? (
-                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
+                        <button type="button" onClick={(e) => { e.stopPropagation(); onOpenParty(bid) }} style={{ background: 'none', border: 'none', color: 'var(--text-blue-500)', cursor: 'pointer', textDecoration: 'underline', padding: 0, textAlign: 'left' }}>
                           {bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'}
                         </button>
                       ) : (
@@ -1963,7 +1963,7 @@ export function BidSubmissionFollowupTab({
                               onSelectBid(bid)
                               setTimeout(() => summaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                             }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
@@ -1973,7 +1973,7 @@ export function BidSubmissionFollowupTab({
                             type="button"
                             title="Edit bid"
                             onClick={(e) => { e.stopPropagation(); onEditBid(bid) }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />
@@ -1999,19 +1999,19 @@ export function BidSubmissionFollowupTab({
         Lost ({submissionLost.length})
       </button>
       {submissionSectionOpen.lost && (
-      <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+      <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: '#f9fafb' }}>
+          <thead style={{ background: 'var(--bg-subtle)' }}>
             <tr>
-              <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Bid Date</th>
-              <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Loss Reason</th>
-              <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid #e5e7eb' }} />
+              <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project / GC</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Bid Date</th>
+              <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Loss Reason</th>
+              <th style={{ padding: '0.75rem', width: 44, borderBottom: '1px solid var(--border)' }} />
             </tr>
           </thead>
           <tbody>
             {submissionLost.length === 0 ? (
-              <tr><td colSpan={4} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+              <tr><td colSpan={4} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
             ) : (
               submissionLost.map((bid) => (
                 <tr
@@ -2019,7 +2019,7 @@ export function BidSubmissionFollowupTab({
                   id={`submission-row-${bid.id}`}
                   onClick={() => onSelectBid(bid)}
                   style={{
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--border)',
                     cursor: 'pointer',
                     background: selectedBid?.id === bid.id ? '#eff6ff' : undefined,
                   }}
@@ -2039,7 +2039,7 @@ export function BidSubmissionFollowupTab({
                               onSelectBid(bid)
                               setTimeout(() => summaryCardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
                             }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M320 576C461.4 576 576 461.4 576 320C576 178.6 461.4 64 320 64C178.6 64 64 178.6 64 320C64 461.4 178.6 576 320 576zM337 199L417 279C426.4 288.4 426.4 303.6 417 312.9C407.6 322.2 392.4 322.3 383.1 312.9L344.1 273.9L344.1 424C344.1 437.3 333.4 448 320.1 448C306.8 448 296.1 437.3 296.1 424L296.1 273.9L257.1 312.9C247.7 322.3 232.5 322.3 223.2 312.9C213.9 303.5 213.8 288.3 223.2 279L303.2 199C312.6 189.6 327.8 189.6 337.1 199z" />
@@ -2049,7 +2049,7 @@ export function BidSubmissionFollowupTab({
                             type="button"
                             title="Edit bid"
                             onClick={(e) => { e.stopPropagation(); onEditBid(bid) }}
-                            style={{ padding: '0.25rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{ padding: '0.25rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" fill="currentColor" width="18" height="18" aria-hidden="true">
                               <path d="M259.1 73.5C262.1 58.7 275.2 48 290.4 48L350.2 48C365.4 48 378.5 58.7 381.5 73.5L396 143.5C410.1 149.5 423.3 157.2 435.3 166.3L503.1 143.8C517.5 139 533.3 145 540.9 158.2L570.8 210C578.4 223.2 575.7 239.8 564.3 249.9L511 297.3C511.9 304.7 512.3 312.3 512.3 320C512.3 327.7 511.8 335.3 511 342.7L564.4 390.2C575.8 400.3 578.4 417 570.9 430.1L541 481.9C533.4 495 517.6 501.1 503.2 496.3L435.4 473.8C423.3 482.9 410.1 490.5 396.1 496.6L381.7 566.5C378.6 581.4 365.5 592 350.4 592L290.6 592C275.4 592 262.3 581.3 259.3 566.5L244.9 496.6C230.8 490.6 217.7 482.9 205.6 473.8L137.5 496.3C123.1 501.1 107.3 495.1 99.7 481.9L69.8 430.1C62.2 416.9 64.9 400.3 76.3 390.2L129.7 342.7C128.8 335.3 128.4 327.7 128.4 320C128.4 312.3 128.9 304.7 129.7 297.3L76.3 249.8C64.9 239.7 62.3 223 69.8 209.9L99.7 158.1C107.3 144.9 123.1 138.9 137.5 143.7L205.3 166.2C217.4 157.1 230.6 149.5 244.6 143.4L259.1 73.5zM320.3 400C364.5 399.8 400.2 363.9 400 319.7C399.8 275.5 363.9 239.8 319.7 240C275.5 240.2 239.8 276.1 240 320.3C240.2 364.5 276.1 400.2 320.3 400z" />

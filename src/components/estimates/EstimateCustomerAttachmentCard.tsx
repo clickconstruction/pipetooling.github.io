@@ -29,9 +29,9 @@ export default function EstimateCustomerAttachmentCard({ attachment }: Props) {
   const cardStyle = {
     marginTop: '1.5rem',
     padding: '1rem 1.15rem',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--border)',
     borderRadius: 8,
-    background: '#fafafa',
+    background: 'var(--bg-page)',
     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
   } as const
 
@@ -39,10 +39,10 @@ export default function EstimateCustomerAttachmentCard({ attachment }: Props) {
     padding: '0.45rem 0.9rem',
     fontSize: '0.875rem',
     fontWeight: 600,
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 6,
-    background: 'white',
-    color: '#111827',
+    background: 'var(--surface)',
+    color: 'var(--text-strong)',
     cursor: 'pointer' as const,
   }
 
@@ -54,7 +54,7 @@ export default function EstimateCustomerAttachmentCard({ attachment }: Props) {
             width: 40,
             height: 40,
             borderRadius: 8,
-            background: '#fee2e2',
+            background: 'var(--bg-red-100)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -66,10 +66,10 @@ export default function EstimateCustomerAttachmentCard({ attachment }: Props) {
           PDF
         </div>
         <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-          <h2 id={headingId} style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: '#111827' }}>
+          <h2 id={headingId} style={{ margin: 0, fontSize: '1rem', fontWeight: 600, color: 'var(--text-strong)' }}>
             {title}
           </h2>
-          <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: '#6b7280', lineHeight: 1.45 }}>
+          <p style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
             View or download the attached file (opens in a new tab).
           </p>
           <div style={{ marginTop: '0.75rem', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -100,7 +100,7 @@ export default function EstimateCustomerAttachmentCard({ attachment }: Props) {
             ) : null}
           </div>
           {!wideScreen && canEmbed ? (
-            <p style={{ margin: '0.6rem 0 0', fontSize: '0.8rem', color: '#9ca3af' }}>
+            <p style={{ margin: '0.6rem 0 0', fontSize: '0.8rem', color: 'var(--text-faint)' }}>
               Preview works best on a larger screen—use Open document on this device.
             </p>
           ) : null}
@@ -114,9 +114,9 @@ export default function EstimateCustomerAttachmentCard({ attachment }: Props) {
             style={{
               width: '100%',
               minHeight: 480,
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--border)',
               borderRadius: 6,
-              background: '#fff',
+              background: 'var(--surface)',
             }}
           />
         </div>

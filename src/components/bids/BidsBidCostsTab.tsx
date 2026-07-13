@@ -55,7 +55,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, onSelectBid }: BidsBidCos
   return (
     <div>
       <h2 style={{ margin: '0 0 1rem', fontSize: '1.25rem' }}>Bid Costs</h2>
-      <p style={{ margin: '0 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>Team labor (clocked) by bid outcome. People and hours from approved clock sessions with a bid selected.</p>
+      <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Team labor (clocked) by bid outcome. People and hours from approved clock sessions with a bid selected.</p>
 
       {[
         { key: 'unsent' as const, label: BID_COSTS_UNSENT_LABEL, bids: bidCostsUnsent },
@@ -75,21 +75,21 @@ export function BidsBidCostsTab({ bids, teamLaborData, onSelectBid }: BidsBidCos
             {label} ({sectionBids.length})
           </button>
           {bidCostsSectionOpen[key] && (
-            <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{ background: '#f9fafb' }}>
+                <thead style={{ background: 'var(--bg-subtle)' }}>
                   <tr>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Project / GC</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid #e5e7eb' }}>Plan Pages</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Account Man</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Estimator</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>People (clocked)</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total cost</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Project / GC</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'center', borderBottom: '1px solid var(--border)' }}>Plan Pages</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Account Man</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Estimator</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>People (clocked)</th>
+                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total cost</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sectionBids.length === 0 ? (
-                    <tr><td colSpan={6} style={{ padding: '0.75rem', color: '#6b7280' }}>No bids in this group</td></tr>
+                    <tr><td colSpan={6} style={{ padding: '0.75rem', color: 'var(--text-muted)' }}>No bids in this group</td></tr>
                   ) : (
                     sectionBids.map((bid) => {
                       const laborRow = teamLaborByBidId.get(bid.id)
@@ -97,7 +97,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, onSelectBid }: BidsBidCos
                         <tr
                           key={bid.id}
                           onClick={() => onSelectBid(bid)}
-                          style={{ borderBottom: '1px solid #e5e7eb', cursor: 'pointer' }}
+                          style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                         >
                           <td style={{ padding: '0.75rem' }}>{formatBidNameWithValue(bid)}</td>
                           <td style={{ padding: '0.75rem', textAlign: 'center' }}>{bid.plan_pages?.trim() ?? '—'}</td>

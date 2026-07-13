@@ -55,10 +55,10 @@ export function AcceptHeaderBrandPicker({
       className={ROOT_CLASS}
       style={{
         marginTop: '1rem',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '1rem',
-        background: '#ffffff',
+        background: 'var(--surface)',
         maxWidth: 'min(900px, 100%)',
         width: '100%',
         boxSizing: 'border-box',
@@ -128,8 +128,8 @@ export function AcceptHeaderBrandPicker({
                       style={{
                         ...LOGO_FRAME,
                         borderRadius: 6,
-                        border: selected ? '2px solid #2563eb' : '1px solid #e5e7eb',
-                        background: selected ? '#eff6ff' : 'transparent',
+                        border: selected ? '2px solid #2563eb' : '1px solid var(--border)',
+                        background: selected ? 'var(--bg-blue-tint)' : 'transparent',
                         transition: 'border-color 0.12s ease, background 0.12s ease',
                       }}
                     >
@@ -160,7 +160,7 @@ export function AcceptHeaderBrandPicker({
                 gap: '0.4rem',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
-                color: '#374151',
+                color: 'var(--text-700)',
               }}
             >
               <input
@@ -177,7 +177,7 @@ export function AcceptHeaderBrandPicker({
           style={{
             marginTop: '0.5rem',
             fontSize: '0.9rem',
-            color: '#374151',
+            color: 'var(--text-700)',
           }}
         >
           {forFieldSlot}
@@ -186,7 +186,7 @@ export function AcceptHeaderBrandPicker({
           style={{
             marginTop: '0.5rem',
             fontSize: '0.9rem',
-            color: '#374151',
+            color: 'var(--text-700)',
           }}
         >
           {expiresOnSlot}

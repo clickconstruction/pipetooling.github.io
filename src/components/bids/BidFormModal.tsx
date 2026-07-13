@@ -72,7 +72,7 @@ function serviceTypePillStyle(st: { name: string; color: string | null }): CSSPr
   const tag = getBidServiceTypeTag(st.name)
   if (tag) return { background: tag.color, color: '#fff' }
   if (st.color) return { background: st.color, color: '#fff' }
-  return { background: '#e5e7eb', color: '#374151' }
+  return { background: 'var(--bg-200)', color: 'var(--text-700)' }
 }
 
 export function BidFormModal(props: BidFormModalProps) {
@@ -241,7 +241,7 @@ export function BidFormModal(props: BidFormModalProps) {
               }
             }
           `}</style>
-          <div className="bid-form-modal" style={{ background: 'white', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div className="bid-form-modal" style={{ background: 'var(--surface)', padding: '1rem 2rem 2rem', borderRadius: 8, maxWidth: '720px', width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
             <div
               className="bid-form-modal-header"
               style={{
@@ -285,8 +285,8 @@ export function BidFormModal(props: BidFormModalProps) {
                 onClick={closeBidForm}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                   justifySelf: 'end',
@@ -335,7 +335,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 </div>
                 <div style={{ gridArea: 'bd' }}>
                   <label htmlFor="bid-form-bid-due-date" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Due Date</label>
-                  <input id="bid-form-bid-due-date" type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input id="bid-form-bid-due-date" type="date" value={bidDueDate} onChange={(e) => setBidDueDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div style={{ gridArea: 'bidnum' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid #</label>
@@ -349,9 +349,9 @@ export function BidFormModal(props: BidFormModalProps) {
                     style={{
                       width: '100%',
                       padding: '0.5rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      ...((!editingBid || myRole === 'estimator' || myRole === 'primary') && { background: '#f3f4f6', color: '#6b7280', cursor: 'not-allowed' }),
+                      ...((!editingBid || myRole === 'estimator' || myRole === 'primary') && { background: 'var(--bg-muted)', color: 'var(--text-muted)', cursor: 'not-allowed' }),
                     }}
                   />
                 </div>
@@ -366,7 +366,7 @@ export function BidFormModal(props: BidFormModalProps) {
                       setError(null)
                     }}
                     required
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>
               </div>
@@ -408,7 +408,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     value={bidDateSent}
                     onChange={handleBidDateSentInputChange}
                     onBlur={handleBidDateSentBlur}
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                   {bidDateSent.trim() &&
                     (() => {
@@ -424,14 +424,14 @@ export function BidFormModal(props: BidFormModalProps) {
                           ? bidRow?.bid_date_sent_attested_by ?? null
                           : null
                       return (
-                        <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.35rem', lineHeight: 1.45 }}>
+                        <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.35rem', lineHeight: 1.45 }}>
                           <div>
                             Sent {days} day{days === 1 ? '' : 's'} ago (by calendar date).
                           </div>
                           {ackById ? (
                             <div>Acknowledged by {bidAttestationDisplayName(estimatorUsers, ackById)}</div>
                           ) : dNorm && serverSent === dNorm && !fromPending ? (
-                            <div style={{ color: '#b45309' }}>No attestation on file (saved before this feature).</div>
+                            <div style={{ color: 'var(--text-amber-700)' }}>No attestation on file (saved before this feature).</div>
                           ) : null}
                         </div>
                       )
@@ -446,20 +446,20 @@ export function BidFormModal(props: BidFormModalProps) {
                     value={lossReason}
                     onChange={(e) => setLossReason(e.target.value)}
                     placeholder="e.g. Price, schedule, competitor, no response…"
-                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </div>
               )}
               {outcome === 'won' && (
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Start Date</label>
-                  <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="date" value={estimatedJobStartDate} onChange={(e) => setEstimatedJobStartDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
               )}
               <div style={{ marginBottom: '1rem', width: '100%' }}>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Project Address<br />[street, town, state zip]</label>
-                  <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12925 FM 20, Kingsbury, Texas 78638" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div
                   style={{
@@ -472,7 +472,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Distance to Office (miles)</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                      <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="number" min={0} step={0.1} value={distanceFromOffice} onChange={(e) => setDistanceFromOffice(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                       {address && (
                         <a
                           href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`}
@@ -481,7 +481,7 @@ export function BidFormModal(props: BidFormModalProps) {
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
-                            color: '#2563eb',
+                            color: 'var(--text-link)',
                             textDecoration: 'none',
                             cursor: 'pointer',
                           }}
@@ -508,7 +508,7 @@ export function BidFormModal(props: BidFormModalProps) {
                       onChange={(e) => setPlanPages(e.target.value)}
                       onWheel={(e) => e.currentTarget.blur()}
                       placeholder="e.g. 5"
-                      style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ width: '8ch', maxWidth: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                   </div>
                 </div>
@@ -517,20 +517,20 @@ export function BidFormModal(props: BidFormModalProps) {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>
                   Project Folder{'\u00A0'.repeat(10)}
                   bid folders:{' '}
-                  <a href="https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing') }} style={{ color: '#3b82f6' }}>
+                  <a href="https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB?usp=sharing') }} style={{ color: 'var(--text-blue-500)' }}>
                     [plumbing]
                   </a>
                   {' '}
-                  <a href="https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing') }} style={{ color: '#3b82f6' }}>
+                  <a href="https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2?usp=sharing') }} style={{ color: 'var(--text-blue-500)' }}>
                     [electrical]
                   </a>
                   {' '}
-                  <a href="https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link') }} style={{ color: '#3b82f6' }}>
+                  <a href="https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); openInExternalBrowser('https://drive.google.com/drive/folders/1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL?usp=drive_link') }} style={{ color: 'var(--text-blue-500)' }}>
                     [HVAC]
                   </a>
                 </label>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="url" value={driveLink} onChange={(e) => setDriveLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                   <button
                     type="button"
                     onClick={async () => {
@@ -551,7 +551,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Job Plans</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <input type="url" value={plansLink} onChange={(e) => setPlansLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     <button
                       type="button"
                       onClick={async () => {
@@ -570,14 +570,14 @@ export function BidFormModal(props: BidFormModalProps) {
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Design Drawing Plan Date</label>
-                  <input type="date" value={designDrawingPlanDate} onChange={(e) => setDesignDrawingPlanDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="date" value={designDrawingPlanDate} onChange={(e) => setDesignDrawingPlanDate(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
               </div>
               <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>CountTooling Plans</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <input type="url" value={countToolingPlansLink} onChange={(e) => setCountToolingPlansLink(e.target.value)} placeholder="https://counttooling.com/?t=... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     <button
                       type="button"
                       onClick={async () => {
@@ -597,7 +597,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Submission</label>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                    <input type="url" value={bidSubmissionLink} onChange={(e) => setBidSubmissionLink(e.target.value)} placeholder="https://drive.google.com/drive/... " style={{ flex: 1, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     <button
                       type="button"
                       onClick={async () => {
@@ -635,7 +635,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   onFocus={() => setGcCustomerDropdownOpen(true)}
                   onBlur={() => setTimeout(() => setGcCustomerDropdownOpen(false), 200)}
                   placeholder="Search customers..."
-                  style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                  style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                 />
                 {gcCustomerDropdownOpen && (
                   <div
@@ -644,8 +644,8 @@ export function BidFormModal(props: BidFormModalProps) {
                       top: '100%',
                       left: 0,
                       right: 0,
-                      background: 'white',
-                      border: '1px solid #e5e7eb',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border)',
                       borderRadius: 4,
                       maxHeight: 200,
                       overflowY: 'auto',
@@ -671,15 +671,15 @@ export function BidFormModal(props: BidFormModalProps) {
                         style={{
                           padding: '0.5rem',
                           cursor: 'pointer',
-                          borderBottom: '1px solid #e5e7eb',
-                          color: '#2563eb',
+                          borderBottom: '1px solid var(--border)',
+                          color: 'var(--text-link)',
                           fontWeight: 500,
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.background = '#f3f4f6'
+                          e.currentTarget.style.background = 'var(--bg-muted)'
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'white'
+                          e.currentTarget.style.background = 'var(--surface)'
                         }}
                       >
                         + Add new customer
@@ -706,21 +706,21 @@ export function BidFormModal(props: BidFormModalProps) {
                             borderBottom: '1px solid #f3f4f6',
                           }}
                           onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#f3f4f6'
+                            e.currentTarget.style.background = 'var(--bg-muted)'
                           }}
                           onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'white'
+                            e.currentTarget.style.background = 'var(--surface)'
                           }}
                         >
                           <div style={{ fontWeight: 500 }}>{c.name}</div>
-                          {c.address && <div style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: 2 }}>{c.address}</div>}
+                          {c.address && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: 2 }}>{c.address}</div>}
                         </div>
                       ))}
                     {customers.filter((c) => {
                       const searchLower = gcCustomerSearch.toLowerCase()
                       return c.name.toLowerCase().includes(searchLower) || (c.address || '').toLowerCase().includes(searchLower)
                     }).length === 0 && (
-                      <div style={{ padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>No customers found</div>
+                      <div style={{ padding: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No customers found</div>
                     )}
                   </div>
                 )}
@@ -729,7 +729,7 @@ export function BidFormModal(props: BidFormModalProps) {
               {(gcCustomerId || (editingBid?.gc_builder_id && editingBid?.bids_gc_builders)) && (
                 <>
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#6b7280' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>
                       GC/Builder (customer) Contact Phone
                     </label>
                     <input
@@ -739,16 +739,16 @@ export function BidFormModal(props: BidFormModalProps) {
                       style={{
                         width: '100%',
                         padding: '0.5rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: '#f9fafb',
-                        color: '#6b7280',
+                        background: 'var(--bg-subtle)',
+                        color: 'var(--text-muted)',
                         cursor: 'not-allowed'
                       }}
                     />
                   </div>
                   <div style={{ marginBottom: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: '#6b7280' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500, color: 'var(--text-muted)' }}>
                       GC/Builder (customer) Contact Email
                     </label>
                     <input
@@ -758,10 +758,10 @@ export function BidFormModal(props: BidFormModalProps) {
                       style={{
                         width: '100%',
                         padding: '0.5rem',
-                        border: '1px solid #d1d5db',
+                        border: '1px solid var(--border-strong)',
                         borderRadius: 4,
-                        background: '#f9fafb',
-                        color: '#6b7280',
+                        background: 'var(--bg-subtle)',
+                        color: 'var(--text-muted)',
                         cursor: 'not-allowed'
                       }}
                     />
@@ -793,47 +793,47 @@ export function BidFormModal(props: BidFormModalProps) {
                   Project Contact: {gcContactName.trim() || gcContactPhone.trim() || gcContactEmail.trim() ? (gcContactName.trim() || '—') : '—'}
                 </button>
                 {projectContactExpanded && (
-                  <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid #e5e7eb' }}>
+                  <div style={{ paddingLeft: '1.25rem', borderLeft: '2px solid var(--border)' }}>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Project Contact Name</label>
-                      <input type="text" value={gcContactName} onChange={(e) => setGcContactName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="text" value={gcContactName} onChange={(e) => setGcContactName(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Project Contact Phone</label>
-                      <input type="tel" value={gcContactPhone} onChange={(e) => setGcContactPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="tel" value={gcContactPhone} onChange={(e) => setGcContactPhone(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                     <div style={{ marginBottom: 0 }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Project Contact Email</label>
-                      <input type="email" value={gcContactEmail} onChange={(e) => setGcContactEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="email" value={gcContactEmail} onChange={(e) => setGcContactEmail(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                   </div>
                 )}
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Submitted to (name, phone, email):</label>
-                <input type="text" value={submittedTo} onChange={(e) => setSubmittedTo(e.target.value)} placeholder="e.g. Architect name, 555-123-4567, architect@example.com" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="text" value={submittedTo} onChange={(e) => setSubmittedTo(e.target.value)} placeholder="e.g. Architect name, 555-123-4567, architect@example.com" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div className="bid-form-grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label htmlFor="bid-form-bid-value" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Bid Value</label>
-                  <input id="bid-form-bid-value" type="number" step="0.01" value={bidValue} onChange={(e) => setBidValue(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input id="bid-form-bid-value" type="number" step="0.01" value={bidValue} onChange={(e) => setBidValue(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Agreed Value</label>
-                  <input type="number" step="0.01" value={agreedValue} onChange={(e) => setAgreedValue(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="number" step="0.01" value={agreedValue} onChange={(e) => setAgreedValue(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Maximum Profit</label>
-                  <input type="number" step="0.01" value={profit} onChange={(e) => setProfit(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                  <input type="number" step="0.01" value={profit} onChange={(e) => setProfit(e.target.value)} onWheel={(e) => e.currentTarget.blur()} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                 </div>
               </div>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Last Contact</label>
-                <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <input type="datetime-local" value={lastContact} onChange={(e) => setLastContact(e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 500 }}>Notes</label>
-                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button
@@ -855,9 +855,9 @@ export function BidFormModal(props: BidFormModalProps) {
                         title="Hide from Working board, unsent lists, and clock quick picks (column placement kept)"
                         style={{
                           padding: '0.5rem 1rem',
-                          color: '#374151',
-                          background: 'white',
-                          border: '1px solid #d1d5db',
+                          color: 'var(--text-700)',
+                          background: 'var(--surface)',
+                          border: '1px solid var(--border-strong)',
                           borderRadius: 4,
                           cursor: archiveFromUnsentWorkingBusy || savingBid ? 'wait' : 'pointer',
                         }}
@@ -868,7 +868,7 @@ export function BidFormModal(props: BidFormModalProps) {
                     <button
                       type="button"
                       onClick={() => { setDeleteBidModalOpen(true); setDeleteConfirmProjectName(''); setError(null) }}
-                      style={{ padding: '0.5rem 1rem', color: '#b91c1b', background: 'white', border: '1px solid #b91c1b', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.5rem 1rem', color: '#b91c1b', background: 'var(--surface)', border: '1px solid #b91c1b', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Delete bid
                     </button>
@@ -910,7 +910,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 aria-modal="true"
                 aria-labelledby="bid-service-type-switch-title"
                 style={{
-                  background: 'white',
+                  background: 'var(--surface)',
                   padding: '1.25rem 1.5rem',
                   borderRadius: 8,
                   maxWidth: '420px',
@@ -930,8 +930,8 @@ export function BidFormModal(props: BidFormModalProps) {
                     onClick={() => setServiceTypeSwitchOpen(false)}
                     style={{
                       padding: '0.25rem 0.5rem',
-                      background: '#f3f4f6',
-                      border: '1px solid #d1d5db',
+                      background: 'var(--bg-muted)',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
                       cursor: 'pointer',
                       flexShrink: 0,
@@ -940,16 +940,16 @@ export function BidFormModal(props: BidFormModalProps) {
                     Close
                   </button>
                 </div>
-                <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45 }}>
+                <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                   Open an existing bid for the same customer and project name, or copy this bid’s counts and estimate data into a new bid for another service type.
                 </p>
                 {!editingBid ? (
-                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: '#b45309' }}>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
                     Save the bid first to enable <strong>Copy to new … bid</strong>.
                   </p>
                 ) : null}
                 {otherServiceTypes.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>No other service types are available for your account.</p>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>No other service types are available for your account.</p>
                 ) : (
                   <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {otherServiceTypes.map((st) => {
@@ -961,7 +961,7 @@ export function BidFormModal(props: BidFormModalProps) {
                         <li
                           key={st.id}
                           style={{
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 6,
                             padding: '0.65rem 0.75rem',
                             display: 'flex',
@@ -997,9 +997,9 @@ export function BidFormModal(props: BidFormModalProps) {
                                   style={{
                                     padding: '0.35rem 0.65rem',
                                     fontSize: '0.8125rem',
-                                    background: '#eff6ff',
+                                    background: 'var(--bg-blue-tint)',
                                     border: '1px solid #3b82f6',
-                                    color: '#1d4ed8',
+                                    color: 'var(--text-blue-700)',
                                     borderRadius: 4,
                                     cursor: onOpenExistingBidFromServiceTypeSwitch ? 'pointer' : 'not-allowed',
                                   }}
@@ -1027,8 +1027,8 @@ export function BidFormModal(props: BidFormModalProps) {
                               padding: '0.4rem 0.75rem',
                               fontSize: '0.8125rem',
                               alignSelf: 'flex-start',
-                              background: !editingBid || !onDuplicateBidToServiceType ? '#e5e7eb' : '#3b82f6',
-                              color: !editingBid || !onDuplicateBidToServiceType ? '#6b7280' : 'white',
+                              background: !editingBid || !onDuplicateBidToServiceType ? 'var(--bg-200)' : '#3b82f6',
+                              color: !editingBid || !onDuplicateBidToServiceType ? 'var(--text-muted)' : 'white',
                               border: 'none',
                               borderRadius: 4,
                               cursor: !editingBid || !onDuplicateBidToServiceType ? 'not-allowed' : 'pointer',
@@ -1045,15 +1045,15 @@ export function BidFormModal(props: BidFormModalProps) {
                   style={{
                     marginTop: '1.25rem',
                     paddingTop: '1.25rem',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: '1px solid var(--border)',
                   }}
                 >
                   <h3 style={{ margin: '0 0 0.35rem 0', fontSize: '0.9375rem', fontWeight: 600 }}>Job</h3>
-                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.45 }}>
+                  <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
                     Create a new job from this bid with customer and links filled in, and the bid linked on the job.
                   </p>
                   {!editingBid ? (
-                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: '#b45309' }}>
+                    <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.8125rem', color: 'var(--text-amber-700)' }}>
                       Save the bid first to enable <strong>Open Job</strong>.
                     </p>
                   ) : null}
@@ -1070,8 +1070,8 @@ export function BidFormModal(props: BidFormModalProps) {
                       padding: '0.5rem 0.85rem',
                       fontSize: '0.875rem',
                       fontWeight: 500,
-                      background: !editingBid || !jobFormModal ? '#e5e7eb' : '#3b82f6',
-                      color: !editingBid || !jobFormModal ? '#6b7280' : 'white',
+                      background: !editingBid || !jobFormModal ? 'var(--bg-200)' : '#3b82f6',
+                      color: !editingBid || !jobFormModal ? 'var(--text-muted)' : 'white',
                       border: 'none',
                       borderRadius: 6,
                       cursor: !editingBid || !jobFormModal ? 'not-allowed' : 'pointer',

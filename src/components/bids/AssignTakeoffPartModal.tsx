@@ -187,7 +187,7 @@ export function AssignTakeoffPartModal({
   const inputStyle = {
     width: '100%',
     padding: '0.5rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
     boxSizing: 'border-box' as const,
   }
@@ -210,7 +210,7 @@ export function AssignTakeoffPartModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.5rem 2rem',
           minWidth: 380,
@@ -222,15 +222,15 @@ export function AssignTakeoffPartModal({
         <h2 id="assign-takeoff-title" style={{ margin: '0 0 0.25rem', fontSize: '1.125rem' }}>
           Assign a {kind}: {fixture}
         </h2>
-        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
           {isRough ? 'Combined materials' : 'By Stage materials'} — this adds a Takeoffs cost so the
           margin can be computed.
         </p>
 
         {loading ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading {kind}s…</p>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading {kind}s…</p>
         ) : options.length === 0 ? (
-          <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             No {kind}s found for this service type. Add them in Materials first.
           </p>
         ) : (
@@ -246,7 +246,7 @@ export function AssignTakeoffPartModal({
                   justifyContent: 'space-between',
                   gap: '0.5rem',
                   padding: '0.5rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   marginBottom: '0.75rem',
                 }}
@@ -260,7 +260,7 @@ export function AssignTakeoffPartModal({
                     setUnitPriceSourceId(null)
                     setHasCatalogPrice(null)
                   }}
-                  style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, padding: 0 }}
+                  style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, padding: 0 }}
                   aria-label="Clear selection"
                   title="Clear selection"
                 >
@@ -281,13 +281,13 @@ export function AssignTakeoffPartModal({
                   style={{
                     maxHeight: 200,
                     overflowY: 'auto',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--border)',
                     borderRadius: 4,
                     marginBottom: '0.75rem',
                   }}
                 >
                   {filtered.length === 0 ? (
-                    <div style={{ padding: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>No matches.</div>
+                    <div style={{ padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matches.</div>
                   ) : (
                     filtered.map((o) => {
                       const sub = isRough
@@ -298,11 +298,11 @@ export function AssignTakeoffPartModal({
                           key={o.id}
                           onClick={() => void selectOption(o.id)}
                           style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid #f3f4f6' }}
-                          onMouseEnter={(ev) => { ev.currentTarget.style.background = '#f9fafb' }}
-                          onMouseLeave={(ev) => { ev.currentTarget.style.background = 'white' }}
+                          onMouseEnter={(ev) => { ev.currentTarget.style.background = 'var(--bg-subtle)' }}
+                          onMouseLeave={(ev) => { ev.currentTarget.style.background = 'var(--surface)' }}
                         >
                           <div style={{ fontWeight: 500 }}>{o.name}</div>
-                          {sub ? <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{sub}</div> : null}
+                          {sub ? <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{sub}</div> : null}
                         </div>
                       )
                     })
@@ -341,7 +341,7 @@ export function AssignTakeoffPartModal({
                     style={inputStyle}
                   />
                   {hasCatalogPrice === false && selected && (
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#b45309' }}>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-amber-700)' }}>
                       No catalog price — enter one to set the cost.
                     </p>
                   )}
@@ -361,7 +361,7 @@ export function AssignTakeoffPartModal({
             </div>
 
             {isRough && selected && qtyNum > 0 && upNum > 0 && (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: '#374151' }}>
+              <p style={{ margin: '0 0 0.75rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
                 Adds <strong>${formatCurrency(qtyNum * upNum)}</strong> of material cost to {fixture}.
               </p>
             )}
@@ -374,8 +374,8 @@ export function AssignTakeoffPartModal({
                 style={{
                   flex: 1,
                   padding: '0.5rem 1rem',
-                  background: canAssign ? '#3b82f6' : '#e5e7eb',
-                  color: canAssign ? 'white' : '#9ca3af',
+                  background: canAssign ? '#3b82f6' : 'var(--bg-200)',
+                  color: canAssign ? 'white' : 'var(--text-faint)',
                   border: 'none',
                   borderRadius: 4,
                   cursor: canAssign ? 'pointer' : 'not-allowed',
@@ -387,7 +387,7 @@ export function AssignTakeoffPartModal({
               <button
                 type="button"
                 onClick={onClose}
-                style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#111827', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
               >
                 Cancel
               </button>

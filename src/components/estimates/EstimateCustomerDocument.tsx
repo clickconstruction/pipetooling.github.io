@@ -26,14 +26,14 @@ const lineTableThStyle = {
   textAlign: 'left' as const,
   fontSize: '0.8125rem',
   fontWeight: 600,
-  color: '#374151',
+  color: 'var(--text-700)',
   padding: '0.35rem 0.5rem',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
 }
 
 const lineTableTdStyle = {
   fontSize: '0.875rem',
-  color: '#374151',
+  color: 'var(--text-700)',
   padding: '0.4rem 0.5rem',
   borderBottom: '1px solid #f3f4f6',
   verticalAlign: 'top' as const,
@@ -47,7 +47,7 @@ const lineTableTdMainBeforeDescStyle = {
 
 const lineTableTdDescStyle = {
   fontSize: '0.8125rem',
-  color: '#6b7280',
+  color: 'var(--text-muted)',
   padding: '0 0.5rem 0.4rem',
   borderBottom: '1px solid #f3f4f6',
   verticalAlign: 'top' as const,
@@ -67,7 +67,7 @@ const srOnlyStyle = {
 
 export function EstimateLineItemsTable({ lines }: { lines: EstimatePublicLineItem[] }) {
   if (lines.length === 0) {
-    return <p style={{ margin: 0, fontSize: '0.9rem', color: '#6b7280' }}>—</p>
+    return <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>—</p>
   }
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -157,14 +157,16 @@ export default function EstimateCustomerDocument({
   const docMetaRowStyle = {
     margin: '0.5rem 0 0',
     fontSize: '0.9rem',
-    color: '#374151',
+    color: 'var(--text-700)',
   } as const
   const expiryLabel = validThroughPrefix.trimEnd()
 
   return (
-    <>
+    // Customer-facing document: pinned light so it matches what the customer
+    // receives regardless of the viewer's theme (see index.css theme tokens).
+    <div data-theme="light">
       {previewBanner ? (
-        <div style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: '#6b7280', background: '#f9fafb', padding: '0.5rem 0.75rem', borderRadius: 6 }}>
+        <div style={{ margin: '0 0 1rem', fontSize: '0.85rem', color: 'var(--text-muted)', background: 'var(--bg-subtle)', padding: '0.5rem 0.75rem', borderRadius: 6 }}>
           {previewBanner}
         </div>
       ) : null}
@@ -240,8 +242,8 @@ export default function EstimateCustomerDocument({
           <div
             style={{
               whiteSpace: 'pre-wrap',
-              background: '#f9fafb',
-              border: '1px solid #e5e7eb',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
               borderRadius: 8,
               padding: '1rem',
               fontSize: '0.9rem',
@@ -251,6 +253,6 @@ export default function EstimateCustomerDocument({
           </div>
         </section>
       ) : null}
-    </>
+    </div>
   )
 }

@@ -64,13 +64,13 @@ export function BidBoardEstimatingHealthSection({
         >
           Estimating Health
         </h3>
-        <div style={{ margin: '0 0 0.625rem 0', border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'hidden' }}>
+        <div style={{ margin: '0 0 0.625rem 0', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
           <table
             aria-label="Won percent bands for interpreting the Won % column"
             style={{ width: '100%', borderCollapse: 'collapse' }}
           >
             <tbody>
-              <tr style={{ background: '#f9fafb' }}>
+              <tr style={{ background: 'var(--bg-subtle)' }}>
                 {(['0% – 20%', '20% – 40%', '40% – 60%', '60% – 80%', '80% – 100%'] as const).map((label, i) => (
                   <th
                     key={label}
@@ -78,11 +78,11 @@ export function BidBoardEstimatingHealthSection({
                     style={{
                       padding: '0.375rem 0.35rem',
                       textAlign: 'center',
-                      borderBottom: '1px solid #e5e7eb',
-                      ...(i < 4 ? { borderRight: '1px solid #e5e7eb' } : {}),
+                      borderBottom: '1px solid var(--border)',
+                      ...(i < 4 ? { borderRight: '1px solid var(--border)' } : {}),
                       fontSize: '0.75rem',
                       fontWeight: 600,
-                      color: '#374151',
+                      color: 'var(--text-700)',
                     }}
                   >
                     {label}
@@ -104,9 +104,9 @@ export function BidBoardEstimatingHealthSection({
                     style={{
                       padding: '0.375rem 0.35rem',
                       textAlign: 'center',
-                      ...(i < 4 ? { borderRight: '1px solid #e5e7eb' } : {}),
+                      ...(i < 4 ? { borderRight: '1px solid var(--border)' } : {}),
                       fontSize: '0.75rem',
-                      color: '#4b5563',
+                      color: 'var(--text-600)',
                       verticalAlign: 'top',
                       lineHeight: 1.25,
                     }}
@@ -146,7 +146,7 @@ export function BidBoardEstimatingHealthSection({
                   border: 'none',
                   background: 'none',
                   cursor: 'pointer',
-                  color: '#6b7280',
+                  color: 'var(--text-muted)',
                   fontSize: '0.8125rem',
                   textDecoration: 'underline',
                 }}
@@ -160,7 +160,7 @@ export function BidBoardEstimatingHealthSection({
             hidden={!scoreboardDetailsExpanded}
             style={{ marginTop: scoreboardDetailsExpanded ? '0.35rem' : 0 }}
           >
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
               Only people with {BID_BOARD_STAFF_MIN_BIDS} or more bids in that role are listed. Counts reflect the filtered bid
               list above. The Not yet won or lost column counts sent bids still open (same as that board section; unsent bids are
               not included). Won % uses decided bids only (Won + Lost). Each role is counted separately. Counts greater than zero
@@ -171,7 +171,7 @@ export function BidBoardEstimatingHealthSection({
         </div>
         {!staffOutcomeByRole.estimatorsHadAnyAssignment &&
         !staffOutcomeByRole.accountManagersHadAnyAssignment ? (
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+          <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             No estimator or account manager assigned on these bids.
           </p>
         ) : (
@@ -184,25 +184,25 @@ export function BidBoardEstimatingHealthSection({
                 Estimators
               </h4>
               {staffOutcomeByRole.estimators.length === 0 ? (
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {staffOutcomeByRole.estimatorsHadAnyAssignment
                     ? `No estimators with ${BID_BOARD_STAFF_MIN_BIDS} or more bids in this list.`
                     : 'No estimators assigned on these bids.'}
                 </p>
               ) : (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
                   <table
                     aria-labelledby="bid-board-staff-est-heading"
                     style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}
                   >
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
                         <th
                           scope="col"
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'left',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -213,7 +213,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                           title="Bids with a sent date (sum of Not yet won or lost, Won #, and Lost #)"
@@ -225,7 +225,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.6875rem',
                             lineHeight: 1.25,
                           }}
@@ -239,7 +239,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -250,7 +250,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -261,7 +261,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -276,7 +276,7 @@ export function BidBoardEstimatingHealthSection({
                           decided === 0 ? '—' : `${((100 * row.won) / decided).toFixed(1)}%`
                         const sent = row.notYetWonOrLost + row.won + row.lost
                         return (
-                          <tr key={`est-${row.userId}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={`est-${row.userId}`} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
                               {row.displayName}
                             </td>
@@ -337,25 +337,25 @@ export function BidBoardEstimatingHealthSection({
                 Account managers
               </h4>
               {staffOutcomeByRole.accountManagers.length === 0 ? (
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   {staffOutcomeByRole.accountManagersHadAnyAssignment
                     ? `No account managers with ${BID_BOARD_STAFF_MIN_BIDS} or more bids in this list.`
                     : 'No account managers assigned on these bids.'}
                 </p>
               ) : (
-                <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+                <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
                   <table
                     aria-labelledby="bid-board-staff-am-heading"
                     style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 }}
                   >
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
                         <th
                           scope="col"
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'left',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -366,7 +366,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                           title="Bids with a sent date (sum of Not yet won or lost, Won #, and Lost #)"
@@ -378,7 +378,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.6875rem',
                             lineHeight: 1.25,
                           }}
@@ -392,7 +392,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -403,7 +403,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -414,7 +414,7 @@ export function BidBoardEstimatingHealthSection({
                           style={{
                             padding: '0.375rem 0.75rem',
                             textAlign: 'right',
-                            borderBottom: '1px solid #e5e7eb',
+                            borderBottom: '1px solid var(--border)',
                             fontSize: '0.8125rem',
                           }}
                         >
@@ -429,7 +429,7 @@ export function BidBoardEstimatingHealthSection({
                           decided === 0 ? '—' : `${((100 * row.won) / decided).toFixed(1)}%`
                         const sent = row.notYetWonOrLost + row.won + row.lost
                         return (
-                          <tr key={`am-${row.userId}`} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                          <tr key={`am-${row.userId}`} style={{ borderBottom: '1px solid var(--border)' }}>
                             <td style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
                               {row.displayName}
                             </td>
@@ -507,7 +507,7 @@ export function BidBoardEstimatingHealthSection({
             aria-labelledby="bid-board-staff-drilldown-title"
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--surface)',
               borderRadius: 8,
               maxWidth: 1100,
               width: '100%',
@@ -535,8 +535,8 @@ export function BidBoardEstimatingHealthSection({
                 onClick={() => setStaffOutcomeDrilldown(null)}
                 style={{
                   padding: '0.35rem 0.75rem',
-                  background: '#f3f4f6',
-                  border: '1px solid #d1d5db',
+                  background: 'var(--bg-muted)',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
                   flexShrink: 0,
@@ -546,18 +546,18 @@ export function BidBoardEstimatingHealthSection({
               </button>
             </div>
             {staffOutcomeDrilldownBids.length === 0 ? (
-              <p style={{ margin: 0, color: '#6b7280' }}>No bids in this group.</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)' }}>No bids in this group.</p>
             ) : (
-              <div style={{ overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+              <div style={{ overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
-                  <thead style={{ background: '#f9fafb' }}>
+                  <thead style={{ background: 'var(--bg-subtle)' }}>
                     <tr>
                       <th
                         scope="col"
                         style={{
                           padding: '0.5rem 0.75rem',
                           textAlign: 'left',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           fontSize: '0.8125rem',
                         }}
                       >
@@ -568,7 +568,7 @@ export function BidBoardEstimatingHealthSection({
                         style={{
                           padding: '0.5rem 0.75rem',
                           textAlign: 'left',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           fontSize: '0.8125rem',
                         }}
                       >
@@ -579,7 +579,7 @@ export function BidBoardEstimatingHealthSection({
                         style={{
                           padding: '0.5rem 0.75rem',
                           textAlign: 'left',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           fontSize: '0.8125rem',
                         }}
                       >
@@ -590,7 +590,7 @@ export function BidBoardEstimatingHealthSection({
                         style={{
                           padding: '0.5rem 0.75rem',
                           textAlign: 'left',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           fontSize: '0.8125rem',
                         }}
                       >
@@ -601,7 +601,7 @@ export function BidBoardEstimatingHealthSection({
                         style={{
                           padding: '0.5rem 0.75rem',
                           textAlign: 'right',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           fontSize: '0.8125rem',
                         }}
                       >
@@ -612,7 +612,7 @@ export function BidBoardEstimatingHealthSection({
                         style={{
                           padding: '0.5rem 0.75rem',
                           textAlign: 'center',
-                          borderBottom: '1px solid #e5e7eb',
+                          borderBottom: '1px solid var(--border)',
                           fontSize: '0.8125rem',
                         }}
                       >
@@ -627,7 +627,7 @@ export function BidBoardEstimatingHealthSection({
                       const gc = bid.customers?.name ?? bid.bids_gc_builders?.name ?? '—'
                       const parts = formatDateYYMMDDParts(bid.bid_due_date)
                       return (
-                        <tr key={bid.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={bid.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
                             {num ? <BidBoardBidNumberMark bidPrefix={pref} bidNumber={num} /> : '—'}
                           </td>

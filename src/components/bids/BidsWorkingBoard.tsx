@@ -153,13 +153,13 @@ function SortableWorkingCard({
     transition,
     opacity: isDragging ? 0.5 : 1,
     marginBottom: '0.5rem',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--border)',
     borderRadius: 6,
-    background: '#fff',
+    background: 'var(--surface)',
     overflow: 'hidden',
     ...(isDeepLinkHighlight
       ? {
-          backgroundColor: '#fffbeb',
+          backgroundColor: 'var(--bg-amber-tint)',
           outline: '2px solid #d97706',
           outlineOffset: -2,
         }
@@ -186,10 +186,10 @@ function SortableWorkingCard({
           style={{
             padding: '0.35rem 0.25rem',
             border: 'none',
-            borderRight: '1px solid #e5e7eb',
-            background: '#f9fafb',
+            borderRight: '1px solid var(--border)',
+            background: 'var(--bg-subtle)',
             cursor: 'grab',
-            color: '#6b7280',
+            color: 'var(--text-muted)',
             lineHeight: 1,
           }}
         >
@@ -218,11 +218,11 @@ function SortableWorkingCard({
             textAlign: 'left',
             padding: '0.5rem 0.65rem',
             border: 'none',
-            background: 'white',
+            background: 'var(--surface)',
             cursor: 'pointer',
           }}
         >
-          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', lineHeight: 1.35 }}>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)', lineHeight: 1.35 }}>
             {onOpenPreviewBid ? (
               <span
                 data-working-bid-preview
@@ -242,7 +242,7 @@ function SortableWorkingCard({
                   }
                 }}
                 style={{
-                  color: '#3b82f6',
+                  color: 'var(--text-blue-500)',
                   cursor: 'pointer',
                   borderRadius: 2,
                   outlineOffset: 1,
@@ -251,12 +251,12 @@ function SortableWorkingCard({
                 {bidNum}
               </span>
             ) : (
-              <span style={{ color: '#3b82f6' }}>{bidNum}</span>
+              <span style={{ color: 'var(--text-blue-500)' }}>{bidNum}</span>
             )}
-            <span style={{ color: '#9ca3af', margin: '0 0.35rem' }}>·</span>
+            <span style={{ color: 'var(--text-faint)', margin: '0 0.35rem' }}>·</span>
             <span>{bid.project_name ?? '—'}</span>
           </div>
-          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
             {addr.line1}
             {addr.line2 ? (
               <>
@@ -268,7 +268,7 @@ function SortableWorkingCard({
         </div>
       </div>
       {expanded ? (
-        <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>{notesContent}</div>
+        <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>{notesContent}</div>
       ) : null}
     </div>
   )
@@ -606,7 +606,7 @@ export function BidsWorkingBoard({
   }
 
   if (boardLoading) {
-    return <div style={{ padding: '1rem', color: '#6b7280' }}>Loading board…</div>
+    return <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Loading board…</div>
   }
 
   const sortedCols = [...columns].sort((a, b) => a.position - b.position)
@@ -614,7 +614,7 @@ export function BidsWorkingBoard({
   return (
     <div style={{ marginTop: '0.5rem' }}>
       {persisting ? (
-        <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>Saving…</div>
+        <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Saving…</div>
       ) : null}
       <DndContext sensors={sensors} collisionDetection={workingBoardCollisionDetection} onDragEnd={onDragEnd}>
         <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'stretch', overflowX: 'auto', paddingBottom: '0.5rem' }}>
@@ -623,7 +623,7 @@ export function BidsWorkingBoard({
               <div
                 style={{
                   padding: '0.5rem',
-                  borderBottom: '2px solid #e5e7eb',
+                  borderBottom: '2px solid var(--border)',
                   marginBottom: '0.35rem',
                   minHeight: 44,
                 }}
@@ -652,7 +652,7 @@ export function BidsWorkingBoard({
                       style={{
                         fontWeight: 600,
                         fontSize: '0.9375rem',
-                        color: '#374151',
+                        color: 'var(--text-700)',
                         wordBreak: 'break-word',
                       }}
                     >
@@ -663,7 +663,7 @@ export function BidsWorkingBoard({
                         style={{
                           fontSize: '0.6875rem',
                           fontWeight: 400,
-                          color: '#9ca3af',
+                          color: 'var(--text-faint)',
                         }}
                         title="These bids appear as quick picks when you open Clock In"
                       >
@@ -700,7 +700,7 @@ export function BidsWorkingBoard({
                           background: 'transparent',
                           borderRadius: 4,
                           cursor: 'pointer',
-                          color: '#4b5563',
+                          color: 'var(--text-600)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -729,7 +729,7 @@ export function BidsWorkingBoard({
                       aria-label="Column name"
                       value={renameDraft}
                       onChange={(e) => setRenameDraft(e.target.value)}
-                      style={{ flex: 1, minWidth: 120, padding: '0.25rem 0.35rem', fontSize: '0.8125rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                      style={{ flex: 1, minWidth: 120, padding: '0.25rem 0.35rem', fontSize: '0.8125rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                     />
                     <div
                       style={{
@@ -764,7 +764,7 @@ export function BidsWorkingBoard({
                           background: 'transparent',
                           borderRadius: 4,
                           cursor: 'pointer',
-                          color: '#991b1b',
+                          color: 'var(--text-red-800)',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -822,11 +822,11 @@ export function BidsWorkingBoard({
                     marginTop: '0.35rem',
                     padding: '0.25rem',
                     fontSize: '0.75rem',
-                    border: '1px dashed #d1d5db',
-                    background: '#fafafa',
+                    border: '1px dashed var(--border-strong)',
+                    background: 'var(--bg-page)',
                     borderRadius: 4,
                     cursor: 'pointer',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   + Column
@@ -851,7 +851,7 @@ export function BidsWorkingBoard({
           role="dialog"
           aria-modal
         >
-          <div style={{ background: 'white', padding: '1.25rem', borderRadius: 8, maxWidth: 400 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.25rem', borderRadius: 8, maxWidth: 400 }}>
             <p style={{ margin: '0 0 0.75rem' }}>Delete column &quot;{columnPendingDelete.title}&quot;? Cards move to Inbox.</p>
             <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
               <button type="button" onClick={() => setColumnPendingDelete(null)}>
@@ -866,7 +866,7 @@ export function BidsWorkingBoard({
       )}
 
       {eligibleAssigned.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', marginTop: '0.75rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.75rem' }}>
           No bids assign you as Estimator or Account Man for this service type.
         </p>
       ) : null}

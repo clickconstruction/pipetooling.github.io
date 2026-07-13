@@ -72,14 +72,14 @@ function DetailRow({
 }) {
   return (
     <div style={{ marginBottom: '0.65rem', ...outerStyle }}>
-      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.2rem' }}>{label}</div>
-      <div style={{ fontSize: '0.875rem', color: '#111827', wordBreak: 'break-word' }}>{children}</div>
+      <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.2rem' }}>{label}</div>
+      <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', wordBreak: 'break-word' }}>{children}</div>
     </div>
   )
 }
 
 function ExternalLink({ href, children }: { href: string | null | undefined; children: ReactNode }) {
-  if (!href?.trim()) return <span style={{ color: '#6b7280' }}>—</span>
+  if (!href?.trim()) return <span style={{ color: 'var(--text-muted)' }}>—</span>
   return (
     <a
       href={href}
@@ -89,7 +89,7 @@ function ExternalLink({ href, children }: { href: string | null | undefined; chi
         e.preventDefault()
         openInExternalBrowser(href)
       }}
-      style={{ color: '#2563eb', textDecoration: 'none' }}
+      style={{ color: 'var(--text-link)', textDecoration: 'none' }}
     >
       {children}
     </a>
@@ -160,7 +160,7 @@ export function BidPreviewModal({
   }
 
   const modalStyle: CSSProperties = {
-    background: staleNoUpdateHighlight ? '#fef2f2' : 'white',
+    background: staleNoUpdateHighlight ? 'var(--bg-red-tint)' : 'var(--surface)',
     padding: '1rem 1.5rem 1.5rem',
     borderRadius: 8,
     maxWidth: 720,
@@ -203,25 +203,25 @@ export function BidPreviewModal({
             <button
               type="button"
               onClick={onClose}
-              style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}
+              style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}
             >
               Close
             </button>
           </div>
         </div>
 
-        {loading ? <div style={{ color: '#6b7280' }}>Loading…</div> : null}
+        {loading ? <div style={{ color: 'var(--text-muted)' }}>Loading…</div> : null}
         {!loading && error ? (
-          <div style={{ padding: '0.75rem', background: '#fee2e2', color: '#991b1b', borderRadius: 4 }}>{error}</div>
+          <div style={{ padding: '0.75rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', borderRadius: 4 }}>{error}</div>
         ) : null}
         {!loading && !error && !bid ? (
-          <div style={{ color: '#6b7280' }}>Bid not found or you do not have access.</div>
+          <div style={{ color: 'var(--text-muted)' }}>Bid not found or you do not have access.</div>
         ) : null}
 
         {bid ? (
           <>
             <div style={{ display: 'grid', gap: '0.5rem', marginBottom: '1rem' }}>
-              <div style={{ fontWeight: 700, fontSize: '1.05rem', color: '#111827' }}>{bid.project_name?.trim() || '—'}</div>
+              <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-strong)' }}>{bid.project_name?.trim() || '—'}</div>
               <div
                 style={{
                   display: 'flex',
@@ -230,8 +230,8 @@ export function BidPreviewModal({
                   alignItems: 'flex-start',
                 }}
               >
-                <div style={{ flex: '0 1 auto', fontSize: '0.875rem', color: '#374151' }}>
-                  <span style={{ color: '#3b82f6', fontWeight: 600 }}>
+                <div style={{ flex: '0 1 auto', fontSize: '0.875rem', color: 'var(--text-700)' }}>
+                  <span style={{ color: 'var(--text-blue-500)', fontWeight: 600 }}>
                     {bid.bid_number != null && String(bid.bid_number).trim()
                       ? formatBidLedgerNumberLabel(
                           resolveBidLedgerPrefix(bid.service_type_id, ledgerPrefixMap),
@@ -240,10 +240,10 @@ export function BidPreviewModal({
                       : '—'}
                   </span>
                   {bid.service_type?.name ? (
-                    <span style={{ marginLeft: '0.5rem', color: '#6b7280' }}>· {bid.service_type.name}</span>
+                    <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>· {bid.service_type.name}</span>
                   ) : null}
                 </div>
-                <div style={{ flex: '1 1 14rem', minWidth: 0, fontSize: '0.875rem', color: '#111827', wordBreak: 'break-word' }}>
+                <div style={{ flex: '1 1 14rem', minWidth: 0, fontSize: '0.875rem', color: 'var(--text-strong)', wordBreak: 'break-word' }}>
                   {bid.address?.trim() ? (
                     <span>
                       {bid.address}
@@ -251,14 +251,14 @@ export function BidPreviewModal({
                       <ExternalLink href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(bid.address)}`}>Map</ExternalLink>
                     </span>
                   ) : (
-                    <span style={{ color: '#6b7280' }}>—</span>
+                    <span style={{ color: 'var(--text-muted)' }}>—</span>
                   )}
                 </div>
               </div>
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.35rem' }}>Open in Bids</div>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>Open in Bids</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem' }}>
                 {tabActions.map(({ tab, label }) => (
                   <button
@@ -268,11 +268,11 @@ export function BidPreviewModal({
                     style={{
                       padding: '0.35rem 0.6rem',
                       fontSize: '0.8125rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
-                      background: '#f9fafb',
+                      background: 'var(--bg-subtle)',
                       cursor: 'pointer',
-                      color: '#374151',
+                      color: 'var(--text-700)',
                     }}
                   >
                     {label}
@@ -281,7 +281,7 @@ export function BidPreviewModal({
               </div>
             </div>
 
-            <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '1rem', textAlign: 'center' }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem', textAlign: 'center' }}>
               <div
                 style={{
                   display: 'grid',
@@ -339,20 +339,20 @@ export function BidPreviewModal({
               </div>
 
               <div style={{ marginBottom: '0.65rem', display: 'grid', gap: '0.35rem' }}>
-                <div style={{ fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: '#6b7280' }}>Project folder (Drive):</span>{' '}
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', lineHeight: 1.45 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Project folder (Drive):</span>{' '}
                   <ExternalLink href={bid.drive_link ?? ''}>{bid.drive_link?.trim() ? 'Open folder' : '—'}</ExternalLink>
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: '#6b7280' }}>Job plans:</span>{' '}
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', lineHeight: 1.45 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Job plans:</span>{' '}
                   <ExternalLink href={bid.plans_link ?? ''}>{bid.plans_link?.trim() ? 'Open plans' : '—'}</ExternalLink>
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: '#6b7280' }}>Bid submission:</span>{' '}
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', lineHeight: 1.45 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>Bid submission:</span>{' '}
                   <ExternalLink href={bid.bid_submission_link ?? ''}>{bid.bid_submission_link?.trim() ? 'Open submission' : '—'}</ExternalLink>
                 </div>
-                <div style={{ fontSize: '0.875rem', color: '#111827', lineHeight: 1.45 }}>
-                  <span style={{ fontWeight: 600, color: '#6b7280' }}>CountTooling Plans:</span>{' '}
+                <div style={{ fontSize: '0.875rem', color: 'var(--text-strong)', lineHeight: 1.45 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-muted)' }}>CountTooling Plans:</span>{' '}
                   <ExternalLink href={bid.count_tooling_plans_link ?? ''}>{bid.count_tooling_plans_link?.trim() ? 'Open takeoff' : '—'}</ExternalLink>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export function BidPreviewModal({
                         border: 'none',
                         background: 'none',
                         font: 'inherit',
-                        color: '#2563eb',
+                        color: 'var(--text-link)',
                         cursor: 'pointer',
                         textAlign: 'center',
                         textDecoration: 'underline',
@@ -430,7 +430,7 @@ export function BidPreviewModal({
               ) : null}
             </div>
 
-            <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '1.25rem', paddingTop: '1rem' }}>
+            <div style={{ borderTop: '1px solid var(--border)', marginTop: '1.25rem', paddingTop: '1rem' }}>
               <BidBoardNotesPanel
                 bid={bid}
                 notesTab={notesTab}
