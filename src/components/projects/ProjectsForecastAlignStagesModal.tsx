@@ -88,7 +88,7 @@ const CHANGE_PILL_STYLES: Record<AlignmentRow['change'], CSSProperties> = {
     border: '1px solid var(--border)',
   },
   shifted: {
-    background: '#dbeafe',
+    background: 'var(--bg-blue-200)',
     color: 'var(--text-blue-700)',
     border: '1px solid #93c5fd',
   },
@@ -536,7 +536,7 @@ function PlanRow({
                     padding: '0.05rem 0.4rem',
                     borderRadius: 3,
                     background: 'var(--bg-green-100)',
-                    color: '#166534',
+                    color: 'var(--text-green-800)',
                     border: '1px solid #86efac',
                   }}
                 >
@@ -618,7 +618,7 @@ const footerSecondaryStyle: CSSProperties = {
   borderRadius: 6,
   border: '1px solid #cbd5e1',
   background: 'var(--surface)',
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',
   fontWeight: 600,
   cursor: 'pointer',

@@ -567,7 +567,7 @@ export function DispatchAddBlockTimeRange({
                   top: 0,
                   fontSize: DISPATCH_TIMELINE_STRIP_LABEL_FONT_SIZE,
                   fontWeight: 600,
-                  color: '#9a3412',
+                  color: 'var(--text-orange-800)',
                   lineHeight: 1.1,
                   whiteSpace: 'nowrap',
                   overflow: 'hidden',

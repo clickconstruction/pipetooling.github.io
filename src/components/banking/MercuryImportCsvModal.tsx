@@ -278,7 +278,7 @@ export function MercuryImportCsvModal({ open, onClose, onSubmit }: MercuryImport
         {result ? (
           <p
             role="status"
-            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: '#ecfdf5', border: '1px solid #a7f3d0', color: '#065f46', fontSize: '0.82rem' }}
+            style={{ margin: '0.85rem 0 0', padding: '0.5rem 0.75rem', borderRadius: 6, background: 'var(--bg-emerald-tint)', border: '1px solid #a7f3d0', color: 'var(--text-emerald-800)', fontSize: '0.82rem' }}
           >
             Imported <strong>{result.inserted}</strong> transaction(s) into <strong>{result.accountName}</strong>
             {result.skipped > 0 ? ` (${result.skipped} duplicate(s) skipped)` : ''}. They now appear in the Banking Ledger.
@@ -329,5 +329,5 @@ const thStyle: React.CSSProperties = {
 }
 const tdStyle: React.CSSProperties = {
   padding: '0.35rem 0.55rem',
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
 }

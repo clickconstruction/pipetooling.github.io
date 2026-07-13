@@ -42,7 +42,16 @@ const TEXT = {
   '#059669': 'var(--text-green-600)',
   '#b45309': 'var(--text-amber-700)',
   '#92400e': 'var(--text-amber-800)',
+  '#78350f': 'var(--text-amber-900)',
+  '#854d0e': 'var(--text-yellow-800)',
   '#c2410c': 'var(--text-orange-700)',
+  '#9a3412': 'var(--text-orange-800)',
+  '#1f2937': 'var(--text-gray-800)',
+  '#1e40af': 'var(--text-blue-800)',
+  '#166534': 'var(--text-green-800)',
+  '#065f46': 'var(--text-emerald-800)',
+  '#7f1d1d': 'var(--text-red-900)',
+  '#0369a1': 'var(--text-sky-700)',
 }
 
 const BG = {
@@ -65,6 +74,13 @@ const BG = {
   '#dcfce7': 'var(--bg-green-100)',
   '#f8fafc': 'var(--bg-slate-tint)',
   '#f1f5f9': 'var(--bg-slate-100)',
+  '#f5f5f5': 'var(--bg-neutral-100)',
+  '#fdfaf3': 'var(--bg-cream)',
+  '#fefce8': 'var(--bg-yellow-tint)',
+  '#ffedd5': 'var(--bg-orange-100)',
+  '#ecfdf5': 'var(--bg-emerald-tint)',
+  '#dbeafe': 'var(--bg-blue-200)',
+  '#e0f2fe': 'var(--bg-sky-100)',
 }
 
 const BORDER = {

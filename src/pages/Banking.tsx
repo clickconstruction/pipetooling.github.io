@@ -2495,7 +2495,7 @@ export default function Banking() {
                       padding: '0.5rem 1rem',
                       borderRadius: 4,
                       border: '1px solid #059669',
-                      background: '#ecfdf5',
+                      background: 'var(--bg-emerald-tint)',
                       color: '#047857',
                       cursor: 'pointer',
                       fontWeight: 600,

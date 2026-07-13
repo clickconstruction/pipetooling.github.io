@@ -557,7 +557,7 @@ export function PayStubAdditionalModal({
             style={{ padding: '0.75rem', background: 'var(--bg-green-tint)', borderRadius: 6, border: '1px solid #bbf7d0' }}
           >
             <div style={{ fontWeight: 600, fontSize: '0.875rem', marginBottom: '0.5rem' }}>Change Line to hit Target</div>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: '#166534' }}>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.75rem', color: 'var(--text-green-800)' }}>
               Sets the selected line&apos;s quantity or rate so the Additional subtotal matches the target (nearest cent per line).
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>

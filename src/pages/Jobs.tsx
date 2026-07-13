@@ -4731,11 +4731,11 @@ ${totalsHtml}
 
       {searchParams.get('customer') && (
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 6, fontSize: '0.875rem' }}>
-          <span style={{ color: '#1e40af' }}>Filtered by customer</span>
+          <span style={{ color: 'var(--text-blue-800)' }}>Filtered by customer</span>
           <button
             type="button"
             onClick={() => setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('customer'); return n })}
-            style={{ padding: '0.25rem 0.5rem', background: 'var(--surface)', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer', color: '#1e40af', fontSize: '0.8125rem' }}
+            style={{ padding: '0.25rem 0.5rem', background: 'var(--surface)', border: '1px solid #93c5fd', borderRadius: 4, cursor: 'pointer', color: 'var(--text-blue-800)', fontSize: '0.8125rem' }}
           >
             Clear filter
           </button>
@@ -4985,7 +4985,7 @@ ${totalsHtml}
                 style={{
                   padding: '0.5rem 1rem',
                   background: 'var(--surface)',
-                  color: '#1f2937',
+                  color: 'var(--text-gray-800)',
                   border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                   cursor: 'pointer',
@@ -6273,7 +6273,7 @@ ${totalsHtml}
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                 <span style={{
                                   fontSize: '0.8125rem',
-                                  color: ((j.report_count ?? 0) > 0) ? '#111' : 'var(--text-muted)',
+                                  color: ((j.report_count ?? 0) > 0) ? 'var(--text-strong)' : 'var(--text-muted)',
                                   fontWeight: ((j.report_count ?? 0) > 0) ? 600 : 400,
                                   textAlign: 'center',
                                 }}>
@@ -6656,7 +6656,7 @@ ${totalsHtml}
                                   {renderJobCustomerLine(j)}
                                   {bundleInv != null ? (
                                     <div
-                                      style={{ fontSize: '0.75rem', color: '#1e40af', marginTop: '0.25rem' }}
+                                      style={{ fontSize: '0.75rem', color: 'var(--text-blue-800)', marginTop: '0.25rem' }}
                                       title="Single billing line for this job (Stripe or external send)"
                                     >
                                       {row.kind === 'job_with_merged_billed' ? (
@@ -7001,7 +7001,7 @@ ${totalsHtml}
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span style={{
                                       fontSize: '0.8125rem',
-                                      color: ((j.report_count ?? 0) > 0) ? '#111' : 'var(--text-muted)',
+                                      color: ((j.report_count ?? 0) > 0) ? 'var(--text-strong)' : 'var(--text-muted)',
                                       fontWeight: ((j.report_count ?? 0) > 0) ? 600 : 400,
                                       textAlign: 'center',
                                     }}>
@@ -7396,7 +7396,7 @@ ${totalsHtml}
                                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem' }}>
                                     <span style={{
                                       fontSize: '0.8125rem',
-                                      color: ((job.report_count ?? 0) > 0) ? '#111' : 'var(--text-muted)',
+                                      color: ((job.report_count ?? 0) > 0) ? 'var(--text-strong)' : 'var(--text-muted)',
                                       fontWeight: ((job.report_count ?? 0) > 0) ? 600 : 400,
                                       textAlign: 'center',
                                     }}>
@@ -9306,7 +9306,7 @@ ${totalsHtml}
                             alignItems: 'center',
                             gap: '0.25rem',
                             padding: '0.35rem 0.5rem',
-                            background: laborBookEntriesVersionId === v.id ? '#dbeafe' : 'var(--bg-muted)',
+                            background: laborBookEntriesVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
                             border: laborBookEntriesVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                             borderRadius: 4,
                           }}

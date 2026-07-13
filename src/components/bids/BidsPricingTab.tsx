@@ -2168,7 +2168,7 @@ export function BidsPricingTab({
                       alignItems: 'center',
                       gap: '0.25rem',
                       padding: '0.35rem 0.5rem',
-                      background: panelVersionId === v.id ? '#dbeafe' : 'var(--bg-muted)',
+                      background: panelVersionId === v.id ? 'var(--bg-blue-200)' : 'var(--bg-muted)',
                       border: panelVersionId === v.id ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
                       borderRadius: 4,
                     }}

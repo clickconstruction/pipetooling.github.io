@@ -76,7 +76,7 @@ export default function AddTaskShortcutBanner({ role }: { role: UserRole | null 
         style={{
           padding: '0.3rem 0.5rem',
           background: 'transparent',
-          color: '#9a3412',
+          color: 'var(--text-orange-800)',
           border: 'none',
           cursor: 'pointer',
           fontWeight: 600,

@@ -560,7 +560,7 @@ export function ProjectsJobHistoryDayModal({
                 padding: '0.45rem 0.85rem',
                 fontSize: '0.875rem',
                 background: 'var(--surface)',
-                color: '#0369a1',
+                color: 'var(--text-sky-700)',
                 border: '1px solid #2563eb',
                 borderRadius: 6,
                 cursor: 'pointer',

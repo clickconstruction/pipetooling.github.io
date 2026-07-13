@@ -268,7 +268,7 @@ export function ProjectsForecastStageLineItemsSection({ stepId, stepName, myRole
         }}
       >
         <span style={{ fontSize: '0.75rem', minWidth: 16 }}>{expanded ? '\u25BC' : '\u25B6'}</span>
-        <span style={{ fontWeight: 500, color: '#0369a1' }}>
+        <span style={{ fontWeight: 500, color: 'var(--text-sky-700)' }}>
           Line Items For Office
           {!expanded ? <> | {formatAmount(total)}</> : null}
         </span>
@@ -949,8 +949,8 @@ const addButtonStyle: CSSProperties = {
   padding: '0.35rem 0.7rem',
   borderRadius: 5,
   border: '1px solid #bbf7d0',
-  background: '#ecfdf5',
-  color: '#065f46',
+  background: 'var(--bg-emerald-tint)',
+  color: 'var(--text-emerald-800)',
   fontSize: '0.75rem',
   fontWeight: 600,
   cursor: 'pointer',
@@ -978,7 +978,7 @@ const modalSecondaryBtn: CSSProperties = {
   borderRadius: 6,
   border: '1px solid #cbd5e1',
   background: 'var(--surface)',
-  color: '#1f2937',
+  color: 'var(--text-gray-800)',
   fontSize: '0.8125rem',
   fontWeight: 600,
   cursor: 'pointer',

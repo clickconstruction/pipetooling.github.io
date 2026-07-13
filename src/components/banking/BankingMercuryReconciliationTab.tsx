@@ -211,7 +211,7 @@ export function BankingMercuryReconciliationTab() {
             border: `1px solid ${summary.accountsWithIssues === 0 ? '#bbf7d0' : '#fde68a'}`,
             fontSize: '0.9rem',
             fontWeight: 600,
-            color: summary.accountsWithIssues === 0 ? '#166534' : 'var(--text-amber-800)',
+            color: summary.accountsWithIssues === 0 ? 'var(--text-green-800)' : 'var(--text-amber-800)',
           }}
         >
           {summary.accountsWithIssues === 0

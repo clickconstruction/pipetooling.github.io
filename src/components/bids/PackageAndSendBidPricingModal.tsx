@@ -633,11 +633,11 @@ export function PackageAndSendBidPricingModal({
               style={{
                 margin: '0.5rem 0 0',
                 padding: '0.5rem',
-                background: '#ecfdf5',
+                background: 'var(--bg-emerald-tint)',
                 border: '1px solid #a7f3d0',
                 borderRadius: 4,
                 fontSize: '0.8125rem',
-                color: '#065f46',
+                color: 'var(--text-emerald-800)',
               }}
             >
               {successMessage}

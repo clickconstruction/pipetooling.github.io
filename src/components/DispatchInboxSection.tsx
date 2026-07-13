@@ -472,7 +472,7 @@ export function DispatchInboxSection({
                                       {weekdayTimeChicago} · {daysAgoLabel}
                                     </span>
                                   </div>
-                                  <div style={{ color: '#1f2937' }}>{n.body}</div>
+                                  <div style={{ color: 'var(--text-gray-800)' }}>{n.body}</div>
                                 </li>
                               )
                             })}
@@ -488,7 +488,7 @@ export function DispatchInboxSection({
                                   borderTop: '1px solid #bbf7d0',
                                 }}
                               >
-                                <div style={{ color: '#166534', fontWeight: 600, marginBottom: 4 }}>Marked closed (final)</div>
+                                <div style={{ color: 'var(--text-green-800)', fontWeight: 600, marginBottom: 4 }}>Marked closed (final)</div>
                                 <div style={{ color: 'var(--text-muted)', marginBottom: 2 }}>
                                   <strong style={{ color: '#14532d' }}>{closedByLabel}</strong>
                                   {req.closed_at ? (

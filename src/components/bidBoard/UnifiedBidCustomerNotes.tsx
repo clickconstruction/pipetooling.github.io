@@ -88,8 +88,8 @@ const bidBadgeStyle: CSSProperties = {
   fontWeight: 600,
   padding: '0.125rem 0.35rem',
   borderRadius: 4,
-  background: '#dbeafe',
-  color: '#1e40af',
+  background: 'var(--bg-blue-200)',
+  color: 'var(--text-blue-800)',
 }
 
 const customerBadgeStyle: CSSProperties = {
@@ -98,7 +98,7 @@ const customerBadgeStyle: CSSProperties = {
   padding: '0.125rem 0.35rem',
   borderRadius: 4,
   background: 'var(--bg-green-100)',
-  color: '#166534',
+  color: 'var(--text-green-800)',
 }
 
 function UnifiedEntryRow({

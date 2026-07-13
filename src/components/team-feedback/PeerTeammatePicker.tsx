@@ -252,7 +252,7 @@ export default function PeerTeammatePicker({
                 background: 'var(--bg-orange-tint)',
                 border: '1px solid #fed7aa',
                 fontSize: '0.875rem',
-                color: '#9a3412',
+                color: 'var(--text-orange-800)',
               }}
             >
               {selectedNames.get(pk) ?? 'Teammate'}
