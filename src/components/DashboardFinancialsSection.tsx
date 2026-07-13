@@ -828,7 +828,7 @@ export default function DashboardFinancialsSection() {
   const [apBill, setApBill] = useState<DashboardApBill | null>(null)
   const jobDetailModal = useJobDetailModal()
 
-  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string }> = data
+  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extra?: string; extraLines?: string[] }> = data
     ? [
         {
           key: 'ar',
@@ -841,9 +841,12 @@ export default function DashboardFinancialsSection() {
         {
           key: 'ap',
           bucket: data.ap,
-          extra:
-            `Supplies $${formatCurrency(data.ap.supplyTotal)} · Payroll: $${formatCurrency(data.ap.payrollTotal)} due` +
-            (data.apUpcoming.count > 0 ? ` / $${formatCurrency(data.apUpcoming.total)} upcoming` : ''),
+          // Rendered as a second column beside the total (not a run-on subtitle line).
+          extraLines: [
+            `Supplies $${formatCurrency(data.ap.supplyTotal)}`,
+            `Payroll: $${formatCurrency(data.ap.payrollTotal)} due`,
+            ...(data.apUpcoming.count > 0 ? [`$${formatCurrency(data.apUpcoming.total)} upcoming`] : []),
+          ],
         },
         { key: 'unbilled', bucket: data.unbilled },
       ]
@@ -857,7 +860,7 @@ export default function DashboardFinancialsSection() {
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-          {cards.map(({ key, bucket, extra }) => (
+          {cards.map(({ key, bucket, extra, extraLines }) => (
             <button
               key={key}
               type="button"
@@ -871,22 +874,45 @@ export default function DashboardFinancialsSection() {
                 padding: '0.85rem 1rem',
                 cursor: 'pointer',
                 display: 'flex',
-                flexDirection: 'column',
-                gap: '0.25rem',
+                flexWrap: 'wrap',
+                justifyContent: 'space-between',
+                alignItems: 'flex-end',
+                columnGap: '0.75rem',
+                rowGap: '0.25rem',
                 // Buttons don't inherit text color; without this the unstyled
                 // amount renders UA-black on the dark surface.
                 color: 'inherit',
               }}
             >
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>{CARD_META[key].title}</span>
-              <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
-                ${formatCurrency(bucket.total)}
+              <span style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', minWidth: 0 }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>{CARD_META[key].title}</span>
+                <span style={{ fontSize: '1.35rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  ${formatCurrency(bucket.total)}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
+                  {bucket.count} item{bucket.count === 1 ? '' : 's'}
+                  {bucket.oldestDateYmd ? ` · oldest ${shortDate(bucket.oldestDateYmd)}` : ''}
+                </span>
+                {extra ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{extra}</span> : null}
               </span>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
-                {bucket.count} item{bucket.count === 1 ? '' : 's'}
-                {bucket.oldestDateYmd ? ` · oldest ${shortDate(bucket.oldestDateYmd)}` : ''}
-              </span>
-              {extra ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{extra}</span> : null}
+              {extraLines && extraLines.length > 0 ? (
+                <span
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.2rem',
+                    textAlign: 'right',
+                    fontSize: '0.75rem',
+                    color: 'var(--text-muted)',
+                    fontVariantNumeric: 'tabular-nums',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {extraLines.map((line) => (
+                    <span key={line}>{line}</span>
+                  ))}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
