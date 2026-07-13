@@ -70,6 +70,16 @@ export function scheduleDispatchDayColumnJobsSummaryCellBg(
   return undefined
 }
 
+/** How far to scroll the grid's own container so the column centers horizontally. */
+export function scheduleColumnCenterScrollDelta(
+  rootLeft: number,
+  rootWidth: number,
+  elLeft: number,
+  elWidth: number,
+): number {
+  return elLeft + elWidth / 2 - (rootLeft + rootWidth / 2)
+}
+
 export function useScrollScheduleDispatchColumnIntoView(args: {
   columnFocusDayYmd: string
   loading: boolean
@@ -84,7 +94,13 @@ export function useScrollScheduleDispatchColumnIntoView(args: {
     const el = root.querySelector(sel)
     if (el instanceof HTMLElement) {
       requestAnimationFrame(() => {
-        el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+        // Scroll ONLY the grid's horizontal container. scrollIntoView would also
+        // scroll every ancestor (the page), which yanked Quickfill down to its
+        // embedded schedule grids as they finished loading.
+        const rootRect = root.getBoundingClientRect()
+        const elRect = el.getBoundingClientRect()
+        const delta = scheduleColumnCenterScrollDelta(rootRect.left, rootRect.width, elRect.left, elRect.width)
+        root.scrollTo({ left: root.scrollLeft + delta, behavior: 'smooth' })
       })
     }
   }, [args.columnFocusDayYmd, args.loading, args.scrollKey])
