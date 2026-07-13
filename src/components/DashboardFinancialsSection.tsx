@@ -55,6 +55,13 @@ function shortDate(ymd: string | null): string {
   return `${d.getMonth() + 1}/${d.getDate()}/${String(d.getFullYear()).slice(2)}`
 }
 
+/** "58 days ago" style age for a card's oldest item; falls back to the short date for today/future. */
+function daysAgoLabel(ymd: string): string {
+  const days = daysPastDue(ymd, new Date().toLocaleDateString('en-CA'))
+  if (!Number.isFinite(days) || days <= 0) return shortDate(ymd)
+  return days === 1 ? '1 day ago' : `${days.toLocaleString('en-US')} days ago`
+}
+
 /** AP bill detail — invoice facts plus an expandable Google Drive preview of the attached file. */
 function ApBillModal({
   bill,
@@ -834,7 +841,7 @@ export default function DashboardFinancialsSection() {
   const jobDetailModal = useJobDetailModal()
 
   // extraLines render as a second column beside the total (not a run-on subtitle line).
-  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extraLines?: string[] }> = data
+  const cards: Array<{ key: CardKey; bucket: FinancialBucket; extraLines?: string[]; oldestAsDaysAgo?: boolean }> = data
     ? [
         {
           key: 'ar',
@@ -857,7 +864,7 @@ export default function DashboardFinancialsSection() {
             ...(data.apUpcoming.count > 0 ? [`($${roundDollars(data.apUpcoming.total)} upcoming)`] : []),
           ],
         },
-        { key: 'unbilled', bucket: data.unbilled },
+        { key: 'unbilled', bucket: data.unbilled, oldestAsDaysAgo: true },
       ]
     : []
 
@@ -869,7 +876,7 @@ export default function DashboardFinancialsSection() {
         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.75rem' }}>
-          {cards.map(({ key, bucket, extraLines }) => (
+          {cards.map(({ key, bucket, extraLines, oldestAsDaysAgo }) => (
             <button
               key={key}
               type="button"
@@ -900,7 +907,9 @@ export default function DashboardFinancialsSection() {
                 </span>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>
                   {bucket.count} item{bucket.count === 1 ? '' : 's'}
-                  {bucket.oldestDateYmd ? ` · oldest ${shortDate(bucket.oldestDateYmd)}` : ''}
+                  {bucket.oldestDateYmd
+                    ? ` · oldest ${oldestAsDaysAgo ? daysAgoLabel(bucket.oldestDateYmd) : shortDate(bucket.oldestDateYmd)}`
+                    : ''}
                 </span>
               </span>
               {extraLines && extraLines.length > 0 ? (
