@@ -319,7 +319,11 @@ function GeocodeProgressList({
         >
         {rows.map((r) => {
           const icon = r.status === 'ok' ? '✓' : r.status === 'error' ? '✗' : r.status === 'in_progress' ? '…' : '·'
-          const hasEntity = entities.some((e) => e.addressKey === r.address_normalized)
+          const matched = entities.filter((e) => e.addressKey === r.address_normalized)
+          const hasEntity = matched.length > 0
+          // Job/bid/estimate numbers for this address; several entities can share one address.
+          const ids = [...new Set(matched.map((e) => e.sublabel.trim()).filter((s) => s.length > 0))]
+          const idPrefix = ids.slice(0, 3).join(', ') + (ids.length > 3 ? ` +${ids.length - 3} more` : '')
           return (
             <li
               key={r.address_normalized}
@@ -328,6 +332,9 @@ function GeocodeProgressList({
               <span aria-hidden="true" style={{ width: '0.9rem' }}>
                 {icon}
               </span>
+              {idPrefix.length > 0 ? (
+                <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{idPrefix}</span>
+              ) : null}
               <span style={{ minWidth: 0, wordBreak: 'break-word' }}>{r.addressLabel}</span>
               {hasEntity ? (
                 <button
