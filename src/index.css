@@ -94,8 +94,37 @@ input.rough-takeoff-qty-input[type="number"]:focus-visible {
   cursor: pointer;
 }
 
+/* Modern default for otherwise-unstyled buttons (Settings "Sign out",
+   roster "Edit", …). Buttons that style themselves inline override any of
+   this per property, so designed buttons are unaffected; icon/link-style
+   buttons set background/border to none themselves. */
 button {
   cursor: pointer;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.25;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+button:hover {
+  background: var(--bg-subtle);
+}
+
+button:active {
+  background: var(--bg-muted);
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--text-link);
+  outline-offset: 1px;
 }
 
 /* App layout spacing (desktop defaults) */
