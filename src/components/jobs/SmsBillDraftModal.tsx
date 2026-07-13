@@ -45,7 +45,7 @@ export function SmsBillDraftModal({
         aria-modal="true"
         aria-labelledby="sms-bill-draft-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           minWidth: 280,
           maxWidth: 520,
@@ -60,7 +60,7 @@ export function SmsBillDraftModal({
         <h2 id="sms-bill-draft-title" style={{ margin: 0, padding: '1rem 1rem 0.5rem', fontSize: '1.125rem', fontWeight: 600 }}>
           SMS Bill Draft
         </h2>
-        <p style={{ margin: '0 1rem 0.5rem', fontSize: '0.8125rem', color: '#6b7280' }}>SMS draft</p>
+        <p style={{ margin: '0 1rem 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>SMS draft</p>
         <div style={{ padding: '0 1rem', flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}>
           <pre
             style={{
@@ -70,9 +70,9 @@ export function SmsBillDraftModal({
               fontFamily: 'ui-monospace, monospace',
               fontSize: '0.8125rem',
               lineHeight: 1.45,
-              color: '#111827',
-              background: '#f9fafb',
-              border: '1px solid #e5e7eb',
+              color: 'var(--text-strong)',
+              background: 'var(--bg-subtle)',
+              border: '1px solid var(--border)',
               borderRadius: 6,
               padding: '0.65rem 0.75rem',
             }}
@@ -87,7 +87,7 @@ export function SmsBillDraftModal({
             gap: '0.5rem',
             padding: '1rem',
             flexShrink: 0,
-            borderTop: '1px solid #e5e7eb',
+            borderTop: '1px solid var(--border)',
           }}
         >
           <button
@@ -95,8 +95,8 @@ export function SmsBillDraftModal({
             onClick={onClose}
             style={{
               padding: '0.5rem 1rem',
-              border: '1px solid #d1d5db',
-              background: 'white',
+              border: '1px solid var(--border-strong)',
+              background: 'var(--surface)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: '0.875rem',

@@ -125,7 +125,7 @@ const detailRowSoftBoxStyle: CSSProperties = {
   minWidth: 0,
   boxSizing: 'border-box',
   padding: '0.6rem 0.75rem',
-  background: '#f9fafb',
+  background: 'var(--bg-subtle)',
   border: '1px solid #e8eaee',
   borderRadius: 8,
 }
@@ -147,7 +147,7 @@ function StackedClockSessionTimestamp({
     >
       <span>{parts.date}</span>
       <span>{parts.time}</span>
-      <span style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>
+      <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>
         ({parts.relative})
       </span>
     </div>
@@ -173,7 +173,7 @@ function DetailRow({
   const bottom = noBottomMargin ? 0 : '0.65rem'
   const valueStyle: CSSProperties = {
     fontSize: '0.9375rem',
-    color: '#111827',
+    color: 'var(--text-strong)',
     wordBreak: 'break-word',
     ...(centered
       ? { display: 'flex', justifyContent: 'center', flexWrap: 'wrap', textAlign: 'center' }
@@ -185,7 +185,7 @@ function DetailRow({
         style={{
           fontSize: '0.8125rem',
           fontWeight: 500,
-          color: '#6b7280',
+          color: 'var(--text-muted)',
           marginBottom: 2,
           textAlign: centered ? 'center' : 'left',
         }}
@@ -209,7 +209,7 @@ function DetailRow({
 }
 
 const linkLikeValueStyle: CSSProperties = {
-  color: '#2563eb',
+  color: 'var(--text-link)',
   cursor: 'pointer',
   textDecoration: 'underline',
   fontSize: '0.9375rem',
@@ -219,13 +219,13 @@ const linkLikeValueStyle: CSSProperties = {
 
 const customerPanelValueStyle: CSSProperties = {
   fontSize: '0.9375rem',
-  color: '#111827',
+  color: 'var(--text-strong)',
   wordBreak: 'break-word',
 }
 
 const customerPanelMissingPlaceholderStyle: CSSProperties = {
   ...customerPanelValueStyle,
-  color: '#9ca3af',
+  color: 'var(--text-faint)',
 }
 
 function DetailJobModalCustomerPanel({
@@ -250,7 +250,7 @@ function DetailJobModalCustomerPanel({
 
   return (
     <div style={{ minWidth: 0 }}>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>Customer</div>
+      <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Customer</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
         <div style={{ minWidth: 0 }}>
           <div style={name ? customerPanelValueStyle : customerPanelMissingPlaceholderStyle}>
@@ -318,11 +318,11 @@ const detailJobFilesPlansButtonStyle: CSSProperties = {
   display: 'inline-block',
   padding: '0.35rem 0.65rem',
   fontSize: '0.875rem',
-  background: '#fff',
+  background: 'var(--surface)',
   border: '1px solid #c7d2fe',
   borderRadius: 4,
   cursor: 'pointer',
-  color: '#1d4ed8',
+  color: 'var(--text-blue-700)',
 }
 
 function DetailJobModalFilesPlansRow({
@@ -347,7 +347,7 @@ function DetailJobModalFilesPlansRow({
     >
       {drive ? (
         <div style={{ minWidth: 0, textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>Customer Files</div>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Customer Files</div>
           <button type="button" onClick={() => openInExternalBrowser(drive)} style={detailJobFilesPlansButtonStyle}>
             Open Drive folder
           </button>
@@ -355,7 +355,7 @@ function DetailJobModalFilesPlansRow({
       ) : null}
       {plans ? (
         <div style={{ minWidth: 0, textAlign: 'center' }}>
-          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 6 }}>Job Plans</div>
+          <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 6 }}>Job Plans</div>
           <button type="button" onClick={() => openInExternalBrowser(plans)} style={detailJobFilesPlansButtonStyle}>
             Open plans
           </button>
@@ -770,7 +770,7 @@ export default function DetailJobModal({
         role="dialog"
         aria-labelledby="detail-job-modal-title"
         style={{
-          background: '#fff',
+          background: 'var(--surface)',
           borderRadius: 8,
           padding: '1.25rem',
           maxWidth: 560,
@@ -831,7 +831,7 @@ export default function DetailJobModal({
                     border: 'none',
                     background: 'none',
                     cursor: 'pointer',
-                    color: '#4b5563',
+                    color: 'var(--text-600)',
                     borderRadius: 4,
                   }}
                 >
@@ -865,7 +865,7 @@ export default function DetailJobModal({
               <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {mapsAddressLine ? (
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 2 }}>Address</div>
+                    <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 2 }}>Address</div>
                     <span
                       role="link"
                       tabIndex={0}
@@ -883,7 +883,7 @@ export default function DetailJobModal({
                       title="Open address in Google Maps"
                       aria-label="Open address in Google Maps"
                       style={{
-                        color: '#2563eb',
+                        color: 'var(--text-link)',
                         cursor: 'pointer',
                         textDecoration: 'underline',
                         fontSize: '0.9375rem',
@@ -900,8 +900,8 @@ export default function DetailJobModal({
                     style={{
                       minWidth: 0,
                       padding: '0.65rem 0.75rem',
-                      background: '#f9fafb',
-                      border: '1px solid #e5e7eb',
+                      background: 'var(--bg-subtle)',
+                      border: '1px solid var(--border)',
                       borderRadius: 6,
                       fontSize: '0.875rem',
                     }}
@@ -909,12 +909,12 @@ export default function DetailJobModal({
                     <div style={{ fontWeight: 600, marginBottom: 4 }}>
                       Scheduled block - {scheduleFormatWeekdayOnly(scheduleContext.workDate)}
                     </div>
-                    <div style={{ color: '#374151' }}>
+                    <div style={{ color: 'var(--text-700)' }}>
                       {scheduleFormatDateLongNoWeekday(scheduleContext.workDate)} ·{' '}
                       {scheduleFormatWindow(scheduleContext.timeStart, scheduleContext.timeEnd)}
                     </div>
                     {scheduleContext.note?.trim() ? (
-                      <div style={{ color: '#6b7280', marginTop: 6, wordBreak: 'break-word' }}>
+                      <div style={{ color: 'var(--text-muted)', marginTop: 6, wordBreak: 'break-word' }}>
                         {scheduleContext.note.trim()}
                       </div>
                     ) : null}
@@ -934,7 +934,7 @@ export default function DetailJobModal({
 
         {mapsAddressLine && (streetViewLoading || streetViewImgUrl) ? (
           <div style={{ marginTop: '0.75rem' }}>
-            <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 4 }}>Street View</div>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 4 }}>Street View</div>
             <div
               role="button"
               tabIndex={0}
@@ -957,9 +957,9 @@ export default function DetailJobModal({
                 aspectRatio: '16 / 9',
                 maxHeight: 200,
                 borderRadius: 6,
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 overflow: 'hidden',
-                background: '#f3f4f6',
+                background: 'var(--bg-muted)',
                 cursor: streetViewImgUrl ? 'pointer' : 'default',
                 padding: 0,
                 display: 'block',
@@ -975,7 +975,7 @@ export default function DetailJobModal({
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '0.8125rem',
-                    color: '#6b7280',
+                    color: 'var(--text-muted)',
                   }}
                 >
                   Loading preview…
@@ -1028,9 +1028,9 @@ export default function DetailJobModal({
           />
         </div>
 
-        {loading ? <p style={{ margin: '1rem 0 0', fontSize: '0.875rem', color: '#6b7280' }}>Loading…</p> : null}
+        {loading ? <p style={{ margin: '1rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</p> : null}
         {error ? (
-          <p style={{ margin: '1rem 0 0', fontSize: '0.875rem', color: '#b91c1c', whiteSpace: 'pre-wrap' }}>{error}</p>
+          <p style={{ margin: '1rem 0 0', fontSize: '0.875rem', color: 'var(--text-red-700)', whiteSpace: 'pre-wrap' }}>{error}</p>
         ) : null}
 
         {!loading && !error && fullJob ? (
@@ -1042,8 +1042,8 @@ export default function DetailJobModal({
                   style={{
                     fontSize: '0.875rem',
                     padding: '0.25rem 0.5rem',
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
+                    background: 'var(--bg-blue-tint)',
+                    color: 'var(--text-blue-700)',
                     borderRadius: 4,
                     textDecoration: 'none',
                     fontWeight: 500,
@@ -1089,7 +1089,7 @@ export default function DetailJobModal({
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Assigned Team</div>
               {(fullJob.team_members ?? []).length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>No team members listed.</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>No team members listed.</p>
               ) : (
                 <ul style={{ margin: 0, paddingLeft: '1.1rem', fontSize: '0.875rem' }}>
                   {fullJob.team_members.map((tm) => (
@@ -1124,10 +1124,10 @@ export default function DetailJobModal({
                   color: 'inherit',
                 }}
               >
-                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280', marginBottom: 2 }}>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: 'var(--text-muted)', marginBottom: 2 }}>
                   Reports
                 </span>
-                <span style={{ fontSize: '0.9375rem', color: '#2563eb', textDecoration: 'underline' }}>
+                <span style={{ fontSize: '0.9375rem', color: 'var(--text-link)', textDecoration: 'underline' }}>
                   View all reports
                 </span>
               </button>
@@ -1154,11 +1154,11 @@ export default function DetailJobModal({
                   font: 'inherit',
                   fontWeight: 600,
                   fontSize: '0.9375rem',
-                  color: '#111827',
+                  color: 'var(--text-strong)',
                   textAlign: 'center',
                 }}
               >
-                <span aria-hidden style={{ fontSize: '0.7rem', color: '#6b7280' }}>
+                <span aria-hidden style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
                   {scheduleTimeSectionOpen ? '▼' : '▶'}
                 </span>
                 Schedule and recorded time
@@ -1179,7 +1179,7 @@ export default function DetailJobModal({
                       marginBottom: '0.5rem',
                       padding: '0.4rem 0.5rem',
                       fontSize: '0.875rem',
-                      border: '1px solid #d1d5db',
+                      border: '1px solid var(--border-strong)',
                       borderRadius: 4,
                       boxSizing: 'border-box',
                     }}
@@ -1213,7 +1213,7 @@ export default function DetailJobModal({
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Specific Work (Fixtures / Tie-ins / Repair)</div>
               {(fullJob.fixtures ?? []).length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>None</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>None</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {fullJob.fixtures.map((f, index) => (
@@ -1229,7 +1229,7 @@ export default function DetailJobModal({
                     >
                       <span
                         style={{
-                          color: '#6b7280',
+                          color: 'var(--text-muted)',
                           fontWeight: 600,
                           fontVariantNumeric: 'tabular-nums',
                           flexShrink: 0,
@@ -1243,14 +1243,14 @@ export default function DetailJobModal({
                           {f.line_unit_price != null &&
                           Number.isFinite(Number(f.line_unit_price)) &&
                           Number(f.line_unit_price) > 0 ? (
-                            <span style={{ color: '#6b7280' }}>
+                            <span style={{ color: 'var(--text-muted)' }}>
                               {' '}
                               @ {formatCurrency(Number(f.line_unit_price))} ea.
                             </span>
                           ) : null}
                         </span>
                         {(f.line_description ?? '').trim() ? (
-                          <div style={{ color: '#6b7280', fontSize: '0.8125rem', marginTop: 2, whiteSpace: 'pre-wrap' }}>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.8125rem', marginTop: 2, whiteSpace: 'pre-wrap' }}>
                             {(f.line_description ?? '').trim()}
                           </div>
                         ) : null}
@@ -1272,7 +1272,7 @@ export default function DetailJobModal({
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Payments</div>
               {(fullJob.payments ?? []).length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>None</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>None</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {fullJob.payments.map((p) => (
@@ -1280,7 +1280,7 @@ export default function DetailJobModal({
                       key={p.id}
                       style={{
                         padding: '0.45rem 0.5rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 4,
                         marginBottom: 6,
                         fontSize: '0.875rem',
@@ -1288,12 +1288,12 @@ export default function DetailJobModal({
                     >
                       {formatCurrency(Number(p.amount ?? 0))}
                       {p.payment_type?.trim() ? (
-                        <span style={{ color: '#6b7280', marginLeft: 8 }}>Type: {p.payment_type.trim()}</span>
+                        <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>Type: {p.payment_type.trim()}</span>
                       ) : null}
                       {p.reference_number?.trim() ? (
-                        <span style={{ color: '#6b7280', marginLeft: 8 }}>Ref: {p.reference_number.trim()}</span>
+                        <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>Ref: {p.reference_number.trim()}</span>
                       ) : null}
-                      {p.note?.trim() ? <span style={{ color: '#6b7280', marginLeft: 8 }}>{p.note.trim()}</span> : null}
+                      {p.note?.trim() ? <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{p.note.trim()}</span> : null}
                     </li>
                   ))}
                 </ul>
@@ -1303,7 +1303,7 @@ export default function DetailJobModal({
             <div style={{ marginTop: '1rem' }}>
               <div style={{ fontWeight: 600, fontSize: '0.9375rem', marginBottom: '0.5rem' }}>Invoices</div>
               {(fullJob.invoices ?? []).length === 0 ? (
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af' }}>None</p>
+                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-faint)' }}>None</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {fullJob.invoices.map((inv) => (
@@ -1311,14 +1311,14 @@ export default function DetailJobModal({
                       key={inv.id}
                       style={{
                         padding: '0.45rem 0.5rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--border)',
                         borderRadius: 4,
                         marginBottom: 6,
                         fontSize: '0.875rem',
                       }}
                     >
                       {formatCurrency(Number(inv.amount ?? 0))}
-                      <span style={{ color: '#6b7280', marginLeft: 8 }}>{inv.status ?? ''}</span>
+                      <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{inv.status ?? ''}</span>
                     </li>
                   ))}
                 </ul>
@@ -1336,8 +1336,8 @@ export default function DetailJobModal({
                   style={{
                     fontSize: '0.875rem',
                     padding: '0.25rem 0.5rem',
-                    background: '#eff6ff',
-                    color: '#1d4ed8',
+                    background: 'var(--bg-blue-tint)',
+                    color: 'var(--text-blue-700)',
                     borderRadius: 4,
                     textDecoration: 'none',
                     fontWeight: 500,
@@ -1399,11 +1399,11 @@ export default function DetailJobModal({
                 textAlign: 'center',
               }}
             >
-              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af', maxWidth: '100%' }}>
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-faint)', maxWidth: '100%' }}>
                 Payments and invoices are not shown in this view.
               </p>
               {isSubcontractorLikeRole(authRole as UserRole) ? (
-                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: '#9ca3af', maxWidth: '100%' }}>
+                <p style={{ margin: '0.5rem 0 0', fontSize: '0.8125rem', color: 'var(--text-faint)', maxWidth: '100%' }}>
                   You are assigned on this job.
                 </p>
               ) : null}
@@ -1425,8 +1425,8 @@ export default function DetailJobModal({
             style={{
               padding: '0.35rem 0.65rem',
               fontSize: '0.875rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               cursor: 'pointer',
               flexShrink: 0,

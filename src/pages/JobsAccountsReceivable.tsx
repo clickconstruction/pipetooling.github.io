@@ -59,8 +59,8 @@ export default function JobsAccountsReceivable() {
           style={{
             padding: '0.35rem 0.75rem',
             fontSize: '0.875rem',
-            border: '1px solid #d1d5db',
-            background: 'white',
+            border: '1px solid var(--border-strong)',
+            background: 'var(--surface)',
             borderRadius: 4,
             cursor: 'pointer',
           }}
@@ -68,11 +68,11 @@ export default function JobsAccountsReceivable() {
           Back to Jobs
         </button>
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>Accounts Receivable</h1>
-        <Link to="/dashboard" style={{ marginLeft: 'auto', fontSize: '0.875rem', color: '#2563eb' }}>
+        <Link to="/dashboard" style={{ marginLeft: 'auto', fontSize: '0.875rem', color: 'var(--text-link)' }}>
           Dashboard
         </Link>
       </div>
-      {jobsListError ? <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{jobsListError}</p> : null}
+      {jobsListError ? <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{jobsListError}</p> : null}
       <BankPaymentsModal
         open
         onClose={() => navigate('/jobs?tab=stages')}

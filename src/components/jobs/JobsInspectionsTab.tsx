@@ -230,7 +230,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
   return (
     <>
       <div>
-        {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
         <div style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <button
             type="button"
@@ -242,7 +242,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
           <button
             type="button"
             onClick={openInspectionTypesModal}
-            style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+            style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
           >
             Edit Inspection Types
           </button>
@@ -253,13 +253,13 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
             <button
               type="button"
               onClick={openQuickLinksModal}
-              style={{ padding: '0.35rem 0.75rem', background: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+              style={{ padding: '0.35rem 0.75rem', background: 'var(--bg-muted)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
             >
               Edit Quick Inspection Links
             </button>
           </div>
           {quickLinksLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
               {quickLinksList.map(({ id, label, url }) => (
@@ -269,7 +269,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => { e.preventDefault(); openInExternalBrowser(url) }}
-                  style={{ padding: '0.5rem 0.75rem', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 4, color: '#2563eb', textDecoration: 'none', fontSize: '0.875rem' }}
+                  style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-muted)', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-link)', textDecoration: 'none', fontSize: '0.875rem' }}
                 >
                   {label}
                 </a>
@@ -280,7 +280,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
         <section style={{ marginBottom: '1.5rem' }}>
           <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: 600 }}>Upcoming</h3>
           {inspectionsLoading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : (
             (() => {
               const today = new Date()
@@ -292,7 +292,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
               })()
               const upcoming = inspections.filter((i) => i.scheduled_date >= todayKey && i.scheduled_date <= endKey).slice(0, 14)
               return upcoming.length === 0 ? (
-                <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No upcoming inspections in the next 14 days.</p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No upcoming inspections in the next 14 days.</p>
               ) : (
                 <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                   {upcoming.map((i) => {
@@ -303,10 +303,10 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                     const dayOfWeek = scheduled.toLocaleDateString('en-US', { weekday: 'long' })
                     const formatted = `${i.scheduled_date} (${diffDays}) ${dayOfWeek}`
                     return (
-                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, fontSize: '0.875rem' }}>
+                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4, fontSize: '0.875rem' }}>
                         <div>
-                          <span style={{ color: '#6b7280', marginRight: '0.5rem' }}>{formatted}</span>
-                          <span style={{ color: '#4b5563' }}>{' - '}{i.inspection_type}</span>
+                          <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>{formatted}</span>
+                          <span style={{ color: 'var(--text-600)' }}>{' - '}{i.inspection_type}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.25rem' }}>
                           <span style={{ fontWeight: 500 }}>{i.address}</span>
@@ -317,7 +317,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                               rel="noopener noreferrer"
                               onClick={(e) => { e.preventDefault(); e.stopPropagation(); openInExternalBrowser(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(i.address.trim())}`) }}
                               title={`View ${i.address} on map`}
-                              style={{ display: 'inline-flex', alignItems: 'center', color: '#2563eb', flexShrink: 0 }}
+                              style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)', flexShrink: 0 }}
                             >
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" style={{ width: 16, height: 16, fill: 'currentColor' }}>
                                 <path d="M576 112C576 103.7 571.7 96 564.7 91.6C557.7 87.2 548.8 86.8 541.4 90.5L416.5 152.1L244 93.4C230.3 88.7 215.3 89.6 202.1 95.7L77.8 154.3C69.4 158.2 64 166.7 64 176L64 528C64 536.2 68.2 543.9 75.1 548.3C82 552.7 90.7 553.2 98.2 549.7L225.5 489.8L396.2 546.7C409.9 551.3 424.7 550.4 437.8 544.2L562.2 485.7C570.6 481.7 576 473.3 576 464L576 112zM208 146.1L208 445.1L112 490.3L112 191.3L208 146.1zM256 449.4L256 148.3L384 191.8L384 492.1L256 449.4zM432 198L528 150.6L528 448.8L432 494L432 198z" />
@@ -336,7 +336,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
         <section>
           <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', fontWeight: 600 }}>Inspection Schedule</h3>
           {inspectionsLoading ? (
-            <p style={{ color: '#6b7280' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
           ) : (
             <>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
@@ -347,9 +347,9 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                 </div>
                 <button type="button" onClick={() => setInspectionsMonth(new Date(new Date().getFullYear(), new Date().getMonth(), 1))} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem' }}>Today</button>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: '#e5e7eb', border: '1px solid #e5e7eb' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--bg-200)', border: '1px solid var(--border)' }}>
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-                  <div key={d} style={{ background: 'white', padding: '0.5rem', textAlign: 'center', fontWeight: 500, fontSize: '0.875rem' }}>{d}</div>
+                  <div key={d} style={{ background: 'var(--surface)', padding: '0.5rem', textAlign: 'center', fontWeight: 500, fontSize: '0.875rem' }}>{d}</div>
                 ))}
                 {(() => {
                   const year = inspectionsMonth.getFullYear()
@@ -376,7 +376,7 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                         onClick={() => setInspectionsSelectedDay(day)}
                         onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setInspectionsSelectedDay(day) } }}
                         style={{
-                          background: 'white',
+                          background: 'var(--surface)',
                           minHeight: 100,
                           padding: '0.5rem',
                           border: isToday ? '2px solid #2563eb' : 'none',
@@ -386,14 +386,14 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                           overflow: 'hidden',
                         }}
                       >
-                        <div style={{ fontSize: '0.875rem', color: isCurrentMonth ? '#111827' : '#9ca3af', fontWeight: isToday ? 600 : 400, marginBottom: '0.25rem' }}>{day.getDate()}</div>
+                        <div style={{ fontSize: '0.875rem', color: isCurrentMonth ? 'var(--text-strong)' : 'var(--text-faint)', fontWeight: isToday ? 600 : 400, marginBottom: '0.25rem' }}>{day.getDate()}</div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 2, overflow: 'auto', flex: 1, minHeight: 0 }}>
                           {dayInspections.slice(0, 3).map((i) => (
                             <div key={i.id} style={{ fontSize: '0.7rem', padding: '2px 4px', background: '#dbeafe', color: '#1e40af', borderRadius: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={`${i.address} - ${i.inspection_type}`}>
                               {i.address} - {i.inspection_type}
                             </div>
                           ))}
-                          {dayInspections.length > 3 && <div style={{ fontSize: '0.65rem', color: '#6b7280' }}>+{dayInspections.length - 3} more</div>}
+                          {dayInspections.length > 3 && <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{dayInspections.length - 3} more</div>}
                         </div>
                       </div>
                     )
@@ -409,19 +409,19 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
           const dateStr = inspectionsSelectedDay.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
           return (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 60 }} onClick={() => setInspectionsSelectedDay(null)}>
-              <div style={{ background: 'white', borderRadius: 8, padding: '1.5rem', maxWidth: 400, width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ background: 'var(--surface)', borderRadius: 8, padding: '1.5rem', maxWidth: 400, width: '90%', maxHeight: '80vh', overflow: 'auto', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }} onClick={(e) => e.stopPropagation()}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 style={{ margin: 0, fontSize: '1.125rem' }}>{dateStr}</h3>
-                  <button type="button" onClick={() => setInspectionsSelectedDay(null)} style={{ padding: '0.25rem 0.5rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Close</button>
+                  <button type="button" onClick={() => setInspectionsSelectedDay(null)} style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>Close</button>
                 </div>
                 {dayInspections.length === 0 ? (
-                  <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>No inspections on this day.</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No inspections on this day.</p>
                 ) : (
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {dayInspections.map((i) => (
-                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4 }}>
+                      <li key={i.id} style={{ marginBottom: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--bg-blue-tint)', border: '1px solid #bfdbfe', borderRadius: 4 }}>
                         <div style={{ fontWeight: 500 }}>{i.address}</div>
-                        <div style={{ fontSize: '0.875rem', color: '#4b5563' }}>{i.inspection_type}</div>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-600)' }}>{i.inspection_type}</div>
                       </li>
                     ))}
                   </ul>
@@ -432,20 +432,20 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
         })()}
         {inspectionTypesModalOpen && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 400, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
               {inspectionTypeFormOpen ? (
                 <>
                   <h3 style={{ margin: '0 0 1rem 0' }}>{editingInspectionTypeName ? 'Edit inspection type' : 'Add inspection type'}</h3>
                   <form onSubmit={saveInspectionType}>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Name *</label>
-                      <input type="text" value={newInspectionTypeName} onChange={(e) => setNewInspectionTypeName(e.target.value)} required placeholder="e.g. Plumbing Rough-In" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="text" value={newInspectionTypeName} onChange={(e) => setNewInspectionTypeName(e.target.value)} required placeholder="e.g. Plumbing Rough-In" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button type="button" onClick={closeInspectionTypeForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                        <button type="button" onClick={closeInspectionTypeForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                         {editingInspectionTypeName && (
-                          <button type="button" onClick={() => deleteInspectionType(editingInspectionTypeName)} disabled={!!inspectionTypeDeletingName} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: inspectionTypeDeletingName ? 'not-allowed' : 'pointer' }}>{inspectionTypeDeletingName === editingInspectionTypeName ? '…' : 'Delete'}</button>
+                          <button type="button" onClick={() => deleteInspectionType(editingInspectionTypeName)} disabled={!!inspectionTypeDeletingName} style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: 'none', borderRadius: 4, cursor: inspectionTypeDeletingName ? 'not-allowed' : 'pointer' }}>{inspectionTypeDeletingName === editingInspectionTypeName ? '…' : 'Delete'}</button>
                         )}
                       </div>
                       <button type="submit" disabled={inspectionTypeSaving || !newInspectionTypeName.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: inspectionTypeSaving ? 'not-allowed' : 'pointer' }}>{inspectionTypeSaving ? 'Saving…' : 'Save'}</button>
@@ -456,19 +456,19 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0 }}>Inspection Types</h3>
-                    <button type="button" onClick={() => setInspectionTypesModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+                    <button type="button" onClick={() => setInspectionTypesModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
                   </div>
                   <button type="button" onClick={openAddInspectionType} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add type</button>
                   {inspectionTypesLoading ? (
-                    <p style={{ color: '#6b7280' }}>Loading…</p>
+                    <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
                   ) : inspectionTypesList.length === 0 ? (
-                    <p style={{ color: '#6b7280' }}>No inspection types yet.</p>
+                    <p style={{ color: 'var(--text-muted)' }}>No inspection types yet.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {inspectionTypesList.map((t) => (
-                        <li key={t.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                        <li key={t.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
                           <span>{t.name}</span>
-                          <button type="button" onClick={() => openEditInspectionType(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
+                          <button type="button" onClick={() => openEditInspectionType(t)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
                         </li>
                       ))}
                     </ul>
@@ -480,24 +480,24 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
         )}
         {quickLinksModalOpen && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
+            <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: 480, width: '90%', maxHeight: '90vh', overflow: 'auto' }}>
               {quickLinkFormOpen ? (
                 <>
                   <h3 style={{ margin: '0 0 1rem 0' }}>{editingQuickLinkId ? 'Edit quick link' : 'Add quick link'}</h3>
                   <form onSubmit={saveQuickLink}>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>Label *</label>
-                      <input type="text" value={newQuickLinkLabel} onChange={(e) => setNewQuickLinkLabel(e.target.value)} required placeholder="e.g. City of New Braunfels" style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="text" value={newQuickLinkLabel} onChange={(e) => setNewQuickLinkLabel(e.target.value)} required placeholder="e.g. City of New Braunfels" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>URL *</label>
-                      <input type="url" value={newQuickLinkUrl} onChange={(e) => setNewQuickLinkUrl(e.target.value)} required placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }} />
+                      <input type="url" value={newQuickLinkUrl} onChange={(e) => setNewQuickLinkUrl(e.target.value)} required placeholder="https://..." style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
                     </div>
                     <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'space-between', flexWrap: 'wrap' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button type="button" onClick={closeQuickLinkForm} style={{ padding: '0.5rem 1rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+                        <button type="button" onClick={closeQuickLinkForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
                         {editingQuickLinkId && (
-                          <button type="button" onClick={() => deleteQuickLink(editingQuickLinkId)} disabled={!!quickLinkDeletingId} style={{ padding: '0.5rem 1rem', background: '#fee2e2', color: '#991b1b', border: 'none', borderRadius: 4, cursor: quickLinkDeletingId ? 'not-allowed' : 'pointer' }}>{quickLinkDeletingId === editingQuickLinkId ? '…' : 'Delete'}</button>
+                          <button type="button" onClick={() => deleteQuickLink(editingQuickLinkId)} disabled={!!quickLinkDeletingId} style={{ padding: '0.5rem 1rem', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: 'none', borderRadius: 4, cursor: quickLinkDeletingId ? 'not-allowed' : 'pointer' }}>{quickLinkDeletingId === editingQuickLinkId ? '…' : 'Delete'}</button>
                         )}
                       </div>
                       <button type="submit" disabled={quickLinkSaving || !newQuickLinkLabel.trim() || !newQuickLinkUrl.trim()} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: quickLinkSaving ? 'not-allowed' : 'pointer' }}>{quickLinkSaving ? 'Saving…' : 'Save'}</button>
@@ -508,19 +508,19 @@ export default function JobsInspectionsTab({ authUserId, error, onError }: JobsI
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                     <h3 style={{ margin: 0 }}>Quick Inspection Links</h3>
-                    <button type="button" onClick={() => setQuickLinksModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: '#6b7280' }} aria-label="Close">×</button>
+                    <button type="button" onClick={() => setQuickLinksModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
                   </div>
                   <button type="button" onClick={openAddQuickLink} style={{ width: '100%', marginBottom: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Add link</button>
                   {quickLinksLoading ? (
-                    <p style={{ color: '#6b7280' }}>Loading…</p>
+                    <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
                   ) : quickLinksList.length === 0 ? (
-                    <p style={{ color: '#6b7280' }}>No quick links yet.</p>
+                    <p style={{ color: 'var(--text-muted)' }}>No quick links yet.</p>
                   ) : (
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                       {quickLinksList.map((link) => (
-                        <li key={link.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #e5e7eb' }}>
+                        <li key={link.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
                           <span>{link.label}</span>
-                          <button type="button" onClick={() => openEditQuickLink(link)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#f3f4f6', border: '1px solid #d1d5db', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
+                          <button type="button" onClick={() => openEditQuickLink(link)} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Edit</button>
                         </li>
                       ))}
                     </ul>

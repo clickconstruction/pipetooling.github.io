@@ -100,7 +100,7 @@ export default function UnwindStripeOobPaymentModal({
     >
       <div
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           borderRadius: 8,
           maxWidth: 440,
           width: '100%',
@@ -114,12 +114,12 @@ export default function UnwindStripeOobPaymentModal({
         <h2 id="unwind-oob-title" style={{ margin: '0 0 0.75rem', fontSize: '1.125rem', fontWeight: 600 }}>
           Undo out-of-band payment?
         </h2>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#374151', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
           This issues a <strong>credit note</strong> in Stripe for the PipeTooling-recorded out-of-band close, then
           moves the invoice back to <strong>Billed</strong> and removes the linked payment in PipeTooling. Only use
           when the customer did not actually pay or the close was a mistake.
         </p>
-        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+        <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
           Invoice amount:{' '}
           <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
             ${amt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -137,14 +137,14 @@ export default function UnwindStripeOobPaymentModal({
             width: '100%',
             boxSizing: 'border-box',
             padding: '0.5rem',
-            border: '1px solid #d1d5db',
+            border: '1px solid var(--border-strong)',
             borderRadius: 6,
             fontSize: '0.875rem',
             marginBottom: '0.75rem',
           }}
         />
         {error ? (
-          <div style={{ color: '#b91c1c', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</div>
+          <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', marginBottom: '0.75rem' }}>{error}</div>
         ) : null}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
           <button
@@ -153,8 +153,8 @@ export default function UnwindStripeOobPaymentModal({
             disabled={submitting}
             style={{
               padding: '0.5rem 1rem',
-              background: '#f3f4f6',
-              border: '1px solid #d1d5db',
+              background: 'var(--bg-muted)',
+              border: '1px solid var(--border-strong)',
               borderRadius: 6,
               cursor: submitting ? 'not-allowed' : 'pointer',
               fontSize: '0.875rem',

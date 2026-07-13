@@ -29,7 +29,7 @@ type SortKey = 'name' | 'hours' | 'laborCost' | 'billing' | 'profit' | 'rate'
 
 const thBase: CSSProperties = {
   padding: '0.75rem',
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--border)',
   cursor: 'pointer',
   userSelect: 'none',
   whiteSpace: 'nowrap',
@@ -173,7 +173,7 @@ export default function JobsCrewPnlTab({
         <select
           value={preset}
           onChange={(e) => setPreset(e.target.value as CrewPnlRangePreset | 'custom')}
-          style={{ padding: '0.45rem 0.6rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+          style={{ padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
           aria-label="Date range"
         >
           <option value="all">All time</option>
@@ -189,15 +189,15 @@ export default function JobsCrewPnlTab({
               type="date"
               value={customStart}
               onChange={(e) => setCustomStart(e.target.value)}
-              style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+              style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               aria-label="From date"
             />
-            <span style={{ color: '#6b7280', fontSize: '0.875rem' }}>–</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>–</span>
             <input
               type="date"
               value={customEnd}
               onChange={(e) => setCustomEnd(e.target.value)}
-              style={{ padding: '0.4rem 0.5rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+              style={{ padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
               aria-label="To date"
             />
           </>
@@ -207,19 +207,19 @@ export default function JobsCrewPnlTab({
           placeholder="Search person…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: 1, minWidth: 160, padding: '0.45rem 0.6rem', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.875rem' }}
+          style={{ flex: 1, minWidth: 160, padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.875rem' }}
         />
       </div>
 
       {isLoading ? (
-        <p style={{ color: '#6b7280' }}>Loading crew P&L…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading crew P&L…</p>
       ) : !summary || summary.rows.length === 0 ? (
-        <p style={{ color: '#6b7280' }}>No labor or billing activity in this range.</p>
+        <p style={{ color: 'var(--text-muted)' }}>No labor or billing activity in this range.</p>
       ) : (
         <>
-          <div style={{ border: '1px solid #e5e7eb', borderRadius: 4, overflow: 'auto' }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 4, overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-              <thead style={{ background: '#f9fafb' }}>
+              <thead style={{ background: 'var(--bg-subtle)' }}>
                 <tr>
                   <th style={{ ...thBase, textAlign: 'left' }} onClick={() => toggleSort('name')} aria-sort={sortKey === 'name' ? (sortAsc ? 'ascending' : 'descending') : undefined}>
                     Person{sortMark('name')}
@@ -261,12 +261,12 @@ export default function JobsCrewPnlTab({
                     />
                   )
                 })}
-                <tr style={{ borderTop: '1px solid #e5e7eb', fontWeight: 600, background: '#f9fafb' }}>
+                <tr style={{ borderTop: '1px solid var(--border)', fontWeight: 600, background: 'var(--bg-subtle)' }}>
                   <td style={{ padding: '0.75rem' }}>Total</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatDecimalWorkHoursToHhMm(summary.totals.hours)}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.laborCost)}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.billing)}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', color: summary.totals.profit >= 0 ? '#15803d' : '#b91c1c' }}>
+                  <td style={{ padding: '0.75rem', textAlign: 'right', color: summary.totals.profit >= 0 ? '#15803d' : 'var(--text-red-700)' }}>
                     {summary.totals.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(summary.totals.profit))}
                   </td>
                   <td style={{ padding: '0.75rem' }} />
@@ -274,7 +274,7 @@ export default function JobsCrewPnlTab({
               </tbody>
             </table>
           </div>
-          <p style={{ color: '#9ca3af', fontSize: '0.6875rem', margin: '0.5rem 0 0' }}>
+          <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.5rem 0 0' }}>
             Billing credit is weighted by clocked crew hours (job total × person's share of the
             job's hours). ≈ marks equal-split estimates for jobs with no clocked hours. Sub-sheet
             labor is split evenly across its assigned names. The date range filters work dates;
@@ -305,12 +305,12 @@ function CrewPnlRow({
         aria-expanded={expanded}
       >
         <td style={{ padding: '0.75rem' }}>
-          <span style={{ color: '#9ca3af', marginRight: '0.4rem' }}>{expanded ? '▾' : '▸'}</span>
+          <span style={{ color: 'var(--text-faint)', marginRight: '0.4rem' }}>{expanded ? '▾' : '▸'}</span>
           {row.displayName}
           {row.unmatched && (
             <span
               title="Not matched to a roster person — name appears only in free-text fields"
-              style={{ marginLeft: '0.4rem', fontSize: '0.6875rem', color: '#b45309' }}
+              style={{ marginLeft: '0.4rem', fontSize: '0.6875rem', color: 'var(--text-amber-700)' }}
             >
               unmatched
             </span>
@@ -329,7 +329,7 @@ function CrewPnlRow({
           {row.billing > 0 ? `${row.hasEstimatedBilling ? '≈ ' : ''}$${formatCurrency(row.billing)}` : '—'}
         </td>
         <td
-          style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: row.profit >= 0 ? '#15803d' : '#b91c1c' }}
+          style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: row.profit >= 0 ? '#15803d' : 'var(--text-red-700)' }}
         >
           {row.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(row.profit))}
         </td>
@@ -339,10 +339,10 @@ function CrewPnlRow({
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={6} style={{ padding: '0.25rem 0.75rem 0.75rem 2rem', background: '#fafafa', borderBottom: '1px solid #e5e7eb' }}>
+          <td colSpan={6} style={{ padding: '0.25rem 0.75rem 0.75rem 2rem', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
-                <tr style={{ color: '#6b7280' }}>
+                <tr style={{ color: 'var(--text-muted)' }}>
                   <th style={{ textAlign: 'left', padding: '0.35rem 0.5rem' }}>Job</th>
                   <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem' }}>Hours</th>
                   <th style={{ textAlign: 'right', padding: '0.35rem 0.5rem' }}>Labor cost</th>
@@ -360,7 +360,7 @@ function CrewPnlRow({
                             e.stopPropagation()
                             onOpenJobDetail(line.jobId as string)
                           }}
-                          style={{ border: 'none', background: 'transparent', color: '#1d4ed8', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline' }}
+                          style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline' }}
                         >
                           {line.label}
                         </button>
@@ -368,12 +368,12 @@ function CrewPnlRow({
                         line.label
                       )}
                       {line.estimated && (
-                        <span title="Equal-split estimate: no clocked crew hours on this job" style={{ marginLeft: '0.35rem', color: '#b45309' }}>
+                        <span title="Equal-split estimate: no clocked crew hours on this job" style={{ marginLeft: '0.35rem', color: 'var(--text-amber-700)' }}>
                           ≈
                         </span>
                       )}
                       {line.kind === 'sub' && (
-                        <span style={{ marginLeft: '0.35rem', fontSize: '0.6875rem', color: '#6b7280' }}>sub labor</span>
+                        <span style={{ marginLeft: '0.35rem', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>sub labor</span>
                       )}
                     </td>
                     <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>

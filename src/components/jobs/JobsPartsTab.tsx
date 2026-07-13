@@ -77,7 +77,7 @@ export default function JobsPartsTab({
 
   return (
     <div>
-      {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+      {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
       <div
         style={{
           marginBottom: '0.75rem',
@@ -100,7 +100,7 @@ export default function JobsPartsTab({
               minWidth: 200,
               maxWidth: '100%',
               padding: '0.5rem 0.75rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               fontSize: '0.875rem',
             }}
@@ -127,9 +127,9 @@ export default function JobsPartsTab({
             fontWeight: 500,
             padding: '0.4rem 0.75rem',
             borderRadius: 4,
-            border: `1px solid ${allJobsUnattributedOpen ? '#2563eb' : '#d1d5db'}`,
-            background: allJobsUnattributedOpen ? '#eff6ff' : 'white',
-            color: allJobsUnattributedOpen ? '#1d4ed8' : '#374151',
+            border: `1px solid ${allJobsUnattributedOpen ? '#2563eb' : 'var(--border-strong)'}`,
+            background: allJobsUnattributedOpen ? 'var(--bg-blue-tint)' : 'var(--surface)',
+            color: allJobsUnattributedOpen ? 'var(--text-blue-700)' : 'var(--text-700)',
             cursor: 'pointer',
             flexShrink: 0,
             marginLeft: 'auto',
@@ -139,21 +139,21 @@ export default function JobsPartsTab({
         </button>
       </div>
       {tallyPartsLoading ? (
-        <p style={{ color: '#6b7280' }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)' }}>Loading…</p>
       ) : (
-        <div style={{ overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+        <div style={{ overflowX: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-            <thead style={{ background: '#f9fafb' }}>
+            <thead style={{ background: 'var(--bg-subtle)' }}>
               <tr>
-                <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid #e5e7eb' }}></th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>HCP</th>
-                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Job</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts from Tally</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Other job charges</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Invoices from Supply Houses</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Card charges</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Total Parts Cost</th>
-                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Parts</th>
+                <th style={{ padding: '0.75rem', width: 32, borderBottom: '1px solid var(--border)' }}></th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>HCP</th>
+                <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Job</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Parts from Tally</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Other job charges</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Invoices from Supply Houses</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Card charges</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Total Parts Cost</th>
+                <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Parts</th>
               </tr>
             </thead>
             <tbody>
@@ -243,7 +243,7 @@ export default function JobsPartsTab({
                 if (jobRows.length === 0) {
                   return (
                     <tr>
-                      <td colSpan={9} style={{ padding: '1rem', color: '#6b7280', textAlign: 'center' }}>
+                      <td colSpan={9} style={{ padding: '1rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                         No tally parts yet. Subs can record parts via the Job Parts Tally flow on the Dashboard.
                       </td>
                     </tr>
@@ -278,7 +278,7 @@ export default function JobsPartsTab({
                       style={{
                         borderBottom: '1px solid #f3f4f6',
                         cursor: 'pointer',
-                        background: hasUnpricedFixture ? '#fef2f2' : expanded ? '#f9fafb' : undefined,
+                        background: hasUnpricedFixture ? '#fef2f2' : expanded ? 'var(--bg-subtle)' : undefined,
                       }}
                       onClick={toggle}
                     >
@@ -299,7 +299,7 @@ export default function JobsPartsTab({
                     ...(expanded
                       ? [
                           <tr key={`${jobId}-parts`}>
-                            <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid #e5e7eb', background: '#fff', verticalAlign: 'top' }}>
+                            <td colSpan={9} style={{ padding: 0, borderBottom: '1px solid var(--border)', background: 'var(--surface)', verticalAlign: 'top' }}>
                               {(() => {
                                 const invAmt = invoiceAmountByJob[jobId] ?? 0
                                 const needMercury = cardCharges > 0
@@ -307,9 +307,9 @@ export default function JobsPartsTab({
                                 if (cardBreakdownNotReady) {
                                   return (
                                     <div
-                                      style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                                      style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)' }}
                                     >
-                                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+                                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                                         Loading card breakdown…
                                       </p>
                                     </div>
@@ -328,7 +328,7 @@ export default function JobsPartsTab({
                                 if (partsTotal + billedMaterialsSum + invAmt + cardCharges <= 0) return null
                                 return (
                                   <div
-                                    style={{ padding: '0.75rem', borderBottom: '1px solid #e5e7eb' }}
+                                    style={{ padding: '0.75rem', borderBottom: '1px solid var(--border)' }}
                                     onClick={(e) => e.stopPropagation()}
                                   >
                                     <div
@@ -336,7 +336,7 @@ export default function JobsPartsTab({
                                         fontWeight: 600,
                                         fontSize: '0.8125rem',
                                         marginBottom: '0.5rem',
-                                        color: '#111827',
+                                        color: 'var(--text-strong)',
                                       }}
                                     >
                                       Cost by person
@@ -351,7 +351,7 @@ export default function JobsPartsTab({
                                         }}
                                       >
                                         <thead>
-                                          <tr style={{ background: '#f3f4f6' }}>
+                                          <tr style={{ background: 'var(--bg-muted)' }}>
                                             <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Person</th>
                                             <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Parts from Tally</th>
                                             <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Other job charges</th>
@@ -370,7 +370,7 @@ export default function JobsPartsTab({
                                             return (
                                               <tr
                                                 key={row.key}
-                                                style={{ borderTop: '1px solid #e5e7eb' }}
+                                                style={{ borderTop: '1px solid var(--border)' }}
                                               >
                                                 <td style={{ padding: '0.35rem 0.5rem' }}>
                                                   {row.displayName === 'Unattributed' &&
@@ -389,7 +389,7 @@ export default function JobsPartsTab({
                                                         padding: 0,
                                                         margin: 0,
                                                         font: 'inherit',
-                                                        color: '#2563eb',
+                                                        color: 'var(--text-link)',
                                                         cursor: 'pointer',
                                                         textDecoration: 'underline',
                                                         textUnderlineOffset: '2px',
@@ -400,7 +400,7 @@ export default function JobsPartsTab({
                                                   ) : row.displayName === 'Unattributed' && row.cardCharges > 0 ? (
                                                     <span>
                                                       Unattributed{' '}
-                                                      <span style={{ color: '#9ca3af', fontSize: '0.7rem' }}>
+                                                      <span style={{ color: 'var(--text-faint)', fontSize: '0.7rem' }}>
                                                         (set on Banking)
                                                       </span>
                                                     </span>
@@ -428,9 +428,9 @@ export default function JobsPartsTab({
                                           })}
                                           <tr
                                             style={{
-                                              borderTop: '1px solid #e5e7eb',
+                                              borderTop: '1px solid var(--border)',
                                               fontWeight: 600,
-                                              background: '#f9fafb',
+                                              background: 'var(--bg-subtle)',
                                             }}
                                           >
                                             <td style={{ padding: '0.35rem 0.5rem' }}>Total</td>
@@ -463,7 +463,7 @@ export default function JobsPartsTab({
                                       style={{
                                         margin: '0.5rem 0 0 0',
                                         fontSize: '0.7rem',
-                                        color: '#6b7280',
+                                        color: 'var(--text-muted)',
                                         lineHeight: 1.4,
                                         maxWidth: 880,
                                       }}
@@ -471,7 +471,7 @@ export default function JobsPartsTab({
                                       {`"Other job charges" and "Invoices from Supply Houses" are job-level in the data model (not split by who entered them). Card lines use the same Banking attribution you set on the Mercury transaction. Unattributed card amounts show under Unattributed.`}
                                     </p>
                                     {!pSumsOk && (
-                                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.7rem', color: '#b45309' }}>
+                                      <p style={{ margin: '0.35rem 0 0 0', fontSize: '0.7rem', color: 'var(--text-amber-700)' }}>
                                         These totals do not match the main row. Try refreshing, or check Mercury access.
                                       </p>
                                     )}
@@ -481,7 +481,7 @@ export default function JobsPartsTab({
                               {parts.length > 0 && (
                               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                 <thead>
-                                  <tr style={{ background: '#f3f4f6' }}>
+                                  <tr style={{ background: 'var(--bg-muted)' }}>
                                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Fixture</th>
                                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Part</th>
                                     <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Qty</th>
@@ -494,7 +494,7 @@ export default function JobsPartsTab({
                                 </thead>
                                 <tbody>
                                   {parts.map((r) => (
-                                    <tr key={r.id} style={{ borderTop: '1px solid #e5e7eb' }} onClick={(e) => e.stopPropagation()}>
+                                    <tr key={r.id} style={{ borderTop: '1px solid var(--border)' }} onClick={(e) => e.stopPropagation()}>
                                       <td style={{ padding: '0.5rem 0.75rem' }}>{r.fixture_name || '—'}</td>
                                       <td style={{ padding: '0.5rem 0.75rem' }}>
                                         {r.part_id == null ? (
@@ -527,7 +527,7 @@ export default function JobsPartsTab({
                                               width: 80,
                                               padding: '0.25rem 0.5rem',
                                               fontSize: '0.8125rem',
-                                              border: '1px solid #d1d5db',
+                                              border: '1px solid var(--border-strong)',
                                               borderRadius: 4,
                                             }}
                                           />
@@ -540,7 +540,7 @@ export default function JobsPartsTab({
                                               border: 'none',
                                               padding: 0,
                                               cursor: 'pointer',
-                                              color: '#2563eb',
+                                              color: 'var(--text-link)',
                                               textDecoration: 'underline',
                                               fontSize: 'inherit',
                                             }}
@@ -566,8 +566,8 @@ export default function JobsPartsTab({
                                           style={{
                                             padding: '0.25rem 0.5rem',
                                             fontSize: '0.75rem',
-                                            background: '#fee2e2',
-                                            color: '#991b1b',
+                                            background: 'var(--bg-red-100)',
+                                            color: 'var(--text-red-800)',
                                             border: 'none',
                                             borderRadius: 4,
                                             cursor: deletingTallyPartId === r.id ? 'not-allowed' : 'pointer',
@@ -582,11 +582,11 @@ export default function JobsPartsTab({
                               </table>
                               )}
                               {job && job.materials.length > 0 && (
-                                <div style={{ padding: '0.75rem', borderTop: '1px solid #e5e7eb', background: '#f9fafb' }}>
+                                <div style={{ padding: '0.75rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
                                   <div style={{ fontWeight: 500, fontSize: '0.8125rem', marginBottom: '0.5rem' }}>Other job charges</div>
                                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                                     <thead>
-                                      <tr style={{ background: '#f3f4f6' }}>
+                                      <tr style={{ background: 'var(--bg-muted)' }}>
                                         <th style={{ padding: '0.35rem 0.5rem', textAlign: 'left' }}>Description</th>
                                         <th style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>Amount ($)</th>
                                       </tr>
@@ -595,7 +595,7 @@ export default function JobsPartsTab({
                                       {job.materials
                                         .filter((m) => (m.description ?? '').trim() || Number(m.amount) !== 0)
                                         .map((m) => (
-                                          <tr key={m.id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                                          <tr key={m.id} style={{ borderTop: '1px solid var(--border)' }}>
                                             <td style={{ padding: '0.35rem 0.5rem' }}>{m.description?.trim() || 'Item'}</td>
                                             <td style={{ padding: '0.35rem 0.5rem', textAlign: 'right' }}>{formatCurrency(Number(m.amount ?? 0))}</td>
                                           </tr>

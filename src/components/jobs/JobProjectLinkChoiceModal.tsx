@@ -72,9 +72,9 @@ export default function JobProjectLinkChoiceModal({
     fontSize: '0.9375rem',
     fontWeight: 500,
     borderRadius: 6,
-    border: '1px solid #d1d5db',
-    background: 'white',
-    color: '#111827',
+    border: '1px solid var(--border-strong)',
+    background: 'var(--surface)',
+    color: 'var(--text-strong)',
     cursor: 'pointer',
     textAlign: 'left' as const,
   }
@@ -98,7 +98,7 @@ export default function JobProjectLinkChoiceModal({
         aria-modal="true"
         aria-labelledby="job-project-link-choice-title"
         style={{
-          background: 'white',
+          background: 'var(--surface)',
           padding: '1.25rem 1.5rem',
           borderRadius: 8,
           width: '100%',
@@ -115,7 +115,7 @@ export default function JobProjectLinkChoiceModal({
         </h2>
         {!linkStep ? (
           <>
-            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+            <p style={{ margin: '0 0 1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Create a new project or link to one that already exists.
             </p>
             <button type="button" onClick={onCreateNew} style={choiceButtonStyle}>
@@ -134,8 +134,8 @@ export default function JobProjectLinkChoiceModal({
               style={{
                 padding: '0.5rem 0.75rem',
                 alignSelf: 'flex-start',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: '0.875rem',
@@ -155,7 +155,7 @@ export default function JobProjectLinkChoiceModal({
                 padding: 0,
                 border: 'none',
                 background: 'none',
-                color: '#2563eb',
+                color: 'var(--text-link)',
                 cursor: 'pointer',
                 fontSize: '0.875rem',
               }}
@@ -185,7 +185,7 @@ export default function JobProjectLinkChoiceModal({
                 width: '100%',
                 padding: '0.5rem 0.625rem',
                 marginBottom: '0.75rem',
-                border: '1px solid #d1d5db',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 fontSize: '0.875rem',
                 boxSizing: 'border-box',
@@ -193,7 +193,7 @@ export default function JobProjectLinkChoiceModal({
             />
             <div
               style={{
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--border)',
                 borderRadius: 6,
                 maxHeight: 240,
                 overflowY: 'auto',
@@ -201,7 +201,7 @@ export default function JobProjectLinkChoiceModal({
               }}
             >
               {filteredProjects.length === 0 ? (
-                <div style={{ padding: '1rem', fontSize: '0.875rem', color: '#6b7280' }}>
+                <div style={{ padding: '1rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
                   {scopedProjects.length === 0 && customerId && !showAllProjects ? (
                     <>
                       No projects for this customer yet. Try <strong>Show all projects</strong> or create a new project.
@@ -222,21 +222,21 @@ export default function JobProjectLinkChoiceModal({
                       padding: '0.6rem 0.75rem',
                       border: 'none',
                       borderBottom: '1px solid #f3f4f6',
-                      background: 'white',
+                      background: 'var(--surface)',
                       cursor: 'pointer',
                       textAlign: 'left',
                       fontSize: '0.875rem',
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = '#f9fafb'
+                      e.currentTarget.style.background = 'var(--bg-subtle)'
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'white'
+                      e.currentTarget.style.background = 'var(--surface)'
                     }}
                   >
                     <div style={{ fontWeight: 500 }}>{p.name}</div>
                     {p.customers?.name ? (
-                      <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>{p.customers.name}</div>
+                      <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: 2 }}>{p.customers.name}</div>
                     ) : null}
                   </button>
                 ))
@@ -249,8 +249,8 @@ export default function JobProjectLinkChoiceModal({
                 marginTop: '1rem',
                 padding: '0.5rem 0.75rem',
                 alignSelf: 'flex-start',
-                background: '#f3f4f6',
-                border: '1px solid #d1d5db',
+                background: 'var(--bg-muted)',
+                border: '1px solid var(--border-strong)',
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: '0.875rem',

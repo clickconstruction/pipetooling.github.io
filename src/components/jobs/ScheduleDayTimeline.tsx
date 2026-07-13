@@ -84,7 +84,7 @@ export function ScheduleDayTimeline({ segments, currentJobId, onSegmentClick }: 
       <div
         style={{
           fontSize: '0.75rem',
-          color: '#6b7280',
+          color: 'var(--text-muted)',
           marginBottom: 4,
           display: 'flex',
           justifyContent: 'space-between',
@@ -98,9 +98,9 @@ export function ScheduleDayTimeline({ segments, currentJobId, onSegmentClick }: 
         style={{
           position: 'relative',
           height: TRACK_HEIGHT_PX,
-          background: '#f3f4f6',
+          background: 'var(--bg-muted)',
           borderRadius: 6,
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--border)',
         }}
       >
         {segments.map((seg) => {
@@ -133,7 +133,7 @@ export function ScheduleDayTimeline({ segments, currentJobId, onSegmentClick }: 
             fontSize: '0.6875rem',
             fontFamily: 'inherit',
             fontWeight: 400,
-            color: '#111827',
+            color: 'var(--text-strong)',
             lineHeight: 1.15,
             cursor: interactive ? ('pointer' as const) : undefined,
           }
@@ -175,7 +175,7 @@ export function ScheduleDayTimeline({ segments, currentJobId, onSegmentClick }: 
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '0.8125rem',
-              color: '#9ca3af',
+              color: 'var(--text-faint)',
             }}
           >
             No blocks this day

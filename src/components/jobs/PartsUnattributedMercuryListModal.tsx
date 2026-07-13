@@ -25,7 +25,7 @@ const overlay: CSSProperties = {
 }
 
 const panel: CSSProperties = {
-  background: 'white',
+  background: 'var(--surface)',
   borderRadius: 8,
   maxWidth: 960,
   width: '100%',
@@ -150,21 +150,21 @@ export function PartsUnattributedMercuryListModal({
         aria-modal="true"
         aria-label={`Unattributed card lines for job ${shortJobLabel(jobId)}`}
       >
-        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2 style={{ margin: 0, fontSize: '1rem' }}>Unattributed card (this job)</h2>
             <button type="button" onClick={onRequestClose} style={{ background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer' }} aria-label="Close">×</button>
         </div>
         {loadError && (
-          <p style={{ margin: 0, padding: '0.5rem 1rem', color: '#b91c1c', fontSize: '0.875rem' }}>{loadError}</p>
+          <p style={{ margin: 0, padding: '0.5rem 1rem', color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{loadError}</p>
         )}
         <div style={{ padding: '0.75rem 1rem', overflow: 'auto', flex: 1, minHeight: 0 }}>
           {lines.length === 0 ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No unattributed card lines for this job.</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No unattributed card lines for this job.</p>
           ) : (
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
-                  <tr style={{ background: '#f3f4f6' }}>
+                  <tr style={{ background: 'var(--bg-muted)' }}>
                     <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem' }}>Posted</th>
                     <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem' }}>Card</th>
                     <th style={{ textAlign: 'left', padding: '0.4rem 0.5rem' }}>Account</th>
@@ -194,7 +194,7 @@ export function PartsUnattributedMercuryListModal({
                       ? nicknameByAccountProp[accId] ?? shortUuidPrefix(accId)
                       : '—'
                     return (
-                      <tr key={mercury_transaction_id} style={{ borderTop: '1px solid #e5e7eb' }}>
+                      <tr key={mercury_transaction_id} style={{ borderTop: '1px solid var(--border)' }}>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{posted}</td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{cardLabel}</td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{accountLabel}</td>
@@ -241,8 +241,8 @@ export function PartsUnattributedMercuryListModal({
                               padding: '4px 10px',
                               borderRadius: 6,
                               border: '1px solid #e2e8f0',
-                              background: '#fff',
-                              color: '#2563eb',
+                              background: 'var(--surface)',
+                              color: 'var(--text-link)',
                               cursor: rowBusy ? 'wait' : 'pointer',
                             }}
                           >
