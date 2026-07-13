@@ -358,7 +358,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                   }}
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: searchMode === 'last' ? '2px solid #3b82f6' : '1px solid var(--border-strong)', background: searchMode === 'last' ? 'var(--bg-blue-tint)' : 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}
                 >
-                  Same as last report
+                  Same as last report:{' '}
+                  {lastReportJob.display_name}
+                  {lastReportJob.hcp_number
+                    ? lastReportJob.source === 'bid'
+                      ? ` (Bid #${lastReportJob.hcp_number})`
+                      : ` (HCP: ${lastReportJob.hcp_number})`
+                    : ''}
                 </button>
               )}
             </div>
@@ -374,37 +380,28 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                 {selectedJob.address && <div style={{ marginTop: '0.25rem', color: 'var(--text-600)', fontSize: '0.875rem' }}>{selectedJob.address}</div>}
               </div>
             )}
-            {lastReportJob && (
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                recent report location:{' '}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSearchMode('last')
-                    setSelectedJob(lastReportJob)
-                    setSearchResults([])
-                    setJobSearchText('')
-                  }}
-                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit' }}
-                >
-                  {lastReportJob.display_name}
-                  {lastReportJob.hcp_number
-                    ? lastReportJob.source === 'bid'
-                      ? ` (Bid #${lastReportJob.hcp_number})`
-                      : ` (HCP: ${lastReportJob.hcp_number})`
-                    : ''}
-                </button>
-              </p>
-            )}
             <input
               type="text"
               value={jobSearchText}
               onChange={(e) => { setJobSearchText(e.target.value); setSearchMode('search'); setSelectedJob(null) }}
               placeholder="Search job HCP, project, bid #, or address"
-              style={{ width: '100%', padding: '0.5rem', marginBottom: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
+              style={{
+                width: '100%',
+                padding: '0.5rem',
+                border: '1px solid var(--border-strong)',
+                // Attach the results panel below like a combobox when it is open.
+                ...(searchMode === 'search' && searchResults.length > 0
+                  ? { marginBottom: 0, borderRadius: '4px 4px 0 0' }
+                  : { marginBottom: '0.5rem', borderRadius: 4 }),
+              }}
             />
             {searchMode === 'search' && searchResults.length > 0 && (
-              <div style={{ maxHeight: 160, overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
+              <div style={{ maxHeight: 200, overflow: 'auto', border: '1px solid var(--border-strong)', borderTop: 'none', borderRadius: '0 0 4px 4px', marginBottom: '0.5rem' }}>
+                {jobSearchText.trim() === '' ? (
+                  <div style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+                    Suggested · recent jobs & bids — type to search
+                  </div>
+                ) : null}
                 {searchResults.map((r) => (
                   <button
                     key={`${r.source}-${r.id}`}
