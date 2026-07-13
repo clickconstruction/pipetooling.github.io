@@ -8367,7 +8367,7 @@ export default function Dashboard() {
         </div>
       )}
       
-      {showSubscribed && (
+      {showSubscribed && (subscribedLoading || subscribedSteps.length > 0) && (
         <div style={{ marginTop: '2rem' }}>
           <button
             type="button"
