@@ -54,7 +54,6 @@ import { impersonationExitDisplayLabel, impersonationExitTitle } from '../lib/im
 import { IMPERSONATION_CHROME_BUTTON_STYLE } from '../lib/impersonationSession'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
-  color: 'var(--header-link)',
   fontWeight: isActive ? 600 : undefined,
   textDecoration: isActive ? 'underline' : undefined,
 })
