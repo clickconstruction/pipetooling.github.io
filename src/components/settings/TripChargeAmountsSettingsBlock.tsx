@@ -63,7 +63,7 @@ export default function TripChargeAmountsSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         aria-expanded={open}
@@ -93,13 +93,13 @@ export default function TripChargeAmountsSettingsBlock() {
         Turnaway Trip Charges (dev)
       </button>
       {open && (
-        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+          <p style={{ marginBottom: '1rem', marginTop: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Default amounts pre-filled in the Dispatch inbox “Create trip charge” modal when a tech
             files a Turnaway. Leave blank for no default (the office types the amount each time).
           </p>
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : (
             <form onSubmit={handleSave} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
               {FIELDS.map((f) => (
@@ -112,7 +112,7 @@ export default function TripChargeAmountsSettingsBlock() {
                     value={values[f.key] ?? ''}
                     onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
                     placeholder="e.g. 95"
-                    style={{ width: 120, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4 }}
+                    style={{ width: 120, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4 }}
                   />
                 </label>
               ))}

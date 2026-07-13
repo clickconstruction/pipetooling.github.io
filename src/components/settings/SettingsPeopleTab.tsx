@@ -139,7 +139,7 @@ export default function SettingsPeopleTab({
             onOpenFindDuplicates={openFindDuplicatesModal}
           />
 
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setRoleVisibilityExpanded((prev) => !prev)}
@@ -162,33 +162,33 @@ export default function SettingsPeopleTab({
               Role visibility (what each role can see)
             </button>
             {roleVisibilityExpanded && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   Page access by role. See docs/ACCESS_CONTROL.md for full feature-level permissions.
                 </p>
                 <div style={{ overflowX: 'auto', marginBottom: '0.75rem' }}>
                   <table style={{ borderCollapse: 'collapse', fontSize: '0.875rem', minWidth: 520 }}>
                       <thead>
                       <tr>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'left', background: '#f9fafb' }}>Page</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Dev</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Master</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Assistant</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Sub</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Helper</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Estimator</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Primary</th>
-                        <th style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center', background: '#f9fafb' }}>Supt.</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'left', background: 'var(--bg-subtle)' }}>Page</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Dev</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Master</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Assistant</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Sub</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Helper</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Estimator</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Primary</th>
+                        <th style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center', background: 'var(--bg-subtle)' }}>Supt.</th>
                         </tr>
                       </thead>
                       <tbody>
                       {PAGE_ACCESS.map((row) => (
                         <tr key={row.page}>
-                          <td style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
+                          <td style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', fontWeight: 500 }}>{row.page}</td>
                           {(['dev', 'master', 'assistant', 'sub', 'helpers', 'estimator', 'primary', 'superintendent'] as const).map((role) => {
                             const val = row[role]
                             return (
-                              <td key={role} style={{ border: '1px solid #e5e7eb', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
+                              <td key={role} style={{ border: '1px solid var(--border)', padding: '0.5rem 0.75rem', textAlign: 'center' }}>
                                 {val === 'yes' ? '✓' : val === 'no' ? '✗' : val}
                               </td>
                             )
@@ -198,14 +198,14 @@ export default function SettingsPeopleTab({
                       </tbody>
                     </table>
                   </div>
-                <p style={{ margin: 0, color: '#6b7280', fontSize: '0.8125rem' }}>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
                   Redirection: Subcontractors → /dashboard; Estimators → /bids; Primary → /dashboard (Jobs: Reports tab only; Bids: Bid Board, RFI, Change Order, Lien Release; Projects hidden).
                 </p>
               </div>
             )}
           </div>
 
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setTaskDispatchSectionOpen((prev) => !prev)}
@@ -228,18 +228,18 @@ export default function SettingsPeopleTab({
               Task Dispatch group
             </button>
             {taskDispatchSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   <strong>Task Dispatch</strong> (hard-hat header button): choose which <strong>assistants</strong> and <strong>estimators</strong> receive those push notifications and see the Dispatch inbox on the Dashboard.
                   This is separate from <strong>Estimator Inbox</strong> (purple pencil button). Only Assistant or Estimator accounts can be added (enforced by the database).
                 </p>
                 {dispatchMemberIds.size === 0 && (
-                  <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.875rem' }}>
+                  <p style={{ marginBottom: '0.75rem', color: 'var(--text-amber-700)', fontSize: '0.875rem' }}>
                     No Task Dispatch members yet — nobody will receive Task Dispatch pushes until you select at least one assistant or estimator.
                   </p>
                 )}
                 {dispatchGroupError && (
-                  <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{dispatchGroupError}</p>
+                  <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{dispatchGroupError}</p>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 480 }}>
                   {users
@@ -260,24 +260,24 @@ export default function SettingsPeopleTab({
                           <span>
                             {u.name || u.email}
                             {u.email && u.name ? (
-                              <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.35rem' }}>({u.email})</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.35rem' }}>({u.email})</span>
                             ) : null}
                           </span>
                           {dispatchGroupSavingUserId === u.id && (
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Saving…</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saving…</span>
                           )}
                         </label>
                       )
                     })}
                   {users.filter((u) => u.role === 'assistant' || u.role === 'estimator').length === 0 && (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
                   )}
                 </div>
               </div>
             )}
           </div>
 
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
             <button
               type="button"
               onClick={() => setEstimatorInboxSectionOpen((prev) => !prev)}
@@ -300,18 +300,18 @@ export default function SettingsPeopleTab({
               Estimator Inbox group
             </button>
             {estimatorInboxSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
                   <strong>Estimator Inbox</strong> (purple pencil header button): choose which <strong>assistants</strong> and <strong>estimators</strong> receive those push notifications and see the Estimator inbox on the Dashboard.
                   Independent from Task Dispatch. Only Assistant or Estimator accounts can be added.
                 </p>
                 {estimatorMemberIds.size === 0 && (
-                  <p style={{ marginBottom: '0.75rem', color: '#b45309', fontSize: '0.875rem' }}>
+                  <p style={{ marginBottom: '0.75rem', color: 'var(--text-amber-700)', fontSize: '0.875rem' }}>
                     No Estimator Inbox members yet — nobody will receive Estimator Inbox pushes until you select at least one assistant or estimator.
                   </p>
                 )}
                 {estimatorGroupError && (
-                  <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{estimatorGroupError}</p>
+                  <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{estimatorGroupError}</p>
                 )}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 480 }}>
                   {users
@@ -332,23 +332,23 @@ export default function SettingsPeopleTab({
                           <span>
                             {u.name || u.email}
                             {u.email && u.name ? (
-                              <span style={{ color: '#6b7280', fontSize: '0.875rem', marginLeft: '0.35rem' }}>({u.email})</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginLeft: '0.35rem' }}>({u.email})</span>
                             ) : null}
                           </span>
                           {estimatorGroupSavingUserId === u.id && (
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Saving…</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Saving…</span>
                           )}
                         </label>
                       )
                     })}
                   {users.filter((u) => u.role === 'assistant' || u.role === 'estimator').length === 0 && (
-                    <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No assistant or estimator accounts in the system.</p>
                   )}
                 </div>
               </div>
             )}
           </div>
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
               <button
                 type="button"
               onClick={() => setPayApprovedMastersSectionOpen((prev) => !prev)}
@@ -371,13 +371,13 @@ export default function SettingsPeopleTab({
               Pay Approved Masters
               </button>
             {payApprovedMastersSectionOpen && (
-              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-                <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+              <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
                   Masters selected here can access the Pay and Hours tabs on the People page. Their assistants can enter hours in the Hours tab.
                 </p>
-                {payApprovedError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{payApprovedError}</p>}
+                {payApprovedError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{payApprovedError}</p>}
                 {payApprovedMasters.length === 0 ? (
-                  <p style={{ color: '#6b7280' }}>No masters or devs found.</p>
+                  <p style={{ color: 'var(--text-muted)' }}>No masters or devs found.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
                     {payApprovedMasters.map((m) => {
@@ -390,10 +390,10 @@ export default function SettingsPeopleTab({
                             alignItems: 'center',
                             gap: '0.5rem',
                             padding: '0.5rem',
-                            border: '1px solid #e5e7eb',
+                            border: '1px solid var(--border)',
                             borderRadius: 4,
                             cursor: payApprovedSaving ? 'not-allowed' : 'pointer',
-                            background: isApproved ? '#f0fdf4' : 'white',
+                            background: isApproved ? 'var(--bg-green-tint)' : 'var(--surface)',
                           }}
                         >
                           <input
@@ -406,16 +406,16 @@ export default function SettingsPeopleTab({
                           <span style={{ flex: 1 }}>
                             <span style={{ fontWeight: 500 }}>{m.name || m.email}</span>
                             {m.email && m.name && (
-                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                                 ({m.email})
                               </span>
                             )}
                             {m.role === 'dev' && (
-                              <span style={{ fontSize: '0.75rem', color: '#6b7280', marginLeft: '0.35rem' }}>dev</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>dev</span>
                             )}
                           </span>
                           {isApproved && (
-                            <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                               Approved
                             </span>
                           )}
@@ -430,7 +430,7 @@ export default function SettingsPeopleTab({
 
           <TeamFeedbackDevSettingsBlock />
 
-          <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+          <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
               <button
                 type="button"
               onClick={() => setAdditionalPeopleSectionOpen((prev) => !prev)}
@@ -453,16 +453,16 @@ export default function SettingsPeopleTab({
               Additional People
               </button>
             {additionalPeopleSectionOpen && (
-            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+            <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
             <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>People Created by Me</h2>
-            <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
               People entries in your roster.
             </p>
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
@@ -472,11 +472,11 @@ export default function SettingsPeopleTab({
                 </thead>
                 <tbody>
                   {myPeople.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.email ? (
-                          <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <a href={`mailto:${p.email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {p.email}
                           </a>
                         ) : (
@@ -485,7 +485,7 @@ export default function SettingsPeopleTab({
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.phone ? (
-                          <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <a href={`tel:${p.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {p.phone}
                           </a>
                         ) : (
@@ -509,9 +509,9 @@ export default function SettingsPeopleTab({
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.is_user ? (
-                          <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
+                          <span style={{ color: 'var(--text-green-600)', fontWeight: 500 }}>Has account</span>
                         ) : (
-                          <span style={{ color: '#6b7280' }}>No account</span>
+                          <span style={{ color: 'var(--text-muted)' }}>No account</span>
                         )}
                       </td>
                     </tr>
@@ -522,10 +522,10 @@ export default function SettingsPeopleTab({
             {myPeople.length === 0 && <p style={{ marginTop: '1rem' }}>No people entries created by you.</p>}
 
             <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>People Created by Other Users</h2>
-            <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+            <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
               People entries in rosters created by other users, and who created them.
             </p>
-            {error && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
             {nonUserPeople.length === 0 && allPeopleCount > 0 && (
               <p style={{ color: '#f59e0b', marginBottom: '1rem', fontSize: '0.875rem' }}>
                 Note: All {allPeopleCount} visible people entry{allPeopleCount !== 1 ? 'ies' : ''} belong to you. The RLS policy for the &apos;people&apos; table may be restricting access to other users&apos; entries. To see people created by other users, the RLS policy needs to allow owners to read all entries.
@@ -534,7 +534,7 @@ export default function SettingsPeopleTab({
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', maxWidth: 640 }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #e5e7eb', textAlign: 'left' }}>
+                  <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Name</th>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Email</th>
                     <th style={{ padding: '0.5rem 0.75rem' }}>Phone</th>
@@ -546,11 +546,11 @@ export default function SettingsPeopleTab({
                     </thead>
                     <tbody>
                   {nonUserPeople.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
                       <td style={{ padding: '0.5rem 0.75rem' }}>{p.name}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.email ? (
-                          <a href={`mailto:${p.email}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <a href={`mailto:${p.email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {p.email}
                           </a>
                         ) : (
@@ -559,7 +559,7 @@ export default function SettingsPeopleTab({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.phone ? (
-                          <a href={`tel:${p.phone}`} style={{ color: '#2563eb', textDecoration: 'underline' }}>
+                          <a href={`tel:${p.phone}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
                             {p.phone}
                           </a>
                         ) : (
@@ -583,9 +583,9 @@ export default function SettingsPeopleTab({
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
                         {p.is_user ? (
-                          <span style={{ color: '#059669', fontWeight: 500 }}>Has account</span>
+                          <span style={{ color: 'var(--text-green-600)', fontWeight: 500 }}>Has account</span>
                         ) : (
-                          <span style={{ color: '#6b7280' }}>No account</span>
+                          <span style={{ color: 'var(--text-muted)' }}>No account</span>
                         )}
                       </td>
                       <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -593,7 +593,7 @@ export default function SettingsPeopleTab({
                           <span>
                             {p.creator_name || 'Unknown'}
                             {p.creator_email && (
-                              <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.35rem' }}>
+                              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.35rem' }}>
                                 ({p.creator_email})
                               </span>
                             )}
@@ -622,7 +622,7 @@ export default function SettingsPeopleTab({
                             type="button"
                             onClick={() => deleteNonUserPerson(p)}
                             disabled={deletingPersonId === p.id}
-                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.5rem', whiteSpace: 'nowrap', background: 'var(--bg-red-100)', color: 'var(--text-red-800)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                           >
                             {deletingPersonId === p.id ? 'Deleting…' : 'Delete'}
                           </button>
@@ -635,9 +635,9 @@ export default function SettingsPeopleTab({
                 </div>
             {editingNonUserPerson && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-                <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
+                <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 400 }}>
                   <h2 style={{ marginTop: 0 }}>Edit person: {editingNonUserPerson.name}</h2>
-                  {editPersonError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{editPersonError}</p>}
+                  {editPersonError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{editPersonError}</p>}
                   <form onSubmit={saveNonUserPersonEdit}>
                     <div style={{ marginBottom: '0.75rem' }}>
                       <label style={{ display: 'block', marginBottom: 4 }}>Name *</label>

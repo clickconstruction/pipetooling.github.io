@@ -58,19 +58,19 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
       id="settings-recent-push"
       style={{
         marginBottom: '2rem',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--border)',
         borderRadius: 8,
         padding: '1rem',
-        background: '#f9fafb',
+        background: 'var(--bg-subtle)',
       }}
     >
       <h2 style={{ fontSize: '1rem', marginTop: 0, marginBottom: '1rem', fontWeight: 600 }}>Most recent push notifications</h2>
       {loading ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>Loading…</p>
       ) : error ? (
-        <p style={{ color: '#b91c1c', fontSize: '0.875rem', margin: 0 }}>{error}</p>
+        <p style={{ color: 'var(--text-red-700)', fontSize: '0.875rem', margin: 0 }}>{error}</p>
       ) : rows.length === 0 ? (
-        <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
           No push notifications have been logged for your account yet.
         </p>
       ) : (
@@ -92,19 +92,19 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
                   gap: '0.75rem',
                   flexWrap: 'wrap',
                   padding: '0.5rem 0.75rem',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--border)',
                   borderRadius: 8,
                   marginBottom: '0.5rem',
-                  background: '#fff',
+                  background: 'var(--surface)',
                 }}
               >
-                <span style={{ fontSize: '0.8125rem', color: '#6b7280', minWidth: 140, flexShrink: 0 }}>
+                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', minWidth: 140, flexShrink: 0 }}>
                   {formatNotificationDatetime(row.sent_at)}
                 </span>
                 <div style={{ flex: '1 1 12rem', minWidth: 0 }}>
                   <div style={{ fontWeight: 500 }}>{row.title}</div>
                   {(row.body_preview?.trim() || row.template_type) && (
-                    <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '0.2rem', lineHeight: 1.35 }}>
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.2rem', lineHeight: 1.35 }}>
                       {row.template_type ? <span style={{ marginRight: '0.5rem' }}>{row.template_type}</span> : null}
                       {row.body_preview?.trim() ?? ''}
                     </div>
@@ -115,8 +115,8 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
                     fontSize: '0.75rem',
                     padding: '2px 6px',
                     borderRadius: 4,
-                    background: '#f3f4f6',
-                    color: '#374151',
+                    background: 'var(--bg-muted)',
+                    color: 'var(--text-700)',
                     flexShrink: 0,
                     alignSelf: 'flex-start',
                   }}
@@ -124,7 +124,7 @@ export default function SettingsRecentPushNotifications({ userId }: Props) {
                   {channelBadge}
                 </span>
                 {link && (
-                  <Link to={link} style={{ fontSize: '0.875rem', color: '#2563eb', flexShrink: 0, alignSelf: 'flex-start' }}>
+                  <Link to={link} style={{ fontSize: '0.875rem', color: 'var(--text-link)', flexShrink: 0, alignSelf: 'flex-start' }}>
                     View →
                   </Link>
                 )}

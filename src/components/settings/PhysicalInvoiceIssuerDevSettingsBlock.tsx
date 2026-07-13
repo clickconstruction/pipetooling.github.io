@@ -38,12 +38,12 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock() {
     boxSizing: 'border-box' as const,
     padding: '0.5rem',
     fontSize: '0.875rem',
-    border: '1px solid #d1d5db',
+    border: '1px solid var(--border-strong)',
     borderRadius: 4,
   }
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -67,7 +67,7 @@ export default function PhysicalInvoiceIssuerDevSettingsBlock() {
       </button>
       {open ? (
         <div style={{ padding: '0 1rem 1rem' }}>
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Shown on detailed physical invoices (header, address block, page 2 tagline / license). Applies{' '}
             <strong>organization-wide</strong> for all signed-in users.
           </p>

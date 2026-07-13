@@ -36,7 +36,7 @@ export default function MapDefaultViewSettingsBlock() {
   }, [showToast])
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         onClick={() => {
@@ -68,17 +68,17 @@ export default function MapDefaultViewSettingsBlock() {
         <div
           style={{
             padding: '0 1rem 1rem 1rem',
-            borderTop: '1px solid #e5e7eb',
-            background: '#fafafa',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-page)',
           }}
         >
-          <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
             Org-wide default center and zoom for the <strong>Map</strong> page when there are no pins to fit. Saving
             geocodes the address once and stores coordinates in <code>app_settings</code>. Clear removes the custom
             default (map falls back to Chicago). Dev-only write; all roles can read.
           </p>
           {loading ? (
-            <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : (
             <>
               <label htmlFor="map-default-address" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>
@@ -97,7 +97,7 @@ export default function MapDefaultViewSettingsBlock() {
                   marginBottom: '0.75rem',
                   padding: '0.5rem',
                   fontSize: '0.875rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                 }}
               />
@@ -117,7 +117,7 @@ export default function MapDefaultViewSettingsBlock() {
                   marginBottom: '0.75rem',
                   padding: '0.5rem',
                   fontSize: '0.875rem',
-                  border: '1px solid #d1d5db',
+                  border: '1px solid var(--border-strong)',
                   borderRadius: 4,
                 }}
               />
@@ -176,9 +176,9 @@ export default function MapDefaultViewSettingsBlock() {
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.875rem',
                     cursor: clearing ? 'wait' : 'pointer',
-                    background: 'white',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
+                    background: 'var(--surface)',
+                    color: 'var(--text-700)',
+                    border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                   }}
                 >

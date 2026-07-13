@@ -37,7 +37,7 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
   }, [open, authRole, reloadFromStorage])
 
   return (
-    <div style={{ marginBottom: '1.5rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+    <div style={{ marginBottom: '1.5rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
@@ -63,17 +63,17 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
         <div
           style={{
             padding: '0 1rem 1rem 1rem',
-            borderTop: '1px solid #e5e7eb',
-            background: '#fafafa',
+            borderTop: '1px solid var(--border)',
+            background: 'var(--bg-page)',
           }}
         >
-          <p style={{ margin: '0 0 0.75rem', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem', lineHeight: 1.5 }}>
             These presets apply <strong>organization-wide</strong> for Bill Customer <strong>Stripe</strong> invoice
             footers (all signed-in users). Shipped defaults remain in the repo until you save overrides here.
           </p>
           <label htmlFor="stripe-footer-preset-plumbing" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>
             Plumbing
-            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               {' '}
               ({plumbingText.length} / {STRIPE_INVOICE_FOOTER_MAX_CHARS})
             </span>
@@ -89,7 +89,7 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
               marginBottom: '0.75rem',
               padding: '0.5rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               resize: 'vertical',
               lineHeight: 1.4,
@@ -97,7 +97,7 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
           />
           <label htmlFor="stripe-footer-preset-electrical" style={{ display: 'block', fontWeight: 600, fontSize: '0.875rem', marginBottom: 4 }}>
             Electrical
-            <span style={{ fontWeight: 400, color: '#6b7280', fontSize: '0.75rem' }}>
+            <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
               {' '}
               ({electricalText.length} / {STRIPE_INVOICE_FOOTER_MAX_CHARS})
             </span>
@@ -113,7 +113,7 @@ export default function StripeInvoiceFooterDevSettingsBlock() {
               marginBottom: '0.75rem',
               padding: '0.5rem',
               fontSize: '0.875rem',
-              border: '1px solid #d1d5db',
+              border: '1px solid var(--border-strong)',
               borderRadius: 4,
               resize: 'vertical',
               lineHeight: 1.4,

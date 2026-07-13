@@ -87,7 +87,7 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
   }
 
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         aria-expanded={open}
@@ -117,14 +117,14 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
         Bid Cover Letter Defaults (dev)
       </button>
       {open && (
-        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ margin: '0.75rem 0 1rem', color: '#6b7280', fontSize: '0.875rem' }}>
+        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+          <p style={{ margin: '0.75rem 0 1rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Org-wide text for every bid cover letter. Leave a box blank to use the built-in text
             (shown as the placeholder). Terms and Exclusions apply when the bid&rsquo;s own boxes are
             empty; the closing paragraph appears on every letter.
           </p>
           {loading ? (
-            <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Loading…</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</p>
           ) : (
             <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
               {FIELDS.map((f) => (
@@ -135,7 +135,7 @@ export default function BidCoverLetterDefaultsSettingsBlock() {
                     onChange={(e) => setValues((prev) => ({ ...prev, [f.key]: e.target.value }))}
                     placeholder={f.placeholder}
                     rows={f.rows}
-                    style={{ display: 'block', width: '100%', marginTop: 4, padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontFamily: 'inherit' }}
+                    style={{ display: 'block', width: '100%', marginTop: 4, padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontFamily: 'inherit' }}
                   />
                 </label>
               ))}

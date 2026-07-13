@@ -55,7 +55,7 @@ export default function SettingsDataTab({
   exportAllLoading: boolean
 }) {
   return (
-    <div style={{ marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+    <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
       <button
         type="button"
         aria-expanded={dataBackupSectionOpen}
@@ -79,11 +79,11 @@ export default function SettingsDataTab({
         Data backup (dev)
       </button>
       {dataBackupSectionOpen && (
-        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
-          <p style={{ marginBottom: '1rem', marginTop: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+        <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
+          <p style={{ marginBottom: '1rem', marginTop: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
             Export projects, materials, bids, people &amp; access, jobs, checklist, reports, prospects, or settings &amp; reference as JSON for backup. Use &quot;Export all backup&quot; to download everything in one file. Files respect RLS. Export may take several minutes for large datasets and uses significant database resources.
           </p>
-          {exportError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{exportError}</p>}
+          {exportError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{exportError}</p>}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <button
               type="button"

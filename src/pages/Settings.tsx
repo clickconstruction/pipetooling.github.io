@@ -111,7 +111,7 @@ function SettingsGroup({
         marginTop: 0,
         marginBottom: titleTrailing ? 0 : titleRowMarginBottom,
         fontWeight: 600,
-        color: '#111827',
+        color: 'var(--text-strong)',
       }}
     >
       {title}
@@ -136,7 +136,7 @@ function SettingsGroup({
         heading
       )}
       {description ? (
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '1rem', marginTop: 0 }}>{description}</p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: 0 }}>{description}</p>
       ) : null}
       {children}
     </section>
@@ -161,7 +161,7 @@ function SettingsTabBar({
         display: 'flex',
         gap: '0.25rem',
         marginBottom: '1.5rem',
-        borderBottom: '1px solid #e5e7eb',
+        borderBottom: '1px solid var(--border)',
         overflowX: 'auto',
       }}
     >
@@ -4019,7 +4019,7 @@ export default function Settings() {
 
 
   if (loading) return <p>Loading…</p>
-  if (error && !myRole) return <p style={{ color: '#b91c1c' }}>{error}</p>
+  if (error && !myRole) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
 
   // For estimators with restrictions, only show approved service types in Material Part/Assembly Types
   const visibleServiceTypesForMaterials = myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
@@ -4035,7 +4035,7 @@ export default function Settings() {
           style={{
             marginBottom: '1rem',
             padding: '0.75rem 1rem',
-            background: '#fef3c7',
+            background: 'var(--bg-amber-100)',
             border: '1px solid #f59e0b',
             borderRadius: 8,
             display: 'flex',
@@ -4045,7 +4045,7 @@ export default function Settings() {
             gap: '0.5rem',
           }}
         >
-          <span style={{ color: '#92400e', fontWeight: 500 }}>
+          <span style={{ color: 'var(--text-amber-800)', fontWeight: 500 }}>
             Signed in as {settingsImpersonationBannerLine}
           </span>
           <button
@@ -4055,8 +4055,8 @@ export default function Settings() {
             aria-label="Back to your original signed-in account"
             style={{
               padding: '0.35rem 0.75rem',
-              background: '#fef3c7',
-              color: '#92400e',
+              background: 'var(--bg-amber-100)',
+              color: 'var(--text-amber-800)',
               border: '1px solid #f59e0b',
               borderRadius: 4,
               fontWeight: 600,
@@ -4074,7 +4074,7 @@ export default function Settings() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ margin: 0 }}>Settings</h1>
-          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
+          <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
             Your role: <strong>{myRole == null ? '—' : myRole.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}</strong>
           </p>
         </div>
@@ -4355,7 +4355,7 @@ export default function Settings() {
       )}
 
       {(myRole === 'master_technician' || myRole === 'dev') && (
-        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+        <div style={{ marginTop: '2rem', marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
           <button
             type="button"
             onClick={() => setRoleSharingSectionOpen((prev) => !prev)}
@@ -4378,16 +4378,16 @@ export default function Settings() {
             Sharing and Adoption
           </button>
           {roleSharingSectionOpen && (
-          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid #e5e7eb' }}>
+          <div style={{ padding: '0 1rem 1rem 1rem', borderTop: '1px solid var(--border)' }}>
           <h2 style={{ marginTop: 0, marginBottom: '1rem' }}>Adopt Assistants</h2>
           {myRole === 'dev' && (
-            <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
+            <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
               <label htmlFor="adoption-master-select" style={{ marginRight: '0.5rem' }}>Manage adoptions for:</label>
               <select
                 id="adoption-master-select"
                 value={selectedMasterIdForAdoptions ?? ''}
                 onChange={(e) => handleAdoptionMasterChange(e.target.value || null)}
-                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid var(--border-strong)', minWidth: 200 }}
               >
                 <option value="">Myself</option>
                 {masters.map((m) => (
@@ -4396,14 +4396,14 @@ export default function Settings() {
               </select>
             </p>
           )}
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
             {myRole === 'dev' && adoptionMasterId && adoptionMasterId !== authUser?.id
               ? `Adopt or unadopt assistants for the selected master. Changes apply to that master's access.`
               : 'Adopt assistants to give them access to your customers and projects. Assistants can create projects and assign them to you. Assistants cannot see financial totals.'}
           </p>
-          {adoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{adoptionError}</p>}
+          {adoptionError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{adoptionError}</p>}
           {assistants.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No assistants found.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No assistants found.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
               {assistants.map((assistant) => {
@@ -4416,10 +4416,10 @@ export default function Settings() {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 4,
                       cursor: adoptionSaving ? 'not-allowed' : 'pointer',
-                      background: isAdopted ? '#f0fdf4' : 'white',
+                      background: isAdopted ? 'var(--bg-green-tint)' : 'var(--surface)',
                     }}
                   >
                     <input
@@ -4432,13 +4432,13 @@ export default function Settings() {
                     <span style={{ flex: 1 }}>
                       <span style={{ fontWeight: 500 }}>{assistant.name || assistant.email}</span>
                       {assistant.email && assistant.name && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                           ({assistant.email})
                         </span>
                       )}
                     </span>
                     {isAdopted && (
-                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                         Adopted
                       </span>
                     )}
@@ -4449,13 +4449,13 @@ export default function Settings() {
           )}
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Primaries</h2>
           {myRole === 'dev' && (
-            <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
+            <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
               <label htmlFor="adoption-master-select-primaries" style={{ marginRight: '0.5rem' }}>Manage adoptions for:</label>
               <select
                 id="adoption-master-select-primaries"
                 value={selectedMasterIdForAdoptions ?? ''}
                 onChange={(e) => handleAdoptionMasterChange(e.target.value || null)}
-                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid var(--border-strong)', minWidth: 200 }}
               >
                 <option value="">Myself</option>
                 {masters.map((m) => (
@@ -4464,14 +4464,14 @@ export default function Settings() {
               </select>
             </p>
           )}
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
             {myRole === 'dev' && adoptionMasterId && adoptionMasterId !== authUser?.id
               ? `Adopt or unadopt primaries for the selected master. Changes apply to that master's access.`
               : 'Adopt primaries to associate them with your organization. Primaries can add materials to jobs in the Jobs Billing tab.'}
           </p>
-          {primaryAdoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{primaryAdoptionError}</p>}
+          {primaryAdoptionError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{primaryAdoptionError}</p>}
           {primaries.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No primaries found.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No primaries found.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
               {primaries.map((primary) => {
@@ -4484,10 +4484,10 @@ export default function Settings() {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 4,
                       cursor: primaryAdoptionSaving ? 'not-allowed' : 'pointer',
-                      background: isAdopted ? '#f0fdf4' : 'white',
+                      background: isAdopted ? 'var(--bg-green-tint)' : 'var(--surface)',
                     }}
                   >
                     <input
@@ -4500,13 +4500,13 @@ export default function Settings() {
                     <span style={{ flex: 1 }}>
                       <span style={{ fontWeight: 500 }}>{primary.name || primary.email}</span>
                       {primary.email && primary.name && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                           ({primary.email})
                         </span>
                       )}
                     </span>
                     {isAdopted && (
-                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                         Adopted
                       </span>
                     )}
@@ -4517,13 +4517,13 @@ export default function Settings() {
           )}
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Adopt Superintendents</h2>
           {myRole === 'dev' && (
-            <p style={{ marginBottom: '0.75rem', color: '#6b7280' }}>
+            <p style={{ marginBottom: '0.75rem', color: 'var(--text-muted)' }}>
               <label htmlFor="adoption-master-select-superintendents" style={{ marginRight: '0.5rem' }}>Manage adoptions for:</label>
               <select
                 id="adoption-master-select-superintendents"
                 value={selectedMasterIdForAdoptions ?? ''}
                 onChange={(e) => handleAdoptionMasterChange(e.target.value || null)}
-                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid #d1d5db', minWidth: 200 }}
+                style={{ padding: '0.25rem 0.5rem', borderRadius: 4, border: '1px solid var(--border-strong)', minWidth: 200 }}
               >
                 <option value="">Myself</option>
                 {masters.map((m) => (
@@ -4532,14 +4532,14 @@ export default function Settings() {
               </select>
             </p>
           )}
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
             {myRole === 'dev' && adoptionMasterId && adoptionMasterId !== authUser?.id
               ? `Adopt or unadopt superintendents for the selected master. Changes apply to that master's access.`
               : 'Adopt superintendents to grant them access to your projects, workflows, jobs, and bids. Superintendents run jobs and manage subcontractors.'}
           </p>
-          {superintendentAdoptionError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{superintendentAdoptionError}</p>}
+          {superintendentAdoptionError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{superintendentAdoptionError}</p>}
           {superintendents.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No superintendents found.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No superintendents found.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
               {superintendents.map((sup) => {
@@ -4552,10 +4552,10 @@ export default function Settings() {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 4,
                       cursor: superintendentAdoptionSaving ? 'not-allowed' : 'pointer',
-                      background: isAdopted ? '#f0fdf4' : 'white',
+                      background: isAdopted ? 'var(--bg-green-tint)' : 'var(--surface)',
                     }}
                   >
                     <input
@@ -4568,13 +4568,13 @@ export default function Settings() {
                     <span style={{ flex: 1 }}>
                       <span style={{ fontWeight: 500 }}>{sup.name || sup.email}</span>
                       {sup.email && sup.name && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                           ({sup.email})
                         </span>
                       )}
                     </span>
                     {isAdopted && (
-                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                         Adopted
                       </span>
                     )}
@@ -4584,12 +4584,12 @@ export default function Settings() {
             </div>
           )}
           <h2 style={{ marginTop: '2rem', marginBottom: '1rem' }}>Share with other Master</h2>
-          <p style={{ marginBottom: '1rem', color: '#6b7280' }}>
+          <p style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
             Share your customers and projects with another master. They will see your jobs with assistant-level access (cannot see financial totals).
           </p>
-          {sharingError && <p style={{ color: '#b91c1c', marginBottom: '1rem' }}>{sharingError}</p>}
+          {sharingError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{sharingError}</p>}
           {masters.length === 0 ? (
-            <p style={{ color: '#6b7280' }}>No other masters found.</p>
+            <p style={{ color: 'var(--text-muted)' }}>No other masters found.</p>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: 640 }}>
               {masters.map((master) => {
@@ -4602,10 +4602,10 @@ export default function Settings() {
                       alignItems: 'center',
                       gap: '0.5rem',
                       padding: '0.5rem',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--border)',
                       borderRadius: 4,
                       cursor: sharingSaving ? 'not-allowed' : 'pointer',
-                      background: isShared ? '#f0fdf4' : 'white',
+                      background: isShared ? 'var(--bg-green-tint)' : 'var(--surface)',
                     }}
                   >
                     <input
@@ -4618,13 +4618,13 @@ export default function Settings() {
                     <span style={{ flex: 1 }}>
                       <span style={{ fontWeight: 500 }}>{master.name || master.email}</span>
                       {master.email && master.name && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
                           ({master.email})
                         </span>
                       )}
                     </span>
                     {isShared && (
-                      <span style={{ fontSize: '0.875rem', color: '#059669', fontWeight: 500 }}>
+                      <span style={{ fontSize: '0.875rem', color: 'var(--text-green-600)', fontWeight: 500 }}>
                         Shared
                       </span>
                     )}
@@ -4747,7 +4747,7 @@ export default function Settings() {
 
       {mergeDuplicatesModalOpen && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: 480 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Find duplicates</h2>
               <button
@@ -4759,9 +4759,9 @@ export default function Settings() {
               </button>
             </div>
             {mergeDuplicatesLoading ? (
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Checking…</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>Checking…</p>
             ) : mergeDuplicates.length === 0 ? (
-              <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>No duplicates found.</p>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>No duplicates found.</p>
             ) : (
               <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
                 {mergeDuplicates.map((dup) => (
@@ -4785,7 +4785,7 @@ export default function Settings() {
 
       {viewingOrphanPrices && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: '90vh', overflow: 'auto' }}>
+          <div style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, maxWidth: '900px', width: '95%', maxHeight: '90vh', overflow: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h2 style={{ margin: 0 }}>Orphaned material prices</h2>
                         <button
@@ -4795,22 +4795,22 @@ export default function Settings() {
                   setOrphanError(null)
                   setOrphanPrices([])
                 }}
-                style={{ padding: '0.25rem 0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
+                style={{ padding: '0.25rem 0.5rem', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 ×
                         </button>
             </div>
-            <p style={{ marginTop: 0, marginBottom: '0.75rem', color: '#6b7280', fontSize: '0.875rem' }}>
+            <p style={{ marginTop: 0, marginBottom: '0.75rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               These are material prices whose part or supply house no longer exists. They do not appear in the Materials Parts Book.
             </p>
             {loadingOrphanPrices && <p>Loading orphaned prices…</p>}
-            {orphanError && <p style={{ color: '#b91c1c', marginBottom: '0.75rem' }}>{orphanError}</p>}
+            {orphanError && <p style={{ color: 'var(--text-red-700)', marginBottom: '0.75rem' }}>{orphanError}</p>}
             {!loadingOrphanPrices && orphanPrices.length === 0 && !orphanError && (
               <p style={{ marginBottom: '0.75rem', color: '#16a34a' }}>No orphaned prices found.</p>
             )}
             {!loadingOrphanPrices && orphanPrices.length > 0 && (
               <>
-                <p style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: '#374151' }}>
+                <p style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-700)' }}>
                   Found {orphanPrices.length} orphaned price{orphanPrices.length === 1 ? '' : 's'}.
                 </p>
                 <div style={{ marginBottom: '0.75rem' }}>
@@ -4822,21 +4822,21 @@ export default function Settings() {
                     Delete all shown
                         </button>
                       </div>
-                <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid #e5e7eb', borderRadius: 4 }}>
+                <div style={{ maxHeight: '60vh', overflow: 'auto', border: '1px solid var(--border)', borderRadius: 4 }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                    <thead style={{ background: '#f9fafb' }}>
+                    <thead style={{ background: 'var(--bg-subtle)' }}>
                       <tr>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Part</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Supply house</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>Price</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Effective date</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Reason</th>
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid #e5e7eb' }}>Actions</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Part</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Supply house</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right', borderBottom: '1px solid var(--border)' }}>Price</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Effective date</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Reason</th>
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', borderBottom: '1px solid var(--border)' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {orphanPrices.map((row) => (
-                        <tr key={row.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                        <tr key={row.id} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{row.partName}</td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>{row.supplyHouseName}</td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>${row.price.toFixed(2)}</td>
@@ -4852,7 +4852,7 @@ export default function Settings() {
                             <button
                               type="button"
                               onClick={() => deleteOrphanPrice(row.id)}
-                              style={{ padding: '0.25rem 0.5rem', background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ padding: '0.25rem 0.5rem', background: 'var(--bg-red-100)', color: 'var(--text-red-700)', border: '1px solid #fecaca', borderRadius: 4, cursor: 'pointer' }}
                             >
                               Delete
                             </button>
