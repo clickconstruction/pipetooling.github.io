@@ -679,6 +679,7 @@ export type Database = {
           bid_date_sent_attested_at: string | null
           bid_date_sent_attested_by: string | null
           bid_due_date: string | null
+          bid_due_time: string | null
           bid_number: string | null
           bid_submission_link: string | null
           bid_value: number | null
@@ -731,6 +732,7 @@ export type Database = {
           bid_date_sent_attested_at?: string | null
           bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
+          bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
@@ -783,6 +785,7 @@ export type Database = {
           bid_date_sent_attested_at?: string | null
           bid_date_sent_attested_by?: string | null
           bid_due_date?: string | null
+          bid_due_time?: string | null
           bid_number?: string | null
           bid_submission_link?: string | null
           bid_value?: number | null
