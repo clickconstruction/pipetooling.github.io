@@ -41,7 +41,7 @@ When a Master or Assistant selects **Notify** on a stage, that stage shows up in
 The header is your map. On a phone, most of these live behind the {{icon:gear}} gear menu in the top-right.
 
 :::example Header icons (top-right)
-{{icon:help}} **Help** — this page &nbsp;·&nbsp; {{icon:gear}} **Gear menu** — Job Mode toggle, Settings, Sign out
+{{icon:gear}} **Gear menu** — Job Mode toggle, Calendar, Help (this page), Settings, Sign out
 :::
 
 - **Dashboard** — your day at a glance: assigned jobs, clock, inboxes, and (for office roles) billing queues.
