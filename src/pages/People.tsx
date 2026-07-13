@@ -3998,6 +3998,7 @@ export default function People() {
       {activeTab === 'employment' && canAccessPay && (
         <PeopleEmploymentTab
           users={users}
+          authUserId={authUser?.id ?? null}
           payConfig={payConfig}
           payConfigDraft={payConfigDraft}
           payConfigOfficeWageDraft={payConfigOfficeWageDraft}

@@ -13,13 +13,14 @@ type EmploymentPersonRow = {
   id: string
   name: string
   kind: string
+  email: string | null
   archived_at: string | null
   account_user_id: string | null
   start_date: string | null
   end_date: string | null
 }
 
-type EmploymentUserRow = { id: string; name: string | null }
+type EmploymentUserRow = { id: string; name: string | null; role: string; email: string | null }
 
 type EmploymentTimeOffRow = {
   id: string
@@ -29,8 +30,30 @@ type EmploymentTimeOffRow = {
   note: string | null
 }
 
+/**
+ * One roster line: a login user (source 'user', optionally backed by a `people` row for
+ * employment dates) or an external `people` row with no matching account (source 'people').
+ * Mirrors the Users tab's users+people union — the `people` table alone mostly holds
+ * externally-added primaries/superintendents, so querying it misses account-holding employees.
+ */
+type EmploymentEntry = {
+  key: string
+  name: string
+  kind: string
+  archived_at: string | null
+  source: 'user' | 'people'
+  /** `people` row backing this entry (created on first date save for user-only entries). */
+  personId: string | null
+  /** Login user for time off / workday schedule. */
+  userId: string | null
+  accountUserId: string | null
+  start_date: string | null
+  end_date: string | null
+}
+
 export type PeopleEmploymentTabProps = {
   users: EmploymentUserRow[]
+  authUserId: string | null
   payConfig: Record<string, PayConfigRow>
   payConfigDraft: Record<string, string>
   payConfigOfficeWageDraft: Record<string, string>
@@ -51,21 +74,42 @@ const DEFAULT_PAY_CONFIG: Omit<PayConfigRow, 'person_name'> = {
   record_hours_but_salary: false,
 }
 
-/** Login-user linkage for a roster row: explicit account_user_id vs the trimmed-name match the pay tables use. */
-function linkHealth(person: EmploymentPersonRow, users: EmploymentUserRow[]): { label: string; warn: boolean } | null {
-  const nameMatch = users.find((u) => (u.name ?? '').trim() === person.name.trim())
-  if (person.account_user_id) {
-    if (nameMatch && nameMatch.id !== person.account_user_id) {
-      return { label: 'Name matches a different login user', warn: true }
+/** users.role → people.kind. Subcontractors are deliberately absent — not employees. */
+const ROLE_TO_KIND: Record<string, string> = {
+  dev: 'dev',
+  master_technician: 'master_technician',
+  assistant: 'assistant',
+  helpers: 'helper',
+  estimator: 'estimator',
+  primary: 'primary',
+  superintendent: 'superintendent',
+}
+
+function kindLabel(kind: string): string {
+  if (kind === 'dev') return 'Devs'
+  return KIND_LABELS[kind as PersonKind] ?? kind
+}
+
+/** Login-user linkage health: explicit account link vs the trimmed-name match pay tables use. */
+function entryLinkHealth(e: EmploymentEntry, users: EmploymentUserRow[]): { label: string; warn: boolean } | null {
+  if (e.source === 'user') {
+    if (e.personId && e.accountUserId && e.accountUserId !== e.userId) {
+      return { label: 'Roster row linked to a different login user', warn: true }
     }
     return null
   }
-  if (nameMatch) return { label: 'Linked by name only', warn: false }
-  return { label: 'No login user', warn: false }
+  if (!e.userId) return { label: 'No login user', warn: false }
+  if (!e.accountUserId) return { label: 'Linked by name only', warn: false }
+  const nameMatch = users.find((u) => (u.name ?? '').trim() === e.name.trim())
+  if (nameMatch && nameMatch.id !== e.accountUserId) {
+    return { label: 'Name matches a different login user', warn: true }
+  }
+  return null
 }
 
 export default function PeopleEmploymentTab({
   users,
+  authUserId,
   payConfig,
   payConfigDraft,
   payConfigOfficeWageDraft,
@@ -80,7 +124,7 @@ export default function PeopleEmploymentTab({
   const [rows, setRows] = useState<EmploymentPersonRow[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [archivedOpen, setArchivedOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [draftStart, setDraftStart] = useState('')
@@ -91,11 +135,13 @@ export default function PeopleEmploymentTab({
     setLoading(true)
     setLoadError(null)
     try {
+      // Subcontractors are not employees — no employment dates, pay setup, or time off here.
       const data = await withSupabaseRetry(
         async () =>
           supabase
             .from('people')
-            .select('id, name, kind, archived_at, account_user_id, start_date, end_date')
+            .select('id, name, kind, email, archived_at, account_user_id, start_date, end_date')
+            .neq('kind', 'sub')
             .order('name'),
         'employment roster',
       )
@@ -111,7 +157,55 @@ export default function PeopleEmploymentTab({
     void load()
   }, [load])
 
-  const selected = useMemo(() => rows.find((r) => r.id === selectedId) ?? null, [rows, selectedId])
+  const entries = useMemo<EmploymentEntry[]>(() => {
+    const consumed = new Set<string>()
+    const out: EmploymentEntry[] = []
+    for (const u of users) {
+      const kind = ROLE_TO_KIND[u.role]
+      if (!kind) continue
+      const uname = (u.name ?? '').trim()
+      if (!uname) continue
+      const email = (u.email ?? '').trim().toLowerCase()
+      const p =
+        rows.find((r) => r.account_user_id === u.id) ??
+        rows.find((r) => !consumed.has(r.id) && !r.account_user_id && email !== '' && (r.email ?? '').trim().toLowerCase() === email) ??
+        rows.find((r) => !consumed.has(r.id) && !r.account_user_id && r.name.trim() === uname) ??
+        null
+      if (p) consumed.add(p.id)
+      out.push({
+        key: `u:${u.id}`,
+        name: uname,
+        kind,
+        archived_at: null,
+        source: 'user',
+        personId: p?.id ?? null,
+        userId: u.id,
+        accountUserId: p?.account_user_id ?? null,
+        start_date: p?.start_date ?? null,
+        end_date: p?.end_date ?? null,
+      })
+    }
+    for (const r of rows) {
+      if (consumed.has(r.id)) continue
+      const nameMatches = users.filter((u) => (u.name ?? '').trim() === r.name.trim())
+      const uid = r.account_user_id ?? (nameMatches.length === 1 ? nameMatches[0]!.id : null)
+      out.push({
+        key: `p:${r.id}`,
+        name: r.name,
+        kind: r.kind,
+        archived_at: r.archived_at,
+        source: 'people',
+        personId: r.id,
+        userId: uid,
+        accountUserId: r.account_user_id,
+        start_date: r.start_date,
+        end_date: r.end_date,
+      })
+    }
+    return out.sort((a, b) => a.name.localeCompare(b.name))
+  }, [users, rows])
+
+  const selected = useMemo(() => entries.find((e) => e.key === selectedKey) ?? null, [entries, selectedKey])
 
   useEffect(() => {
     setDraftStart(selected?.start_date ?? '')
@@ -120,25 +214,18 @@ export default function PeopleEmploymentTab({
 
   const searchLower = search.trim().toLowerCase()
   const matches = useCallback(
-    (r: EmploymentPersonRow) => searchLower === '' || r.name.toLowerCase().includes(searchLower),
+    (e: EmploymentEntry) => searchLower === '' || e.name.toLowerCase().includes(searchLower),
     [searchLower],
   )
-  const activeRows = rows.filter((r) => !r.archived_at).filter(matches)
-  const archivedRows = rows.filter((r) => r.archived_at).filter(matches)
+  const activeEntries = entries.filter((e) => !e.archived_at).filter(matches)
+  const archivedEntries = entries.filter((e) => e.archived_at).filter(matches)
 
   const datesDirty = selected != null && ((selected.start_date ?? '') !== draftStart || (selected.end_date ?? '') !== draftEnd)
 
   const selectedCfg: PayConfigRow | null = selected
     ? payConfig[selected.name] ?? { person_name: selected.name, ...DEFAULT_PAY_CONFIG }
     : null
-  const selectedNameMatches = useMemo(
-    () => (selected ? users.filter((u) => (u.name ?? '').trim() === selected.name.trim()) : []),
-    [users, selected],
-  )
-  /** Login user for time off: explicit roster link first, then unique trimmed-name match. */
-  const timeOffUserId = selected
-    ? selected.account_user_id ?? (selectedNameMatches.length === 1 ? selectedNameMatches[0]!.id : null)
-    : null
+  const timeOffUserId = selected?.userId ?? null
 
   const [timeOffRows, setTimeOffRows] = useState<EmploymentTimeOffRow[]>([])
   const [timeOffLoading, setTimeOffLoading] = useState(false)
@@ -185,6 +272,49 @@ export default function PeopleEmploymentTab({
     const today = denverWorkDateToday()
     const { error: syncErr } = await syncSalaryClockSessionsForUserDay(uid, today)
     if (syncErr) showToast(syncErr, 'warning')
+  }
+
+  async function saveDates() {
+    if (!selected) return
+    const start = draftStart || null
+    const end = draftEnd || null
+    if (start && end && end < start) {
+      showToast('End date must be on or after start date', 'warning')
+      return
+    }
+    setSaving(true)
+    try {
+      if (selected.personId) {
+        await withSupabaseRetry(
+          async () => supabase.from('people').update({ start_date: start, end_date: end }).eq('id', selected.personId!),
+          'employment dates save',
+        )
+      } else {
+        // Login user with no roster row yet — dates live on `people`, so create the row now.
+        if (!authUserId) {
+          showToast('Not signed in.', 'error')
+          return
+        }
+        await withSupabaseRetry(
+          async () =>
+            supabase.from('people').insert({
+              master_user_id: authUserId,
+              kind: selected.kind,
+              name: selected.name,
+              account_user_id: selected.userId,
+              start_date: start,
+              end_date: end,
+            }),
+          'employment dates roster-row create',
+        )
+      }
+      await load()
+      showToast('Employment dates saved', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'Save failed'), 'error')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function addTimeOff() {
@@ -239,37 +369,14 @@ export default function PeopleEmploymentTab({
     }
   }
 
-  async function saveDates() {
-    if (!selected) return
-    const start = draftStart || null
-    const end = draftEnd || null
-    if (start && end && end < start) {
-      showToast('End date must be on or after start date', 'warning')
-      return
-    }
-    setSaving(true)
-    try {
-      await withSupabaseRetry(
-        async () => supabase.from('people').update({ start_date: start, end_date: end }).eq('id', selected.id),
-        'employment dates save',
-      )
-      setRows((prev) => prev.map((r) => (r.id === selected.id ? { ...r, start_date: start, end_date: end } : r)))
-      showToast('Employment dates saved', 'success')
-    } catch (e) {
-      showToast(formatErrorMessage(e, 'Save failed'), 'error')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  function renderChips(r: EmploymentPersonRow) {
-    const cfg = payConfig[r.name]
-    const health = linkHealth(r, users)
+  function renderChips(e: EmploymentEntry) {
+    const cfg = payConfig[e.name]
+    const health = entryLinkHealth(e, users)
     return (
       <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
         {cfg?.is_salary ? (
           <span style={chipStyle('var(--text-blue-700)', 'var(--bg-blue-50)')}>
-            Salaried{salaryTemplateByPersonName[r.name] ? '' : ' · no workday template'}
+            Salaried{salaryTemplateByPersonName[e.name] ? '' : ' · no workday template'}
           </span>
         ) : null}
         {cfg?.is_salary && cfg?.record_hours_but_salary ? (
@@ -277,7 +384,7 @@ export default function PeopleEmploymentTab({
         ) : null}
         {health ? (
           <span
-            style={chipStyle(health.warn ? '#92400e' : 'var(--text-muted)', health.warn ? '#fef3c7' : 'var(--bg-page)')}
+            style={chipStyle(health.warn ? 'var(--text-amber-800)' : 'var(--text-muted)', health.warn ? 'var(--bg-amber-100)' : 'var(--bg-page)')}
             title="How pay tables find this person's login user: an explicit account link, or an exact (trimmed) name match."
           >
             {health.label}
@@ -287,13 +394,13 @@ export default function PeopleEmploymentTab({
     )
   }
 
-  function renderRow(r: EmploymentPersonRow) {
-    const isSelected = r.id === selectedId
+  function renderRow(e: EmploymentEntry) {
+    const isSelected = e.key === selectedKey
     return (
-      <li key={r.id}>
+      <li key={e.key}>
         <button
           type="button"
-          onClick={() => setSelectedId(r.id)}
+          onClick={() => setSelectedKey(e.key)}
           style={{
             display: 'flex',
             flexDirection: 'column',
@@ -309,12 +416,12 @@ export default function PeopleEmploymentTab({
           }}
         >
           <span style={{ fontWeight: 600, color: 'var(--text)' }}>
-            {r.name}
+            {e.name}
             <span style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.8125rem' }}>
-              {KIND_LABELS[r.kind as PersonKind] ?? r.kind}
+              {kindLabel(e.kind)}
             </span>
           </span>
-          {renderChips(r)}
+          {renderChips(e)}
         </button>
       </li>
     )
@@ -334,20 +441,20 @@ export default function PeopleEmploymentTab({
           style={{ width: '100%', padding: '0.4rem 0.6rem', marginBottom: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)' }}
         />
         <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-          {activeRows.length === 0 ? <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matching people.</li> : activeRows.map(renderRow)}
+          {activeEntries.length === 0 ? <li style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No matching people.</li> : activeEntries.map(renderRow)}
         </ul>
-        {archivedRows.length > 0 ? (
+        {archivedEntries.length > 0 ? (
           <div style={{ marginTop: '0.75rem' }}>
             <button
               type="button"
               onClick={() => setArchivedOpen((v) => !v)}
               style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', fontSize: '0.8125rem', cursor: 'pointer' }}
             >
-              {archivedOpen ? '▾' : '▸'} Archived ({archivedRows.length})
+              {archivedOpen ? '▾' : '▸'} Archived ({archivedEntries.length})
             </button>
             {archivedOpen ? (
               <ul style={{ listStyle: 'none', padding: 0, margin: '0.4rem 0 0 0', display: 'flex', flexDirection: 'column', gap: '0.4rem', opacity: 0.75 }}>
-                {archivedRows.map(renderRow)}
+                {archivedEntries.map(renderRow)}
               </ul>
             ) : null}
           </div>
@@ -361,7 +468,7 @@ export default function PeopleEmploymentTab({
           <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', padding: '0.9rem' }}>
             <h3 style={{ margin: '0 0 0.15rem 0' }}>{selected.name}</h3>
             <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-              {KIND_LABELS[selected.kind as PersonKind] ?? selected.kind}
+              {kindLabel(selected.kind)}
               {selected.archived_at ? ' · archived' : ''}
               {payConfig[selected.name]?.is_salary ? ' · salaried' : ''}
             </p>
@@ -401,9 +508,8 @@ export default function PeopleEmploymentTab({
             </div>
 
             {(() => {
-              const cfg: PayConfigRow = payConfig[selected.name] ?? { person_name: selected.name, ...DEFAULT_PAY_CONFIG }
-              const nameMatches = users.filter((u) => (u.name ?? '').trim() === selected.name.trim())
-              const scheduleUserId = nameMatches.length === 1 ? nameMatches[0]!.id : null
+              const cfg: PayConfigRow = selectedCfg ?? { person_name: selected.name, ...DEFAULT_PAY_CONFIG }
+              const scheduleUserId = selected.userId
               return (
                 <>
                   <div style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-page)', padding: '0.75rem', marginTop: '0.75rem' }}>
@@ -527,9 +633,8 @@ export default function PeopleEmploymentTab({
                         />
                       ) : (
                         <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>
-                          {nameMatches.length === 0
-                            ? 'No login user matches this name, so a workday schedule cannot be set up. Fix the name or invite them first.'
-                            : 'Multiple login users match this name — resolve the duplicate before editing their workday.'}
+                          No login user is linked to this person, so a workday schedule cannot be set up. Invite them
+                          or fix the roster name first.
                         </p>
                       )}
                     </div>
