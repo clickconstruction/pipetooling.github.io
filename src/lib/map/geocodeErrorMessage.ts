@@ -1,4 +1,4 @@
-/** User-facing copy for `geocode-one` Edge error codes. Shared by Map page, Settings, and modals. */
+/** User-facing copy for `geocode-one` / `geocode-address-batch` Edge error codes. Shared by Map page, Settings, and modals. */
 export function mapGeocodeErrorMessage(errorCode: string, detail?: string) {
   let base: string
   switch (errorCode) {
