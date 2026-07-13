@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useAssistantDispatchLanding } from '../hooks/useAssistantDispatchLanding'
 import { useForceReload } from '../contexts/ForceReloadContext'
+import { useTheme } from '../contexts/ThemeContext'
 import { useChecklistAddModal } from '../contexts/ChecklistAddModalContext'
 import AddTaskShortcutBanner from './AddTaskShortcutBanner'
 import { consumePendingOpenAddTask } from '../lib/iosPwa'
@@ -63,7 +64,7 @@ const dropdownLinkStyle = ({ isActive }: { isActive: boolean }) => ({
   textDecoration: isActive ? 'underline' : 'none',
   color: 'inherit',
   fontWeight: isActive ? 600 : undefined,
-  borderBottom: '1px solid #e5e7eb',
+  borderBottom: '1px solid var(--chrome-border)',
 })
 
 const IMPERSONATION_KEY = 'impersonation_original'
@@ -89,6 +90,7 @@ export default function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user: authUser, role, profileName, estimatorProspectsAccess, readOnly } = useAuth()
+  const { theme, override: themeOverride, setOverride: setThemeOverride } = useTheme()
   useAppActivityHeartbeat(authUser?.id, appActivityPageKey(location.pathname, location.search))
   // Mobile assistants returning after a gap (>~1h) land on Dispatch instead of the dashboard.
   useAssistantDispatchLanding()
@@ -139,7 +141,7 @@ export default function Layout() {
   }, [checklistAddModal, location.search, location.pathname, navigate])
   const headerSearchEligible =
     role === 'dev' || role === 'master_technician' || role === 'assistant'
-  const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : '#ffffff'
+  const navSearchOverlayBg = impersonating && isMobile ? '#fef3c7' : 'var(--chrome-bg)'
 
   const scheduleDashboardPrefetch = useCallback(() => {
     if (!authUser?.id) return
@@ -567,7 +569,7 @@ export default function Layout() {
       <nav
         className="appNav"
         style={{
-          borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid #e5e7eb',
+          borderBottom: impersonating && isMobile ? '1px solid #f59e0b' : '1px solid var(--chrome-border)',
           background: impersonating && isMobile ? '#fef3c7' : undefined,
           display: 'flex',
           gap: '0.5rem',
@@ -608,8 +610,8 @@ export default function Layout() {
                     left: 0,
                     top: '100%',
                     marginTop: 4,
-                    background: 'white',
-                    border: '1px solid #e5e7eb',
+                    background: 'var(--menu-bg)',
+                    border: '1px solid var(--chrome-border)',
                     borderRadius: 8,
                     boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                     minWidth: 160,
@@ -880,8 +882,8 @@ export default function Layout() {
                   right: 0,
                   top: '100%',
                   marginTop: 4,
-                  background: 'white',
-                  border: '1px solid #e5e7eb',
+                  background: 'var(--menu-bg)',
+                  border: '1px solid var(--chrome-border)',
                   borderRadius: 8,
                   boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                   minWidth: 168,
@@ -911,7 +913,7 @@ export default function Layout() {
                       cursor: 'pointer',
                       fontSize: 'inherit',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       fontWeight: jobModeEnabled ? 600 : 400,
                     }}
@@ -937,6 +939,72 @@ export default function Layout() {
                     </span>
                   </button>
                 )}
+                <button
+                  type="button"
+                  onClick={() => setThemeOverride(theme === 'dark' ? 'light' : 'dark')}
+                  title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+                  aria-label="Toggle dark mode"
+                  aria-pressed={theme === 'dark'}
+                  style={{
+                    display: 'flex',
+                    width: '100%',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '0.5rem',
+                    padding: '0.5rem 1rem',
+                    textAlign: 'left',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 'inherit',
+                    color: 'inherit',
+                    borderBottom: themeOverride !== null ? 'none' : '1px solid var(--chrome-border)',
+                    boxSizing: 'border-box',
+                    fontWeight: theme === 'dark' ? 600 : 400,
+                  }}
+                >
+                  <span>Dark Mode</span>
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      display: 'inline-flex',
+                      width: 16,
+                      height: 16,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      borderRadius: 3,
+                      border: '1px solid #9ca3af',
+                      background: theme === 'dark' ? '#16a34a' : 'white',
+                      color: 'white',
+                      fontSize: '0.75rem',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {theme === 'dark' ? '✓' : ''}
+                  </span>
+                </button>
+                {themeOverride !== null && (
+                  <button
+                    type="button"
+                    onClick={() => setThemeOverride(null)}
+                    title="Follow the time of day: light 4am–8pm, dark 8pm–4am"
+                    style={{
+                      display: 'block',
+                      width: '100%',
+                      padding: '0 1rem 0.5rem',
+                      textAlign: 'left',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: '#6b7280',
+                      fontSize: '0.8125rem',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    Auto (dark 8pm–4am)
+                  </button>
+                )}
                 {(role === 'estimator' ||
                   role === 'primary' ||
                   role === null ||
@@ -953,7 +1021,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -975,7 +1043,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -997,7 +1065,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -1019,7 +1087,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -1041,7 +1109,7 @@ export default function Layout() {
                       padding: '0.5rem 1rem',
                       textDecoration: 'none',
                       color: 'inherit',
-                      borderBottom: '1px solid #e5e7eb',
+                      borderBottom: '1px solid var(--chrome-border)',
                       boxSizing: 'border-box',
                       ...(isActive && { fontWeight: 600 }),
                     })}
@@ -1062,7 +1130,7 @@ export default function Layout() {
                     padding: '0.5rem 1rem',
                     textDecoration: 'none',
                     color: 'inherit',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--chrome-border)',
                     boxSizing: 'border-box',
                     ...(isActive && { fontWeight: 600 }),
                   })}
@@ -1082,7 +1150,7 @@ export default function Layout() {
                     padding: '0.5rem 1rem',
                     textDecoration: 'none',
                     color: 'inherit',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--chrome-border)',
                     boxSizing: 'border-box',
                     ...(isActive && { fontWeight: 600 }),
                   })}
@@ -1100,7 +1168,7 @@ export default function Layout() {
                     padding: '0.5rem 1rem',
                     textDecoration: 'none',
                     color: 'inherit',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--chrome-border)',
                   }}
                 >
                   Settings
@@ -1125,7 +1193,7 @@ export default function Layout() {
                     cursor: 'pointer',
                     fontSize: 'inherit',
                     color: '#dc2626',
-                    borderBottom: '1px solid #e5e7eb',
+                    borderBottom: '1px solid var(--chrome-border)',
                   }}
                 >
                   Sign out
@@ -1146,7 +1214,7 @@ export default function Layout() {
                     cursor: 'pointer',
                     fontSize: 'inherit',
                     color: '#dc2626',
-                    borderBottom: role === 'dev' ? '1px solid #e5e7eb' : 'none',
+                    borderBottom: role === 'dev' ? '1px solid var(--chrome-border)' : 'none',
                   }}
                 >
                   Hard Reload
@@ -1223,7 +1291,7 @@ export default function Layout() {
           <div
             style={{
               padding: '0.5rem 1rem',
-              borderTop: '1px solid #e5e7eb',
+              borderTop: '1px solid var(--chrome-border)',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
@@ -1311,7 +1379,7 @@ export default function Layout() {
                       marginBottom: 4,
                       padding: '0.5rem',
                       background: 'white',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--chrome-border)',
                       borderRadius: 8,
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1)',
                       display: 'flex',
@@ -1326,7 +1394,7 @@ export default function Layout() {
                       style={{
                         padding: '0.35rem 0.5rem',
                         fontSize: '0.8125rem',
-                        border: '1px solid #e5e7eb',
+                        border: '1px solid var(--chrome-border)',
                         borderRadius: 6,
                         background: '#fff',
                         minWidth: 120,
