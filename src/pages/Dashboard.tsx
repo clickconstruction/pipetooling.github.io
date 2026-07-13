@@ -4859,14 +4859,16 @@ export default function Dashboard() {
                             <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                             <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                            <button type="button" onClick={() => {
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                              <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 openDashboardBillCustomerInvoice(inv)
                               }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
-                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                              {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4933,9 +4935,11 @@ export default function Dashboard() {
                           <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
-                          {bundleInv != null ? (
-                            <>
-                              <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          {bundleInv != null && (
+                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            {bundleInv != null ? (
                               <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
@@ -4943,21 +4947,21 @@ export default function Dashboard() {
                                 }
                                 openDashboardBillCustomerInvoice(bundleInv)
                               }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
-                            </>
-                          ) : (
-                            <button type="button" onClick={() => {
+                            ) : (
+                              <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 setSendRecordJobMeta({ id: j.id })
                               }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
-                          )}
-                          {(bundleInv?.created_at ?? j.created_at) && (
-                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
-                              {isMobile ? <>Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}</> : <>Open<br />{formatTimeSince(bundleInv?.created_at ?? j.created_at)}</>}
-                            </span>
-                          )}
+                            )}
+                            {(bundleInv?.created_at ?? j.created_at) && (
+                              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
+                                Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5079,8 +5083,10 @@ export default function Dashboard() {
                             <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
-                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5120,8 +5126,10 @@ export default function Dashboard() {
                           <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                             <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                            <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
-                            {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created"><>Open<br />{formatTimeSince(j.created_at)}</></span>}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                              <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
+                              {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -5339,14 +5347,16 @@ export default function Dashboard() {
                             <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
-                          <button type="button" onClick={() => {
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(inv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 openDashboardBillCustomerInvoice(inv)
                               }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : 'Bill Customer'}</button>
-                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5413,9 +5423,11 @@ export default function Dashboard() {
                           <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                         <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'working', rtbDraftCount: countDashboardRtbDraftsForJob(j.id, readyToBillInvoices) }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }} aria-label="Send back">Send<br />Back</button>
-                        {bundleInv != null ? (
-                          <>
-                            <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                        {bundleInv != null && (
+                          <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv: bundleInv, action: 'delete' }) }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Remove this billing line (partial invoice row)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>Delete<br />draft bill</button>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          {bundleInv != null ? (
                             <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(bundleInv.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
@@ -5423,21 +5435,21 @@ export default function Dashboard() {
                                 }
                                 openDashboardBillCustomerInvoice(bundleInv)
                               }} disabled={invoiceStatusUpdatingId === bundleInv.id} title="Bill Customer for this billing line (e.g. Stripe)" style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === bundleInv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === bundleInv.id ? '…' : 'Bill Customer'}</button>
-                          </>
-                        ) : (
-                          <button type="button" onClick={() => {
+                          ) : (
+                            <button type="button" onClick={() => {
                                 if (!dashboardJobHasCustomerForBilling(j.customer_id)) {
                                   showToast?.('Link this job to a customer before billing.', 'error')
                                   return
                                 }
                                 setSendRecordJobMeta({ id: j.id })
                               }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
-                        )}
-                        {(bundleInv?.created_at ?? j.created_at) && (
-                          <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
-                            {isMobile ? <>Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}</> : <>Open<br />{formatTimeSince(bundleInv?.created_at ?? j.created_at)}</>}
-                          </span>
-                        )}
+                          )}
+                          {(bundleInv?.created_at ?? j.created_at) && (
+                            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
+                              Open {formatTimeSince(bundleInv?.created_at ?? j.created_at)}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -5565,8 +5577,10 @@ export default function Dashboard() {
                             <button type="button" onClick={() => setViewBillDetailsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—', revenue: inv.amount })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                           <button type="button" onClick={() => setViewReportsJob({ id: inv.job_id, hcpNumber: inv.hcp_number ?? '—', jobName: inv.job_name ?? '—', jobAddress: inv.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                           <button type="button" onClick={() => { setSendBackChecked(false); setSendBackInvoice({ inv, action: 'revert' }) }} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                          <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
-                          {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time open">{isMobile ? <>Open {formatTimeSince(inv.open_since_at)}</> : <>Open<br />{formatTimeSince(inv.open_since_at)}</>}</span>}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                            <button type="button" onClick={() => setMarkPaidInvoice(inv)} disabled={invoiceStatusUpdatingId === inv.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: invoiceStatusUpdatingId === inv.id ? 'not-allowed' : 'pointer' }}>{invoiceStatusUpdatingId === inv.id ? '…' : <>Mark<br />Paid</>}</button>
+                            {inv.open_since_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time open">Open {formatTimeSince(inv.open_since_at)}</span>}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -5606,8 +5620,10 @@ export default function Dashboard() {
                           <button type="button" onClick={() => setViewBillDetailsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—', revenue: j.revenue })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: 'none', cursor: 'pointer', textDecoration: 'none' }}>View<br />Details</button>
                         <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                         <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: j.hcp_number ?? '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
-                        <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
-                        {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }} title="Time since job created"><>Open<br />{formatTimeSince(j.created_at)}</></span>}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                          <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : <>Mark<br />Paid</>}</button>
+                          {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
+                        </div>
                       </div>
                     </div>
                   </div>
