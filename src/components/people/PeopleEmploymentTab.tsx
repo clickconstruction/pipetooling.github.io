@@ -91,11 +91,13 @@ export default function PeopleEmploymentTab({
     setLoading(true)
     setLoadError(null)
     try {
+      // Subcontractors are not employees — no employment dates, pay setup, or time off here.
       const data = await withSupabaseRetry(
         async () =>
           supabase
             .from('people')
             .select('id, name, kind, archived_at, account_user_id, start_date, end_date')
+            .neq('kind', 'sub')
             .order('name'),
         'employment roster',
       )
