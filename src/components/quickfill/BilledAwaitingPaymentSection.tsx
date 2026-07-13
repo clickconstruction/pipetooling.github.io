@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
+import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import { formatCurrency } from '../../lib/format'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { Database } from '../../types/database'
@@ -136,6 +137,7 @@ export function BilledAwaitingPaymentSection() {
   }, [authUser?.id])
 
   const canAccess = role === 'dev' || role === 'master_technician' || role === 'assistant'
+  const jobDetailModal = useJobDetailModal()
   useReportQuickfillSectionMetric(
     'billed-awaiting',
     !canAccess || !authUser?.id ? null : loading ? null : error ? null : rows.length,
@@ -171,14 +173,54 @@ export function BilledAwaitingPaymentSection() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`} style={{ borderBottom: '1px solid var(--border)' }}>
-                <td style={{ padding: '0.75rem 0.5rem' }}>{effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'}</td>
-                <td style={{ padding: '0.75rem 0.5rem' }}>{r.job.job_name || '—'}</td>
-                <td style={{ padding: '0.75rem 0.5rem' }}>{r.assigned.join(', ') || '—'}</td>
-                <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(r.remaining)}</td>
-              </tr>
-            ))}
+            {rows.map((r) => {
+              const openDetail = jobDetailModal
+                ? () =>
+                    jobDetailModal.openJobDetail({
+                      jobId: r.job.id,
+                      prefillRowLabel: `${effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'} · ${r.job.job_name || '—'}`,
+                    })
+                : null
+              return (
+                <tr
+                  key={r.kind === 'job' ? `job-${r.job.id}` : `inv-${r.inv.id}`}
+                  onClick={openDetail ?? undefined}
+                  title={openDetail ? 'Open job details (notes, status, billing, crew timeline)' : undefined}
+                  style={{ borderBottom: '1px solid var(--border)', cursor: openDetail ? 'pointer' : undefined }}
+                >
+                  <td style={{ padding: '0.75rem 0.5rem' }}>{effectiveJobLedgerNumber(r.job.hcp_number, r.job.click_number) || '—'}</td>
+                  <td style={{ padding: '0.75rem 0.5rem' }}>
+                    {openDetail ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openDetail()
+                        }}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          margin: 0,
+                          font: 'inherit',
+                          color: 'var(--text-link)',
+                          textDecoration: 'underline dotted',
+                          textUnderlineOffset: '2px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                        }}
+                      >
+                        {r.job.job_name || '—'}
+                      </button>
+                    ) : (
+                      r.job.job_name || '—'
+                    )}
+                  </td>
+                  <td style={{ padding: '0.75rem 0.5rem' }}>{r.assigned.join(', ') || '—'}</td>
+                  <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right', fontWeight: 500 }}>${formatCurrency(r.remaining)}</td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>
