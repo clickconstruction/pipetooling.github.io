@@ -213,12 +213,24 @@ export function sessionRowIntervalMs(s: ClockIntervalRow, nowMs: number): { lo: 
 }
 
 /**
+ * Tolerance for USER-FACING overlap warnings (strip badge, day-editor banner).
+ * Boundary edits are minute-precision while raw clock events keep seconds, so
+ * "bordering" sessions routinely overlap by sub-minute artifacts the minute-only
+ * display cannot show. Under a minute is not a double-count worth warning about.
+ * Cluster geometry (merge/split) stays on CLUSTER_CONTIGUITY_EPS_MS.
+ */
+export const CLOCK_OVERLAP_WARNING_EPS_MS = 60_000
+
+/**
  * True if some pair of sessions has a positive interval intersection strictly longer than
- * `CLUSTER_CONTIGUITY_EPS_MS` (1s), matching the contiguous-cluster ε so point-touch and sub-second noise do not warn.
+ * `epsMs` (default `CLUSTER_CONTIGUITY_EPS_MS`, 1s — matching the contiguous-cluster ε so
+ * point-touch and sub-second noise do not warn; pass {@link CLOCK_OVERLAP_WARNING_EPS_MS}
+ * for user-facing warnings).
  */
 export function hasPairwiseClockIntervalOverlap(
   rows: readonly ClockIntervalRow[],
   nowMs: number,
+  epsMs: number = CLUSTER_CONTIGUITY_EPS_MS,
 ): boolean {
   if (rows.length < 2) return false
   const n = rows.length
@@ -227,7 +239,7 @@ export function hasPairwiseClockIntervalOverlap(
     for (let j = i + 1; j < n; j++) {
       const { lo: loB, hi: hiB } = sessionRowIntervalMs(rows[j]!, nowMs)
       const overlapMs = Math.min(hiA, hiB) - Math.max(loA, loB)
-      if (overlapMs > CLUSTER_CONTIGUITY_EPS_MS) return true
+      if (overlapMs > epsMs) return true
     }
   }
   return false

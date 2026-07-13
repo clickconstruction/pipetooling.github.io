@@ -18,7 +18,7 @@ import {
   fetchSalariedUserIdSetFromUserIds,
   filterSessionsToSalariedSalaryOrigin,
 } from '../lib/salaryPayConfigGate'
-import { hasPairwiseClockIntervalOverlap } from '../lib/myTimeDayTimeline'
+import { CLOCK_OVERLAP_WARNING_EPS_MS, hasPairwiseClockIntervalOverlap } from '../lib/myTimeDayTimeline'
 import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useDocumentVisibility } from './useDocumentVisibility'
 
@@ -1122,7 +1122,7 @@ export function useDashboardMyTeamSectionState(
         firstClockedInAt: firstIn,
         hoursToday: hoursMap[userId] ?? 0,
         todaySessions,
-        hasIntervalOverlapToday: hasPairwiseClockIntervalOverlap(todaySessions, todayHoursNowMs),
+        hasIntervalOverlapToday: hasPairwiseClockIntervalOverlap(todaySessions, todayHoursNowMs, CLOCK_OVERLAP_WARNING_EPS_MS),
       })
     }
     rows.sort((a, b) => {
