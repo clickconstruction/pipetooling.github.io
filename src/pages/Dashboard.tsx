@@ -52,6 +52,7 @@ import {
 } from '../lib/dashboardClockStripScopeStorage'
 import DashboardFieldCollectPaymentQueue from '../components/dashboard/DashboardFieldCollectPaymentQueue'
 import { BillingPipelineCard, BillingPipelineStage } from '../components/dashboard/BillingPipelineCard'
+import { DashboardSectionDock } from '../components/dashboard/DashboardSectionDock'
 import ReportEditModal, { type ReportForEdit } from '../components/ReportEditModal'
 import ChecklistItemMuteModal from '../components/ChecklistItemMuteModal'
 import {
@@ -4622,9 +4623,38 @@ export default function Dashboard() {
     )
   }
 
+  const dockAnchorStyle: CSSProperties = { scrollMarginTop: 8 }
+  /** Sections offered by the floating bottom dock; mirrors each section's render gate. */
+  const dockSections = [
+    { id: 'dash-notifications', label: 'Notifications', visible: showFinancials },
+    { id: 'dash-clocked-in', label: 'ClockedIn', visible: Boolean(authUser?.id && showClockActivityStrip) },
+    {
+      id: 'dash-teams-inbox',
+      label: 'Teams Inbox',
+      visible: Boolean(authUser?.id && (dispatchInboxEligible || estimatorInboxEligible)),
+    },
+    {
+      id: 'dash-billing',
+      label: 'Billing',
+      visible: role === 'assistant' || role === 'dev' || role === 'master_technician',
+    },
+    { id: 'dash-my-inbox', label: 'My Inbox', visible: userLoading || showChecklist },
+    {
+      id: 'dash-bids',
+      label: 'Bids',
+      visible:
+        (role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') &&
+        (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))),
+    },
+    { id: 'dash-reports', label: 'Reports', visible: showRecent },
+    { id: 'dash-me', label: 'Me', visible: Boolean(authUser?.id) },
+  ].filter((sec) => sec.visible)
+
   /** Above-the-fold: quick actions and clock first; checklist/assigned use skeletons until data arrives. */
   return (
-    <div>
+    <div style={{ paddingBottom: dockSections.length > 1 ? '4.5rem' : 0 }}>
+      {dockSections.length > 1 ? <DashboardSectionDock sections={dockSections} /> : null}
+      {showFinancials && <div id="dash-notifications" aria-hidden="true" style={dockAnchorStyle} />}
       {showFinancials && <DashboardFinancialsSection />}
       {showDashboardQuickButtons && quickButtonsPlacement === 'top' && (
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', justifyContent: 'center' }}>
@@ -4682,6 +4712,9 @@ export default function Dashboard() {
         onOpenSigningPage={openContractSigningPageForDoc}
       />
       {role === 'assistant' && authUser?.id && showClockActivityStrip && (
+        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
+      )}
+      {role === 'assistant' && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
           hoursTodayByUserId={hoursTodayForStrip}
@@ -4728,6 +4761,9 @@ export default function Dashboard() {
       {role === 'assistant' && (
         <>
           {/* Inboxes first: processing dispatch/estimator requests is the assistant's primary queue. */}
+          {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && (
+            <div id="dash-teams-inbox" aria-hidden="true" style={dockAnchorStyle} />
+          )}
           {authUser?.id && dispatchInboxEligible && (
             <DispatchInboxSection
               sectionOpen={dispatchRequestsOpen}
@@ -4775,6 +4811,7 @@ export default function Dashboard() {
               onDismiss={dismissEstimatorRequest}
             />
           )}
+          <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
           <BillingPipelineCard>
           {authUser?.id && (
             <BillingPipelineStage step={1} connectToNext>
@@ -5130,6 +5167,9 @@ export default function Dashboard() {
         </>
       )}
       {role !== 'assistant' && authUser?.id && showClockActivityStrip && (
+        <div id="dash-clocked-in" aria-hidden="true" style={dockAnchorStyle} />
+      )}
+      {role !== 'assistant' && authUser?.id && showClockActivityStrip && (
         <DashboardTeamActiveClockStrip
           sessions={sessionsForStrip}
           hoursTodayByUserId={hoursTodayForStrip}
@@ -5223,6 +5263,9 @@ export default function Dashboard() {
           }}
         />
       )}
+      {authUser?.id && (dispatchInboxEligible || estimatorInboxEligible) && role !== 'assistant' && (
+        <div id="dash-teams-inbox" aria-hidden="true" style={dockAnchorStyle} />
+      )}
       {authUser?.id && dispatchInboxEligible && role !== 'assistant' && (
         <DispatchInboxSection
           sectionOpen={dispatchRequestsOpen}
@@ -5273,6 +5316,9 @@ export default function Dashboard() {
           onSubmitNoteAndClose={submitEstimatorNoteAndClose}
           onDismiss={dismissEstimatorRequest}
         />
+      )}
+      {(role === 'dev' || role === 'master_technician') && (
+        <div id="dash-billing" aria-hidden="true" style={dockAnchorStyle} />
       )}
       {(role === 'dev' || role === 'master_technician') && (
         <BillingPipelineCard>
@@ -5630,7 +5676,7 @@ export default function Dashboard() {
       )}
 
       {(userLoading || showChecklist) && (
-        <div style={{ marginTop: '1.5rem', marginBottom: '2rem' }}>
+        <div id="dash-my-inbox" style={{ marginTop: '1.5rem', marginBottom: '2rem', scrollMarginTop: 8 }}>
           <h2 style={{ fontSize: '1.125rem', marginBottom: '0.75rem' }}>
             Checklist: Due Today
             <Link to="/checklist" style={{ marginLeft: '0.5rem', fontSize: '0.875rem', fontWeight: 400, color: 'var(--text-link)' }}>
@@ -6037,7 +6083,7 @@ export default function Dashboard() {
         </div>
       )}
       {(role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'estimator' || role === 'primary') && (myBidsLoading || myBids.some((b) => !hiddenBidIds.has(b.id))) && (
-        <div style={{ marginBottom: '1rem' }}>
+        <div id="dash-bids" style={{ marginBottom: '1rem', scrollMarginTop: 8 }}>
           <div
             style={{
               display: 'flex',
@@ -7066,7 +7112,7 @@ export default function Dashboard() {
         </div>
       )}
       {showRecent && (
-        <div style={{ marginTop: '2rem', marginBottom: '1rem' }}>
+        <div id="dash-reports" style={{ marginTop: '2rem', marginBottom: '1rem', scrollMarginTop: 8 }}>
           <button
             type="button"
             onClick={() => setRecentReportsExpanded((prev) => !prev)}
@@ -8467,6 +8513,7 @@ export default function Dashboard() {
         </Suspense>
       )}
 
+      {authUser?.id && <div id="dash-me" aria-hidden="true" style={dockAnchorStyle} />}
       {authUser?.id && (
         <DashboardMyTimeSection
           userId={authUser.id}
